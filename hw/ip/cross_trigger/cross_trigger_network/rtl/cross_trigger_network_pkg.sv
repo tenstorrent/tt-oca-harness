@@ -3,10 +3,6 @@
 
 // Cross Trigger Network Package
 //
-// Committed source. Upstream expanded this package from a template; that
-// generator was not carried into this tree, so the values below are edited by
-// hand.
-//
 // Description:
 // Package containing types, parameters, and constants for the Cross Trigger Network
 
@@ -15,6 +11,7 @@
 
 // Import AXI package (required for typedef macros)
 import axi_pkg::*;
+import cross_trigger_network_addrmap_pkg::*;
 // Include AXI typedef macros
 
 package cross_trigger_network_pkg;
@@ -36,8 +33,10 @@ package cross_trigger_network_pkg;
   // CTM gets 512 bytes (0x200) - enough for up to 64 CT_SRC register pairs (64 * 8 bytes)
   // Each CT_SRC uses 8 bytes (CONFIG_0 + CONFIG_1) to support up to 64 CT_DST ports
   // Each CTP gets 16 bytes (0x10) - enough for 3 registers (CONFIG, STATUS, STRETCH_MULT)
-  localparam int unsigned CSR_ADDR_CTM_SIZE = 32'h200;  // 512 bytes for CTM
-  localparam int unsigned CSR_ADDR_CTP_SIZE = 32'h10;  // 16 bytes per CTP
+  localparam int unsigned CSR_ADDR_CTM_SIZE =
+      int'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
+  localparam int unsigned CSR_ADDR_CTP_SIZE =
+      int'(CROSS_TRIGGER_NETWORK_CTP_STRIDE);
 
   // AXI-Lite Parameters
   localparam int unsigned AXI_LITE_ADDR_WIDTH = 32;
@@ -67,12 +66,12 @@ package cross_trigger_network_pkg;
 
   // Function to calculate the CTM base address (CTM is at address 0)
   function automatic logic [AXI_LITE_ADDR_WIDTH-1:0] calc_ctm_base_addr(int unsigned num_ctp);
-    return 32'h0;  // CTM is always at base address 0
+    return AXI_LITE_ADDR_WIDTH'(CROSS_TRIGGER_NETWORK_CTM_BASE_ADDR);
   endfunction
 
   // Function to calculate CTP base address (CTPs start after CTM)
   function automatic logic [AXI_LITE_ADDR_WIDTH-1:0] calc_ctp_base_addr(int unsigned ctp_idx);
-    return CSR_ADDR_CTM_SIZE + (ctp_idx * CSR_ADDR_CTP_SIZE);  // CTP[0] starts at 0x200
+    return AXI_LITE_ADDR_WIDTH'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(ctp_idx));
   endfunction
 
 endpackage : cross_trigger_network_pkg

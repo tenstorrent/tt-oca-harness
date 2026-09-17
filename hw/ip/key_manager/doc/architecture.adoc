@@ -79,29 +79,20 @@ image::SEP_Key_Manager.png[SEP_Key_Manager,scaledwidth=90.0%]
 |`LATCHED_MEM_RDATA` |`bit` |`1'b0` |When set, the PicoRV32 core treats memory read data as latched (hold until next request).
 |===
 
+[[key-manager-memory-map]]
 ===== Memory Map
 
 The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.
 
 Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.
 
-[cols="<25%,<25%,<50%",options="header"]
-|===
-|Address Range |Component |Description
-|`0x0000_0000` – `0x0000_3FFF` |ROM |16 KB boot ROM (read-only, parity-protected).
-|`0x0000_4000` – `0x0000_7FFF` |Reserved |Unmapped; returns a decode error.
-|`0x0000_8000` – `0x0000_FFFF` |SRAM |32 KB data SRAM (parity-protected, optional scrambling, region-based write-lock).
-|`0x0001_0000` – `0x0001_001F` |Mailbox |KM-side mailbox read/write and control registers.
-|`0x0001_1000` – `0x0001_1FFF` |OTP/eFuse |External AXI4-Lite pass-through to SEP eFuse controller. Hardware remaps KM-local addresses to `OTP_EFUSE_REMAP_BASE`, which needs the whole page.
-|`0x0001_2000` – `0x0001_3FFF` |KPV |Key and Policy Vault register and key storage region (8 KB, 8 KB-aligned).
-|`0x0001_4000` – `0x0001_47FF` |KMCSR |Key Manager Control and Status Registers.
-|`0x0001_5000` – `0x0001_500F` |DRBG Sampler |DRBG random data, configuration, and status registers.
-|`0x0001_8000` – `0x0001_807F` |OTBN |External AXI4-Lite master port for OTBN key storage.
-|`0x0001_9000` – `0x0001_907F` |AES |External AXI4-Lite master port for AES key storage.
-|`0x0001_A000` – `0x0001_A07F` |KMAC |External AXI4-Lite master port for KMAC key storage.
-|`0x0001_B000` – `0x0001_B07F` |HMAC |External AXI4-Lite master port for HMAC key storage.
-|`0x0001_C000` – `0x0001_C7FF` |ABR |External AXI4-Lite master port for Adams Bridge key storage.
-|===
+ifdef::backend-html5[]
+include::partial$key_manager/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
 
 ===== Reset Conditioning
 
@@ -293,43 +284,9 @@ It is implemented in firmware running on the KM CPU. This function is
 stored in the KM ROM. Other KDFs could also be implemented in firmware
 loaded into the instruction/data SRAM.
 
-The 32-bit memory map of the KM subsystem is shown below. KM only
-consumes the bottom 4MB of address space leaving the remaining space
-unallocated.
-
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header",]
-|=======================================================================
-|Base Address |End Address |Size |Unit |Description
-|0x0000_0000 |0x0000_3FFF |16 kB |KM ROM |Key Manager Program ROM
-
-|0x0000_4000 |0x0000_7FFF | | |_Reserved_ (decode error)
-
-|0x0000_8000 |0x0000_FFFF |32 kB |KM SRAM |Key Manager Prgm/Data SRAM
-
-|0x0001_0000 |0x0001_001F |32 B |MB |Mailbox Message
-
-|0x0001_1000 |0x0001_1FFF |4kB |OTP/eFuse |SEP eFuse pass-through. KM-local addresses remapped to SEP the value of `OTP_EFUSE_REMAP_BASE`.
-
-|0x0001_2000 |0x0001_3FFF |8kB |KPV |Key and Policy Vault
-
-|0x0001_4000 |0x0001_47FF |2kB |KMCSR |Configuration, Status, Interrupt
-and Interrupt Mask Registers
-
-|0x0001_5000 |0x0001_500F |16 B |DRBG |DRBG Sampling Interface
-
-|0x0001_8000 |0x0001_807F |128 B |OTBN |Public Key Cryptography
-Accelerator key storage
-
-|0x0001_9000 |0x0001_907F |128 B |AES |AES block cipher key storage
-
-|0x0001_A000 |0x0001_A07F |128 B |KMAC |KMAC key storage
-
-|0x0001_B000 |0x0001_B07F |128 B |HMAC |HMAC key storage
-
-|0x0001_C000 |0x0001_C7FF |2kB |Adams Bridge |ABR key storage
-
-|0x0001_D000 |0xFFFF_FFFF | | |_Reserved_
-|=======================================================================
+The KM CPU map is generated once in <<key-manager-memory-map>>. KM uses only
+the low portion of its 32-bit address space; every address outside the listed
+windows is unallocated and returns a decode error.
 
 Separating the key and data domains explicitly as described above
 increases security as it makes it more difficult for an adversary to

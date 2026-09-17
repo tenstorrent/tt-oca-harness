@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+version = 1
+
+[[nodes]]
+selector = "mailbox_km"
+aperture_size = 0x20
+expected_address = 0x10000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "otp_efuse_map"
+description = "SEP eFuse shadow-register pass-through."
+expected_address = 0x11000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "otp_efuse_ctrl"
+aperture_size = 0x100
+description = "SEP eFuse command and status pass-through."
+expected_address = 0x11400
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "otp_efuse_mmr"
+aperture_size = 0x100
+description = "SEP eFuse security-token pass-through."
+expected_address = 0x11500
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "kpv"
+aperture_size = 0x2000
+expected_address = 0x12000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "kmcsr"
+aperture_size = 0x800
+expected_address = 0x14000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "otbn_wrapper_key"
+aperture_size = 0x80
+expected_address = 0x18000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "aes_wrapper_key"
+aperture_size = 0x80
+expected_address = 0x19000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "kmac_wrapper_key"
+aperture_size = 0x80
+expected_address = 0x1A000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "hmac_wrapper_key"
+aperture_size = 0x80
+expected_address = 0x1B000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[nodes]]
+selector = "abr_wrapper_key"
+aperture_size = 0x800
+expected_address = 0x1C000
+expected_kind = "addrmap"
+expected_count = 1
+
+[[views]]
+name = "km-cpu"
+title = "Key Manager CPU Memory Map"
+include_all = true
+derive_gaps = true
+bounds_start = 0
+bounds_end = 0x0001D000
+columns = ["base", "end", "size", "occupied_size", "label", "description"]

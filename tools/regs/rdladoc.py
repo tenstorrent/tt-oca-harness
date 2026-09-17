@@ -6,7 +6,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common.rdlview import compile_root, parse_rdl_params, write_adoc  # noqa: E402
+from common.rdlview import (  # noqa: E402
+    compile_root,
+    load_doc_overrides,
+    parse_rdl_params,
+    write_adoc,
+)
 
 
 def main():
@@ -27,6 +32,7 @@ def main():
             parse_rdl_params(args.rdl_params),
         ),
         args.out,
+        load_doc_overrides(args.rdl),
     )
 
 

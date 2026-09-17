@@ -115,7 +115,11 @@ def is_docs_path(path: str) -> bool:
 def is_register_regen_path(path: str) -> bool:
     """Return True when changing *path* can affect register collateral."""
     normalized = path.replace("\\", "/").lstrip("./")
-    if normalized == UNCLASSIFIED or normalized.endswith(".rdl"):
+    if (
+        normalized == UNCLASSIFIED
+        or normalized.endswith(".rdl")
+        or normalized.endswith(("/regs/memmap.toml", "/regs/regdoc.toml"))
+    ):
         return True
     if normalized in REGISTER_INFRASTRUCTURE_PATHS or normalized.startswith(
         REGISTER_INFRASTRUCTURE_DIRS

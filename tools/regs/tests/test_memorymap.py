@@ -1,0 +1,186 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+from __future__ import annotations
+
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from tools.regs.common.memorymap import (
+    build_views,
+    compile_root,
+    load_config,
+    render_adoc,
+    render_json,
+)
+from tools.regs.common.rdlview import collect
+from tools.regs.stamp_spdx import stamp_file
+
+UDP = """
+property ocah_aperture_size {
+    component = addrmap | regfile | reg | mem;
+    type = longint unsigned;
+};
+"""
+
+RDL = """
+addrmap child {
+    name = "Child";
+    desc = "Contains | escaped";
+    reg {
+        field { sw = rw; hw = r; } value[31:0];
+    } control @0x0;
+};
+addrmap top {
+    child first @0x1000;
+    first->ocah_aperture_size = 0x100;
+    child repeated[2] @0x2000 += 0x100;
+    repeated->ocah_aperture_size = 0x200;
+};
+"""
+
+
+class MemoryMapTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = TemporaryDirectory()
+        root = Path(self.temp.name)
+        self.udp = root / "udp.rdl"
+        self.rdl = root / "map.rdl"
+        self.udp.write_text(UDP)
+        self.rdl.write_text(RDL)
+        self.root = compile_root(self.rdl, self.udp, top="top")
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_build_and_render(self):
+        config = {
+            "version": 1,
+            "views": [
+                {
+                    "name": "map",
+                    "title": "Map",
+                    "bounds_start": 0x1000,
+                    "bounds_end": 0x2200,
+                    "derive_gaps": True,
+                    "rows": [
+                        {
+                            "selector": "first",
+                            "expected_address": 0x1000,
+                            "expected_occupied_size": 4,
+                            "expected_kind": "addrmap",
+                        },
+                        {
+                            "selector": "repeated",
+                            "expected_address": 0x2000,
+                            "expected_count": 2,
+                            "expected_stride": 0x100,
+                        },
+                    ],
+                }
+            ],
+        }
+        view = build_views(config, {"main": self.root})[0]
+        self.assertEqual(view.rows[0].aperture_size, 0x100)
+        self.assertEqual(view.rows[1].kind, "reserved")
+        self.assertEqual(view.rows[2].occupied_size, 0x104)
+        self.assertEqual(view.rows[2].aperture_size, 0x200)
+        adoc = render_adoc([view])
+        self.assertIn(r"Contains \| escaped", adoc)
+        self.assertIn("Reserved", adoc)
+        self.assertIn("512 B", adoc)
+        self.assertIn("// tag::map[]", adoc)
+        self.assertIn("// end::map[]", adoc)
+        self.assertIn('"schema": "ocah-memory-map-v1"', render_json([view]))
+
+    def test_rejects_stale_selector(self):
+        config = {
+            "version": 1,
+            "views": [{"name": "map", "rows": [{"selector": "missing"}]}],
+        }
+        with self.assertRaisesRegex(ValueError, "matched no elaborated node"):
+            build_views(config, {"main": self.root})
+
+    def test_rejects_undersized_override(self):
+        config = {
+            "version": 1,
+            "views": [
+                {
+                    "name": "map",
+                    "rows": [{"selector": "repeated", "aperture_size": 0x100}],
+                }
+            ],
+        }
+        with self.assertRaisesRegex(ValueError, "smaller than occupied"):
+            build_views(config, {"main": self.root})
+
+    def test_rejects_overlap(self):
+        config = {
+            "version": 1,
+            "views": [
+                {
+                    "name": "map",
+                    "rows": [
+                        {"selector": "first"},
+                        {"kind": "region", "label": "Overlap", "base": 0x1080, "size": 0x100},
+                    ],
+                }
+            ],
+        }
+        with self.assertRaisesRegex(ValueError, "overlaps"):
+            build_views(config, {"main": self.root})
+
+    def test_alias_must_match_target_size(self):
+        config = {
+            "version": 1,
+            "views": [
+                {
+                    "name": "map",
+                    "rows": [
+                        {
+                            "kind": "region",
+                            "key": "direct",
+                            "label": "Direct",
+                            "base": 0,
+                            "size": 0x100,
+                        },
+                        {
+                            "kind": "alias",
+                            "key": "alias",
+                            "label": "Alias",
+                            "base": 0x1000,
+                            "size": 0x80,
+                            "alias_of": "direct",
+                        },
+                    ],
+                }
+            ],
+        }
+        with self.assertRaisesRegex(ValueError, "alias size differs"):
+            build_views(config, {"main": self.root})
+
+    def test_doc_override_is_validated(self):
+        data = collect(self.root, {"first.control": "Documented locally"})
+        control = next(reg for reg in data.regs if reg.name == "control")
+        self.assertEqual(control.desc, "Documented locally")
+        with self.assertRaisesRegex(ValueError, "matched no register"):
+            collect(self.root, {"first.missing": "Stale"})
+
+    def test_xml_stamping_removes_exporter_trailing_space(self):
+        xml = Path(self.temp.name) / "map.xml"
+        xml.write_text('<?xml version="1.0"?>\n<description>text </description>  \n')
+        self.assertTrue(stamp_file(xml))
+        text = xml.read_text()
+        self.assertTrue(text.startswith('<?xml version="1.0"?>\n<!-- SPDX'))
+        self.assertIn("<description>text </description>\n", text)
+
+    def test_config_rejects_unknown_keys(self):
+        config = Path(self.temp.name) / "bad.toml"
+        config.write_text('version = 1\n[[views]]\nname = "bad"\ncolums = ["base"]\n')
+        with self.assertRaisesRegex(ValueError, "unknown key"):
+            load_config(config)
+
+
+if __name__ == "__main__":
+    unittest.main()

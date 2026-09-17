@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`include "../../cross_trigger_matrix/regs/cross_trigger_matrix.rdl"
+`include "../../cross_trigger_port/regs/cross_trigger_port.rdl"
+
+addrmap cross_trigger_network #(
+    longint unsigned NUM_CTP = 16,
+    longint unsigned NUM_INT_CT = 10
+) {
+    name = "Cross Trigger Network Address Map";
+    desc = "Cross trigger matrix and externally visible cross trigger ports";
+
+    cross_trigger_matrix #(
+        .NUM_CT_SRC(NUM_CTP + NUM_INT_CT),
+        .NUM_CT_DST(NUM_CTP + NUM_INT_CT)
+    ) ctm @0x0;
+
+    cross_trigger_port ctp[NUM_CTP] @0x200 += 0x10;
+};

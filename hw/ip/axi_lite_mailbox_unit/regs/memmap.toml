@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+version = 1
+
+[[sources]]
+name = "smc"
+rdl = "hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap.rdl"
+top = "axil_mailbox_smc_wrap"
+
+[[sources]]
+name = "sep"
+rdl = "hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap.rdl"
+top = "axil_mailbox_sep_wrap"
+
+[[views]]
+name = "smc-mailboxes"
+title = "SMC Mailbox Aperture Layout"
+source = "smc"
+include_all = true
+base_mode = "relative"
+base_label = "BASE"
+columns = ["range", "size", "occupied_size", "label", "instances", "stride"]
+
+[[views]]
+name = "sep-mailboxes"
+title = "SEP Mailbox Aperture Layout"
+source = "sep"
+include_all = true
+base_mode = "relative"
+base_label = "BASE"
+columns = ["range", "size", "occupied_size", "label", "instances", "stride"]

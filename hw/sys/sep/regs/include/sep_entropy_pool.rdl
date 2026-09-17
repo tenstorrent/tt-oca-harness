@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_ENTROPY_POOL_RDL
+`define SEP_ENTROPY_POOL_RDL
+
+addrmap sep_entropy_pool {
+    name = "SEP Entropy Pool";
+    desc = "Read-only entropy pool implemented by sep_entropy_fifo";
+
+    external reg {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current number of available 64-bit entropy words";
+        } fifo_level[5:0];
+        field {
+            sw = r;
+            hw = w;
+            desc = "The pool occupancy is below the configured low watermark";
+        } pool_low[6:6];
+        field {
+            sw = r;
+            hw = w;
+            desc = "The EDN fill request exceeded the configured stall threshold";
+        } fill_stall[7:7];
+        field {
+            sw = r;
+            hw = w;
+            desc = "The pool detected a FIFO integrity error";
+        } pool_error[8:8];
+    } STATUS @0x0;
+
+    external reg {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = r;
+            hw = w;
+        } pool_low[0:0];
+        field {
+            sw = r;
+            hw = w;
+        } fill_stall[1:1];
+        field {
+            sw = r;
+            hw = w;
+        } pool_error[2:2];
+    } IRQ_CAUSE @0x8;
+
+    external reg {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Pops one conditioned entropy word; an empty pool returns SLVERR";
+        } entropy[63:0];
+    } DATA @0x10;
+};
+
+`endif

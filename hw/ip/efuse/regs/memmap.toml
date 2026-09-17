@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+version = 1
+
+[[sources]]
+name = "sep"
+rdl = "hw/sys/sep/regs/sep.rdl"
+top = "och_sep_top"
+
+[[sources]]
+name = "smc"
+rdl = "hw/sys/smc/regs/smc.rdl"
+top = "smc_top"
+
+[[sources]]
+name = "km"
+rdl = "hw/ip/key_manager/regs/key_manager.rdl"
+top = "key_manager"
+
+[[views]]
+name = "sep-efuse"
+title = "SEP eFuse Placement"
+columns = ["base", "end", "size", "occupied_size", "label", "description"]
+
+[[views.rows]]
+source = "sep"
+selector = "sep_efuse_map"
+label = "Shadow Registers"
+description = "Cached eFuse shadow registers."
+expected_address = 0x10930000
+expected_kind = "addrmap"
+
+[[views.rows]]
+source = "sep"
+selector = "efuse_interface_ctrl"
+label = "eFuse Control CSR"
+aperture_size = 0x100
+description = "eFuse command and status registers."
+expected_address = 0x10930400
+expected_kind = "addrmap"
+
+[[views.rows]]
+source = "sep"
+selector = "efuse_mmr"
+label = "MMR Registers"
+aperture_size = 0x100
+description = "eFuse security-token registers."
+expected_address = 0x10930500
+expected_kind = "addrmap"
+
+[[views]]
+name = "smc-efuse"
+title = "SMC eFuse Placement"
+base_mode = "relative"
+base = 0xC0000000
+base_label = "BASE"
+columns = ["range", "size", "occupied_size", "label", "description"]
+
+[[views.rows]]
+source = "smc"
+selector = "smc_efuse_map"
+label = "Shadow Registers"
+aperture_size = 0x1000
+expected_address = 0xC0007000
+expected_kind = "addrmap"
+
+[[views.rows]]
+source = "smc"
+selector = "efuse_interface_ctrl"
+label = "eFuse Control CSR"
+aperture_size = 0x1000
+description = "eFuse command and status registers."
+expected_address = 0xC0008000
+expected_kind = "addrmap"
+
+[[views]]
+name = "km-efuse"
+title = "Key Manager eFuse Pass-Through"
+columns = ["base", "end", "size", "occupied_size", "label", "description"]
+
+[[views.rows]]
+source = "km"
+selector = "otp_efuse_map"
+label = "Shadow Registers"
+description = "SEP eFuse shadow-register pass-through."
+expected_address = 0x00011000
+expected_kind = "addrmap"
+
+[[views.rows]]
+source = "km"
+selector = "otp_efuse_ctrl"
+label = "eFuse Control CSR"
+aperture_size = 0x100
+description = "SEP eFuse command and status pass-through."
+expected_address = 0x00011400
+expected_kind = "addrmap"
+
+[[views.rows]]
+source = "km"
+selector = "otp_efuse_mmr"
+label = "MMR Registers"
+aperture_size = 0x100
+description = "SEP eFuse security-token pass-through."
+expected_address = 0x00011500
+expected_kind = "addrmap"

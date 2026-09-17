@@ -22,6 +22,7 @@
 `include "hmac_wrapper_key.rdl"
 `include "otbn_wrapper_key.rdl"
 `include "abr_wrapper_key.rdl"
+`include "km_memory.rdl"
 // SEP eFuse register definitions — included from the shared SEP/peripheral
 // RDL trees so the KM-generated headers carry the OTP register constants at
 // the KM-local window addresses.  Hardware remaps addr[31:12] to the value
@@ -53,6 +54,7 @@ addrmap key_manager {
     // - Accessed via direct memory interface (not AXI-Lite)
     // - Includes byte-wise parity checking
     // - Size: 16KB (4096 words × 4 bytes)
+    external km_rom rom @ 0x0000_0000;
 
     // Reserved: 0x0000_4000 - 0x0000_7FFF (16KB)
     // - Unmapped; returns DECERR
@@ -63,6 +65,7 @@ addrmap key_manager {
     // - Includes byte-wise parity checking
     // - Optional address/data scrambling (controlled by KMCSR)
     // - Size: 32KB (8192 words × 4 bytes)
+    external km_sram sram @ 0x0000_8000;
 
     //=========================================================================
     // Register-Based Peripherals (AXI-Lite Access)

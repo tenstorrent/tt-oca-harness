@@ -34,6 +34,7 @@ ocah_reg_run_regblock = "$(OCAH_REG_PEAKRDL)" regblock $(call ocah_reg_incdirs,$
 # path, which created a heading/TOC entry per register and exploded the PDF page
 # count. $(2) = input RDL, $(3) = output adoc, $(4) = log.
 ocah_reg_run_adoc     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdladoc.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
+ocah_reg_run_memory_map = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlmap.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) --repo-root "$(OCAH_ROOT)" --config "$(call ocah_reg_memory_map_config,$(1))" "$(call ocah_reg_rdl,$(1))" "$(call ocah_reg_memory_map_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/memory_map.log"
 ocah_reg_run_html     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlhtml.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_svh      = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlsvh.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 # $(4) = bitfields policy (none|ltoh), $(5) = log.
@@ -154,15 +155,24 @@ endef
 
 # Plain-leaf docs: RDL -> compact AsciiDoc (custom generator), plus a peakrdl html site.
 define ocah_reg_doc_plain_rule
-$(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdladoc.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdladoc.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/adoc" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating AsciiDoc register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_adoc,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_adoc_output,$(1)),$(call ocah_reg_build,$(1))/adoc.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_adoc_output,$(1))")'
 
-$(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/html.log)$(call ocah_reg_stamp_after,"$$@")'
+endef
+
+# Validated whole-address-space memory maps are distinct from the register
+# detail exporter above and are enabled only for blocks listed in classify.mk.
+define ocah_reg_memory_map_rule
+$(call ocah_reg_memory_map_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py | $(OCAH_REG_UV_PREREQ)
+	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating memory-map documentation for $(1)"
+	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1))'
 endef
 
 # JSON register model for a whole top (composite or leaf), opt-in list only.
@@ -197,6 +207,7 @@ $(foreach block,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(eval $(call ocah_reg_composite
 # Plain leaves: single-file sv (or skip when RTL is elsewhere), docs, C header.
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call $(if $(call ocah_reg_sv_skipped,$(block)),ocah_reg_sv_skip_rule,ocah_reg_sv_plain_rule),$(block))))
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call ocah_reg_doc_plain_rule,$(block))))
+$(foreach block,$(filter $(OCAH_REG_MEMORY_MAP_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_memory_map_rule,$(block))))
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call ocah_reg_cheader_plain_rule,$(block))))
 # Opt-in leaves only: RAL is not generated for every block.
 $(foreach block,$(filter $(OCAH_REG_RAL_LEAF_BLOCKS),$(OCAH_REG_PLAIN_BLOCK_IDS)),$(eval $(call ocah_reg_ral_plain_rule,$(block))))

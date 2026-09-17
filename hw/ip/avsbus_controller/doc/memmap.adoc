@@ -18,55 +18,6 @@ access patterns. The interface supports both polling and
 interrupt-driven operation modes, with extensive status reporting and
 diagnostic capabilities for robust system integration and debugging.
 
-====== Register Address Map
-
-.Register Address Map
-[width="100%",cols="10%,25%,10%,55%",options="header",]
-|=====================================================================================
-|Address |Name |Access |Description
-|0x00 |AVS_CMD |W |Command and Data Register - Write-only FIFO for AVS
-transactions
-
-|0x04 |AVS_READBACK |R |Response Data Register - Read-only FIFO for
-target responses
-
-|0x08 |AVS_DEBUG_READBACK |R |Debug Readback Register - Non-destructive
-read of FIFO contents
-
-|0x0C |AVS_LATEST_SLAVE_SUBFRAME |R |Latest Slave Subframe - Bypass FIFO
-for immediate access
-
-|0x20 |AVS_NORMAL_STATUS |R |FIFO and Bus Status - Standard operation
-indicators
-
-|0x24 |AVS_SLAVE_STATUS |R |Slave Status Information - Target status and
-acknowledgment
-
-|0x28 |AVS_FIFOS_STATUS |R |FIFO Occupancy Counters - Detailed FIFO
-utilization
-
-|0x30 |AVS_INTERRUPT |R |Interrupt Status Register - Interrupt source
-identification
-
-|0x34 |AVS_INTERRUPT_MASK |RW |Interrupt Mask Register - Individual
-interrupt source enables
-
-|0x38 |AVS_INTERRUPT_CLEAR |W |Interrupt Clear Register - Clear interrupt
-bits
-
-|0x50 |AVS_CFG_0 |RW |Configuration Register 0 - Retry and resync
-configuration
-
-|0x54 |AVS_CFG_1 |RW |Configuration Register 1 - Clock configuration and
-control
-
-|0x58 |AVS_CONFIG |RW |General Configuration - GPIO enable and system
-controls
-
-|0x5C-0xFF |Reserved |
-|Reserved address space for future extensions
-|=====================================================================================
-
 ====== Address Alignment and Access Requirements
 
 *Address Alignment*: - All registers aligned to 32-bit boundaries
@@ -83,39 +34,6 @@ register writes
 are inherently atomic - Status registers provide consistent snapshots of
 hardware state - No special atomic access patterns required for normal
 operation
-
-====== Reset Values and Power-On Behavior
-
-.Register Reset Values
-[width="100%",cols="30%,20%,50%",options="header",]
-|=====================================================================================
-|Register |Reset Value |Description
-|AVS_CMD |N/A |Write-only register, no reset state
-
-|AVS_READBACK |0x00000000 |Empty FIFO, no response data
-
-|AVS_DEBUG_READBACK |0xFFFFFFFF |No data available
-
-|AVS_LATEST_SLAVE_SUBFRAME |0x0000FFFF |No response data available
-
-|AVS_NORMAL_STATUS |0x00000000 |Bus idle, FIFOs empty
-
-|AVS_SLAVE_STATUS |0x00000000 |No slave status available
-
-|AVS_FIFOS_STATUS |0x88000000 |FIFOs empty (8 vacant slots each)
-
-|AVS_INTERRUPT |0x00000000 |No pending interrupts
-
-|AVS_INTERRUPT_MASK |0x000001FF |All interrupts masked by default
-
-|AVS_INTERRUPT_CLEAR |0x00000000 |No effect on read
-
-|AVS_CFG_0 |0x00051000 |Max retries=5, resync interval=0x1000
-
-|AVS_CFG_1 |0x00000003 |Div=4 (default), duty=128 (50%), clk_ref_i divided
-
-|AVS_CONFIG |0x00000001 |GPIO enabled by default
-|=====================================================================================
 
 ====== Detailed Register Map
 

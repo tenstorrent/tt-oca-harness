@@ -17,47 +17,22 @@ addresses map to different registers based on the DLAB bit setting,
 maintaining compatibility with the original 16550 UART while providing
 access to baud rate configuration registers.
 
-====== Address Map Summary
-
-.Register Address Map
-[width="100%",cols="15%,15%,15%,55%",options="header",]
-|=======================================================================
-|Offset |Register Name |Access |Description
-|0x00 |RBR/THR |RW |Receiver Buffer Register (Read) / Transmitter
-Holding Register (Write) when DLAB=0
-
-|0x00 |DLL |RW |Divisor Latch Low Register when DLAB=1
-
-|0x04 |IER |RW |Interrupt Enable Register when DLAB=0
-
-|0x04 |DLM |RW |Divisor Latch High Register when DLAB=1
-
-|0x08 |IIR/FCR |RW |Interrupt Identification Register (Read) / FIFO
-Control Register (Write)
-
-|0x0C |LCR |RW |Line Control Register
-
-|0x10 |MCR |RW |Modem Control Register
-
-|0x14 |LSR |R |Line Status Register
-
-|0x18 |MSR |R |Modem Status Register
-
-|0x1C |SCR |RW |Scratch Register
-
-|0x20 |ECR |RW |Extended Control Register
-
-|0x24 |ITR |RW |Interrupt Test Register
-|=======================================================================
-
 ====== Detailed Register Map
+
+The first two register views apply when `LCR.DLAB=0`; read-only and write-only
+aliases at the same offset are shown separately. The divisor-latch view applies
+when `LCR.DLAB=1`.
 
 ifdef::backend-html5[]
 ++++
+include::partial$uart_16550/regs/gen/html/uart_16550_main.html[]
+include::partial$uart_16550/regs/gen/html/uart_16550_main_wo.html[]
 include::partial$uart_16550/regs/gen/html/uart_16550_dl.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
+include::../regs/gen/adoc/uart_16550_main.adoc[]
+include::../regs/gen/adoc/uart_16550_main_wo.adoc[]
 include::../regs/gen/adoc/uart_16550_dl.adoc[]
 endif::backend-pdf[]
