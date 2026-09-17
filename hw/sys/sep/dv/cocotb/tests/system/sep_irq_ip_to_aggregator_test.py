@@ -275,8 +275,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             "periph OR [42] set on a DMA register-path write fault"
         )
         self.logger.info(
-            "CHK-BUSERR-DMA-WR PASS: write 0x%08x BRESP=SLVERR; STATUS=0x%x "
-            "exclusive; [40]=1",
+            "CHK-BUSERR-DMA-WR PASS: write 0x%08x BRESP=SLVERR; STATUS=0x%x exclusive; [40]=1",
             dma_hole,
             dma_st,
         )
