@@ -39,6 +39,7 @@ from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
     DualCsr,
     SmcDualHarness,
+    dual_test,
     random_seed,
 )
 from smc_occp_dual_defs import (
@@ -62,6 +63,7 @@ DFX_CTRL_STATUS_SMU = 0xC000_B800
 HALT_SETTLE_CYCLES = 2000
 HALT_WINDOW_CYCLES = 20_000
 HALT_SAMPLE_CYCLES = 20
+REQUIRED_EVIDENCE = ("CHK-ROM-DFT-FAIL",)
 
 
 def _poll_iterations() -> tuple[int, str]:
@@ -100,9 +102,8 @@ async def _expect_halted(dut, harness, case: str) -> set[int]:
     return allowed
 
 
-@cocotb.test()
-async def smc_rom_dft_fail_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_rom_dft_fail_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_rom_dft_fail_test")

@@ -38,6 +38,7 @@ from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
     DualCsr,
     SmcDualHarness,
+    dual_test,
     random_seed,
 )
 from smc_occp_dual_defs import (
@@ -61,6 +62,7 @@ from smc_occp_dual_defs import (
 POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
+REQUIRED_EVIDENCE = ("CHK-OCCP-RANDOM-JUMP",)
 
 
 def _poll_iterations() -> tuple[int, str]:
@@ -75,9 +77,8 @@ def _poll_iterations() -> tuple[int, str]:
     return iters, f"+rom_test_timeout={budget_ns} ns / {interval} ns -> {iters} polls"
 
 
-@cocotb.test()
-async def smc_occp_random_jump_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_occp_random_jump_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_occp_random_jump_test")

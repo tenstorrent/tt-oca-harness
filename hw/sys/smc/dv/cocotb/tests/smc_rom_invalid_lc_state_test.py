@@ -34,6 +34,7 @@ from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
     DualCsr,
     SmcDualHarness,
+    dual_test,
     random_seed,
 )
 from smc_occp_dual_defs import (
@@ -58,6 +59,7 @@ ILLEGAL_LC_VALUES = (0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF)
 # POST code fields the ROM must land on, from the names in smc_occp_dual_defs.
 POST_PHASE_ERROR = 0x7
 POST_ERROR_INVALID_SEC_MODE = 0x5
+REQUIRED_EVIDENCE = ("CHK-ROM-INVALID-LC",)
 
 
 def _poll_iterations() -> tuple[int, str]:
@@ -86,9 +88,8 @@ def _illegal_lc_value(rng: random.Random) -> tuple[int, str]:
     return value, f"+lc_state={value:#x}"
 
 
-@cocotb.test()
-async def smc_rom_invalid_lc_state_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_rom_invalid_lc_state_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_rom_invalid_lc_state_test")

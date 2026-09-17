@@ -45,6 +45,7 @@ from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
     DualCsr,
     SmcDualHarness,
+    dual_test,
     random_seed,
 )
 from smc_occp_dual_defs import (
@@ -73,6 +74,7 @@ PROGRESS_EVERY = 200
 # own SRAM init, well before it can answer OCCP, so this is a stall detector rather than a
 # budget: 10 ms of sim time at POLL_CYCLES granularity.
 READY_POLL_ITERS = 1000
+REQUIRED_EVIDENCE = ("CHK-SEP-RING-BUFFER",)
 
 
 def _poll_iterations() -> tuple[int, str]:
@@ -100,9 +102,8 @@ def _entry_count(rng: random.Random) -> tuple[int, str]:
     return count, f"+sep_rb_entries={count}"
 
 
-@cocotb.test()
-async def smc_sep_ring_buffer_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_sep_ring_buffer_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_sep_ring_buffer_test")

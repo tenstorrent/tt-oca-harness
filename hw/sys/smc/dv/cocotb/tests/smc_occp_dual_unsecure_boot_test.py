@@ -71,7 +71,7 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.smc_virt_console import VirtConsole
-from smc_dual_base_test import DualCsr, SmcDualHarness, random_seed
+from smc_dual_base_test import DualCsr, SmcDualHarness, dual_test, random_seed
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
     CTRL_TARGET_READY_PAD,
@@ -127,6 +127,17 @@ CTRL_VERDICT_GRACE_ITERS = 60
 # Log in-flight progress this often (here: every ~1 ms of sim time), so a stall
 # shows up while it is happening rather than only in the timeout message.
 PROGRESS_EVERY = 100
+REQUIRED_EVIDENCE = (
+    "CHK-OCCP-TARGET-READY",
+    "CHK-OCCP-PRECONDITION",
+    "CHK-OCCP-PAYLOAD-STAGED",
+    "CHK-OCCP-HOST-PROTOCOL",
+    "CHK-OCCP-TRANSFER-LANDED",
+    "CHK-OCCP-CONTROLLER-NO-FAIL",
+    "CHK-OCCP-BUS-ACTIVITY",
+    "CHK-OCCP-JUMP-EXECUTED",
+    "CHK-OCCP-PAYLOAD-EXECUTED",
+)
 
 
 # The OCCP JUMP lands on main(), never on _enter. _enter is crt0: it zeroes
@@ -235,9 +246,8 @@ def _tx_snoop(dut) -> str:
     )
 
 
-@cocotb.test()
-async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_occp_dual_unsecure_boot_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     payload_bin = required_plusarg("occp_payload_bin", "smc_occp_dual_unsecure_boot_test")

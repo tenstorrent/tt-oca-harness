@@ -50,6 +50,7 @@ from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
     DualCsr,
     SmcDualHarness,
+    dual_test,
     random_seed,
 )
 from smc_occp_dual_defs import (
@@ -84,6 +85,7 @@ from smc_occp_dual_defs import (
 POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
+REQUIRED_EVIDENCE = ("CHK-OCCP-SECURE-BOOT",)
 
 # Stand-in for SEP taking its time over the manifest, as the reference randomises.
 SEP_PROCESSING_MIN_CYCLES = 1_000
@@ -115,9 +117,8 @@ def _secure_lc_value() -> int:
     return value
 
 
-@cocotb.test()
-async def smc_occp_secure_boot_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_occp_secure_boot_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_occp_secure_boot_test")

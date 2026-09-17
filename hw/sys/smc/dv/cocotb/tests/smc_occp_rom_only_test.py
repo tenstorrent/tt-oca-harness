@@ -39,6 +39,7 @@ from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
     DualCsr,
     SmcDualHarness,
+    dual_test,
     random_seed,
 )
 from smc_occp_dual_defs import (
@@ -62,6 +63,7 @@ POLL_CYCLES = 2000
 # roughly 0.94 ms, so this is headroom for a stalled exchange rather than a target.
 DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
+REQUIRED_EVIDENCE = ("CHK-OCCP-ROM-ONLY",)
 
 
 def _poll_interval_ns() -> int:
@@ -92,9 +94,8 @@ def _case_name() -> str:
     return "smc_occp_rom_only_test"
 
 
-@cocotb.test()
-async def smc_occp_rom_only_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_occp_rom_only_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_occp_rom_only_test")
