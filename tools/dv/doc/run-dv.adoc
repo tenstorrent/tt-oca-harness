@@ -2289,9 +2289,8 @@ then prints one line and skips the simulation.
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
 DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the three
-`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage;
-each row carries its own `timeout-minutes` budget, sized for the standard
-runner. Nightly is not a merge gate; a red nightly run is a triage signal.
+`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage.
+Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
@@ -2332,9 +2331,10 @@ times out), so the default stays the always-present standard runner.
 [[runner-ci-budgets]]
 === Budgets, concurrency, and retention
 
-Every job carries a `timeout-minutes` budget: 60 for each smoke job, and a
-per-row value in the nightly and weekly matrices below the six-hour hosted
-cap. A job that exceeds its budget is cancelled by the hosted runner;
+Every job carries a `timeout-minutes` budget: 60 for each smoke job, and
+360, the hosted runner's cap, for every nightly and weekly job; the
+scheduled tiers are bounded by that cap alone. A job that exceeds its
+budget is cancelled by the hosted runner;
 `run_dv.py` receives the cancellation as a signal and, when its handler
 completes, writes the interruption checkpoint and the run-level JUnit
 testcase, and otherwise its last `UNKNOWN` checkpoint stands
