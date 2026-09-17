@@ -202,12 +202,56 @@
 <div class="sect4">
 <h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
 <div class="paragraph">
-<p>The Telemetry Receiver is a high-performance hardware component designed
-to decode, buffer, and process telemetry data from telemetry
-transmitters in multi-chiplet systems. The component implements a
-specialized receiver for Tenstorrent-specific telemetry message formats
-while maintaining modularity for adaptation to other telemetry protocols
-and message structures.</p>
+<p>The Telemetry Receiver decodes, buffers, and processes telemetry data from
+telemetry transmitters. It implements a receiver for a probe-ID and
+multi-counter message format.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="telemetry-receiver-message-format"><a class="anchor" href="#telemetry-receiver-message-format"></a><a class="link" href="#telemetry-receiver-message-format">Message Format</a></h5>
+<div class="paragraph">
+<p>Eight little-endian ATB beats form a 64-bit packet. One or more packets
+form a message that ends when <code>last_packet</code> is set.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 65%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>last_packet</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bit 63 of each packet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>probe_id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bits <code>[60:56]</code> of the first packet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">block</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seven per packet: 1-bit valid + 8-bit data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Four consecutive blocks, most-significant byte first</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A counter is valid only when all four of its blocks are valid. The number of
+counters per message is parameterized (default 4); the field layout is fixed.</p>
 </div>
 </div>
 <div class="sect4">
@@ -229,10 +273,6 @@ entries) with threshold-based monitoring</p>
 <li>
 <p><strong>Multi-Counter Message Support</strong>: Decodes messages with probe ID and up
 to 4 counter values per message</p>
-</li>
-<li>
-<p><strong>Flexible Message Format</strong>: Modular design allows easy adaptation to
-different telemetry message formats</p>
 </li>
 <li>
 <p><strong>Comprehensive Interrupt System</strong>: Event-driven notifications for
@@ -289,10 +329,10 @@ throughout packet reconstruction.</p>
 <div class="sect5">
 <h6 id="message-decoder"><a class="anchor" href="#message-decoder"></a><a class="link" href="#message-decoder">Message Decoder</a></h6>
 <div class="paragraph">
-<p>Assembled packets are parsed for probe IDs and up to four counters, each
-with validity checked. It validates each 9-bit packet block, provides
-error reporting, and detects last-packet boundaries—crucial for reliable
-source tracking and efficient telemetry message integrity.</p>
+<p>Assembled packets are parsed for the probe ID and counters in the fixed
+layout in <a href="#telemetry-receiver-message-format">Message Format</a>. Each 9-bit block is
+checked for validity, and last-packet boundaries mark the end of a
+message.</p>
 </div>
 </div>
 <div class="sect5">
