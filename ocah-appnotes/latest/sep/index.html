@@ -4088,7 +4088,7 @@ SEP aggregate.</p>
 <h4 id="drbg"><a class="anchor" href="#drbg"></a><a class="link" href="#drbg">1.6.7. DRBG</a></h4>
 <div class="paragraph">
 <p>The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
-(see <a href="#drbg">Architecture</a>). Their register maps are reported here.</p>
+(see <a href="#drbg-deterministic-random-bit-generator">Architecture</a>). Their register maps are reported here.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -7592,11 +7592,17 @@ recovery mode versus normal mode.</p>
 <div class="sect3">
 <h4 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">1.7.3. Reset Vector</a></h4>
 <div class="paragraph">
-<p>The SEP CPU wrapper sets the VeeR EL2 <code>RESET_VEC</code> parameter to the Boot ROM
-base address, <code>SEP_BOOT_ROM_MEM_BASE_ADDR</code>. The current CPU therefore fetches
-BL0 from that address after reset. The vendored VeeR EL2 debug TAP has no
-reset-vector test data register, so JTAG cannot redirect the reset vector in
-the current integration.</p>
+<p>The SEP CPU reset vector is held in a test data register (TDR) in the EL2
+debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
+Boot ROM base address (<code>SEP_BOOT_ROM_MEM_BASE_ADDR</code>) on JTAG reset
+(TRST assertion or the Test-Logic-Reset TAP state), so the CPU executes the
+BL0 Root-of-Trust code after any cold boot.</p>
+</div>
+<div class="paragraph">
+<p>A debugger may redirect the first instruction fetch by shifting an alternate
+address into the TDR through JTAG while the SEP CPU is held in reset. The
+programmed value persists until the TAP is reset. This supports bring-up and
+failure analysis flows that execute from a memory other than the Boot ROM.</p>
 </div>
 </div>
 <div class="sect3">
@@ -7619,19 +7625,19 @@ features:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>64 KiB CPU-visible address aperture</p>
+<p>64 kB capacity</p>
 </li>
 <li>
-<p>Dedicated CPU memory path outside the SEP local AXI crossbar</p>
-</li>
+<p>SECDED Error Correction - single error detect double error correct</p>
+<div class="ulist">
+<ul>
 <li>
-<p>Read-only behavior; stores receive a response but do not modify the ROM</p>
+<p>32-bit data + 7-bit ECC tag</p>
 </li>
 </ul>
 </div>
-<div class="paragraph">
-<p>The open integration uses a 64-bit generic ROM without an ECC error sideband.
-See <a href="#sep-rom">Boot ROM</a> for the hardware and firmware-image layout.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p>There is no ROM patching facility in the first generation
@@ -7642,23 +7648,53 @@ and will use OTP as the backup storage.</p>
 <div class="sect3">
 <h4 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">1.7.6. BL0 Secure Boot and BL1 Execution Unlock</a></h4>
 <div class="paragraph">
-<p>The SEP CPU Boot ROM firmware, BL0, establishes the execution environment,
-selects a boot source, validates a manifest and its payload, and transfers
-control to SEP BL1. A primary chiplet normally reads from SPI flash; recovery
-and secondary-chiplet boots wait for an image staged by the SMC.</p>
+<p>The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
+SEP system into a runnable state after power on reset (PoR) and running
+the first stage of external firmware AKA BL1.</p>
 </div>
 <div class="paragraph">
-<p>Secure boot binds the manifest public key to a ROM or eFuse digest, checks key
-revocation and the BL1 security version, verifies the RSA-3072 signature with
-OTBN, and verifies the payload before execution. The validated BL1 image is
-copied to ICCM with the secure DMA and entered at its manifest-specified entry
-point. A failed check either selects the other SPI slot or terminates in a
-reset-only failure loop.</p>
+<p>The complete boot flow is specified in <a href="#sep-rom-boot-arch">[sep-rom-boot-arch]</a>, which is
+normative: CPU initialization, PMP fencing, fuse and lifecycle
+evaluation, SMC synchronization, boot-source selection, manifest and
+payload validation, secure boot, demotion, attestation and hand-off,
+with requirement identifiers and an implementation-status matrix. The
+summary below exists to place the ROM in the context of this chapter; it
+is deliberately not a second description of the same flow, because two
+would drift.</p>
 </div>
-<div class="paragraph">
-<p>The complete hardware contract is in <a href="#sep-rom">Boot ROM</a>. Detailed firmware ordering,
-manifest processing, lifecycle policy, and BL1 handoff are in the production
-ROM firmware documentation under <code>hw/sys/sep/bootrom/prod/doc/</code>.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>SEP initialization&#8201;&#8212;&#8201;read configuration straps, determine boot options</p>
+</li>
+<li>
+<p>Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)</p>
+</li>
+<li>
+<p>Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory</p>
+</li>
+<li>
+<p>Validate it. Under secure boot this means authorizing the root key
+against a trust anchor the device holds&#8201;&#8212;&#8201;a ROM-embedded digest or an
+OTP hash bank&#8201;&#8212;&#8201;before any public-key operation, then checking
+revocation and anti-rollback, then verifying an RSA-3072 signature on
+OTBN</p>
+</li>
+<li>
+<p>Load the payload it describes, decrypting it when the manifest says so,
+and verify its hashes&#8201;&#8212;&#8201;over the ciphertext before decryption and the
+plaintext after</p>
+</li>
+<li>
+<p>Select BL1 from the payload table of contents, unlock execution in the
+CPU PMP, and jump</p>
+</li>
+<li>
+<p>Failure of any check ends the boot. A failure the backup manifest slot
+recovers from is a warning; exhausting every slot is an error, after
+which the processor enters a fail loop requiring a reset to exit</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p>Future versions of the SEP will also have additional hardware redundancy
@@ -8934,10 +8970,13 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </ul>
 </div>
 <div class="paragraph">
-<p>ML-DSA is the post-quantum signature path used by secure boot: each owner may be
-provisioned with an ML-DSA root public key alongside its classical key, and
-<code>REQUIRED_SIGNERS</code> selects which of the two must sign (see
-<a href="#life-cycle-controller-lcc-life-cycle-controller-lcc">Life Cycle Controller (LCC)</a>).</p>
+<p>ML-DSA is the post-quantum signature path intended for secure boot: each owner
+may be provisioned with an ML-DSA root public key alongside its classical key,
+with <code>REQUIRED_SIGNERS</code> selecting which owners must sign and <code>REQUIRED_ALGS</code>
+selecting, per owner, which of the two algorithms it must sign with (see
+<a href="#life-cycle-controller-lcc-life-cycle-controller-lcc">Life Cycle Controller (LCC)</a>). SEP ROM does not use
+this path today&#8201;&#8212;&#8201;it verifies a single classical RSA-3072 signature, and
+combined classical + PQC signing is deferred to a later release.</p>
 </div>
 <div class="sect4">
 <h5 id="och-modifications-5"><a class="anchor" href="#och-modifications-5"></a><a class="link" href="#och-modifications-5">OCAH Modifications</a></h5>
@@ -10578,6 +10617,32 @@ therefore leave SBOOT_DIS unburned and write-lock it via the LOCK field.</p>
 </div>
 <div class="sect5">
 <h6 id="demote-signing-model"><a class="anchor" href="#demote-signing-model"></a><a class="link" href="#demote-signing-model">Secure-Boot Signing Model</a></h6>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Implementation status&#8201;&#8212;&#8201;<strong>deferred to a later release, not abandoned.</strong>
+This release verifies a single classical RSA-3072 signature; everything beyond
+that is deferred. The multi-owner model described below&#8201;&#8212;&#8201;<code>REQUIRED_SIGNERS</code>,
+<code>REQUIRED_ALGS</code>, per-owner co-signatures and the demotion authorization that
+rides on them&#8201;&#8212;&#8201;is therefore <strong>not implemented in SEP ROM today</strong>: BL0 reads
+neither fuse field, and while the OCA boot manifest defines verifier-key and
+co-signer entries, the validation library BL0 links does not verify them. What
+BL0 enforces today is a single root key&#8201;&#8212;&#8201;the manifest names one key slot, that
+slot&#8217;s digest is matched against a ROM-embedded digest or an OTP hash bank, and
+one RSA-3072 signature is verified against it (see the CPU Subsystem chapter&#8217;s
+BL0 Secure Boot section). A later release adds combined classical + PQC
+signatures together with the verifier and co-signer keys that populate
+<code>REQUIRED_SIGNERS</code> and <code>REQUIRED_ALGS</code>. The fuse fields are provisioned for that
+release; the model below is the target design, and describes intended rather
+than current behaviour.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>SEP secure boot decides, for each manifest it verifies, which owners must sign it
 and with which algorithms. Enforcement&#8201;&#8212;&#8201;including the demotion authorization

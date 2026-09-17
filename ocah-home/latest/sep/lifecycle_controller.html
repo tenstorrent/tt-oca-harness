@@ -290,6 +290,32 @@ therefore leave SBOOT_DIS unburned and write-lock it via the LOCK field.</p>
 </div>
 <div class="sect5">
 <h6 id="demote-signing-model"><a class="anchor" href="#demote-signing-model"></a><a class="link" href="#demote-signing-model">Secure-Boot Signing Model</a></h6>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Implementation status&#8201;&#8212;&#8201;<strong>deferred to a later release, not abandoned.</strong>
+This release verifies a single classical RSA-3072 signature; everything beyond
+that is deferred. The multi-owner model described below&#8201;&#8212;&#8201;<code>REQUIRED_SIGNERS</code>,
+<code>REQUIRED_ALGS</code>, per-owner co-signatures and the demotion authorization that
+rides on them&#8201;&#8212;&#8201;is therefore <strong>not implemented in SEP ROM today</strong>: BL0 reads
+neither fuse field, and while the OCA boot manifest defines verifier-key and
+co-signer entries, the validation library BL0 links does not verify them. What
+BL0 enforces today is a single root key&#8201;&#8212;&#8201;the manifest names one key slot, that
+slot&#8217;s digest is matched against a ROM-embedded digest or an OTP hash bank, and
+one RSA-3072 signature is verified against it (see the CPU Subsystem chapter&#8217;s
+BL0 Secure Boot section). A later release adds combined classical + PQC
+signatures together with the verifier and co-signer keys that populate
+<code>REQUIRED_SIGNERS</code> and <code>REQUIRED_ALGS</code>. The fuse fields are provisioned for that
+release; the model below is the target design, and describes intended rather
+than current behaviour.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>SEP secure boot decides, for each manifest it verifies, which owners must sign it
 and with which algorithms. Enforcement&#8201;&#8212;&#8201;including the demotion authorization

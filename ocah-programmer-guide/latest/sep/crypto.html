@@ -664,10 +664,13 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 </ul>
 </div>
 <div class="paragraph">
-<p>ML-DSA is the post-quantum signature path used by secure boot: each owner may be
-provisioned with an ML-DSA root public key alongside its classical key, and
-<code>REQUIRED_SIGNERS</code> selects which of the two must sign (see
-<a href="#life-cycle-controller-lcc-life-cycle-controller-lcc">[life-cycle-controller-lcc-life-cycle-controller-lcc]</a>).</p>
+<p>ML-DSA is the post-quantum signature path intended for secure boot: each owner
+may be provisioned with an ML-DSA root public key alongside its classical key,
+with <code>REQUIRED_SIGNERS</code> selecting which owners must sign and <code>REQUIRED_ALGS</code>
+selecting, per owner, which of the two algorithms it must sign with (see
+<a href="#life-cycle-controller-lcc-life-cycle-controller-lcc">[life-cycle-controller-lcc-life-cycle-controller-lcc]</a>). SEP ROM does not use
+this path today&#8201;&#8212;&#8201;it verifies a single classical RSA-3072 signature, and
+combined classical + PQC signing is deferred to a later release.</p>
 </div>
 <div class="sect4">
 <h5 id="och-modifications-5"><a class="anchor" href="#och-modifications-5"></a><a class="link" href="#och-modifications-5">OCAH Modifications</a></h5>
