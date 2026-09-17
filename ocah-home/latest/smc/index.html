@@ -2551,8 +2551,9 @@ locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
 while any detector&#8217;s <code>irq_o</code> is high, so software must read
 <code>SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL</code> to identify the
-stalled master, and clears the condition through those same registers. The
-CPU AXI master is not covered here; it is covered by the watchdog.</p></td>
+stalled master. There is no status latch to clear: the level drops when that
+master&#8217;s bus makes progress, or when the detector&#8217;s <code>enable</code> or <code>irq_en</code> is
+cleared. The CPU AXI master is not covered here; it is covered by the watchdog.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> OR-reduces <code>hang_irq_sys_axi | hang_irq_sep_axi |
 hang_irq_data_accel</code> onto <code>axi_hang_irq_o</code>; <code>smc.sv</code> routes that back into
 <code>u_smc_peripherals</code>, and <code>smc_peripherals.sv</code> drives
@@ -8087,9 +8088,9 @@ wording in <a href="#peripherals">Peripherals</a>.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When 1, a timeout event propagates to irq_o.</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
 </table>
@@ -8097,15 +8098,15 @@ wording in <a href="#peripherals">Peripherals</a>.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
 </table>
 <h3 id="HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When 1, a timeout event propagates to irq_o.</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
 </table>
@@ -8113,15 +8114,15 @@ wording in <a href="#peripherals">Peripherals</a>.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
 </table>
 <h3 id="HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When 1, a timeout event propagates to irq_o.</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
 </table>
@@ -8129,7 +8130,7 @@ wording in <a href="#peripherals">Peripherals</a>.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
 </table>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
