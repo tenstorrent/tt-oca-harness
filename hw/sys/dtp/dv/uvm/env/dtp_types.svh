@@ -64,6 +64,17 @@ typedef enum int unsigned {
   DTP_J2A_BUSY_OR_FULL = 3
 } dtp_j2a_status_e;
 
+// Bridge AXI FSM state as dtp_tb_if samples it from jtag2axi.sv (axi_state_e).
+typedef enum logic [2:0] {
+  DTP_J2A_FSM_IDLE          = 0,
+  DTP_J2A_FSM_SEND_ADDR_W   = 1,
+  DTP_J2A_FSM_SEND_DATA_W   = 2,
+  DTP_J2A_FSM_WAIT_BRESP    = 3,
+  DTP_J2A_FSM_SEND_ADDR_R   = 4,
+  DTP_J2A_FSM_WAIT_RDATA    = 5,
+  DTP_J2A_FSM_UPDATE_STATUS = 6
+} dtp_j2a_fsm_state_e;
+
 typedef struct {
   string                                name;
   ocah_axi_protocol_e protocol;
@@ -106,6 +117,21 @@ localparam int unsigned DtpJ2aMaxPipelineDepth = DtpJ2aPipelineDepth;
 localparam int unsigned DtpJtag2AxiCapsLen = 14;
 // Evidence ID of the per-pass geometry gate every JTAG2AXI scenario records.
 localparam string DtpJ2aGeometryCheckId = "CHK-J2A-GEOMETRY";
+localparam string DtpJ2aStatusBitCheckId = "CHK-J2A-STATUS-BIT";
+localparam string DtpJ2aErrRdataCheckId = "CHK-J2A-ERR-RDATA";
+localparam string DtpJ2aSeriesAddrCheckId = "CHK-J2A-SERIES-ADDR";
+// Reset-abort scenario evidence: the bridge observed mid-flight before the
+// reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
+// escaped write, and a recovered status.
+localparam string DtpJ2aAbortMidFlightCheckId = "CHK-J2A-ABORT-MIDFLIGHT";
+localparam string DtpJ2aAbortFsmCheckId = "CHK-J2A-ABORT-FSM";
+localparam string DtpJ2aCdcClearCheckId = "CHK-J2A-CDC-CLEAR";
+localparam string DtpJ2aAbortEscapeCheckId = "CHK-J2A-ABORT-ESCAPE";
+localparam string DtpJ2aAbortRecoveryCheckId = "CHK-J2A-ABORT-RECOVERY";
+localparam int unsigned DtpJ2aSeriesStatusBeats = 4;
+// Increment flag per beat of the WITH_ERROR_STATUS streams (bit i = beat i):
+// the second beat re-writes the held address.
+localparam bit [DtpJ2aSeriesStatusBeats-1:0] DtpJ2aSeriesStatusIncrements = 4'b1101;
 
 // *_JTAG2AXI_CAPS data_size: the beat width in bytes as a power of two.
 function automatic int unsigned dtp_j2a_data_size(dtp_j2a_target_t t);
@@ -214,6 +240,69 @@ function automatic dtp_j2a_status_e dtp_j2a_axi_resp_to_status(ocah_axi_resp_e r
     OCAH_AXI_RESP_DECERR: return DTP_J2A_DECERR;
     default:              return DTP_J2A_SUCCESS;
   endcase
+endfunction
+
+// One WITH_ERROR_STATUS stream: its geometry and the beat that carries the
+// fault (-1 for a clean stream). The status bit a shift returns belongs to
+// the previous beat, so only the shift after the fault beat expects a 1.
+typedef struct {
+  bit [63:0]       base;
+  int unsigned     size;
+  int unsigned     stride;
+  int              fault_idx;
+  dtp_j2a_status_e expected;
+} dtp_j2a_series_status_plan_t;
+
+function automatic bit [63:0] dtp_j2a_series_status_addr(dtp_j2a_series_status_plan_t p,
+                                                         int unsigned idx);
+  bit [63:0] addr = p.base;
+  for (int unsigned i = 0; i < idx && i < DtpJ2aSeriesStatusBeats; i++)
+  if (DtpJ2aSeriesStatusIncrements[i]) addr += p.stride;
+  return addr;
+endfunction
+
+function automatic bit [63:0] dtp_j2a_series_status_final_addr(dtp_j2a_series_status_plan_t p);
+  return dtp_j2a_series_status_addr(p, DtpJ2aSeriesStatusBeats);
+endfunction
+
+// Bytes from base through the slot the trailing shift touches.
+function automatic bit [63:0] dtp_j2a_series_status_span(dtp_j2a_series_status_plan_t p);
+  return dtp_j2a_series_status_final_addr(p) - p.base + p.stride;
+endfunction
+
+function automatic bit dtp_j2a_series_status_is_fault(dtp_j2a_series_status_plan_t p,
+                                                      int unsigned idx);
+  return (p.fault_idx >= 0) && (int'(idx) == p.fault_idx);
+endfunction
+
+function automatic bit dtp_j2a_series_status_expected_bit(dtp_j2a_series_status_plan_t p,
+                                                          int unsigned shift);
+  return (shift > 0) && dtp_j2a_series_status_is_fault(p, shift - 1);
+endfunction
+
+// Beats whose address no earlier beat touched; a one-shot fault fires on
+// the first access.
+function automatic void dtp_j2a_series_status_first_visits(dtp_j2a_series_status_plan_t p,
+                                                           output int unsigned beats[$]);
+  for (int unsigned idx = 0; idx < DtpJ2aSeriesStatusBeats; idx++) begin
+    bit seen = 1'b0;
+    for (int unsigned j = 0; j < idx; j++)
+    if (dtp_j2a_series_status_addr(p, j) == dtp_j2a_series_status_addr(p, idx)) seen = 1'b1;
+    if (!seen) beats.push_back(idx);
+  end
+endfunction
+
+// The word each beat's address holds after the stream: the last one written
+// there.
+function automatic void dtp_j2a_series_status_final_words(
+    dtp_j2a_series_status_plan_t p, bit [63:0] words[], output bit [63:0] expected[]);
+  expected = new[words.size()];
+  foreach (words[idx]) begin
+    expected[idx] = words[idx];
+    for (int unsigned j = idx + 1; j < words.size(); j++)
+    if (dtp_j2a_series_status_addr(p, j) == dtp_j2a_series_status_addr(p, idx))
+      expected[idx] = words[j];
+  end
 endfunction
 
 function automatic int unsigned dtp_j2a_size_bytes(int unsigned size);
@@ -428,6 +517,15 @@ typedef enum int unsigned {
 } dtp_stap_e;
 
 localparam int unsigned DtpIjtagSibCount = 3;
+// Instrument stub widths behind each SIB (tb_top), dtp_ijtag_sib_e order:
+// every subset of open SIBs sums to a distinct chain length.
+localparam int unsigned DtpIjtagInstrumentWidths[DtpIjtagSibCount] = '{4, 5, 6};
+localparam int unsigned DtpIjtagChainLenMax = DtpIjtagSibCount + 4 + 5 + 6;
+// A latency-measuring scan shifts a marker word ahead of the chain's
+// maintain image; the marker's MSB is set, so the stream's highest set bit
+// lands at chain_len + DtpScanMarkerWidth - 1.
+localparam int unsigned DtpScanMarkerWidth = 16;
+localparam int unsigned DtpIjtagObserveScanWidth = 40;
 localparam int unsigned DtpStapCount = 4;
 localparam int unsigned DtpPtapIrWidth = DtpIrWidth;
 // IEEE 1149.1: a TAP's IR capture presents 01 in its two LSBs.
@@ -439,6 +537,17 @@ typedef enum int unsigned {
   DTP_SCAN_DR = 0,
   DTP_SCAN_IR = 1
 } dtp_scan_kind_e;
+
+// What a window over one host chain's scan controls shows across a DR scan:
+// SELECTED = select high and the TAP's capture/shift/update strobes pulse;
+// UNSELECTED = select low while the strobes pulse (the strobes are the
+// TAP's and only select is qualified by the instruction); GATED = the
+// chain's host holds select and every strobe low.
+typedef enum int unsigned {
+  DTP_SCAN_CTRL_SELECTED   = 0,
+  DTP_SCAN_CTRL_UNSELECTED = 1,
+  DTP_SCAN_CTRL_GATED      = 2
+} dtp_scan_ctrl_expect_e;
 
 // One data register of a downstream TAP.
 typedef struct {
@@ -506,6 +615,9 @@ localparam int unsigned DtpXtrigCtmStride =
 localparam bit [63:0] DtpXtrigCtpBase = 64'(cross_trigger_network_pkg::CSR_ADDR_CTM_SIZE);
 localparam int unsigned DtpXtrigCtpStride = cross_trigger_network_pkg::CSR_ADDR_CTP_SIZE;
 localparam bit [63:0] DtpXtrigUnmappedBase = DtpXtrigCtpBase + DtpXtrigNumCtp * DtpXtrigCtpStride;
+// Read data the crossbar's error subordinate returns alongside DECERR on an
+// unmapped XTRIG address (the low word of the pulp axi_err_slv response word).
+localparam bit [31:0] DtpXtrigDecerrData = 32'hBADC_AB1E;
 
 localparam int unsigned DtpCtpConfigOffset  =
     int'(cross_trigger_port_addrmap_pkg::CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR);

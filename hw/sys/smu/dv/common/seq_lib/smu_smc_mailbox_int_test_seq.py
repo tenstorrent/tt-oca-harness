@@ -6,7 +6,7 @@ DV-CARD:          SMU_ALL_004   ANCHOR: smu_smc_mailbox_int_test
 
 Owns:
   SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary
-    (bare tb_top SEP=0; required_cells width=32).
+    (wrapper; required_cells width=32).
 
 Width and value are both read on the DUT's own output port
 `smc_ext_mailbox_interrupts_o`, reached hierarchically through `smu_scope()`.
@@ -210,7 +210,7 @@ class smu_smc_mailbox_int_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S1",
-            "SETUP: SEP=0 bare tb_top bring-up; clocks/resets stable; "
+            "SETUP: wrapper bring-up; clocks/resets stable; "
             f"pre-MMIO baseline {MBX_PORT_PATH} DUT-port observation",
         )
         await self._wait_eq(

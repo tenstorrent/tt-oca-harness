@@ -35,9 +35,42 @@ IC_RESET_PORT_INDEX = {
 
 EXPECTED_CAPS_BY_REG = {"JTAG_CAPS": DTP_EXPECTED_JTAG_CAPS, **DTP_EXPECTED_JTAG2AXI_CAPS}
 
+# The debug-TDR pin observables and their values with DEBUG_CONTROL at 0x00
+# and IC_RESET at its all-ones default (every slice enable inactive drives
+# ovrd=0, ctrl_n=1).
+DEBUG_OUTPUT_DEFAULTS: dict[str, int] = {
+    "stop_clks": 0,
+    "cla_clock_stop_en": 0,
+    "jtag_boot_stall": 0,
+    "jtag_boot_stall_ovrd": 0,
+    "jtag_ic_reset_smc_ovrd": 0,
+    "jtag_ic_reset_smc_ctrl_n": 1,
+    "jtag_ic_reset_sep_ovrd": 0,
+    "jtag_ic_reset_sep_ctrl_n": 1,
+    "jtag_ic_reset_ext_ovrd": 0,
+    "jtag_ic_reset_ext_ctrl_n": 1,
+}
+
 
 class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     """Helpers for TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS TDRs."""
+
+    async def snapshot_debug_outputs(self) -> dict[str, int]:
+        """Sample every debug-TDR pin observable by name."""
+        item = await self.sample_observables()
+        return {name: item.signals[name] for name in DEBUG_OUTPUT_DEFAULTS}
+
+    def check_debug_outputs(
+        self,
+        check_id: str,
+        observed: dict[str, int],
+        expected: dict[str, int],
+        *,
+        context: str,
+    ) -> None:
+        """Record one comparison per debug-TDR pin observable."""
+        for name, value in expected.items():
+            self.family_check(check_id, name, observed[name], value, context=context)
 
     def decode_tmp_status(self, value: int) -> dict[str, int]:
         """Decode TMP_STATUS. Bit 1 reflects TMP persistence; bit 0 arms escape."""

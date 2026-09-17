@@ -21,12 +21,17 @@
 //   ext_stap_scan  the extended STAP host scan interface follows the PTAP
 //       3DCR select, its controls stay quiet under the stap_host disable
 //       (seeded gated attempt), and recover without reset;
-//   config_hold    PTAP 3DCR CONFIG_HOLD preserve/TLR-clear/TRST-clear
-//       sub-cases in a seeded order (PTAP select=1 routes TDO to the STAP
-//       path, so PTAP readbacks use select=0);
-//   tms_hold       per-STAP (seeded order) TRST + SIB-open flow: the
-//       unselected port must never drive tdo_oen; the parked TMS polarity
-//       is logged only (proving it needs the downstream TAP attached).
+//   config_hold    per STAP (seeded order), the PTAP 3DCR and the STAP 3DCR
+//       are written with CONFIG_HOLD=1 or 0 through composed chain scans,
+//       reset (TLR or TRST), reloaded with a composed IR scan, and read
+//       back against the model: hold=1 keeps the PTAP select and the STAP
+//       select/tms_hold across TLR, hold=0 lets TLR clear them, TRST clears
+//       them all; a PTAP whose select cleared is read over the TDR return
+//       path with a marker that proves the path;
+//   tms_hold       per STAP and polarity (seeded order): select the STAP
+//       with TMS_HOLD=h, deselect it, and prove over a whole maintain scan
+//       that the host TMS parks at h, tdo_oen stays quiet, and the 3DCR
+//       reads back through the chain.
 
 class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_stap_scan_test_seq)
@@ -272,88 +277,124 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     check_scan_window(none, active, "ext.recover_window");
   endtask
 
+  // Program the PTAP 3DCR (select=1, config_hold=hold) and one STAP's 3DCR
+  // (config_hold=hold, seeded select, tms_hold=1), apply the reset, and
+  // read every field back through composed chain scans against the model:
+  // with hold=1 a Test-Logic-Reset keeps the PTAP select and the STAP
+  // select/tms_hold, with hold=0 it clears them, and TRST clears them all.
+  protected task config_hold_case(int unsigned stap, bit hold, bit use_trst);
+    string ctx = $sformatf("config_hold.%s.hold%0d.%s", stap_name(stap), hold,
+                           use_trst ? "trst" : "tlr");
+    int sib_en[int];
+    int no_sib[int];
+    dtp_stap_3dcr_state_t payloads[int];
+    dtp_stap_3dcr_state_t no_pl[int];
+    bit [63:0] no_ir[int];
+    bit [63:0] captured, unused, marker;
+    sib_en[stap]   = 1;
+    payloads[stap] = '{hold, bit'($urandom_range(1)), 1'b1};
+    marker = random_pattern(DtpScanMarkerWidth) | (64'h1 << (DtpScanMarkerWidth - 1));
+    `uvm_info(get_type_name(), $sformatf("%s STAP payload config_hold=%0d stap_sel=%0d tms_hold=1",
+                                         ctx, hold, payloads[stap].stap_sel), UVM_LOW)
+    stap_chain_flush({ctx, ".flush"});
+    stap_chain_write('0, 1, int'(hold), sib_en, no_pl, {ctx, ".open_sib"}, unused);
+    stap_chain_write('0, -1, -1, no_sib, payloads, {ctx, ".write_3dcr"}, unused);
+    if (use_trst) apply_trst();
+    else apply_tlr();
+    // The reset leaves IDCODE in the IR. Every IR scan shifts through the
+    // STAP chain, so TAP_3DCR is reloaded with a composed IR scan that
+    // rewrites the chain image it passes through.
+    stap_chain_ir_write('0, 6'(TAP_3DCR_INSTR), no_ir, no_sib, no_pl, {ctx, ".reload_ir"}, unused);
+    if (stap_model.ptap_select) begin
+      stap_chain_maintain('0, {ctx, ".ptap_readback"}, captured);
+      check_stap_chain_readback(captured, '0, {ctx, ".ptap_readback"});
+    end else read_ptap_3dcr_deselected(marker, {ctx, ".ptap_readback"});
+    // Re-select and reopen the SIB: the STAP's 3DCR fields join the chain
+    // and read back as the model predicts after the reset.
+    stap_chain_write('0, 1, -1, sib_en, no_pl, {ctx, ".reopen_sib"}, unused);
+    stap_chain_maintain('0, {ctx, ".stap_readback"}, captured);
+    check_stap_chain_readback(captured, '0, {ctx, ".stap_readback"});
+    `uvm_info(get_type_name(), $sformatf("%s after reset: ptap select=%0d config_hold=%0d stap=%p",
+                                         ctx, stap_model.ptap_select, stap_model.ptap_config_hold,
+                                         stap_model.staps[stap]), UVM_LOW)
+  endtask
+
   protected task run_config_hold();
-    int unsigned order[3] = '{0, 1, 2};
-    bit [63:0] observed;
-    `uvm_info(get_type_name(), "PTAP CONFIG_HOLD behavior", UVM_LOW)
-    // Seeded per-pass order: each self-contained sub-case starts with
-    // its own 3DCR write and reset.
-    for (int unsigned i = 2; i > 0; i--) begin
-      int unsigned j = $urandom_range(i);
-      int unsigned tmp = order[i];
-      order[i] = order[j];
-      order[j] = tmp;
-    end
-    foreach (order[i]) begin
-      case (order[i])
-        0: begin  // config_hold=1 preserves across a TMS TLR
-          write_ptap_3dcr(1'b1, 1'b0, "config_hold.preserve_write");
-          apply_tlr();
-          read_ptap_3dcr(observed, 64'h1);
-          family_check("CHK-SCAN-OBS", "config_hold.ptap_config_preserved", observed & 64'h1,
-                       64'h1);
-        end
-        1: begin  // config_hold=0 lets a TMS TLR clear the 3DCR
-          write_ptap_3dcr(1'b0, 1'b1, "config_hold.clear_write");
-          apply_tlr();
-          read_ptap_3dcr(observed, 64'h0);
-          family_check("CHK-SCAN-OBS", "config_hold.ptap_cleared", observed & 64'h3, 64'h0);
-        end
-        default: begin  // TRST always clears, config_hold or not
-          write_ptap_3dcr(1'b1, 1'b0, "config_hold.trst_write");
-          apply_trst();
-          read_ptap_3dcr(observed, 64'h0);
-          family_check("CHK-SCAN-OBS", "config_hold.ptap_trst_cleared", observed & 64'h3, 64'h0);
-        end
-      endcase
+    int unsigned staps[$] = {0, 1, 2, 3};
+    `uvm_info(get_type_name(), "PTAP/STAP CONFIG_HOLD across Test-Logic-Reset and TRST", UVM_LOW)
+    shuffle(staps);
+    foreach (staps[i]) begin
+      // Seeded per-pass order: each self-contained sub-case starts from a
+      // flushed chain, so each loop proves a different sequencing of
+      // preserve/clear behavior.
+      int unsigned cases[$] = {0, 1, 2};
+      shuffle(cases);
+      `uvm_info(
+          get_type_name(), $sformatf(
+          "Iteration %0d/%0d: STAP %s cases=%p", i + 1, staps.size(), stap_name(staps[i]), cases),
+          UVM_LOW)
+      foreach (cases[c]) begin
+        case (cases[c])
+          0:       config_hold_case(.stap(staps[i]), .hold(1'b1), .use_trst(1'b0));
+          1:       config_hold_case(.stap(staps[i]), .hold(1'b0), .use_trst(1'b0));
+          default: config_hold_case(.stap(staps[i]), .hold(1'b1), .use_trst(1'b1));
+        endcase
+      end
     end
   endtask
 
+  // Select the STAP with tms_hold=hold, deselect it, then prove the
+  // deselected port drives its host TMS at that polarity for the whole
+  // maintain scan while tdo_oen stays quiet, and that the 3DCR reads back
+  // as written.
+  protected task tms_hold_case(int unsigned stap, bit hold);
+    string ctx = $sformatf("tms_hold.%s.hold%0d", stap_name(stap), hold);
+    string prefix = stap_prefix(stap);
+    string watch[$];
+    int sib_en[int];
+    int no_sib[int];
+    dtp_stap_3dcr_state_t payloads[int];
+    dtp_stap_3dcr_state_t no_pl[int];
+    bit [63:0] captured, unused;
+    int unsigned edges;
+    int unsigned counts[string];
+    sib_en[stap] = 1;
+    watch.push_back({prefix, "_tdo_oen"});
+    watch.push_back({prefix, "_tms"});
+    stap_chain_flush({ctx, ".flush"});
+    stap_chain_write('0, 1, -1, sib_en, no_pl, {ctx, ".open_sib"}, unused);
+    payloads[stap] = '{1'b0, 1'b1, hold};
+    stap_chain_write('0, -1, -1, no_sib, payloads, {ctx, ".select"}, unused);
+    payloads[stap] = '{1'b0, 1'b0, hold};
+    stap_chain_write('0, -1, -1, no_sib, payloads, {ctx, ".deselect"}, unused);
+    start_scan_window(watch);
+    stap_chain_maintain('0, {ctx, ".observe"}, captured);
+    stop_scan_window(edges, counts);
+    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {ctx, ".window"
+                 });
+    check_stap_forwarding(edges, counts, stap, 1'b0, {ctx, ".parked"});
+    check_stap_chain_readback(captured, '0, {ctx, ".readback"});
+  endtask
+
   protected task run_tms_hold();
-    int unsigned order[DtpStapCount] = '{0, 1, 2, 3};
-    `uvm_info(get_type_name(), "STAP TMS_HOLD behavior", UVM_LOW)
-    // Seeded per-pass STAP order: each loop walks the ports differently.
-    for (int unsigned i = DtpStapCount - 1; i > 0; i--) begin
-      int unsigned j = $urandom_range(i);
-      int unsigned tmp = order[i];
-      order[i] = order[j];
-      order[j] = tmp;
-    end
-    foreach (order[i]) begin
-      int unsigned stap = order[i];
-      string prefix = stap_prefix(stap);
-      string quiet[$], none[$];
-      bit [63:0] unused;
-      int unsigned edges;
-      int unsigned counts[string];
-      apply_trst();
-      write_ptap_3dcr(1'b1, 1'b1, $sformatf("tms_hold.%s.ptap", stap_name(stap)));
-      // Open only this STAP's SIB (MSB-first pattern in the 4-bit
-      // scan; the model is not synchronized here — no readback).
-      load_ir(6'(TAP_3DCR_INSTR));
-      shift_dr(64'h1 << (DtpStapCount - 1 - stap), DtpStapCount, unused);
-      // The port's 3DCR is untouched (stap_sel=0), so it must never
-      // drive tdo_oen; the parked TMS polarity is state-dependent in
-      // the OSS loopback and is sampled for the log only.
-      quiet.push_back({prefix, "_tdo_oen"});
-      start_scan_window({quiet, {prefix, "_tms"}});
-      shift_dr('0, DtpStapCount, unused);
-      stop_scan_window(edges, counts);
-      check_window_counts(edges, counts, quiet, none, $sformatf(
-                          "tms_hold.%s.window", stap_name(stap)));
+    int unsigned staps[$] = {0, 1, 2, 3};
+    `uvm_info(get_type_name(), "STAP TMS_HOLD parked polarity", UVM_LOW)
+    // Seeded per-pass STAP and polarity order: each loop walks the ports
+    // and the two parked polarities differently.
+    shuffle(staps);
+    foreach (staps[i]) begin
+      int unsigned polarities[$] = {1, 0};
+      shuffle(polarities);
       `uvm_info(get_type_name(), $sformatf(
-                {
-                  "tms_hold.%s sampled TMS high %0d/%0d cycles (OSS loopback: ",
-                  "polarity is state-dependent; log only)"
-                },
+                "Iteration %0d/%0d: STAP %s tms_hold order=%p",
+                i + 1,
+                staps.size(),
                 stap_name(
-                    stap
+                    staps[i]
                 ),
-                counts[{
-                  prefix, "_tms"
-                }],
-                edges
+                polarities
                 ), UVM_LOW)
+      foreach (polarities[p]) tms_hold_case(staps[i], bit'(polarities[p]));
     end
   endtask
 
@@ -384,9 +425,9 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       "ext_stap_scan":
                 required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"};
       "config_hold":
-                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-OBS"};
+                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-CHAIN", "CHK-SCAN-OBS"};
       "tms_hold":
-                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"};
+                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN"};
       default:
                 `uvm_fatal(get_type_name(), $sformatf(
                     "unknown STAP scenario %s", scenario))

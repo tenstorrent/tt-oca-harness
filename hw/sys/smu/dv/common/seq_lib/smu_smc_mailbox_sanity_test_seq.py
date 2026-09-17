@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Mailbox outbound-0 IRQEN/STATUS via J2A. SEP=0, no Force. IRQ pin / doorbell not claimed."""
+"""Mailbox outbound-0 IRQEN/STATUS via J2A. SEP=1, no Force. IRQ pin / doorbell not claimed."""
 
 from __future__ import annotations
 

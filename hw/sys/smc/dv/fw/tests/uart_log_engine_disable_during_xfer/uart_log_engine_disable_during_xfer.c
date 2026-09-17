@@ -111,12 +111,10 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
-    /* Enable the two error interrupts before asserting that INTR_STATUS is 0.
-     *
-     * log_engine.sv:466-471 ANDs each interrupt source with its INTR_ENABLE bit,
-     * and INTR_ENABLE resets to 0 (log_engine.rdl:85-98). With it left at 0 the
-     * INTR_STATUS checks below read a constant 0 on any RTL, so neither of their
-     * test_fail() branches was reachable -- they asserted nothing. */
+    /* Enable the two error interrupts so a latched error would also reach
+     * irq_o. INTR_STATUS itself latches whether or not the interrupt is enabled
+     * (INTR_ENABLE masks the output only), so the INTR_STATUS checks below are
+     * live either way; enabling keeps the line as a second witness. */
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0x11u);
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u); // engine enable
 

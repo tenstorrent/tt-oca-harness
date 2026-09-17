@@ -106,7 +106,7 @@ args = ["+skip_fuse_sense"]
 # FIXED/INCR/WRAP address modes (per-mode golden image + neighbor), 1B/2B/4B
 # widths, STATUS.done RW1C, one invalid-opcode error + recovery, and a
 # DMA-issued host-path command-integrity inject (exclusive host_path_err /
-# aggregator bit 40, CLEAR, recovery copy) and a fabric DECERR dest that
+# aggregator bit 41, CLEAR, recovery copy) and a fabric DECERR dest that
 # raises the same bit with the pin low. Src/dst offsets, copy length and
 # fill seed come from the run seed (3 seeds). Distinct from the DMA
 # trio (hash/contention/spi-rx). cpu run mode; +skip_fuse_sense (no OTP read).

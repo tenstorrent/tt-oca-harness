@@ -18,9 +18,10 @@ from cocotb.utils import get_sim_time
 class SmuWrapperElaborationSeq:
     """Check profile selection and reset propagation over repeated reset pulses.
 
-    When ``+expected_sep=1`` (anchor ``smu_wrapper_elaboration_sep_rtl_test``),
-    executes the SMU_ALL_001 card steps and emits the card's ``CHK-*`` lines.
-    The SEP=0 leaf emits the wrapper-elaboration evidence tokens.
+    Executes the SMU_ALL_001 card steps and emits the card's ``CHK-*`` lines.
+    ``+expected_sep`` is required and must be 1: the wrapper's one compile
+    profile elaborates SEP, and the SEP=0 composition is proved on
+    ``--dut smu_block``.
     """
 
     BOUND_REF_CYCLES = 500
@@ -31,17 +32,14 @@ class SmuWrapperElaborationSeq:
     EXPECTED_TIMEOUT_PATHS_SEP1 = 8
     # Non-vacuity floors. MIN_DUT_CHECKS is the number of fail-capable
     # comparisons against DUT-sourced samples the leg's own stimulus issues:
-    # SEP=1 counts 8 bounded waits, 12 hierarchical clk-identity comparisons in
-    # the two compose loops, 8 in the shared-domain loop, and the discrete
-    # reset/domain/lifecycle compares; SEP=0 counts 8 bounded waits.
+    # 8 bounded waits, 12 hierarchical clk-identity comparisons in the two
+    # compose loops, 8 in the shared-domain loop, and the discrete
+    # reset/domain/lifecycle compares.
     # MIN_ADVANCING_STEPS and MIN_SPAN_NS are the simulation time that stimulus
     # cannot complete in less than.
     MIN_DUT_CHECKS_SEP1 = 31
-    MIN_DUT_CHECKS_NO_SEP = 8
     MIN_ADVANCING_STEPS_SEP1 = 5
-    MIN_ADVANCING_STEPS_NO_SEP = 2
     MIN_SPAN_NS_SEP1 = 500
-    MIN_SPAN_NS_NO_SEP = 500
     # Domain-separation observation window. 240 ns is a whole multiple of every
     # clk_smu_i and clk_ref_i period smu_env_cfg draws, so the transition counts
     # of two distinct periods cannot coincide; the 1 ns sample step is below the
@@ -235,69 +233,6 @@ class SmuWrapperElaborationSeq:
                 return cycle
         self._timeout_paths.append(f"{name}: bound={limit} EXPIRED last={last}")
         raise AssertionError(f"{name} timeout: expected={expected} observed={last} limit={limit}")
-
-    async def _run_legacy_no_sep(self, expected_sep: int) -> None:
-        """No-SEP wrapper smoke evidence (SMU_ALL_008 owns SEP=0 compose)."""
-        self.log.info("=" * 70)
-        self.log.info("TEST: production smu_wrapper profile and reset propagation")
-        self.log.info("=" * 70)
-
-        # In the SMU_NO_SEP build sep_reset_n_o is a testbench tie-off
-        # (tb_wrapper_top.sv) and sep_fuse_sense_done_o is tied off by the design
-        # (smu.sv gen_no_sep), so neither can carry profile evidence here. What
-        # this leg can compare is the compiled profile against the testlist
-        # contract: sep_enabled_o carries the SMU_NO_SEP define, +expected_sep
-        # comes from the testlist entry, and the two are independent inputs.
-        build_sep = self._sample(self.dut.sep_enabled_o, "sep_enabled_o")
-        assert build_sep == expected_sep, (
-            "wrapper build profile does not match the +expected_sep contract: "
-            f"sep_enabled_o={build_sep} +expected_sep={expected_sep}"
-        )
-        self._mark_step(
-            "S1",
-            f"build profile sep_enabled_o={build_sep} matches +expected_sep={expected_sep} "
-            f"(sep_reset_n_o/sep_fuse_sense_done_o are tie-offs in this build)",
-        )
-        self.log.info("EVIDENCE:CHK-WRAPPER-SEP-BUILD-PROFILE_OK")
-
-        await self._check_powergood_reached_dut()
-        await self.wait_value(self.dut.rst_cold_n_o, 1, "rst_cold_n_o")
-        self._mark_step(
-            "S2",
-            "powergood_stable observed high, driven low and released; rst_cold released",
-        )
-        self.log.info("EVIDENCE:CHK-WRAPPER-POWERGOOD_OK")
-        self.log.info("EVIDENCE:CHK-WRAPPER-RST-COLD-RELEASE_OK")
-
-        for iteration in range(2):
-            hold_cycles = self.rng.randint(2, 5)
-            self.log.info(
-                "Reset iteration %d: assert cold reset for %d ref-clock cycles",
-                iteration,
-                hold_cycles,
-            )
-            self.dut.rst_cold_ni.value = 0
-            await self.wait_value(self.dut.rst_cold_n_o, 0, "rst_cold_n_o")
-            await ClockCycles(self.dut.clk_ref_i, hold_cycles)
-            self.dut.rst_cold_ni.value = 1
-            await self.wait_value(self.dut.rst_cold_n_o, 1, "rst_cold_n_o")
-
-        self._mark_step("S3", "reset propagation loop (2 pulses) complete")
-        self.log.info("EVIDENCE:CHK-WRAPPER-RST-PROPAGATION_OK")
-
-        self._step_ts["PASS"] = get_sim_time("ns")
-        self._assert_nonvac_fence(
-            ["S1", "S2", "S3", "PASS"],
-            self.MIN_DUT_CHECKS_NO_SEP,
-            self.MIN_ADVANCING_STEPS_NO_SEP,
-            self.MIN_SPAN_NS_NO_SEP,
-        )
-        self.log.info("EVIDENCE: CHK-NONVAC")
-        self.log.info("EVIDENCE:CHK-NONVAC")
-        self.log.info(
-            "PASS: production wrapper elaborated with SEP=%d and reset remained responsive",
-            expected_sep,
-        )
 
     async def _run_smu_all_001(self) -> None:
         """SMU_ALL_001 / smu_wrapper_elaboration_sep_rtl_test (SEP=1 only)."""
@@ -686,7 +621,12 @@ class SmuWrapperElaborationSeq:
         expected_sep_arg = cocotb.plusargs.get("expected_sep")
         assert expected_sep_arg is not None, "missing required +expected_sep profile contract"
         expected_sep = int(expected_sep_arg, 0)
-        if expected_sep == 1:
-            await self._run_smu_all_001()
-        else:
-            await self._run_legacy_no_sep(expected_sep)
+        # The wrapper has a single compile profile and it elaborates SEP, so
+        # this is a contract check rather than a branch: a SEP=0 build of this
+        # bench no longer exists, and the SEP=0 composition is proved on
+        # --dut smu_block (testlists/nosep.toml).
+        assert expected_sep == 1, (
+            f"+expected_sep={expected_sep} on the wrapper: the only profile is "
+            "compile_smu_chiplet, which elaborates SEP=1"
+        )
+        await self._run_smu_all_001()

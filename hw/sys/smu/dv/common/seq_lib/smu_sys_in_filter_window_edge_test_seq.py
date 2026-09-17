@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR. SEP=0, no Force.
+"""SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR. SEP=1, no Force.
 
 With ALLOW_BURST set the filter compares page indices and ignores addr[11:0], so one page is
 the finest START/END step it resolves. The START edge is probed by re-programming the window
@@ -28,6 +28,7 @@ from seq_lib.smu_filter_helpers import (
     await_smn_resp,
     page_align_window,
     program_inbound0_window,
+    program_smc_aperture_local_alias,
 )
 from seq_lib.smu_jtag_helpers import DTP_DEFAULT_IDCODE, make_smu_jtag_tap
 from seq_lib.smu_tb_pins import smc_primary_reset
@@ -104,6 +105,8 @@ class smu_sys_in_filter_window_edge_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:

@@ -5,20 +5,20 @@
 == SMU deferred and OUT disposition
 
 This chapter has two parts. The table below is the catalog of every SMU test
-name classified deferred or OUT, and none of those names is in the SEP=0
-credit set `sep0_all`; <<smu-bench-standins>> is the record of every
+name classified deferred or OUT, and none of those names is in the hosted
+credit set `hosted`; <<smu-bench-standins>> is the record of every
 stand-in, force, skip and waiver on a proof path of an enrolled test. The
 table first. Two kinds of name are in it. Thirteen have a test body and are
 enrolled in `testlists/wrapper.toml`; their bucket says which group holds
 them and why that group is not credit. The rest have no test body in this
-tree and are not reportable as PASS. Enrolled names outside `sep0_all` that
+tree and are not reportable as PASS. Enrolled names outside `hosted` that
 carry neither classification — the lifecycle, debug-gating, chain and
 elaboration leaves — are not in this table: each is carded in
 `SMU_VPLAN.adoc` and enrolled in a named group of `testlists/wrapper.toml`.
 
 Buckets:
 
-* `SEP1-enrolled` — has a body and runs in the wrapper `all` group on the `sep_rtl` profile with real SEP instruction retirement (`sep_real_fw`, or `smoke` for the SEP smoke). Not `sep0_all` credit, and no CI workflow schedules those groups.
+* `SEP1-enrolled` — has a body and runs in the wrapper `all` group on the `sep_rtl` profile with real SEP instruction retirement (`sep_real_fw`, or `smoke` for the SEP smoke). Not `hosted` credit, and no CI workflow schedules those groups.
 * `SEP1-blocked` — has a body, enrolled in `sep_smc_sram_blocked` outside `all`: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction.
 * `OUT-until-SEP1` — no body; needs real SEP instruction retirement under SMU and SEP=1 TB ports.
 * `child-TB-owned` — protocol or CPU depth belongs to the SMC, SEP, or DTP TB.
@@ -26,8 +26,8 @@ Buckets:
 
 Enrolled names outside this catalog:
 
-* The JTAG2AXI / OTP / filter set in `sep0_all` is recorded in `SMU_SEP0_COMPONENT_SIGNOFF.adoc`, which also records ATOP reject as OUT.
-* `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are enrolled in `sep0_all` (`testlists/wrapper.toml`).
+* The JTAG2AXI / OTP / filter set in `hosted` is recorded in `SMU_HOSTED_COMPONENT_SIGNOFF.adoc`, which also records ATOP reject as OUT.
+* `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are enrolled in `hosted` (`testlists/wrapper.toml`).
 
 [cols="3,2,5",options="header"]
 |===
@@ -187,28 +187,28 @@ Enrolled names outside this catalog:
 |Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
 |smc_sep_interaction_test
 |child-TB-owned
-|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not sep0_all.
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
 |smc_sep_multi_cmd_test
 |child-TB-owned
-|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not sep0_all.
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
 |smc_sep_service_req_test
 |child-TB-owned
-|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not sep0_all.
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
 |smc_sep_error_recovery_test
 |child-TB-owned
-|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not sep0_all.
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
 |smc_sep_seq_validation_test
 |child-TB-owned
-|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not sep0_all.
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
 |smc_sep_notification_test
 |child-TB-owned
-|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not sep0_all.
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
 |smc_sep_fw_request_test
 |child-TB-owned
-|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not sep0_all.
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
 |smc_sep_bidirectional_test
 |child-TB-owned
-|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not sep0_all.
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
 |smu_dtp_sep_debug_enhanced_test
 |OUT-until-SEP1
 |Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
@@ -238,19 +238,19 @@ Enrolled names outside this catalog:
 |Needs real SEP instruction retirement and SEP=1 TB ports.
 |smu_axi_crossbar_performance_test
 |waived
-|The enrolled SEP=0 fabric set covers this scenario; the name stays catalog-only.
+|The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
 |smu_fabric_smc_dtp_cross_domain_test
 |OUT-until-SEP1
 |Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_fabric_id_remap_stress_test
 |waived
-|The enrolled SEP=0 fabric set covers this scenario; the name stays catalog-only.
+|The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
 |smu_ext_axi_global_addr_smoke_test
 |waived
-|The enrolled SEP=0 fabric set covers this scenario; the name stays catalog-only.
+|The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
 |smu_smc_external_axil_path_test
 |waived
-|The enrolled SEP=0 fabric set covers this scenario; the name stays catalog-only.
+|The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
 |smu_smc_cpu_traffic_smoke_test
 |child-TB-owned
 |SMC CPU / PLIC / chiplet depth belongs to the SMC testbench.
@@ -437,7 +437,7 @@ ran.
 [cols="2,3,3",options="header"]
 |===
 |Stand-in |Where it is |Tests on its scope
-|`+esrc_noise_force` |`tb/tb_wrapper_top.sv` (the `force` block under `ifndef SMU_NO_SEP`), driver `common/seq_lib/esrc_noise.py` |`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test`
+|`+esrc_noise_force` |`tb/tb_wrapper_top.sv` (the `force` block in the SEP observation section), driver `common/seq_lib/esrc_noise.py` |`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test`
 |`+skip_fuse_sense` with the shadow preload |per-test `args` of 82 `testlists/wrapper.toml` entries and every `[run_modes.*]` of `smu_block_sim_cfg.toml`; live only under the `SIMULATION` define |every `--dut smu` leaf except the five boot-stall leaves and `smu_sep_lcc_flow_test`, which sense; load-bearing for the reset, boot-gate and OTP leaves named below
 |`abr_reg.sv` pass/fail waiver |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` |every `--dut smu` leaf
 |Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (`bsr_scan_loop`), `tb/tb_top.sv` (five host scan chains) |`smu_dtp_bsr_extest_loopback_test`
@@ -479,7 +479,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Both files list the two stubs, and the compile log names them ahead of the Bender filelist.
 
 |eFuse models in the product composition
-|`run_dv.py --dut smu --items smoke_sep0`, then `grep -n 'fuse sense'` in that run's test log
+|`run_dv.py --dut smu --items hosted_smoke`, then `grep -n 'fuse sense'` in that run's test log
 |`Skipping fuse sense` or `Not skipping fuse sense` at time zero, which says which path the run took.
 |===
 
@@ -528,7 +528,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Why the real path cannot be used
 |No enrolled test exercises the ABR datapath; the assertion fires at time zero and again after reset release, before and independent of any stimulus, on the `sep_rtl` profile. Fixing the acknowledge timing is an RTL matter outside this package.
 |Scope
-|`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns = ['abr_reg\.sv']`: every `--dut smu` run on every profile, the whole file, not only the time-zero report. The block config carries no such waiver. It sits beside a broader configuration fact that is not a waiver but belongs in the same review: every Verilator target of both sim configs compiles with `+define+ASSERTS_OFF`, so no DUT SystemVerilog assertion is a checker on any run this package records; every enrolled verdict is a Python compare, and the immediate `$error` this pattern silences is the one assertion class that survives the define. In the logs of the CI nightly `sep0_all` run the pattern matches nothing, so there the waiver is inert; the `sep_rtl` profile it was written for has no run at a clean revision (the `all` group is unscheduled), so there it is unmeasured. It stays in force for any future line.
+|`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns = ['abr_reg\.sv']`: every `--dut smu` run on every profile, the whole file, not only the time-zero report. The block config carries no such waiver. It sits beside a broader configuration fact that is not a waiver but belongs in the same review: every Verilator target of both sim configs compiles with `+define+ASSERTS_OFF`, so no DUT SystemVerilog assertion is a checker on any run this package records; every enrolled verdict is a Python compare, and the immediate `$error` this pattern silences is the one assertion class that survives the define. In the logs of the CI nightly `hosted` run the pattern matches nothing, so there the waiver is inert; the `sep_rtl` profile it was written for has no run at a clean revision (the `all` group is unscheduled), so there it is unmeasured. It stays in force for any future line.
 |Approver
 |pending
 |Date, revision

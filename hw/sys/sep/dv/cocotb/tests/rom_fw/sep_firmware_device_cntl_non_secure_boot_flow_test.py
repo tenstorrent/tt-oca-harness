@@ -1,22 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Device-controlled non-secure boot: the SBOOT_DIS fuse overrides PROD (PyUVM).
+"""Device control vs. a manifest that asks to be verified: the manifest wins (PyUVM).
 
-FEATURE UNDER TEST. ``secure_boot_enabled()`` is a three-input decision
-(``manifest_load.c:223-240``)::
+FEATURE UNDER TEST. Secure boot is decided by a precedence, not a set of equal
+inputs (``validators/oca/lib/secure_boot.c``)::
 
-    sboot_dis fuse          -> always DISABLE   (device control / chicken bit)
-    PROD or PROD_END        -> always ENFORCE   (regardless of the manifest flag)
-    TEST_DEV or RMA         -> the manifest flag decides
+    signed secure_boot_control[0] set -> ENFORCE   (checked first)
+    device disable (SBOOT_DIS, LC)    -> DISABLE   (only if the manifest is silent)
+    device enforcement view           -> ENFORCE   (fail-safe on an odd answer)
 
-This pins the highest-precedence input against the second: PROD, which on its own
-forces secure boot, plus ``SBOOT_DIS = 1``. The device control must win.
+This pins the first input against the second: PROD with ``SBOOT_DIS = 1``, booting
+the ordinary signed image, whose ``secure_boot_control`` bit 0 is set. Secure boot
+must stay ON, so the full RSA-3072 chain runs and ``SBOOT_OFF`` is never printed.
 
-That precedence is why the stimulus is PROD rather than TEST_DEV: under TEST_DEV
-the manifest flag alone could explain a non-secure boot, so the run would prove
-nothing about SBOOT_DIS. The image is the ordinary signed one, unmutated -- a
-signed manifest declaring ``secure_boot = 1`` is the strongest form, because every
-other input asks for secure boot and only the fuse asks to skip it.
+WHY THAT IS THE PROPERTY WORTH PINNING. An image built to be verified can only
+boot verified: a mis-provisioned fuse or a defective lifecycle reporter cannot put
+a production image on an unverified path. The fuse still governs images that carry
+no signed request, which is what a manufacturing escape hatch needs. See
+SEP-ROM-SB-040.
+
+PROD rather than TEST_DEV because under TEST_DEV the lifecycle alone would not
+enforce, so a verified boot would not isolate the precedence.
 
 The eFuse must come from a committed preload: ``write_efuse_image()`` runs inside
 the cocotb coroutine, after t=0, whereas the OTP model does its ``$readmemh`` at
@@ -45,9 +49,9 @@ _SBOOT_DIS_SET = "FUSE: SBOOT_DIS: 1"
 _LC_PROD = "LC=PROD"
 # Crypto-path markers that must NOT appear: reaching any of them means the ROM
 # ignored the fuse and ran the secure chain anyway.
-_RSA_START = "RSA_VERIFY_START"
-_SIG_VALID = "SIG_VALID"
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
+_PUBK_AUTH = "PUBK_AUTHORIZED"
+_RSA_EXEC = "RSA_EXEC"
+_RSA_OK = "RSA_VERIFY_OK"
 
 _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3]
@@ -65,19 +69,19 @@ class sep_firmware_device_cntl_non_secure_boot_flow_test(sep_rom_ot_dma_boot_tes
     flash_image = SECURE_FLASH_IMAGE
     # Inherit the SPI-path markers (BOOT_SPI / MANIFEST_SRC / MANIFEST_OK) so the
     # transport is still pinned down, then add the device-control evidence.
+    # SBOOT_DIS and PROD are the stimulus, so both are asserted present; the
+    # crypto markers are the outcome, and they say the fuse did not downgrade the
+    # signed request.
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
         _SBOOT_DIS_SET,
         _LC_PROD,
-        _SBOOT_OFF,
+        _PUBK_AUTH,
+        _RSA_EXEC,
+        _RSA_OK,
     )
-    # The negative half. SBOOT_OFF alone says the ROM *reported* the decision;
-    # these say it acted on it. Without them a ROM that printed SBOOT_OFF and then
-    # verified the signature anyway would pass.
-    forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _RSA_START,
-        _SIG_VALID,
-        _CRYPTO_OK,
-    )
+    # SBOOT_OFF would mean the ROM took the fuse as decisive and skipped
+    # verification, which is the bypass this precedence exists to prevent.
+    forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (_SBOOT_OFF,)
 
     def build_efuse_image(self):
         assert os.path.isfile(_EFUSE_PRELOAD), f"eFuse preload missing: {_EFUSE_PRELOAD}"

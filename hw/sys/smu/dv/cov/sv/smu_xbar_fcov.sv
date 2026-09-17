@@ -10,8 +10,9 @@
 // signal. The points here are driven by the map outputs and the inbound AXI
 // handshake, so a bin is hit because the DUT did the thing.
 //
-// One passive, signal-driven module in the shared tb_top. Every port is a
-// smu_tb_signal_list.svh signal.
+// One passive, signal-driven module instantiated by both benches. Every port
+// is a smu_tb_signal_list.svh signal, except axil_external_active_i, which
+// the wrapper bench reads from a window smu_wrapper keeps inside itself.
 //
 // Points must need stimulus beyond power-up and reset release. The map
 // outputs take whatever the fuses and straps leave at power-up, so a level
@@ -220,10 +221,8 @@ module smu_xbar_fcov #(
 
   wire in_advanced = (axi_in_awvalid_count_i !== in_count_q);
   wire out_advanced = (axi_out_awvalid_count_i !== out_count_q);
-  wire route_forwarded_e = in_advanced && out_advanced;
   wire route_not_forwarded_e = in_advanced && !out_advanced;
   wire axil_external_e = (axil_external_active_i === 1'b1);
-  `OCAH_FCOV_COVER(c_route_inbound_forwarded, route_forwarded_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_route_inbound_not_forwarded, route_not_forwarded_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_axil_external_active, axil_external_e, clk_smu_i, in_reset)
 

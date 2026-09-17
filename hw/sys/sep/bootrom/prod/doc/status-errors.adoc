@@ -72,7 +72,12 @@ the function stores the full error code there. It also publishes an encoded
 error in `cold_scratch[1]`, writes the failure verdict in
 `cold_scratch[0]`, and enters a `wfi` loop.
 
-Manifest failures use the `MANIFEST_ERR_*` registry in `include/manifest.h`.
+Manifest failures use the `MANIFEST_ERR_*` namespace, formed as
+`OCA_BOOT_ERR_BASE | oca_result_t` -- the OCA library's verdict carried in the
+low byte. The enumeration is
+`tools/tt-oca-manifest/validators/oca/lib/oca_validator.h`, and
+`status_for_result()` in `src/oca_boot.c` is the only bridge between it and the
+`SEP_MSG_*` codes the status ring carries.
 Other terminal firmware errors are defined next to their owning implementation
 or in `include/errors.h`. These registries, rather than this document, are the
 source of numeric values.

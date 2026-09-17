@@ -30,6 +30,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_SRC_ID_LSB,
     F_WRITE_ALLOWED,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
+    FILTER_START_ADDR,
     FILTER_STRIDE,
     OUTFILT_BASE,
     REMAP_STRIDE,
@@ -62,8 +64,6 @@ OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 # sep_outbound_mbx STDOUT window: always-ready OKAY responder on smn_outbound.
 REMAP_TARGET_BASE = 0x8000_0000
 
-FILTER_START_ADDR = 0x08
-FILTER_END_ADDR = 0x10
 RESP_OKAY = 0
 RESP_DECERR = 3
 

@@ -45,8 +45,14 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
     build_env = False
 
     async def _check_reset(self, sig, name: str, expected: int) -> None:
-        """Assert a reset observable equals an exact value (X resolves to 0)."""
-        val = self.rd(sig)
+        """Assert a reset observable equals an exact value.
+
+        A zero expectation reads through rd_known: rd resolves X to 0, so
+        ``== 0`` would also hold for an observable nothing drives, which is the
+        whole point of a reset check. A one expectation is safe on rd -- an X
+        cannot satisfy it.
+        """
+        val = self.rd_known(sig) if expected == 0 else self.rd(sig)
         if val != expected:
             raise AssertionError(f"{name}: expected {expected}, got {val}")
         self.logger.info("PASS: %s == %d", name, expected)

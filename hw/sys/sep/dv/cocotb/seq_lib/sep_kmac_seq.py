@@ -55,9 +55,9 @@ KMAC_CMD_START = 0x1D
 KMAC_CMD_PROCESS = 0x2E
 KMAC_CMD_DONE = 0x16
 
-# STATUS bits: sha3_idle = bit0, sha3_squeeze = bit2.
-KMAC_STATUS_IDLE = 1 << 0
-KMAC_STATUS_SQUEEZE = 1 << 2
+# STATUS bits from the generated export, as the CFG path already does.
+KMAC_STATUS_IDLE = KMAC.field_mask("STATUS", "sha3_idle")
+KMAC_STATUS_SQUEEZE = KMAC.field_mask("STATUS", "sha3_squeeze")
 
 # INTR_STATE bits (kmac.adoc: kmac_done[0], fifo_empty[1], kmac_err[2]).
 # kmac_done fires on the absorbed event (SHA3 message fully absorbed -> squeeze
@@ -339,6 +339,11 @@ class SepKmac(SepAxiRegDriver):
             pre,
             post,
         )
+
+    async def wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
+        """Poll STATUS until sha3_idle. Public form of the internal wait, for a
+        caller that must know the core is accepting after a reset release."""
+        await self._wait_idle(tag, timeout=timeout, poll_cycles=poll_cycles)
 
     async def _wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
         await self._poll(KMAC_STATUS_IDLE, f"idle/{tag}", timeout=timeout, poll_cycles=poll_cycles)
