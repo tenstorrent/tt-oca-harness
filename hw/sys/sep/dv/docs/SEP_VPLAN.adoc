@@ -382,7 +382,7 @@ appears.
 |`sep_fabric_remap_filter_csr_bank_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks.
+|R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, plus per-entry storage independence across all 64 filter and alias entries.
 |`sep_fabric_output_remap_datapath_proxy_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -3538,15 +3538,16 @@ filter only ever sees `tx_len==0`.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks.
+*Objective*: R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, and that every entry of each bank holds its own value. Each filter entry and remap region is an independent rule with its own storage, so a decode that aliased two entries, or a bank that implemented fewer entries than the map declares, would be invisible to a sweep that walks one entry per group.
 
-*Test Coverage*: Remap and filter CSR banks: R/W, 64-bit, RO, valid, write-once-set.
+*Test Coverage*: Remap and filter CSR banks: R/W, 64-bit, RO, valid, write-once-set, and per-entry storage independence across all 16 alias regions, 16 inbound and 32 outbound filter entries.
 
 *Test Procedure*:
 
 [arabic]
 . Write each bank and require the readback to differ from the observed pre-write.
 . Prove RO `data_bus_width` ignores writes on both filters.
+. Write a distinct pattern into every entry of each bank, then read all of them back, and require each to hold its own pattern.
 
 *Checkers*:
 
@@ -3561,6 +3562,8 @@ filter only ever sees `tx_len==0`.
 |The output-remap CSRs are read/write across both banks.
 |CHK-INFILT-CFG / CHK-OUTFILT-CFG
 |Filter-configuration read/write fields (`rd`, `wr`, `ns`, `burst`, `src_id`, `group_id`) read back exactly on both the inbound and the outbound bank.
+|CHK-BANK-INDEP
+|Every entry of each bank holds its own distinct pattern: 16 alias regions, 16 inbound and 32 outbound filter entries are each written a value derived from their index, then all are read back and required to match. A bank that decodes two entries to one storage, or that implements fewer entries than the address map declares, fails here. The per-group field sweep above picks one random entry per seed, so this is the only leg that shows the other entries exist and are distinct.
 |CHK-RO
 |The data-bus-width field reads its fixed value and ignores writes of the inverse pattern, on both filters.
 |CHK-VALID-RW

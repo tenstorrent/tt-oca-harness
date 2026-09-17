@@ -29,6 +29,7 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import (
+    ALIAS_END_RESET,
     ALIAS_ATTRS,
     ALIAS_BASE,
     ALIAS_END,
@@ -79,10 +80,29 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         await self._chk_alias_rw_and_nonvac()
         await self._chk_ap_stee_rw()
         await self._chk_filter_cfg_and_ro()
+        await self._chk_bank_independence()
         await self._chk_woset()
         # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
         # row keyed on a bare summary string would record coverage with no checker
         # behind it.
+
+    async def _chk_bank_independence(self) -> None:
+        """CHK-BANK-INDEP across every entry of the alias and filter banks.
+
+        Runs before the woset leg: locking a filter entry makes its START_ADDR
+        read-only, so a locked entry would fail the readback for a reason that is
+        not an aliasing defect.
+        """
+        count, mismatches = await self.fab.bank_independence()
+        assert not mismatches, (
+            f"CHK-BANK-INDEP FAIL: {len(mismatches)} of {count} bank entries did "
+            f"not hold their own value; first: {mismatches[0]}"
+        )
+        self.logger.info(
+            "CHK-BANK-INDEP PASS: %d entries across the alias, inbound-filter and "
+            "outbound-filter banks each held their own index-derived pattern",
+            count,
+        )
 
     async def _chk_alias_rw_and_nonvac(self) -> None:
         """CHK-ALIAS-RW + CHK-NONVAC on the seeded alias-remap region (no woset touched)."""
@@ -107,8 +127,9 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
             f"pre-write value -- the write did not change observable state"
         )
         neighbor = await self.fab.read32(end_lo)
-        assert neighbor == 0, (
-            f"alias END_lo neighbor changed to 0x{neighbor:08x} after START_lo write (not confined)"
+        assert neighbor == ALIAS_END_RESET, (
+            f"alias END_lo neighbor changed to 0x{neighbor:08x} after START_lo write "
+            f"(not confined); expected its reset value 0x{ALIAS_END_RESET:08x}"
         )
         self.logger.info(
             "CHK-NONVAC PASS: alias r%d START_lo 0x%08x->0x%08x (observed change), "

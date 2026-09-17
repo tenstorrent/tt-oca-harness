@@ -55,6 +55,7 @@ CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 ALIAS_STRIDE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
 ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_START")
+ALIAS_END_RESET = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.reset32("REGION_REGION_END")
 ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_END")
 ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
 
@@ -62,7 +63,8 @@ ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
 AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
-REMAP_ATTRS = 0x00  # 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
+REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET")
+# 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
 
 # --- inbound / outbound filter config -----------------------------------------
 INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
@@ -214,6 +216,43 @@ class SepFabricCsrBank(SepAxiRegDriver):
         )
         await self.test.start_seq(seq)
         return seq.resp_code
+
+    async def bank_independence(self) -> tuple[int, list[str]]:
+        """Write an index-derived pattern into every entry of each bank, then
+        read all of them back.
+
+        Each filter entry and remap region is an independent rule with its own
+        storage. Writing one entry per group, as the field sweep does, cannot
+        show that the others exist or that they are distinct: a decode that
+        aliased two entries onto one register, or a bank that implemented fewer
+        entries than the address map declares, reads back correctly on whichever
+        entry the seed happened to pick.
+
+        The pattern is 4 KB-aligned and nonzero so START_ADDR accepts it
+        verbatim, and it carries the entry index so a read that lands on the
+        wrong entry returns a value that names the entry it came from.
+        """
+        banks = (
+            ("alias", ALIAS_BASE, ALIAS_STRIDE, ALIAS_REGIONS, ALIAS_START),
+            ("infilt", INFILT_BASE, FILTER_STRIDE, INFILT_ENTRIES, FILTER_START_ADDR),
+            ("outfilt", OUTFILT_BASE, FILTER_STRIDE, OUTFILT_ENTRIES, FILTER_START_ADDR),
+        )
+        written: list[tuple[str, int, int, int]] = []
+        for name, base, stride, count, offset in banks:
+            for idx in range(count):
+                addr = base + idx * stride + offset
+                pattern = ((idx + 1) << 12) & 0xFFFF_FFFF
+                await self._wr_tolerant(addr, pattern)
+                written.append((name, idx, addr, pattern))
+
+        mismatches: list[str] = []
+        for name, idx, addr, pattern in written:
+            got = await self.read32(addr)
+            if got != pattern:
+                mismatches.append(
+                    f"{name}[{idx}] @0x{addr:08x} read 0x{got:08x}, wrote 0x{pattern:08x}"
+                )
+        return len(written), mismatches
 
     async def woset_probe(self, hi_addr: int, bit: int) -> tuple[int, int, int]:
         """Set ``bit`` in the hi word, then attempt to clear it.
