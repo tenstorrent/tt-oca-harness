@@ -130,9 +130,9 @@ jobs:
       # "remote: Write access to repository not granted".
       #
       # .gitmodules addresses the submodule over SSH, which a hosted runner has
-      # no key for, so rewrite just that remote to HTTPS carrying the PAT. Same
-      # shape as .gitlab-ci.yml's OCAH_NONFREE_REMOTE. The rewrite is undone
-      # afterwards so the credential does not outlive the step.
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
+      # rewrite is undone afterwards so the credential does not outlive the
+      # step.
       - name: Check out the tt-oca-manifest submodule
         if: env.RUN_HARDWARE_CI == 'true' && matrix.dut == 'sep'
         env:
