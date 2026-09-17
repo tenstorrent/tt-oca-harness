@@ -1687,6 +1687,39 @@ python3 tools/dv/run_dv.py \
 in `regression.json`; the final effective attempt determines the leaf result.
 A leaf that passes after a failed attempt is recorded as flaky.
 
+[[runner-regression-record]]
+=== The regression record
+
+`stages/regress/regression.json` is the scheduler's own summary beside the
+run-level `result.json`; both carry the run `status` and `exit_code`. Its
+`jobs` list holds one record per attempt: `stage`, `item`, `target`, `seed`,
+`attempt`, `status`, `return_code`, `reason`, `duration_sec`, `started_at`,
+`ended_at`, `log`, `artifacts`, `failure_buckets`, `parser`, `metadata`, and
+`result_json`, the per-attempt `<test>/seed_<seed>/attempt_<n>/result.json`. Attempts of one
+`(item, seed, target)` leaf are grouped, and the highest attempt is the
+leaf's final result.
+
+* `failed_tests` lists every leaf whose final attempt is `FAIL`, `ERROR`,
+  `TIMEOUT`, or `UNKNOWN`, with `attempt_count`, every attempt's summary, the
+  final failure buckets (a leaf without a classified bucket gets one
+  `unknown` bucket carrying its `reason`), the `expected_fail` record when
+  the entry carries one, and a `rerun` command that reproduces the final
+  attempt with its seed.
+* `flaky_tests` lists every leaf whose final attempt is `PASS` after an
+  earlier non-passing attempt: `flaky_reason` is `passed_after_retry`,
+  `failing_attempts`, `first_fail_attempt`, `first_failure_reason`, and
+  `passed_on_attempt` locate the flip, and `tests.flaky` counts these leaves.
+  A flaky leaf is a passing leaf in `tests.passing` and in the run status.
+* `rerun_commands` repeats the `rerun` of every failed and flaky record.
+* `failure_buckets` groups the failed leaves' buckets by `(kind, signature)`
+  with a `count`, the `affected` leaves, and up to five example paths; an
+  interruption adds one `interruption` bucket naming the interrupted leaves.
+
+A `--waves-on-fail` rerun is recorded on the final attempt as `wave_debug`
+with `debug_only = true` and `status_affects_final_result = false`; it never
+changes the leaf's status. A leaf skipped after `--max-failures` has one job
+with status `SKIP`, no leaf directory, and no JUnit file.
+
 `--max-failures N` stops launching new serial leaves after `N` final failures
 and records the remainder as `SKIP`. Supplying this option disables the
 parallel worker path so the threshold can be enforced deterministically.
@@ -2043,6 +2076,7 @@ table, when present, under `overlay_env` in both the run-level `result.json`
 and `regression.json`. When a site layer was active, its path is recorded
 under `site` in the same two files (<<runner-site-layer>>).
 
+[[runner-interrupted-checkpoints]]
 === Interrupted-run checkpoints
 
 Before executing the first planned leaf, the runner writes an atomic
@@ -2117,6 +2151,117 @@ becomes `PASS` and its `PASS` becomes `FAIL` (<<runner-expected-failures>>).
 For formal mode, the exit code is never the status source: task status lines,
 status files, and JUnit reports, or the app's summary file, are
 (<<runner-formal-grading>>). Missing evidence produces `UNKNOWN`.
+
+[[runner-leaf-grading]]
+=== How a simulation leaf is graded
+
+A `sim` or `regress` leaf that ran to the end is graded by its parser policy
+from three inputs: the structured result files the policy names under
+`results/`, the leaf log, and the process return code. The rules apply in
+this order, and the first that decides ends the grading:
+
+. A structured result with a `failure` or `error` node is `FAIL`
+  (`status_source` `structured_result`, bucket `sim_failure`). A structured
+  result with only passing testcases is positive evidence. A structured
+  result that is missing, empty, malformed, or has no testcase is
+  inconclusive and is remembered.
+. A log line matching a `hard_fail_patterns` entry is `ERROR`
+  (`log_pattern`, bucket `tool_error`).
+. A nonzero return code is `FAIL` (`return_code`, bucket `sim_failure`).
+. A `required_patterns` entry with no match in the log is `FAIL`.
+. A `fail_patterns` match that no `ignore_patterns` entry covers is `FAIL`;
+  an ignored match is recorded as evidence with status `IGNORED`.
+. The last match of each `summary_patterns` entry is read: counts with a
+  zero total, a nonzero failure figure, or a total that the passing and
+  skipped figures do not add up to, are `FAIL` (`log_summary`); otherwise the
+  summary is positive evidence.
+. A `pass_patterns` match is recorded, and counts as positive evidence only
+  when the policy names no structured result.
+. With an inconclusive structured result remembered, the leaf is `UNKNOWN`
+  (`structured result missing or inconclusive`, bucket `unknown`).
+. With `require_positive_evidence` set and no positive evidence, the leaf is
+  `UNKNOWN` (`no positive pass evidence matched`).
+. Otherwise the leaf is `PASS`.
+
+A leaf whose command exceeded its resolved timeout is `TIMEOUT` (bucket
+`timeout`) before any of this runs, and a leaf whose stage raised a
+configuration or tool exception is `ERROR` (bucket `config_error` or the
+stage's default). `expect_fail` grading follows (<<runner-expected-failures>>).
+Every decision records under `parser` the policy name, its fingerprint,
+`status_source`, the applied extensions, and up to 25 evidence records, each
+naming the file, its kind, the status it contributed, and the matched text.
+
+The policy is `[pass_fail].policy` in the sim config, else the framework's
+default: `cocotb-default` for cocotb (structured `results.xml`, the cocotb
+`TESTS=` summary line), `uvm-log` for SystemVerilog UVM (no structured
+result; `UVM_ERROR` and `UVM_FATAL` counts, `UVM Report Summary` required),
+and `generic-regex` otherwise, which validation rejects unless the flow names
+a positive-evidence source. `[pass_fail]` adds to a policy only:
+`extra_pass_patterns`, `extra_fail_patterns`, `extra_ignore_patterns`,
+`extra_required_patterns`, `extra_hard_fail_patterns`,
+`extra_summary_patterns`, and `extra_structured_results`; a `replace_*` key
+is rejected because it would weaken the policy. A tool's
+`[<tool>.parser_extensions]` table in `simulators.toml` adds
+`extra_fail_patterns` and `extra_hard_fail_patterns` for that simulator's
+own error markers. Every pattern is compiled at validation time.
+
+[[runner-status-vocabulary]]
+=== One vocabulary across result.json, JUnit, and the dashboard
+
+[cols="<1,<1,<3,<2",options="header"]
+|===
+|`result.json` status |Exit code |Synthesized JUnit node |Dashboard flow status
+
+|`PASS` |0 |none |`PASS`
+|`FAIL` |1 |`<failure type="<bucket kind>">`, `sim_failure` when no bucket
+|`FAIL`
+|`ERROR` |2 |`<error type="<bucket kind>">`, `tool_error` when no bucket
+|`FAIL`; `source.native_status` keeps `ERROR`
+|`TIMEOUT` |124 |`<error type="timeout">`
+|`FAIL`; `source.native_status` keeps `TIMEOUT`
+|`UNKNOWN` |5 |`<error type="unknown">` |`UNKNOWN`
+|`SKIP` |none |`<skipped>`; a skipped leaf writes no file |`SKIP` on the
+test, absent from the flow status
+|===
+
+The failure-bucket `kind` is the shared enum: `sim_failure`, `tool_error`,
+`unknown`, `timeout`, `config_error`, `compile_error`, `elaboration_error`,
+`coverage_threshold`, `formal_fail`, `expected_fail_passed`,
+`expected_fail_mismatch`, and `interruption`. A stage that fails without a
+parser decision takes its stage's default kind (`flist` `config_error`,
+`hdl_compile` and `c_compile` `compile_error`, `elaborate`
+`elaboration_error`, `sim` and `regress` `sim_failure`, the coverage stages
+and `clean` `tool_error`, `formal` `formal_fail`), and a `ConfigError` is
+`config_error` whichever stage raised it.
+
+[[runner-junit-ownership]]
+=== JUnit ownership
+
+Every executed simulation leaf ends with xUnit XML at
+`<leaf>/results/results.xml`. A framework that writes its own file, as cocotb
+does, owns it: the runner reads it as evidence and never rewrites it. When
+the file is absent after grading, for a SystemVerilog UVM leaf or a leaf
+whose simulator died before the framework could write, the runner
+synthesizes a single-testcase file from the graded result, with the node
+mapping above and a `system-out` block naming the log, the leaf
+`result.json`, the parser policy, the `status_source`, the failure buckets,
+and the attempt. Either way the path is recorded as `artifacts.results_xml`
+on the leaf.
+
+A synthesized file is a reporting artifact, written after grading, atomically,
+and never read back as evidence. Its suite carries a `producer` property
+with the value `run_dv.py junit-fallback`, and only a file carrying that
+marker is ever removed or replaced; a file without it is left alone even
+when it sits where the runner would write.
+
+Two run-level files follow the same rule. A handled interruption writes
+`<run>/results/results.xml` with one errored testcase of type `interruption`
+(<<runner-interrupted-checkpoints>>). A run that fails before any leaf
+executed writes the same path with one testcase for the first failing stage
+in `ERROR`, `TIMEOUT`, `FAIL`, `UNKNOWN` order, so a compile or filelist
+failure stays visible to a JUnit consumer; a run in which a leaf executed,
+or that passes, removes a marked run-level file left by an earlier
+invocation into the same directory.
 
 == Continuous integration
 
