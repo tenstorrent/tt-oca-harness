@@ -256,7 +256,7 @@ module axi_filter_wrap #(
     .SpillB      (FlopRespEn),
     .SpillAr     (FlopReqEn),
     .SpillR      (FlopRespEn)
-  ) axi_demux (
+  ) u_axi_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -276,7 +276,7 @@ module axi_filter_wrap #(
     .Resp       (axi_pkg::RESP_DECERR),
     .ATOPs      (1'b0),
     .MaxTrans   (ErrSlvMaxTrans)
-  ) axi_err_slv (
+  ) u_axi_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (test_en_i),

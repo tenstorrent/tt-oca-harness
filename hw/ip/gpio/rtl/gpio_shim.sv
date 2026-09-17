@@ -138,7 +138,7 @@ module gpio_shim
     .axil_resp_o(axil_resps_demuxed[1])
   );
 
-  gpio_ctrl_reg gpio_ctrl_reg (
+  gpio_ctrl_reg u_gpio_ctrl_reg (
     .clk(clk_i),
     .arst_n(rst_primary_ni),
 
@@ -257,7 +257,7 @@ module gpio_shim
   logic captured_strap;
 
   if (INPUT_BY_DEFAULT) begin : gen_capture_strap
-    prim_latch_n strap_latch (
+    prim_latch_n u_strap_latch (
       .d_i(pad2core_o),
       .g_ni(rst_cold_ni),
       .q_o(captured_strap)

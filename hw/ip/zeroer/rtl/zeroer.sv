@@ -137,7 +137,7 @@ module zeroer #(
 
   wire axi_clk_enable = disable_cg | zeroer_busy_o | ~rst_ni;
 
-  prim_clkgater axi_clk_gater (
+  prim_clkgater u_axi_clk_gater (
     .clk_i(clk_i),
     .en_i (axi_clk_enable),
     .te_i (test_en_i),
@@ -148,7 +148,7 @@ module zeroer #(
     .OutstandingTx(1),
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
-  ) zeroer_cg (
+  ) u_zeroer_cg (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
 
@@ -177,7 +177,7 @@ module zeroer #(
   zeroer_ctrl_reg_pkg::zeroer_ctrl__in_t  hwif_in;
   zeroer_ctrl_reg_pkg::zeroer_ctrl__out_t hwif_out;
 
-  zeroer_ctrl_reg zeroer_reg (
+  zeroer_ctrl_reg u_zeroer_reg (
     .clk(reg_clk),
     .arst_n(rst_ni),
 

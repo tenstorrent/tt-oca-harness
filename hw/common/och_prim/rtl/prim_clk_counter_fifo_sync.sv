@@ -35,7 +35,7 @@ module prim_clk_counter_fifo_sync #(
 
   prim_clk_counter #(
     .WIDTH(CLOCK_COUNTER_WIDTH)
-  ) clk_counter (
+  ) u_clk_counter (
     .refclk_i(ref_clk_i),
     .refclk_cnt_done_i(ref_clk_done_i),
     .refclk_rst_ni(ref_clk_rst_ni),
@@ -89,7 +89,7 @@ module prim_clk_counter_fifo_sync #(
   prim_fifo_async #(
     .Width(CLOCK_COUNTER_WIDTH + 1),
     .Depth(1)
-  ) prim_fifo_async (
+  ) u_prim_fifo_async (
     .clk_wr_i(clk_i),
     .rst_wr_ni(combined_tile_reset_n_sync),
     .wvalid_i(valid_update),

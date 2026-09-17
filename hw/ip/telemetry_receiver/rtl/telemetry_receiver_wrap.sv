@@ -96,7 +96,7 @@ module telemetry_receiver_wrap #(
     .SpillB          (1'b0),
     .SpillAr         (1'b1),
     .SpillR          (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
     .test_i          (1'b0),
@@ -117,7 +117,7 @@ module telemetry_receiver_wrap #(
     .RESP_WIDTH     (telemetry_receiver_wrap_pkg::REG_DATA_WIDTH),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
-  ) prim_axi_lite_err_slv (
+  ) u_prim_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
 
@@ -162,7 +162,7 @@ module telemetry_receiver_wrap #(
       .Depth               (AtFifoDepth),
       .OutputZeroIfEmpty   (1'b0),
       .OutputZeroIfInvalid (1'b0)
-    ) at_req_fifo_async (
+    ) u_at_req_fifo_async (
       .clk_wr_i            (clk_telemetry_i),
       .rst_wr_ni           (rst_telemetry_ni),
       .wvalid_i            (atvalid_i[i]),
@@ -193,7 +193,7 @@ module telemetry_receiver_wrap #(
     prim_sync2r #(
       .WIDTH                  (1),
       .RANDOM_DELAY_GRAY_CODE (1'b0)
-    ) afready_sync2r (
+    ) u_afready_sync2r (
       .clk_i                  (clk_telemetry_i),
       .d_i                    (afready_i[i]),
       .rst_ni                 (rst_telemetry_ni),
@@ -203,7 +203,7 @@ module telemetry_receiver_wrap #(
     prim_sync2r #(
       .WIDTH                  (1),
       .RANDOM_DELAY_GRAY_CODE (1'b0)
-    ) afvalid_sync2r (
+    ) u_afvalid_sync2r (
       .clk_i                  (clk_i),
       .d_i                    (afvalid),
       .rst_ni                 (rst_ni),
@@ -224,7 +224,7 @@ module telemetry_receiver_wrap #(
     telemetry_receiver #(
       .BUFFER_DEPTH                 (TELEMETRY_RECEIVER_BUFFER_DEPTH),
       .MAX_NUM_COUNTERS_PER_MESSAGE (TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE[i])
-    ) telemetry_receiver (
+    ) u_telemetry_receiver (
       // Global Interface
       .clk_i,
       .rst_ni,

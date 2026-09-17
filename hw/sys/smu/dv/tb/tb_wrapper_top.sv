@@ -452,7 +452,7 @@ module smu_wrapper_uvm_top (
         tck: jtag_tck
     };
   assign jtag_ptap_tdi = jtag_tdi;
-  assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.sep_crypto
+  assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
         .u_sep_lifecycle_ctrl.feat_ctrl_o);
   assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
   assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
@@ -503,7 +503,7 @@ module smu_wrapper_uvm_top (
   // Lane 0's ACTUAL noise_i. With the force active this tracks the driven bit;
   // without it, it is whatever the RTL leaves there. A test compares the two so
   // "entropy flowed" cannot pass on a force that silently failed to take.
-  assign esrc_noise_active_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
+  assign esrc_noise_active_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_entropy_source_s3c_scan.u_generator_complex.gen_ecmplx[0].u_generator
         .u_decorrelator.noise_i;
 
@@ -512,7 +512,7 @@ module smu_wrapper_uvm_top (
   // at t=0 under Verilator and would hold that stale value. Explicit per-lane
   // indices because a genvar-indexed cross-hierarchy force is not allowed.
   `define SMU_ESRC_NOISE_FORCE(i)                                                \
-    force u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng                      \
+    force u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng                      \
         .u_entropy_source_s3c_scan.u_generator_complex.gen_ecmplx[i]             \
         .u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
 
@@ -534,11 +534,11 @@ module smu_wrapper_uvm_top (
   end
   `undef SMU_ESRC_NOISE_FORCE
 
-  assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
+  assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng_seed_adapter.seed_queue_valid_o;
-  assign drbg_es_ack_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
+  assign drbg_es_ack_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng.entropy_src_hw_if_i.es_ack;
-  assign drbg_genbits_vld_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
+  assign drbg_genbits_vld_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
   // Sticky capture. esrc_noise_took requires a driven 1 that the DUT node
   // actually shows: a match on 0 would also hold with the force absent.
@@ -812,12 +812,12 @@ module smu_wrapper_uvm_top (
   // known req_i, then re-arm them so a later X still fails.
 `ifndef VERILATOR
   initial begin
-    $assertoff(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    $assertoff(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
     $assertoff(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
     $assertoff(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
     wait (rst_primary_smc_clk_n === 1'b1);
     @(posedge clk_smu_i);
-    $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    $asserton(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
   end
@@ -869,7 +869,7 @@ module smu_wrapper_uvm_top (
   // +skip_fuse_sense replaces the fuse-sense sequence with the shadow preload,
   // 0 whenever the sense runs -- including a build without the SIMULATION
   // define, where the plusarg has no effect at all.
-  assign sep_fuse_sense_skipped_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
+  assign sep_fuse_sense_skipped_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
         .u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
         .sim_skip_fuse_sense;
 
@@ -916,7 +916,7 @@ module smu_wrapper_uvm_top (
   assign sep_debug_mode_o =
         u_dut.u_smu.gen_sep.u_sep.debug_mode_status_o;
   assign sep_cpu_rst_ni_o =
-        u_dut.u_smu.gen_sep.u_sep.sep_cpu.rst_ni;
+        u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.rst_ni;
   assign sep_dbg_rstb_o =
         u_dut.u_smu.gen_sep.u_sep.dbg_rstb_i;
   assign sep_mod_rst_ni_o =
@@ -930,7 +930,7 @@ module smu_wrapper_uvm_top (
     end
   end
 
-  always_ff @(posedge u_dut.u_smu.gen_sep.u_sep.sep_cpu.clk_i or negedge rst_cold_ni) begin
+  always_ff @(posedge u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.clk_i or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_cpu_clk_count_o <= '0;
     end else begin
@@ -1012,7 +1012,7 @@ module smu_wrapper_uvm_top (
   // macros have no init-file hook, so the firmware images named by
   // +sep_itcm_hex / +sep_dtcm_hex are loaded here at time zero — the same
   // backdoor pattern the SEP DV TB uses (hw/sys/sep/dv/tb/tb_top.sv
-  // `BD_ICCM/`BD_DCCM), against the same `ram.ram_core` arrays.
+  // `BD_ICCM/`BD_DCCM), against the same `u_ram.ram_core` arrays.
   //
   // Geometry is fixed by the SEP EL2 config and matches fw/common/sep_tcm.ld:
   //   ICCM 256 KiB @ 0xC000_0000 = 4 banks x 16384 rows x 39b
@@ -1025,9 +1025,9 @@ module smu_wrapper_uvm_top (
   localparam int unsigned SEP_DCCM_BYTES = 131072;  // 128 KiB
 
   `define SEP_BD_ICCM(b) \
-    u_dut.u_sep_ip_integration.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.ram.ram_core
+    u_dut.u_sep_ip_integration.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.u_ram.ram_core
   `define SEP_BD_DCCM(b) \
-    u_dut.u_sep_ip_integration.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.ram.ram_core
+    u_dut.u_sep_ip_integration.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.u_ram.ram_core
 
   logic [7:0] sep_itcm_buf [SEP_ICCM_BYTES];
   logic [7:0] sep_dtcm_buf [SEP_DCCM_BYTES];
@@ -1165,22 +1165,22 @@ module smu_wrapper_uvm_top (
       sep_csr_last_aw_addr_o <= '0;
       sep_csr_errslv_aw_count_o <= '0;
     end else begin
-      if (u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_sep_system_csr
+      if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
                     .sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].aw_valid) begin
         sep_ap_csr_aw_count_o <= sep_ap_csr_aw_count_o + 32'd1;
       end
-      if (u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_sep_system_csr
+      if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
                     .ap_output_remap_reqs[0].aw_valid) begin
         sep_ap_reg0_aw_count_o <= sep_ap_reg0_aw_count_o + 32'd1;
       end
-      if (u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_sep_system_csr
+      if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
                     .sep_system_csr_axil_req_i.aw_valid) begin
         sep_csr_aw_count_o     <= sep_csr_aw_count_o + 32'd1;
         sep_csr_last_aw_addr_o <= 56'(u_dut.u_smu.gen_sep.u_sep
-                    .sep_system_peripherals.u_sep_system_csr
+                    .u_sep_system_peripherals.u_sep_system_csr
                     .sep_system_csr_axil_req_i.aw.addr);
       end
-      if (u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_sep_system_csr
+      if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
                     .sep_system_csr_axil_reqs[sep_pkg::ERR_SLV].aw_valid) begin
         sep_csr_errslv_aw_count_o <= sep_csr_errslv_aw_count_o + 32'd1;
       end
@@ -1188,9 +1188,9 @@ module smu_wrapper_uvm_top (
   end
 
   assign sep_ap_remap_offset0_o =
-        u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_ap_remap.remap_table[0].offset;
+        u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_ap_remap.remap_table[0].offset;
   assign sep_stee_remap_offset0_o =
-        u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_stee_remap.remap_table[0].offset;
+        u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_stee_remap.remap_table[0].offset;
 
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
   assign sep_xbar_region_size_o = u_dut.u_smu.sep_region_size_o[31:0];

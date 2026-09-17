@@ -154,7 +154,7 @@ module idma_backend_wrapper #(
         .axi_rsp_t(int_axi_resp_t),
         .write_meta_channel_t(write_meta_channel_t),
         .read_meta_channel_t(read_meta_channel_t)
-      ) iDMA_backend (
+      ) u_iDMA_backend (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .testmode_i(test_en_i),

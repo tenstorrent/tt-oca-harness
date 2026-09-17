@@ -107,8 +107,8 @@ bit cannot discard another.
 The crypto complex uses whole-instance Class 2 scan boundaries so all
 sequential key, round-key, digest-working, seed, and random-distribution state
 is covered without per-register marking. The marked roots in `sep_crypto` are
-`hmac_wrapper_s3c_scan`, `sep_crypto_otbn_wrapper_s3c_scan`,
-`aes_wrapper_s3c_scan`, `kmac_wrapper_s3c_scan`,
+`u_hmac_wrapper_s3c_scan`, `u_sep_crypto_otbn_wrapper_s3c_scan`,
+`u_aes_wrapper_s3c_scan`, `u_kmac_wrapper_s3c_scan`,
 `u_sep_crypto_abr_wrapper_s3c_scan`, `u_entropy_source_s3c_scan`,
 `u_drbg_s3c_scan`, `u_axis_edn_crypto_s3c_scan`, and
 `u_key_manager_s3c_scan`. The integration module itself, public bus
@@ -567,7 +567,7 @@ passthrough itself is unaffected.
 The Class 2 entropy boundary starts at
 `u_trng_wrapper_s3c_scan`, whose sequencer, 128-bit release stage, and stream
 FIFOs retain seed material. Its vendor core remains covered by its delivered
-DFT view. In `sep_crypto.u_sep_trng`, `u_entropy_source_s3c_scan` covers the
+DFT view. In `u_sep_crypto.u_sep_trng`, `u_entropy_source_s3c_scan` covers the
 entropy FIFO and SHA-256 whitener, `u_drbg_s3c_scan` covers CSRNG/EDN and endpoint state,
 and `u_axis_edn_crypto_s3c_scan` covers staging outside the DRBG root. The
 combinational source-selection muxes are not scan assets.

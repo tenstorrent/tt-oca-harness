@@ -147,7 +147,7 @@ module idma_wrapper #(
 
   prim_clk_gater_hysteresis #(
     .HYST_WIDTH(CG_HYSTERESIS_W)
-  ) request_maneger_cg (
+  ) u_request_maneger_cg (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .busy_i(dma_busy),      // when dma busy, enable the clock
@@ -194,7 +194,7 @@ module idma_wrapper #(
     .CTRL_DATA_WIDTH(AXI_DATA_WIDTH),
     .CTRL_ID_WIDTH(CTRL_ID_WIDTH),
     .CTRL_USER_WIDTH(AXI_USER_WIDTH)
-  ) idma_frontend_wrapper (
+  ) u_idma_frontend_wrapper (
     .clk_i(frontend_clock),
     .rst_ni(rst_ni),
     .test_en_i(test_en_i),
@@ -223,7 +223,7 @@ module idma_wrapper #(
     .NUM_MST_INTERFACES(NUM_MST_INTERFACES),
     .req_t(idma_req_t),
     .resp_t(idma_resp_t)
-  ) idma_request_manager_wrapper (
+  ) u_idma_request_manager_wrapper (
     .clk_i(local_clock),
     .rst_ni(rst_ni),
     .test_en_i(test_en_i),
@@ -265,7 +265,7 @@ module idma_wrapper #(
     .AXI_USER_WIDTH(AXI_USER_WIDTH),
     .MST_ID_WIDTH(MST_ID_WIDTH),
     .BACKEND_INT_ID_WIDTH(BACKEND_INT_ID_WIDTH)
-  ) idma_backend_wrapper (
+  ) u_idma_backend_wrapper (
     .clk_i(local_clock),
     .rst_ni(rst_ni),
     .test_en_i(test_en_i),

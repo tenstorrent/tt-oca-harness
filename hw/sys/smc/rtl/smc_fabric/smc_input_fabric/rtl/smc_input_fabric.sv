@@ -162,7 +162,7 @@ module smc_input_fabric #(
   smc_pkg::input_fabric_mux_axi_req_t         axi_to_input_mux_req;
   smc_pkg::input_fabric_mux_axi_resp_t        axi_to_input_mux_resp;
 
-  smc_alias_remap_wrap smc_alias_remap_wrap (
+  smc_alias_remap_wrap u_smc_alias_remap_wrap (
     .axi_in_jtag_req_i(axi_jtag_port_req_prepend_id),
     .axi_in_jtag_resp_o(axi_jtag_port_resp_prepend_id),
 
@@ -220,7 +220,7 @@ module smc_input_fabric #(
     .SpillB             (1'b1),
     .SpillAr            (1'b1),
     .SpillR             (1'b1)
-  ) smc_input_axi_mux (
+  ) u_smc_input_axi_mux (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
     .test_i             (test_en_i),
@@ -318,7 +318,7 @@ module smc_input_fabric #(
     .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX),
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) sys_in_filter_cg (
+  ) u_sys_in_filter_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
 
@@ -368,7 +368,7 @@ module smc_input_fabric #(
     .filter_b_chan_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_b_chan_t),
     .filter_ar_chan_t    (smc_pkg::smc_sys_in_56_64_6_12_axi_ar_chan_t),
     .filter_r_chan_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_r_chan_t)
-  ) smc_sys_inbound_filter (
+  ) u_smc_sys_inbound_filter (
     .clk_i                      (filter_clk),
     .rst_ni                     (rst_ni),
     .test_en_i                  (test_en_i),

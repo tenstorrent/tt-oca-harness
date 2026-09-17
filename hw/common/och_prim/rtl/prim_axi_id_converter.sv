@@ -43,7 +43,7 @@ module prim_axi_id_converter #(
       .slv_resp_t(input_axi_resp_t),
       .mst_req_t(output_axi_req_t),
       .mst_resp_t(output_axi_resp_t)
-    ) axi_id_remap (
+    ) u_axi_id_remap (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
       .slv_req_i(axi_in_req_i),

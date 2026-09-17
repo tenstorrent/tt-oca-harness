@@ -113,7 +113,7 @@ module axi_lite_mailbox_unit #(
       .AxiDataWidth(DATA_WIDTH),
       .req_lite_t  (axi_req_t),
       .resp_lite_t (axi_resp_t)
-    ) axi_lite_mailbox (
+    ) u_axi_lite_mailbox (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
       .test_i(test_en_i),

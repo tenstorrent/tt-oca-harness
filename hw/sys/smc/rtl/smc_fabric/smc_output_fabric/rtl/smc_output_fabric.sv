@@ -75,7 +75,7 @@ module smc_output_fabric #(
       .input_axi_resp_t (smc_pkg::smc_56_64_6_12_axi_resp_t),
       .output_axi_req_t (smc_pkg::smc_output_56_64_8_12_axi_req_t),
       .output_axi_resp_t (smc_pkg::smc_output_56_64_8_12_axi_resp_t)
-    ) prim_axi_id_converter (
+    ) u_prim_axi_id_converter (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
@@ -210,7 +210,7 @@ module smc_output_fabric #(
 
       .axi_req_t      (smc_pkg::smc_56_64_6_12_axi_req_t),
       .axi_resp_t     (smc_pkg::smc_56_64_6_12_axi_resp_t)
-    ) prim_axi_user_override_struct (
+    ) u_prim_axi_user_override_struct (
       .axi_in_req_i   (axi_from_demux_req.filter),
       .axi_in_resp_o  (axi_from_demux_resp.filter),
       .axi_out_req_o  (axi_remap_out_req.filter),
@@ -368,7 +368,7 @@ module smc_output_fabric #(
     .filter_b_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_b_chan_t),
     .filter_ar_chan_t    (smc_pkg::smc_output_56_64_8_12_axi_ar_chan_t),
     .filter_r_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_r_chan_t)
-  ) smc_sys_outbound_filter (
+  ) u_smc_sys_outbound_filter (
     .clk_i                      (filter_clk),
     .rst_ni                     (rst_ni),
     .test_en_i                  (test_en_i),

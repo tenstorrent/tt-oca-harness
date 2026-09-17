@@ -4,7 +4,7 @@
 -tree sep_uvm_top 1
 -tree sep_uvm_top.u_mbx
 -module ocah_axi_sva
--tree sep_uvm_top.u_dut.u_sep.sep_cpu
+-tree sep_uvm_top.u_dut.u_sep.u_sep_cpu
 
 // ---------------------------------------------------------------------------
 // Library cells. These implement no SEP contract: a generic FIFO, synchroniser

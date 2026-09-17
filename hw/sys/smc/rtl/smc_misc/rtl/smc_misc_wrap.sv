@@ -80,7 +80,7 @@ module smc_misc_wrap #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i            (clk_i),
     .rst_ni           (rst_ni),
     .test_i           (test_en_i),
@@ -159,7 +159,7 @@ module smc_misc_wrap #(
 
   logic [63:0] version_id;
 
-  smc_version_id_wrap smc_version_id_wrap (.version_id_o(version_id));
+  smc_version_id_wrap u_smc_version_id_wrap (.version_id_o(version_id));
 
   ///////////////////////////
   // Chip Config Registers //
@@ -254,7 +254,7 @@ module smc_misc_wrap #(
     .RESP           (axi_pkg::RESP_DECERR),
     .RESP_WIDTH     (32),
     .RESP_DATA      (32'hBADCAB1E)
-  ) prim_axi_lite_err_slv (
+  ) u_prim_axi_lite_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .axil_req_i (from_demux_reg_axi_lite_req[smc_misc_pkg::ERR_SLV]),

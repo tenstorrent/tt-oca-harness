@@ -398,7 +398,7 @@ module sep_crypto #(
   // HMAC Wrapper //
   //////////////////
 
-  hmac_wrapper hmac_wrapper_s3c_scan (
+  hmac_wrapper u_hmac_wrapper_s3c_scan (
     .clk_i                   (clk_i),
     .rst_ni                  (gated_rst_ni.hmac),
     .hmac_axil_req_i         (hmac_axil_isolated_req),
@@ -420,7 +420,7 @@ module sep_crypto #(
   // OTBN Wrapper //
   //////////////////
 
-  sep_crypto_otbn_wrapper sep_crypto_otbn_wrapper_s3c_scan (
+  sep_crypto_otbn_wrapper u_sep_crypto_otbn_wrapper_s3c_scan (
     .clk_i,
     .rst_ni                       (gated_rst_ni.otbn),
     .otbn_axil_req_i              (otbn_axil_isolated_req),
@@ -447,7 +447,7 @@ module sep_crypto #(
   // AES Wrapper //
   /////////////////
 
-  aes_wrapper aes_wrapper_s3c_scan (
+  aes_wrapper u_aes_wrapper_s3c_scan (
     .clk_i               (clk_i),
     .rst_ni              (gated_rst_ni.aes),
     .aes_axil_req_i      (aes_axil_isolated_req),
@@ -468,7 +468,7 @@ module sep_crypto #(
   // KMAC Wrapper //
   //////////////////
 
-  kmac_wrapper kmac_wrapper_s3c_scan (
+  kmac_wrapper u_kmac_wrapper_s3c_scan (
     .clk_i                   (clk_i),
     .rst_ni                  (gated_rst_ni.kmac),
     .kmac_axil_req_i         (kmac_axil_isolated_req),

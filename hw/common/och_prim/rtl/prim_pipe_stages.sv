@@ -26,7 +26,7 @@ module prim_pipe_stages #(
 
     prim_pipe_stage #(
       .WIDTH(WIDTH)
-    ) prim_pipe_stage (
+    ) u_prim_pipe_stage (
       .clk_i      ( clk_i           ),
       .rst_ni     ( rst_ni          ),
       .en_i       ( en_i            ),

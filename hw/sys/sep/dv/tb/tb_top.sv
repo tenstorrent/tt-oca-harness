@@ -18,7 +18,7 @@
 // port to a benign idle value. Stimulus is injected on the SEP CPU's own LSU AXI
 // master bus: the core (VeeR EL2) is held off (`mpc_reset_run_req=0`) and an
 // external cocotbext-axi AxiMaster is spliced onto the CPU's LSU AXI master
-// ``SEP_CORE.sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
+// ``SEP_CORE.u_sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
 // (addr32/data64/id3/user12). The stub build (`SEP_CPU_STUB`) is the sole
 // driver of that bus and drives lsu_axi_req from the tb's assembled request
 // (`assign`, no `force`; see shims/cpu/sep_cpu_stub.sv). On the full-CPU VCS
@@ -112,8 +112,8 @@ module sep_uvm_top
     // The entropy complex sits below sep_crypto inside sep_trng, which owns the
     // shared TRNG reset. Naming that level once means a hierarchy change is made
     // here rather than at every entropy probe and assertion scope below.
-    `define SEP_ESRC `SEP_CORE.sep_crypto.u_sep_trng.u_entropy_source_s3c_scan
-    `define SEP_DRBG `SEP_CORE.sep_crypto.u_sep_trng.u_drbg_s3c_scan
+    `define SEP_ESRC `SEP_CORE.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan
+    `define SEP_DRBG `SEP_CORE.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
 
     // ------------------------------------------------------------------
     // Idle / benign tie-off nets for the unused external ports.
@@ -205,8 +205,8 @@ module sep_uvm_top
         // `disable iff` to gate. Re-arm by an assertion's own hierarchical
         // name, never by re-enabling a parent instance.
         $assertoff(0, `SEP_ESRC);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan);
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan);
         // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
         // The only OCAH assertion under those subtrees, and reachable stimulus:
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
@@ -224,27 +224,27 @@ module sep_uvm_top
         $assertoff(0, `SEP_ESRC
             .u_sha256_whitener.u_sha2.gen_sha256_logic.u_prim_sha2_256.u_pad
             .ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_rma_sip_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_rma_sip_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_rma_chiplet_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_rma_chiplet_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_sec_disable_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_sec_disable_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
@@ -268,7 +268,7 @@ module sep_uvm_top
     // rst_ni the property checks it against, which is what stops a reseed
     // request held high through reset from starting one mid-reset.
     initial begin
-        $assertoff(0, `SEP_CORE.sep_crypto.sep_crypto_otbn_wrapper_s3c_scan
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
             .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
     end
 `endif
@@ -717,8 +717,8 @@ module sep_uvm_top
 
     localparam logic [38:0] BD_OTBN_ZERO = prim_secded_pkg::SecdedInv3932ZeroWord;
 
-`define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.ram.ram_core
-`define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.ram.ram_core
+`define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.u_ram.ram_core
+`define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.u_ram.ram_core
 
     // Non-zero valid power-up patterns (both tools: Verilator 0-init and VCS X are
     // both invalid here -> spurious KM SRAM_PARITY / OTBN SECDED faults otherwise).
@@ -929,8 +929,8 @@ module sep_uvm_top
         $fatal(1, "no_cpu test on the full-CPU Verilator build: select target=lsu_stub_all_live or pass +cpu_boot");
     `else
     initial if (!$test$plusargs("cpu_boot")) begin
-        force `SEP_CORE.sep_cpu.lsu_axi_req      = lsu_req_drive;
-        force `SEP_CORE.sep_cpu.lsu_axi_resp_raw = '0;
+        force `SEP_CORE.u_sep_cpu.lsu_axi_req      = lsu_req_drive;
+        force `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw = '0;
         $display("[tb] no_cpu on full-CPU build: LSU VIP force-splice active");
     end
     `endif
@@ -1043,7 +1043,7 @@ module sep_uvm_top
     assign cpu_trace_ecause_o    = cpu_trace_w.trace_rv_i_ecause_ip;
     assign cpu_trace_interrupt_o = cpu_trace_w.trace_rv_i_interrupt_ip;
     assign cpu_trace_tval_o      = cpu_trace_w.trace_rv_i_tval_ip;
-    assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.cpu_run_ack_o;
+    assign o_cpu_run_ack_o   = `SEP_CORE.u_sep_cpu.cpu_run_ack_o;
 
     // SEP resets (internal nets): the reset-independence and wdt-reset-path
     // tests read them. Same XMR-probe style as above.
@@ -1058,11 +1058,11 @@ module sep_uvm_top
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
     assign trng_reset_active_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_trng.trng_reset_active_o;
+        `SEP_CORE.u_sep_crypto.u_sep_trng.trng_reset_active_o;
     assign trng_axi_isolated_probe_o = {
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_edn,
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_csrng,
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_edn,
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_csrng,
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
     };
 
     // HMAC per-IP gated reset and the two isolate-completion bits that domain
@@ -1072,17 +1072,17 @@ module sep_uvm_top
     assign hmac_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.hmac;
     assign hmac_host_isolated_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
     assign hmac_km_isolated_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
 
     // KMAC per-IP gated reset and its two isolate-completion bits.
     assign kmac_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.kmac;
     assign kmac_host_isolated_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
     assign kmac_km_isolated_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
 
     // Adams Bridge per-IP gated reset and the two isolate-completion bits its
     // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
@@ -1090,18 +1090,18 @@ module sep_uvm_top
     assign abr_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.abr;
     assign abr_host_isolated_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
     assign abr_km_isolated_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
     // programmed. These leaf fields sit outside the AXI ready/valid combinational
     // cones and retain whether firmware wrote each lock.
     assign lcc_demote_lock_1_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
+        `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
     assign lcc_demote_lock_2_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
+        `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
     // req is a wrapper-internal net (u_sep -> ip_integration).
@@ -1113,7 +1113,7 @@ module sep_uvm_top
     // Flatten the sensed shadow array (efuse_map_t, NumEfuseBits wide) to the
     // top-level probe port; word i occupies bits [32*i +: 32], matching values[i].
     assign efuse_shadow_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
+        `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
 
     // SEP scratch-cold CSR words [0..7], each `data.value` [31:0]. Explicit
     // per-index assigns avoid a cross-hierarchy indexed XMR (same style as the
@@ -1121,24 +1121,24 @@ module sep_uvm_top
     // measured summary into these; the cocotb test reads them back as the observer.
 `define SCRATCH_COLD(i) \
     assign scratch_cold_probe_o[32*(i) +: 32] = \
-        `SEP_CORE.sep_system_peripherals.u_sep_system_csr.u_sep_scratch_reg_cold.field_storage.SCRATCH[i].data.value
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_sep_scratch_reg_cold.field_storage.SCRATCH[i].data.value
     `SCRATCH_COLD(0); `SCRATCH_COLD(1); `SCRATCH_COLD(2); `SCRATCH_COLD(3);
     `SCRATCH_COLD(4); `SCRATCH_COLD(5); `SCRATCH_COLD(6); `SCRATCH_COLD(7);
 `undef SCRATCH_COLD
 
     // System-CSR AXI-Lite after u_system_csr_a2l_1. See port comment.
     assign sys_csr_axil_arvalid_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar_valid;
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.ar_valid;
     assign sys_csr_axil_arready_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.ar_ready;
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_resp.ar_ready;
     assign sys_csr_axil_araddr_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar.addr[31:0];
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.ar.addr[31:0];
     assign sys_csr_axil_awvalid_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw_valid;
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.aw_valid;
     assign sys_csr_axil_awready_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.aw_ready;
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_resp.aw_ready;
     assign sys_csr_axil_awaddr_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during
@@ -1180,13 +1180,13 @@ module sep_uvm_top
             wait (sep_cpu_reset_n_o === 1'b1);
             repeat (4) @(posedge clk_i);
 `ifdef VERILATOR
-            `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+            `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
                 .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value = cold_scratch7_seed;
 `else
-            force `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+            force `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
                 .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value = cold_scratch7_seed;
             @(posedge clk_i);
-            release `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+            release `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
                 .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value;
 `endif
             $display("[tb] cold_scratch[7] seeded 0x%08x (+sep_cold_scratch7)",
@@ -1207,7 +1207,7 @@ module sep_uvm_top
     // Re-issue every clock (Verilator snapshots a force RHS). Release when the
     // port drops so the legal pair returns. Default 0; outside AXI cones.
 `define LCC_DEC_DATA \
-    `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
+    `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
     always @(posedge clk_i) begin
         if (lc_sigint_inject_i === 1'b1) begin
             force `LCC_DEC_DATA = '0;
@@ -1230,7 +1230,7 @@ module sep_uvm_top
     // check; outside the AXI ready/valid cones. Re-issue every clock
     // (Verilator snapshots a force RHS).
 `define TOKEN_PROC \
-    `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
+    `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
         .gen_mmr_reg.u_efuse_token_processing
 `define CMP_SIP  `TOKEN_PROC.u_triple_redundant_comparator_rma_sip_token
 `define CMP_CHIP `TOKEN_PROC.u_triple_redundant_comparator_rma_chiplet_token
@@ -1325,7 +1325,7 @@ module sep_uvm_top
     // leg. Same clock-reissued force/release convention as the digest hook
     // above.
     // ------------------------------------------------------------------
-`define EFUSE_CTRL `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
+`define EFUSE_CTRL `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
 `define EFUSE_RD `EFUSE_CTRL.u_efuse_read_interface
 `define EFUSE_PG `EFUSE_CTRL.u_efuse_program_interface
     assign efuse_read_state_o = `EFUSE_RD.read_state_q;
@@ -1479,10 +1479,10 @@ module sep_uvm_top
 // port -- a `force` on a module instance input is rejected (ASSIGNIN).
 // Client indices from sep_crypto.sv: 0 = AES, 1 = KMAC, 2 = OTBN RND,
 // 3 = OTBN URND. KMAC is not forced -- the ROM's SHA-256 goes through HMAC.
-`define OTBN_RND_RSP  `SEP_CORE.sep_crypto.crypto_edn_rsp[2]
-`define OTBN_URND_RSP `SEP_CORE.sep_crypto.crypto_edn_rsp[3]
-`define OTBN_RND_REQ  `SEP_CORE.sep_crypto.crypto_edn_req[2]
-`define OTBN_URND_REQ `SEP_CORE.sep_crypto.crypto_edn_req[3]
+`define OTBN_RND_RSP  `SEP_CORE.u_sep_crypto.crypto_edn_rsp[2]
+`define OTBN_URND_RSP `SEP_CORE.u_sep_crypto.crypto_edn_rsp[3]
+`define OTBN_RND_REQ  `SEP_CORE.u_sep_crypto.crypto_edn_req[2]
+`define OTBN_URND_REQ `SEP_CORE.u_sep_crypto.crypto_edn_req[3]
     // ack pulses for one cycle per request rather than sitting high, so a
     // multi-word reseed is delivered as a sequence of beats like the real EDN.
     always @(posedge clk_i) begin
@@ -1662,35 +1662,35 @@ module sep_uvm_top
     // Post-EXT_TRNG_SRC_SEL-mux: the entropy actually presented to the KM (proves
     // the internal-DRBG leg was selected, not ext_trng). tvalid && tready = the KM
     // consumed a genbits word.
-    assign km_entropy_tvalid_o  = `SEP_CORE.sep_crypto.entropy_muxed_req[0].tvalid;
-    assign km_entropy_tdata_o   = `SEP_CORE.sep_crypto.entropy_muxed_req[0].tdata;
+    assign km_entropy_tvalid_o  = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tvalid;
+    assign km_entropy_tdata_o   = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tdata;
     // CHK5 per-sink routing golden: the crypto-leg (mux endpoint [1]) AXIS word
     // stream feeding drbg_axis_edn_adapter. tvalid && tready = one word handed to a
     // crypto endpoint (in `sep_drbg_real_sink_multi_km_aes_test` only AES
     // requests, so this equals AES's post-adapter beats in order). Each word is
     // also a CHK4 genbits-golden word (chained).
-    assign axis1_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tvalid;
-    assign axis1_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[1].tready;
-    assign axis1_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tdata;
-    assign km_entropy_tready_o  = `SEP_CORE.sep_crypto.entropy_muxed_rsp[0].tready;
+    assign axis1_tvalid_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_req[1].tvalid;
+    assign axis1_tready_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[1].tready;
+    assign axis1_tdata_o        = `SEP_CORE.u_sep_crypto.entropy_muxed_req[1].tdata;
+    assign km_entropy_tready_o  = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[0].tready;
     // CHK5 pool (mux endpoint [2]): pre-adapter AXIS2 + post-adapter native EDN.
-    assign axis2_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tvalid;
-    assign axis2_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[2].tready;
-    assign axis2_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tdata;
-    assign pool_edn_req_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_req_i.edn_req;
-    assign pool_edn_ack_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_ack;
-    assign pool_edn_bus_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_bus;
-    assign pool_edn_fips_o      = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_fips;
+    assign axis2_tvalid_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_req[2].tvalid;
+    assign axis2_tready_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[2].tready;
+    assign axis2_tdata_o        = `SEP_CORE.u_sep_crypto.entropy_muxed_req[2].tdata;
+    assign pool_edn_req_o       = `SEP_CORE.u_sep_crypto.entropy_pool_edn_req_i.edn_req;
+    assign pool_edn_ack_o       = `SEP_CORE.u_sep_crypto.entropy_pool_edn_rsp_o.edn_ack;
+    assign pool_edn_bus_o       = `SEP_CORE.u_sep_crypto.entropy_pool_edn_rsp_o.edn_bus;
+    assign pool_edn_fips_o      = `SEP_CORE.u_sep_crypto.entropy_pool_edn_rsp_o.edn_fips;
 
     // Per-client crypto EDN taps (post drbg_axis_edn_adapter). edn_req is the
     // client's request, edn_ack the adapter's grant pulse, edn_bus the delivered
     // 32b entropy word. Explicit per-index assigns avoid a cross-hierarchy
     // genvar-indexed XMR (same style as the ESRC decorrelator-SR probe above).
 `define CRYPTO_EDN_TAP(i) \
-    assign crypto_edn_req_o[i]              = `SEP_CORE.sep_crypto.crypto_edn_req[i].edn_req;  \
-    assign crypto_edn_ack_o[i]              = `SEP_CORE.sep_crypto.crypto_edn_rsp[i].edn_ack;  \
-    assign crypto_edn_bus_o[32*(i) +: 32]   = `SEP_CORE.sep_crypto.crypto_edn_rsp[i].edn_bus;  \
-    assign crypto_edn_fips_o[i]             = `SEP_CORE.sep_crypto.crypto_edn_rsp[i].edn_fips
+    assign crypto_edn_req_o[i]              = `SEP_CORE.u_sep_crypto.crypto_edn_req[i].edn_req;  \
+    assign crypto_edn_ack_o[i]              = `SEP_CORE.u_sep_crypto.crypto_edn_rsp[i].edn_ack;  \
+    assign crypto_edn_bus_o[32*(i) +: 32]   = `SEP_CORE.u_sep_crypto.crypto_edn_rsp[i].edn_bus;  \
+    assign crypto_edn_fips_o[i]             = `SEP_CORE.u_sep_crypto.crypto_edn_rsp[i].edn_fips
     `CRYPTO_EDN_TAP(0); `CRYPTO_EDN_TAP(1); `CRYPTO_EDN_TAP(2); `CRYPTO_EDN_TAP(3);
 `undef CRYPTO_EDN_TAP
 
@@ -1757,19 +1757,19 @@ module sep_uvm_top
     );
 
     // Response: present the CPU LSU demux slave response back to the cocotb master.
-    assign s_axi_awready = `SEP_CORE.sep_cpu.lsu_axi_resp.aw_ready;
-    assign s_axi_wready  = `SEP_CORE.sep_cpu.lsu_axi_resp.w_ready;
-    assign s_axi_bid     = `SEP_CORE.sep_cpu.lsu_axi_resp.b.id;
-    assign s_axi_bresp   = `SEP_CORE.sep_cpu.lsu_axi_resp.b.resp;
-    assign s_axi_buser   = `SEP_CORE.sep_cpu.lsu_axi_resp.b.user;
-    assign s_axi_bvalid  = `SEP_CORE.sep_cpu.lsu_axi_resp.b_valid;
-    assign s_axi_arready = `SEP_CORE.sep_cpu.lsu_axi_resp.ar_ready;
-    assign s_axi_rid     = `SEP_CORE.sep_cpu.lsu_axi_resp.r.id;
-    assign s_axi_rdata   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.data;
-    assign s_axi_rresp   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.resp;
-    assign s_axi_rlast   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.last;
-    assign s_axi_ruser   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.user;
-    assign s_axi_rvalid  = `SEP_CORE.sep_cpu.lsu_axi_resp.r_valid;
+    assign s_axi_awready = `SEP_CORE.u_sep_cpu.lsu_axi_resp.aw_ready;
+    assign s_axi_wready  = `SEP_CORE.u_sep_cpu.lsu_axi_resp.w_ready;
+    assign s_axi_bid     = `SEP_CORE.u_sep_cpu.lsu_axi_resp.b.id;
+    assign s_axi_bresp   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.b.resp;
+    assign s_axi_buser   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.b.user;
+    assign s_axi_bvalid  = `SEP_CORE.u_sep_cpu.lsu_axi_resp.b_valid;
+    assign s_axi_arready = `SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready;
+    assign s_axi_rid     = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.id;
+    assign s_axi_rdata   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.data;
+    assign s_axi_rresp   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.resp;
+    assign s_axi_rlast   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.last;
+    assign s_axi_ruser   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.user;
+    assign s_axi_rvalid  = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r_valid;
 
     // ------------------------------------------------------------------
     // AXI protocol checkers (hw/common/dv/vip/ocah_axi_vip/sva).
@@ -2226,24 +2226,24 @@ module sep_uvm_top
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_int),
 
-        .lsu_aw_addr_i         (`SEP_CORE.sep_cpu.lsu_axi_req.aw.addr),
-        .lsu_aw_valid_i        (`SEP_CORE.sep_cpu.lsu_axi_req.aw_valid),
-        .lsu_aw_ready_i        (`SEP_CORE.sep_cpu.lsu_axi_resp.aw_ready),
-        .lsu_w_data_i          (`SEP_CORE.sep_cpu.lsu_axi_req.w.data),
-        .lsu_w_strb_i          (`SEP_CORE.sep_cpu.lsu_axi_req.w.strb),
-        .lsu_w_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_req.w_valid),
-        .lsu_w_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.w_ready),
-        .lsu_b_resp_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.b.resp),
-        .lsu_b_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.b_valid),
-        .lsu_b_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_req.b_ready),
-        .lsu_ar_addr_i         (`SEP_CORE.sep_cpu.lsu_axi_req.ar.addr),
-        .lsu_ar_valid_i        (`SEP_CORE.sep_cpu.lsu_axi_req.ar_valid),
-        .lsu_ar_ready_i        (`SEP_CORE.sep_cpu.lsu_axi_resp.ar_ready),
-        .lsu_r_data_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.data),
-        .lsu_r_resp_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.resp),
-        .lsu_r_last_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.last),
-        .lsu_r_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.r_valid),
-        .lsu_r_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_req.r_ready),
+        .lsu_aw_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.aw.addr),
+        .lsu_aw_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.aw_valid),
+        .lsu_aw_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.aw_ready),
+        .lsu_w_data_i          (`SEP_CORE.u_sep_cpu.lsu_axi_req.w.data),
+        .lsu_w_strb_i          (`SEP_CORE.u_sep_cpu.lsu_axi_req.w.strb),
+        .lsu_w_valid_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.w_valid),
+        .lsu_w_ready_i         (`SEP_CORE.u_sep_cpu.lsu_axi_resp.w_ready),
+        .lsu_b_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.b.resp),
+        .lsu_b_valid_i         (`SEP_CORE.u_sep_cpu.lsu_axi_resp.b_valid),
+        .lsu_b_ready_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.b_ready),
+        .lsu_ar_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.addr),
+        .lsu_ar_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar_valid),
+        .lsu_ar_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready),
+        .lsu_r_data_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.data),
+        .lsu_r_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.resp),
+        .lsu_r_last_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.last),
+        .lsu_r_valid_i         (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r_valid),
+        .lsu_r_ready_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.r_ready),
 
         .m_axi_awaddr_i        (m_axi_awaddr),
         .m_axi_awvalid_i       (m_axi_awvalid),

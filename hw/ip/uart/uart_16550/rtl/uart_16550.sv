@@ -72,7 +72,7 @@ module uart_16550
   uart_core #(
     .TX_FIFO_DEPTH       (TX_FIFO_DEPTH),
     .RX_FIFO_DEPTH       (RX_FIFO_DEPTH)
-  ) uart_core (
+  ) u_uart_core (
     // Global Interface
     .clk_i,
     .rst_ni,
@@ -174,7 +174,7 @@ module uart_16550
     .SpillB          (1'b0),
     .SpillAr         (1'b1), // Pipeline AR to ease timing and area
     .SpillR          (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
     .test_i          (1'b0),
@@ -187,7 +187,7 @@ module uart_16550
   );
 
   // Register blocks
-  uart_16550_main_reg uart_16550_main_reg (
+  uart_16550_main_reg u_uart_16550_main_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
@@ -219,7 +219,7 @@ module uart_16550
     .hwif_out       (reg_out.main)
   );
 
-  uart_16550_main_wo_reg uart_16550_main_wo_reg (
+  uart_16550_main_wo_reg u_uart_16550_main_wo_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
@@ -251,7 +251,7 @@ module uart_16550
     .hwif_out       (reg_out.main_wo)
   );
 
-  uart_16550_dl_reg uart_16550_dl_reg (
+  uart_16550_dl_reg u_uart_16550_dl_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
@@ -292,7 +292,7 @@ module uart_16550
   prim_alert_sender #(
     .AsyncOn       (1'b1),
     .IsFatal       (1'b0)
-  ) prim_alert_sender (
+  ) u_prim_alert_sender (
     .clk_i,
     .rst_ni,
     .alert_test_i  (1'b0),
@@ -326,15 +326,15 @@ module uart_16550
 
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       TxFifoWptrErrTriggerAlert_A,
-      uart_core.uart_txfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
+      u_uart_core.u_uart_txfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       TxFifoRptrErrTriggerAlert_A,
-      uart_core.uart_txfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
+      u_uart_core.u_uart_txfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       RxFifoWptrErrTriggerAlert_A,
-      uart_core.uart_rxfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
+      u_uart_core.u_uart_rxfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       RxFifoRptrErrTriggerAlert_A,
-      uart_core.uart_rxfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
+      u_uart_core.u_uart_rxfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
 
 endmodule

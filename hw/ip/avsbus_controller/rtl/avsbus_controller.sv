@@ -447,7 +447,7 @@ module avsbus_controller #(
   );
 
   // test mux to bypass APBCLK/REFCLK antiglitch mux in testmode:
-  prim_clock_mux2 test_clkmux2_0 (
+  prim_clock_mux2 u_test_clkmux2_0 (
     .clk0_i (apb_ref_muxed_clk),
     .clk1_i (clk_test_i),
     .sel_i (test_en_i),
@@ -490,7 +490,7 @@ module avsbus_controller #(
   // Reset synchronizers:
   prim_sync_reset #(
     .WIDTH(ResetSyncStages)
-  ) apb_clk_reset_sync (
+  ) u_apb_clk_reset_sync (
     .clk_i(clk_reg_i),
     .rst_ni(rst_reg_ni),
     .test_mode_i(test_en_i),
@@ -500,7 +500,7 @@ module avsbus_controller #(
 
   prim_sync_reset #(
     .WIDTH(ResetSyncStages)
-  ) avs_clk_reset_sync (
+  ) u_avs_clk_reset_sync (
     .clk_i(avs_clk),
     .rst_ni(rst_reg_ni),
     .test_mode_i(test_en_i),
@@ -510,7 +510,7 @@ module avsbus_controller #(
 
   prim_sync_reset #(
     .WIDTH(ResetSyncStages)
-  ) pre_div_clk_reset_sync (
+  ) u_pre_div_clk_reset_sync (
     .clk_i(apb_ref_muxed_clk),
     .rst_ni(rst_reg_ni),
     .test_mode_i(test_en_i),
@@ -1211,7 +1211,7 @@ module avsbus_controller #(
 
   // Reg block :
   logic reg_pslverr;
-  avsbus_controller_reg avsbus_controller_reg_inst (
+  avsbus_controller_reg u_avsbus_controller_reg_inst (
     .clk(clk_reg_i),
     .arst_n(reset_n_apb_clk_syncd),
 
@@ -1316,7 +1316,7 @@ module avsbus_controller #(
   avsbus_async_fifo #(
     .DEPTH(COMMAND_FIFO_DEPTH),
     .WIDTH(32)
-  ) cmd_async_fifo_inst (
+  ) u_cmd_async_fifo_inst (
     .scan_rst_ni(scan_rst_ni),
     .test_mode_i(test_en_i),
 
@@ -1342,7 +1342,7 @@ module avsbus_controller #(
   avsbus_async_fifo #(
     .DEPTH(READBACK_FIFO_DEPTH),
     .WIDTH(32)
-  ) readasync_back_fifo_inst (
+  ) u_readasync_back_fifo_inst (
     .scan_rst_ni(scan_rst_ni),
     .test_mode_i(test_en_i),
 
