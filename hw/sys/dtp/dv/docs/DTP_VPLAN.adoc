@@ -6951,6 +6951,29 @@ T1 is the property module in `formal/props/dtp_tap_props.sv`, bound to
 |`ast_tap_select_exclusive`, `ast_tap_moore_flags_follow_state`, `ast_tap_negedge_flags_follow_state` |The DR and IR selects are exclusive; the Moore flags and the negedge-clocked scan-control flags follow the state |F1.1 |P1
 |===
 
+The T1 item also binds the shared JTAG checker to `dtp` on the primary TAP
+(`formal/props/dtp_jtag_fv_bind.sv`, `hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_fv.sv`),
+whose slave rules it asserts: `ast_jtag_state_onehot`,
+`ast_jtag_state_next_legal` (every transition follows the IEEE 1149.1
+controller diagram), `ast_jtag_trst_tlr`, `ast_jtag_tlr_tms5`,
+`ast_jtag_tdo_oen_shift_only` and `ast_jtag_tdo_stable_while_tck_high` (the
+enable, and TDO while the enable is active, change on the falling edge alone),
+with the covers `cov_jtag_shift_dr`, `cov_jtag_shift_ir`,
+`cov_jtag_tlr_from_five_tms_high` and `cov_jtag_tdo_driven`. The T7 and T9
+items bind the shared AXI checker
+(`hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_fv.sv`) with the design's side
+asserted: on `jtag2axi` the request machine's master rules,
+`ast_axi_<ch>_valid_reset_low`, `ast_axi_<ch>_valid_held`,
+`ast_axi_<ch>_payload_stable` and `ast_axi_<ch>_within_capacity` for the AW,
+W and AR channels plus the AW and AR burst-legality rules; on
+`cross_trigger_network` the slave rules `ast_axi_<ch>_valid_reset_low`,
+`ast_axi_<ch>_valid_held` and `ast_axi_<ch>_payload_stable` for the B and R
+channels, `ast_axi_b_not_before_aw`, `ast_axi_r_not_before_ar`,
+`ast_axi_axil_b_resp_legal` and `ast_axi_axil_r_resp_legal`, with the five
+`cov_axi_<ch>_handshake` covers (<<dtp-formal-assumptions>>). Every report
+names them under the bind instance, for example
+`u_ocah_axi_fv.gen_axi_b_valid_held.ast_axi_b_valid_held`.
+
 The remaining targets, one property module per block under
 `formal/props/`, with the intents the labels carry. T2 and T3 bind to
 `jtag_ptap`, T4 and T5 to `jtag_intf_unit` with the four STAPs and the three
@@ -6967,7 +6990,7 @@ their arrays:
 |T4 |`dtp_stap_props.sv` on the PTAP 3DCR, each `jtag_stap`, and the `stap_host` terms of `jtag_intf_unit` |`ast_stap_disable_forces_sel_low`, `ast_stap_disable_tdo_low`, `ast_stap_disable_blocks_3dcr_update`: with the STAP's disable field high, `stap_sel` is 0, `host_tdo_o` is 0, and the 3DCR update register holds its value. `ast_stap_unselected_parks_tms`: with `stap_sel` 0, `host_tap_ctrl_o.tms` equals `tms_hold`; with 1 it follows the client TMS. `ast_stap_tdo_oen_only_when_selected_shifting`: `host_tdo_oen_o` is `stap_sel AND shift_en`. `ast_stap_host_disable_loops_back`: with `stap_host` disabled the PTAP scan input is the chain's own output and every host scan-control enable is 0. `ast_ptap_stap_select_routes_tdo`: with the PTAP 3DCR select set, TDO comes from the STAP chain, else from the TDR multiplexer. `ast_dbg_disable_sync_fail_closed`: each synchronizer resets to 1 and follows its input after two `tck` edges. Covers: the I/O, SMC, SEP and extra STAP each selected; a STAP disabled while selected; the return path disabled during a shift, and enabled during a shift with the PTAP select set. |P0
 |T5 |`dtp_sib_props.sv` on the three SIBs |`ast_sib_disable_forces_en_low`, `ast_sib_disable_blocks_update`, `ast_sib_disable_host_quiet`: with the SIB's field high, the segment enable is 0, the SIB bit does not update, and the host `capture_en`, `shift_en`, `update_en`, `select` and `host_scan_out_o` are 0. `ast_sib_open_routes_host`: with the enable set, the client scan output is the host scan input, else the SIB's own bit. `ast_sib_host_ctrl_follows_client`: the host enables equal the client enables AND `select` while enabled. `ast_sib_chain_order`: the DFD SIB's input is the non-secure SIB's output, whose input is the secure SIB's output. Covers: every SIB pattern (eight), each SIB disabled while open. |P0
 |T6 |`dtp_dbgctl_props.sv` on `jtag_debug_ctrl_reg`; `dtp_ctn_clkstop_props.sv` on `ctn_clock_stop_ctrl` |`ast_dbgctl_rw_bits_hold`: bits 3:0 change only on an Update-DR of the DEBUG_CONTROL TDR. `ast_dbgctl_ro_bit_captures_status`: bit 4 captures the synchronized `cla_clock_stop` and ignores the shifted value. `ast_dbgctl_outputs_follow_update_reg`: the four outputs equal the update register bits. `ast_clkstop_or_after_three`: `stop_clks_o` equals the OR of `jtag_clock_stop_i` and every `clk_stop_req_i` bit sampled three `clk_i` cycles earlier. `ast_cla_status_excludes_jtag`: `cla_clock_stop_o` is the OR of the request bits alone, with no register. `ast_clkstop_low_in_reset`: `stop_clks_o` is 0 while `rst_ni` is low. Covers: a JTAG stop with no CLA request, a CLA request with no JTAG stop, the boot-stall override with each stall value. |P1
-|T7 |`dtp_jtag2axi_ctrl_props.sv` on `jtag2axi`, one bind serving the three instances |`ast_j2a_state_valid`: the request machine holds one of its seven states. `ast_j2a_valid_only_in_send_states`: the TCK-side `aw_valid`, `w_valid` and `ar_valid` requests are high only in the address and data states. `ast_j2a_idle_after_status`: UPDATE_STATUS returns to IDLE in one cycle. `ast_j2a_status_encodes_resp`: OKAY, SLVERR and DECERR responses map to SUCCESS, SLVERR and DECERR, any other code to SLVERR. `ast_j2a_series_status_sticky`: a series error status holds until the series-control reset bit. `ast_j2a_admit_bounded_by_depth`: the in-flight and pushed counters never exceed the pipeline depth, itself clamped to `FIFO_DEPTH`. `ast_j2a_outstanding_saturates`: at their saturation value the ACLK outstanding counters hold the CDC ready low, so they never wrap. `ast_j2a_disable_holds_idle`: after a cycle with the disable high and the machine idle, the machine is idle, the single-request buffer, both series FIFOs and the read counters are empty, and no Update-DR latches while the disable is high. `ast_j2a_disable_inflight_completes`: a disable that arrives outside IDLE does not abort the transaction in flight: the send states keep their valids, a response completes into UPDATE_STATUS, and IDLE is entered from UPDATE_STATUS alone. `ast_j2a_release_replays_nothing`: an idle machine with an empty single buffer and request FIFO stays idle, so a released disable issues nothing until a new Update-DR. Covers: a single write and a single read to completion, a series of `FIFO_DEPTH` reads admitted, a SLVERR and a DECERR status, a disable landing in each non-idle state. |P0 for the disable and admit properties, P1 otherwise
+|T7 |`dtp_jtag2axi_ctrl_props.sv` on `jtag2axi`, one bind serving the three instances |`ast_j2a_state_valid`: the request machine holds one of its seven states. `ast_j2a_valid_only_in_send_states`: the TCK-side `aw_valid`, `w_valid` and `ar_valid` requests are high only in the address and data states. `ast_j2a_idle_after_status`: UPDATE_STATUS returns to IDLE in one cycle. `ast_j2a_resp_only_while_waiting`: a response beat from a responder that follows the shared checker's rules arrives no earlier than the request's last handshake and no later than the state that consumes it, so it depends on the assumed responder rules and fails without them. `ast_j2a_status_encodes_resp`: OKAY, SLVERR and DECERR responses map to SUCCESS, SLVERR and DECERR, any other code to SLVERR. `ast_j2a_series_status_sticky`: a series error status holds until the series-control reset bit. `ast_j2a_admit_bounded_by_depth`: the in-flight and pushed counters never exceed the pipeline depth, itself clamped to `FIFO_DEPTH`. `ast_j2a_outstanding_saturates`: at their saturation value the ACLK outstanding counters hold the CDC ready low, so they never wrap. `ast_j2a_disable_holds_idle`: after a cycle with the disable high and the machine idle, the machine is idle, the single-request buffer, both series FIFOs and the read counters are empty, and no Update-DR latches while the disable is high. `ast_j2a_disable_inflight_completes`: a disable that arrives outside IDLE does not abort the transaction in flight: the send states keep their valids, a response completes into UPDATE_STATUS, and IDLE is entered from UPDATE_STATUS alone. `ast_j2a_release_replays_nothing`: an idle machine with an empty single buffer and request FIFO stays idle, so a released disable issues nothing until a new Update-DR. Covers: a single write and a single read to completion, a series of `FIFO_DEPTH` reads admitted, a SLVERR and a DECERR status, a disable landing in each non-idle state. |P0 for the disable and admit properties, P1 otherwise
 |T8 |`dtp_ctn_xtrig_props.sv` on `ctp_handshake_ctrl`, `ctp_core`, `ctp_pulse_stretcher`, `ctm_src_selector` |`ast_hs_sender_states`, `ast_hs_receiver_states`: the two machines hold legal states and take only the four-phase arcs. `ast_hs_req_stable_until_ack`: `ct_req_out` holds until the synchronized ack. `ast_hs_ack_mirrors_req`: the receiver asserts ack on a synchronized request and drops it when the request drops. `ast_hs_dst_is_one_pulse`: `ct_dst` rises only from the idle receiver on a synchronized request and lasts one cycle, two when the request drops in the cycle after the acknowledge rose. `ast_hs_busy_lags_state`: `busy` is the registered not-idle of either machine. `ast_hs_reset_recovers_sender`: `reset_i` returns the sender to IDLE with `ct_req_out` low, and leaves the receiver untouched. `ast_ctp_mode_enables_exclusive`: the wire-OR and point-to-point pad enables are mutually exclusive and match `CONFIG.MODE`. `ast_ctp_wire_or_edge_pulse`: a rising synchronized request yields one stretcher trigger. `ast_stretch_width`: a trigger holds the output for `STRETCH_MULT + 1` cycles and a new trigger reloads the counter. `ast_ctm_slice_route`: `ct_src_o` equals the registered OR of `ct_dst AND select`, and an all-zero select isolates the output. `ast_ctp_status_reflects_pins`: `STATUS.REQ_IN` and `ACK_IN` equal the synchronized de-inverted pad values, `REQ_OUT` and `ACK_OUT` the de-inverted registered outputs; in wire-OR mode `REQ_OUT` reads 0 and `ACK_OUT` reads `INVERT`. Covers: a full four-phase cycle against the peer model, a stretched wire-OR pulse of the maximum assumed width, a route from an internal source to an external port and back, reset in each mode. |P1
 |T9 |`dtp_ctn_csr_props.sv` on `cross_trigger_network` and one CTP and one CTM register block |`ast_csr_unmapped_decerr`: an address outside `0x000` to `0x2FF`, and the last byte address of every window, completes with DECERR on both channels; a mapped one completes with OKAY. `ast_csr_ctp_window`: an address in `0x200 + 16n` to `0x20F + 16n` reaches CTP `n` alone. `ast_csr_ctm_aliases`: the matrix block dispatches the port address's low byte, its readback follows address bits 7:2 alone, and the response carries the dispatched readback, so `0x100` to `0x1FF` reads the same registers as `0x000` to `0x0FF`. `ast_csr_reset_values`: CONFIG, STRETCH_MULT and every CT_DST_SELECT read 0 after reset. `ast_csr_status_write_ignored`: a write to STATUS returns OKAY and changes nothing. `ast_csr_strobe_masks_bytes`: a write changes only the strobed bytes. `ast_csr_read_after_write`: a read after a completed write returns the written field value. Covers: a DECERR write and read, a CTP and a CTM read-after-write, a masked write. |P1
 |===
@@ -6975,9 +6998,11 @@ their arrays:
 [[dtp-formal-observations]]
 ==== Observations the properties settle
 
-Reading the RTL against the design chapters leaves six points on which the
-two differ or the chapter is silent; each is stated as a property above and
-the proofs record that the RTL reading holds in every case.
+Reading the RTL against the design chapters leaves seven points on which the
+two differ or the chapter is silent; six are stated as properties above and
+the proofs record that the RTL reading holds in every case, and the last is
+a deviation from the public protocol specification that the shared AXI
+checker exposes and the `jtag2axi` environment excludes.
 
 * The JTAG integration chapter says a disabled bridge holds its AXI machine
   idle so that no traffic is generated; the RTL gates only the IDLE arm and
@@ -6999,6 +7024,12 @@ the proofs record that the RTL reading holds in every case.
   reset arc (`ast_hs_reset_recovers_sender`).
 * The CTM is mapped over 512 bytes but decodes address bits 7:2 only, so the
   upper half of its window aliases the lower (`ast_csr_ctm_aliases`).
+* The bridge forwards the request's size field as `AWSIZE` and `ARSIZE`
+  without a clamp when the field is two bits wide, so a 32-bit bridge issues
+  an eight-byte transfer size on request (ARM IHI 0022 A3.4.1); the shared
+  AXI checker's `ast_axi_ar_size_legal` fails without
+  `asm_j2a_size_within_bus`, which holds the host to the bus width in the
+  `jtag2axi` environment.
 
 The proofs and cover traces add seven points the chapters do not state.
 
@@ -7058,11 +7089,22 @@ and released there for the rest of the trace
 adds `asm_initial_reset` from the macro layer on its own reset. Beyond that:
 
 * `dtp`: `asm_env_scan_reset_inactive` holds the scan reset high.
-  `dbg_disable_i`, `tms`, `tdi` and every host scan input are free. The AXI
-  responder ports are free too: the JTAG-domain targets never reach them. The
-  T2 module adds `asm_ir_open_path_decode_range`, an opcode at or below
-  `0x1E` at every Update-IR, for the frontend sizing recorded in
-  <<dtp-formal-observations>>.
+  `dbg_disable_i`, `tms`, `tdi` and every host scan input are free, except
+  that the return data of the external scan chains and of the downstream
+  TAPs holds through the tck-high phase
+  (`asm_env_scan_returns_hold_while_tck_high`), the shape of a JTAG slave's
+  TDO. The AXI responder ports are free too: the JTAG-domain targets never
+  reach them. The T1 item binds the shared JTAG checker `ocah_jtag_fv` on
+  the primary TAP (`dtp_jtag_fv_bind.sv`), which assumes the host's phase
+  rule, `asm_jtag_tms_tdi_stable_while_tck_high`, and asserts the TAP's rules
+  (<<dtp-formal-properties>>); that item also reads `dtp_tap_sby_env.sv`,
+  whose `asm_env_ir_open_path_decode_range` bounds the opcode an Update-IR
+  loads to `0x1E`, as the T2 module does for the frontend sizing recorded in
+  <<dtp-formal-observations>>: a wider opcode sets several instruction bits
+  in the model, among them the zero-length bypass that routes TDO around its
+  retimer. The T2 module adds
+  `asm_ir_open_path_decode_range`, an opcode at or below `0x1E` at every
+  Update-IR, for the frontend sizing recorded in <<dtp-formal-observations>>.
 * `jtag2axi`, elaborated in the shape of the OTP AXI-Lite bridges (32-bit
   address and data, pipeline depth 3): the JTAG-side controls are free inputs
   constrained to the TAP's shape, `asm_j2a_scan_ctrl_exclusive` (capture,
@@ -7079,22 +7121,37 @@ adds `asm_initial_reset` from the macro layer on its own reset. Beyond that:
   response needs no round trip through the clearable CDC, whose clear
   handshake after reset holds every channel for more than sixty steps before
   the first request can cross; the `prove` task keeps the CDC in the loop for
-  the property-directed engine. The environment constrains that side in every
-  task as a responder that answers only while the machine waits
-  (`asm_j2a_src_resp_only_when_waiting`), holds a valid with its payload
-  until the ready (`asm_j2a_src_ready_valid_stable`) and returns one beat
-  (`asm_j2a_src_r_single_beat`), which the real CDC satisfies. Every proof
-  over the control logic holds for the real signals because the free ones
-  include every value they can take. On the ACLK side the fabric responder
-  follows `asm_j2a_resp_only_when_outstanding` (a B or R beat arrives only
-  with a request outstanding), `asm_j2a_ready_valid_stable` (a valid holds
-  with its payload until its ready) and `asm_j2a_r_single_beat`; these are
-  the handshake rules the shared AXI checker states as assertions, written
-  as booleans in the environment module.
+  the property-directed engine. The shared AXI checker `ocah_axi_fv`, bound
+  by `dtp_jtag2axi_axi_fv_bind.sv` on the CDC's response side toward the
+  request machine, constrains that responder in every task with its slave
+  rules assumed: a B or R beat arrives only with a request outstanding
+  (`asm_axi_b_not_before_aw`, `asm_axi_r_not_before_ar`), a valid holds
+  with its payload until its ready (`asm_axi_b_valid_held`,
+  `asm_axi_r_valid_held`, `asm_axi_b_payload_stable`,
+  `asm_axi_r_payload_stable`) and a valid is low in reset; the real CDC
+  satisfies them, and `ast_j2a_resp_only_while_waiting` is the T7 property
+  that holds only under them. The same instance asserts the request
+  machine's master rules (<<dtp-formal-properties>>). The AXI ports lie
+  behind the CDC, whose clear handshake after reset keeps them idle within
+  the bounded depth, so they carry no checker instance. The
+  environment module adds what the protocol leaves open:
+  `asm_j2a_src_r_single_beat` and `asm_j2a_r_single_beat`, since every
+  request is a single beat, and `asm_j2a_size_within_bus`, since the request's
+  size field admits a transfer wider than a 32-bit bus and the bridge forwards
+  it unchanged (<<dtp-formal-observations>>). Every proof over the control
+  logic holds for the real signals because the free ones include every value
+  they can take.
 * `cross_trigger_network`: the AXI-Lite manager is the DTP's bridge, so
-  `asm_axil_one_outstanding` allows one write and one read in flight and
-  `asm_axil_ready_valid_stable` holds a valid with its payload until its
-  ready; `asm_ctp_peer_four_phase` models the far end of external port 0 on
+  `asm_axil_one_outstanding` allows one write and one read in flight, and in
+  the T9 item the shared AXI checker bound by `dtp_ctn_axi_fv_bind.sv` with
+  its master rules assumed holds each valid with its payload until its ready
+  (`asm_axi_aw_valid_held`, `asm_axi_w_valid_held`, `asm_axi_ar_valid_held`,
+  `asm_axi_aw_payload_stable`, `asm_axi_w_payload_stable`,
+  `asm_axi_ar_payload_stable`) and keeps each valid low in reset; the same
+  instance asserts the network's responses (<<dtp-formal-properties>>). The
+  T6 and T8 items on this top read the port through its covers alone and
+  take no handshake assumption. `asm_ctp_peer_four_phase` models the far end
+  of external port 0 on
   the synchronized, de-inverted request and acknowledge (the far end
   acknowledges a request it sees and withdraws the acknowledge after the
   request drops, holds its own request until it sees the acknowledge, and
@@ -7145,7 +7202,7 @@ Update-DR).
 |T6 |`cov_dbgctl_boot_stall_ovrd_stall_high`: DEBUG_CONTROL loaded, a 5-bit DR scan sets both bits |37 |55 on `dtp`; the `ctn_clkstop_fpv` covers are reached at step 6 and its triple uses depth 10
 |T7 |`cov_j2a_series_reads_admitted`: a CTRL update programs a read series and `FIFO_DEPTH + 1` data updates are admitted; a single write or read completes through the free response side at step 13 |23 |40; the `prove` task runs `abc pdr` on the model with the CDC in the loop, since the free response side makes its clause set outgrow the host's memory, and k-induction cannot close `$past` relations under explicit clocks, where an induction window may hold a single `tck` edge
 |T8 |`cov_hs_four_phase_complete` and `cov_stretch_max_width`: a CSR write sets the mode or the stretch, a source pulse starts the sender, the peer acknowledges and releases |10 |20; the item runs `bmc` and `cover` alone, since the block is P1 and `abc pdr` on the sixteen-port network does not converge within an hour
-|T9 |`cov_csr_ctp_read_after_write`: a write to CONFIG and a read of it complete through the crossbar and the register block |6 |12
+|T9 |`cov_csr_ctp_read_after_write`: a write to CONFIG and a read of it complete through the crossbar and the register block |6 |12; the `prove` task also carries the shared AXI checker's assertions on the port, and `abc pdr` closes the item in about half an hour rather than minutes
 |===
 
 A cover added at a greater distance raises its block's depth. The
@@ -7223,9 +7280,11 @@ developer-host flow: hosted CI runs no formal job.
 [[dtp-formal-dependencies]]
 ==== Dependencies between targets
 
-T3 and T4 hold the P0 set and stand alone on the `dtp` top. T7 and T8 share
-the boolean handshake assumption set for the AXI and AXI-Lite responders and
-the point-to-point peer model, so that environment precedes both. The
+T3 and T4 hold the P0 set and stand alone on the `dtp` top. T7 and T9 take
+the AXI and AXI-Lite handshake rules from the shared checker `ocah_axi_fv`,
+bound with the environment's side assumed, and T1 takes the host's phase
+rule from `ocah_jtag_fv`; the point-to-point peer model stays in the
+`cross_trigger_network` environment, which T8 needs. The
 licensed connectivity, register, X-propagation and unreachability apps read
 the same property files from the companion's formal configuration. A target
 is complete when its item passes with every cover reached and its FAIL path

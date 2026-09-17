@@ -28,6 +28,11 @@
 `define OCAH_FV_COVER(__name, __expr, __clk, __rst_n) \
   __name : cover property (@(posedge __clk) disable iff (!(__rst_n)) (__expr));
 
+// Immediate forms for a procedural block: a check at every step of the model in an always_comb,
+// such as a phase rule over the level of a clock, or a check on the edge the block is clocked on.
+`define OCAH_FV_ASSERT_I(__name, __expr) __name : assert (__expr);
+`define OCAH_FV_ASSUME_I(__name, __expr) __name : assume (__expr);
+
 // Reset held in the initial state: the declaration initializer marks the first cycle and the
 // assumption pins reset low there, so every $past sampled after reset release reads a value that
 // exists in the trace.
@@ -39,8 +44,21 @@
 `define OCAH_FV_ASSERT(__name, __expr, __clk, __rst_n)
 `define OCAH_FV_ASSUME(__name, __expr, __clk, __rst_n)
 `define OCAH_FV_COVER(__name, __expr, __clk, __rst_n)
+`define OCAH_FV_ASSERT_I(__name, __expr)
+`define OCAH_FV_ASSUME_I(__name, __expr)
 `define OCAH_FV_INITIAL_RESET(__clk, __rst_n)
 `endif
+
+// Rule whose kind the first argument selects: asm_<label> under assume, ast_<label> otherwise,
+// inside a generate block named gen_<label>. A shared protocol checker routes each rule through it
+// with the parameter of the side that drives the rule's signals, so one instance asserts the
+// design's side and assumes the environment's. Outside FORMAL both branches are empty blocks.
+`define OCAH_FV_RULE(__assume, __label, __expr, __clk, __rst_n) \
+  if (__assume) begin : gen_``__label                           \
+    `OCAH_FV_ASSUME(asm_``__label, __expr, __clk, __rst_n)      \
+  end else begin : gen_``__label                                \
+    `OCAH_FV_ASSERT(ast_``__label, __expr, __clk, __rst_n)      \
+  end
 
 // Expression helpers. __sig of the edge helpers is a single bit.
 `define OCAH_FV_IMPLIES(__ante, __cons) (!(__ante) || (__cons))

@@ -113,6 +113,15 @@ module dtp_jtag2axi_ctrl_props #(
                   `OCAH_FV_IMPLIES($past(trst_ni) && $past(state_i) != IDLE && state_i == IDLE,
                                    $past(state_i) == UPDATE_STATUS),
                   tck_i, trst_ni)
+  // The machine issues one request and consumes its response before the next, so a responder
+  // that answers only an accepted request (the shared checker's rules, assumed on the CDC's
+  // response side) presents a beat no earlier than the request's last handshake and no later
+  // than the state that consumes it.
+  `OCAH_FV_ASSERT(ast_j2a_resp_only_while_waiting,
+                  `OCAH_FV_IMPLIES(src_b_valid_i,
+                                   state_i inside {SEND_ADDR_W, SEND_DATA_W, WAIT_BRESP}) &&
+                  `OCAH_FV_IMPLIES(src_r_valid_i, state_i inside {SEND_ADDR_R, WAIT_RDATA}),
+                  tck_i, trst_ni)
 
   // ---- Status encoding and the sticky series status ----------------------------------------
   `OCAH_FV_ASSERT(ast_j2a_status_encodes_resp,

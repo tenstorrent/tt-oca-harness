@@ -1039,9 +1039,11 @@ and on licensed backends alike. The rules a contributor meets first:
 
 * *Subset.* Every property body is a boolean over current and `$past` values.
   The open frontend reads no sequences, implication operators, or the
-  `$stable`, `$rose`, `$fell` family; the concurrent SVA checkers under
-  `hw/common/dv/vip/*/sva/` and the `OCAH_ASSERT` macros elaborate on
-  licensed backends only (Accepted constructs).
+  `$stable`, `$rose`, `$fell` family; the concurrent SVA checkers
+  `ocah_axi_sva` and `ocah_jtag_sva` and the `OCAH_ASSERT` macros elaborate
+  on licensed backends only, while `ocah_axi_fv` and `ocah_jtag_fv` beside
+  them carry the handshake rules in the subset, each side asserted or
+  assumed by parameter (Accepted constructs, Shared protocol checkers).
 * *Macros and guards.* `hw/common/assert/ocah_fv_macros.svh` supplies
   `OCAH_FV_ASSERT`, `OCAH_FV_ASSUME`, `OCAH_FV_COVER`, and
   `OCAH_FV_INITIAL_RESET`, all gated on `FORMAL`, which every backend script
