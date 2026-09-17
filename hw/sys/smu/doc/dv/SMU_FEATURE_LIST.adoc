@@ -61,7 +61,6 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_smc_mailbox_int_test` |F1 |hosted, smc_under_smu |`CHK-SMC-MBX-IRQ-EXT-S2`
 |`smu_smc_wdt_sanity_test` |F1 |smc_under_smu, hosted |`WDT_UNLOCK_OK`
 |`smu_smc_wdt_timeout_irq_test` |F1 |smc_under_smu, hosted |`WDT_WDOGIP0`
-|`smu_smc_gpio_strap_sanity_test` |F1 |none |`SMC_STRAP_OK`
 |`smu_system_timer_octs_test` |F1 |smc_under_smu, hosted |`CHK-OCTS-COUNT-MONOTONIC`
 |`smu_smc_security_demote_pm_test` |F7 |`--dut smu_block` `nosep` |`DEMOTE_TIEOFF_OBS`
 |`smu_i3c_mem_port_connectivity_test` |F4 |smc_under_smu, hosted |`CHK-SUB-AXIL-LOCAL-S1`

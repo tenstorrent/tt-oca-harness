@@ -537,9 +537,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_dtp_jtag2axi_smoke_test": [
         ("CHK-JTAG2AXI-SMOKE-SCRATCH", "CHK-JTAG2AXI-SMOKE-SCRATCH", "J2A scratch write/readback"),
     ],
-    "smu_smc_gpio_strap_sanity_test": [
-        ("CHK-SMC-STRAP", "SMC_STRAP_OK", "GPIO strap observe"),
-    ],
     "smu_smc_mailbox_int_test": [
         (
             "CHK-SMC-MBX-IRQ-EXT-S2",

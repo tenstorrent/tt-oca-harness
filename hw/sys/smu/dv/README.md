@@ -320,6 +320,5 @@ under `cocotb_wrapper/tests/`, the SEP-driven SMC bring-up images
 reach) and `smu_cold_reset_async_assert_test` (the asynchronous cold-reset
 assertion `port_table.adoc` states and the SMC reset controller does not
 implement); under `cocotb/tests/`, `smu_ext_axi_global_addr_smoke_test` (the
-OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs) and
-`smu_smc_gpio_strap_sanity_test` (reads a strap symbol the generated SMC
-header no longer carries). Their docstrings carry the same reasons.
+OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs). Their
+docstrings carry the same reasons.

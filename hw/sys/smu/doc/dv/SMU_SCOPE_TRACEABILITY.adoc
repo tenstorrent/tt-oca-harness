@@ -63,7 +63,7 @@ is `SMU_FEATURE_LIST.adoc`; this table is the credit decision.
 |===
 |Requirement |Canonical tests |Groups |Coverage intent |Checker evidence |Credit
 |F1 SMC boot / firmware observe |reset / mailbox / WDT / OCTS cluster (`smu_smc_reset_ctrl_test`, `smu_smc_mailbox_sanity_test`, `smu_smc_wdt_sanity_test`, `smu_system_timer_octs_test`) |`hosted` |`smc_boot_cg` / `wdt_cg` |`RST_PRIMARY_SMC_1`, `SMC_MBX_CSR_OK`, `WDT_UNLOCK_OK`, `CHK-OCTS-COUNT-MONOTONIC` |YES for the cluster. `smu_smc_smoke_test` (`CHK-SMC-FAB-DUAL-NET-S2`) is in `fw_smoke` / `all` only, which nothing schedules, and adds no credit here
-|F1 GPIO strap |`smu_smc_gpio_strap_sanity_test` |none |`smc_boot_cg` |`SMC_STRAP_OK` |NO
+|F1 GPIO strap |none: `smc_wrapper` declares no `captured_straps_i`, so the feature has no testcase on either bench (`SMU_DEFERRED_DISPOSITION.adoc`) |none |`smc_boot_cg` |none |NO
 |F1 boot-sequence gate |`smu_ext_boot_seq_gate_test` |`hosted`, `smoke` |`smc_boot_cg` |`CHK-BOOT-SEQ-GATE` |YES
 |F1 mailbox IRQ export |`smu_smc_mailbox_int_test` |`hosted`, `smc_under_smu` |`smc_boot_cg` |`CHK-SMC-MBX-IRQ-EXT-S2` |YES
 |F2 Real SEP under SMU |— |wrapper `sep_rtl` only |— |wrapper `DUT_TAG=WRAPPER` boot tokens |NO

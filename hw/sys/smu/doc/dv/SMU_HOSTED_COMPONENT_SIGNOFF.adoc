@@ -78,8 +78,8 @@ carries no release credit until one of them is scheduled.
 `hosted` (the former also in `smoke`).
 
 eFuse / burn under SMU is OUT (SEP=1 / child-TB).
-`smu_smc_gpio_strap_sanity_test` is named in `SMU_FEATURE_LIST.adoc`
-but is enrolled in no group of `testlists/all.toml`; it is not release credit.
+The GPIO strap feature has no testcase on either bench (`smc_wrapper` declares
+no `captured_straps_i`); it is not release credit.
 
 [[smu-signoff-482]]
 === DTP-under-SMU

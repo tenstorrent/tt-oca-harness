@@ -10,7 +10,7 @@ credit set `hosted`; <<smu-bench-standins>> is the record of every
 stand-in, force, skip and waiver on a proof path of an enrolled test. The
 table first. Three kinds of name are in it. Fifteen have a test body and are
 enrolled in `testlists/all.toml`; their bucket says which group holds them
-and why that group is not credit. Eight have a test body under
+and why that group is not credit. Seven have a test body under
 `hw/sys/smu/dv/cocotb_wrapper/tests/` or `cocotb/tests/` and are enrolled in
 no testlist, because they cannot run or cannot pass on either bench; their
 bucket says what each needs. The rest have no test body in this tree. None of
@@ -32,7 +32,7 @@ Enrolled names outside this catalog:
 
 * The JTAG2AXI / OTP / filter set in `hosted` is recorded in `SMU_HOSTED_COMPONENT_SIGNOFF.adoc`, which also records ATOP reject as OUT.
 * `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are enrolled in `hosted` (`testlists/all.toml`).
-* The two unenrolled bodies under `cocotb/tests/`, `smu_ext_axi_global_addr_smoke_test` and `smu_smc_gpio_strap_sanity_test`, are in the table below under `not-runnable`.
+* The one unenrolled body under `cocotb/tests/`, `smu_ext_axi_global_addr_smoke_test`, is in the table below under `not-runnable`.
 
 [cols="3,2,5",options="header"]
 |===
@@ -431,8 +431,8 @@ Enrolled names outside this catalog:
 |not-runnable
 |Body under `cocotb/tests/`; enrolled in no testlist. The OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs; `cocotb/env/smu_evidence_map.py` `UNMAPPED_TESTS` records the same reason.
 |smu_smc_gpio_strap_sanity_test
-|not-runnable
-|Body under `cocotb/tests/`; enrolled in no testlist. Reads the retired `SMC_TOP_SMC_RESET_UNIT_STRAPS_LO` symbol, which the captured-straps move took out of the generated SMC header, so the module no longer imports; superseded by the strap observation in `smu_smc_boundary_io_test`.
+|waived
+|No body. It read the retired `SMC_TOP_SMC_RESET_UNIT_STRAPS_LO` symbol, which the captured-straps move took out of the generated SMC header, and `smc_wrapper` declares no `captured_straps_i`, so the strap feature has no testcase on either bench (the SMC package records the same in its `depth.toml`). Do not re-enroll this name.
 |===
 
 [[smu-bench-standins]]
