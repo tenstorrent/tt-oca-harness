@@ -6,11 +6,10 @@
 
 [[debug-test-ports,Debug and Test Ports (DTP)]]
 
-The Debug & Test Ports (DTP) module provides the debug and test infrastructure
-for Tenstorrent chiplets. It integrates the JTAG Interface Unit (JIU) and the
-Cross Trigger Network (CTN) into a single instantiable subsystem that exposes
-a standard external JTAG port, internal debug bridges, and a configurable
-cross-trigger fabric.
+The Debug & Test Ports (DTP) module provides debug and test infrastructure. It
+integrates the JTAG Interface Unit (JIU) and the Cross Trigger Network (CTN)
+into a single instantiable subsystem that exposes a standard external JTAG
+port, internal debug bridges, and a configurable cross-trigger fabric.
 
 == Capabilities
 

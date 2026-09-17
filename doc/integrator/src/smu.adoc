@@ -998,8 +998,8 @@ gap between OCAH core interfaces and adopter-specific IP:
   useful when integrating the SMC without the DTP/SEP subsystems.
 
 Neither the wrappers nor the IP integration modules are part of the OCAH
-deliverable; they exist as integration guides and for Tenstorrent internal
-usage. Adopters must develop their own equivalents following the interface
+deliverable; they exist as integration guides. Adopters must develop their
+own equivalents following the interface
 patterns demonstrated in these modules. The interface contracts at the module
 boundaries ensure technology substitution without modifying the verified OCAH
 logic.
