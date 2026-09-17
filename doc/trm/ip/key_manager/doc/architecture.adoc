@@ -1,7 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= Key Manager (KM) (moved)
-
-This page has moved.
-See xref:ip:key_manager/doc/index.adoc[Key Manager (KM)].

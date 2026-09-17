@@ -1,9 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= DTP Port Table (moved)
-
-[[dtp-port-reference]]
-
-This page has moved.
-See xref:dtp:reference.adoc#dtp-port-reference[DTP Configuration and Reference].

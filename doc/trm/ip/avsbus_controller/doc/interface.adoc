@@ -1,7 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= AVSBus Controller Interface (moved)
-
-This page has moved.
-See xref:ip:avsbus_controller/doc/index.adoc#avsbus-controller-interface[AVSBus Controller Interface].

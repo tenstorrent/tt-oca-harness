@@ -1,7 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= System Timer OCTS Programming (moved)
-
-This page has moved.
-See xref:ip:system_timer_octs/doc/index.adoc#system-timer-octs-programming[System Timer OCTS Programming].

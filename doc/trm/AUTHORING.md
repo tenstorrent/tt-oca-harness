@@ -104,10 +104,14 @@ Place an explicit anchor before every section a reader might link to:
 Use kebab-case IDs prefixed with the subsystem or IP name (`smu-`, `dtp-`,
 `sep-`, `smc-`). Anchor IDs are public URLs; do not rename them once published.
 
-When a section moves to a new page, the **old page** must keep the old anchor
-and add an onward link. The new page carries the authoritative content. In the
-PDF assembly, guard the old compatibility anchor with `ifdef::backend-html5[]`
-so the assembled book contains only one destination with that ID:
+When a section moves to a new page, update every inbound `xref:` to the owning
+page and anchor. Keep topic fragments in `partials/`; do not publish standalone
+"This page has moved" pages.
+
+An existing content page may retain an old anchor and an onward link for
+published bookmarks. In the PDF assembly, guard that compatibility anchor with
+`ifdef::backend-html5[]` so the assembled book contains only one destination
+with that ID:
 
 ```adoc
 // In old page (e.g., architecture.adoc) — HTML only:

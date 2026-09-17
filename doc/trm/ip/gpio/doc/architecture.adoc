@@ -1,7 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= GPIO Peripheral Architecture (moved)
-
-This page has moved.
-See xref:ip:gpio/doc/index.adoc#gpio-architecture[GPIO Peripheral Architecture].

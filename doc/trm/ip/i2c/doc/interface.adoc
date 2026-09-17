@@ -1,7 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= I2C Controller Interface (moved)
-
-This page has moved.
-See xref:ip:i2c/doc/index.adoc#i2c-interface[I2C Controller Interface].

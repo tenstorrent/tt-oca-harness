@@ -141,10 +141,8 @@ for s in $SUBSYSTEMS; do
   stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
   stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
 done
-# SMU's port_table.adoc is a private fragment for the ROOT partial only.
-# Remove it from smu/pages/ to prevent an Untitled standalone URL.
-# SEP/SMC/DTP retain their port_table pages; restrict this exclusion to SMU.
-rm -f "$MOD/smu/pages/port_table.adoc"
+# DTP and SMU port tables are private ROOT partials included by their owning pages.
+rm -f "$MOD/dtp/pages/port_table.adoc" "$MOD/smu/pages/port_table.adoc"
 
 # --- aou: each product stages only the section it publishes ---
 rm -rf "$MOD/aou"
@@ -207,18 +205,6 @@ for ip in $IP_PAGE_OWNERS; do
     fi
   done
 done
-
-# --- compat pages: HTML-only redirects for old fragment URLs. Staged into
-#     ip/pages/ so the old URL path still resolves; absent from PDF assembly. ---
-for ip in $IP_PAGE_OWNERS; do
-  src="$DOC/trm/ip/$ip/doc"
-  dst="$MOD/ip/pages/$ip/doc"
-  [ -d "$src" ] && stage_adoc_tree "$src" "$dst"
-done
-# DTP port_table compat page (old dtp/pages/port_table.adoc path).
-if [ -f "$DOC/trm/dtp/port_table.adoc" ]; then
-  cp -f "$DOC/trm/dtp/port_table.adoc" "$MOD/dtp/pages/port_table.adoc"
-fi
 
 # --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
 #     collateral is generated into the lowRISC overlay rather than hw/ip, because

@@ -1,9 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= Cross-Trigger Matrix Interface (moved)
-
-[[ctm-interface]]
-
-This page has moved.
-See xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-interface[Cross-Trigger Matrix Interface].

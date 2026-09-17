@@ -1,7 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= Telemetry Receiver Interface (moved)
-
-This page has moved.
-See xref:ip:telemetry_receiver/doc/index.adoc#telemetry-receiver-interface[Telemetry Receiver Interface].

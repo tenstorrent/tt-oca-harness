@@ -1,7 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= I3C Core Controller Architecture (moved)
-
-This page has moved.
-See xref:ip:i3ccore_wrap/doc/index.adoc#i3ccore-wrap-architecture[I3C Core Controller Architecture].
