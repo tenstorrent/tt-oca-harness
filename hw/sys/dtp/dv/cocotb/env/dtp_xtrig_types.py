@@ -75,6 +75,10 @@ XTRIG_CTP_STRIDE = 0x10
 XTRIG_CSR_END = XTRIG_CTP_BASE + (XTRIG_NUM_CTP * XTRIG_CTP_STRIDE)
 XTRIG_UNMAPPED_BASE = XTRIG_CSR_END
 
+# Read data the crossbar's error subordinate returns alongside DECERR on an
+# unmapped XTRIG address (the low word of the pulp axi_err_slv response word).
+XTRIG_DECERR_DATA = 0xBADC_AB1E
+
 XTRIG_CTP_CONFIG_OFFSET = _ctp_reg.CONFIG_REG_OFFSET
 XTRIG_CTP_STATUS_OFFSET = _ctp_reg.STATUS_REG_OFFSET
 XTRIG_CTP_STRETCH_MULT_OFFSET = _ctp_reg.STRETCH_MULT_REG_OFFSET

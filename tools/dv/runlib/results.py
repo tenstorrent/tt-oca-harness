@@ -928,10 +928,17 @@ def result_payload(
     site = _site_layer_label(args)
     if site:
         payload["site"] = site
-    selection = {
+    selection: dict[str, Any] = {
         key: list(getattr(args, f"_{key}", []) or []) if args is not None else []
         for key in ("skipped_unimplemented", "skipped_excluded")
     }
+    # Scenarios this tool cannot run (per-test `tools`). Added only when non-empty,
+    # so a run with no tool restriction keeps the two-key payload shape the
+    # framework-bindings tests pin; recorded so a result that graded fewer items
+    # than the group lists says why.
+    wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or []) if args is not None else []
+    if wrong_tool:
+        selection["skipped_wrong_tool"] = wrong_tool
     if any(selection.values()):
         payload["selection"] = selection
     if progress is not None:

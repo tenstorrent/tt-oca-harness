@@ -45,14 +45,20 @@ register 8, and adds that offset to the SEP-visible SMC SRAM base.
 
 === Manifest layout
 
-The current manifest is a packed 1184-byte `manifest_t`. It contains a
-to-be-signed region, a signature field, the SHA-256 manifest hash, and boot
-arguments. The payload offset is relative to the manifest. The payload begins
-with a `PTOC` header followed by 216-byte image entries and their image data.
+The manifest is an OCA classic manifest with a 4096-byte body. Bytes
+`[0, 3172)` are the signed region -- everything from the magic through the
+four-byte `0xCA` trailer at offset 3168 -- which both the RSA signature and the
+manifest hash cover. Bytes `[3172, 4096)` are the unsigned tail holding the
+signature, the manifest hash and the payload offset. Because the payload offset
+is in that tail it is attacker-controlled even on a validly signed manifest, so
+the ROM bounds it against the region the slot may reach rather than trusting it.
+The payload begins with a `PTOC` header followed by the image entries and their
+image data.
 
-The format and its numeric constants are defined by
-`include/manifest.h`. The YAML files under `configs/` are test-image producer
-inputs; they do not supersede the C structure consumed by BL0.
+The format and its numeric constants come from the OCA specification and its
+layout header, `tools/tt-oca-manifest/validators/oca/lib/oca_layout_classic.h`,
+vendored as a submodule. The YAML files under `configs/` are test-image producer
+inputs; they do not supersede the format the library consumes on BL0's behalf.
 
 === Per-slot validation
 

@@ -42,6 +42,14 @@ class SepBootScoreboard(uvm_component):
         # booted). A test that boots a different firmware sets this to its own
         # banner; "" skips the banner check (relying on PC-advance + fw_pass).
         self.expected_line = _EXPECTED_LINE
+        # Whether this test expects the firmware to reach PASS. A negative boot
+        # test -- one proving the ROM REFUSES a bad image -- sets this False,
+        # which inverts the gate: a PASS becomes the failure. It does not merely
+        # relax the check, because "no PASS magic" is also what a ROM that crashed
+        # in its first instruction produces, and that must not pass a test
+        # claiming the refusal was deliberate. The PC-advance check below stays in
+        # force either way and is what separates the two.
+        self.expect_fw_pass = True
 
     def note_run_ack(self, val: int) -> None:
         if val:
@@ -84,7 +92,21 @@ class SepBootScoreboard(uvm_component):
                 f"PC did not advance (only {distinct} distinct fetch PCs; "
                 f"core likely never booted out of ICCM)"
             )
-        if not self.fw_done:
+        if not self.expect_fw_pass:
+            # The gate is on fw_pass, not on fw_done. A refused boot still
+            # completes: rom_err_fail() reports the failure through the mailbox,
+            # so fw_done asserts with fw_pass low. That is the ROM behaving
+            # correctly, and requiring fw_done to stay low would fail a boot that
+            # was refused exactly as intended. What must not happen is a PASS,
+            # which only BL1 can produce and therefore only after the ROM handed
+            # control to a payload it should have rejected.
+            if self.fw_pass:
+                errors.append(
+                    "firmware signaled PASS on a boot that was required to be "
+                    "refused: the ROM handed control to a payload it should have "
+                    "rejected"
+                )
+        elif not self.fw_done:
             errors.append("firmware never signaled completion (no PASS/FAIL magic at 0x80000000)")
         elif not self.fw_pass:
             errors.append("firmware signaled FAIL (0xDEADBEEF)")
@@ -98,5 +120,5 @@ class SepBootScoreboard(uvm_component):
         done = ["core booted"]
         if self.expected_line:
             done.append("console banner seen")
-        done.append("firmware PASS")
+        done.append("firmware PASS" if self.expect_fw_pass else "boot refused as required")
         self.logger.info("SEP boot PASS: %s", ", ".join(done))

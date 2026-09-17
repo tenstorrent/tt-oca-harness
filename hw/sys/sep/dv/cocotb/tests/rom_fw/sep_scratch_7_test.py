@@ -253,7 +253,7 @@ class _WarmDispatchObserver:
             f"0x{_HANDLER_ADDR:08x}; observed {cold7_hex}. The tb deposit did "
             f"not take, so this run says nothing about the warm path"
         )
-        log.info("CHK-COLD7-SEED: cold_scratch[7] held 0x%08x", _HANDLER_ADDR)
+        log.info("CHK-COLD7-SEED PASS: cold_scratch[7] held 0x%08x", _HANDLER_ADDR)
 
         # CHK-ANNOUNCE: the ROM took the accept arm and said so before leaving.
         assert _STATUS_WARM_RESET_JUMP in self.status_seq, (

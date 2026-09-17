@@ -36,48 +36,34 @@
 //       therefore the DUT's own statement that the transfer finished, and one
 //       that reads back nonzero is its statement that it did not.  [S1]:118-128
 //
-// DECLARED INTENT vs RTL:
-//   [S1]:148-150 leaves the two `hwenable` bindings commented out
-//   (INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR, and the
-//   LOG_WRITE_ERR twin).  So the RDL DECLARES the intent -- a masked interrupt
-//   must not capture into its status bit -- but does not yet express it as a
-//   generated property.  The ENABLE-gating arms below check that DECLARED
-//   INTENT and nothing more.  Whether INTR_ENABLE gates INTR_STATUS capture
-//   or only the IRQ output is settled as an RTL defect: the RTL gates the SET
-//   path where prim_intr_hw masks the OUTPUT, and the intended form is the
-//   output-mask form.
-// The two ENABLE-gating arms below expect no capture while masked, which is
-// the SET-path gating the RTL has today. Those arms must then expect capture
-// while masked if the log engine moves to the output-mask form.
+// INTR_ENABLE SEMANTICS:
+//   INTR_ENABLE masks irq_o only.  INTR_STATUS latches whether or not the
+//   interrupt is enabled and is cleared only by W1C, as prim_intr_hw does, so
+//   an event that arrives while masked is held, not lost.  The two mask arms
+//   in scenario 0b check exactly that: an INTR_TEST pulse sets the status bit
+//   with ENABLE=1 and again with ENABLE=0, and a W1C clears it with ENABLE
+//   still 0.
 //
 //==========================================================================
-// OBSERVED DUT BEHAVIOUR THIS TEST MUST WORK AROUND (not an expectation)
+// ERROR-EVENT SEMANTICS AND HOW THIS TEST CLEARS A LATCHED ERROR
 //==========================================================================
-// The log-fetch master's error flag is combinational on the AXI-Lite read
-// response and is not qualified by response-valid, so once a DECERR has been
-// returned the flag stays asserted until some LATER response drives the read
-// response back to OKAY.  Clearing CTRL.EN does not retire it.
+// log_engine.sv qualifies the fetch master's response error with the
+// response strobe, so each errored beat is a one-cycle event that INTR_STATUS
+// latches (`level intr` + `woclr`, [S1]) and a W1C retires.  Two consequences
+// for the scenarios below:
 //
-// Two consequences, both handled below:
+//   1. A RUNNING engine pointed at an unmapped region keeps issuing fetches,
+//      so DECERR events keep arriving and a W1C cannot stick until CTRL.EN is
+//      cleared.  Every scenario therefore stops the engine before it clears,
+//      and the clear is PROVEN by reading back 0 (clear_intr_or_fail).
 //
-//   1. TO CLEAR THE STATUS BIT: while INTR_ENABLE is set and the cause is
-//      stuck, `level intr` semantics ([S1]) mean the bit is re-set every
-//      cycle and a W1C can never stick -- a retry loop can only spin.  Mask
-//      INTR_ENABLE first, then W1C, then read back.  See clear_intr_or_fail().
+//   2. TO MAKE A LATER SCENARIO'S POLL MEAN ANYTHING: the clear is proven to
+//      HOLD over a settle window (assert_fetch_err_retired), otherwise the
+//      next scenario's poll would again be reading the PREVIOUS scenario's
+//      error and would return on its first iteration whether or not the new
+//      stimulus did anything at all.  A good fetch out of SPM is run first
+//      (retire_fetch_err) to show the engine recovers after an aborted fetch.
 //
-//   2. TO MAKE A LATER SCENARIO'S POLL MEAN ANYTHING: masking is not enough.
-//      The instant INTR_ENABLE is restored, the still-stuck cause re-latches
-//      the bit, so the next scenario's poll would again be reading the
-//      PREVIOUS scenario's error and would return on its first iteration
-//      whether or not the new stimulus did anything at all.  The cause itself
-//      must be retired by running one SUCCESSFUL fetch, and the retirement
-//      must be PROVEN by restoring INTR_ENABLE=1 and observing the bit stay 0
-//      -- an observation masking alone could not produce.
-//      See retire_fetch_err() + assert_fetch_err_retired().
-//
-// This is a workaround for observed behaviour, and is tracked as a design
-// question (unqualified error flag on the log-fetch master).  It is never
-// asserted as a golden expectation by this test.
 //
 // Failures call test_fail(0) (noreturn).
 
@@ -159,13 +145,13 @@ _Static_assert(UNMAPPED_ADDR >= WDT_REGION_END,
 _Static_assert(UNMAPPED_ADDR + UNMAPPED_SPAN <= SMC_TOP_SMC_RESET_UNIT_BASE_ADDR,
                "UNMAPPED_ADDR + span must end at or before the reset unit base");
 
-/* Scratch region used for the SUCCESSFUL fetch that retires a stuck fetch
- * error.  Real, mapped SPM. */
+/* Scratch region used for the SUCCESSFUL fetch that proves the engine recovers
+ * from an aborted one.  Real, mapped SPM. */
 #define LOG_BUF_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
 #define GOOD_REGION_SIZE 0x100u /* 256 B region -> slot 0 spans 16 B */
 #define GOOD_XFER_LEN 16u       /* == UART FIFO depth, so loopback cannot overrun */
 
-/* Re-latch/settle window for the ENABLE-gating and source-retired arms.
+/* Settle window for the mask, event and clear-holds arms.
  * Each iteration is a full CPU read across the AXI-Lite fabric to the log
  * engine CSR block, so RELATCH_POLLS samples span far more engine clocks than
  * the single cycle in which `level intr` capture would occur ([S1]).  Bounded
@@ -199,16 +185,14 @@ static void chk_ok(const char *line) {
 
 /* Clear level-interrupt status bits and PROVE they cleared.
  *
- * A `for (i<100) { W1C; if clear break; }` loop cannot clear these bits while
- * INTR_ENABLE is set and the cause is stuck: by `level intr` semantics ([S1])
- * the bit is re-set every cycle, so such a loop exhausts and reports nothing.
- * Mask first (which per the declared hwenable intent gates capture off), then
- * W1C, then read back and FAIL if anything survived.  Finally restore the
- * requested INTR_ENABLE mask.
+ * Only valid once the engine is stopped (or the cause was a self-retiring
+ * INTR_TEST pulse): a running engine on an unmapped region keeps producing
+ * DECERR events, and INTR_ENABLE cannot help because it masks irq_o, not the
+ * capture.  W1C, then read back and FAIL if anything survived.  Finally set
+ * INTR_ENABLE to the requested mask.
  */
 static void clear_intr_or_fail(uint64_t le_base, uint32_t bits, uint32_t restore_enable,
                                const char *where) {
-    write_reg(le_base + LE_INTR_ENABLE_OFF, 0u);   /* mask -> gate capture off */
     write_reg(le_base + LE_INTR_STATUS_OFF, bits); /* W1C */
     uint32_t left = read_reg(le_base + LE_INTR_STATUS_OFF) & bits;
     if (left != 0u) {
@@ -230,8 +214,8 @@ static void setup_uart_for_log_writes(void) {
     write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u); /* FCR: FIFOs enabled */
 }
 
-/* Retire a stuck log-fetch error by giving the fetch master a SUCCESSFUL
- * response: run one real 16-byte transfer out of SPM into the UART.
+/* Show the engine recovers after an aborted fetch: run one real 16-byte
+ * transfer out of SPM into the UART and require it to complete.
  *
  * Completion is observed from the DUT, not assumed: LOG_CTRL[0].LOG_LEN is
  * `hwclr` ([S1]:118-128), so hardware zeroing it is the engine's own statement
@@ -260,20 +244,20 @@ static void retire_fetch_err(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
 }
 
-/* Prove the fetch-error cause is genuinely gone, not merely masked.
+/* Prove the fetch-error status is genuinely clear.
  *
- * Clear with INTR_ENABLE restored to 1, then require the bit to STAY 0 over
- * the full settle window.  A masked-but-stuck cause could not produce this
- * observation: the instant INTR_ENABLE went back to 1 the bit would re-latch.
- * This is what gives the scenario that follows a baseline it has proven, so
- * its own poll can only be satisfied by its own stimulus.
+ * Clear, then require the bit to STAY 0 over the full settle window.  A still-
+ * running errored fetch could not produce this observation: it would re-latch
+ * the bit on its next beat.  This is what gives the scenario that follows a
+ * baseline it has proven, so its own poll can only be satisfied by its own
+ * stimulus.
  */
 static void assert_fetch_err_retired(const char *where) {
     clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, BIT_FETCH_ERR, where);
     for (uint32_t i = 0; i < RELATCH_POLLS; i++) {
         uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
         if (s != 0u) {
-            info_msg_hex32_s(0, "FAIL: fetch-err cause not retired, status=", s);
+            info_msg_hex32_s(0, "FAIL: LOG_FETCH_ERR did not stay clear, status=", s);
             fail_at(where);
         }
     }
@@ -291,7 +275,7 @@ int main(void) {
     volatile uint8_t *sbuf = (volatile uint8_t *)(uintptr_t)LOG_BUF_BASE;
     for (uint32_t i = 0; i < GOOD_XFER_LEN; i++) sbuf[i] = (uint8_t)(0xD0u + i);
 
-    // Make sure status is clear (and INTR_ENABLE on so W1C path is valid).
+    // Make sure status is clear.
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR);
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);
@@ -312,7 +296,7 @@ int main(void) {
     //
     // Running first matters: INTR_TEST is the only fetch/write error cause
     // this firmware can raise AND retire on demand, so it is also the cleanest
-    // available positive/negative control pair for the ENABLE-gating intent.
+    // available control for the INTR_ENABLE mask arms in scenario 0b.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario 0: INTR_TEST self-test term (FETCH_ERR + WRITE_ERR)");
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
@@ -349,22 +333,17 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO 0b — ENABLE gating, checked with the controlled INTR_TEST cause.
-    //
-    // CHECKS DECLARED INTENT, NOT RTL.  See the DECLARED INTENT vs RTL block at the
-    // top of this file: [S1]:148-150 declares
-    //     INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR
-    // but leaves it commented out pending a PeakRDL fix, and [S2] records the
-    // behaviour as unverified.  If that question is resolved the other way
-    // ("ENABLE gates only the IRQ output"), THIS is the check to change.
+    // SCENARIO 0b — INTR_ENABLE masks irq_o only; INTR_STATUS captures while
+    // masked.  Checked with the controlled INTR_TEST cause.
     //
     // Both arms use the same cause in the same window, so neither can pass on
     // a dead source: the ENABLE=1 arm proves an INTR_TEST pulse does set the
-    // bit here and now, and only then does the ENABLE=0 arm's "stays 0" mean
-    // gating rather than absence of stimulus.
+    // bit here and now, and only then does the ENABLE=0 arm's "also sets" mean
+    // capture-while-masked rather than a stale bit.  The masked arm then
+    // proves the W1C path does not depend on the enable either.
     //--------------------------------------------------------------------------
-    info_msg_s(0, "scenario 0b: INTR_ENABLE gating of INTR_STATUS capture");
-    { /* positive arm: ENABLE=1 -> an INTR_TEST pulse must set the bit */
+    info_msg_s(0, "scenario 0b: INTR_ENABLE masks the output, not INTR_STATUS capture");
+    { /* enabled arm: ENABLE=1 -> an INTR_TEST pulse must set the bit */
         write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR);
         write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_FETCH_ERR);
         uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
@@ -372,24 +351,31 @@ int main(void) {
             info_msg_hex32_s(0, "FAIL: ENABLE=1 INTR_TEST pulse did not set status, observed=", s);
             test_fail(0);
         }
-        chk_ok("CHK-ENABLE-GATE-POSITIVE: ENABLE=1 + INTR_TEST pulse -> "
+        chk_ok("CHK-CAPTURE-ENABLED: ENABLE=1 + INTR_TEST pulse -> "
                "INTR_STATUS.LOG_FETCH_ERR observed 0x1 (expected 0x1)");
     }
-    { /* negative arm: ENABLE=0 -> the same pulse must NOT set the bit */
+    { /* masked arm: ENABLE=0 -> the same pulse must ALSO set the bit, and a
+       * W1C with ENABLE still 0 must clear it */
         clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, 0u,
-                           "FAIL: could not clear before the ENABLE=0 gating arm");
+                           "FAIL: could not clear before the ENABLE=0 capture arm");
         write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_FETCH_ERR);
+        uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
+        if (s != BIT_FETCH_ERR) {
+            info_msg_hex32_s(0, "FAIL: ENABLE=0 INTR_TEST pulse was lost, status=", s);
+            fail_at("FAIL: INTR_STATUS must capture while masked (INTR_ENABLE masks "
+                    "irq_o only)");
+        }
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR); /* W1C, ENABLE=0 */
         for (uint32_t i = 0; i < RELATCH_POLLS; i++) {
-            uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
-            if (s != 0u) {
-                info_msg_hex32_s(0, "FAIL: ENABLE=0 but INTR_TEST pulse latched status=", s);
-                fail_at("FAIL: INTR_ENABLE gating of INTR_STATUS capture is broken "
-                        "(see the DECLARED INTENT vs RTL note at the top of this file)");
+            uint32_t r = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
+            if (r != 0u) {
+                info_msg_hex32_s(0, "FAIL: W1C with ENABLE=0 did not stick, status=", r);
+                fail_at("FAIL: W1C must clear a masked, self-retired cause");
             }
         }
-        chk_ok("CHK-ENABLE-GATE-NEGATIVE: ENABLE=0 + INTR_TEST pulse -> "
-               "INTR_STATUS.LOG_FETCH_ERR observed 0x0 on every sample "
-               "(expected 0x0)");
+        chk_ok("CHK-CAPTURE-MASKED: ENABLE=0 + INTR_TEST pulse -> "
+               "INTR_STATUS.LOG_FETCH_ERR observed 0x1 (expected 0x1), then W1C with "
+               "ENABLE=0 observed 0x0 on every sample (expected 0x0)");
     }
 
     //--------------------------------------------------------------------------
@@ -423,49 +409,42 @@ int main(void) {
                "INTR_STATUS.LOG_FETCH_ERR observed 0x1 (expected 0x1)");
     }
 
-    /* Positive ENABLE-gating arm on the REAL source.
+    /* Event arm on the REAL source.
      *
-     * Scenario 0b established the gating intent with an INTR_TEST pulse, which
-     * proves the capture path is live but says nothing about log_fetch_err
-     * itself.  The engine is still enabled here and scenario A's cause is still
-     * asserted, so a W1C that restores INTR_ENABLE=1 must see the bit come
-     * straight back.  A dead source cannot produce that observation, which is
-     * what stops the ENABLE=0 arm below from passing on absence of stimulus. */
-    {
-        clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, BIT_FETCH_ERR,
-                           "FAIL: could not clear before the stuck-source re-latch arm");
-        uint32_t t = RELATCH_POLLS;
-        while (t > 0u && (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
-            t--;
-        }
-        if (t == 0u) {
-            fail_at("FAIL: ENABLE=1 but the stuck log_fetch_err never re-latched "
-                    "(source dead -> the masked-clear below proves nothing)");
-        }
-        chk_ok("CHK-STUCK-SOURCE-RELATCHES: ENABLE=1 with scenario A's cause still "
-               "asserted -> INTR_STATUS.LOG_FETCH_ERR observed 0x1 (expected 0x1)");
-    }
-
+     * Scenario 0b used an INTR_TEST pulse, which proves the capture path is
+     * live but says nothing about log_fetch_err itself.  Stop the engine so no
+     * further DECERR beat can arrive, W1C, and require the bit to STAY 0: the
+     * error was an event that the status bit latched, not a level the fetch
+     * master holds (see the semantics note at the top).  Without stopping the
+     * engine first this clear could not hold, which is what the retire-and-
+     * prove step before scenario B relies on. */
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, 0u,
-                       "FAIL: W1C did not clear LOG_FETCH_ERR after masking ENABLE");
+    {
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR); /* W1C */
+        for (uint32_t i = 0; i < RELATCH_POLLS; i++) {
+            uint32_t r = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
+            if (r != 0u) {
+                info_msg_hex32_s(0, "FAIL: LOG_FETCH_ERR re-latched with the engine stopped, "
+                                    "status=", r);
+                fail_at("FAIL: log_fetch_err is behaving as a level, not an event");
+            }
+        }
+        chk_ok("CHK-FETCH-ERR-IS-EVENT: engine stopped, W1C -> "
+               "INTR_STATUS.LOG_FETCH_ERR observed 0x0 on every sample (expected 0x0)");
+    }
 
     //--------------------------------------------------------------------------
     // SCENARIO B — sustained fetch-error sequence over a 4 KB region so the
     // fetch FSM spends multiple cycles in WAIT before each DECERR resolves.
     //
-    // Scenario A left the fetch-error cause STUCK asserted (see the observed-
-    // behaviour note at the top).  Merely masking and W1C-ing would not help:
-    // restoring INTR_ENABLE re-latches the bit instantly, and the poll below
-    // would return on its first iteration reading scenario A's error whether
-    // or not the 4 KB region produced a single AXI beat.  Retire the cause
-    // with a real successful fetch and PROVE it retired first, so the poll
-    // below can only be satisfied by scenario B's own DECERR.
+    // Run a good fetch first to show the engine recovers after scenario A's
+    // aborted fetch, then PROVE the status is clear and stays clear, so the
+    // poll below can only be satisfied by scenario B's own DECERR.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: sustained DECERR fetch on large region");
 
     retire_fetch_err();
-    assert_fetch_err_retired("FAIL: scenario B could not start from a retired fetch-err cause");
+    assert_fetch_err_retired("FAIL: scenario B could not start from a clear LOG_FETCH_ERR");
 
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, UNMAPPED_SPAN);
@@ -484,7 +463,7 @@ int main(void) {
         if (timeout == 0u) {
             fail_at("FAIL: scenario B: large-region DECERR not detected");
         }
-        chk_ok("CHK-LARGE-REGION-DECERR: from a proven-retired cause, the 4 KB "
+        chk_ok("CHK-LARGE-REGION-DECERR: from a proven-clear status, the 4 KB "
                "unmapped region set INTR_STATUS.LOG_FETCH_ERR to 0x1 "
                "(expected 0x1)");
     }
@@ -533,10 +512,10 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario C: fetch-error path with WRITE_ERR also unmasked");
 
-    /* Same reasoning as scenario B: scenario B left the cause stuck, so retire
-     * and prove it before claiming anything about what happens next. */
+    /* Same reasoning as scenario B: recover with a good fetch and prove the
+     * clear holds before claiming anything about what happens next. */
     retire_fetch_err();
-    assert_fetch_err_retired("FAIL: scenario C could not start from a retired fetch-err cause");
+    assert_fetch_err_retired("FAIL: scenario C could not start from a clear LOG_FETCH_ERR");
 
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);

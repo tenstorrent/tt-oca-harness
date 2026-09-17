@@ -2336,6 +2336,49 @@ def validate_item_bindings(
     return kept
 
 
+def validate_item_tools(
+    catalog: TestCatalog, items: list[str], tool: str, args: argparse.Namespace
+) -> list[str]:
+    """Drop scenarios the selected tool cannot run, and name the ones dropped.
+
+    A scenario carrying `tools` runs only on the simulators it names. Unlike a missing
+    framework binding, this is not a gap someone closes by adding the entry -- it says
+    where the scenario's stimulus can work at all -- so a group- or tag-derived selection
+    drops it without needing a flag, recorded in run metadata and announced on the
+    console. An explicitly named `--items` test still errors instead: the caller asked
+    for that scenario by name, and quietly not running it would misreport the run.
+    """
+    restricted = [
+        name
+        for name in items
+        if name in catalog.tests
+        and catalog.tests[name].tools
+        and tool not in catalog.tests[name].tools
+    ]
+    if not restricted:
+        return items
+    explicit = [name for name in restricted if name in set(args.items or [])]
+    if explicit:
+        width = max(len(name) for name in explicit)
+        lines = "\n".join(
+            f"  {name:<{width}}  (runs on: {', '.join(catalog.tests[name].tools)})"
+            for name in explicit
+        )
+        raise ConfigError(
+            f"{len(explicit)} explicitly selected scenario(s) cannot run under tool "
+            f"`{tool}`:\n{lines}\n  fix: select one of the tools listed with --tool, or "
+            f"drop those scenarios from --items"
+        )
+    kept = [name for name in items if name not in set(restricted)]
+    if not kept:
+        raise ConfigError(
+            f"no selected scenario can run under tool `{tool}`: all {len(restricted)} "
+            f"are restricted to other tools"
+        )
+    setattr(args, "_skipped_wrong_tool", restricted)
+    return kept
+
+
 def _unimplemented_message(
     flow: Flow, catalog: TestCatalog, blocking: list[str], explicit: set[str]
 ) -> str:
@@ -2659,6 +2702,7 @@ def run_flow(
             if not items:
                 raise ConfigError(f"no tests match tag(s): {', '.join(args.tag)}")
         items = validate_item_bindings(flow, catalog, items, args)
+        items = validate_item_tools(catalog, items, tool, args)
 
     if need_items and not args.stage and "c_compile" in flow_stages(flow):
         if any(catalog.tests[item].firmware is not None for item in items):
@@ -2777,6 +2821,16 @@ def run_flow(
                 "selection",
                 f"{kind}={len(names)} framework={flow.framework} tests={','.join(names)}",
             )
+    # Reported on its own line rather than folded into the loop above: this one
+    # is keyed on the SIMULATOR, not on the framework, so it carries tool= and
+    # would say the wrong thing with framework=.
+    skipped_wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or [])
+    if skipped_wrong_tool:
+        console.event(
+            "selection",
+            f"skipped_wrong_tool={len(skipped_wrong_tool)} tool={tool} "
+            f"tests={','.join(skipped_wrong_tool)}",
+        )
     run_started = time.monotonic()
     results: list[StageResult] = []
     runs_by_item: dict[str, list[tuple[int, StageResult]]] = {}

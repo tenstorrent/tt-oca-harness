@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# OCA-classic RSA-3072 signed image anchored on ROM key slot 1.
+#
+# One of six near-identical configs (slot 0 is oca_secure_boot_test.yaml, slots
+# 1-5 are these) that exist to prove the ROM resolves each of its embedded key
+# digests independently. Each slot is signed by a DIFFERENT key: with one shared
+# key an off-by-one in slot resolution would still find a matching digest and the
+# whole set would pass while proving nothing. That is not hypothetical -- the
+# authorization and revocation paths were once indexing different keys.
+#
+# public_key_select_classic is a bitmap, not an index: slot 1 is bit 1 =
+# 0x02. Bits [7:0] are the ROM classical keys; the same numbering
+# indexes CHIPLET_PUBK_REVOKE, which is what makes the revocation tests meaningful.
+#
+# key_digests.c slot 1 pins the accepted key to the SHA-256 of this modulus.
+# Regenerate with tools/generate_key_digests.py if the key changes.
+manifest_format: oca-classic
+manifest_identifier: "OCAHSEP"
+description: "OCAH SEP ROM key slot 1 signed test image (BL1 = bl1_pass_test)"
+secure_boot: 1
+
+signature_type: 0x01                 # RSA-3072 PKCS#1 v1.5 / SHA-256
+signing_authority: local
+signing_key_name: "test_rom_key_1"
+signing_key_file: "tests/signing_keys/rsa_private_key.rom_key1.pem"
+public_key_select_classic: 0x02      # bit 1 = ROM key slot 1
+public_key_encoding: 0x02            # RAW (388 B: 384-byte modulus + 4-byte exponent)
+signature_encoding: 0x02             # RAW (384 B, big-endian)
+
+timestamp: 1764633600
+manifest_content_version:
+  major: 1
+  minor: 0
+  patch: 0
+payload_images:
+  - type: "OCAHSEP BLSTAGE1"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+    # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
+    # LMA of its .rodata/.data straight after, which _start copies down to DCCM --
+    # so it only runs correctly when loaded there. The ROM honours whichever region
+    # this names (SEP-ROM-MAN-060 permits SRAM or ICCM) and copies via the DMA,
+    # which is mandatory for an ICCM destination: the LSU cannot store to ICCM.
+    load_addr: 0xC0000000

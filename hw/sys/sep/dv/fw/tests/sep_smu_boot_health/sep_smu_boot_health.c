@@ -5,7 +5,7 @@
  * sep_smu_boot_health  --  minimal SEP boot-health firmware.
  *
  * Pure SEP default-run boot gate (no SMC, no mailbox, no xbar, no filter/aperture). The SEP EL2
- * default-runs after its reset chain releases (cla_ext_action_custom[2]=0 -> mpc_reset_run_req=1,
+ * default-runs after its reset chain releases (cla_ext_action_custom[2]=0 -> mpc_reset_run_req_i=1,
  * sampled at reset), retires boot-ROM then this ITCM image, and proves it is alive by writing
  * ALIVE then PASS to the SEP-LOCAL cold scratch7 (0x10802038) with a read-back after each, then
  * parks in a named pass loop. A read-back mismatch writes FAIL and parks in the fail loop. cocotb
