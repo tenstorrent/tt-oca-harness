@@ -4,6 +4,8 @@
 [[efuse-peripheral-module]]
 ==== eFuse
 
+NOTE: In this chapter, *eFuse* and *OTP* are used interchangeably.
+
 ===== Overview
 
 The eFuse IP provides secure One-Time Programmable (OTP) memory access
