@@ -21,7 +21,7 @@ dependencies declared by the manifest-tool submodule.
 Initialize that submodule once:
 
 ```bash
-git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 ```
 
 If the required RISC-V toolchain is not available on the host, use the
@@ -31,7 +31,7 @@ the host:
 ```bash
 ./scripts/docker-run.sh run-here \
   make -C hw/sys/sep/bootrom/prod toolchain-images
-make -C hw/sys/sep/bootrom/prod pack-images
+make -C hw/sys/sep/bootrom/prod oca-images
 ```
 
 When the host provides both tool sets, build the default ROM and packed image
@@ -65,9 +65,7 @@ Useful packaging and maintenance targets are:
 |---|---|
 | `make` | Build the default ROM, BL1 test payload, and SMC-SRAM package. |
 | `toolchain-images` | Build ROM images and the BL1 payload with the RISC-V toolchain. |
-| `pack-images` | Package the non-secure manifest and BL1 for the SMC-SRAM path. |
-| `secure_boot_spi` | Package the RSA-3072 signed SPI test image. |
-| `encrypted_boot_spi` | Package the signed, AES-CBC encrypted SPI test image. |
+| `oca-images` | Pack every OCA test image: one `.spi_preload` per entry in `OCA_IMAGES` (signed, encrypted, PQC, per-ROM-key and the negative cases) plus the bare SMC-SRAM bundle. |
 | `clean` | Remove every ROM variant and the BL1 test build. |
 
 For example, build both OpenTitan receive paths and the signed flash image:
@@ -75,7 +73,7 @@ For example, build both OpenTitan receive paths and the signed flash image:
 ```bash
 make -C hw/sys/sep/bootrom/prod ot-toolchain-images
 make -C hw/sys/sep/bootrom/prod ot-pio-toolchain-images
-make -C hw/sys/sep/bootrom/prod secure_boot_spi
+make -C hw/sys/sep/bootrom/prod oca-images
 ```
 
 ## Outputs
@@ -108,9 +106,13 @@ submodule are DV assets. They do not define production key provisioning.
 
 This ROM is not built by the shared firmware engine in `hw/common/dv/fw/`, so
 `make -f ocah.mk ocah-dv-fw-tests` does not produce it. `[c_build.boot_rom]` in
-`hw/sys/sep/dv/sep_sim_cfg.toml` runs `toolchain-images` and `pack-images` from
-this directory during the `c_compile` stage, falling back to the toolchain
-container when the host compiler has no picolibc. The OpenTitan variants have
+`hw/sys/sep/dv/sep_sim_cfg.toml` runs `toolchain-images-build` and then
+`oca-images` from this directory during the `c_compile` stage, falling back to
+the toolchain container when the host compiler has no picolibc. The split is
+deliberate: `toolchain-images-build` needs the RISC-V toolchain and can run in
+the container, while `oca-images` is pure Python and must run on the HOST,
+because the packer's dependencies come from `uv` and the toolchain rootfs has
+none. The OpenTitan variants have
 their own `[c_build.boot_rom_ot]` and `[c_build.boot_rom_ot_pio]` templates.
 
 A test selects an image with `firmware = { name = "boot_rom", mode = "boot_rom" }`
@@ -129,7 +131,7 @@ Common build variables include:
 |---|---|---|
 | `DCCM_SCRUB_BYTES` | `0x20000` | Cold-boot DCCM scrub length. |
 | `SRAM_SCRUB_BYTES` | `0` | SEP SRAM scrub length. |
-| `ROM_ICCM_CLEAR_ENABLE` | `0` | Clear ICCM through the DMA before loading BL1. |
+| `ROM_ICCM_CLEAR_ENABLE` | `1` | Clear ICCM through the DMA before loading BL1. |
 | `PMP_ENABLE` | `1` | Program the BL0 PMP entries. |
 | `PMP_LOCK` | `0` | Lock the programmed PMP entries until reset. |
 | `BOOT_SPI_CONTROLLER_OT` | `0` | Select the OpenTitan SPI host when set. |
@@ -138,7 +140,8 @@ Common build variables include:
 | `BUILD_TYPE` | `test` | Recorded in the rebuild stamp; selects no build behavior. |
 
 The open Makefile builds a test/debug-oriented image. Its zero-length SEP SRAM
-scrub and disabled full-ICCM clear reduce RTL simulation cost. A release image
+scrub reduces RTL simulation cost; the full-ICCM clear is ENABLED by default
+(`ROM_ICCM_CLEAR_ENABLE ?= 1`). A release image
 must establish ECC for the full ICCM and apply the adopter's final memory
 sanitization, PMP lock, SPI-controller, version, and key-provisioning policy.
 
@@ -155,7 +158,7 @@ The rebuild stamp tracks most variables in the table, but not
 
 ```bash
 make -C hw/sys/sep/bootrom/prod clean
-make -C hw/sys/sep/bootrom/prod ROM_ICCM_CLEAR_ENABLE=1
+make -C hw/sys/sep/bootrom/prod ROM_ICCM_CLEAR_ENABLE=0
 ```
 
 ## Source layout

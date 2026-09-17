@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# OCA-classic RSA-3072 signed boot image for the SEP boot ROM.
+#
+# Same path rules as oca_non_secure_boot_test.yaml: relative to
+# hw/sys/sep/bootrom/prod, no $VAR expansion on the OCA path.
+#
+# Encodings are RAW (0x02) for both the public key and the signature. Those are
+# already the producer defaults, but they are spelled out because the ROM's
+# verify_signature callback accepts only RAW: DER would need an ASN.1 parser in
+# a 64 KiB ROM for no benefit. Note signature_encoding 0x01 (DER) is an ECDSA-only
+# encoding and is a hard config error alongside signature_type 0x01 anyway.
+#
+# Selects an OTP anchor rather than a ROM one. public_key_select_classic and the
+# CHIPLET_PUBK_REVOKE bitmap index the same key entries (see that register's
+# description in sep_efuse_map.rdl), so bit 16 is CHIPLET_PUBK_HASH0 -- NOT the
+# sixth ROM slot. The ROM therefore reads its anchor from that fuse bank instead
+# of key_digests.c, which means this image only boots against a fuse map that
+# provisions it: virtual_platform/tests/fuse_maps/oca_otp_key.yaml.
+#
+# Same ROM key 0 signing key as the ROM-anchored image; only where the digest is held
+# differs, which is exactly the axis under test.
+manifest_format: oca-classic
+manifest_identifier: "OCAHOTP"
+description: "OCAH SEP boot ROM OTP-anchored key test image (BL1 = bl1_pass_test)"
+secure_boot: 1
+
+signature_type: 0x01                 # RSA-3072 PKCS#1 v1.5 / SHA-256
+signing_authority: local
+signing_key_name: "test_rom_key_0"
+signing_key_file: "tests/signing_keys/rsa_private_key.rom_key0.pem"
+public_key_select_classic: 0x10000    # bit 16 = CHIPLET_PUBK_HASH0 (an OTP anchor)
+public_key_encoding: 0x02            # RAW (388 B: 384-byte modulus + 4-byte exponent)
+signature_encoding: 0x02             # RAW (384 B, big-endian)
+
+timestamp: 1764633600
+manifest_content_version:
+  major: 1
+  minor: 0
+  patch: 0
+payload_images:
+  - type: "OCAHSEP BLSTAGE1"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+    # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
+    # LMA of its .rodata/.data straight after, which _start copies down to DCCM --
+    # so it only runs correctly when loaded there. The ROM honours whichever region
+    # this names (SEP-ROM-MAN-060 permits SRAM or ICCM) and copies via the DMA,
+    # which is mandatory for an ICCM destination: the LSU cannot store to ICCM.
+    load_addr: 0xC0000000

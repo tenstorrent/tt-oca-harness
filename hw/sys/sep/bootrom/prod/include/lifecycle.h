@@ -52,10 +52,6 @@ bool lc_state_enforces_secure_boot(uint32_t lc_state);
 // Check if the given LC state is an RMA state (SiP or Chiplet).
 bool lc_state_is_rma(uint32_t lc_state);
 
-// Map a decoded LC state to the corresponding manifest usage_constraints
-// life_cycle_states bit position.  Returns -1 if no mapping.
-int lc_state_to_manifest_bit(uint32_t lc_state);
-
 // Read FEAT_CTRL from the lifecycle controller (64-bit).
 // Returns the low 32 bits; *hi receives the high 32 bits.
 uint32_t lc_read_feat_ctrl(uint32_t *hi);

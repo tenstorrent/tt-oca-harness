@@ -146,7 +146,7 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
             f"value in the register and CHK-SEED could not tell them apart"
         )
         self.logger.info(
-            "CHK-STIMULUS-HANDLER: cold_scratch[7] seed = 0x%08x, the smallest "
+            "CHK-STIMULUS-HANDLER PASS: cold_scratch[7] seed = 0x%08x, the smallest "
             "address rejected by `bgeu handler, 0x%08x`",
             _INVALID_HANDLER,
             _RANGE_END,

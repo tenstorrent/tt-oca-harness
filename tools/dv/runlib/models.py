@@ -66,6 +66,13 @@ class TestEntry:
     timeout_sec: int | None = None
     tags: list[str] | None = None
     run_modes: list[str] | None = None
+    # Simulators this scenario can run on. Empty means every tool the DUT declares, which
+    # is the normal case and what an absent key yields. A scenario whose stimulus depends
+    # on one tool's hierarchy access -- a VPI reach into a generate block that only one
+    # simulator makes public, say -- names that tool here, so selection drops it under the
+    # others instead of erroring at run time. Validated against the DUT's own `tools` list
+    # at catalog load.
+    tools: list[str] | None = None
     args: list[str] | None = None
     firmware: str | dict[str, Any] | None = None
     # `expect_fail = "<reason>"`: the leaf reproduces a filed defect and FAILS on a DUT that still
