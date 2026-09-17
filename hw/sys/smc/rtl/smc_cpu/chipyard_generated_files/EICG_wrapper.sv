@@ -13,10 +13,10 @@ module EICG_wrapper (
 );
 
     prim_clkgater u_clkgater (
-        .i_clk  (in),
-        .i_en   (en),
-        .i_te   (test_en),
-        .o_clk  (out)
+        .clk_i  (in),
+        .en_i   (en),
+        .te_i   (test_en),
+        .clk_o  (out)
     );
 
 endmodule

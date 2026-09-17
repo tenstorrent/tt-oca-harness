@@ -6,7 +6,7 @@
  *
  * The CLA node0 EAP custom actions drive SEP CPU control (see
  * hw/sys/smu/rtl/smu.sv):
- *   [1] mpc_debug_run_req, [2] mpc_reset_run_req, [4] i_cpu_run_req.
+ *   [1] mpc_debug_run_req_i, [2] mpc_reset_run_req_i, [4] cpu_run_req_i.
  *
  * Register addresses and field layout come from the generated map (smc_addr.h
  * and the generated smc_cla.h, both reached through smc_reg_access.h).
@@ -56,9 +56,9 @@ static inline uint64_t smu_sep_cla_node0_eap_value(uint32_t action0, uint32_t ac
 
 static inline void smu_sep_program_real_cla_boot(void) {
     /*
-     * mpc_reset_run_req = ~cla[2], so action[2]=1 selects Debug Mode (halt) and
+     * mpc_reset_run_req_i = ~cla[2], so action[2]=1 selects Debug Mode (halt) and
      * parks the SEP core. A normal boot fires only the run requests {1,4};
-     * leaving [2] deasserted keeps mpc_reset_run_req = 1 (Normal/run).
+     * leaving [2] deasserted keeps mpc_reset_run_req_i = 1 (Normal/run).
      */
     write64_reg(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR,
                 (uint64_t)DFD_CLA__CDBGCLACTRLSTATUS__ENABLECLA_bm |

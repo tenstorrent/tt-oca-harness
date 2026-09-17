@@ -48,7 +48,7 @@ they are not comparable to each other either.
 ### `smc_cov_scope.hier` (VCS)
 
     -tree smc_uvm_top 1                     TB top's own body, children kept
-    -tree ...u_smc_cpu_wrapper.gen_4core_cpu  chipyard-generated CPU cluster
+    -tree ...u_smc_cpu_wrapper.u_smc_cpu      chipyard-generated CPU cluster
     -tree ...u_smc_peripherals.u_i3ccore_wrapper  vendored i3c-core
     -tree ...u_internal_regs.u_smc_dfd_wrap   vendored tt-hw-debug trace/mmr
 

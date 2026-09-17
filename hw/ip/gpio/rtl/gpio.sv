@@ -244,10 +244,10 @@ module gpio
     .WIDTH(1),
     .RANDOM_DELAY_GRAY_CODE(1'b0)
   ) pad2core_sync (
-    .i_clk(clk_i),
-    .i_d(pad2core),
-    .i_reset_n(rst_primary_ni),
-    .o_q(pad2core_synced)
+    .clk_i(clk_i),
+    .d_i(pad2core),
+    .rst_ni(rst_primary_ni),
+    .q_o(pad2core_synced)
   );
 
   always_ff @(posedge clk_i or negedge rst_primary_ni) begin

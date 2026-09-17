@@ -1,140 +1,69 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Parameterised family: the PRIMARY manifest selects a REVOKED ROM key slot.
+"""Parameterised family: the primary manifest selects a revoked ROM key slot.
 
-Six testcases (``sep_firmware_primary_pubkey_rom_{0..5}_revoked_key_test``) differ
-from one another by ONE integer -- the ROM public-key slot the primary selects and
-the ``CHIPLET_PUBK_REVOKE`` bit that revokes it. The stimulus, the per-slot
-derivations and the revocation assertions live here once; each member is a module
-whose only substantive lines are ``_REVOKED_SLOT = N`` and the base class it picks.
+Six testcases (``sep_firmware_primary_pubkey_rom_{0..5}_revoked_key_test``) differ by
+one integer -- the ROM public-key slot the primary selects, which is also the
+``CHIPLET_PUBK_REVOKE`` bit that revokes it. The stimulus, the per-slot derivations
+and the revocation assertions live here; each member sets ``_REVOKED_SLOT = N``.
 
-**THE OUTCOME SHAPE OF THIS FAMILY IS NOT UNIFORM, AND THAT IS WHY THERE ARE TWO
-BASES RATHER THAN ONE.** The shipped image gives BOTH slots ``rom_key_index: 0``
-(``configs/secure_boot_test.yaml:43-45`` primary, backup), so one
-revoke bit refuses one manifest or two depending on the slot:
+The outcome shape is not uniform, which is why there are two bases. The shipped image
+gives both slots ROM key index 0, so one revoke bit refuses one manifest or two:
 
-  * **slot 0 is TERMINAL** -- the bit refuses the primary AND the backup, the retry
-    loop exhausts, and the run ends in ``MANIFEST_ALL_FAILED``
-    (``manifest_load.c``);
-  * **slots 1-5 FAIL OVER AND BOOT** -- only the primary selects the revoked slot,
-    the backup still selects unrevoked slot 0, and the boot completes from it.
+  * slot 0 is terminal -- the bit refuses the primary AND the backup, the retry loop
+    exhausts, and the run ends in ``MANIFEST_ALL_FAILED``;
+  * slots 1-5 fail over and boot -- only the primary selects the revoked slot, the
+    backup still selects unrevoked slot 0.
 
-A single base parameterised only by the slot number would make one of the two
-groups assert the other's outcome, and it would pass its own assertions either
-way. The reference agrees with the split: ``PRIMARY_PUBKEY_ROM_0_REVOKED_KEY``
-ends at ``ERROR: REVOKED_KEY``
-while every ``N >= 1`` member ends in ``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``.
-This is confirmed here from the RTL tree's own packer config
-and from :func:`select_primary_rom_slot`'s measurement.
+Which branch a member takes is measured, not written down. :meth:`_assert_outcome_shape`
+reads the backup's selector out of the mutated buffer, so the split is pinned to its
+actual cause -- both slots naming one ROM key -- rather than to ``slot == 0``. If the
+packer ever gave the backup a different index, slot 0 would stop being terminal and
+the terminal member would fail loudly rather than assert the wrong shape.
 
-WHICH BRANCH A MEMBER TAKES IS MEASURED FROM THE IMAGE, NOT WRITTEN DOWN.
-:meth:`_assert_outcome_shape` reads the BACKUP's selector out of the mutated
-buffer and requires "the backup also selects the revoked slot" to agree with the
-base the member chose. So the split is pinned to its actual cause -- both slots
-naming one ROM key -- rather than to the literal ``slot == 0``. If the packer ever
-gave the backup a different ``rom_key_index``, slot 0 would stop being terminal and
-the terminal member would fail loudly instead of quietly asserting the wrong shape.
+``PUBK_REVOKE=`` is the whole fuse word, echoed before this slot's bit is tested, so
+every slot attempt that reaches the revocation check prints the same bitmap whether or
+not it is revoked. The per-slot discriminator is the ``MANIFEST_ERR=`` code. On the
+failover members the fuse echo therefore appears twice, and it is the second one,
+after the backup read, that shows the booting slot ran the check and was allowed
+through -- a ``PUBK_REVOKE=0x00000000`` from the backup would be wrong.
+:meth:`check_efuse` additionally requires the bitmap to be exactly this slot's bit, so
+a wider bitmap -- which could reject a manifest through a slot the testcase did not
+select -- fails loudly.
 
-Parameterising the SCENARIO must not parameterise away the EVIDENCE. Every member
-asserts its own selector (``PUBK_SEL=``), its own fuse bitmap (``PUBK_REVOKE=``)
-and its own revocation index (``KEY_REVOKED idx=``), all derived from its own
-``_REVOKED_SLOT``, with exact occurrence counts. :meth:`check_efuse` additionally
-requires the fuse bitmap to be EXACTLY this slot's bit, so a wider bitmap -- which
-could reject a manifest through a slot the testcase did not select -- fails loudly
-instead of passing.
+The ROM authorizes a key BEFORE it consults the revocation bitmap, and both run before
+the verifier: a passing boot logs ``PUBK_SEL``, ``PUBK_AUTHORIZED``, ``PUBK_REVOKE``,
+then ``RSA_EXEC``. Every member is therefore built so that authorization SUCCEEDS --
+the slot under test is grafted from the image signed by the key it names, so its
+modulus matches the digest ``key_digests.c`` holds for that slot. Consequently:
 
-**``PUBK_REVOKE=`` IS THE WHOLE FUSE WORD, NOT A PER-SLOT VERDICT, AND THE COUNTS
-DEPEND ON KNOWING THAT.** ``check_pubkey_revoked`` reads the 32-bit register and
-echoes it unconditionally (``manifest_crypto.c``) BEFORE testing this
-slot's bit, so every slot attempt that reaches the revocation check
-prints the SAME ``PUBK_REVOKE=<bitmap>``, revoked or not. Only
-``KEY_REVOKED idx=``  is per-slot. So on the failover members the fuse
-echo appears TWICE -- once for the refused primary and once for the permitted
-backup -- and it is the second occurrence, after the backup read, that proves the
-booting slot ran the revocation check and was allowed through. The backup echoes
-the same word the primary saw (slot 1: ``PUBK_REVOKE=0x00000002`` on both
-attempts), never ``PUBK_REVOKE=0x00000000``.
+  * every member would otherwise boot, because the manifest it reads is genuinely
+    valid and genuinely authorized, so revocation is the sole cause of the rejection;
+  * ``PUBK_UNAUTHORIZED`` is the load-bearing forbid -- it would mean the graft did not
+    land and the slot was refused for its key rather than for the fuse -- and
+    ``RSA_EXEC`` / ``RSA_VERIFY_OK`` pin that the refusal precedes the verifier.
 
-WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, PER SLOT. ``validate_signature``
-consults the fuse bitmap (``manifest_crypto.c``) BEFORE the compiled-in digest
-table  and before ``rsa_3072_verify``. Slot 0 is the only
-populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
+Every member carries the same weight. Six signing keys ship and ``key_digests.c``
+populates all six slots, so each member grafts in the primary slot of the image signed
+by the key it names (:func:`select_primary_rom_slot`): the manifest the ROM reads is
+authorized and fully sealed, and only the fuse bit refuses it. The family forbids
+``RSA_EXEC`` on the primary to establish that the refusal lands before the verifier
+rather than assume it.
 
-  * slots 1-5 would otherwise be rejected as ``ROM_KEY_EMPTY``, and forbidding that
-    marker is what pins the ORDER -- revocation before the digest table;
-  * slot 0 would otherwise boot, because the shipped image genuinely binds to it,
-    so revocation is the sole cause of the rejection and ``RSA_VERIFY_START`` /
-    ``SIG_VALID`` are the load-bearing forbids there.
+The fuse bit is the slot number, and the authority is the register map rather than the
+ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key bitmap
+(``regs/blocks/sep_efuse_map/sep_efuse_map.rdl:721-729``). The fused-key slots do NOT
+continue that sequence -- they sit at bits 16 and above -- so nothing here may be
+derived by counting past slot 5.
 
-**THE REFERENCE ORDERS THOSE TWO CHECKS THE OTHER WAY ROUND, AND SLOTS 1-5 DEPEND
-ON THE DIFFERENCE.** The reference's ROM takes the index bound,
-then the digest-populated check (returning ``SEP_MSG_INVALID_KEY_CONTENTS``,
-annotated "COVERAGE: exclude, correct by construction"), and only THEN
-revocation. That order is invisible there
-because all six of its digest slots are populated. This ROM inverts it. Had this
-ROM used the reference's order, slots 1-5 would return ``ROM_KEY_EMPTY`` /
-``MANIFEST_ERR_SIG_FAILED`` instead of ``KEY_REVOKED``. Consequently slot 0
-establishes the reference's own property -- revocation refuses a fully valid,
-correctly signed, bootable image -- and slots 1-5 establish the weaker property
-that revocation PREEMPTS the empty-digest arm. The same holds for the backup-side
-family. Revocation-first is the fail-closed order and is not a defect.
+Every member runs a committed PROD preload, and both bases assert ``lc_raw() == 0x1``
+and ``SBOOT_DIS == 0``, so the crypto chain cannot be opted out of by a manifest flag
+and the revocation verdict is reached on the production path.
 
-A FURTHER NARROWING, SPECIFIC TO THE PRIMARY SIDE. The reference re-signs the
-primary with slot N's own private key for every ``N >= 1`` member
-(``sep_firmware_secure_boot_test.py`` uses ``VALID_KEY_FILE_MAP[1]``), so its
-primary is a fully valid manifest bound to slot N. The only RSA signing key that
-ships in this tree is ``rsa_private_key.dev0.pem``
-(``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/``, which also holds
-``ec_private_key.pem`` -- unusable here because the ROM implements RSA-3072
-only), so a slot-N
-selector here leaves the dev0 signature stale. That is harmless only because
-revocation is reached first, and the family forbids ``RSA_VERIFY_START`` on the
-primary to prove that rather than assume it -- but it is a real narrowing and it
-is why slot 0, whose write is a no-op on an untouched sealed manifest, carries
-this family's weight.
-
-THE FUSE BIT IS THE SLOT NUMBER, and the authority for that is the register map,
-not the ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key
-bitmap (reg ``CHIPLET_PUBK_REVOKE`` in
-``regs/blocks/sep_efuse_map/sep_efuse_map.rdl``) and the ROM indexes it with the
-manifest's key index directly (``manifest_crypto.c``).
-The fused-key slots do NOT continue that sequence -- they sit at bits 16 and above
--- so nothing here may be derived by counting past slot 5.
-
-PLATFORM ADAPTATION -- MARKERS, FOR ALL SIX MEMBERS. Two of the architected status
-codes the reference asserts for this family are defined here and never emitted, so
-neither can be ported literally:
-
-  * ``SEP_MSG_REVOKED_KEY`` (``bootrom/prod/include/status_values.h:13``, 0x0c),
-    which the reference reports as ``WARNING: REVOKED_KEY`` on the failing slot and
-    ``ERROR: REVOKED_KEY`` when the boot ends there. Substituted by the console
-    token ``KEY_REVOKED idx=`` (``manifest_crypto.c``) PLUS the dedicated and
-    unshared error code ``MANIFEST_ERR_KEY_REVOKED`` (0x00030015,
-    ``manifest.h``) on ``MANIFEST_ERR=`` / ``CRYPTO_FAIL=``, and for the
-    terminal member also ``cold_scratch[1] == 0x0f010015``.
-  * ``SEP_MSG_USING_ROM_KEY`` (0x7f), which the reference emits on the ROM-key
-    arm of its ``manifest.c`` and asserts as ``STATUS: USING_ROM_KEY``. This ROM
-    reports the generic
-    ``SEP_MSG_VALIDATE_CHECK`` there instead (``manifest_crypto.c``).
-    Substituted by ``PUBK_SEL=0x0000000N``, which is strictly more informative
-    because it carries the index.
-
-There is no ``report_status`` call for either code anywhere under
-``bootrom/prod/src``.
-
-ONE STRENGTHENING OVER THE REFERENCE.
-The reference runs this family at ``LC_STATE`` raw 0x0,
-where secure boot is enforced only because the manifest asks. Every member here
-runs a committed PROD preload, and both bases assert ``lc_raw() == 0x1`` and
-``SBOOT_DIS == 0``, so the crypto chain cannot be opted out of by a manifest flag.
-That makes the revocation verdict reachable on the production path rather than on a
-manifest-selected one.
-
-``+sep_crypto_edn_force`` is needed by slots 1-5 only: their BACKUP is valid and
-runs a real RSA-3072 modexp on OTBN. Slot 0 must NOT have it -- no slot reaches the
-verifier there, and the member forbids ``RSA_VERIFY_START`` to say so. Withholding
-it is a second, independent guard for slot 0: a ROM that did reach the verifier
-would stall in UrndRefresh rather than pass.
+Entropy: slots 1-5 need ``+esrc_noise_force`` because their backup is valid and runs a
+real RSA-3072 modexp. Slot 0 must not have it -- no slot reaches the verifier there,
+and the member forbids ``RSA_EXEC`` to say so. Withholding it is a second, independent
+guard: a ROM that did reach the verifier would stall in UrndRefresh rather than pass.
 """
 
 from __future__ import annotations
@@ -152,8 +81,7 @@ from rom_fw.sep_primary_fail_backup_boot_base import sep_primary_fail_backup_boo
 
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
-# public_key_sel is {index:4, selection:3} (manifest.h); PUBK_SEL_ROM_KEY
-# is 0 (manifest.h), so a ROM-slot selector is just the index.
+# A ROM classical key is named by its own bitmap slot number.
 PUBK_SEL_ROM_KEY = 0
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
@@ -161,59 +89,49 @@ _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 
 def select_primary_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
-    """Point the PRIMARY's ``public_key_sel`` at ROM key slot ``slot_index``.
+    """Anchor the PRIMARY slot on ROM key slot ``slot_index``, signature intact.
 
-    The mirror of ``sep_pubkey_rom_revoked_base.select_backup_rom_slot``, and
-    shared with ``sep_firmware_primary_rom_key_valid_test`` so that the positive
-    case and the revoke-0 case apply the SAME stimulus to the SAME bytes by
-    construction rather than through two copies that could drift apart. With
-    ``slot_index == 0`` the two produce byte-identical flash images -- identical to
-    the shipped image, in fact, because the write is a no-op -- and differ only in
-    ``CHIPLET_PUBK_REVOKE``. Returns ``(encoded_selector, tbs_changed)``.
+    The mirror of ``sep_pubkey_rom_revoked_base.select_backup_rom_slot``, and shared
+    with ``sep_firmware_primary_rom_key_valid_test`` so that the positive case and the
+    revoke-0 case apply the SAME stimulus to the SAME bytes by construction rather
+    than through two copies that could drift apart. Returns
+    ``(encoded_selector, grafted)``.
 
-    ``tbs_changed`` is what the caller asserts the consequences of, and it is
-    measured rather than assumed. The shipped primary already selects ROM slot 0
-    (``configs/secure_boot_test.yaml:43-45``), so for slot 0 the TBS is untouched,
-    the manifest stays fully sealed and its dev0 signature stays valid. For slots
-    1-5 the write changes the TBS, ``manifest_hash`` is recomputed and the
-    signature goes stale -- harmless only because revocation is reached first.
+    Slot 0 needs nothing: the shipped primary already selects it, so the buffer is the
+    shipped image byte for byte. Slots 1-5 graft in the primary slot of the per-slot
+    image signed by that key (``mm.rom_key_image``), which replaces manifest and
+    payload as a unit and leaves the slot signed by the key its selector now names.
+
+    That is what makes every member of this family the strict case. Rewriting the
+    selector field in place -- what this did before the per-slot images existed --
+    left the signature stale for slots 1-5, so those members could only show that
+    revocation preempts a stale signature. Grafting leaves a manifest that is
+    genuinely valid and genuinely authorized, and the only thing standing between it
+    and a boot is the fuse bit. ``grafted`` is returned so the caller can pin which
+    branch it took.
     """
-    base = mm.slot_base("primary")
-    tbs_before = bytes(buf[base : base + mm.TBS_LEN])
-    mm.set_public_key_sel(buf, "primary", selection=PUBK_SEL_ROM_KEY, index=slot_index)
-    tbs_after = bytes(buf[base : base + mm.TBS_LEN])
-    tbs_changed = tbs_before != tbs_after
+    grafted = slot_index != 0
+    if grafted:
+        mm.graft_slot(buf, mm.rom_key_image(slot_index).read_bytes(), "primary")
 
     got = mm.get_public_key_sel(buf, "primary")
     expected = slot_index & 0xF
     assert got == expected, (
-        f"primary public_key_sel encoded as 0x{got:04x}, expected 0x{expected:04x} "
-        f"(selection=PUBK_SEL_ROM_KEY, index={slot_index})"
+        f"primary public_key_sel is 0x{got:04x}, expected 0x{expected:04x}: the "
+        f"{'grafted' if grafted else 'shipped'} primary slot does not select ROM key "
+        f"{slot_index}, so this testcase would revoke a slot it never named"
     )
-    # The modulus is never touched by this stimulus, so the primary must still
-    # carry the dev0 key the ROM has in slot 0. verify_public_key() also proves
-    # OFF_PUBLIC_KEY still addresses the modulus, so a packer change turns into a
-    # loud failure here rather than a negative test passing for the wrong reason.
+    # The modulus must be the key the selector names -- which is the whole point of
+    # the graft, and is what distinguishes an authorized-then-revoked manifest from
+    # one the ROM would have refused anyway. No key_slot override: after the graft the
+    # selector and the modulus agree, so resolving the selector is correct.
     mm.verify_public_key(buf, "primary")
-    if not tbs_changed:
-        # Nothing in the signed region moved, so the slot must still be completely
-        # sealed: payload hash, TOC digests, manifest hash and a dev0 signature
-        # that verifies. This is the assertion that makes slot 0 the strict case --
-        # the manifest is provably valid and only the fuse refuses it.
-        pm.verify_sealed(buf, "primary")
-    else:
-        # The selector write invalidated the signature. Assert that too: if the
-        # signature somehow still verified, the write did not land in the TBS and
-        # the selector under test is not the one the ROM will read.
-        n, e_pub, _d = pm.load_rsa_private_key()
-        sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
-        assert not pm.verify_pkcs1v15_sha256(tbs_after, sig, n, e_pub), (
-            "primary signature still verifies after the selector was changed; the "
-            "write did not land inside the TBS, so the ROM would read the original "
-            f"selector and this testcase would prove nothing about slot {slot_index}"
-        )
-        mm.verify_layout(buf, "primary")
-    return got, tbs_changed
+    # Fully sealed, every slot, not just slot 0: payload hash, TOC digests,
+    # manifest_hash over the TBS, and a signature that verifies under the key the
+    # slot carries. If this fails the graft landed wrong and the run would refuse the
+    # manifest for a reason this testcase is not about.
+    pm.verify_sealed(buf, "primary")
+    return got, grafted
 
 
 class _primary_revoked_slot_mixin:
@@ -250,14 +168,13 @@ class _primary_revoked_slot_mixin:
         assert 0 <= slot < mm.PUBK_SEL_NUM_ROM_KEYS, (
             f"{cls.__name__}: _REVOKED_SLOT {slot} is outside the ROM key table "
             f"[0, {mm.PUBK_SEL_NUM_ROM_KEYS}); an out-of-range index is the "
-            f"separate BAD_KEY_IDX arm (manifest_crypto.c:174-177), not a "
+            f"separate PUBK_SLOT_RESERVED arm, not a "
             f"revocation testcase"
         )
         cls._REVOKE_BITMAP = 1 << slot
         cls._PUBK_SEL_VALUE = slot & 0xF
-        # manifest_crypto.c -- simputshex32("KEY_REVOKED idx=", index).
-        cls._KEY_REVOKED_ECHO = f"KEY_REVOKED idx=0x{slot:08x}"
-        # manifest_crypto.c -- the fuse word and the selector the ROM
+        cls._KEY_REVOKED_ECHO = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_REVOKED:08x}"
+        #  -- the fuse word and the selector the ROM
         # actually read, echoed back.
         cls._REVOKE_ECHO = f"PUBK_REVOKE=0x{cls._REVOKE_BITMAP:08x}"
         cls._PUBK_SEL_ECHO = f"PUBK_SEL=0x{cls._PUBK_SEL_VALUE:08x}"
@@ -265,30 +182,28 @@ class _primary_revoked_slot_mixin:
 
     # --- stimulus ----------------------------------------------------------
     def _plant_revoked_selector(self, buf: bytearray) -> None:
-        got, tbs_changed = select_primary_rom_slot(buf, self._REVOKED_SLOT)
-        # Pin WHICH branch this member takes, so the family cannot silently
-        # degrade. The shipped primary selects ROM slot 0, so slot 0 must be the
-        # no-op write (leaving a fully sealed manifest, the strict case) and every
-        # other slot must be a real TBS change.
-        expect_changed = self._REVOKED_SLOT != 0
-        assert tbs_changed == expect_changed, (
-            f"slot {self._REVOKED_SLOT}: primary TBS changed={tbs_changed}, "
-            f"expected {expect_changed}. The shipped primary manifest no longer "
-            f"selects ROM slot 0 (configs/secure_boot_test.yaml:43-45), so this "
-            f"member is no longer testing what its docstring claims"
+        got, grafted = select_primary_rom_slot(buf, self._REVOKED_SLOT)
+        # Pin WHICH branch this member takes, so the family cannot silently degrade.
+        # The shipped primary selects ROM slot 0, so slot 0 must need no graft and
+        # every other slot must need one.
+        expect_grafted = self._REVOKED_SLOT != 0
+        assert grafted == expect_grafted, (
+            f"slot {self._REVOKED_SLOT}: primary grafted={grafted}, expected "
+            f"{expect_grafted}. The shipped primary manifest no longer selects ROM "
+            f"slot 0 (configs/oca_secure_boot_test.yaml), so this member is no longer "
+            f"testing what its docstring claims"
         )
         self._assert_outcome_shape(buf)
         self.logger.info(
-            "CHK-STIMULUS-REVOKED-SLOT: primary public_key_sel=0x%04x (ROM key slot "
-            "%d, revoked by CHIPLET_PUBK_REVOKE bit %d); TBS changed=%s, primary "
-            "manifest %s",
+            "CHK-STIMULUS-REVOKED-SLOT PASS: primary public_key_sel=0x%04x (ROM key slot "
+            "%d, revoked by CHIPLET_PUBK_REVOKE bit %d); primary manifest %s, and "
+            "fully sealed either way -- authorized, valid, and refused only by the fuse",
             got,
             self._REVOKED_SLOT,
             self._REVOKED_SLOT,
-            tbs_changed,
-            "re-hashed, signature now stale"
-            if tbs_changed
-            else "untouched and still fully sealed with a valid dev0 signature",
+            f"grafted from {mm.rom_key_image(self._REVOKED_SLOT).name}"
+            if grafted
+            else "the shipped slot, untouched",
         )
 
     def _assert_outcome_shape(self, buf: bytearray) -> None:
@@ -334,9 +249,9 @@ class _primary_revoked_slot_mixin:
         )
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection (manifest_crypto.c:364 then :369) and would "
-            f"terminate the run before revocation is reached"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
 
 
@@ -345,38 +260,40 @@ class sep_primary_pubkey_rom_revoked_failover_base(
 ):
     """Slots 1-5: the primary selects a revoked slot, the backup boots.
 
-    The backup still selects unrevoked ROM slot 0, so this is the reference's
-    ``WARNING: REVOKED_KEY`` followed by a completed boot, not a terminal run.
+    The backup still selects unrevoked ROM slot 0, so the run completes rather
+    than ending terminally.
     """
 
     _BACKUP_ALSO_REVOKED = False
 
     primary_expected_error = MANIFEST_ERR_KEY_REVOKED
-    # Revocation precedes rsa_3072_verify (manifest_crypto.c), so
+    # Revocation precedes rsa_3072_verify, so
     # the primary must never drive the verifier.
     primary_expected_rsa_starts = 0
-    # Every other rejecting arm of validate_signature, so the KEY_REVOKED verdict
-    # cannot be confused with one of them. ROM_KEY_EMPTY is the load-bearing one:
-    # slots 1-5 have no compiled-in digest, so seeing it would mean the digest
-    # table was consulted before the fuse bitmap. RSA_VERIFY_FAIL must not appear
-    # either -- the backup is valid, so the only verifier run in this scenario
-    # succeeds.
+    # Every other rejecting arm of the signature path, so the KEY_REVOKED verdict
+    # cannot be confused with one of them. PUBK_UNAUTHORIZED is the load-bearing one:
+    # the ROM authorizes before it consults the revocation bitmap, so seeing it would
+    # mean the graft did not land and the slot was refused for its key rather than for
+    # the fuse. PUBK_SLOT_UNPROVISIONED sits beside it to catch the digest table
+    # shrinking back under this family. RSA_PKCS1_FAIL must not appear either -- the
+    # backup is valid, so the only verifier run in this scenario succeeds.
     extra_forbidden = (
-        "ROM_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "FUSE_KEY_EMPTY",
-        "VERSION_ROLLBACK",
-        "BAD_SIG_TYPE=",
-        "RSA_VERIFY_FAIL",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_UNAUTHORIZED",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_OTP_EMPTY",
+        "PUBK_ALGO_UNSUPPORTED",
+        "RSA_PKCS1_FAIL",
     )
     # The backup's own selector, so "the backup booted" is tied to slot 0 rather
-    # than to an unread selection. There is NO separate backup fuse echo:
-    # ``check_pubkey_revoked`` prints the whole 32-bit fuse WORD unconditionally
-    # (``manifest_crypto.c``) and only then tests this slot's bit, so BOTH slot
-    # attempts print the same ``PUBK_REVOKE=<bitmap>`` (slot 1: 0x00000002 twice)
-    # and the per-slot discriminator is ``KEY_REVOKED idx=``.
+    # than to an unread selection. There is deliberately NO separate backup fuse
+    # echo: the revocation check prints the whole 32-bit fuse WORD
+    # unconditionally and only then tests this
+    # slot's bit, so BOTH slot attempts print the same
+    # ``PUBK_REVOKE=<bitmap>`` and the per-slot discriminator is
+    # the revocation error code. Measured, not assumed: the slot-1 probe run
+    # showed the backup echoing ``PUBK_REVOKE=0x00000002``.
     _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -418,8 +335,8 @@ class sep_primary_pubkey_rom_revoked_failover_base(
         # IndexError.
         assert len(revokes) == 2, (
             f"{self._REVOKE_ECHO} appeared {len(revokes)} times at {revokes}, "
-            f"expected exactly 2 -- check_pubkey_revoked echoes the whole fuse word "
-            f"once per slot attempt (manifest_crypto.c:108-109). Console: {console}"
+            f"expected exactly 2 -- the revocation check echoes the whole fuse word "
+            f"once per slot attempt. Console: {console}"
         )
 
         # CHK-REVOKE-ATTRIBUTION: the ROM read THIS member's selector out of the
@@ -445,7 +362,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
                 f"Console: {console}"
             )
         # The two fuse echoes must straddle the backup read. That is the assertion
-        # that says the BACKUP also ran check_pubkey_revoked and was PERMITTED -- it
+        # that says the BACKUP also ran the revocation check and was PERMITTED -- it
         # consulted the same non-zero bitmap and produced no KEY_REVOKED of its own,
         # which is the whole reason this member fails over instead of terminating.
         assert revokes[0] < i_bsrc < revokes[1], (
@@ -489,22 +406,20 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
 
     expected_error = MANIFEST_ERR_KEY_REVOKED
     primary_expected_error = MANIFEST_ERR_KEY_REVOKED
-    # Every other rejecting arm of validate_signature, plus proof the modulus never
-    # reached the verifier. RSA_VERIFY_START and SIG_VALID are the load-bearing
+    # Every other rejecting arm of the signature path, plus proof the modulus never
+    # reached the verifier. RSA_EXEC and RSA_VERIFY_OK are the load-bearing
     # forbids here: both manifests are otherwise valid, so without them a
     # revocation that did nothing would boot.
     extra_forbidden = (
-        "ROM_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "RSA_VERIFY_START",
-        "RSA_VERIFY_FAIL",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "FUSE_KEY_EMPTY",
-        "VERSION_ROLLBACK",
-        "BAD_SIG_TYPE=",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_UNAUTHORIZED",
+        "RSA_EXEC",
+        "RSA_PKCS1_FAIL",
+        "RSA_VERIFY_OK",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_OTP_EMPTY",
+        "PUBK_ALGO_UNSUPPORTED",
     )
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -515,7 +430,7 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
     # --- stimulus ----------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
         # NOT the base's default BAD_MAGIC trigger: the primary is the first slot
-        # under test here and has to reach validate_signature, exactly as the
+        # under test here and has to reach the signature path, exactly as the
         # reference's PRIMARY_PUBKEY_ROM_0_REVOKED_KEY modifies only
         # primary.manifest.public_key_sel.rom_key_index
         # (sep_firmware_secure_boot_test.py).
@@ -588,12 +503,12 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
                 f"Console: {console}"
             )
         # The terminal error code, once per slot. The shared base checks only that
-        # CRYPTO_FAIL= is PRESENT, and index_of() returns its FIRST occurrence --
+        # MANIFEST_ERR= is PRESENT, and index_of() returns its FIRST occurrence --
         # which here is the primary's. So without this, "the run converged on
         # KEY_REVOKED" would rest on the primary's rejection alone and the backup's
         # own crypto verdict would be unasserted. Requiring two occurrences that
         # straddle the backup read attributes one to each slot.
-        crypto_fail = f"CRYPTO_FAIL=0x{self.expected_error:08x}"
+        crypto_fail = f"MANIFEST_ERR=0x{self.expected_error:08x}"
         i_backup = next(
             (
                 i
@@ -616,9 +531,9 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
 
         # CHK-ALL-SLOTS-EXHAUSTED: the retry loop ran out of slots, which is the
         # observable that distinguishes "both were refused" from "the ROM stopped
-        # after the first". manifest_load.c, reached only after the loop.
+        # after the first". , reached only after the loop.
         assert any("MANIFEST_ALL_FAILED" in line for line in console), (
-            f"ROM never printed MANIFEST_ALL_FAILED (manifest_load.c:808): the "
+            f"ROM never printed MANIFEST_ALL_FAILED: the "
             f"retry loop did not exhaust, so the run is not the both-slots-refused "
             f"outcome this member claims. Console: {console}"
         )

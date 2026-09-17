@@ -382,7 +382,6 @@ change.
 |Item |Reason
 |SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the public flow
 |`jtag2axi_robustness_cg` reset-timing request-issued/data-phase/response-wait and CDC clear/isolate bins |A stall that outlasts the JTAG scan tail leaves the recovery write BUSY_OR_FULL, so the reset scenarios stall only after completion and these bins do not fire; they are hole entries in the coverage policy file
-|`jtag2axi_response_cg` poll long-wait bins |Settled-status polls never exceed three BUSY captures under the responder stall profile, so the long-wait bins do not fire; they are hole entries in the coverage policy file
 |Stimulus-intent bins (IC_RESET pattern source, seeded random request masks) |Test-layer randomization intent, not signal-observable; the modules record the resulting behavior instead
 |Invalid IDCODE marker, contradictory debug-disable outcomes |Checker failures in a passing run, never coverage bins
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract

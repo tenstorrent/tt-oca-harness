@@ -15,7 +15,7 @@ manifest TP041-B) -- so ``corrupt_primary`` is overridden and
 ``primary_expected_error`` follows it.
 
 THAT COSTS THE DEFAULT ATTRIBUTION, WHICH IS WHY IT IS REPLACED.
-``PUBK_HASH_MISMATCH`` now appears twice, so the base's rule ("its first
+``PUBK_UNAUTHORIZED`` now appears twice, so the base's rule ("its first
 occurrence must follow the backup read") no longer distinguishes anything: a run
 that rejected the primary and then never reached the backup at all would print it
 once, before the backup read, and simply fail -- but a run that printed it twice
@@ -23,9 +23,8 @@ for the wrong reasons would need a stronger statement.
 :meth:`check_defect_attribution` therefore requires exactly two occurrences,
 straddling the backup read.
 
-Neither slot reaches RSA: the hash bind precedes it (``manifest_crypto.c:195``
-then ``:244``), so ``RSA_VERIFY_START`` is forbidden and no
-``+sep_crypto_edn_force`` is needed. If that ordering ever changed, this entry
+Neither slot reaches RSA: the hash bind precedes it, so ``RSA_EXEC`` is forbidden and no
+``+esrc_noise_force`` is needed. If that ordering ever changed, this entry
 would go red rather than quietly start depending on the OTBN shortcut.
 """
 
@@ -37,6 +36,7 @@ import pyuvm
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_HASH_MISMATCH,
+    MANIFEST_ERR_KEY_REVOKED,
     sep_backup_manifest_fail_base,
 )
 
@@ -48,7 +48,7 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-_HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c:132
+_HASH_MISMATCH = "PUBK_UNAUTHORIZED"  #
 
 
 @pyuvm.test()
@@ -62,37 +62,36 @@ class sep_firmware_backup_invalid_key_hash_test(sep_backup_manifest_fail_base):
     # Every verdict that would mean the rejection was something other than the
     # digest bind, plus proof neither unbound modulus reached the verifier.
     extra_forbidden = (
-        "RSA_VERIFY_START",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "FUSE_KEY_EMPTY",
-        "ROM_KEY_EMPTY",
-        "KEY_REVOKED idx=",
-        "VERSION_ROLLBACK",
+        "RSA_EXEC",
+        "RSA_VERIFY_OK",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_OTP_EMPTY",
+        "PUBK_SLOT_UNPROVISIONED",
+        f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_REVOKED:08x}",
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # Different byte from the backup's, so the two mutations cannot be one
         # write landing twice, and each slot's digest is independently wrong.
-        mm.corrupt_public_key(buf, "primary", byte_index=0)
+        mm.corrupt_public_key(buf, "primary", offset=0)
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        mm.corrupt_public_key(buf, "backup", byte_index=383)
+        mm.corrupt_public_key(buf, "backup", offset=383)
 
     def check_efuse(self, image) -> None:
         # Both run before the key bind and would terminate the run first, making
         # the KEY_HASH_MISMATCH verdict unreachable and this test vacuous.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection (manifest_crypto.c:364)"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert revoke == 0, (
             f"CHIPLET_PUBK_REVOKE is 0x{revoke:x}, expected 0: revocation runs "
-            f"before the hash bind (manifest_crypto.c:181), so a set bit would "
+            f"before the hash bind, so a set bit would "
             f"make the rejection attributable to revocation instead"
         )
 

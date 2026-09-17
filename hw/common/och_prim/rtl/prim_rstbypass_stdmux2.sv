@@ -8,17 +8,17 @@
 // entering or leaving test mode cannot glitch the reset it drives.
 //--------------------------------------------------
 module prim_rstbypass_stdmux2 (
-  input  logic i_reset_n,
-  input  logic i_test_reset_n,
-  input  logic i_test_mode,
-  output logic o_reset_n
+  input  logic rst_ni,
+  input  logic test_rst_ni,
+  input  logic test_mode_i,
+  output logic rst_no
 );
 
   prim_rst_mux2_hf_n rst_bypassmux (
-    .rst0_ni(i_reset_n),
-    .rst1_ni(i_test_reset_n),
-    .sel_i  (i_test_mode),
-    .rst_no (o_reset_n)
+    .rst0_ni(rst_ni),
+    .rst1_ni(test_rst_ni),
+    .sel_i  (test_mode_i),
+    .rst_no (rst_no)
   );
 
 endmodule

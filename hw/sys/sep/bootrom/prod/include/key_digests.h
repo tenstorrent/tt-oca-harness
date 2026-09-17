@@ -20,7 +20,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "manifest.h" // PUBK_SEL_NUM_ROM_KEYS, RSA_3072_KEY_SZ_BYTES
+// The count is the number of ROM key slots the digest table pins; the size is
+// the RSA-3072 modulus that gets hashed.
+#ifndef PUBK_SEL_NUM_ROM_KEYS
+#define PUBK_SEL_NUM_ROM_KEYS 6
+#endif
+#ifndef RSA_3072_KEY_SZ_BYTES
+#define RSA_3072_KEY_SZ_BYTES 384
+#endif
 
 #ifndef SHA256_DIGEST_SIZE_BYTES
 #define SHA256_DIGEST_SIZE_BYTES 32
@@ -35,6 +42,9 @@ typedef struct {
 #define NUM_PUBLIC_KEY_DIGESTS PUBK_SEL_NUM_ROM_KEYS
 
 // ROM key digest table.
-// Index 0..5 correspond to dev0, dev1, prod0..prod3.
+// Index 0..5 are ROM key slots 0..5, matching public_key_select_classic
+// bits [7:0] and the same bit numbering in CHIPLET_PUBK_REVOKE. The slot
+// number is the whole identity: the ROM draws no trust distinction between
+// slots when resolving them.
 // Entries with digest == NULL are considered empty/unused.
 extern public_key_info_t public_key_digests[NUM_PUBLIC_KEY_DIGESTS];
