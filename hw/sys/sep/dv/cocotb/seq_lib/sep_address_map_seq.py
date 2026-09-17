@@ -51,6 +51,8 @@ SW_RESET_N is reachable on the CPU LSU; this sequence value-checks its reset.
 
 from __future__ import annotations
 
+import cocotb
+from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, SEP_RESET_CTRL, iter_registers, sym
@@ -267,6 +269,9 @@ class sep_address_map_seq(uvm_sequence):
         self.ref_counter_high = await self._read(
             BASE + ref_off + 4, expected=None, name="REFERENCE_COUNTER_hi"
         )
+        # Two AXI beats can finish inside one clk_ref_i period (40 ns vs a 4 ns
+        # core). Wait two reference edges so a live counter must advance.
+        await ClockCycles(cocotb.top.clk_ref_i, 2)
         self.ref_counter_low = await self._read(
             BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo_again"
         )

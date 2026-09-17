@@ -108,7 +108,6 @@ KM_RESP_KM_READY = 0x55
 # shared key into the sideload CSR and the block's KEY_VALID latched. It is the
 # only observation of the shim's interrupt path from the host side.
 KM_RESP_ABR_SHARED_KEY_READY = 0x56
-KM_RESP_ABR_SHARED_KEY_READY = 0x56
 KM_RESP_RECOVERABLE_FAULT = 0xFE
 KM_RESP_UNRECOVERABLE_FAULT = 0xFF
 

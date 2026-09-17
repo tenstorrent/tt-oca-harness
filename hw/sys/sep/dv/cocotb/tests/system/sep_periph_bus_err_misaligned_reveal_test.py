@@ -4,8 +4,9 @@
 
 EXPECTED FAIL. The contract is sep_cpu_ctrl.rdl:383 and doc/interrupts.adoc:241:
 a CPU access at a misaligned offset is a TL-UL error, receives SLVERR, and
-latches that block's bit. The DUT does not do this. The framework has no xfail
-mechanism, so a run whose only failure is this leaf is the expected result.
+latches that block's bit. The DUT does not do this. The leaf is left unmarked
+so a run of `all` stays a visible fail; a spec-vs-RTL gap is not masked as
+`expect_fail`.
 """
 
 from __future__ import annotations
@@ -42,13 +43,13 @@ class sep_periph_bus_err_misaligned_reveal_test(sep_base_test):
         # off the response rather than the monitor tally: the monitor counts on
         # its own clock edge, which may not have run when start_seq returns.
         mon = self.env.axi_monitor
-        mon.arm_expected_decerr(2)
+        mon.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
             "misaligned_rd", op=SepAxiOp.READ, addr=addr, size=2, expect_error=True
         )
         await self.start_seq(seq)
         if seq.timed_out or seq.resp_code != RESP_DECERR:
-            mon.release_expected_decerr(2)
+            mon.release_expected_decerr(1)
 
         status = await self.irq.read32(PERIPH_STATUS_ADDR)
         # Both halves of the contract are graded. The status bit alone would go

@@ -2217,7 +2217,7 @@ recovery. Those are listed in <<phase-3>>.
 |A misaligned in-extent access receives SLVERR and latches the owning block's bit. **Fails today**: the access returns DECERR and the register stays 0.
 |===
 
-*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The framework has no xfail mechanism, so a run whose only failure is this leaf is the expected result. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction. Tracked by issue #1993.
+*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The leaf is left unmarked so a run of `all` stays a visible fail; a spec-vs-RTL gap is not masked as `expect_fail`. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction. Tracked by issue #1993.
 
 *Not claimed*: the same term on the DMA register path (`reg_path_err`), and the access-control (RACL) term of either register — RACL is disabled in this design with its error output unconnected, so that term is unreachable for a separate reason.
 
@@ -3003,7 +3003,7 @@ releases. Both mux directions are graded.
 
 *Drain-before-reset*: claimed for the HMAC domain by `CHK-DRAIN-ORDER`,
 `CHK-HOST-DRAIN` and `CHK-DRAIN-ARRIVAL`, for the Adams Bridge domain by
-`CHK-ABR-DRAIN-ORDER`, `CHK-ABR-HOST-DRAIN` and `CHK-ABR-DRAIN-ARRIVAL`, and
+`CHK-ABR-DRAIN-ORDER`, `CHK-ABR-HOST-DRAIN` and `CHK-ABR-DRAIN-ARRIVAL`,
 and for the KMAC domain by `CHK-KMAC-DRAIN-ORDER` and `CHK-KMAC-DRAIN-ARRIVAL`.
 The KMAC leg does not claim accepted-traffic drain: pre-request reads retire
 before the host path isolates on that domain, measured at 0 of 16 still in
@@ -6818,6 +6818,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
 
 |Contracts not claimed (no vehicle in `all`)
-|Phase 3: ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill; isolate drain-before-reset on the AES and OTBN domains (HMAC, KMAC, Adams Bridge and the shared TRNG drain are proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
+|Phase 3: entropy-pool drain-under-fill; isolate drain-before-reset on the AES and OTBN domains (HMAC, KMAC, Adams Bridge and the shared TRNG drain are proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
 
 |===

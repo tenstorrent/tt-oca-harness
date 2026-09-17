@@ -190,10 +190,10 @@ class sep_address_map_test(sep_base_test):
         # returns, and a standing credit would absorb the next unexpected DECERR
         # anywhere on this bus.
         mon = self.env.axi_monitor
-        mon.arm_expected_decerr(2)
+        mon.arm_expected_decerr(1)
         past = await self._access(SepAxiOp.READ, off, expect_error=True)
         if past.timed_out or past.resp_code != RESP_DECERR:
-            mon.release_expected_decerr(2)
+            mon.release_expected_decerr(1)
         assert not past.timed_out, (
             f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} timed out; the external "
             f"port must be terminated, not left to hang"

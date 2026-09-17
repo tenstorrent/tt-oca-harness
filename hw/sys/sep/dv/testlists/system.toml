@@ -244,8 +244,8 @@ args = ["+skip_fuse_sense"]
 # EXPECTED FAIL. Asserts the misaligned-offset latch condition that
 # sep_cpu_ctrl.rdl:383 and doc/interrupts.adoc:241 state for
 # PERIPH_BUS_ERR_STATUS; the DUT refuses the beat at the fabric instead, so
-# nothing latches. The framework has no xfail mechanism, so a run whose only
-# failure is this leaf is the expected result.
+# nothing latches. Left unmarked so `all` stays a visible fail; a spec-vs-RTL
+# gap is not masked as expect_fail.
 name = "sep_periph_bus_err_misaligned_reveal_test"
 module = "system.sep_periph_bus_err_misaligned_reveal_test"
 seed = 1

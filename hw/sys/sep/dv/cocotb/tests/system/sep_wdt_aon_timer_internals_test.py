@@ -186,7 +186,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         return (hi << 32) | lo
 
     async def _chk_reference_counter(self) -> None:
-        """CHK-REFCNT-RUNS and CHK-REFCNT-LOAD on SEP_CPU_CTRL.REFERENCE_COUNTER.
+        """CHK-REFCNT-RUNS on SEP_CPU_CTRL.REFERENCE_COUNTER.
 
         The counter is the one piece of SEP that runs on clk_ref_i rather than
         clk_i: prim_refclk_count_w_cdc counts on the reference edge and

@@ -290,9 +290,11 @@ class SepFabricCsrBank(SepAxiRegDriver):
                     # instances of one RDL type and share stride and word list,
                     # so without it inbound entry k and outbound entry k would
                     # carry identical patterns and a decode that aliased one onto
-                    # the other would still read back what it wrote. The term sits
-                    # in bits 21:20, which no word's mask drops.
-                    raw = (bank_no << 20) | ((idx + 1) << 16) | ((word + 1) << 12)
+                    # the other would still read back what it wrote. Index uses
+                    # bits 21:16 (outbound has 32 entries) and bank uses 23:22,
+                    # so idx=16 cannot collide with another bank's term. No
+                    # walked mask drops those bits.
+                    raw = (bank_no << 22) | ((idx + 1) << 16) | ((word + 1) << 12)
                     pattern = raw & mask
                     # Strict write: every word here is R/W and no lock is set
                     # yet, so a non-OKAY response is a defect, not tolerance.
