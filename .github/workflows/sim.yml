@@ -44,9 +44,8 @@ jobs:
           esac
 
   verilator-smoke:
-    # Explicit name keeps the main-protection contexts
-    # `verilator-smoke (dtp)` / `verilator-smoke (sep)` stable if the matrix
-    # gains another axis.
+    # Explicit name keeps the check contexts `verilator-smoke (<dut>)`
+    # stable if the matrix gains another axis.
     name: verilator-smoke (${{ matrix.dut }})
     runs-on: ${{ matrix.runner }}
     needs: [diff-class]
@@ -67,9 +66,9 @@ jobs:
         # instead of hardcoding names (see "Framework-aware CI matrices" in
         # the same doc).
         #
-        # The cross_trigger IP benches are not in the gate: their smoke cost
-        # is one job of runner setup each for seconds of simulation, and none
-        # is a required context. regress.yml runs their full groups nightly.
+        # The cross_trigger IP benches are not in the smoke matrix: their
+        # smoke cost is one job of runner setup each for seconds of
+        # simulation. regress.yml runs their full groups nightly.
         #
         # runner: the label this DUT's job runs on, and the only knob that sets
         # build parallelism (--build-jobs "$(nproc)" follows it).
@@ -105,8 +104,8 @@ jobs:
           - dut: smc
             runner: ubuntu-latest
     env:
-      # Required check names (verilator-smoke (dtp/sep)) must still report,
-      # so this job always runs; RUN_HARDWARE_CI=false skips the sim work.
+      # The check contexts report on every pull request, so this job always
+      # runs; RUN_HARDWARE_CI=false skips the sim work.
       RUN_HARDWARE_CI: ${{ needs.diff-class.outputs.run_hardware_ci }}
     steps:
       - name: Skip documentation-only changes

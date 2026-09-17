@@ -2384,12 +2384,10 @@ tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
-row). Main protection
-requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
-pull-request contexts. A failed,
-cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
-run in the same matrix but are not required contexts; the `cross_trigger`
-benches are enrolled in the regression tiers only.
+row). The `verilator-smoke (<dut>)` contexts report on every pull request
+and are advisory: main protection requires the GitLab mirror context and no
+smoke context, so a red or missing smoke result does not block merge. The
+`cross_trigger` benches are enrolled in the regression tiers only.
 
 |Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow

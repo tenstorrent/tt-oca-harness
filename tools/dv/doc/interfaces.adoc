@@ -181,7 +181,7 @@ xref:run-dashboard.adoc[DV and FV Dashboard].
 directories `build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; check contexts
 `verilator-smoke (<dut>)`; branch `dv-dashboard-data`
 |`.github/workflows` and `.github/actions`
-|Branch protection, the publication workflow, the website
+|Pull-request reviewers, the publication workflow, the website
 |Callers pass matrix and tier policy as action inputs, so a regression-tier
 change cannot alter the pull-request gate. Pull requests run the smoke group
 only. The weekly tier is the only one the dashboard publishes; the run
@@ -190,9 +190,9 @@ publishes as well, because the workflow gates on the presence of the native
 result, not on the run's conclusion. Verilator is built from a pinned tag on
 a cache miss. Retention: run artifacts 14 days (30 for the weekly tier), the
 dashboard artifact 90 days, history and archives on the branch trimmed to 90
-entries. Checked by the required `verilator-smoke (dtp)` and
-`verilator-smoke (sep)` contexts and by the `dv-unit-tests` job in
-`lint.yml`, which runs `tools/dv/tests` on DV-scoped changes
+entries. Checked by the advisory `verilator-smoke (<dut>)` contexts on every
+pull request and by the `dv-unit-tests` job in `lint.yml`, which runs
+`tools/dv/tests` on DV-scoped changes
 (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
 
 |Contributor environment: `pyproject.toml` and `uv.lock` (the `dv` dependency
