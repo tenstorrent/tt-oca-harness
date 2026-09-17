@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: inbound filter instance independence (FAB_SMC_023 subset).
 
-SEP=0 honest scope (no sep_in / no Force):
+SEP=1 honest scope (no sep_in / no Force):
   S4  post-reset BlockByDefault DECERR on VERSION_LO (captured before CSR writes)
   S1  J2A program+readback on instances 0/1/7/14/15 (DECODE independence)
   S2  pairwise isolation: inst0 WDT page vs inst1 VERSION page + src_id
@@ -28,7 +28,10 @@ from seq_lib.smu_addr_map import (
     smc_indexed_addr,
 )
 from seq_lib.smu_axi_helpers import make_smu_axi_master, resp_name
-from seq_lib.smu_filter_helpers import page_align_window
+from seq_lib.smu_filter_helpers import (
+    page_align_window,
+    program_smc_aperture_local_alias,
+)
 from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_SUCCESS,
     jtag2axi_single_read,
@@ -100,7 +103,7 @@ def _pack_cfg(*, allow_ns: bool, src_id: int) -> int:
 
 
 class smu_axi_filter_in_instance_matrix_test_seq:
-    """Inbound filter instance matrix S1–S5 on SEP=0 J2A + s_axi."""
+    """Inbound filter instance matrix S1–S5 on SEP=1 J2A + s_axi."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -229,6 +232,8 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != 0x1:
@@ -442,5 +447,5 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         self._log(
             "CHK-FILTER-IN-INSTANCES-BASIC: "
             f"s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} "
-            f"s4={self.s4_ok} s5={self.s5_ok} (SEP=0 J2A+s_axi; no Force)"
+            f"s4={self.s4_ok} s5={self.s5_ok} (SEP=1 J2A+s_axi; no Force)"
         )

@@ -26,11 +26,12 @@ class smc_cold_reset_test(smc_base_test):
         "CHK-COOL-PRIMARY",
         "CHK-INT-COOL-SEQ",
         "CHK-INT-POR-COLD",
+        "CHK-MID-ASSERT-HOLD",
         "CHK-NONVAC",
         "CHK-POWERGOOD-GATES",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     async def run_scenario(self) -> None:
         seq = smc_cold_reset_test_seq("cold_reset_seq")

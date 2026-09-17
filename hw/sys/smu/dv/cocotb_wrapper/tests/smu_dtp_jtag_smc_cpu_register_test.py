@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_dtp_jtag_smc_cpu_register_test — CPU_CTRL SCRATCH_15 via J2A (SEP=0)."""
+"""smu_dtp_jtag_smc_cpu_register_test — CPU_CTRL SCRATCH_15 via J2A."""
 
 from __future__ import annotations
 
@@ -13,14 +13,14 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_jtag_smc_cpu_register_test(smu_base_test):
-    """CPU_CTRL SCRATCH_15 two-pattern R/W; gate tied open on SEP=0."""
+    """CPU_CTRL SCRATCH_15 two-pattern R/W; gate open on the SEP=1 wrapper."""
 
     use_shared_env = True
 
     async def run_scenario(self) -> None:
         self.logger.info(
             "DUT_TAG=WRAPPER smu_dtp_jtag_smc_cpu_register_test "
-            "TierC DTP-JTAG-SMC-CPU-REGISTER SEP=0 JTAG"
+            "TierC DTP-JTAG-SMC-CPU-REGISTER SEP=1 JTAG"
         )
         seq = smu_dtp_jtag_smc_cpu_register_test_seq(self)
         await seq.run()

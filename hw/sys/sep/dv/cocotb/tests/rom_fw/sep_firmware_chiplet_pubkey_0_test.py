@@ -7,17 +7,13 @@ select ``PUBK_SEL_FUSE_KEY_0`` and are re-signed with dev0, and
 ``CHIPLET_PUBK_HASH0`` holds SHA-256 of that modulus, so the primary verifies and
 the ROM boots without ever reading the backup.
 
-MATCHED PAIR. This testcase and ``sep_firmware_chiplet_pubkey_0_revoke_test`` build
+Matched pair. This testcase and ``sep_firmware_chiplet_pubkey_0_revoke_test`` build
 their flash image from the SAME call, ``select_chiplet_fuse_key(buf, 0)``, so the two
-run byte-identical images and differ ONLY in ``CHIPLET_PUBK_REVOKE`` bit 16. Fuse
-bit clear boots from the primary; bit set refuses BOTH manifests with
-``KEY_REVOKED idx=0x00000010`` and never reaches ``RSA_VERIFY_START``.
+run byte-identical images and differ ONLY in ``CHIPLET_PUBK_REVOKE`` bit 16. Fuse bit
+clear boots from the primary; bit set refuses BOTH manifests with the revocation error
+code and never reaches ``RSA_EXEC``.
 
-Everything else -- why the fused-key arm is distinct code, why the revoke bit is 16
-and not the reference's 6, why ROM development key 0 is revoked here, why the
-other chiplet digest fuse holds a decoy, and which architected status codes are
-substituted -- is in the shared base
-``rom_fw/sep_chiplet_pubkey_base.py``. Read it before changing anything here.
+Read it before changing anything here.
 """
 
 from __future__ import annotations

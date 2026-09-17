@@ -18,6 +18,10 @@ subsystems like Security Processor (SEP), System Management Controller (SMC),
 System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 (DTP), etc.
 
+This manual is the architecture and register-level reference for those
+blocks. Motivation, use cases, and the OCA-layer feature overview are on
+xref:ocah-home::index.adoc[Home].
+
 ifdef::backend-html5[]
 == Documentation Overview
 
@@ -26,8 +30,8 @@ This documentation is organized into the following sections:
 ifndef::release[]
 * xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
-* xref:about-ocah.adoc[About OCAH] - Learn about OCAH motivation, overview, and use cases
-* xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
+* xref:architecture.adoc[OCAH Architecture & Design] - Subsystem composition, memory map, clocks, reset, and per-block microarchitecture
+* xref:dashboard.adoc[Verification Dashboard] - Block-level verification status
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
@@ -35,7 +39,5 @@ ifdef::backend-pdf[]
 ifndef::release[]
 include::revision.adoc[]
 endif::release[]
-= Introduction
-include::about-ocah.adoc[leveloffset=+1]
 include::architecture.adoc[]
 endif::backend-pdf[]

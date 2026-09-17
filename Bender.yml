@@ -308,13 +308,15 @@ vendor_package:
   #     - "dependencies/common"
   #   patch_dir: "vendor/tenstorrent/tt-hw-debug/patches"
 
-  # AXI-over-UCIe (AoU) bridge IP: RTL design + csr SystemRDL.
+  # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
   - name: aou
     target_dir: "vendor/tenstorrent/aou/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "28716da1c1e588636f88410d47846714c63058eb" }
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "08863921a328579bc96f3141b05113c11d7ac84c" }
     include_from_upstream:
       - "RTL"
       - "csr"
+      - "DOC/MAS"
+      - "DOC/integration_guide"
     patch_dir: "vendor/tenstorrent/aou/patches"
 
   # I3C controller/target core. The wrapper and memory primitives are left out;

@@ -3,8 +3,8 @@
 """Passive AXI response monitor for SMC SYS_OUT (output fabric) bus (U6-2).
 
 Snoops ``tb_output_axi_{b,r}*`` lifted from ``output_axi_req/resp`` in tb_top.
-Tallies OKAY / SLVERR / DECERR on B and R channels. DECERR is always a hard
-fail; SLVERR is tallied (allowed by default for U1-2 inject tests).
+Tallies OKAY / SLVERR / DECERR on B and R channels. Both error codes are a hard
+fail unless the testcase opts in (``allow_slverr`` / ``allow_decerr``).
 """
 
 from __future__ import annotations
@@ -43,10 +43,12 @@ class SmcOutputAxiMonitor(uvm_component):
         self.last_awaddr: int | None = None
         self.r_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         self.b_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
-        # SYS_OUT slave may inject SLVERR (U1-2); DECERR is never expected.
-        # Default False: a testcase that expects SYS_OUT SLVERR opts in with
-        # `mon.allow_slverr = True` (smc_output_fabric_slverr_inject_test).
+        # SYS_OUT slave may inject SLVERR or DECERR (U1-2). Default False for
+        # both: a testcase that expects one opts in with `mon.allow_slverr` /
+        # `mon.allow_decerr` (smc_output_fabric_slverr_inject_test), so an
+        # unexpected error response stays a hard fail everywhere else.
         self.allow_slverr = False
+        self.allow_decerr = False
 
     def snapshot(self) -> dict[str, int]:
         return {
@@ -102,7 +104,7 @@ class SmcOutputAxiMonitor(uvm_component):
                 key = code if code in (0, 1, 2, 3) else None
                 self.r_resp_tally[key] += 1
                 where = f" @ AR 0x{self.last_araddr:x}" if self.last_araddr is not None else ""
-                if code == 3:
+                if code == 3 and not self.allow_decerr:
                     self._fail(f"R beat DECERR on SYS_OUT{where}")
                 elif code == 2 and not self.allow_slverr:
                     self._fail(f"R beat SLVERR on SYS_OUT{where}")
@@ -113,7 +115,7 @@ class SmcOutputAxiMonitor(uvm_component):
                 key = code if code in (0, 1, 2, 3) else None
                 self.b_resp_tally[key] += 1
                 where = f" @ AW 0x{self.last_awaddr:x}" if self.last_awaddr is not None else ""
-                if code == 3:
+                if code == 3 and not self.allow_decerr:
                     self._fail(f"B beat DECERR on SYS_OUT{where}")
                 elif code == 2 and not self.allow_slverr:
                     self._fail(f"B beat SLVERR on SYS_OUT{where}")

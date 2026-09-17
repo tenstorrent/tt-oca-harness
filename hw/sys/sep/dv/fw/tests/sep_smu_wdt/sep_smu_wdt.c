@@ -12,11 +12,12 @@
  * runs -- which keeps the image deterministic while making the readbacks the
  * whole on-chip check.
  *
- * WDOG_BARK_THOLD, WDOG_BITE_THOLD and WKUP_THOLD_LO are programmed away from
- * their reset value, so those three readbacks are a reset-to-programmed delta
- * that a block which took no write cannot satisfy. The other four are
- * programmed to their reset value, so their readbacks establish only that the
- * register decoded and returned the written word. INTR_STATE is
+ * Every programmed register is written away from its reset value, so each
+ * readback is a reset-to-programmed delta that a block which took no write,
+ * or unmapped space reading as zero, cannot satisfy: the control registers
+ * carry a non-reset bit that keeps the counter stopped (WDOG_CTRL.PAUSE_IN_SLEEP
+ * with ENABLE clear; a non-zero WKUP_CTRL.PRESCALER with ENABLE clear), the
+ * count is preloaded, and all three thresholds are non-zero. INTR_STATE is
  * write-one-to-clear, so its contract is that both defined bits read clear
  * after the clear-all write, not that the written word reads back.
  *
@@ -36,15 +37,14 @@
 static volatile int g_wdt_status;
 
 /* Programmed values, shared by each write and its own readback so the check has
- * one source. WDOG_CTRL leaves enable and pause_in_sleep clear; WKUP_CTRL
- * leaves enable and prescaler clear. */
-#define WDT_WDOG_CTRL_PROG 0x0u
-#define WDT_WDOG_COUNT_PROG 0x0u
+ * one source. Both ENABLE bits stay clear so neither counter runs. */
+#define WDT_WDOG_CTRL_PROG AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm
+#define WDT_WDOG_COUNT_PROG 0x30u
 #define WDT_WDOG_BARK_THOLD_PROG 0x200u
 #define WDT_WDOG_BITE_THOLD_PROG 0x400u
-#define WDT_WKUP_CTRL_PROG 0x0u
+#define WDT_WKUP_CTRL_PROG (0x5u << AON_TIMER__WKUP_CTRL__PRESCALER_bp)
 #define WDT_WKUP_THOLD_LO_PROG 0x100u
-#define WDT_WKUP_THOLD_HI_PROG 0x0u
+#define WDT_WKUP_THOLD_HI_PROG 0x3u
 
 /* Clears every interrupt-state bit the block implements and any it does not. */
 #define WDT_INTR_STATE_CLEAR_ALL 0xFFFFFFFFu
@@ -83,7 +83,7 @@ static int run_wdt_programming_sequence(void) {
     /* All eight stores retire before the first readback is issued. */
     fence_io();
 
-    /* The three reset-to-programmed deltas. */
+    /* Thresholds first: the widest deltas. */
     if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR,
                             WDT_WDOG_BARK_THOLD_MASK, WDT_WDOG_BARK_THOLD_PROG)) {
         return -1;
@@ -97,8 +97,8 @@ static int run_wdt_programming_sequence(void) {
         return -3;
     }
 
-    /* The rest are programmed to their reset value: the readback shows the
-     * register decoded and returned the written word, not a delta. */
+    /* Control, count and the high threshold: non-reset values with the
+     * counters still stopped. */
     if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDT_WDOG_CTRL_MASK,
                             WDT_WDOG_CTRL_PROG)) {
         return -4;

@@ -19,7 +19,7 @@ class smu_dtp_jtag2axi_abort_mid_op_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_dtp_jtag2axi_abort_mid_op_test TierC JTAG2AXI-ABORT SEP=0 JTAG"
+            "DUT_TAG=WRAPPER smu_dtp_jtag2axi_abort_mid_op_test TierC JTAG2AXI-ABORT SEP=1 JTAG"
         )
         seq = smu_dtp_jtag2axi_abort_mid_op_test_seq(self)
         await seq.run()

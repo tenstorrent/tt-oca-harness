@@ -732,7 +732,9 @@ class SmcScoreboard(uvm_subscriber):
             )
         self._cov("sys_axi", (item.op.value, item.addr >> 12))
         if item.op is SmcSysAxiOp.READ and item.expected is not None:
-            mask = (1 << (item.length * 8)) - 1
+            # The mask spans the whole transfer, so a multi-beat burst read is
+            # compared over every beat rather than only the first.
+            mask = (1 << (item.transfer_bytes * 8)) - 1
             got = item.rdata & mask
             exp = item.expected & mask
             assert got == exp, f"SYS AXI read 0x{item.addr:014x} = 0x{got:x}, expected 0x{exp:x}"

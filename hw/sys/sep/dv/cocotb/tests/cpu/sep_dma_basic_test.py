@@ -96,6 +96,20 @@ class SepDmaBasicCfg:
         return [_PARAM_MAGIC, self.src_off, self.dst_off, self.nbytes, self.fill_seed]
 
 
+def _probe_bit_raw(sig, bit: int) -> str:
+    """One bit of a probe as its raw character: '0', '1', or 'x'/'z'.
+
+    The shared rd() helper resolves unknowns to zero per bit, which is right
+    where a zero is the failing direction and wrong where it is the passing
+    one. Two cocotb versions are in use: 1.x exposes BinaryValue.binstr, 2.x a
+    LogicArray that str()s to the same characters.
+    """
+    v = sig.value
+    text = getattr(v, "binstr", None) or str(v)
+    # binstr is most-significant-first, so index from the right.
+    return text[len(text) - 1 - bit].lower()
+
+
 @pyuvm.test()
 class sep_dma_basic_test(sep_base_test):
     """Boot VeeR EL2 and run the Secure-DMA basic-breadth firmware."""
@@ -185,15 +199,22 @@ class sep_dma_basic_test(sep_base_test):
         dut.dma_host_intg_inject_i.value = 0
         self.logger.info("STEP host-intg: dma_host_intg_inject_i=0")
 
+        # self.rd() resolves an unknown bit to 0, which is the safe direction for
+        # the assert leg above but the wrong one here: an X would read as a
+        # cleared bit and pass. Require a RESOLVED zero instead.
         for _ in range(_PIC_POLL):
             await RisingEdge(dut.clk_i)
-            vec = self.rd(dut.sep_internal_interrupts_probe_o)
-            if ((vec >> _IRQ_DMA_HOST_PATH) & 1) == 0:
+            bit = _probe_bit_raw(dut.sep_internal_interrupts_probe_o, _IRQ_DMA_HOST_PATH)
+            if bit == "0":
                 self.logger.info(
-                    "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[41]=0 after DMA_BUS_ERR_CLEAR"
+                    "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[41] resolved 0 "
+                    "after DMA_BUS_ERR_CLEAR"
                 )
                 return
-        raise AssertionError("sep_internal_interrupts[41] stuck after DMA_BUS_ERR_CLEAR")
+        raise AssertionError(
+            f"sep_internal_interrupts[41] not a resolved 0 after DMA_BUS_ERR_CLEAR "
+            f"(last raw value {bit!r}); an X here is not a cleared bit"
+        )
 
     async def run_scenario(self) -> None:
         # Override the boot scoreboard's expected banner here (after its own
@@ -234,6 +255,22 @@ class sep_dma_basic_test(sep_base_test):
                 "firmware console missing CHK-HOSTFABRIC PASS "
                 "(host-path fabric non-OKAY contract was not proven)"
             )
+        # The two checkers that actually walk the modes and the widths. Logging
+        # CHK-RAND-REP without them would put a PASS record in the kept log on a
+        # run where the walk failed -- poll_boot returns normally on a firmware
+        # FAIL, and the scoreboard verdict lands later.
+        for needle, what in (
+            ("CHK-COPY-MODE PASS:", "the INCR/FIXED/WRAP walk"),
+            ("CHK-WIDTH PASS:", "the 1B/2B/4B width walk"),
+            ("CHK-ERR-ASID PASS:", "the unencoded-ASID error legs"),
+            ("CHK-ERR-SIZE PASS:", "the unencoded-width error leg"),
+            ("CHK-ICCM PASS:", "the SRAM->ICCM->SRAM round trip"),
+        ):
+            if needle not in console:
+                raise AssertionError(
+                    f"firmware console missing {needle} ({what} did not pass), so "
+                    "CHK-RAND-REP has nothing to report"
+                )
         self.logger.info(
             "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
             cfg.seed,

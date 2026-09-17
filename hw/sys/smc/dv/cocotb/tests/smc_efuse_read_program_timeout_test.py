@@ -27,6 +27,7 @@ class smc_efuse_read_program_timeout_test(smc_base_test):
     """timeout_enable|0 aborts; default timeout recovers OTP bit0."""
 
     required_evidence = (
+        "CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE",
         "CHK-EFUSE-TMO-BASIC",
         "CHK-EFUSE-TMO-PROG",
         "CHK-EFUSE-TMO-PROG-REC",
@@ -34,7 +35,7 @@ class smc_efuse_read_program_timeout_test(smc_base_test):
         "CHK-EFUSE-TMO-RD",
         "CHK-EFUSE-TMO-RD-REC",
     )
-    min_evidence = 6
+    min_evidence = 7
 
     auto_protocol_vip = False
 

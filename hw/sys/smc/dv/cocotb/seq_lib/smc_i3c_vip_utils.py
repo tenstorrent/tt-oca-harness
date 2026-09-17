@@ -96,7 +96,7 @@ async def _settle_tb_resolved_pad(dut, sig_name: str, level: int, step: str) -> 
     """Synchronization ONLY -- never evidence.
 
     Waits (bounded) for a pad whose level this step forced through
-    ``tb_top.sv:678-679``. Since ``ext_low`` determines it, reaching the level
+    ``tb_top.sv:687-688``. Since ``ext_low`` determines it, reaching the level
     proves nothing about the DUT; it only lets the drive change propagate before
     the step's samples are taken. Emits no ``CHK-`` token. Expiry
     still fails, because a TB-forced level that never appears means the pad

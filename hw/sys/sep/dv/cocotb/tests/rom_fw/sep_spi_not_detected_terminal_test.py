@@ -17,15 +17,23 @@ This ROM has no SPI-detect status to emit -- ``SEP_MSG_SPI_NOT_DETECTED_DEFAULT`
 SPI-detect step (``src/sep_ot_spi.c:166-179``). What it emits on this edge, after
 both slots fail, is ``report_status(STATUS_TYPE_ERROR,
 SEP_MSG_MANIFEST_LOAD_FAILED)`` and ``MANIFEST_ALL_FAILED``
-(``src/manifest_load.c:601-603``), then ``rom_err_fail()`` -> the FAIL verdict in
+(``src/oca_boot.c``), then ``rom_err_fail()`` -> the FAIL verdict in
 cold_scratch[0] -> ``for(;;) wfi`` (``src/rom_main.c``, ``include/errors.h``). Both
-status words are required below: the loop verdict ``0x0f010213`` and the final
-encoded error ``0x0f010002``.
+status words are required below: each slot's rejection ``0x0f010006``
+(``SEP_MSG_INVALID_MANIFEST_ID``, which ``status_for_result()`` maps
+``OCA_FAIL_MAGIC`` to) and the loop verdict ``0x0f010213``.
+
+READING cold_scratch[1]. The register is not a log: every ``report_status`` write
+is followed by ``status_ring_buffer_insert()``, which overwrites it with
+``SEP_MSG_STATUS_REPORTING_INVALID`` whenever the ring descriptor is unusable --
+and the SEP DV environment leaves ``num_entries`` at 0, so that happens on every
+status. The ring-invalid writes are therefore filtered out before asking what the
+ROM last reported.
 
 ``SPI_INIT_OK`` is required and ``"SPI init failed, using backup manifest"``
 forbidden, so the controller demonstrably came up and BOTH addresses were really
 read. Without those, a dead controller would skip the primary outright
-(``manifest_load.c``) and still reach a terminal error.
+and still reach a terminal error.
 """
 
 from __future__ import annotations
@@ -47,16 +55,24 @@ from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
-_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "non_secure_boot.bin")
+_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_non_secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h -- an erased slot fails the identifier check in
-# validate_manifest_header (manifest_load.c), before the hash check.
-MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
+#  -- an erased slot fails the identifier check in
+# the magic check, before the hash check.
+MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 # status_values.h, errors.h -> STATUS_ENCODE(STATUS_TYPE_ERROR, x).
 SEP_MSG_MANIFEST_LOAD_FAILED = 0x213
+# status_for_result() maps OCA_FAIL_MAGIC to this, so a rejected slot reports the
+# message id, not the low half of the error code the console prints.
+SEP_MSG_INVALID_MANIFEST_ID = 0x06
+# status_ring_buffer_insert() writes this to cold_scratch[1] whenever the ring
+# descriptor is unusable, and the SEP DV environment leaves num_entries at 0, so
+# it lands after every status and is always the last value in the register.
+SEP_MSG_STATUS_REPORTING_INVALID = 0x79
 _STATUS_LOOP_FAILED = 0x0F01_0000 | SEP_MSG_MANIFEST_LOAD_FAILED
-_STATUS_TERMINAL = 0x0F01_0000 | (MANIFEST_ERR_BAD_MAGIC & 0xFFFF)
+_STATUS_SLOT_REJECTED = 0x0F01_0000 | SEP_MSG_INVALID_MANIFEST_ID
+_STATUS_RING_INVALID = 0x0F01_0000 | SEP_MSG_STATUS_REPORTING_INVALID
 
 _SPI_PATH = "BOOT_SPI"
 _SMC_PATH = "WAIT_SMC_MANIFEST"
@@ -99,7 +115,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                 f"{slot} slot is not fully erased after erase_slot()"
             )
         self.logger.info(
-            "CHK-STIMULUS-SPI: both slots erased to 0x%02x -- primary "
+            "CHK-STIMULUS-SPI PASS: both slots erased to 0x%02x -- primary "
             "0x%06x..0x%06x, backup 0x%06x..0x%06x",
             mm.ERASED_BYTE,
             spans["primary"][0],
@@ -262,7 +278,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         )
 
         # A failed controller also reaches a terminal error, by skipping the
-        # primary outright (manifest_load.c), without reading either
+        # primary outright, without reading either
         # address.
         assert any(_SPI_INIT_OK in line for line in console), (
             f"ROM never printed {_SPI_INIT_OK}: the SPI controller did not come "
@@ -312,7 +328,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         )
         for want, what in (
             (_STATUS_LOOP_FAILED, "STATUS_ENCODE(ERROR, SEP_MSG_MANIFEST_LOAD_FAILED)"),
-            (_STATUS_TERMINAL, "STATUS_ENCODE(ERROR, BAD_MAGIC & 0xFFFF)"),
+            (_STATUS_SLOT_REJECTED, "STATUS_ENCODE(ERROR, SEP_MSG_INVALID_MANIFEST_ID)"),
         ):
             assert want in status_seq, (
                 f"cold_scratch[1] never held 0x{want:08x} ({what}); observed {status_hex}"
@@ -327,22 +343,27 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             "CHK-TERMINAL PASS: %s after both rejections, cold_scratch[1] held "
             "0x%08x then 0x%08x, mailbox FAIL (fw_pass=0)",
             _ALL_FAILED,
+            _STATUS_SLOT_REJECTED,
             _STATUS_LOOP_FAILED,
-            _STATUS_TERMINAL,
         )
 
         # Had the ROM continued -- retried, restarted, or reported further --
-        # cold_scratch[1] would have moved off the terminal error.
-        assert status_seq[-1] == _STATUS_TERMINAL, (
-            f"after {_HANG_OBSERVE_CYCLES} cycles past the mailbox FAIL, "
-            f"cold_scratch[1] is 0x{status_seq[-1]:08x}, not the terminal "
-            f"0x{_STATUS_TERMINAL:08x}: the ROM did not stay stopped. Full status "
-            f"sequence: {status_hex}"
+        # cold_scratch[1] would have moved off the terminal error. Read past the
+        # ring-invalid writes: they carry no boot information and follow every
+        # status, so the last one of them says nothing about where the ROM
+        # stopped. The last status that does is what this asserts on.
+        reported = [v for v in status_seq if v != _STATUS_RING_INVALID]
+        assert reported and reported[-1] == _STATUS_LOOP_FAILED, (
+            f"after {_HANG_OBSERVE_CYCLES} cycles past the mailbox FAIL, the last "
+            f"status other than the ring-invalid report is "
+            f"0x{(reported or [0])[-1]:08x}, not the terminal "
+            f"0x{_STATUS_LOOP_FAILED:08x}: the ROM did not stay stopped. Full "
+            f"status sequence: {status_hex}"
         )
         log.info(
-            "CHK-HANG-HELD: cold_scratch[1] still 0x%08x and fw_pass still 0 "
+            "CHK-HANG-HELD: last reported status still 0x%08x and fw_pass still 0 "
             "after %d cycles -- terminal, not transient",
-            _STATUS_TERMINAL,
+            _STATUS_LOOP_FAILED,
             _HANG_OBSERVE_CYCLES,
         )
 

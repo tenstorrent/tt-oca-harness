@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PTAP IDCODE + BYPASS at 1/5/10/20 MHz TCK (SEP=0, no Force).
+"""PTAP IDCODE + BYPASS at 1/5/10/20 MHz TCK (SEP=1, no Force).
 
 S1: TAP ready at the default period (IDCODE).
 S2: For each programmed VIP TCK period, IDCODE matches the IEEE packing.

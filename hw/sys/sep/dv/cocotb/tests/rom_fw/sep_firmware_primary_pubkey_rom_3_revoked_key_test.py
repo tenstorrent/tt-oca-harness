@@ -9,38 +9,31 @@ outcome shape. Its OTP image is the whole of the rest of the stimulus:
 ``sep_efuse_lc_prod_pubk_revoke3.toml`` is ``sep_efuse_lc_prod.toml`` plus exactly
 ``CHIPLET_PUBK_REVOKE`` bit 3.
 
-THE OUTCOME IS A COMPLETED BOOT, NOT A TERMINAL FAILURE. Only the PRIMARY selects
-slot 3; the backup keeps the shipped ROM slot 0
-(``configs/secure_boot_test.yaml:112-114``), which bit 3 does not revoke, so the
-ROM falls over and boots from it. The reference expects the same -- its
-``PRIMARY_PUBKEY_ROM_3_REVOKED_KEY`` patterns
-grade the primary rejection ``WARNING: REVOKED_KEY`` and end in
-``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``. Slot 0 is the exception and is built on the
-terminal base instead; the shared base measures which of the two applies from the
-image rather than trusting the slot number.
+The outcome is A Completed boot, NOT A Terminal failure. Only the PRIMARY selects slot
+3; the backup keeps the shipped ROM slot 0 (``configs/secure_boot_test.yaml:112-114``),
+which bit 3 does not revoke, so the ROM falls over and boots from it. Slot 0 is the
+exception and is built on the terminal base instead; the shared base measures which of
+the two applies from the image rather than trusting the slot number.
 
-WHAT THIS MEMBER PINS. Slot 3 has no compiled-in digest
-(``key_digests.c`` populates slot 0 only), so without the revocation bit it
-would be refused as ``ROM_KEY_EMPTY``. Here the fuse bit changes the verdict,
-because ``validate_signature`` consults the fuse bitmap
-(``manifest_crypto.c``) BEFORE the digest table.
-``ROM_KEY_EMPTY`` is therefore the load-bearing forbid: seeing it would mean
-revocation was evaluated late, or not at all.
+What this member pins. The primary slot is grafted from ``oca_rom_key3_boot.bin``,
+so the manifest the ROM reads is one slot 3 genuinely authorizes: its modulus hashes
+to the digest ``key_digests.c`` holds for slot 3, and its signature verifies under
+that key. The fuse bit is the only thing standing between it and a boot, which is what
+makes the verdict attributable by construction rather than by argument.
 
-NARROWING vs THE REFERENCE, DISCLOSED. The reference re-signs its primary with
-slot 3's own private key
-(``sep_firmware_secure_boot_test.py``), so its primary is a fully valid
-manifest bound to slot 3 and its test proves "revocation refuses a provably good
-image". Only ``rsa_private_key.dev0.pem`` ships here, so the selector write leaves
-the dev0 signature stale and this member proves the weaker property that
-revocation PREEMPTS the empty-digest arm. The stale signature is never examined --
-``RSA_VERIFY_START`` must not appear before the backup read and the total count is
-pinned to 1 -- so the verdict stays attributable to revocation. Slot 0 carries the
-family's strict form.
+``PUBK_UNAUTHORIZED`` is therefore a load-bearing forbid: seeing it would mean the
+graft did not land and the refusal was about the key rather than about revocation. The
+ROM authorizes before it consults the revocation bitmap -- a passing boot logs
+``PUBK_SEL``, ``PUBK_AUTHORIZED``, ``PUBK_REVOKE`` in that order -- so an unauthorized
+slot never reaches the check under test. ``PUBK_SLOT_UNPROVISIONED`` is forbidden
+alongside it to catch the digest table shrinking back under this member.
 
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
+``RSA_EXEC`` must not appear before the backup read, and the total count is pinned to
+1, so the ROM is shown to refuse the slot before spending a modexp on it.
+
+Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. It grants
-OTBN's EDN handshakes only; the RSA assertions are untouched, so ``SIG_VALID``
+OTBN's EDN handshakes only; the RSA assertions are untouched, so ``RSA_VERIFY_OK``
 still means the signature really verified.
 """
 

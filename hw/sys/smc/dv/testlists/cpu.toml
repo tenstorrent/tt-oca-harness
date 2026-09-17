@@ -48,6 +48,14 @@ tags = ["ci", "mem", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_ref_clock_timer_rate_test"
+module = "smc_ref_clock_timer_rate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "clock", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_reference_counter_test"
 module = "smc_reference_counter_test"
 seed = 1

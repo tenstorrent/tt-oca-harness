@@ -7,21 +7,52 @@
 # The TAP clocks flops on both tck edges, so the clocks are modelled explicitly (multiclock on):
 # every step is a time point, a tck cycle costs at least two steps, and dtp_sby_env.sv supplies the
 # reset model.
-# The cover depth must exceed the step at which the deepest cov_ label is reached; the bmc depth
-# matches it so that every property is checked over the same horizon.
+# One task triple per described block, selected by the block's tag: <block>_bmc, <block>_cover and
+# <block>_prove read that block's property and bind files beside the shared filelist and
+# environment, so one sby invocation checks one block. The tap triple also binds the shared JTAG
+# checker on the primary TAP (dtp_jtag_fv_bind.sv), the host's phase rule assumed and the TAP's
+# rules asserted, and reads dtp_tap_sby_env.sv, which bounds the opcode an Update-IR loads for that
+# task. The cover depth of a block must exceed the
+# step at which its deepest cov_ label is reached; the bmc depth matches it so that every property
+# of the block is checked over the same horizon.
 
 [tasks]
-bmc
-cover
-prove
+tap_bmc       tap bmc
+tap_cover     tap cover
+tap_prove     tap prove
+ir_bmc        ir bmc
+ir_cover      ir cover
+ir_prove      ir prove
+reset_bmc     reset bmc
+reset_cover   reset cover
+reset_prove   reset prove
+stap_bmc      stap bmc
+stap_cover    stap cover
+stap_prove    stap prove
+sib_bmc       sib bmc
+sib_cover     sib cover
+sib_prove     sib prove
+dbgctl_bmc    dbgctl bmc
+dbgctl_cover  dbgctl cover
+dbgctl_prove  dbgctl prove
 
 [options]
 multiclock on
 bmc:   mode bmc
-bmc:   depth 30
 cover: mode cover
-cover: depth 30
 prove: mode prove
+tap_bmc:      depth 30
+tap_cover:    depth 30
+ir_bmc:       depth 40
+ir_cover:     depth 40
+reset_bmc:    depth 75
+reset_cover:  depth 75
+stap_bmc:     depth 55
+stap_cover:   depth 55
+sib_bmc:      depth 55
+sib_cover:    depth 55
+dbgctl_bmc:   depth 55
+dbgctl_cover: depth 55
 
 [engines]
 bmc:   smtbmc yices
@@ -30,11 +61,28 @@ prove: abc pdr
 
 [script]
 plugin -i slang
-read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_tap_props.sv dtp_tap_bind.sv dtp_sby_env.sv
+tap:    read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_tap_props.sv dtp_tap_bind.sv dtp_jtag_fv_bind.sv dtp_sby_env.sv dtp_tap_sby_env.sv
+ir:     read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_ir_props.sv dtp_ir_bind.sv dtp_sby_env.sv
+reset:  read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_reset_props.sv dtp_reset_bind.sv dtp_sby_env.sv
+stap:   read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_stap_props.sv dtp_stap_bind.sv dtp_sby_env.sv
+sib:    read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_sib_props.sv dtp_sib_bind.sv dtp_sby_env.sv
+dbgctl: read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_dbgctl_props.sv dtp_dbgctl_bind.sv dtp_sby_env.sv
 prep -top dtp
 
 [files]
 ../../build/dtp.f
-../../props/dtp_tap_props.sv
-../../props/dtp_tap_bind.sv
 dtp_sby_env.sv
+tap:    ../../props/dtp_tap_props.sv
+tap:    ../../props/dtp_tap_bind.sv
+tap:    ../../props/dtp_jtag_fv_bind.sv
+tap:    dtp_tap_sby_env.sv
+ir:     ../../props/dtp_ir_props.sv
+ir:     ../../props/dtp_ir_bind.sv
+reset:  ../../props/dtp_reset_props.sv
+reset:  ../../props/dtp_reset_bind.sv
+stap:   ../../props/dtp_stap_props.sv
+stap:   ../../props/dtp_stap_bind.sv
+sib:    ../../props/dtp_sib_props.sv
+sib:    ../../props/dtp_sib_bind.sv
+dbgctl: ../../props/dtp_dbgctl_props.sv
+dbgctl: ../../props/dtp_dbgctl_bind.sv

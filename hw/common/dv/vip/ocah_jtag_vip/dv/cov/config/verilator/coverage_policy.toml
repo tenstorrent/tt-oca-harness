@@ -83,82 +83,82 @@ expected_matches = 16
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 64
+line = 80
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 65
+line = 81
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 66
+line = 82
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 67
+line = 83
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 68
+line = 84
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 69
+line = 85
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 70
+line = 86
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 71
+line = 87
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 72
+line = 88
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 73
+line = 89
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 74
+line = 90
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 75
+line = 91
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 76
+line = 92
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 77
+line = 93
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 78
+line = 94
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 79
+line = 95
 
 [[holes]]
 id = "sva-next-state-illegal-input"
@@ -177,4 +177,4 @@ issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
 tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
-line = 80
+line = 96

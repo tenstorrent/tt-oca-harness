@@ -9,7 +9,7 @@ schema_version = 1
 # The plan section is DTP_VPLAN.adoc, "Formal Verification Plan".
 name = "dtp"
 profile = "native-formal"
-description = "DTP TAP controller formal properties (SymbiYosys open path)"
+description = "DTP formal properties on the dtp, jtag2axi and cross_trigger_network tops (SymbiYosys open path)"
 
 [testlist]
 path = "testlists/formal.toml"
@@ -41,14 +41,71 @@ common_bender_targets = [
 ]
 # The design only: the simulation target's testbench sources have no place in the formal model.
 bender_targets = ["dtp"]
+# The shared protocol checkers in the boolean subset; the bind files under formal/props/ attach
+# them to a top.
+sources = [
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_fv.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_fv.sv",
+]
 
 [targets.default]
-description = "dtp as the formal top with the TAP-controller property module bound in"
+description = "dtp as the formal top with one block's property module bound in"
 build_dir = "hw/sys/dtp/dv/formal/build"
 
-# One app per described block: `fpv` runs the bmc, cover and prove tasks of dtp.sby in one sby
-# invocation, from the task file's directory, so its [files] entries resolve.
-[formal.apps.fpv.sby]
+# One app per described block: `<block>_fpv` runs that block's bmc, cover and prove task triple of
+# dtp.sby in one sby invocation, from the task file's directory, so its [files] entries resolve.
+[formal.apps.tap_fpv.sby]
 cwd = "hw/sys/dtp/dv/formal/fpv/sby"
 script = "dtp.sby"
-args = ["bmc", "cover", "prove"]
+args = ["tap_bmc", "tap_cover", "tap_prove"]
+
+[formal.apps.ir_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp.sby"
+args = ["ir_bmc", "ir_cover", "ir_prove"]
+
+[formal.apps.reset_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp.sby"
+args = ["reset_bmc", "reset_cover", "reset_prove"]
+
+[formal.apps.stap_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp.sby"
+args = ["stap_bmc", "stap_cover", "stap_prove"]
+
+[formal.apps.sib_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp.sby"
+args = ["sib_bmc", "sib_cover", "sib_prove"]
+
+[formal.apps.dbgctl_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp.sby"
+args = ["dbgctl_bmc", "dbgctl_cover", "dbgctl_prove"]
+
+# The bridge control and the cross-trigger blocks run on their own tops, jtag2axi and
+# cross_trigger_network, from task files beside dtp.sby that read the same filelist. The bridge's
+# three tasks each unroll the bridge and its CDC forty steps, so they run in sequence to fit the
+# memory of one host.
+[formal.apps.j2a_ctrl_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp_jtag2axi.sby"
+args = ["j2a_ctrl_bmc", "j2a_ctrl_cover", "j2a_ctrl_prove", "--sequential"]
+
+[formal.apps.ctn_clkstop_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp_cross_trigger_network.sby"
+args = ["ctn_clkstop_bmc", "ctn_clkstop_cover", "ctn_clkstop_prove"]
+
+# The transport block is P1 and signs off bounded: its item runs bmc and cover, and the
+# ctn_xtrig_prove task stays in the task file for a run by hand.
+[formal.apps.ctn_xtrig_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp_cross_trigger_network.sby"
+args = ["ctn_xtrig_bmc", "ctn_xtrig_cover"]
+
+[formal.apps.ctn_csr_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp_cross_trigger_network.sby"
+args = ["ctn_csr_bmc", "ctn_csr_cover", "ctn_csr_prove"]

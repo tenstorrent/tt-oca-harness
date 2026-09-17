@@ -155,11 +155,14 @@ Protocol-control operations (SV-UVM parity; see
 |---|---|---|
 | `await write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew — AXI permits either arrival order — plus a deferred BREADY assert after the request phase |
 | `await read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low for `hold_cycles` after RVALID; the result's `hold_stable` reports that RVALID stayed asserted with RDATA/RRESP unchanged across the window |
+| `await write_pair_skewed_result(addr_a, data_a, addr_b, data_b, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb_a, strb_b, ...)` | `OcahAxiWritePairResult` | Two single-beat writes queued back to back: the second write's AW and W follow the first on their channels, so under a W delay the second AW meets the responder while the first W is pending; BREADY is deferred `b_ready_delay` cycles after the first write's request phase and both B responses are accepted in order; `aw_stall_cycles` counts AWVALID-without-AWREADY cycles across the pair and `aw_stable` reports AWVALID and AWADDR held through every such stall |
+| `await read_pair_hold_result(addr_a, addr_b, hold_cycles, ...)` | `OcahAxiReadPairResult` | Two single-beat reads: AR(b) follows AR(a) while RREADY is held low for `hold_cycles` after the first RVALID, so a responder that admits one read at a time stalls AR(b); `first.hold_stable` reports the hold window, `ar_stall_cycles` / `ar_stable` the AR channel across the pair |
 
-Both operations require an idle engine on their direction (the skew is
+All four operations require an idle engine on their direction (the skew is
 applied by pausing the backend's channel sources/sinks) and bound every
 phase with `timeout_cycles`; `allow_timeout=True` converts an expiry into a
-`timed_out` result.
+`timed_out` result. The pair results expose the two per-transaction results
+as `first` and `second` in issue order.
 
 Event helpers:
 
@@ -500,10 +503,23 @@ modules simply do not elaborate. Its contents:
   bundle; the response-ID corruption bundles stay unbound because the
   ID-ordering rules fire there by design. Rules are implemented from IHI 0022 rule
   descriptions only — no third-party checker source was consulted. Two
-  trees by simulator capability: the two-state rules use `OCAH_SVA_ASSERT`
+  trees by simulator capability: the two-state rules use `OCAH_SVA_RULE`
   (`hw/common/assert/ocah_sva_macros.svh`) and run on every simulator,
-  Verilator included under `--assert`; the X-hygiene rules and the covers
-  use `OCAH_ASSERT` / `OCAH_COVER` and run on four-state simulators only.
+  Verilator included under `--assert`, and on licensed formal backends under
+  `FORMAL`; the X-hygiene rules and the covers use `OCAH_RULE` /
+  `OCAH_COVER` and run on four-state simulators and licensed backends only.
+  Each rule belongs to the side that drives its signals, and
+  `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
+  assumptions, so a formal environment asserts the design's side and assumes
+  its own; both default to assertions.
+- `sva/ocah_axi_fv.sv` — the same protocol's handshake, reset,
+  burst-legality and response-ordering rules written in the boolean subset
+  the open-source formal frontend reads (`OCAH_FV_RULE`,
+  `hw/common/assert/ocah_fv_macros.svh`), with the flat port list of
+  `ocah_axi_sva` and the same two side parameters; the formal environments
+  of the DTP bind it (`hw/common/dv/docs/formal-property-style.adoc`,
+  Shared protocol checkers). Rules that need per-ID or per-beat history stay
+  in `sva/ocah_axi_sva.sv`.
 - `interface/ocah_axi_struct_bridge.sv` — places a DUT-mastered port that
   stays a pulp request/response struct inside `tb_top` on an `ocah_axi_if`
   instance for the slave agent (see "Struct-Port Boundaries").
@@ -523,8 +539,10 @@ modules simply do not elaborate. Its contents:
   API), and `ocah_axi_slave_agent` (reactive bundle without a
   sequencer). Master side: `ocah_axi_master_config` (vif, geometry, handshake
   watchdog), `ocah_axi_master_driver` (active initiator: sequential AW/W/B
-  and AR/R engines, single transaction outstanding; samples via `mon_cb`,
-  drives the initiator-side vif signals procedurally), the standard
+  and AR/R engines, one transaction outstanding except for the pair
+  operations, whose second single-beat transaction launches before the
+  first completes; samples via `mon_cb`, drives the initiator-side vif
+  signals procedurally), the standard
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   stimulus API — see below), `ocah_axi_master_agent` (driver + sequencer;

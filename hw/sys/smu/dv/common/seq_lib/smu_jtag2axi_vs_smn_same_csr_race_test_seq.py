@@ -1,11 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI vs SMN concurrent write on the same CSR; no tear. SEP=0, no Force."""
+"""JTAG2AXI vs SMN concurrent write on the same CSR; no tear. SEP=1, no Force.
+
+Concurrency is established, not assumed. The SMN writer is released only once
+the JTAG2AXI write's AW handshake has been seen on the DTP -> SMC debug port,
+and the four handshakes -- J2A AW and B at that port, SMN AW and B at the SMU
+boundary -- are timestamped. The race holds when the SMN write was accepted
+before the J2A write's response came back, so both writes were outstanding in
+the SMC at the same time.
+"""
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, Event, First, RisingEdge, Timer
+from cocotb.utils import get_sim_time
 from ocah_axi_vip import RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
@@ -23,6 +32,7 @@ from seq_lib.smu_filter_helpers import (
     SCRATCH_COLD_ADDR,
     await_smn_resp,
     program_inbound0_window,
+    program_smc_aperture_local_alias,
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -33,7 +43,7 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
     require_jtag_tdo_resolved,
 )
-from seq_lib.smu_tb_pins import smc_primary_reset
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_axi_in_prefix
 
 VERSION_LO = SMC_CHIP_CONFIG_VERSION_LO
 VERSION_LO_RESET = SMC_CHIP_CONFIG_VERSION_LO_RESET
@@ -41,6 +51,9 @@ PAT_J = 0x17A6_0001
 PAT_S = 0x5A11_0002
 WINDOW_START = SCRATCH_COLD_ADDR
 WINDOW_END = SMC_CHIP_CONFIG_CHIP_ID
+# The J2A AW handshake must show up within one DR shift plus fabric latency;
+# a bridge that never launches is a failure here, not a hang.
+J2A_AW_TIMEOUT_NS = 200_000
 
 
 class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
@@ -77,6 +90,8 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
@@ -112,6 +127,37 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
 
         j_result: dict = {}
         s_result: dict = {}
+        ts: dict[str, float] = {}
+        period_ns = float(self.cfg.smu_clk_period_ns)
+        aw0 = self._sample_int("dtp_smc_dbg_aw_count_o")
+        b0 = self._sample_int("dtp_smc_dbg_b_count_o")
+        j_aw_seen = Event()
+        prefix = smu_axi_in_prefix(dut)
+        smn_awvalid = getattr(dut, f"{prefix}_awvalid")
+        smn_awready = getattr(dut, f"{prefix}_awready")
+        smn_bvalid = getattr(dut, f"{prefix}_bvalid")
+        smn_bready = getattr(dut, f"{prefix}_bready")
+
+        async def _watch_j2a_port():
+            # The TB counters register one cycle after the handshake they
+            # count, so each stamp is pulled back by one period.
+            while "j_b" not in ts:
+                await RisingEdge(dut.clk_smu_i)
+                now = float(get_sim_time(units="ns")) - period_ns
+                if "j_aw" not in ts and self._sample_int("dtp_smc_dbg_aw_count_o") > aw0:
+                    ts["j_aw"] = now
+                    j_aw_seen.set()
+                if "j_b" not in ts and self._sample_int("dtp_smc_dbg_b_count_o") > b0:
+                    ts["j_b"] = now
+
+        async def _watch_smn_port():
+            while "s_b" not in ts:
+                await RisingEdge(dut.clk_smu_i)
+                now = float(get_sim_time(units="ns"))
+                if "s_aw" not in ts and int(smn_awvalid.value) and int(smn_awready.value):
+                    ts["s_aw"] = now
+                if "s_b" not in ts and int(smn_bvalid.value) and int(smn_bready.value):
+                    ts["s_b"] = now
 
         async def _jtag_writer():
             st, _ = await jtag2axi_single_write(
@@ -132,16 +178,52 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
             s_result["resp"] = resp
 
         t_j = cocotb.start_soon(_jtag_writer())
+        t_watch_j = cocotb.start_soon(_watch_j2a_port())
+        # Gate the second writer on the first writer's issue.
+        await First(j_aw_seen.wait(), Timer(J2A_AW_TIMEOUT_NS, units="ns"))
+        if "j_aw" not in ts:
+            raise AssertionError(
+                f"race J2A write: no AW handshake on the DTP->SMC debug port within "
+                f"{J2A_AW_TIMEOUT_NS} ns; nothing to race against"
+            )
+        t_watch_s = cocotb.start_soon(_watch_smn_port())
         t_s = cocotb.start_soon(_smn_writer())
         await t_j
         await t_s
+        await First(t_watch_j.join(), Timer(J2A_AW_TIMEOUT_NS, units="ns"))
+        await First(t_watch_s.join(), Timer(J2A_AW_TIMEOUT_NS, units="ns"))
         if j_result.get("st") != J2A_STATUS_SUCCESS:
             raise AssertionError(f"race J2A write status={j_result.get('st')}")
         if s_result.get("resp") != RESP_OKAY:
             raise AssertionError(f"race SMN write resp={s_result.get('resp')}")
+        for stamp in ("j_aw", "j_b", "s_aw", "s_b"):
+            if stamp not in ts:
+                raise AssertionError(f"race: handshake {stamp} was never observed; stamps={ts}")
+        self._log(
+            "RACE_J2A_SMN handshakes ns: J2A aw=%.1f b=%.1f  SMN aw=%.1f b=%.1f  "
+            "(SMN aw - J2A aw = %.1f, J2A b - SMN aw = %.1f)"
+            % (
+                ts["j_aw"],
+                ts["j_b"],
+                ts["s_aw"],
+                ts["s_b"],
+                ts["s_aw"] - ts["j_aw"],
+                ts["j_b"] - ts["s_aw"],
+            )
+        )
+        overlapped = ts["j_aw"] <= ts["s_aw"] < ts["j_b"]
+        if not overlapped:
+            raise AssertionError(
+                "race: the SMN write was not accepted while the J2A write was outstanding "
+                f"(J2A aw={ts['j_aw']:.1f} b={ts['j_b']:.1f}, SMN aw={ts['s_aw']:.1f} ns); "
+                "the two writes did not overlap"
+            )
         self.s2_ok = True
         sb.expect_eq("CHK-J2ASMN-WR-J", j_result["st"], J2A_STATUS_SUCCESS)
         sb.expect_eq("CHK-J2ASMN-WR-S", s_result["resp"], RESP_OKAY)
+        sb.expect_eq(
+            "CHK-J2ASMN-OVERLAP SMN accepted inside the J2A AW..B window", overlapped, True
+        )
 
         await ClockCycles(dut.clk_smu_i, 64)
         st_r, jdata = await jtag2axi_single_read(

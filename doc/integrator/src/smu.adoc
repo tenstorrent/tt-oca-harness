@@ -489,11 +489,9 @@ completion.
 
 **Repair Data:**
 
-Repair data is stored in the eFuse BIRA shadow register as a 16-kilobit
-`repair_data` field. The eFuse controller reads this data during fuse sensing
-and makes it available through shadow registers. The external memory repair
-controller must read repair data from `shadow_regs_o` and apply it to SRAM
-arrays according to your memory architecture.
+The SMC fuse map does not allocate storage for repair data. Your external memory
+repair controller must source it from wherever your manufacturing flow keeps it
+and apply it to SRAM arrays according to your memory architecture.
 
 **Status Monitoring:**
 
@@ -1160,7 +1158,7 @@ scan order: the first field is nearest TDI.
 |===
 |Slice |Ports |Defined by |Consumed by
 |SMC |68 |OCAH (`smc_pkg::jtag_smc_reset_ctrl_t`) |SMC reset unit; SMU-internal, no SMU port
-|SEP |7 when `SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
+|SEP |8 when `SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
 |External |`$bits(ic_reset_ext_t)/2` |Adopter (`ic_reset_ext_t`) |SMU output `jtag_ic_reset_ext_o`
 |`reset_hold` |1 bit |IEEE 1149.1 §17 |Nearest TDO; not a reset port
 |===
@@ -1189,12 +1187,13 @@ cold and warm resets. Vector index `[31]` of each SS field is nearer TDI than
 ==== SEP slice (TDI to TDO)
 
 When `SEP=1` the SEP slice covers the SEP main reset and the crypto, Key
-Manager, and TRNG resets consumed by `sep_reset_ctrl`. `trng_jtag_rst_n` is
+Manager, and TRNG resets consumed by `sep_reset_ctrl`. `abr_jtag_rst_n` is
 nearest TDI.
 
 [cols="<35%,<65%",options="header"]
 |===
 |Port |Reset domain
+|`abr_jtag_rst_n` |Adams Bridge
 |`trng_jtag_rst_n` |TRNG
 |`sep_reset_n` |SEP main reset
 |`kmac_jtag_rst_n` |KMAC
@@ -1375,9 +1374,9 @@ wired internally within the SMU.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck,tms,trst_n}` when `SEP=1`, else unused
-|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo` when `SEP=1`, else `1'b0`
-|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck_i,tms_i,trst_ni}` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo_o` when `SEP=1`, else `1'b0`
+|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi_i` when `SEP=1`, else unused
 |`jtag_stap_sep_host_tdo_oen_o` |output |1 |Internal only; not consumed by SEP at SMU level
 |===
 
@@ -1945,7 +1944,7 @@ depends on the module parameter `SEP`.
 
 |SMC SEP AXI Input |`sep_axi_in_req_i` = SEP traffic when `SEP=1`, else `'0` |Dedicated SEP-to-SMC subordinate path
 |DTP SEP OTP JTAG |SEP `axil_sep_otp_jtag_*` when `SEP=1`, else `u_sep_otp_axil_err_slv` |SEP OTP debug AXI-Lite path
-|DTP SEP STAP return |SEP `jtag_tdo` when `SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
+|DTP SEP STAP return |SEP `jtag_tdo_o` when `SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
 |SMU |`sep_mailbox_interrupts` |Internal SEP-to-SMC mailbox interrupts when `SEP=1`, else `'0`
 |SMC |`sep_wdt_reset_n_i = ~sep_wdt_timer_rst_req` when `SEP=1`, else `1'b1` |SEP watchdog reset input to SMC
 |===

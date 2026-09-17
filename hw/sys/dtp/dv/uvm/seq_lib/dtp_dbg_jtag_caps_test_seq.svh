@@ -33,7 +33,7 @@ class dtp_dbg_jtag_caps_test_seq extends dtp_debug_tdr_base_test_seq;
     `uvm_info(get_type_name(), $sformatf("JTAG_CAPS raw=0x%015h", value), UVM_LOW)
     family_check("CHK-CAPS", "JTAG_CAPS", value, expected, "packed value");
 
-    // Every decoded field (RTL bit layout).
+    // Every decoded field ("JTAG Capabilities" table, PTAP document).
     check_caps_field(value, expected, "num_xtrig_int_ct", 54, 6);
     check_caps_field(value, expected, "num_xtrig_ctp", 48, 6);
     check_caps_field(value, expected, "num_extra_staps", 44, 4);

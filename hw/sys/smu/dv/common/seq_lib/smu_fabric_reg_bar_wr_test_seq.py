@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: local fabric config-register delivery (FAB_SMC_032).
 
-SEP=0 honest scope (no sep_in / no Force):
+SEP=1 honest scope (no sep_in / no Force):
   S1  J2A ones/zeros RW-mask discovery + pattern write/readback at each
       fabric configuration-register destination (delivery-only; no field
       semantics).

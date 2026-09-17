@@ -89,7 +89,7 @@ class sep_warm_reset_below_range_hang_test(sep_warm_dispatch_base):
             f"(STATUS_ENCODE(ERROR, SEP_MSG_WARM_RESET_HANG)); observed "
             f"{status_hex}"
         )
-        self.logger.info("CHK-WARM-REJECT-LOW: cold_scratch[1] = 0x%08x", STATUS_WARM_HANG)
+        self.logger.info("CHK-WARM-REJECT-LOW PASS: cold_scratch[1] = 0x%08x", STATUS_WARM_HANG)
 
         # CHK-NO-JUMP: the accept arm did not run. The ROM announces the jump in
         # cold_scratch[1] BEFORE transferring control, so its absence is what

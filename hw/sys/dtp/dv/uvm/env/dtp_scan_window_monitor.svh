@@ -66,10 +66,17 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
                 UVM_MEDIUM)
   endfunction
 
-  // Named scan observable (iJTAG SIB controls, STAP forwarding pins, STAP
-  // host scan controls).
+  // Named scan observable (boundary-scan controls, iJTAG SIB controls, STAP
+  // forwarding pins, STAP host scan controls).
   function bit sample_scan_signal(string name);
     case (name)
+      "jtag_bsr_select":            return scan_vif.jtag_bsr_select;
+      "jtag_bsr_shift_en":          return scan_vif.jtag_bsr_shift_en;
+      "jtag_bsr_capture_en":        return scan_vif.jtag_bsr_capture_en;
+      "jtag_bsr_update_en":         return scan_vif.jtag_bsr_update_en;
+      "jtag_bsr_run_test_idle":     return scan_vif.jtag_bsr_run_test_idle;
+      "jtag_bsr_test_logic_reset":  return scan_vif.jtag_bsr_test_logic_reset;
+      "jtag_bsr_runbist":           return scan_vif.jtag_bsr_runbist;
       "jtag_dft_secure_select":     return scan_vif.jtag_dft_secure_select;
       "jtag_dft_secure_shift_en":   return scan_vif.jtag_dft_secure_shift_en;
       "jtag_dft_secure_capture_en": return scan_vif.jtag_dft_secure_capture_en;
@@ -78,6 +85,9 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
       "jtag_dft_shift_en":          return scan_vif.jtag_dft_shift_en;
       "jtag_dft_capture_en":        return scan_vif.jtag_dft_capture_en;
       "jtag_dft_update_en":         return scan_vif.jtag_dft_update_en;
+      "jtag_dft_run_test_idle":     return scan_vif.jtag_dft_run_test_idle;
+      "jtag_dft_test_logic_reset":  return scan_vif.jtag_dft_test_logic_reset;
+      "jtag_dft_runbist":           return scan_vif.jtag_dft_runbist;
       "jtag_dfd_select":            return scan_vif.jtag_dfd_select;
       "jtag_dfd_shift_en":          return scan_vif.jtag_dfd_shift_en;
       "jtag_dfd_capture_en":        return scan_vif.jtag_dfd_capture_en;

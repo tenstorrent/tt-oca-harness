@@ -64,7 +64,7 @@ timeout_sec = 1800
 tags = ["ci", "irq", "hang", "plic", "pyuvm"]
 run_modes = ["smoke"]
 
-# Unique PVT digital pin (analog macros stay rtl_placeholder).
+# Unique PVT digital pin (the analog macros are placeholder RTL).
 [[tests]]
 name = "smc_temp_interrupt_test"
 module = "smc_temp_interrupt_test"

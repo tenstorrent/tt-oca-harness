@@ -33,7 +33,7 @@ Executable membership is resolved from the testlists; the groups and their
 |===
 |Group |Role
 |`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
-|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the five leaves that need the RISC-V toolchain (two `fw` leaves, three dual-target leaves that run a ROM or firmware image)
+|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the seventeen leaves that need the RISC-V toolchain (fourteen `fw` leaves, three dual-target leaves that run a ROM or firmware image)
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
 |`per_ip` |One pass across every IP the bench drives
 |`all` |The package regression; `all.toml` names the leaves outside it and why, and `SMC_DEFERRED_DISPOSITION.adoc` records the leaves no scheduled tier runs
@@ -49,7 +49,8 @@ is in neither `smoke` nor `functional` and receives no feature credit.
 
 * Feature credit requires active CSR/fabric/pin stimulus and a
   non-vacuous `SmcScoreboard` count. SAMPLE-only bring-up stays in
-  `smoke` and is not a requirement row.
+  `functional` (`smc_cold_reset_test` is also in `smoke`) and is not a
+  requirement row.
 * `smc_i3c_to_fabric_test` is HCI_VERSION decode (`proxy=True`). It
   remains runnable via `i3c_depth` / `per_ip` / by name. It is not
   stub-signature SLVERR, and it is not I3C protocol credit.
@@ -71,33 +72,33 @@ tests actually run. Coverage bins are the `hw/sys/smc/dv/docs/SMC_FCOV.adoc`
 families the scoreboard can hit; Verilator does not close SV covergroups.
 
 The Groups column is resolved membership, not intent. Every feature-credit row
-below is reachable through both `smoke` and `per_ip`; the column names the
-narrower groups that also carry it, so a reviewer can run one feature without
-the whole gate.
+below is in `all` and `hosted`, and every one but `smc_cpu_to_sep_axi_test` is
+also in `per_ip`; the column names the narrower groups that also carry it, so a
+reviewer can run one feature without the whole regression.
 
 [cols="2,3,2,2,3,1",options="header",]
 |===
-|Requirement |Test |Groups besides smoke + per_ip |Coverage intent |Checker evidence |Credit
-|Reset / power-good bring-up |`smc_canonical_smoke_test` |combined, pyuvm |reset + combined SAMPLE |Scoreboard SAMPLE counts; `results.xml` |YES
-|SMC misc / scratch / chip-config CSR |`smc_register_sanity_test` |functional, depth |axil_csr |AXI readback vs expected; non-vacuous AXI |YES
-|Default / RO register read |`smc_default_reg_rd_test` |depth |axil_csr |AXI RO data match |YES
-|Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |depth |mailbox |IRQ observe + mailbox CSR |YES
-|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |depth |fabric |AXI wr/rd on input+output windows |YES
-|Function-level reset |`smc_flr_sanity_test` |depth |reset |FLR then CSR recover |YES
-|I2C master/target active |`smc_i2c_master_target_test` |i2c, depth |i2c (active, not SAMPLE-only) |I2C agent + scoreboard |YES
-|iJTAG / TAP-adjacent |`smc_ijtag_basic_test` |functional, depth |jtag |JTAG VIP / CSR precheck |YES
-|CPU-control / SEP_IN path |`smc_cpu_to_sep_axi_test` |functional, depth (not per_ip) |cpu_traffic |AXI to CPU_CTRL window |YES
-|eFuse / OTP clock observe |`smc_efuse_otp_clock_test` |functional, depth |efuse_otp |Clock/CSR observe (not burn) |YES
-|GPIO IRQ active |`smc_gpio_irq_active_test` |gpio, depth |gpio + interrupt |Active GPIO IRQ, not SAMPLE-only |YES
-|AVSBus / sideband smoke |`smc_sideband_protocol_smoke_test` |depth |avsbus |Sideband CSR/status |YES
-|UART/SPI/log-engine CSR |`smc_uart_spi_log_engine_test` |depth |uart_spi (CSR; not loopback) |CSR window; protocol loopback is a P2 intake row |YES
-|Zeroer / DMA timeout |`smc_zeroer_dma_timeout_test` |depth |clock / dma timeout |Timeout path on real DUT |YES
-|Outbound filter / remap |`smc_output_filter_remap_security_test` |depth_fabric, depth |fabric filter |AXI filter/remap |YES
-|ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |depth |dbs_dfd_ecam_ecc |CSR sanity; fault-inject is deferred |YES
-|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |depth |reset |Scratch persist across reset classes |YES
-|I3C window decode |`smc_i3c_to_fabric_test` |i3c_depth, depth; not in smoke or functional |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
-|PLL/PVT clock config |`smc_pll_pvt_clock_config_test` |none — in no testlist |macro handshake |OKAY+0 wrap |NO
-|I3C CCC/IBI |`smc_i3c_ccc_ibi_full_test` |none — in no testlist |— |child I3C TB |NO
+|Requirement |Test |Groups besides all + hosted + per_ip |Coverage intent |Checker evidence |Credit
+|Reset / power-good bring-up |`smc_canonical_smoke_test` |smoke, combined, pyuvm |reset + combined SAMPLE |Scoreboard SAMPLE counts; `results.xml` |YES
+|SMC misc / scratch / chip-config CSR |`smc_register_sanity_test` |smoke, functional, functional_depth, depth, pyuvm |axil_csr |AXI readback vs expected; non-vacuous AXI |YES
+|Default / RO register read |`smc_default_reg_rd_test` |functional_depth, depth, pyuvm |axil_csr |AXI RO data match |YES
+|Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |functional_depth, depth, pyuvm |mailbox |IRQ observe + mailbox CSR |YES
+|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |depth, pyuvm |fabric |AXI wr/rd on input+output windows |YES
+|Function-level reset |`smc_flr_sanity_test` |functional_depth, depth, pyuvm |reset |FLR then CSR recover |YES
+|I2C master/target active |`smc_i2c_master_target_test` |functional_depth, i2c, depth, pyuvm |i2c (active, not SAMPLE-only) |I2C agent + scoreboard |YES
+|iJTAG / TAP-adjacent |`smc_ijtag_basic_test` |functional, functional_depth, depth, pyuvm |jtag |JTAG VIP / CSR precheck |YES
+|CPU-control / SEP_IN path |`smc_cpu_to_sep_axi_test` |functional, functional_depth, depth, pyuvm (not per_ip) |cpu_traffic |AXI to CPU_CTRL window |YES
+|eFuse / OTP clock observe |`smc_efuse_otp_clock_test` |functional, functional_depth, depth, pyuvm |efuse_otp |Clock/CSR observe (not burn) |YES
+|GPIO IRQ active |`smc_gpio_irq_active_test` |functional_depth, gpio, depth, pyuvm |gpio + interrupt |Active GPIO IRQ, not SAMPLE-only |YES
+|AVSBus / sideband smoke |`smc_sideband_protocol_smoke_test` |depth, pyuvm |avsbus |Sideband CSR/status |YES
+|UART/SPI/log-engine CSR |`smc_uart_spi_log_engine_test` |depth, pyuvm |uart_spi (CSR; not loopback) |CSR window; protocol loopback is a P2 intake row |YES
+|Zeroer / DMA timeout |`smc_zeroer_dma_timeout_test` |depth, pyuvm |clock / dma timeout |Timeout path on real DUT |YES
+|Outbound filter / remap |`smc_output_filter_remap_security_test` |functional_depth, depth_fabric, depth, pyuvm |fabric filter |AXI filter/remap |YES
+|ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |functional_depth, depth, pyuvm |dbs_dfd_ecam_ecc |CSR sanity; fault-inject is deferred |YES
+|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |depth, pyuvm |reset |Scratch persist across reset classes |YES
+|I3C window decode |`smc_i3c_to_fabric_test` |functional_depth, i3c_depth, depth; not in smoke or functional |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
+|PLL/PVT clock config |none; `smc_pll_pvt_clock_config_test` is dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |none |macro handshake |OKAY+0 wrap |NO
+|I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |none |— |child I3C TB |NO
 |DTP CSR on smc_wrapper |idle port; no terminator |none — no terminator |— |do not add a placeholder slave for credit |NO
 |UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |protocol / firmware |UART/ROM intake |NO
 |===

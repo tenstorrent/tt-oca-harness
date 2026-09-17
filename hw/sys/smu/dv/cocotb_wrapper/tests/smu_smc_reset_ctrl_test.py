@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_smc_reset_ctrl_test - primary/cold/periph reset release under SMU SEP=0."""
+"""smu_smc_reset_ctrl_test - primary/cold/periph reset release under the SMU wrapper."""
 
 from __future__ import annotations
 
