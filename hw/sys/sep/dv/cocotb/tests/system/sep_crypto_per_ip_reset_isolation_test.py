@@ -125,8 +125,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     SepCryptoResetIso,
 )
 from seq_lib.sep_hmac_seq import HMAC_CFG, HMAC_DIGEST_0, SepHmac
-from seq_lib.sep_kmac_seq import KMAC_STATUS
-from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
+from seq_lib.sep_kmac_seq import KMAC_STATUS, SepKmac, SepKmacCfg
 from seq_lib.sep_otbn_seq import OTBN_DMEM_RESULT_LO, OTBN_LOAD_CHECKSUM_RESET, SepOtbn
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
@@ -270,9 +269,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             # path that is still live -- which is a weaker property than the
             # checker names.
             if arrival_read is None and host_iso == 1:
-                arrival_read = axi_driver.axi.init_read(
-                    address=KMAC_STATUS, length=4, size=2
-                )
+                arrival_read = axi_driver.axi.init_read(address=KMAC_STATUS, length=4, size=2)
                 arrival_iso = (host_iso, km_iso)
                 self.logger.info(
                     "KMAC drain window open (host_kmac=%d km_kmac=%d, gated reset "

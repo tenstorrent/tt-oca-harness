@@ -146,3 +146,12 @@
 -module entropy_ring_buf_wrapper
 -module entropy_ring_nand2_wrapper
 -module entropy_ring_mux2_wrapper
+
+// SystemVerilog packages. A package holds types, parameters and functions; it
+// has no instance and no state, so it can only ever score 0.00 and drags the
+// average with a denominator that represents no logic. axi_pkg carries one
+// unnamed immediate assertion, inside wrap_boundary() (axi_pkg.sv:134-142),
+// which fires only for an AXI BURST_WRAP transfer. Nothing in SEP issues a
+// wrapping burst -- the crossbars and every master use INCR -- so that
+// assertion has no antecedent in this elaboration.
+-module axi_pkg

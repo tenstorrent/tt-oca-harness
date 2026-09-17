@@ -104,6 +104,10 @@ KM_CMD_ABR_SK_TRANSFER = 0x27
 KM_CMD_OTP_READ_LOCK_COLD = 0x28
 KM_RESP_CMD = 0x00
 KM_RESP_KM_READY = 0x55
+# Unsolicited: the firmware posts this when Adams Bridge has written an ML-KEM
+# shared key into the sideload CSR and the block's KEY_VALID latched. It is the
+# only observation of the shim's interrupt path from the host side.
+KM_RESP_ABR_SHARED_KEY_READY = 0x56
 KM_RESP_ABR_SHARED_KEY_READY = 0x56
 KM_RESP_RECOVERABLE_FAULT = 0xFE
 KM_RESP_UNRECOVERABLE_FAULT = 0xFF
@@ -491,6 +495,20 @@ class SepKmMailbox:
             rc,
             arg,
         )
+        return rc, arg
+
+    async def abr_sk_transfer(self, *, dest: int, timeout: int = 200_000) -> tuple[int, int]:
+        """CMD_ABR_SK_TRANSFER; returns (return_code, return_arg).
+
+        Consumes the ML-KEM shared key Adams Bridge posted into the sideload
+        CSR and stores it in the KPV. The firmware rejects the command while
+        that block's KEY_VALID is clear, so the reject leg is the negative
+        control for the writeback path and the raw result is returned rather
+        than raised on."""
+        seq = await self.send_command(KM_CMD_ABR_SK_TRANSFER, [dest & 0xFFFF_FFFF])
+        rc, arg = await self.recv_resp_cmd(KM_CMD_ABR_SK_TRANSFER, seq, timeout=timeout)
+        await self.check_outbound_empty("POST-ABR-SK-TRANSFER")
+        self.log.info("KM CMD_ABR_SK_TRANSFER: dest=0x%02x rc=%d arg=0x%08x", dest, rc, arg)
         return rc, arg
 
     async def check_outbound_empty(self, tag: str) -> None:

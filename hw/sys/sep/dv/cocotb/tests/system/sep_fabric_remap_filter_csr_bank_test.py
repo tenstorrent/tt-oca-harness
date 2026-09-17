@@ -29,10 +29,10 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import (
-    ALIAS_END_RESET,
     ALIAS_ATTRS,
     ALIAS_BASE,
     ALIAS_END,
+    ALIAS_END_RESET,
     ALIAS_START,
     ALIAS_STRIDE,
     AP_BASE,

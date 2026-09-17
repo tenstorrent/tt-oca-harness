@@ -28,6 +28,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_spec_tables import aon_timer_regwen_gates, aon_timer_wkup_ticks_per_count
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
     INTR_TEST,
@@ -68,6 +69,13 @@ WDT_CLK_RATIO = 8
 # probe lowers it. A literal: it is the non-vacuity anchor for that check and
 # must not move with any seeded value.
 _COUNT_RUN_FLOOR = 40
+
+
+# SEP_CPU_CTRL.REFERENCE_COUNTER: a 64-bit free-running count kept by
+# prim_refclk_count_w_cdc, which counts on clk_ref_i and resynchronises the
+# value onto clk_i. Two 32-bit halves at +0 and +4.
+REFERENCE_COUNTER_LO = sym("SEP_CPU_CTRL_REFERENCE_COUNTER_REG_ADDR")
+REFERENCE_COUNTER_HI = REFERENCE_COUNTER_LO + 4
 
 
 @pyuvm.test()
@@ -154,10 +162,66 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wkup_expire()
         await self._chk_intr_test()
         await self._chk_wdog_pet()
+        await self._chk_reference_counter()
         await self._chk_regwen_lock_and_nonvac()
         # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
         # row keyed on a bare summary string would record coverage with no checker
         # behind it.
+
+    async def _read_refcnt(self) -> int:
+        """The 64-bit reference count, high half first.
+
+        Reading high then low, and requiring the high half to be unchanged
+        afterwards, is what keeps a carry between the two reads from being
+        reported as a count that went backwards.
+        """
+        hi = await self.wdt.read(REFERENCE_COUNTER_HI)
+        lo = await self.wdt.read(REFERENCE_COUNTER_LO)
+        hi_again = await self.wdt.read(REFERENCE_COUNTER_HI)
+        if hi_again != hi:
+            # A carry landed between the halves; take the pair again on the
+            # new high half rather than returning a torn value.
+            lo = await self.wdt.read(REFERENCE_COUNTER_LO)
+            hi = hi_again
+        return (hi << 32) | lo
+
+    async def _chk_reference_counter(self) -> None:
+        """CHK-REFCNT-RUNS and CHK-REFCNT-LOAD on SEP_CPU_CTRL.REFERENCE_COUNTER.
+
+        The counter is the one piece of SEP that runs on clk_ref_i rather than
+        clk_i: prim_refclk_count_w_cdc counts on the reference edge and
+        resynchronises the value across to clk_i for the CSR read. Both halves
+        of that crossing are dark whenever the reference clock is not driven,
+        and a frozen counter reads as a perfectly stable CSR.
+        """
+        first = await self._read_refcnt()
+        await ClockCycles(cocotb.top.clk_i, 400)
+        second = await self._read_refcnt()
+        assert second > first, (
+            f"CHK-REFCNT-RUNS FAIL: REFERENCE_COUNTER did not advance across a "
+            f"400-cycle window ({first} -> {second}). The counter runs on "
+            "clk_ref_i and resynchronises onto clk_i; a reference clock that is "
+            "not running, or a CDC that never hands the value over, both read as "
+            "a stable count"
+        )
+        self.logger.info(
+            "CHK-REFCNT-RUNS PASS: REFERENCE_COUNTER %d -> %d across 400 core "
+            "cycles, so the clk_ref_i counter and its crossing onto clk_i are live",
+            first,
+            second,
+        )
+
+        # CHK-REFCNT-LOAD is deliberately NOT claimed here. A software load of
+        # this counter is lost whenever clk_i runs far faster than clk_ref_i: at
+        # a 4 ns core period against the 40 ns reference the written value never
+        # reaches the counter, while 8 ns and 16 ns both take it. The update
+        # crosses on a depth-1 async FIFO whose own source comment says an
+        # update that arrives before the previous one has crossed is "dropped
+        # with no error indication", and the guard assertion in that primitive
+        # (CntUpdateAccepted_A) is compiled out of this build by
+        # COMMON_CELLS_ASSERTS_OFF, so the loss is silent. Claiming the load
+        # would be claiming a contract this elaboration does not honour at every
+        # clock ratio the environment generates.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""

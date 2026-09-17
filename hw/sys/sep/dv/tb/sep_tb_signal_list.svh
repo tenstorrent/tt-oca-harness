@@ -27,6 +27,11 @@
 `SEP_TB_IN_FIRST(logic, clk_i)
 `SEP_TB_IN(logic, clk_wdt_i)
 `SEP_TB_IN(logic, entropy_rosc_sample_clk_i)
+// Free-running reference clock for the SEP_CPU_CTRL REFERENCE_COUNTER. It is a
+// genuinely separate clock: prim_refclk_count_w_cdc counts on this edge and
+// resynchronises the value onto clk_i, so leaving it undriven freezes the
+// counter and its CDC.
+`SEP_TB_IN(logic, clk_ref_i)
 
 // Reset (driven by cocotb, active-low)
 `SEP_TB_IN(logic, rst_ni)

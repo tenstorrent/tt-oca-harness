@@ -448,6 +448,7 @@ module sep_uvm_top
         .dbg_rstb_i                   (dbg_rstb_i),
         .wdt_rst_ni                   (wdt_rst_ni_i),
         .entropy_rosc_sample_clk_i    (entropy_rosc_sample_clk_i),
+        .clk_ref_i                    (clk_ref_i),
         .wdt_timer_rst_req_o          (wdt_timer_rst_req_o),
 
         // JTAG (TB-driven only during +cpu_boot reset-vector TDR setup)
@@ -1961,18 +1962,20 @@ module sep_uvm_top
 
     sep_tb_if u_tb_if ();
 
-    // Three free-running clocks with the periods the env publishes on
+    // Four free-running clocks with the periods the env publishes on
     // sep_tb_if from the seeded test cfg (cocotb SepEnvCfg parity: sys
-    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns).
+    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns, reference 40 ns).
     initial begin
         clk_i                     = 1'b0;
         clk_wdt_i                 = 1'b0;
         entropy_rosc_sample_clk_i = 1'b0;
+        clk_ref_i                 = 1'b0;
     end
     always #(u_tb_if.sys_clk_period_ns * 0.5ns) clk_i = ~clk_i;
     always #(u_tb_if.wdt_clk_period_ns * 0.5ns) clk_wdt_i = ~clk_wdt_i;
     always #(u_tb_if.entropy_clk_period_ns * 0.5ns)
         entropy_rosc_sample_clk_i = ~entropy_rosc_sample_clk_i;
+    always #(u_tb_if.ref_clk_period_ns * 0.5ns) clk_ref_i = ~clk_ref_i;
 
     // The primary reset and the boot/run controls are test-sequenced through
     // sep_tb_if; the fabric-release and reset observables are mirrored back

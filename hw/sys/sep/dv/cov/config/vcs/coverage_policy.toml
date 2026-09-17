@@ -41,3 +41,16 @@ role = "exclude"
 path = "sep_regblock_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
+
+# External-TRNG AXI-Stream payload. The stream has no master in this
+# elaboration -- sep_ip_integration.sv:773 ties the request struct to zero in
+# RTL, not in the testbench -- so tvalid/tdata/tstrb cannot present a second
+# value on any of the three modules the struct crosses. The source-select mux
+# that consumes the stream is deliberately NOT in this file: its select is a
+# CSR field, so both arms stay graded.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_ext_trng_payload_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]

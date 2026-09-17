@@ -238,26 +238,44 @@ class SepFabricCsrBank(SepAxiRegDriver):
         hi_mask = 0x7FFF_FFFF  # leave bit 31 clear: woset lock / valid live there
         # (bank, base, stride, entries, [(offset, mask)])
         banks = (
-            ("alias", ALIAS_BASE, ALIAS_STRIDE, ALIAS_REGIONS, (
-                (ALIAS_START, 0xFFFF_F000),
-                (ALIAS_START + 4, hi_mask),
-                (ALIAS_END, 0xFFFF_F000),
-                (ALIAS_ATTRS, 0xFFFF_F000),
-                (ALIAS_ATTRS + 4, hi_mask),
-            )),
+            (
+                "alias",
+                ALIAS_BASE,
+                ALIAS_STRIDE,
+                ALIAS_REGIONS,
+                (
+                    (ALIAS_START, 0xFFFF_F000),
+                    (ALIAS_START + 4, hi_mask),
+                    (ALIAS_END, 0xFFFF_F000),
+                    (ALIAS_ATTRS, 0xFFFF_F000),
+                    (ALIAS_ATTRS + 4, hi_mask),
+                ),
+            ),
             # FILTER_CONFIG's hi word carries only locked[63], which the woset leg
             # owns, so it has no word here: bits 32..62 hold nothing and a pattern
             # written there reads back zero.
-            ("infilt", INFILT_BASE, FILTER_STRIDE, INFILT_ENTRIES, (
-                (FILTER_CONFIG, FILTER_RW_MASK),
-                (FILTER_START_ADDR, 0xFFFF_F000),
-                (FILTER_END_ADDR, 0xFFFF_F000),
-            )),
-            ("outfilt", OUTFILT_BASE, FILTER_STRIDE, OUTFILT_ENTRIES, (
-                (FILTER_CONFIG, FILTER_RW_MASK),
-                (FILTER_START_ADDR, 0xFFFF_F000),
-                (FILTER_END_ADDR, 0xFFFF_F000),
-            )),
+            (
+                "infilt",
+                INFILT_BASE,
+                FILTER_STRIDE,
+                INFILT_ENTRIES,
+                (
+                    (FILTER_CONFIG, FILTER_RW_MASK),
+                    (FILTER_START_ADDR, 0xFFFF_F000),
+                    (FILTER_END_ADDR, 0xFFFF_F000),
+                ),
+            ),
+            (
+                "outfilt",
+                OUTFILT_BASE,
+                FILTER_STRIDE,
+                OUTFILT_ENTRIES,
+                (
+                    (FILTER_CONFIG, FILTER_RW_MASK),
+                    (FILTER_START_ADDR, 0xFFFF_F000),
+                    (FILTER_END_ADDR, 0xFFFF_F000),
+                ),
+            ),
         )
 
         written: list[tuple[str, int, int, int, int, int]] = []

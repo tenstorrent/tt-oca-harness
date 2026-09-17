@@ -252,29 +252,34 @@ class sep_address_map_seq(uvm_sequence):
         for name, _why in READ_ONLY:
             await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=None, name=name)
 
-        # The 64-bit REFERENCE_COUNTER is frontdoor readable. It counts on
-        # clk_ref_i, which this testbench does not drive, so it cannot advance
-        # here and both halves must read their reset value. Compare against that
-        # rather than reading with expected=None: an unchecked read would report
-        # whatever came back -- including a neighbouring register's storage or a
-        # stuck all-ones -- and still print a PASS token.
+        # The 64-bit REFERENCE_COUNTER is frontdoor readable and LIVE: it counts
+        # on clk_ref_i, which the testbench drives, so no pinned value can be
+        # its expectation. Read the low half twice and require it to advance.
+        # That is a stronger statement than a reset compare and it cannot be
+        # satisfied by a dead decode: a neighbouring register's storage, a stuck
+        # all-ones or a zero return all hold still between the two reads.
         #
-        # The pinned-reset expectation holds only while clk_ref_i is undriven; with
-        # clk_ref_i driven this is a live counter, checked by reading twice and
-        # requiring the second read to be greater.
+        # expected=None on these two reads is deliberate and is not an unchecked
+        # read -- the advance below is the check. Every other read in this sweep
+        # keeps its pinned expectation.
         ref_off = SEP_CPU_CTRL.offset("REFERENCE_COUNTER")
-        # Split the 64-bit reset value per half. reset32() truncates to bits [31:0],
-        # so using it for both reads would check the high word against the low
-        # word's expectation -- correct only while the default is zero.
-        ref_reset = SEP_CPU_CTRL.reset("REFERENCE_COUNTER")
-        self.ref_counter_low = await self._read(
-            BASE + ref_off, expected=ref_reset & 0xFFFF_FFFF, name="REFERENCE_COUNTER_lo"
-        )
+        first_low = await self._read(BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo")
         self.ref_counter_high = await self._read(
-            BASE + ref_off + 4,
-            expected=(ref_reset >> 32) & 0xFFFF_FFFF,
-            name="REFERENCE_COUNTER_hi",
+            BASE + ref_off + 4, expected=None, name="REFERENCE_COUNTER_hi"
         )
+        self.ref_counter_low = await self._read(
+            BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo_again"
+        )
+        # The low half wraps every 2**32 reference ticks. Two reads a few bus
+        # accesses apart cannot span that, so a non-advance is a stopped counter.
+        if self.ref_counter_low <= first_low:
+            raise AssertionError(
+                f"REFERENCE_COUNTER low half did not advance between two reads "
+                f"(0x{first_low:08x} -> 0x{self.ref_counter_low:08x}). It counts on "
+                f"clk_ref_i and resynchronises onto clk_i; a reference clock that is "
+                f"not running and a crossing that never hands the value over both "
+                f"read as a stable count"
+            )
 
         for name, pattern in BASE_ADDR_RW:
             addr = BASE + SEP_CPU_CTRL.offset(name)

@@ -16,9 +16,9 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_irq_aggregator_seq import (
     PERIPH_HMAC_BIT,
+    PERIPH_STATUS_ADDR,
     RESP_DECERR,
     RESP_SLVERR,
-    PERIPH_STATUS_ADDR,
     SepIrqIp,
     hmac_misaligned_addr,
 )
@@ -61,6 +61,4 @@ class sep_periph_bus_err_misaligned_reveal_test(sep_base_test):
             f"PERIPH_BUS_ERR_STATUS=0x{status:x}; the contract requires SLVERR "
             f"({RESP_SLVERR}) and the hmac bit 0x{PERIPH_HMAC_BIT:x} latched"
         )
-        self.logger.info(
-            "CHK-MISALIGN-LATCH PASS: 0x%08x latched STATUS=0x%x", addr, status
-        )
+        self.logger.info("CHK-MISALIGN-LATCH PASS: 0x%08x latched STATUS=0x%x", addr, status)

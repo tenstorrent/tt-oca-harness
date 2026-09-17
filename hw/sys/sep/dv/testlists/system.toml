@@ -382,6 +382,20 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# AXI transaction IDs on the response path. Eight scratch words are primed
+# with eight distinct values, then read with eight reads outstanding at once,
+# one per ID; each must return its own word. Directed, not randomized: the
+# proof is a value compare, and a random ID on either side would remove it.
+name = "sep_axi_id_routing_test"
+module = "system.sep_axi_id_routing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "axi", "id", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Narrow-write byte masking and memory-window readback. Every AxSIZE at every
 # legal lane offset on every seed; the seed varies staged data only. The
 # window compare is the only checker that catches a read-mask defect, which

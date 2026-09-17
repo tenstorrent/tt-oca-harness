@@ -83,7 +83,7 @@ class sep_address_map_test(sep_base_test):
             f"the PASS summary; first: {sb_errors[0]}"
         )
         self.logger.info(
-            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable as 0x%08x_%08x",
+            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable and advancing, last read 0x%08x_%08x",
             seq.ref_counter_high,
             seq.ref_counter_low,
         )

@@ -18,9 +18,9 @@ run seed. Every seed walks the high-bit mirrors of the live registers
 from __future__ import annotations
 
 import cocotb
-from ocah_axi_vip import AxiTimingProfile
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from ocah_axi_vip import AxiTimingProfile
 from sep_base_test import sep_base_test
 from seq_lib.sep_entropy_pool_seq import (
     FIFO_DEPTH,
@@ -225,9 +225,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         ):
             drv.set_timing(profile)
             try:
-                wr = await pool.access(
-                    POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True
-                )
+                wr = await pool.access(POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True)
             finally:
                 drv.set_timing(AxiTimingProfile())
             assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (

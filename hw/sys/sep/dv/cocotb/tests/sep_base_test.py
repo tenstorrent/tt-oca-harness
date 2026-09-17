@@ -303,6 +303,7 @@ class sep_base_test(uvm_test):
         cocotb.start_soon(
             Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
         )
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
 
     def bind_smc_responder(self, dut) -> None:
         """Attach the shared AXI slave agent to the SEP->SMC boundary.

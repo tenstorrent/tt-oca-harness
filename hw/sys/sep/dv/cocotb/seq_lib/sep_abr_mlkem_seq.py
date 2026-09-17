@@ -38,6 +38,23 @@ MLKEM_DECAPS_KEY = ABR_BASE + abr_off("MLKEM_DECAPS_KEY")
 MLKEM_ENCAPS_KEY = ABR_BASE + abr_off("MLKEM_ENCAPS_KEY")
 MLKEM_CIPHERTEXT = ABR_BASE + abr_off("MLKEM_CIPHERTEXT")
 
+# Caliptra Key-Vault controls for the ML-KEM lanes. SEP has no Caliptra KV; the
+# facade is sep_abr_kv_shim, which serves the KM-written sideload CSR on the KV
+# ports. read_en / write_en are bit 0 and are hwclr, so each one arms a single
+# transfer and the engine clears it.
+# abr_reg.rdl names all six registers of this block (:438-443), but only the
+# first carries an explicit address; the rest are typedef instantiations that
+# abr_offsets() does not resolve. The other two are therefore derived from the
+# anchored one, in RDL declaration order (seed rd, msg rd, sharedkey wr), and
+# the selftest pins all three against the generated decoder in abr_reg.sv so a
+# layout change fails at import rather than writing a wrong address
+# mid-simulation.
+MLKEM_KV_SEED_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_seed_rd_ctrl")
+MLKEM_KV_MSG_RD_CTRL = MLKEM_KV_SEED_RD_CTRL + 0x8
+MLKEM_KV_SK_WR_CTRL = MLKEM_KV_SEED_RD_CTRL + 0x10
+KV_READ_EN = 1 << 0
+KV_WRITE_EN = 1 << 0
+
 # MLKEM_CTRL.CTRL, the 3-bit command field.
 KEM_CMD_NONE = 0x0
 KEM_CMD_KEYGEN = 0x1
@@ -86,6 +103,12 @@ def _selftest() -> None:
     assert MLKEM_DECAPS_KEY - ABR_BASE == 0xA000
     assert MLKEM_ENCAPS_KEY - ABR_BASE == 0xB000
     assert MLKEM_CIPHERTEXT - ABR_BASE == 0xB800
+    # The KV control block sits at its own anchor in abr_reg.rdl; ML-DSA's is
+    # 0x8000 and ML-KEM's is 0xC000, with ctrl/status alternating from there.
+    # abr_reg.sv decoded_reg_strb: 16'hc000 / 16'hc008 / 16'hc010.
+    assert MLKEM_KV_SEED_RD_CTRL - ABR_BASE == 0xC000
+    assert MLKEM_KV_MSG_RD_CTRL - ABR_BASE == 0xC008
+    assert MLKEM_KV_SK_WR_CTRL - ABR_BASE == 0xC010
     # The three large windows a command touches must not overlap each other.
     assert MLKEM_DECAPS_KEY + 4 * KEM_DK_WORDS <= MLKEM_ENCAPS_KEY
     assert MLKEM_ENCAPS_KEY + 4 * KEM_EK_WORDS <= MLKEM_CIPHERTEXT
