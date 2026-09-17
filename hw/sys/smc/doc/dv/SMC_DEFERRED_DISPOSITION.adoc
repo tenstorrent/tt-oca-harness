@@ -493,8 +493,14 @@ The `ocah-toolchain` image (`tools/docker/Dockerfile`: `gcc-riscv64-unknown-elf`
 and `picolibc-riscv64-unknown-elf`) is built locally and published to no
 registry, and no workflow builds firmware, so every firmware leaf below, each
 of which runs a `c_compile` stage, is run on demand (`scripts/docker-run.sh`
-builds the images) until CI has a toolchain. The last row is held out for a
-different reason: it is in no group, so no tier selects it.
+builds the images) until CI has a toolchain. The `smc_ref_clock_timer_rate_test`
+row is held out for a different reason: it is in no group, so no tier selects
+it. The five eFuse-map rows after it are held out on #1989: the SMC eFuse word
+counter is one bit too narrow for the 256-word map, so fuse sense stores no
+word and every shadow read returns 0 with an OKAY response; each of them
+compares a sensed word against the preload image somewhere on its path.
+`smc_efuse_map_read_test` is not in this table: it carries #1989 as the
+`rtl_issue` reproducer (below).
 
 [cols="2,1,3,1,1,3",options="header"]
 |===
@@ -519,6 +525,11 @@ different reason: it is in no group, so no tier selects it.
 |`smc_occp_sanity_test` |`dual_all`, `all` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |SMC DV owner |2026-12-15 |Toolchain as above
 |`smc_occp_dual_unsecure_boot_test` |`dual_all`, `occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |SMC DV owner |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
 |`smc_ref_clock_timer_rate_test` |none |In no group, so `smoke`, `hosted` and `rtl_issue` all miss it. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |SMC DV owner |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
+|`smc_efuse_boundary_signals_test` |`depth_efuse`, `coverage_closure`, `depth` |#1989: reads `SMC_EFUSE_MAP_LOCKS` after sense and expects the preload image's word 0; the shadow returns 0 |SMC DV owner |2026-12-15 |#1989 merged; then back into `all` and `hosted` (`testlists/all.toml`) with its `ci` tag
+|`smc_efuse_locked_access_interrupt_test` |`depth_efuse`, `coverage_closure`, `depth` |#1989: the same LOCKS compare precedes the lock and interrupt legs |SMC DV owner |2026-12-15 |As above
+|`smc_efuse_otp_burn_shadow_test` |`coverage_closure` |#1989: the shadow read of the sensed image is the first compare, before the PROGRAM command |SMC DV owner |2026-12-15 |As above
+|`smc_occp_sanity_secure_error_test` |`coverage_closure`, `depth` |#1989: its positive signature gate reads map word 0 and gets 0 |SMC DV owner |2026-12-15 |As above
+|`smc_peripheral_instance_decode_test` |none |#1989: its eFuse-map probe expects the preload image's LOCKS word as the instance's non-zero reset and reads 0 |SMC DV owner |2026-12-15 |As above
 |===
 
 `dual.toml` is therefore in the toolchain bucket, not an "elaboration only"
@@ -532,10 +543,10 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 `dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Members: `smc_gpio_irq_mask_deassert_test` (#1602),
-`smc_log_engine_intr_mask_test` (#1635), `smc_i2c_intr_mask_test` (#1635),
-`smc_deadspace_decode_test` (#585) and `smc_remap_cla_test` (#1855: the CLA
-unmapped in-window offset `+0x38` completes with OKAY).
+Members: `smc_deadspace_decode_test` (#585), `smc_remap_cla_test` (#1855: the
+CLA unmapped in-window offset `+0x38` completes with OKAY) and
+`smc_efuse_map_read_test` (#1989: the shadow map reads 0 after sense, measured
+on LOCKS word 0 against the preload image).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in

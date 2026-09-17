@@ -4,11 +4,15 @@
 
 Firmware test: `fw/tests/uart_log_engine_disable_during_xfer` is loaded into
 scratch by the firmware loader. On wrap 0 with UART0 in MCR.LOOP it triggers a
-16-byte entry and clears CTRL.EN immediately, requires INTR_STATUS to stay 0
-with both error interrupts enabled, re-enables and re-triggers cleanly, fires
-four entries at once and waits for all four LOG_CTRL words to hwclr, aborts
-another transfer from the WAIT state, and finally runs a 16-byte entry on
-replica 1 (wrap 1). Every completion and status check is the firmware's.
+32-byte entry (as deep as the UART TX FIFO, so the writer is still moving
+bytes) and clears CTRL.EN one register access later, then counts the bytes the
+loopback returns: fewer than 32, all from the slot, none once the UART is idle,
+with INTR_STATUS held at 0 while both error interrupts are enabled. A 16-byte
+re-trigger must deliver exactly 16 bytes. It then fires four entries at once and
+waits for all four LOG_CTRL words to hwclr, aborts another 32-byte transfer from
+the WAIT state with the same byte-count halt check and recovery, and finally
+runs a 16-byte entry on replica 1 (wrap 1). Every count, completion and status
+check is the firmware's.
 
 Bench observation: after the PASS word the 256-byte SPM source holds the
 multi-entry fill 0xC0 + (i & 0x3F) that the later scenarios reuse, and both
