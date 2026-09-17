@@ -10,7 +10,11 @@ Drives product ports only:
 Under PROD (raw 0x1):
 
   * non-identity read / write → BLOCK (DECERR + 0xBADCAB1E)
-  * JTAG_PUBLIC_IDENTITY read → ALLOW (not DECERR; timeout fails)
+  * JTAG_PUBLIC_IDENTITY read → ALLOW (resp=OKAY; timeout fails)
+
+Every JTAG-side access waits for fuse sense first: until sense completes the
+shadow window answers SLVERR / 0xBADCAB1E to allowed and blocked requests
+alike, and an allow verdict taken then would not be the DUT's decision.
 
 Also records ``CHIP_CONFIG_LC_STATE`` over SEP_IN with an exact expected
 matching the packed ``tb_lc_state`` value. Full multi-state matrix lives in
@@ -31,6 +35,7 @@ except ImportError:  # pragma: no cover - cocotb version shim
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
+from seq_lib.smc_base_test_seq import wait_fuse_sense_done
 from seq_lib.smc_efuse_jtag_lc_negative_test_seq import (
     SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY,
     SMC_EFUSE_MAP_LOCKS,
@@ -84,6 +89,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             reset_active_level=False,
         ).sequence
         await ClockCycles(dut.clk_smc_i, 20)
+        await wait_fuse_sense_done()
 
         # Negative: non-identity blocked; identity exception still allowed.
         await self._check_read("PROD", "NON_ID", SMC_EFUSE_MAP_LOCKS, expect_block=True)
@@ -96,30 +102,25 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         # SAME address, with the lifecycle state the only thing that changed.
         # Without it a DECERR from a wedged JTAG path, or an address that
         # answers DECERR unconditionally, satisfies the PROD legs identically.
-        #
-        # "Allowed" is "not routed to the access-control error slave", not
-        # "OKAY": on this bench fuse sense has not completed on the JTAG path,
-        # so a permitted non-identity read answers SLVERR rather than returning
-        # map content. That is the same definition
-        # smc_efuse_jtag_lc_access_matrix_test uses.
+        # Sense has completed, so the allowed read must complete OKAY at the
+        # eFuse controller; SLVERR would be the shadow window refusing it.
         dut.tb_lc_state.value = pack_lc_state(LC_TEST_DEV)
         await ClockCycles(dut.clk_smc_i, 20)
         _, dev_code = await self._read(SMC_EFUSE_MAP_LOCKS)
         if dev_code is None:
             self.errors.append("[TEST_DEV] NON_ID read TIMEOUT")
-        elif dev_code == RESP_DECERR:
+        elif dev_code != RESP_OKAY:
             self.errors.append(
-                f"[TEST_DEV] NON_ID read @0x{SMC_EFUSE_MAP_LOCKS:08x} still routed to the "
-                f"access-control error slave (resp=DECERR); the PROD block above is then "
-                f"not attributable to the lifecycle state"
+                f"[TEST_DEV] NON_ID read @0x{SMC_EFUSE_MAP_LOCKS:08x} expected ALLOW "
+                f"(resp=OKAY) once the lifecycle state moved, got resp={dev_code}; the "
+                f"PROD block above is then not attributable to the lifecycle state"
             )
         else:
             self.checks += 1
             self.logger.info(
-                "JTAG eFuse read  [TEST_DEV] NON_ID @0x%08x -> resp=%s (not DECERR): the "
-                "same address that PROD blocked is reachable once the lifecycle state moves",
+                "JTAG eFuse read  [TEST_DEV] NON_ID @0x%08x -> resp=OKAY: the same "
+                "address that PROD blocked completes once the lifecycle state moves",
                 SMC_EFUSE_MAP_LOCKS,
-                dev_code,
             )
         dut.tb_lc_state.value = packed
         await ClockCycles(dut.clk_smc_i, 20)
@@ -142,8 +143,9 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             proxy=False,
             details=(
                 "PROD JTAG eFuse: NON_ID/write BLOCK (DECERR+0xBADCAB1E); "
-                "JTAG_PUBLIC_IDENTITY ALLOW via resp=OKAY "
-                "(identity rdata not scored on Verilator stub); "
+                "JTAG_PUBLIC_IDENTITY ALLOW via resp=OKAY after fuse sense "
+                "(identity rdata not scored: map content is "
+                "smc_efuse_map_read_test's claim); "
                 "CHIP_CONFIG_LC_STATE exact; CPU JTAG pins checked"
             ),
         )
@@ -201,9 +203,9 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
                     f"0x{BLOCK_SIGNATURE:08x}"
                 )
             return
-        # ALLOW: response-code contract only. Verilator eFuse stub still
-        # returns 0xBADCAB1E on the allow path — do not treat rdata as a
-        # chiplet/package identity golden (value proof needs sensed HW).
+        # ALLOW is the response-code contract: the access reached the eFuse
+        # controller and completed. The map content behind it is
+        # smc_efuse_map_read_test's claim, so rdata is logged, not scored.
         if code != RESP_OKAY:
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW "
@@ -211,8 +213,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             )
         else:
             self.logger.info(
-                "JTAG eFuse ALLOW [%s] %s @0x%08x resp=OKAY "
-                "(rdata=0x%08x not scored — Verilator stub)",
+                "JTAG eFuse ALLOW [%s] %s @0x%08x resp=OKAY (rdata=0x%08x not scored)",
                 label,
                 cls,
                 addr,

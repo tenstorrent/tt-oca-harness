@@ -10,10 +10,12 @@ Force / no TB encode helper):
 
 **What is claimed: routing/blocking only.** For each lifecycle state the test
 asserts whether a JTAG-side eFuse access is routed to the access-control error
-slave (DECERR) or reaches the eFuse controller. It does **not** claim that an
-allowed read returns eFuse content: on this bench no JTAG-side read returns a
-real map value (fuse sense has not completed on that path), so "allowed" means
-"not routed to the error slave", and the ``details=`` record says exactly that.
+slave (DECERR) or reaches the eFuse controller and completes there (OKAY). It
+does **not** claim what an allowed read returns: the map content behind the
+window is ``smc_efuse_map_read_test``'s claim, and the ``details=`` record says
+exactly that. Every access waits for fuse sense first, because until sense
+completes the shadow window answers SLVERR / 0xBADCAB1E to allowed and blocked
+requests alike and no allow verdict taken then is the DUT's decision.
 
 **Where the expected matrix comes from — SPEC, not RTL.**
 ``hw/ip/efuse/doc/architecture.adoc`` §"Lifecycle State (LC_STATE) Effects":
@@ -56,6 +58,7 @@ except ImportError:  # pragma: no cover - cocotb version shim
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_addr_map import smc_addr
+from seq_lib.smc_base_test_seq import wait_fuse_sense_done
 from smc_base_test import smc_base_test
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
@@ -198,6 +201,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             reset_active_level=False,
         ).sequence
         await ClockCycles(dut.clk_smc_i, 5)
+        await wait_fuse_sense_done()
 
         for raw, sigint, label in LC_MATRIX:
             await self._set_lc_state(raw, sigint, label)
@@ -232,14 +236,12 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             self.errors
         )
 
-        # Anti-vacuity gate. Every access in this bench returns rdata
-        # 0xBADCAB1E, blocked or allowed, so the data compare alone cannot
-        # discriminate; the AXI response code is the discriminator, and this
-        # requires it to have taken BOTH values on the same address in the same
-        # run. A build whose access-control demux is stuck (always routing to
-        # the error slave, or never routing to it) fails here even though every
-        # individual row's expectation could still be satisfied by one of the
-        # two stuck behaviours.
+        # Anti-vacuity gate. The AXI response code is the discriminator, and
+        # this requires it to have taken BOTH values on the same address in the
+        # same run. A build whose access-control demux is stuck (always routing
+        # to the error slave, or never routing to it) fails here even though
+        # every individual row's expectation could still be satisfied by one of
+        # the two stuck behaviours.
         discriminating = [addr for addr, outs in self._read_outcomes.items() if len(outs) == 2]
         assert discriminating, (
             "no eFuse map address was both blocked and allowed across the six "
@@ -263,24 +265,23 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
-            # Directed stimulus floor: 24 lc_state-driven JTAG eFuse
+            # Directed stimulus floor: the six LC_MATRIX rows, each two reads
+            # (READ_CLASSES) and one write, is 18 lc_state-driven JTAG eFuse
             # access-control checks. Literal here, not read from `self.checks`.
-            min_csr_accesses=24,
+            min_csr_accesses=18,
             csr_accesses=self.checks,
             proxy=False,
-            # ROUTING/BLOCKING ONLY. This must not claim "block signature
-            # 0xBADCAB1E verified": every access in this bench returns that
-            # word, allowed or blocked, so the compare cannot discriminate and
-            # is not a verified property ([NO-ALWAYS-PASS-CHECKER]). The claim
-            # below is the one the AXI response codes support.
+            # ROUTING/BLOCKING ONLY. The claim below is the one the AXI
+            # response codes support; what an allowed read returns is
+            # smc_efuse_map_read_test's claim.
             details=(
                 "lc_state_i-driven JTAG eFuse access-control ROUTING matrix "
                 "(PROD/RMA_SOP block + JTAG_PUBLIC_IDENTITY exception + "
                 "differential-integrity lockdown), expectations derived from "
-                "hw/ip/efuse/doc/architecture.adoc:265-305; blocked/allowed "
-                "separated by AXI response code, both outcomes observed on the "
-                "same address. No allowed read returns eFuse content on this "
-                "bench, so no data claim is made"
+                "hw/ip/efuse/doc/architecture.adoc:265-305; after fuse sense, "
+                "blocked = DECERR + 0xBADCAB1E from the error slave, allowed = "
+                "OKAY from the eFuse controller, both outcomes observed on the "
+                "same address. No data claim is made on the allowed reads"
             ),
         )
 
@@ -402,11 +403,9 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             return None
 
         # A blocked access is the err_slv DECERR. An allowed access reaches the
-        # eFuse controller (OKAY on silicon / SLVERR on the un-sensed Verilator
-        # stub) -- never a DECERR from this wrapper. The response code is the
-        # discriminator because the read data is 0xBADCAB1E on both paths in the
-        # Verilator stub; the end-of-run gate requires both codes to have been
-        # seen on the same address.
+        # eFuse controller and, with fuse sense complete, completes OKAY; the
+        # end-of-run gate requires both codes to have been seen on the same
+        # address.
         blocked = code == RESP_DECERR
         self._read_outcomes.setdefault(addr, set()).add(blocked)
         cocotb.log.info(
@@ -428,12 +427,13 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
             )
+        elif not expect_block and code != RESP_OKAY:
+            self.errors.append(
+                f"[{label}] {cls} read @0x{addr:08x} expected ALLOW (resp=OKAY at the eFuse "
+                f"controller) but got resp={code} rdata=0x{rdata:08x}"
+            )
         elif expect_block and rdata != BLOCK_SIGNATURE:
-            # architecture.adoc:297-299. This compare cannot discriminate on
-            # this bench (every access returns the signature); it holds the
-            # SPEC'd blocked-read data and fires if the error slave's RESP_DATA
-            # override changes. It is NOT presented as a verified property in
-            # `details=`.
+            # architecture.adoc:297-299: the error slave's blocked-read data.
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} blocked but data "
                 f"0x{rdata:08x} != SPEC err-slv signature "
@@ -443,7 +443,10 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
 
     async def _check_write(self, label: str, addr: int, expect_block: bool) -> int | None:
         self.checks += 1
-        code = await self._write(addr, 0xA5A5_5A5A)
+        # LOCKS is write-set-only: any bit this write sets locks a field for
+        # the rest of the run, so the routing probe writes 0 and leaves the
+        # map as sensed.
+        code = await self._write(addr, 0)
         if code is None:
             self.errors.append(
                 f"[{label}] write @0x{addr:08x} got NO AXI response within "
@@ -453,7 +456,8 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             )
             return None
         # A blocked write is routed to the err_slv -> DECERR. An allowed write
-        # reaches the real eFuse controller (OKAY / SLVERR), never a DECERR.
+        # reaches the eFuse controller and, with fuse sense complete, completes
+        # OKAY.
         blocked = code == RESP_DECERR
         self._write_outcomes.add(blocked)
         cocotb.log.info(
@@ -471,6 +475,11 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         elif not expect_block and blocked:
             self.errors.append(
                 f"[{label}] write @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
+            )
+        elif not expect_block and code != RESP_OKAY:
+            self.errors.append(
+                f"[{label}] write @0x{addr:08x} expected ALLOW (resp=OKAY at the eFuse "
+                f"controller) but got resp={code}"
             )
         return code
 
