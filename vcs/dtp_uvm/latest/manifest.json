@@ -1,0 +1,56 @@
+{
+  "aggregate": {
+    "flows": {
+      "failing": 1,
+      "pass_rate": 0.0,
+      "passing": 0,
+      "total": 1,
+      "unknown": 0
+    },
+    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/dashboard-data/history.json",
+    "history_points": 1,
+    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/dashboard-data/summary.json",
+    "tests": {
+      "failing": 2,
+      "incomplete_runs": 0,
+      "pass_rate": 98.68,
+      "passing": 149,
+      "skipped": 0,
+      "total": 151,
+      "unknown": 0
+    }
+  },
+  "errors": [
+    "dtp_uvm: runner rc=1",
+    "dtp_uvm: native status=FAIL",
+    "dtp_uvm: normalized status=FAIL"
+  ],
+  "generated_at": "2026-09-17T13:49:17.481654+00:00",
+  "git": {
+    "commit": "da528f3481d6c6809644efc6a0a6d3b2056c1b98",
+    "requested_ref": "da528f3481d6c6809644efc6a0a6d3b2056c1b98"
+  },
+  "jenkins": {
+    "build_number": "80",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/80/",
+    "job_name": "tt-oca-harness/dtp/uvm",
+    "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/"
+  },
+  "matrix": [
+    {
+      "collector_rc": 0,
+      "framework": "uvm",
+      "group": "all",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/runs/dtp_uvm/result.json",
+      "native_status": "FAIL",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/dashboard-data/dtp_uvm.result.json",
+      "normalized_status": "FAIL",
+      "profile": "dtp_uvm",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/runs/dtp_uvm",
+      "runner_rc": 1,
+      "tool": "vcs"
+    }
+  ],
+  "schema_version": 1,
+  "status": "FAIL"
+}
