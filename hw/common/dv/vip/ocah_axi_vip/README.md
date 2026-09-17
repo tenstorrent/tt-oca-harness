@@ -96,6 +96,9 @@ ocah_axi_vip/
   interface/ocah_axi_struct_bridge.sv — places a pulp request/response struct
                                    port on an ocah_axi_if for the slave agent
   sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
+  sva/ocah_axi_fv.sv             — the handshake, reset, burst and ordering rules in the
+                                   boolean subset formal environments bind; both checkers
+                                   assert or assume each side by parameter
   uvm/ocah_axi_uvm_pkg.sv        — SV-UVM layer: side-neutral passive stack
                                    (monitor/ref-model/scoreboard/env) + slave
                                    agent (reactive memory-backed responder)
@@ -451,7 +454,7 @@ replay of failures.
 | Backpressure | Responder READY stalls per channel (`enable_backpressure`); master `b_ready_*` / `r_ready_*` delay knobs; every stall bounded and deterministic | Random delays (opt-in, logged as a warning) |
 | Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
 | Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`); `allow_timeout=True` returns `RESP_TIMEOUT` | — |
-| Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
+| Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle; `sva/ocah_axi_fv.sv` carries the handshake, reset, burst and ordering rules in the boolean subset a formal environment binds, each side asserted or assumed by parameter | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
 | Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --tool vcs --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, graded by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
 | Simulators and protocols | Verilator, VCS, and Xcelium (cocotb selftests); VCS (SV-UVM selftests); AXI4 and AXI4-Lite | SV-UVM on Xcelium (the runner's SV-UVM flow is VCS-only); AXI-Stream; AXI5-only features |
 

@@ -41,6 +41,12 @@ common_bender_targets = [
 ]
 # The design only: the simulation target's testbench sources have no place in the formal model.
 bender_targets = ["dtp"]
+# The shared protocol checkers in the boolean subset; the bind files under formal/props/ attach
+# them to a top.
+sources = [
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_fv.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_fv.sv",
+]
 
 [targets.default]
 description = "dtp as the formal top with one block's property module bound in"
