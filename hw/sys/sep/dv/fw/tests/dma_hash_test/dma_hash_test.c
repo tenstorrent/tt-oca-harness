@@ -30,9 +30,9 @@
 #include "sha256.h"
 #include "sep_pic.h"
 
-// PIC source = sep_internal_interrupts index + 1 (done [8]->9, error [11]->12).
+// PIC source = sep_internal_interrupts index + 1 (done [8]->9, error [10]->11).
 #define EXT_INT_DMA_DONE 9
-#define EXT_INT_DMA_ERROR 12
+#define EXT_INT_DMA_ERROR 11
 
 // Flag set by interrupt handler
 static volatile uint32_t dma_interrupt_fired = 0;

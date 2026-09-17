@@ -262,7 +262,7 @@ appears.
 |`sep_irq_ip_to_aggregator_test`
 |no_cpu
 |ocah_axi_vip
-|Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit from both a read and a write, and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 40 and 42, and clears each.
+|Proves that interrupts owned by the entropy blocks, HMAC error, and DMA done/chunk/error reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit from both a read and a write, and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 40 and 42, and clears each.
 |`sep_periph_bus_err_misaligned_reveal_test`
 |no_cpu
 |ocah_axi_vip
@@ -1816,18 +1816,18 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 
 *BFM / Model*: ocah_axi_vip, CPU FW
 
-*Objective*: Completes the interrupt path all the way to the CPU.
+*Objective*: Completes the interrupt path all the way to the CPU for every outbound mailbox channel.
 
-*Test Coverage*: Mailbox push to PIC to a CPU interrupt service routine.
+*Test Coverage*: Mailbox push to PIC to a CPU interrupt service routine, channels 0..7.
 
 *Test Procedure*:
 
 [arabic]
 . Initialise the fabric filter. The firmware also writes the clock-gate control register, but the only field the generated map defines there is the PKA gate, so that write ungates nothing in this design and is not on the proof path.
-. Register a service routine on the mailbox interrupt source and enable it.
+. Register a service routine on that channel's PIC source and enable it.
 . Arm the mailbox: clear pending status, set the watermark to fire on one word, enable the interrupt.
-. Write one word into the mailbox queue.
-. Wait for interrupt; the routine claims it, raises the watermark, clears the status bits, confirms they read back clear while the enable is still set, then masks the enable.
+. Write one word into that channel's queue.
+. Wait for interrupt; the routine claims it, raises the watermark, clears the status bits, confirms they read back clear while the enable is still set, then masks the enable. Repeat for channels 0..7.
 
 *Checkers*:
 
@@ -1835,11 +1835,11 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 |===
 |Checker |Contract
 |CHK-DELIVERY
-|The service routine actually runs — the interrupt reached the CPU rather than stopping at the aggregator.
+|The service routine actually runs on every outbound channel — the interrupt reached the CPU rather than stopping at the aggregator. The host counts eight `CHK-DELIVER` lines so a skipped channel cannot hide behind the PASS magic.
 |CHK-RW1C
-|The interrupt status register clears on write-one-to-clear, and the read-only pending register — derived as status AND enable — reads back zero while the enable is still fully set, so that zero is not a masking artefact.
+|For each channel, the interrupt status register clears on write-one-to-clear, and the read-only pending register — derived as status AND enable — reads back zero while the enable is still fully set, so that zero is not a masking artefact.
 |CHK-NOSTORM
-|The routine runs exactly once — the count is compared against one, not merely printed — and the interrupt does not re-fire afterwards.
+|For each channel the routine runs exactly once — the count is compared against one, not merely printed — and the interrupt does not re-fire afterwards.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -2124,9 +2124,9 @@ recovery. Those are listed in <<phase-3>>.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter, the same hole written, and one read through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write.
+*Objective*: Proves that interrupts owned by the entropy blocks, HMAC error, and DMA done/chunk/error reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter, the same hole written, and one read through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write.
 
-*Test Coverage*: Entropy `INTR_TEST` bits plus adapter SLVERR into the aggregator.
+*Test Coverage*: Entropy, HMAC-error, and DMA `INTR_TEST` bits plus adapter SLVERR into the aggregator.
 
 *Test Procedure*:
 
@@ -2149,9 +2149,9 @@ recovery. Those are listed in <<phase-3>>.
 |===
 |Checker |Contract
 |CHK-AGG
-|All six interrupts propagate to their expected aggregator bit and clear again — baseline-low, assert, isolation and clear all covered. "One-hot" here means one-hot among the six covered bits. Bits outside that set are not compared — and the logged vector shows some of them are legitimately high, so this is a real scope limit rather than a theoretical one.
+|All covered interrupts (CSRNG, EDN, HMAC error, DMA done/chunk/error) propagate to their expected aggregator bit and clear again — baseline-low, assert, isolation and clear all covered. Event sources clear by W1C of `INTR_STATE`; DMA Status sources clear by `INTR_TEST=0`. "One-hot" here means one-hot among the covered bits. Bits outside that set are not compared — and the logged vector shows some of them are legitimately high, so this is a real scope limit rather than a theoretical one. HMAC/KMAC `fifo_empty` Status bits are idle-true and are not walked.
 |Non-vacuity (not a leaf checker)
-|A non-zero number of AXI transactions was observed, so the run cannot pass having done nothing. This leaf emits no `CHK-NONVAC` of its own: the floor is the shared scoreboard's `checks > 0` activity guard (`cocotb/env/sep_scoreboard.py`). It is a transaction floor, not a per-source minimum — no assertion requires that all six sources ran. The six per-source lines are what evidence that.
+|A non-zero number of AXI transactions was observed, so the run cannot pass having done nothing. This leaf emits no `CHK-NONVAC` of its own: the floor is the shared scoreboard's `checks > 0` activity guard (`cocotb/env/sep_scoreboard.py`). It is a transaction floor, not a per-source minimum — no assertion requires that every covered source ran. The per-source lines are what evidence that.
 |CHK-BUSERR-BASE
 |`DMA_BUS_ERR_STATUS` and `PERIPH_BUS_ERR_STATUS` read 0, and aggregator bits 40 and 42 read 0, before either fault. A stuck-high latch fails here.
 |CHK-BUSERR-DMA
@@ -3778,10 +3778,10 @@ single run covers every combination.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Randomization*: RANDCFG — the MUST trio (mailbox, OTBN done, HMAC done) walks
-every seed; two extras are drawn per seed from a five-member pool, so one run
-exercises two of the five and three go untouched. With three seeds a run covers
-at most six draws and is not guaranteed to reach all five. The map contract is
-identical for every draw; which extras are graded is seed-dependent and is not
+every seed; two extras are drawn per seed from an eight-member pool (DMA done/chunk/error, HMAC-err, KMAC, CSRNG, EDN, KMAC-err), so one run
+exercises two of the eight and six go untouched. With three seeds a run covers
+at most six draws and is not guaranteed to reach all eight. DMA chunk/error and HMAC-err are walked every seed on the aggregator leaf. The map contract is
+identical for every draw; which extras are graded here is seed-dependent and is not
 tallied.
 
 *Not claimed*: "wake on wait-for-interrupt, not by polling". The wait helper loops
@@ -3952,7 +3952,7 @@ feature-scorecard hole.
 |CHK-NONVAC
 |EVERY walked register's readback differs from its own observed pre-write value. Where a seeded value happens to equal what the register already holds, the test flips the lowest writable bit instead, so no register on any seed can satisfy this by writing back what was already there.
 |CHK-INTR
-|The interrupt test register drives interrupt status while the enable is set, and clearing the source deasserts it with no write-one-to-clear. Whether the enable masks the status register itself is logged as an observation, not graded: the register description does not state it.
+|The interrupt test register drives interrupt status while the enable is set, and clearing the source deasserts it with no write-one-to-clear. The same raise and release are sampled on aggregator bit 13 (PIC source 14). Whether the enable masks the status register itself is logged as an observation, not graded: the register description does not state it.
 |CHK-ERR-W1C
 |Five error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY) are each induced by their own trigger, observed set, and cleared by write-one-to-clear, with a clean precondition asserted first. Each trigger must set its OWN bit and no other: the clean precondition makes exclusivity checkable, and without it a device that raised every error bit on any stimulus would satisfy all five legs. The OVERFLOW and CMDBUSY triggers find the boundary from the DUT's own `STATUS.TXFULL` / `STATUS.READY` report and then write one beat past it, so no FIFO depth is imported as a golden. The sixth bit the register block defines, ACCESSINVAL, is *not claimed*: its documented trigger is a TXDATA write with no bytes enabled, which the AXI master on this path cannot drive.
 |CHK-WATERMARK
@@ -6011,7 +6011,7 @@ slot, so over this surface an erase always frees.
 |CHK-OTP
 |`CMD_OTP_READ_LOCK_COLD` of one identity bit returns success with that bit set in the echo; a reserved bit returns the invalid-argument code; a zero-length payload returns the invalid-length code.
 |CHK-RECOV
-|SEP `CTRL.FLUSH` posts `RESP_RECOVERABLE_FAULT` with the flushed-by-SEP code; `CMD_STAT` reports the latched bit; `CMD_RECOV_ACK` clears it. The following shred is the key command accepted after the ACK.
+|SEP `CTRL.FLUSH` posts `RESP_RECOVERABLE_FAULT` with the flushed-by-SEP code; `CMD_STAT` reports the latched bit; aggregator bit 31 is 1; `CMD_RECOV_ACK` clears the STAT bit and the aggregator bit. The following shred is the key command accepted after the ACK.
 |CHK-GONE
 |A shredded engine refuses to start. After a final `CMD_ENGINE_SHRED` the AES produces no output within a bounded window, which is the only frontdoor evidence the shred reached the key: the engine key registers are write-only. Runs last, because an engine parked waiting for a key stays parked.
 |CHK-ALIVE
@@ -6087,7 +6087,7 @@ frontdoor.
 |CHK-RESET
 |After park/release the KM announces `RESP_KM_READY` and `CMD_KEY_LOAD` succeeds.
 |CHK-WIPE
-|A write of `KM_WIPE_CTRL.wipe_state` posts `RESP_UNRECOVERABLE_FAULT`.
+|A write of `KM_WIPE_CTRL.wipe_state` posts `RESP_UNRECOVERABLE_FAULT` and aggregator bit 30 (PIC source 31) is 1.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

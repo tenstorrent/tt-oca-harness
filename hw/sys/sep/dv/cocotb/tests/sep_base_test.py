@@ -952,6 +952,24 @@ class sep_base_test(uvm_test):
         """Wait until ESRC accumulates a seed and presents it to CSRNG."""
         return await self._wait_high(cocotb.top.drbg_seed_valid_o, timeout)
 
+    async def poll_internal_irq(self, idx: int, expect: int, *, timeout: int = 400) -> int:
+        """Poll ``sep_internal_interrupts_probe_o[idx]`` until it equals ``expect``.
+
+        Returns the last sampled vector. The aggregate has no CSR mirror, so
+        this is the frontdoor-equivalent observation of one PIC wire.
+        """
+        sample = 0
+        for _ in range(timeout):
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            sample = self.rd(cocotb.top.sep_internal_interrupts_probe_o)
+            if ((sample >> idx) & 1) == expect:
+                return sample
+        raise AssertionError(
+            f"sep_internal_interrupts[{idx}] did not become {expect} in "
+            f"{timeout} cycles (vec=0x{sample:x})"
+        )
+
     async def report_entropy_stall(self, window: int = 4_000) -> None:
         """Log WHERE the ESRC->DRBG chain stopped after a seed/genbits timeout.
 

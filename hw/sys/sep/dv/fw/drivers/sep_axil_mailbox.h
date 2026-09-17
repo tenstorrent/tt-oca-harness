@@ -43,6 +43,17 @@
 // Mailbox 0 outbound interrupt -> sep_internal_interrupts[0] -> PIC source 1.
 #define SEP_AXIL_MBOX0_PIC_SRC 1u
 
+// Eight outbound channels, stride from generated mailbox 0 vs 1 WRITE_DATA.
+// Channel ch drives sep_internal_interrupts[ch] -> PIC source (ch + 1).
+#define SEP_AXIL_MBOX_N 8u
+#define SEP_AXIL_MBOX_STRIDE                                                         \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WRITE_DATA_BASE_ADDR -              \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR)
+
+static inline uint32_t sep_axil_mbox_ch(uint32_t ch, uint32_t mbox0_addr) {
+    return mbox0_addr + ch * SEP_AXIL_MBOX_STRIDE;
+}
+
 #ifndef SEP_CLOCK_GATE_CTRL
 #define SEP_CLOCK_GATE_CTRL OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR
 #endif

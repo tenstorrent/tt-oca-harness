@@ -772,8 +772,9 @@ The two domains are separate coverpoints because they are separate sources with
 separate owners; one shared pair would let a KM-mailbox edge stand in for the
 SEP mailbox.
 
-The EL2 PIC claim stays on the CPU test. The 42-source exclusivity map is
-Phase 2.
+The EL2 PIC claim stays on the CPU test. `sep_mailbox_plic_test` walks all eight
+outbound channels, so `cp_raise` / `cp_clear` observe each of
+`sep_internal_interrupts[7:0]`. The 42-source exclusivity map is Phase 2.
 
 ==== `sep_wdt_bark_cg`
 

@@ -3,11 +3,13 @@
 """IP-interrupt -> sep_internal_interrupts aggregator.
 
 reference ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivity_
-test_seq). no_cpu: with the CPU held off, the host injects each CSRNG/EDN
+test_seq). no_cpu: with the CPU held off, the host injects each covered IP
 interrupt via its real INTR_TEST register and proves it propagates to the mapped
 bit of the sep_internal_interrupts aggregate vector that feeds the VeeR PIC --
-exercising the IP `intr_o` -> aggregator wiring (sep.sv:524-546), not merely that
-the IP raised its own status bit.
+exercising the IP `intr_o` -> aggregator wiring (sep.sv:530-578), not merely that
+the IP raised its own status bit. HMAC error is Event-type (W1C). DMA done /
+chunk / error are Status-type (INTR_TEST=0 deasserts). HMAC/KMAC fifo_empty
+Status bits are idle-true and are not walked.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 (unreachable with the CPU held off), so the test observes it through the tb_top
@@ -15,8 +17,8 @@ The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 the reference suite's sep_irq_probe_if wire-tap of sep_interrupts[idx]). The IP-
 local INTR_STATE RW1C contract is checked frontdoor over AXI.
 
-Per source (CSRNG cmd_req_done/entropy_req/hw_inst_exc/fatal_err -> bits 23..26;
-EDN cmd_req_done/fatal_err -> bits 27..28), the full reference suite 3-phase check:
+Per source (CSRNG bits 23..26, EDN bits 27..28, HMAC error bit 19, DMA done /
+chunk / error bits 8..10), the 3-phase check:
   CHK-BASE  clear INTR_TEST + W1C INTR_STATE -> aggregate bit reads 0
             (non-vacuity: a stuck-high aggregate bit fails here).
   CHK-SET   INTR_ENABLE + INTR_TEST -> aggregate bit reads 1 AND INTR_STATE bit 1
@@ -25,8 +27,8 @@ EDN cmd_req_done/fatal_err -> bits 27..28), the full reference suite 3-phase che
   CHK-ISO   while this source is asserted, the OTHER 5 mapped bits stay 0
             (one-hot aggregation -- catches an OR-network smear; stronger than
             reference suite, which checks one source at a time).
-  CHK-CLR   W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0
-            (RW1C deassert path).
+  CHK-CLR   Event: W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0.
+            Status: INTR_TEST=0 -> the same two zeros (INTR_STATE is read-only).
 
 Then one through-adapter SLVERR on the Secure DMA register hole and one on
 each HMAC / KMAC / OTBN CSR gap:
@@ -155,27 +157,30 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                     f"({other.name}) is also set -- aggregator smear (vec=0x{iso:08x})"
                 )
 
-            # CHK-CLR: W1C INTR_STATE -> aggregate bit returns low and INTR_STATE clears.
+            # CHK-CLR: Event sources W1C INTR_STATE; Status sources drop INTR_TEST.
             await self.irq.stop_inject(src)
-            await self.irq.clear_state(src)
+            if src.kind == "event":
+                await self.irq.clear_state(src)
             clr_ok, _ = await self._poll_agg(src.agg_idx, 0)
+            clr_how = "W1C clear" if src.kind == "event" else "INTR_TEST release"
             assert clr_ok, (
-                f"{src.name}: sep_internal_interrupts[{src.agg_idx}] stuck after W1C clear"
+                f"{src.name}: sep_internal_interrupts[{src.agg_idx}] stuck after {clr_how}"
             )
             assert await self.irq.read_state_bit(src) == 0, (
-                f"{src.name}: INTR_STATE bit not cleared by W1C"
+                f"{src.name}: INTR_STATE bit not cleared by {clr_how}"
             )
             self.logger.info(
                 "%s PASS: INTR_TEST -> sep_internal_interrupts[%d] 0->1->0 + "
-                "INTR_STATE RW1C + isolation (vec=0x%08x)",
+                "%s + isolation (vec=0x%08x)",
                 src.name,
                 src.agg_idx,
+                "INTR_STATE RW1C" if src.kind == "event" else "Status-type INTR_TEST release",
                 iso,
             )
 
         self.logger.info(
-            "CHK-AGG PASS: all %d CSRNG/EDN IRQs propagate to the aggregator, "
-            "one-hot, with RW1C clear",
+            "CHK-AGG PASS: all %d HMAC/DMA/CSRNG/EDN IRQs propagate to the aggregator, "
+            "one-hot, with Event W1C / Status INTR_TEST release",
             len(IRQ_TABLE),
         )
         await self._check_bus_err_paths()

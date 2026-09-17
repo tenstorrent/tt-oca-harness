@@ -43,9 +43,10 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-NONVAC    : every walked reg reads back different from its observed pre-write
                   value, so no entry in the walk is a no-op against a tied-off decode.
 
-RXWM and irq-line delivery are covered by the RX-path tests
-(`sep_spi_ot_flash_cmd_rand_test` / `sep_spi_ot_dma_rx_test`) and the delivery
-tests (`sep_irq_ip_to_aggregator_test`).
+RXWM is covered by the RX-path tests (`sep_spi_ot_flash_cmd_rand_test` /
+`sep_spi_ot_dma_rx_test`). CHK-INTR samples aggregator bit 13
+(`sep_internal_interrupts[13]`, PIC source 14) on the same INTR_TEST raise
+and release.
 
 no_cpu / +skip_fuse_sense.
 """
@@ -53,6 +54,7 @@ no_cpu / +skip_fuse_sense.
 from __future__ import annotations
 
 import pyuvm
+from env.sep_spec_tables import agg_from_pic
 from sep_base_test import sep_base_test
 from seq_lib.sep_spi_host_csr_seq import (
     CMD,
@@ -109,6 +111,7 @@ _NEG_WINDOW_FLOOR = 32
 # depths: reaching either fails the checker rather than passing it.
 _FILL_LIMIT = 512
 _CMD_LIMIT = 64
+_SPI_AGG = agg_from_pic("SPI IRQ")
 
 
 @pyuvm.test()
@@ -267,17 +270,21 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             assert st & bit, (
                 f"CHK-INTR {label}: enabled INTR_TEST did not set INTR_STATUS (0x{st:08x})"
             )
+            await self.poll_internal_irq(_SPI_AGG, 1)
             # remove the source -> deasserts.
             await self.spi.wr(INTR_TEST, 0)
             st = await self.spi.rd(INTR_STATUS)
             assert not (st & bit), (
                 f"CHK-INTR {label}: clearing INTR_TEST did not deassert (0x{st:08x})"
             )
+            await self.poll_internal_irq(_SPI_AGG, 0)
             await self.spi.wr(INTR_ENABLE, 0)
         self.logger.info(
-            "CHK-INTR PASS: INTR_TEST sets INTR_STATUS and releasing INTR_TEST "
-            "deasserts it with no W1C, for ERROR+SPI_EVENT (the INTR_ENABLE mask "
-            "direction is logged as an observation, not graded)"
+            "CHK-INTR PASS: INTR_TEST sets INTR_STATUS and aggregator [%d], "
+            "and releasing INTR_TEST deasserts both with no W1C, for "
+            "ERROR+SPI_EVENT (the INTR_ENABLE mask direction is logged as an "
+            "observation, not graded)",
+            _SPI_AGG,
         )
 
     # ---- CHK-ERR-W1C ------------------------------------------------------

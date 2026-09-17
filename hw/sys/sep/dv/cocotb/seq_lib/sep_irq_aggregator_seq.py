@@ -18,9 +18,9 @@ beat there is past the rule and DECERRs. Their PERIPH_BUS_ERR_STATUS bits are
 unreachable here, which is why periph_holes() names three blocks and not seven.
 
 OpenTitan interrupt-register layout (per IP base):
-  INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
+  INTR_STATE  @ +0x00  Event: RW1C; Status: RO
   INTR_ENABLE @ +0x04  RW    -- gates the IP intr_o = INTR_STATE & INTR_ENABLE
-  INTR_TEST   @ +0x08  WO    -- write 1 to a bit to set the matching INTR_STATE bit
+  INTR_TEST   @ +0x08  WO    -- Event: sets INTR_STATE; Status: held until written 0
 CSRNG/EDN bases from the generated register map. Aggregator bit =
 documented PIC source ID minus 1 (`hw/sys/sep/doc/interrupts.adoc`; PIC
 IDs are 1-based). 32-bit AXI beats (size=2) via the sep_crypto TL-UL
@@ -33,13 +33,16 @@ from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_spec_tables import pic
-from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, sym
+from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, RegBlock, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 CSRNG_BASE = sym("CSRNG_REG_MAP_BASE_ADDR")
 EDN_BASE = sym("EDN_REG_MAP_BASE_ADDR")
+HMAC_BASE = HMAC.addr("INTR_STATE")
+SECURE_DMA = RegBlock("SECURE_DMA")
+DMA_BASE = SECURE_DMA.addr("INTR_STATE")
 
 INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR") - CSRNG_BASE
 INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR") - CSRNG_BASE
@@ -50,7 +53,11 @@ RESP_SLVERR = 2
 # PIC source IDs from hw/sys/sep/doc/interrupts.adoc (1-based).
 # sep_internal_interrupts[N] feeds PIC source N+1.
 PIC_HMAC_DONE = pic("HMAC done")
+PIC_HMAC_ERR = pic("HMAC error")
 PIC_KMAC_DONE = pic("KMAC done")
+PIC_DMA_DONE = pic("DMA transfer done")
+PIC_DMA_CHUNK = pic("DMA chunk done")
+PIC_DMA_ERROR = pic("DMA error")
 PIC_CSRNG_CMD_REQ_DONE = pic("CSRNG command request done")
 PIC_CSRNG_ENTROPY_REQ = pic("CSRNG entropy request")
 PIC_CSRNG_HW_INST_EXC = pic("CSRNG HW instance exception")
@@ -174,15 +181,22 @@ def otbn_reg_unmapped_addr() -> int:
 @dataclass(frozen=True)
 class IrqSrc:
     """One interrupt source: its IP base, the bit in that IP's INTR_* registers,
-    and the bit it drives in sep_internal_interrupts."""
+    and the bit it drives in sep_internal_interrupts.
+
+    kind is ``event`` (W1C INTR_STATE deasserts) or ``status`` (INTR_STATE is
+    read-only; writing INTR_TEST=0 is the deassert path).
+    """
 
     name: str
     base: int
     test_bit: int
     agg_idx: int
+    kind: str = "event"
 
 
-# CSRNG/EDN sources. agg_idx is PIC source − 1 from interrupts.adoc.
+# CSRNG/EDN Event sources plus HMAC error (Event) and DMA done/chunk/error
+# (Status). agg_idx is PIC source − 1 from interrupts.adoc. HMAC/KMAC
+# fifo_empty Status bits are idle-true and are not in this table.
 IRQ_TABLE = (
     IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, agg_from_pic(PIC_CSRNG_CMD_REQ_DONE)),
     IrqSrc("csrng_entropy_req", CSRNG_BASE, 1, agg_from_pic(PIC_CSRNG_ENTROPY_REQ)),
@@ -190,6 +204,33 @@ IRQ_TABLE = (
     IrqSrc("csrng_fatal_err", CSRNG_BASE, 3, agg_from_pic(PIC_CSRNG_FATAL_ERR)),
     IrqSrc("edn_cmd_req_done", EDN_BASE, 0, agg_from_pic(PIC_EDN_CMD_REQ_DONE)),
     IrqSrc("edn_fatal_err", EDN_BASE, 1, agg_from_pic(PIC_EDN_FATAL_ERR)),
+    IrqSrc(
+        "hmac_err",
+        HMAC_BASE,
+        HMAC.field_lsb("INTR_STATE", "hmac_err"),
+        agg_from_pic(PIC_HMAC_ERR),
+    ),
+    IrqSrc(
+        "dma_done",
+        DMA_BASE,
+        SECURE_DMA.field_lsb("INTR_STATE", "dma_done"),
+        agg_from_pic(PIC_DMA_DONE),
+        "status",
+    ),
+    IrqSrc(
+        "dma_chunk_done",
+        DMA_BASE,
+        SECURE_DMA.field_lsb("INTR_STATE", "dma_chunk_done"),
+        agg_from_pic(PIC_DMA_CHUNK),
+        "status",
+    ),
+    IrqSrc(
+        "dma_error",
+        DMA_BASE,
+        SECURE_DMA.field_lsb("INTR_STATE", "dma_error"),
+        agg_from_pic(PIC_DMA_ERROR),
+        "status",
+    ),
 )
 
 
