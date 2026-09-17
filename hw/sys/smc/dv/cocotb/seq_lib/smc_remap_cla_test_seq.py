@@ -16,8 +16,9 @@ Three surfaces, each with a fail-capable expectation:
   RDL reset content (``expected=`` on every read, not merely an OKAY response).
 * **SMC_CLA_REG** -- the Cluster Local Aggregator window: an allow leg on real
   CLA registers (RDL reset values + a scratch write/readback) paired with the
-  deny leg on unmapped in-window offsets, so the error response is attributable
-  to *this* aperture's decode rather than to a dead bus.
+  in-window-hole leg. Unallocated offsets inside the map complete OKAY with
+  data 0; the five non-zero reset rows and the scratch write/readback are
+  what distinguish a live aperture from a hole.
 """
 
 from __future__ import annotations
@@ -26,7 +27,6 @@ import sys
 from pathlib import Path
 
 import cocotb
-from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import _field_mask, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -38,7 +38,6 @@ from .smc_output_fabric_vip_utils import (
     OUTBOUND0_FILTER_CONFIG,
     OUTBOUND0_START,
     PASS_ALL_CONFIG,
-    RESP_SLVERR,
     check_output_responder_delta,
     jtag_axi_read,
     jtag_axi_write,
@@ -382,10 +381,10 @@ def _cla_reset_sweep() -> tuple[tuple[str, int, int, int], ...]:
     sweep keeps, 5 have NON-ZERO resets (``Trdstimpl`` 0x41010101,
     ``Trdstinstfeatures`` 0x40000000, ``Trdstramimpl`` 0x01003901,
     ``CDbgDebugTraceCfg`` 0x00102810, ``Trfunnelimpl`` 0x0801) -- values no
-    error slave and no unmapped read can fabricate. For the 77 zero-reset rows
-    the discrimination comes from the deny leg in the same run: unmapped
-    in-window offsets answer SLVERR with rdata 0, so an OKAY+0 is
-    distinguishable from a lost decode.
+    error slave and no unmapped read can fabricate. In-window holes also
+    complete OKAY with data 0, so the 77 zero-reset rows are not distinguished
+    from a hole by response; the five non-zero rows and the scratch
+    write/readback carry that discrimination.
 
     Reading the whole aperture is side-effect free: the vendored block RDLs
     carry no ``onread`` property on any field.
@@ -431,8 +430,8 @@ def _cla_unmapped_probes(count: int = 3) -> tuple[tuple[str, int], ...]:
     """In-window offsets that map to no register, taken from the generated map.
 
     The aperture is not densely packed, and which offsets are holes moves every
-    time the map is rebuilt. Derived here so the deny leg cannot go stale into
-    a silent pass.
+    time the map is rebuilt. Derived here so the hole leg cannot go stale into
+    a silent pass. Each hole completes OKAY with data 0.
     """
     import smc_reg as _r
 
@@ -440,7 +439,7 @@ def _cla_unmapped_probes(count: int = 3) -> tuple[tuple[str, int], ...]:
         getattr(_r, n) for n in dir(_r) if n.startswith("SMC_CLA_") and n.endswith("_REG_ADDR")
     }
     assert mapped, (
-        "generated smc_reg has no SMC_CLA_*_REG_ADDR symbols; the deny-leg "
+        "generated smc_reg has no SMC_CLA_*_REG_ADDR symbols; the hole-leg "
         "derivation would treat every offset as a hole"
     )
     out = []
@@ -455,8 +454,8 @@ def _cla_unmapped_probes(count: int = 3) -> tuple[tuple[str, int], ...]:
         if len(out) == count:
             break
     assert len(out) == count, (
-        f"only found {len(out)} unmapped in-window offsets; the deny leg needs "
-        f"{count} to show the window refuses what it does not decode"
+        f"only found {len(out)} unmapped in-window offsets; the hole leg needs "
+        f"{count} to show an unallocated in-window offset completes OKAY+0"
     )
     return tuple(out)
 
@@ -504,11 +503,12 @@ ALIAS0_ATTRS = SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR
 # CSR accesses this sequence issues, written out per phase so the number is a
 # statement of the stimulus rather than a restatement of the loops below.
 _RESET_SWEEP_ACCESSES = 8 + 24 + 8 + 4  # MMODE + ALIAS + XVISOR resets + XVISOR probe
-# resets + scratch wr/rd/restore + deny + the full-aperture reset sweep. The
-# sweep length is taken from the table built off the generated register map
-# (82 software-owned rows of the 137 in the generated CLA map); it is guarded
-# by an explicit `len(CLA_RESET_SWEEP) >= 82` assert in `_cla_window`, so a generated
-# map that lost rows fails loudly instead of silently lowering this floor.
+# resets + scratch wr/rd/restore + in-window holes + the full-aperture reset
+# sweep. The sweep length is taken from the table built off the generated
+# register map (82 software-owned rows of the 137 in the generated CLA map);
+# it is guarded by an explicit `len(CLA_RESET_SWEEP) >= 82` assert in
+# `_cla_window`, so a generated map that lost rows fails loudly instead of
+# silently lowering this floor.
 _CLA_ACCESSES = 2 + 4 + 3 + len(CLA_RESET_SWEEP)
 _REMAP_ACCESSES = 6 + 6 + 2 + 4  # filters + program/readback + off + restore
 _EXPECTED_ACCESSES = _RESET_SWEEP_ACCESSES + _CLA_ACCESSES + _REMAP_ACCESSES
@@ -527,45 +527,12 @@ _EXPECTED_VALUE_CHECKS = (
     + 2  # CLA Scratch write readback + restore readback
     + len(CLA_RESET_SWEEP)  # full-aperture reset compares, every row carries expected=
     + 6  # ALIAS_REMAP_0 START/END/ATTRS programming + off + 2 restore readbacks
+    + 3  # in-window CLA holes, each expected=0
     + 3  # JTAG AXI: identity read, landing-site read, source read after off
 )
 
 
 class smc_remap_cla_test_seq(SmcCsrSeq):
-    async def csr_read_expect_resp_zero(
-        self, name: str, addr: int, expected_resp: int, length: int = 4
-    ) -> int:
-        """Read a window that must answer with one EXACT error response and 0.
-
-        Stronger than ``csr_read_expect_error`` ("some error"): the response
-        *kind* and the data are both declared, so an aperture that stops being
-        decoded at all (a different error kind, or a different responder) is
-        distinguishable from the one this scenario names. Both expectations are
-        also enforced by ``SmcScoreboard._check_sys_axi`` from the item, not only
-        by the assert below.
-        """
-        mask = (1 << (length * 8)) - 1
-        item = SmcSysAxiItem(f"rd_{name}")
-        item.op = SmcSysAxiOp.READ
-        item.addr = addr
-        item.length = length
-        item.allow_error = True
-        item.expect_error = True
-        item.expected_resp = expected_resp
-        await self.start_item(item)
-        await self.finish_item(item)
-        self.accesses += 1
-        assert item.resp_code == expected_resp, (
-            f"{name} @ 0x{addr:08x}: expected resp={expected_resp}, got "
-            f"resp={item.resp_code} (rdata=0x{item.rdata:x})"
-        )
-        got = item.rdata & mask
-        assert got == 0, (
-            f"{name} @ 0x{addr:08x}: expected rdata=0 from the error responder, "
-            f"got 0x{got:0{length * 2}x}"
-        )
-        return item.rdata
-
     async def _sweep_reset_values(self) -> None:
         """Per-entry decode AND the generated reset content of every entry."""
         # XVISOR_REMAP mirrors the MMODE table: 8 entries, one 64-bit
@@ -627,7 +594,7 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         )
 
     async def _cla_window(self) -> None:
-        """Allow leg + deny leg on the CLA aperture, in the same run."""
+        """Allow leg + in-window-hole leg on the CLA aperture, in the same run."""
         for name, addr, expected, length in CLA_RESET_READS:
             await self.csr_read(name, addr, expected=expected, length=length)
         # Live-register proof: the DV scratch register is sw=rw with reset 0.
@@ -656,7 +623,7 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             "CHK-CLA-WINDOW-ALLOW: Trdstramimpl=0x%08x and Trdstimpl=0x%08x "
             "match their generated RDL reset values, and Scratch took "
             "0x%016x -> 0x%016x on a write/readback/restore -- the CLA aperture "
-            "answers with live registers (positive control for the deny leg)",
+            "answers with live registers (positive control for the hole leg)",
             DFD_DST_SINK_Trdstramimpl_REG_DEFAULT,
             DFD_DST_Trdstimpl_REG_DEFAULT,
             CLA_SCRATCH_PATTERN,
@@ -681,9 +648,8 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             "CHK-CLA-RESET-SWEEP: %d CLA registers read over the aperture and "
             "compared against their generated RDL reset values, %d of them with "
             "a NON-ZERO reset (the discriminating rows -- no error slave and no "
-            "unmapped read can fabricate %s). Zero-reset rows are separated from "
-            "a lost decode by the deny leg below, which answers SLVERR in the "
-            "same run.",
+            "unmapped read can fabricate %s). In-window holes below complete "
+            "OKAY with data 0, so the non-zero rows carry the discrimination.",
             len(CLA_RESET_SWEEP),
             len(CLA_SWEEP_NONZERO),
             "a non-zero reset value",
@@ -691,19 +657,15 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         hole_offs = "/".join(
             f"+0x{addr - SMC_CLA_REG_MAP_BASE_ADDR:X}" for _, addr in CLA_UNMAPPED_PROBES
         )
-        hole_offs = "/".join(
-            f"+0x{addr - SMC_CLA_REG_MAP_BASE_ADDR:X}" for _, addr in CLA_UNMAPPED_PROBES
-        )
         for name, addr in CLA_UNMAPPED_PROBES:
-            await self.csr_read_expect_resp_zero(name, addr, RESP_SLVERR)
+            await self.csr_read(name, addr, expected=0, length=4)
         cocotb.log.info(
             "CHK-CLA-WINDOW-DENY: the %d unmapped in-window offsets %s "
-            "(holes derived from the generated CLA map) each "
-            "returned resp=%d (SLVERR) with rdata=0, while the registers around "
-            "answered OKAY in the same run",
+            "(holes derived from the generated CLA map) each completed OKAY "
+            "with rdata=0, while the live registers around them answered with "
+            "their generated values in the same run",
             len(CLA_UNMAPPED_PROBES),
             hole_offs,
-            RESP_SLVERR,
         )
 
     async def _program_pass_all_filters(self) -> None:
@@ -840,6 +802,7 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         assert sb.sys_axi_value_checks_seen >= _EXPECTED_VALUE_CHECKS, (
             f"expected at least {_EXPECTED_VALUE_CHECKS} value-checked reads "
             f"(32 remap reset values, 2 CLA reset values, 2 CLA scratch "
-            f"readbacks, 6 ALIAS_REMAP_0 programming readbacks, 3 JTAG AXI data "
-            f"compares), scoreboard measured {sb.sys_axi_value_checks_seen}"
+            f"readbacks, 3 in-window CLA holes, 6 ALIAS_REMAP_0 programming "
+            f"readbacks, 3 JTAG AXI data compares), scoreboard measured "
+            f"{sb.sys_axi_value_checks_seen}"
         )

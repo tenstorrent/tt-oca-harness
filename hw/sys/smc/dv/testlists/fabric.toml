@@ -149,6 +149,14 @@ timeout_sec = 1800
 tags = ["ci", "fabric", "decode", "pyuvm"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_remap_cla_test"
+module = "smc_remap_cla_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "i3c_depth"
 tests = [

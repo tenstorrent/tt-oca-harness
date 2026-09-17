@@ -503,10 +503,23 @@ modules simply do not elaborate. Its contents:
   bundle; the response-ID corruption bundles stay unbound because the
   ID-ordering rules fire there by design. Rules are implemented from IHI 0022 rule
   descriptions only — no third-party checker source was consulted. Two
-  trees by simulator capability: the two-state rules use `OCAH_SVA_ASSERT`
+  trees by simulator capability: the two-state rules use `OCAH_SVA_RULE`
   (`hw/common/assert/ocah_sva_macros.svh`) and run on every simulator,
-  Verilator included under `--assert`; the X-hygiene rules and the covers
-  use `OCAH_ASSERT` / `OCAH_COVER` and run on four-state simulators only.
+  Verilator included under `--assert`, and on licensed formal backends under
+  `FORMAL`; the X-hygiene rules and the covers use `OCAH_RULE` /
+  `OCAH_COVER` and run on four-state simulators and licensed backends only.
+  Each rule belongs to the side that drives its signals, and
+  `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
+  assumptions, so a formal environment asserts the design's side and assumes
+  its own; both default to assertions.
+- `sva/ocah_axi_fv.sv` — the same protocol's handshake, reset,
+  burst-legality and response-ordering rules written in the boolean subset
+  the open-source formal frontend reads (`OCAH_FV_RULE`,
+  `hw/common/assert/ocah_fv_macros.svh`), with the flat port list of
+  `ocah_axi_sva` and the same two side parameters; the formal environments
+  of the DTP bind it (`hw/common/dv/docs/formal-property-style.adoc`,
+  Shared protocol checkers). Rules that need per-ID or per-beat history stay
+  in `sva/ocah_axi_sva.sv`.
 - `interface/ocah_axi_struct_bridge.sv` — places a DUT-mastered port that
   stays a pulp request/response struct inside `tb_top` on an `ocah_axi_if`
   instance for the slave agent (see "Struct-Port Boundaries").

@@ -543,8 +543,7 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 `dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Members: `smc_deadspace_decode_test` (#585), `smc_remap_cla_test` (#1855: the
-CLA unmapped in-window offset `+0x38` completes with OKAY) and
+Members: `smc_deadspace_decode_test` (#585) and
 `smc_efuse_map_read_test` (#1989: the shadow map reads 0 after sense, measured
 on LOCKS word 0 against the preload image).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
