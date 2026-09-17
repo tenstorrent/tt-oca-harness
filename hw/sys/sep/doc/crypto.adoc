@@ -359,10 +359,13 @@ Algorithms:
 * ML-DSA-87 (FIPS 204) -- key generation, signature generation and verification
 * ML-KEM-1024 (FIPS 203) -- key generation, encapsulation and decapsulation
 
-ML-DSA is the post-quantum signature path used by secure boot: each owner may be
-provisioned with an ML-DSA root public key alongside its classical key, and
-`REQUIRED_SIGNERS` selects which of the two must sign (see
-<<life-cycle-controller-lcc-life-cycle-controller-lcc>>).
+ML-DSA is the post-quantum signature path intended for secure boot: each owner
+may be provisioned with an ML-DSA root public key alongside its classical key,
+with `REQUIRED_SIGNERS` selecting which owners must sign and `REQUIRED_ALGS`
+selecting, per owner, which of the two algorithms it must sign with (see
+<<life-cycle-controller-lcc-life-cycle-controller-lcc>>). SEP ROM does not use
+this path today -- it verifies a single classical RSA-3072 signature, and
+combined classical + PQC signing is deferred to a later release.
 
 [[och-modifications-5]]
 ===== OCAH Modifications

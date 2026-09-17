@@ -792,13 +792,13 @@ module sep_system_csr (
   prim_refclk_count_w_cdc #(
     .REF_COUNT_WIDTH(64)
   ) reference_counter_counter (
-    .i_refclk           (clk_ref_i),
-    .i_prstb            (rst_ni),
-    .i_cnt_en           (1'b1),
-    .i_cnt_update       (ref_count_wr_swacc_q),
-    .i_cnt_update_value (ref_count_from_reg),
-    .i_out_clk          (clk_i),
-    .o_count            (reference_counter)
+    .refclk_i           (clk_ref_i),
+    .prst_ni            (rst_ni),
+    .cnt_en_i           (1'b1),
+    .cnt_update_i       (ref_count_wr_swacc_q),
+    .cnt_update_value_i (ref_count_from_reg),
+    .out_clk_i          (clk_i),
+    .count_o            (reference_counter)
   );
 
   assign ref_count_from_reg = sep_cpu_ctrl_hwif_out.REFERENCE_COUNTER.rc.value;

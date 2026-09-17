@@ -1,0 +1,124 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""SEP ROM boot from an AES-256-CBC encrypted OCA payload (PyUVM).
+
+The signed sibling (``sep_rom_ot_secure_boot_test``) proves the ROM verifies a
+manifest. This one proves it can *decrypt* the payload that manifest describes,
+which is a different set of hardware entirely: the HMAC core running the OCA KDF
+and the AES engine running CBC, neither of which any other DV test drives.
+
+Everything the signed test does still happens -- this image is signed too, since
+the format forbids encryption without secure boot
+(``OCA_FAIL_ENCRYPTION_REQUIRES_SECURE_BOOT``). The addition is the stretch
+between manifest validation and payload validation:
+
+    oca_payload_encryption_info()      -- manifest says encrypted, names a secret
+      -> plat_decrypt_payload()        -- oca_platform.c
+        -> CLASS_KEY eFuse read        -- the secret, by 1-based index
+        -> oca_derive_payload_key()    -- kdf.c: SP 800-108r1 CTR-HMAC-SHA-256
+             over header|KM_CLASS_BL|kdf_input|entropy, on the HMAC core
+        -> aes_cbc_decrypt()           -- aes_driver.c: AES-256, key via KEY_SHARE0
+        -> aes_pkcs7_strip()
+    oca_check_payload_at()             -- hash chain over the PLAINTEXT
+
+That last line is what makes this test meaningful rather than merely green. The
+library hashes the ciphertext before calling us and the plaintext after, so a
+decryption that "succeeded" with the wrong key cannot reach BL1 -- it fails the
+hash chain instead. A passing run therefore means the derived key was bit-exact,
+which in turn means the KDF block construction, the HMAC key-length and
+endianness handling, and the AES one-hot KEY_LEN encoding are all right in RTL.
+Those last two were latent driver bugs found during this integration and fixed
+against the VP model only; this is the first time they are exercised in
+simulation.
+
+The CLASS_KEY words below must match ``configs/oca_encrypted_boot_test.yaml``'s
+encryption_secret. Get the word order wrong and the KDF still "succeeds", just
+with a different key -- the failure then surfaces as a payload hash-chain error
+naming nothing about keys, which is a slow thing to debug. See the identical
+table in ``virtual_platform/tests/fuse_maps/oca_encrypted.yaml``.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pyuvm
+from env.sep_efuse_image import SepEfuseImage
+from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
+
+_SEP_ROOT = str(Path(__file__).resolve().parents[4])
+ENCRYPTED_FLASH_IMAGE = os.path.join(
+    _SEP_ROOT, "bootrom", "prod", "build", "oca_encrypted_boot.bin"
+)
+
+# The 32-byte secret 00 01 02 ... 1f, as 8 x 32-bit OTP words: word[0] holds
+# bits[31:0], so each word is four consecutive secret bytes read little-endian.
+_CLASS_KEY_WORDS = [
+    0x03020100,
+    0x07060504,
+    0x0B0A0908,
+    0x0F0E0D0C,
+    0x13121110,
+    0x17161514,
+    0x1B1A1918,
+    0x1F1E1D1C,
+]
+
+# Printed by plat_decrypt_payload() once the AES engine has drained and the
+# PKCS#7 padding stripped clean.
+_DECRYPT_OK = "DECRYPT_OK"
+# The three ways that callback can fail. Forbidding them individually rather
+# than relying on the boot failing is what separates "decrypted correctly" from
+# "never tried": an unprovisioned CLASS_KEY reads as all-zeroes, which is a
+# refusal the ROM makes deliberately (DECRYPT_CLASS_KEY_EMPTY) rather than a
+# key it would derive from.
+_DECRYPT_NO_SECRET = "DECRYPT_NO_SECRET"
+_DECRYPT_KEY_EMPTY = "DECRYPT_CLASS_KEY_EMPTY"
+
+# A crypto op the IP refuses to start leaves STATUS.hmac_idle asserted, which a
+# completion poll reads as success -- so a garbage digest, and therefore a
+# garbage AES key, would reach decryption looking like a clean run. These are
+# what check_no_error()/check_no_alert() print when that happens.
+_CRYPTO_REJECTED = (
+    "KDF_HMAC_FAIL",
+    "HMAC_ERR_CODE=",
+    "HMAC_START_REJECTED",
+    "HMAC_OP_REJECTED",
+    "SHA_START_REJECTED",
+    "SHA_OP_REJECTED",
+    "AES_INIT_BUSY",
+)
+# This image is valid, so any manifest rejection means a check refused
+# something it should accept.
+_MANIFEST_ERR = "MANIFEST_ERR="
+_KDF_FAIL = "KDF_FAIL"
+_AES_DEC_FAIL = "AES_DEC_FAIL"
+
+
+@pyuvm.test()
+class sep_rom_oca_encrypted_boot_test(sep_rom_ot_secure_boot_test):
+    """Decrypt an AES-256 payload with an OTP-derived key and boot it."""
+
+    flash_image = ENCRYPTED_FLASH_IMAGE
+    # Inherit the signed test's RSA/authorization markers -- this image is signed
+    # as well -- and add the decryption evidence. The inherited PAYLOAD_OK carries
+    # the real weight here: it is printed only after the hash chain over the
+    # DECRYPTED bytes matched, so it is what rules out a wrong-key derivation.
+    required_markers = sep_rom_ot_secure_boot_test.required_markers + (_DECRYPT_OK,)
+    forbidden_markers = (
+        sep_rom_ot_secure_boot_test.forbidden_markers
+        + (
+            _DECRYPT_NO_SECRET,
+            _DECRYPT_KEY_EMPTY,
+            _KDF_FAIL,
+            _AES_DEC_FAIL,
+            _MANIFEST_ERR,
+        )
+        + _CRYPTO_REJECTED
+    )
+
+    def build_efuse_image(self) -> SepEfuseImage:
+        img = super().build_efuse_image()
+        img.set_words("CLASS_KEY", _CLASS_KEY_WORDS)
+        return img

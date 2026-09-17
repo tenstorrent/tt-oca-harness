@@ -91,7 +91,9 @@ SystemVerilog layer (compiled by explicit sim-cfg sources; a cocotb/Verilator
 build lists the interface and the `sva/` checker too):
 `interface/ocah_axi_if.sv`, the clean-room
 `sva/ocah_axi_sva.sv` (`OCAH_AXI_*` rules from IHI 0022 rule
-descriptions), the struct-port bridge beside the interface, and the
+descriptions) and `sva/ocah_axi_fv.sv` (the handshake rules in the boolean
+subset a formal environment binds, each side asserted or assumed by
+parameter), the struct-port bridge beside the interface, and the
 passive `uvm/ocah_axi_uvm_pkg.sv` (monitor, reference model, scoreboard with
 `CHK-*`/`CHECKER_SUMMARY` evidence, optional coverage subscriber, env).
 The DTP SV-UVM flow consumes it. The package's `dv/` harness grades Verilator

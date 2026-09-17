@@ -5,7 +5,7 @@
 Answers whether Verilator can carry two SMC instances with a measurement
 rather than a guess.
 The build cost is recorded by the runner; this test only has to prove the 2x
-model elaborates and that both instances independently leave reset, so that a
+model elaborates and that both instances leave the shared cold reset, so that a
 later failure in the OCCP flow cannot be blamed on the doubled top.
 
 No bus traffic, no firmware. Checks:

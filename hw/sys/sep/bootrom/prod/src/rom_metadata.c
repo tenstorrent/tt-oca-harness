@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// ROM metadata: version string and SHA-256 hash for self-reporting (C1).
+// ROM metadata: version string and SHA-256 hash for self-reporting ([S05]).
 //
 // The build-time hash is inserted by tools/insert-rom-sha256.py after linking.
 // It covers the ICCM content (code + metadata) and is stored here in .rodata

@@ -79,7 +79,8 @@ Isolation proof (both directions, then the remaining isolated bits):
                     ignored the override select fails here.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
                     TRNG-only reset. SW_RESET_N inside the window shows the
-                    TRNG bit held and the four accelerator bits released.
+                    TRNG bit held and the five accelerator bits released
+                    (OTBN, AES, HMAC, KMAC, ABR).
 
 Reference: sep_clock_uvm_sw_reset_per_ip_test --
 the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
@@ -544,7 +545,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         sw_final = await self.rst.read_back()
         assert sw_final == SW_RESET_N_DEFAULT, (
             f"SW_RESET_N=0x{sw_final:08x} after domain walk, expected default "
-            f"0x{SW_RESET_N_DEFAULT:08x} (bit0 held, otbn/aes/hmac/kmac/trng released)"
+            f"0x{SW_RESET_N_DEFAULT:08x} (bit0 held, otbn/aes/hmac/kmac/trng/abr released)"
         )
 
         # score_sinks={"aes": "observe", "kmac": "observe"} sets a >=1-beat
@@ -569,7 +570,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 40)
         # Witness the request inside the parked window. Without this the leg is
         # two non-events: park() only proves its CSR write returned OKAY, and the
-        # "four accelerator domains released" half is read back BEFORE the park --
+        # "accelerator domains released" half is read back BEFORE the park --
         # so a TRNG bit that did nothing would pass identically. Reading the
         # register back here requires the bit to be low while the neighbours are
         # high, in the same window the digests are sampled.
@@ -580,6 +581,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             | (1 << SW_RESET_N_BIT["aes"])
             | (1 << SW_RESET_N_BIT["hmac"])
             | (1 << SW_RESET_N_BIT["kmac"])
+            | (1 << SW_RESET_N_BIT["abr"])
         )
         assert not (sw_parked & trng_bit), (
             f"SW_RESET_N=0x{sw_parked:08x} shows the TRNG domain NOT held inside the "
@@ -601,7 +603,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self.logger.info(
             "CHK-TRNG-NEIGHBORS PASS: idle HMAC DIGEST and AES DATA_OUT survived "
             "the shared entropy-complex reset, with SW_RESET_N=0x%08x inside the "
-            "window confirming the TRNG domain held and all four accelerator "
+            "window confirming the TRNG domain held and all five accelerator "
             "domains released",
             sw_parked,
         )

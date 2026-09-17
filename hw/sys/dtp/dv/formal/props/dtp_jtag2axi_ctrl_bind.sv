@@ -8,12 +8,12 @@ bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .FIFO_DEPTH (FIFO_DEPTH),
   .SR_LEN     (SHARED_SR_LEN)
 ) u_dtp_jtag2axi_ctrl_props (
-  .i_tck                  (i_tck),
-  .i_trstn                (i_trstn),
-  .i_aclk                 (i_aclk),
-  .i_arstn                (i_arstn),
-  .i_update_en            (i_update_en),
-  .i_select_AXISeriesCtrl (i_select_AXISeriesCtrl),
+  .tck_i                  (tck_i),
+  .trst_ni                (trst_ni),
+  .aclk_i                 (aclk_i),
+  .arst_ni                (arst_ni),
+  .update_en_i            (update_en_i),
+  .select_AXISeriesCtrl_i (select_AXISeriesCtrl_i),
   .security_disable_i     (security_disable_i),
   .state_i                (axi_state_q_tclk),
   .src_aw_valid_i         (src_req.aw_valid),

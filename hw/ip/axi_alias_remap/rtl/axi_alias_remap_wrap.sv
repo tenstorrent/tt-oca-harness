@@ -62,8 +62,8 @@ module axi_alias_remap_wrap #(
     .AXI_ADDR_WIDTH               (AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER(NUM_CHUNKS_CARRY_SELECT_ADDER)
   ) u_axi_alias_remap (
-    .i_remap_regions (remap_table),
-    .o_remap_debug   (remap_debug_o),
+    .remap_regions_i (remap_table),
+    .remap_debug_o   (remap_debug_o),
     .axi_in_req_i    (axi_in_req_i),
     .axi_in_resp_o   (axi_in_resp_o),
     .axi_out_req_o   (axi_out_req_o),

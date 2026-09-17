@@ -19,7 +19,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from seq_lib.smu_compose_helpers import hier, sample
 from seq_lib.smu_tb_pins import smu_scope
 
-CPU_PATH = "u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu"
+CPU_PATH = "u_smc.u_smc_cpu_wrapper.u_smc_cpu"
 HOLD_REF_CYCLES = 16
 RESET_BOUND_REF_CYCLES = 500
 BUSY_BOUND_CYCLES = 4000

@@ -66,5 +66,5 @@ common infrastructure available under a permissive license.
 *OCAH is both a technical framework and an adoption mechanism: it reduces
 duplicated engineering work, lowers the barrier to interoperable chiplet
 design, and gives partners a concrete foundation on which to build
-OCA-compliant chiplets and systems.*
+OCA architecture compliant chiplets and systems.*
 

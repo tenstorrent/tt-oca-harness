@@ -61,11 +61,16 @@ recovery mode versus normal mode.
 [[cpu-reset-vector]]
 ==== Reset Vector
 
-The SEP CPU wrapper sets the VeeR EL2 `RESET_VEC` parameter to the Boot ROM
-base address, `SEP_BOOT_ROM_MEM_BASE_ADDR`. The current CPU therefore fetches
-BL0 from that address after reset. The vendored VeeR EL2 debug TAP has no
-reset-vector test data register, so JTAG cannot redirect the reset vector in
-the current integration.
+The SEP CPU reset vector is held in a test data register (TDR) in the EL2
+debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
+Boot ROM base address (`SEP_BOOT_ROM_MEM_BASE_ADDR`) on JTAG reset
+(TRST assertion or the Test-Logic-Reset TAP state), so the CPU executes the
+BL0 Root-of-Trust code after any cold boot.
+
+A debugger may redirect the first instruction fetch by shifting an alternate
+address into the TDR through JTAG while the SEP CPU is held in reset. The
+programmed value persists until the TAP is reset. This supports bring-up and
+failure analysis flows that execute from a memory other than the Boot ROM.
 
 [[debug-module]]
 ==== Debug Module
@@ -83,12 +88,9 @@ The Boot ROM holds the BL0 immutable Root-of-Trust code which is the
 first code running on the SEP host upon power on. It has the following
 features:
 
-* 64 KiB CPU-visible address aperture
-* Dedicated CPU memory path outside the SEP local AXI crossbar
-* Read-only behavior; stores receive a response but do not modify the ROM
-
-The open integration uses a 64-bit generic ROM without an ECC error sideband.
-See <<sep-rom>> for the hardware and firmware-image layout.
+* 64 kB capacity
+* SECDED Error Correction - single error detect double error correct
+** 32-bit data + 7-bit ECC tag
 
 There is no ROM patching facility in the first generation
 implementation. This feature is planned for the second generation design
@@ -97,21 +99,35 @@ and will use OTP as the backup storage.
 [[bl0-secure-boot-and-bl1-execution-unlock]]
 ==== BL0 Secure Boot and BL1 Execution Unlock
 
-The SEP CPU Boot ROM firmware, BL0, establishes the execution environment,
-selects a boot source, validates a manifest and its payload, and transfers
-control to SEP BL1. A primary chiplet normally reads from SPI flash; recovery
-and secondary-chiplet boots wait for an image staged by the SMC.
+The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
+SEP system into a runnable state after power on reset (PoR) and running
+the first stage of external firmware AKA BL1.
 
-Secure boot binds the manifest public key to a ROM or eFuse digest, checks key
-revocation and the BL1 security version, verifies the RSA-3072 signature with
-OTBN, and verifies the payload before execution. The validated BL1 image is
-copied to ICCM with the secure DMA and entered at its manifest-specified entry
-point. A failed check either selects the other SPI slot or terminates in a
-reset-only failure loop.
+The complete boot flow is specified in <<sep-rom-boot-arch>>, which is
+normative: CPU initialization, PMP fencing, fuse and lifecycle
+evaluation, SMC synchronization, boot-source selection, manifest and
+payload validation, secure boot, demotion, attestation and hand-off,
+with requirement identifiers and an implementation-status matrix. The
+summary below exists to place the ROM in the context of this chapter; it
+is deliberately not a second description of the same flow, because two
+would drift.
 
-The complete hardware contract is in <<sep-rom>>. Detailed firmware ordering,
-manifest processing, lifecycle policy, and BL1 handoff are in the production
-ROM firmware documentation under `hw/sys/sep/bootrom/prod/doc/`.
+* SEP initialization -- read configuration straps, determine boot options
+* Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
+* Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory
+* Validate it. Under secure boot this means authorizing the root key
+against a trust anchor the device holds -- a ROM-embedded digest or an
+OTP hash bank -- before any public-key operation, then checking
+revocation and anti-rollback, then verifying an RSA-3072 signature on
+OTBN
+* Load the payload it describes, decrypting it when the manifest says so,
+and verify its hashes -- over the ciphertext before decryption and the
+plaintext after
+* Select BL1 from the payload table of contents, unlock execution in the
+CPU PMP, and jump
+* Failure of any check ends the boot. A failure the backup manifest slot
+recovers from is a warning; exhausting every slot is an error, after
+which the processor enters a fail loop requiring a reset to exit
 
 Future versions of the SEP will also have additional hardware redundancy
 by running the CPU in Dual Core Lock Step. This will further protect

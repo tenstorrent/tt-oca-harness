@@ -47,6 +47,10 @@ static int otbn_wait_idle(void) {
 // ---------------------------------------------------------------------------
 
 int otbn_init(void) {
+    // Entropy is a PREREQUISITE of this block, not something it brings up:
+    // OTBN parks in UrndRefresh until EDN reseeds it. The caller establishes it
+    // (see oca_platform.c) so this driver stays a hardware driver and does not
+    // reach into another subsystem.
     // Release OTBN from SW reset.
     uint32_t rst = mmio_read32(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     rst |= SEP_RESET_CTRL__SW_RESET_N__OTBN_SW_RST_N_bm;
