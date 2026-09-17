@@ -207,7 +207,7 @@ module i2c_bus_monitor
         if (!scl_i || !sda_i) begin
           state_d = StBusBusyLow;
           bus_release_cnt_load = 1'b1;
-          bus_release_cnt_sel = bus_active_timeout_i;
+          bus_release_cnt_sel = 31'(bus_active_timeout_i);
         end
       end
 
@@ -224,7 +224,7 @@ module i2c_bus_monitor
           bus_release_cnt_sel = bus_inactive_timeout_i;
         end else if (scl_i) begin
           bus_release_cnt_load = 1'b1;
-          bus_release_cnt_sel = bus_active_timeout_i;
+          bus_release_cnt_sel = 31'(bus_active_timeout_i);
           if (bus_active_timeout_det_q) begin
             // SCL was released due to the bus timeout, so go to BusFree.
             state_d = StBusFree;
@@ -248,7 +248,7 @@ module i2c_bus_monitor
         end else if (!bus_idling) begin
           state_d = StBusBusyLow;
           bus_release_cnt_load = 1'b1;
-          bus_release_cnt_sel = bus_active_timeout_i;
+          bus_release_cnt_sel = 31'(bus_active_timeout_i);
         end else if (bus_release_cnt == 31'd1) begin
           // The host_timeout interrupt occurs regardless of which value of
           // SDA was present, but only transition to StBusFree if we entered
