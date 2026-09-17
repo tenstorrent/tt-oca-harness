@@ -2405,7 +2405,7 @@ reaches its wait before the interrupt fires.
 |CHK-SWRST-DEFAULT
 |The software reset register holds its specified default of `0x7E`.
 |CHK-SWRST-WIRE
-|Pulsing each per-IP bit, the shared TRNG bit included, returns that domain's probe register to its reset value and leaves the neighbouring domains untouched.
+|Pulsing each per-IP bit, the shared TRNG bit and the Adams Bridge bit included, returns that domain's probe register to its reset value and leaves the neighbouring domains untouched.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
