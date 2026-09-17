@@ -101,7 +101,7 @@ module smc_4core_cpu (
     .q_o(debug_dmactiveAck)
   );
 
-  always @(posedge clk_i) begin
+  always_ff @(posedge clk_i or negedge rst_debug_ni) begin
     if (~rst_debug_ni) begin
       clock_en <= 1'b1;
     end else begin
@@ -120,7 +120,7 @@ module smc_4core_cpu (
   logic [4-1:0][1-1:0] io_errors_uncorrectable_valid;
   logic [32-1:0][1-1:0] uncorrectable_2;
 
-  always_ff @(posedge clk_i) begin
+  always_ff @(posedge clk_i or negedge rst_uncore_ni) begin
     if (~rst_uncore_ni) begin
       cluster_ded_o <= 1'b0;
     end else begin

@@ -689,13 +689,13 @@ module avsbus_controller #(
       .WIDTH(7),
       .DEPTH(3)
   ) u_slave_status_resync (
-      .i_clk_src(avs_clk),
-      .i_reset_src_n(reset_n_avs_clk_syncd),
-      .i_data({R_avs_slave_status_F_avs_slave_ack,
+      .clk_src_i(avs_clk),
+      .rst_src_ni(reset_n_avs_clk_syncd),
+      .data_i({R_avs_slave_status_F_avs_slave_ack,
                R_avs_slave_status_F_avs_slave_status_response}),
-      .i_clk_dst(clk_reg_i),
-      .i_reset_dst_n(reset_n_apb_clk_syncd),
-      .o_data({R_avs_slave_status_F_avs_slave_ack_RS_apb_clk,
+      .clk_dst_i(clk_reg_i),
+      .rst_dst_ni(reset_n_apb_clk_syncd),
+      .data_o({R_avs_slave_status_F_avs_slave_ack_RS_apb_clk,
                R_avs_slave_status_F_avs_slave_status_response_RS_apb_clk})
   );
 
@@ -703,12 +703,12 @@ module avsbus_controller #(
       .WIDTH($size(R_avs_latest_slave_subframe_F_avs_slave_subframe)),
       .DEPTH(3)
   ) u_latest_subframe_resync (
-      .i_clk_src(avs_clk),
-      .i_reset_src_n(reset_n_avs_clk_syncd),
-      .i_data(R_avs_latest_slave_subframe_F_avs_slave_subframe),
-      .i_clk_dst(clk_reg_i),
-      .i_reset_dst_n(reset_n_apb_clk_syncd),
-      .o_data(R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk)
+      .clk_src_i(avs_clk),
+      .rst_src_ni(reset_n_avs_clk_syncd),
+      .data_i(R_avs_latest_slave_subframe_F_avs_slave_subframe),
+      .clk_dst_i(clk_reg_i),
+      .rst_dst_ni(reset_n_apb_clk_syncd),
+      .data_o(R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk)
   );
 
   prim_sync_data_autohs #(
