@@ -262,7 +262,7 @@ appears.
 |`sep_irq_ip_to_aggregator_test`
 |no_cpu
 |ocah_axi_vip
-|Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 40 and 42, and clears both.
+|Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit from both a read and a write, and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 40 and 42, and clears each.
 |`sep_periph_bus_err_misaligned_reveal_test`
 |no_cpu
 |ocah_axi_vip
@@ -2124,7 +2124,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter and one through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write.
+*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter, the same hole written, and one read through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write.
 
 *Test Coverage*: Entropy `INTR_TEST` bits plus adapter SLVERR into the aggregator.
 
@@ -2139,6 +2139,7 @@ recovery. Those are listed in <<phase-3>>.
 . Confirm both bus-error STATUS registers and aggregator bits 40 and 42 read 0.
 . Read the unused word between the last DMA `INTR_SRC_ADDR` and the first `INTR_SRC_WR_VAL`; require SLVERR, exclusive `reg_path_err`, and bit 40.
 . Write `DMA_BUS_ERR_CLEAR`; STATUS and bit 40 read 0.
+. Write the same DMA hole full-width; require BRESP=SLVERR, exclusive `reg_path_err`, and bit 40, then clear again.
 . Read the unused word between the HMAC CSRs and the message FIFO; require SLVERR, exclusive `hmac`, and bit 42. Write `PERIPH_BUS_ERR_CLEAR.hmac`; STATUS and bit 42 read 0.
 . Repeat for the KMAC CSR/STATE gap (`kmac`) and the OTBN CSR/IMEM gap (`otbn`).
 
@@ -2155,6 +2156,10 @@ recovery. Those are listed in <<phase-3>>.
 |`DMA_BUS_ERR_STATUS` and `PERIPH_BUS_ERR_STATUS` read 0, and aggregator bits 40 and 42 read 0, before either fault. A stuck-high latch fails here.
 |CHK-BUSERR-DMA
 |The DMA hole read completes SLVERR, not DECERR. `DMA_BUS_ERR_STATUS` is exactly `reg_path_err`. Aggregator bit 40 is 1; bits 41 and 42 stay 0.
+|CHK-BUSERR-DMA-WR
+|A full-width write to the DMA hole completes BRESP=SLVERR. `DMA_BUS_ERR_STATUS` is exactly `reg_path_err`; aggregator bit 40 is 1 and bits 41 and 42 stay 0. The write walks `TL_PUT_REQ`/`TL_PUT_ACK`/`AXI_B_RESP` (`axi_lite_to_tlul.sv:189-220`), a different FSM arm from the read leg, and raises the sticky error from BRESP rather than RRESP.
+|CHK-BUSERR-DMA-WR-CLR
+|The CLEAR write after the write-direction fault returns `DMA_BUS_ERR_STATUS` and bit 40 to 0.
 |CHK-BUSERR-PERIPH
 |Each HMAC, KMAC and OTBN hole read completes SLVERR, not DECERR. `PERIPH_BUS_ERR_STATUS` is exactly that block's bit. Aggregator bit 42 is 1; bit 40 stays 0.
 |CHK-BUSERR-CLR
@@ -2163,7 +2168,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of both status registers are not claimed here. The misaligned term is revealed as unimplemented by <<sep_periph_bus_err_misaligned_reveal_test>>, which fails by design against the documented contract.
+*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of both status registers are not claimed here. The misaligned term is revealed as unimplemented by <<sep_periph_bus_err_misaligned_reveal_test>>, which fails by design against the documented contract.
 
 '''''
 

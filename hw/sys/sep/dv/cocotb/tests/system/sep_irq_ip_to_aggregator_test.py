@@ -243,6 +243,48 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         assert clr_ok, "sep_internal_interrupts[40] stuck after DMA_BUS_ERR_CLEAR"
         self.logger.info("CHK-BUSERR-CLR PASS: DMA_BUS_ERR_CLEAR; STATUS=0; [40]=0")
 
+        # The read leg above walks TL_GET_REQ/GET_ACK. A write to the same hole
+        # walks TL_PUT_REQ/PUT_ACK/AXI_B_RESP (axi_lite_to_tlul.sv:189-220), a
+        # separate FSM arm with its own opcode select, and raises the sticky
+        # error from BRESP rather than RRESP.
+        await self.irq.write_expect_slverr(dma_hole, 0xA5A5_1234)
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)
+        assert dma_st == DMA_REG_PATH_BIT, (
+            f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after a write to 0x{dma_hole:08x}, "
+            f"expected exclusive reg_path_err=0x{DMA_REG_PATH_BIT:x}"
+        )
+        assert periph_st == 0, (
+            f"PERIPH_BUS_ERR_STATUS=0x{periph_st:x} after the DMA write hole, expected 0"
+        )
+        wr_ok, wr_vec = await self._poll_agg(IRQ_DMA_REG_PATH, 1)
+        assert wr_ok, (
+            f"sep_internal_interrupts[{IRQ_DMA_REG_PATH}] stayed 0 after a DMA "
+            f"register-path write SLVERR (vec=0x{wr_vec:x})"
+        )
+        excl_vec = await self._sample_agg_known(excl_mask)
+        assert ((excl_vec >> IRQ_DMA_HOST_PATH) & 1) == 0, (
+            "host-path bit [41] set on a register-path write fault"
+        )
+        assert ((excl_vec >> IRQ_PERIPH_OR) & 1) == 0, (
+            "periph OR [42] set on a DMA register-path write fault"
+        )
+        self.logger.info(
+            "CHK-BUSERR-DMA-WR PASS: write 0x%08x BRESP=SLVERR; STATUS=0x%x "
+            "exclusive; [40]=1",
+            dma_hole,
+            dma_st,
+        )
+
+        await self.irq.write32(DMA_CLEAR_ADDR, DMA_CLR_BIT)
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        assert dma_st == 0, (
+            f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after CLEAR of the write fault, expected 0"
+        )
+        clr_ok, _ = await self._poll_agg(IRQ_DMA_REG_PATH, 0)
+        assert clr_ok, "sep_internal_interrupts[40] stuck after clearing the write fault"
+        self.logger.info("CHK-BUSERR-DMA-WR-CLR PASS: STATUS=0; [40]=0")
+
         for hole in holes:
             await self.irq.read_expect_slverr(hole.addr)
             periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)

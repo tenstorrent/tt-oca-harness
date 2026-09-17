@@ -223,6 +223,23 @@ class SepIrqIp(SepAxiRegDriver):
     async def write32(self, addr: int, data: int) -> None:
         await self._wr(addr, data)
 
+    async def write_expect_slverr(self, addr: int, data: int) -> None:
+        """One full-width 32-bit write that must complete BRESP=SLVERR."""
+        seq = SepAxiAccessSeq(
+            f"{self._DRIVER_TAG.lower()}_wr_slverr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            size=self._AXI_SIZE,
+            expect_error=True,
+        )
+        await self.test.start_seq(seq)
+        if seq.resp_code != RESP_SLVERR:
+            raise AssertionError(
+                f"{self._DRIVER_TAG} write @0x{addr:08x} resp={seq.resp_code}, "
+                f"expected SLVERR (2); DECERR means the xbar refused before the adapter"
+            )
+
     async def read_expect_slverr(self, addr: int) -> int:
         """One 32-bit read that must complete SLVERR (through-adapter, not DECERR)."""
         seq = SepAxiAccessSeq(
