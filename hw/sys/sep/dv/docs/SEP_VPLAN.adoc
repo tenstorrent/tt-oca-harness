@@ -426,7 +426,7 @@ appears.
 |`sep_axi_id_routing_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|AXI transaction IDs on the response path. The crossbars prepend the master index to the incoming `AxID` and the demux keeps one outstanding counter per ID, so the ID is address-like state and a master matches its responses by it. Eight scratch words hold eight distinct values and eight reads are held outstanding together, one per ID; each must return its own word, and the top ID must not alias a lower slot. Every access in the environment carried ID 0 before this leaf, so nothing had presented the dimension.
+|AXI transaction IDs on the response path. The crossbars prepend the master index to the incoming `AxID` and the demux keeps one outstanding counter per ID, so the ID is address-like state and a master matches its responses by it. Eight scratch words hold eight distinct values and eight reads are held outstanding together, one per ID; each must return its own word, and the top ID must not alias a lower slot. The rest of the suite issues ID 0, so this is the leaf that presents the dimension.
 
 |`sep_axi_strobe_window_test`
 |no_cpu, +skip_fuse_sense
@@ -1846,7 +1846,7 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-DELIVERY
+|CHK-DELIVER
 |The service routine actually runs on every outbound channel — the interrupt reached the CPU rather than stopping at the aggregator. The host counts eight `CHK-DELIVER` lines so a skipped channel cannot hide behind the PASS magic.
 |CHK-RW1C
 |For each channel, the interrupt status register clears on write-one-to-clear, and the read-only pending register — derived as status AND enable — reads back zero while the enable is still fully set, so that zero is not a masking artefact.
@@ -2214,7 +2214,7 @@ recovery. Those are listed in <<phase-3>>.
 |CHK-MISALIGN-BASE
 |`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. Guards the reveal against a bit left set by an earlier step.
 |CHK-MISALIGN-LATCH
-|A misaligned in-extent access receives SLVERR and latches the owning block's bit. **Fails today**: the access returns DECERR and the register stays 0.
+|A misaligned in-extent access receives SLVERR and latches the owning block's bit. **Fails**: the access returns DECERR and the register stays 0.
 |===
 
 *Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The leaf is left unmarked so a run of `all` stays a visible fail; a spec-vs-RTL gap is not masked as `expect_fail`. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction. Tracked by issue #1993.
@@ -3006,9 +3006,8 @@ releases. Both mux directions are graded.
 `CHK-ABR-DRAIN-ORDER`, `CHK-ABR-HOST-DRAIN` and `CHK-ABR-DRAIN-ARRIVAL`,
 and for the KMAC domain by `CHK-KMAC-DRAIN-ORDER` and `CHK-KMAC-DRAIN-ARRIVAL`.
 The KMAC leg does not claim accepted-traffic drain: pre-request reads retire
-before the host path isolates on that domain, measured at 0 of 16 still in
-flight at isolate close, so there is no accepted traffic for the isolate to
-complete. Adams Bridge does carry that property, on a full-AXI isolate. HMAC
+before the host path isolates on that domain, so none remain in flight at
+isolate close and there is no accepted traffic for the isolate to complete. Adams Bridge does carry that property, on a full-AXI isolate. HMAC
 drain runs against a live golden-checked result on a path this entry isolates.
 ABR drain counts outstanding host reads at isolate close so it grades traffic
 the isolate has to retire. The shared TRNG domain grades drain-before-reset in
@@ -4297,14 +4296,14 @@ plus that the `clk_ref_i` reference counter advances and its crossing onto
 |===
 
 *Not claimed*: the software LOAD of `REFERENCE_COUNTER`. The written value is
-lost whenever `clk_i` runs far faster than `clk_ref_i` -- measured: at a 4 ns
-core period against the 40 ns reference it never reaches the counter, while
-8 ns and 16 ns both take it. The update crosses on a depth-1 async FIFO whose
-source comment states that an update arriving before the previous one has
-crossed is "dropped with no error indication", and that primitive's guard
-assertion is compiled out of this build, so the loss is silent. A checker here
-would claim a contract this elaboration does not honour at every clock ratio
-the environment generates. Needs a designer ruling before it is claimed.
+lost whenever `clk_i` runs far faster than `clk_ref_i`. At a 4 ns core period
+against the 40 ns reference the write never reaches the counter; at 8 ns and
+16 ns it does. The update crosses on a depth-1 async FIFO whose source comment
+states that an update arriving before the previous one has crossed is "dropped
+with no error indication", and that primitive's guard assertion is compiled
+out of this build, so the loss is silent. A checker here would claim a
+contract this elaboration does not honour at every clock ratio the
+environment generates. Needs a designer ruling before it is claimed.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 

@@ -888,11 +888,11 @@ only that a legal access completed OKAY.
 
 === Phase 3 — named set
 
-Not instrumented. No Phase 3 VPLAN card is required at this stage. These
-names record leftover KM vehicles that are not Phase 1 or Phase 2.
+Not instrumented. No Phase 3 VPLAN card is required at this stage.
 
-`sep_km_abr_shared_key_cg` (`CMD_ABR_SK_TRANSFER` consume after a live ABR
-capture).
+The `CMD_ABR_SK_TRANSFER` consume after a live ABR capture is a Phase 1
+checker on `sep_km_abr_mlkem_sideload_test`. No covergroup samples that
+handshake.
 
 === Exclusions
 
