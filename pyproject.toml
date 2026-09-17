@@ -63,7 +63,7 @@ extend-exclude = [
   "**/build_ot",
   "**/build_ot_pio",
   "**/regs/gen/py",
-  "hw/sys/sep/bootrom/prod/tools/tt-boot-manifest",
+  "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest",
 ]
 
 [tool.ruff.lint]
@@ -110,12 +110,18 @@ exclude = '''(?x)^(
 #   intentionally skipped at their canonical generated/vendor locations.
 # - dv/fw/include/metal and dv/fw/tests/coremark* are upstream SiFive Metal
 #   HAL and EEMBC CoreMark sources, copied in rather than hand-maintained here.
+# - *.pem is base64 key material, so any letter run in it can collide with a
+#   dictionary entry. The test signing keys hit one such collision, which is
+#   why the literal token is described rather than quoted here: quoting it
+#   makes this file itself a finding.
+# - tools/tt-oca-manifest is a submodule: another repo's sources, fixable only
+#   by a PR there, so a finding in it cannot gate this repo.
 skip = """\
-vendor,nonfree,.git,\
+vendor,nonfree,.git,*/tools/tt-oca-manifest,\
 */integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
 */dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
-*.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,uv.lock,*.lock\
+*.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,*.pem,uv.lock,*.lock\
 """
 # interruptor(s): the RISC-V CLINT spec spells out the acronym as
 # "Core-Local INTerruptor", matching every other occurrence in doc/; not the

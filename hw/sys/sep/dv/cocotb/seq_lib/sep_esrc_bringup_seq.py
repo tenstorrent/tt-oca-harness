@@ -89,9 +89,14 @@ EDN_ERR_CODE = sym("EDN_ERR_CODE_REG_ADDR")
 EDN_RECOV_ALERT = sym("EDN_RECOV_ALERT_STS_REG_ADDR")
 
 # --- values -----------------------------------------------------------------
-# OpenTitan multi-bit bool encodings (prim_mubi_pkg), not CSR addresses.
-_MUBI4_TRUE = 0x6
-_MUBI4_FALSE = 0x9
+# 4-bit multi-bit-bool, derived from the register export rather than copied from
+# an RTL package. csrng.rdl resets CTRL.ENABLE to the disabled encoding and
+# describes the enabling value as kMultiBitBool4True, so the field's reset IS
+# mubi-false and mubi-true is its complement across the field width. The
+# encoding is chosen for Hamming distance, which is why it is not 0 and 1.
+_MUBI4_FIELD = CSRNG.fields("CTRL")["ENABLE"]
+_MUBI4_FALSE = _MUBI4_FIELD["reset"]
+_MUBI4_TRUE = (~_MUBI4_FALSE) & ((1 << _MUBI4_FIELD["bw"]) - 1)
 CSRNG_CTRL_ENABLE = CSRNG.value(
     "CTRL",
     ENABLE=_MUBI4_TRUE,

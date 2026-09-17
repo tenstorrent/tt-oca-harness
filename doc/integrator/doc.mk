@@ -48,6 +48,7 @@ ocah-doc-integrator-pdf: ocah-doc-integrator-setup
 	@mkdir -p "$(OCAH_INTEGRATOR_BUILD)/latex" "$(OCAH_INTEGRATOR_DIST)"
 	@rm -rf "$(OCAH_INTEGRATOR_SRC)/assets" && ln -s ../assets "$(OCAH_INTEGRATOR_SRC)/assets"
 	@cd "$(OCAH_INTEGRATOR_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+		$(OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS) \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
 		-o "$(OCAH_INTEGRATOR_BUILD)/latex/$(OCAH_INTEGRATOR_PDF)" src/index.adoc

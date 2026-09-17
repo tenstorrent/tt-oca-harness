@@ -11,7 +11,7 @@ the live leg: `hw/sys/smu/doc/port_table.adoc` states that the CTM ack ports are
 requested in turn so that a lane whose mode bit is set acknowledges and a
 pulse-sync lane does not.
 
-On the `--dut smu` production wrapper built with compile_smu_chiplet_no_sep.
+On the `--dut smu` production wrapper built with compile_smu_chiplet.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_xtrig_mode_composition_test --tool verilator

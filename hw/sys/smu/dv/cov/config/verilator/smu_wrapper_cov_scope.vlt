@@ -5,11 +5,16 @@
 // from [coverage.verilator].build_args in smu_sim_cfg.toml, so what it drops
 // never enters the coverage database. Edit then `--rebuild`.
 //
-// Same rule as the `--dut smu_block` scope (smu_cov_scope.vlt): each
-// integration level grades what it owns. SMU instantiates SMC, DTP and SEP,
-// each of which has its own DV package and its own coverage; grading them
-// again here would attribute their holes to SMU and hide SMU's own
-// interconnect inside a denominator two orders of magnitude larger.
+// The wrapper is graded on its interface: what stays instrumented is
+// hw/top/smu_wrapper.sv -- its ports and the nets it declares between them,
+// of which cov/interface_toggle.py keeps the ports -- and the cov/sv
+// functional-coverage modules. Everything the wrapper instantiates is
+// internal logic with an owner of its own -- `smu.sv` and its crossbar on the
+// `--dut smu_block` bench (smu_cov_scope.vlt), SMC, DTP and SEP in their own
+// DV packages -- and grading it again here would attribute their holes to
+// SMU and bury the interface inside a denominator two orders of magnitude
+// larger. The VCS counterpart is `tgl(portsonly)` in
+// ../vcs/smu_wrapper_cov_scope.hier.
 //
 // GLOB NOTE: the pattern is matched against the path as Verilator OPENED the
 // file, not the absolute path it records in the generated code, and
@@ -30,11 +35,17 @@ coverage_off -file "*hw/sys/smu/dv/tb/tb_wrapper_top.sv"
 coverage_off -file "*hw/sys/smu/dv/tb/smu_tb_if.sv"
 
 // ---------------------------------------------------------------------------
-// Subsystems that carry their own DV package and their own coverage.
+// Internal logic: the SMU block itself, graded on `--dut smu_block`, and the
+// subsystems that carry their own DV package and their own coverage.
 // ---------------------------------------------------------------------------
+coverage_off -file "*hw/sys/smu/rtl/*"
 coverage_off -file "*hw/sys/smc/*"
 coverage_off -file "*hw/sys/dtp/*"
 coverage_off -file "*hw/sys/sep/*"
+// The SEP and SMC integration shells under hw/top belong to those packages:
+// they instantiate the subsystem and its adopter-side collateral, not SMU logic.
+coverage_off -file "*hw/top/sep_ip_integration.sv"
+coverage_off -file "*hw/top/smc_ip_integration.sv"
 
 // ---------------------------------------------------------------------------
 // Third-party and generated RTL, and the IP blocks the subsystems integrate.
@@ -43,11 +54,3 @@ coverage_off -file "*vendor/*"
 coverage_off -file "*chipyard_generated_files/*"
 coverage_off -file "*hw/ip/*"
 coverage_off -file "*hw/common/*"
-
-// ---------------------------------------------------------------------------
-// The aperture no-overlap assertion in smu_axi_xbar.sv cannot be
-// coverage-instrumented on the SEP=1 elaboration (the tool aborts in
-// V3Localize on its 57-bit compare); the lines carrying it are dropped so the
-// rest of the crossbar stays measured.
-// ---------------------------------------------------------------------------
-coverage_off -file "*hw/sys/smu/rtl/smu_axi_xbar.sv" -lines 183-190

@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from runlib.cli import (  # noqa: E402
     expand_items,
     target_plan,
+    validate_item_tools,
     validate_target_plan,
 )
 from runlib.config import (  # noqa: E402
@@ -65,6 +66,49 @@ def inline_raw(run_modes: dict, tests: list, defaults: dict | None = None) -> di
 
 
 SMOKE = {"smoke": {"timeout_sec": 60, "args": []}}
+
+
+class TestlistToolValidation(unittest.TestCase):
+    """Per-test `tools`: names checked against the DUT's own list at catalog load."""
+
+    def test_unknown_tool_rejected(self):
+        flow = make_dut(inline_raw(SMOKE, [{"name": "t1", "tools": ["verilatro"]}]))
+        with self.assertRaises(ConfigError) as ctx:
+            load_test_catalog(flow, Path("."))
+        message = str(ctx.exception)
+        self.assertIn("t1", message)
+        self.assertIn("verilatro", message)
+        self.assertIn("verilator", message)  # the declared set is listed
+
+    def test_declared_tool_passes(self):
+        flow = make_dut(inline_raw(SMOKE, [{"name": "t1", "tools": ["verilator"]}]))
+        catalog = load_test_catalog(flow, Path("."))
+        self.assertEqual(catalog.tests["t1"].tools, ["verilator"])
+
+    def test_absent_key_means_every_tool(self):
+        flow = make_dut(inline_raw(SMOKE, [{"name": "t1"}]))
+        catalog = load_test_catalog(flow, Path("."))
+        self.assertEqual(catalog.tests["t1"].tools, [])
+
+    def test_explicitly_empty_rejected(self):
+        # An absent key and `tools = []` both reach TestEntry as [], so the difference is
+        # caught at parse time where the raw entry is still visible.
+        flow = make_dut(inline_raw(SMOKE, [{"name": "t1", "tools": []}]))
+        with self.assertRaises(ConfigError) as ctx:
+            load_test_catalog(flow, Path("."))
+        self.assertIn("empty", str(ctx.exception))
+
+    def test_unbound_scenario_is_not_gated_by_this_view(self):
+        # A framework view that never runs the scenario has no business rejecting the
+        # tools it would need -- and a framework overlay may declare a narrower tool list
+        # than the scenario names. This is the sep (uvm) view over a cocotb-only test.
+        flow = make_dut(
+            inline_raw(SMOKE, [{"name": "t1", "module": {"uvm": "m"}, "tools": ["vcs"]}])
+        )
+        flow.frameworks = ["cocotb", "uvm"]
+        catalog = load_test_catalog(flow, Path("."))
+        self.assertEqual(catalog.tests["t1"].module, "")
+        self.assertEqual(catalog.tests["t1"].tools, ["vcs"])
 
 
 class TestlistRunModeValidation(unittest.TestCase):
@@ -529,6 +573,51 @@ class GroupMemberValidation(unittest.TestCase):
         catalog = load_test_catalog(make_dut(raw), Path("."))
         # Selecting both groups runs the shared member once (first-seen order).
         self.assertEqual(expand_items(catalog, ["g1", "g2"], True), ["t1"])
+
+
+class ItemToolSelection(unittest.TestCase):
+    """validate_item_tools: group selections drop, explicit --items errors."""
+
+    def catalog(self):
+        raw = inline_raw(
+            SMOKE,
+            [
+                {"name": "t_any", "run_modes": ["smoke"]},
+                {"name": "t_veri", "run_modes": ["smoke"], "tools": ["verilator"]},
+            ],
+        )
+        return load_test_catalog(make_dut(raw), Path("."))
+
+    def test_group_selection_drops_and_records(self):
+        catalog = self.catalog()
+        args = Namespace(items=None)
+        kept = validate_item_tools(catalog, ["t_any", "t_veri"], "vcs", args)
+        self.assertEqual(kept, ["t_any"])
+        self.assertEqual(getattr(args, "_skipped_wrong_tool"), ["t_veri"])
+
+    def test_explicitly_named_item_errors_instead(self):
+        catalog = self.catalog()
+        args = Namespace(items=["t_veri"])
+        with self.assertRaises(ConfigError) as ctx:
+            validate_item_tools(catalog, ["t_veri"], "vcs", args)
+        message = str(ctx.exception)
+        self.assertIn("t_veri", message)
+        self.assertIn("vcs", message)
+        self.assertIn("verilator", message)  # the tool it does run on
+
+    def test_matching_tool_keeps_everything(self):
+        catalog = self.catalog()
+        args = Namespace(items=None)
+        kept = validate_item_tools(catalog, ["t_any", "t_veri"], "verilator", args)
+        self.assertEqual(kept, ["t_any", "t_veri"])
+        self.assertIsNone(getattr(args, "_skipped_wrong_tool", None))
+
+    def test_empty_result_is_an_error_not_a_vacuous_pass(self):
+        catalog = self.catalog()
+        args = Namespace(items=None)
+        with self.assertRaises(ConfigError) as ctx:
+            validate_item_tools(catalog, ["t_veri"], "vcs", args)
+        self.assertIn("no selected scenario", str(ctx.exception))
 
 
 class RuntimeSelectionDefenses(unittest.TestCase):

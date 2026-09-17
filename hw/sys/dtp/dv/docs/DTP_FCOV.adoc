@@ -343,7 +343,7 @@ Sampling rules:
 |===
 |VPLAN Test / Group |Coverage
 |`dtp_sanity_test` |`tap_smoke_cg`, partial `tap_state_cg`
-|`basic_jtag` group |`tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR/iJTAG loopback observations
+|`basic_jtag` group |`tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR loopback observations
 |`dtp_jtag2axi_smc_axi_single_write_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS write
 |`dtp_jtag2axi_smc_axi_single_write_read_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS read
 |JTAG instruction scenarios |`jtag_instruction_cg`, `tap_state_cg`
@@ -382,7 +382,6 @@ change.
 |Item |Reason
 |SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the public flow
 |`jtag2axi_robustness_cg` reset-timing request-issued/data-phase/response-wait and CDC clear/isolate bins |A stall that outlasts the JTAG scan tail leaves the recovery write BUSY_OR_FULL, so the reset scenarios stall only after completion and these bins do not fire; they are hole entries in the coverage policy file
-|`jtag2axi_response_cg` poll long-wait bins |Settled-status polls never exceed three BUSY captures under the responder stall profile, so the long-wait bins do not fire; they are hole entries in the coverage policy file
 |Stimulus-intent bins (IC_RESET pattern source, seeded random request masks) |Test-layer randomization intent, not signal-observable; the modules record the resulting behavior instead
 |Invalid IDCODE marker, contradictory debug-disable outcomes |Checker failures in a passing run, never coverage bins
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract

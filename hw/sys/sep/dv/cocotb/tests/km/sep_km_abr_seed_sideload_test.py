@@ -48,6 +48,23 @@ _ABR_SEED_PAL = [
     0x0BADC0DE,
 ]
 
+# A second, distinct seed for the KM sideload leg. The sideload must not reuse
+# _ABR_SEED_PAL: the direct keygen above already wrote that value into
+# MLDSA_SEED, so a ZEROIZE that failed to clear the register would produce the
+# same public key and CHK-PK could not tell a working sideload from a stale
+# seed. Palindromic like the first, so the word order of the KM transfer is
+# still not what the compare depends on.
+_ABR_SEED_ALT = [
+    0x1234ABCD,
+    0x0F0F0F0F,
+    0xC0FFEE00,
+    0x5EED5EED,
+    0x5EED5EED,
+    0xC0FFEE00,
+    0x0F0F0F0F,
+    0x1234ABCD,
+]
+
 _POLL_ITERS = 20000
 _POLL_GAP = 200
 
@@ -124,7 +141,20 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         await self._wait_status(abr, ST_READY, ST_READY, what="post-zeroize READY")
 
-        handle = await self.km.key_load(key_words=list(_ABR_SEED_PAL), dest=KM_DEST_ABR_MLDSA_SEED)
+        # Reference for the sideload leg: the same distinct seed, driven the
+        # direct way. CHK-PK below compares against this, not against pk_direct,
+        # so the compare fails if the sideload delivered the earlier seed.
+        pk_alt = await self._keygen(abr, _ABR_SEED_ALT, cfg.entropy, what="CHK-PK-REF")
+        assert pk_alt != pk_direct, (
+            "CHK-PK-REF FAIL: the two seeds produce the same public key, so the "
+            "sideload compare below could not distinguish them"
+        )
+        self.logger.info("CHK-PK-REF PASS: the alternate seed gives a distinct public key")
+
+        await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
+        await self._wait_status(abr, ST_READY, ST_READY, what="post-zeroize READY (alt)")
+
+        handle = await self.km.key_load(key_words=list(_ABR_SEED_ALT), dest=KM_DEST_ABR_MLDSA_SEED)
         rc, arg = await self.km.key_transfer(handle=handle, dest=KM_DEST_ABR_MLDSA_SEED)
         assert rc == KM_RC_SUCCESS, f"CHK-XFER FAIL: CMD_KEY_TRANSFER dest=0x10 rc={rc}"
         assert (arg & 0xFF) == handle and ((arg >> 8) & 0xFF) == KM_DEST_ABR_MLDSA_SEED, (
@@ -134,10 +164,15 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
 
         await abr.wr32(ABR_MLDSA_KV_RD_SEED_CTRL, ABR_KV_RD_SEED_READ_EN)
         pk_km = await self._keygen(abr, None, cfg.entropy, what="CHK-PK")
-        assert pk_km == pk_direct, (
-            "CHK-PK FAIL: KM-sideloaded PK != direct-seed PK:\n"
-            f"  direct[0..3]={[hex(w) for w in pk_direct[:4]]}\n"
-            f"  km[0..3]    ={[hex(w) for w in pk_km[:4]]}"
+        assert pk_km != pk_direct, (
+            "CHK-PK FAIL: the sideload produced the FIRST seed's public key, so "
+            "the seed register still held the earlier value -- a stale seed, not "
+            "a delivered one"
+        )
+        assert pk_km == pk_alt, (
+            "CHK-PK FAIL: KM-sideloaded PK != direct alternate-seed PK:\n"
+            f"  alt[0..3]={[hex(w) for w in pk_alt[:4]]}\n"
+            f"  km[0..3] ={[hex(w) for w in pk_km[:4]]}"
         )
         self.logger.info(
             "CHK-PK PASS: KM-sideloaded PK equals the direct-seed PK (%d words)",

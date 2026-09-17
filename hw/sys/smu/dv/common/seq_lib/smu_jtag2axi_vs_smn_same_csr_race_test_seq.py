@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI vs SMN concurrent write on the same CSR; no tear. SEP=0, no Force.
+"""JTAG2AXI vs SMN concurrent write on the same CSR; no tear. SEP=1, no Force.
 
 Concurrency is established, not assumed. The SMN writer is released only once
 the JTAG2AXI write's AW handshake has been seen on the DTP -> SMC debug port,
@@ -32,6 +32,7 @@ from seq_lib.smu_filter_helpers import (
     SCRATCH_COLD_ADDR,
     await_smn_resp,
     program_inbound0_window,
+    program_smc_aperture_local_alias,
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -89,6 +90,8 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:

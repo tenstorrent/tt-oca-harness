@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Small DTP-local scan-chain model for basic JTAG scenarios.
 
-The OSS DTP top loops BSR/iJTAG scan inputs back from DUT scan outputs. This
+The OSS DTP top loops the BSR scan input back from the DUT scan output. This
 model captures the expected public behavior at the scenario level.
 
 The zero-length external chain returns TDI through the DUT's IEEE 1149.1

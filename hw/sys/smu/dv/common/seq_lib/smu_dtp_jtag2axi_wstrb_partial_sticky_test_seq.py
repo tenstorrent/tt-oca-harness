@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI partial WSTRB on SPM; neighbor word unchanged. SEP=0, no Force."""
+"""JTAG2AXI partial WSTRB on SPM; neighbor word unchanged. SEP=1, no Force."""
 
 from __future__ import annotations
 

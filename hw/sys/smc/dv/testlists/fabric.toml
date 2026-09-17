@@ -102,6 +102,22 @@ tags = ["ci", "fabric", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_sep_in_axi_flow_control_test"
+module = "smc_sep_in_axi_flow_control_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_in_axi_shape_test"
+module = "smc_sep_in_axi_shape_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dual_base_addressing_test"
 module = "smc_dual_base_addressing_test"
 seed = 1

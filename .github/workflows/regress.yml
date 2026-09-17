@@ -105,24 +105,26 @@ jobs:
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
             timeout: 240
           - dut: smu
-            # `sep0_all` is the enrolled SEP=0 release set: every leaf compiles
-            # under the no-SEP profile with `elaboration` firmware, so there is
-            # no c_compile / RISC-V toolchain stage on hosted runners. `smu` is
-            # now the wrapper DUT; the bare block bench is `smu_block` and holds
-            # two leaves only (hw/sys/smu/dv/testlists/all.toml). `smu`'s own
-            # `all` is not usable here -- it carries the SEP=1 firmware set,
-            # which needs the toolchain container.
-            items: sep0_all
+            # `hosted` is the enrolled toolchain-free release set: every leaf
+            # uses `elaboration` firmware, whose only products are zero-filled
+            # preload images written in Python, so there is no RISC-V toolchain
+            # stage on hosted runners. `smu` is the wrapper DUT on its single
+            # compile profile (real SEP); the bare block bench is `smu_block`
+            # (hw/sys/smu/dv/testlists/all.toml). `smu`'s own `all` is not
+            # usable here -- it carries the SEP firmware set, which needs the
+            # toolchain container.
+            items: hosted
             reseed: 1
             coverage: false
             runner: ubuntu-latest
             timeout: 90
           - dut: smu_block
-            # The bare `smu #(.SEP(0))` bench. `all` is its two cocotb JTAG
-            # leaves with no firmware stage, so it runs on the hosted runner;
-            # sim.yml gates only the `smoke` leaf, so the scheduled tiers are
-            # where the abort-mid-op leaf executes. Budget: two 1800 s leaves
-            # in parallel plus build headroom.
+            # The bare `smu #(.SEP(0))` bench. `all` is its cocotb leaves --
+            # the SEP=0 composition proofs plus the two JTAG leaves that cannot
+            # run on the wrapper -- with no firmware stage, so it runs on the
+            # hosted runner; sim.yml gates only the `smoke` leaf, so the
+            # scheduled tiers are where the abort-mid-op leaf executes. Budget:
+            # two 1800 s leaves in parallel plus build headroom.
             items: all
             reseed: 1
             coverage: false
@@ -165,6 +167,40 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
+      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
+      # as the authority for the OCA manifest layout, so without it 54 of 162
+      # test modules fail to import and the run dies before any simulation.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
+      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
+      # submodule at all, died on the repo checkout itself with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses the submodule over SSH, which a hosted runner has
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. Same
+      # shape as .gitlab-ci.yml's OCAH_NONFREE_REMOTE. The rewrite is undone
+      # afterwards so the credential does not outlive the step.
+      - name: Check out the tt-oca-manifest submodule
+        if: matrix.dut == 'sep'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OCA_PAT:-}" ]; then
+            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
+            exit 1
+          fi
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
 
       # The run id keeps the recorded native run_dir unique per run: the
       # dashboard trend-point identity hashes it, so a repeated path would
@@ -232,7 +268,7 @@ jobs:
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
             timeout: 330
           - dut: smu
-            items: sep0_all
+            items: hosted
             reseed: 3
             coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
@@ -256,7 +292,7 @@ jobs:
             # `hosted` feeds the coverage dashboard and a graded expected
             # failure must not count there; no coverage for the same reason.
             # One seed: each leaf is a directed reproducer. The budget is the
-            # model build plus five short leaves.
+            # model build plus two short leaves.
             items: rtl_issue
             label: rtl_issue
             reseed: 1
@@ -287,6 +323,40 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
+      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
+      # as the authority for the OCA manifest layout, so without it 54 of 162
+      # test modules fail to import and the run dies before any simulation.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
+      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
+      # submodule at all, died on the repo checkout itself with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses the submodule over SSH, which a hosted runner has
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. Same
+      # shape as .gitlab-ci.yml's OCAH_NONFREE_REMOTE. The rewrite is undone
+      # afterwards so the credential does not outlive the step.
+      - name: Check out the tt-oca-manifest submodule
+        if: matrix.dut == 'sep'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OCA_PAT:-}" ]; then
+            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
+            exit 1
+          fi
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
 
       # Artifact name dv-run-<dut>-verilator-weekly and the run-dir shape are
       # the dashboard contract (dashboard.yml, tools/dv/run_dashboard.py); a

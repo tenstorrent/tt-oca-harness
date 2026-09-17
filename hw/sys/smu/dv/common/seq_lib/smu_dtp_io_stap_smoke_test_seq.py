@@ -6,7 +6,7 @@ S1: During IDCODE IR+DR, ``tb_stap_io_tck`` (product ``jtag_stap_io_host_tap_ctr
     shows >=2 edges.
 S2: During BYPASS IR + non-zero DR payload, TCK shows >=2 edges again.
 
-SEP=0 ties ``sep_feat_ctrl='1`` (enable polarity); no Force. Not claimed:
+No Force. Not claimed:
 adjacent-die STAP BFM IDCODE or extra-STAP matrix.
 """
 

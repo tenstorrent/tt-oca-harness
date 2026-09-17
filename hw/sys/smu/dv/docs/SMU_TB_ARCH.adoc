@@ -27,11 +27,11 @@ technology interfaces tied off. Holds the leaves the wrapper cannot express
 shape
 |`--dut smu` (alias `smu_wrapper`) |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
 `hw/top/smu_wrapper.sv` with production pins, in a `no_sep` and a `sep_rtl`
-compile profile. The SMU regression: `sep0_all` and `all`
+compile profile. The SMU regression: `hosted` and `all`
 |===
 
 The two are separate evidence surfaces. Logs carry `DUT_TAG=BARE`
-or `DUT_TAG=WRAPPER`, and a wrapper PASS is not merged into bare `sep0_all`
+or `DUT_TAG=WRAPPER`, and a wrapper PASS is not merged into bare `hosted`
 evidence.
 
 === Directory Structure

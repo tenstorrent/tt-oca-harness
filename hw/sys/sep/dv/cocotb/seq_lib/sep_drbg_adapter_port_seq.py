@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_spec_tables import axi_lane_strobe
 
 # Bit positions in tbadp_chan_o.
 AW_VALID, W_VALID, AR_VALID, AW_READY, W_READY, AR_READY = (1 << i for i in range(6))
@@ -56,16 +57,19 @@ PORT_ORDERS: tuple[tuple[str, int, int, int], ...] = (
 )
 ORDER_NAMES = tuple(name for name, *_o in PORT_ORDERS)
 
-# The access must be one the adapter SUPPORTS, or it never forwards anything.
-# write_supported() in drbg_axil64_lane_adapter.sv requires addr[1:0]==0 and
-# then strb==8'h0F for addr[2]==0, or strb==8'hF0 for addr[2]==1. An
-# unsupported write is answered SLVERR straight out of StIdle with no
-# downstream request at all -- and it retires just as promptly as a real one,
-# so a control built on an unsupported access would "pass" while proving only
-# that the reject path works. addr[2]==0 paired with the low lane strobe.
+# The access must be protocol-legal, or the adapter never forwards anything: an
+# access it cannot carry is answered SLVERR straight out of StIdle with no
+# downstream request at all -- and it retires just as promptly as a real one, so
+# a control built on such an access would "pass" while proving only that the
+# reject path works.
+#
+# Address and strobe are therefore AMBA's, via sep_spec_tables.axi_lane_strobe:
+# a 32-bit transfer is address-aligned and rides the byte lanes its address
+# selects. They are not read out of the adapter's own supported-access
+# predicate, so an adapter whose notion of a legal 64->32 lane access disagreed
+# with AMBA answers this stimulus for itself instead of choosing it.
 WR_ADDR = 0x0000_0000
-WR_STRB = 0x0F
-# read_supported() needs only addr[1:0]==0.
+WR_STRB = axi_lane_strobe(WR_ADDR)
 RD_ADDR = 0x0000_0008
 WR_DATA = 0xDEAD_BEEF_CAFE_0001
 

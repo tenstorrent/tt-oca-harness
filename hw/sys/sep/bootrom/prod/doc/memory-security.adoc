@@ -43,9 +43,10 @@
 
 The linker keeps `.text`, `.metadata`, and `.rodata` in ROM. `.data` executes
 from DCCM but has a ROM load image. `.bss` and the stack occupy only DCCM. A
-128-byte reserve at the top of DCCM holds `struct bl0_state`; runtime and
-compile-time checks keep the structure from overlapping the downward-growing
-stack.
+256-byte reserve at the top of DCCM holds `struct bl0_state`
+(`BL0_STATE_RESERVE_BYTES` in `include/bl0_state.h`, which `link/rom.ld` must
+match); runtime and compile-time checks keep the structure from overlapping the
+downward-growing stack.
 
 `bl0_state` gives BL1 the validated manifest address, boot mode, secure-boot
 decision, lifecycle and feature-control values, last error, boot measurement,

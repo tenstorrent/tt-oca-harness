@@ -21,10 +21,10 @@ module user_clock_gate (
 );
 
   prim_clkgater u_clkgater (
-    .i_clk(CK),
-    .i_en (EN),
-    .i_te (SE),
-    .o_clk(Q)
+    .clk_i(CK),
+    .en_i (EN),
+    .te_i (SE),
+    .clk_o(Q)
   );
 
 endmodule

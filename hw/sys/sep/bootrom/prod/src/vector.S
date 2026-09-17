@@ -59,12 +59,13 @@
 /* ICCM address range for warm handler jump validation.
  *
  * ICCM, not SRAM: the spec requires a "valid ICCM address"
- * (sep-boot-flow.puml) and the reference range-checks the same way. The old
- * range was [SEP_SRAM_BASE, SEP_BOOT_ROM_BASE), which is a different memory
- * entirely -- and the comment above the check said "must be within ICCM" while
+ * (sep-boot-flow.puml). A range of [SEP_SRAM_BASE, SEP_BOOT_ROM_BASE) is a
+ * different memory entirely -- and a comment claiming "must be within ICCM" while
  * the constants said SRAM, so the code and its own documentation disagreed. */
-.equ WARM_HANDLER_RANGE_BASE,  OCH_SEP_TOP_SEP_ICCM_BASE_ADDR
-.equ WARM_HANDLER_RANGE_END,   OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE
+.equ WARM_HANDLER_ICCM_BASE,   OCH_SEP_TOP_SEP_ICCM_BASE_ADDR
+.equ WARM_HANDLER_ICCM_END,    OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE
+.equ WARM_HANDLER_SRAM_BASE,   OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
+.equ WARM_HANDLER_SRAM_END,    OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + OCH_SEP_TOP_SEP_SRAM_SIZE
 
 /* MEM_REPAIR boot gate. Mirrors include/sep_smc_interface.h -- the C side owns
  * these numbers, so they must be changed in both places together. Kept as .equ
@@ -123,12 +124,10 @@
  *
  * NOTE: bit 2 currently falls inside `reserved[31:2]` in
  * regs/blocks/sep_efuse_map/sep_efuse_map.rdl:806, so this is an undeclared use
- * of a reserved bit -- tracked as A32 in dv/docs/rom_boot_flow_vs_reference.md
- * ("MEM_REPAIR bypass as a fuse rather than a strap"). NOT A46: that row covers
- * the gate implementation and is closed; the fuse allocation is still open.
- * The NAME comes from the reference design's efuse schema
- * (tt_sep/meta/scripts/efuse/efuse_schema.toml, bit 2, "BOOTROM continues to
- * boot when MBIST failures detected"). Neither this design's RDL nor the
+ * of a reserved bit. The gate itself is implemented; the fuse allocation is not
+ * yet declared in the register map.
+ * The name describes the intent: continue booting when MBIST reports a
+ * failure. Neither this design's RDL nor the
  * OCAH-MAS fuse table allocates it -- MAS declares STATUS_RPT as 32 bits with 2
  * used, both for status reporting. So this is an unallocated bit borrowed from
  * another chip's map, not an allocated one awaiting a declaration (F23/F25). The register's existing `sw = r` / `hw = rw`
@@ -180,7 +179,7 @@ _start:
     li      t0, 0xAAAAAAA8
     csrw    0x7C0, t0
 
-    /* ── V2: Warm reset detection ──────────────────────────────────
+    /* ── [S01]: Warm reset detection ──────────────────────────────────
      *
      * On warm reset (WDT bark → wdt_rst_ni low):
      *   - CPU is reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni)
@@ -189,8 +188,8 @@ _start:
      *     the handler slot lives in
      *   - sep_scratch_warm_scratch[] is NOT preserved: its
      *     arst_n = sep_reset_n & wdt_rst_ni, so a watchdog reset clears it.
-     *     The slot was moved off this bank for exactly that reason; see the
-     *     block above SEP_COLD_SCRATCH_7 and FINDINGS F28.
+     *     The handler slot therefore lives in the cold bank; see the block
+     *     above SEP_COLD_SCRATCH_7.
      *   - All CPU CSRs reset to defaults
      *
      * BL1 writes its re-entry address to cold_scratch[7] before enabling
@@ -200,7 +199,7 @@ _start:
      *   1. Read cold_scratch[7]
      *   2. If zero → cold boot
      *   3. If non-zero: range check against
-     *      [WARM_HANDLER_RANGE_BASE, WARM_HANDLER_RANGE_END) = SEP ICCM
+     *      SEP SRAM or ICCM (either is a legal BL1 region)
      *   4. If valid: jump to handler, leaving the slot INTACT
      *   5. If invalid: hang
      *   The cold path poisons with -1, deliberately out of range, so an
@@ -213,11 +212,31 @@ _start:
     lw      t1, 0(t0)              /* t1 = warm handler address */
     beqz    t1, cold_boot          /* zero → cold boot */
 
-    /* Range check: WARM_HANDLER_RANGE_BASE <= handler < WARM_HANDLER_RANGE_END */
-    li      t2, WARM_HANDLER_RANGE_BASE
-    bltu    t1, t2, warm_reset_hang /* handler < range base → invalid → hang */
-    li      t2, WARM_HANDLER_RANGE_END
-    bgeu    t1, t2, warm_reset_hang /* handler >= range end → invalid → hang */
+    /* Range check: the handler must sit where BL1 may execute from, and per
+     * SEP-ROM-MAN-060 that is EITHER SEP SRAM or ICCM -- placement follows the
+     * manifest's TOC entry, so accepting only one region would reject a
+     * legitimate handler for the other. SRAM base is below ICCM base, so the
+     * ICCM window is tested first and anything below it falls through to SRAM. */
+    li      t2, WARM_HANDLER_ICCM_BASE
+    bltu    t1, t2, .Lwarm_try_sram /* below ICCM → maybe SRAM */
+    li      t2, WARM_HANDLER_ICCM_END
+    bltu    t1, t2, .Lwarm_range_ok /* inside ICCM → valid */
+    j       warm_reset_hang         /* at/above ICCM end → invalid → hang */
+.Lwarm_try_sram:
+#if BL1_SRAM_EXEC_ENABLE
+    /* SRAM execution is permitted in this build, so a handler there is valid.
+     * This must track rom_handoff.c's cold-path policy exactly: accepting a
+     * warm handler in a region the cold path would refuse to boot would let a
+     * warm reset re-enter code the ROM would never have launched. */
+    li      t2, WARM_HANDLER_SRAM_BASE
+    bltu    t1, t2, warm_reset_hang /* below SRAM → invalid → hang */
+    li      t2, WARM_HANDLER_SRAM_END
+    bgeu    t1, t2, warm_reset_hang /* at/above SRAM end → invalid → hang */
+#else
+    /* ICCM-only build: anything outside ICCM is invalid, SRAM included. */
+    j       warm_reset_hang
+#endif
+.Lwarm_range_ok:
 
     /* Valid warm handler found.  Announce the decision BEFORE transferring
      * control: once we jr, the ROM never runs again, so this store is the only
@@ -229,18 +248,16 @@ _start:
     li      t4, 0x01010068
     sw      t4, 0(t3)
 
-    /* NO POISON HERE, DELIBERATELY. The handler address is left in place, which
-     * is what the boot flow specification and the reference both do; only the
-     * cold path writes the slot, and it writes -1.
+    /* No poison here, deliberately. The handler address is left in place, as
+     * the boot flow specification requires; only the cold path writes the slot,
+     * and it writes -1.
      *
      * Leaving it is the behaviour a watchdog handler needs. BL1 arms the
      * watchdog after parking its re-entry address here, so persistence is the
      * point: the SECOND watchdog reset must reach the handler too. Poisoning
      * made the first one dispatch and every one after that cold boot, silently
-     * disarming watchdog recovery unless the handler happened to rewrite the
-     * slot on every entry -- and if it does rewrite it, the poison achieved
-     * nothing anyway. It was not the stronger choice, just a different one, and
-     * it was undocumented. See FINDINGS F29. */
+     * disarming watchdog recovery unless the handler rewrites the slot on every
+     * entry -- and if it does, poisoning achieves nothing. */
 
     /* Jump to warm reset handler. BL1 sets up its own sp/mtvec/PMP as needed. */
     jr      t1
@@ -270,14 +287,11 @@ cold_boot:
      * philosophy already stated on the invalid-handler path below: an
      * unexpected handler value may indicate corruption or attack.
      *
-     * The warm path writes NOTHING -- see the accept arm above. An earlier
-     * version poisoned it there to block re-entry; the spec and the reference
-     * both leave it alone, because persistence is what a watchdog handler slot
-     * is for (FINDINGS F29).
+     * The warm path writes NOTHING -- see the accept arm above. The slot is
+     * left alone because persistence is what a watchdog handler slot is for.
      *
-     * -1 is what the specification asks for on the cold path, and the reference
-     * writes the same. Writing 0 instead would take the beqz early-out and cold
-     * boot silently. */
+     * -1 is what the specification asks for on the cold path. Writing 0 instead
+     * would take the beqz early-out and cold boot silently. */
     li      t0, SEP_COLD_SCRATCH_7
     li      t1, -1
     sw      t1, 0(t0)
@@ -428,8 +442,7 @@ cold_boot:
      * corrupted lc_state biases toward the permissive answer.
      *
      * Three instructions of setup are all it takes: the SMC base is a
-     * compile-time constant here, so unlike the reference (which loads its SMC
-     * base from a register first) no preparation is needed.
+     * compile-time constant here, so no preparation is needed.
      */
     li      t0, SMC_DFX_CTRL_STATUS_SMU
     lw      t1, 0(t0)                       /* t1 = raw DFT status, kept live */
@@ -611,11 +624,8 @@ trap_vector_early:
      * memory except cold_scratch[1], and calls nothing.
      *
      * Diagnostics go to cold_scratch[1] in sequence -- status, mcause, mtval,
-     * mepc, then the status again -- each store overwriting the last. The order
-     * mirrors the reference's ECR, EFA, ERET so a decoder written for one works
-     * on the other. This is
-     * the reference ROM's _default_handler pattern, including the closing
-     * status write, and that last store is the point: a bus observer (the tb
+     * mepc, then the status again -- each store overwriting the last. That last
+     * store is the point: a bus observer (the tb
      * samples this register every cycle) reconstructs the whole sequence, while
      * a post-mortem register read on silicon finds a decodable status rather
      * than a bare CSR value it cannot identify.
@@ -634,16 +644,14 @@ trap_vector_early:
     sw      t2, 0(t0)
     sw      t1, 0(t0)                   /* leave a decodable status resting here */
 
-    /* Terminal verdict, as the reference's _default_handler does. This handler
-     * got here first: cold_scratch[0] is a SEP register, writable this early,
+    /* Terminal verdict. cold_scratch[0] is a SEP register, writable this early,
      * carrying none of the addressing risk of the DV outbound mailbox the rest
      * of the ROM used to use. The whole ROM now reports here -- the C paths via
      * errors.h TEST_FAIL_CODE, which is this same 0xDEADBEEF and the value the
      * reference uses, so one constant covers all three.
      *
-     * Only the exception handler does this, not mem_repair_fail_hang -- again
-     * matching the reference, where a repair failure is a gated outcome with a
-     * bypass fuse rather than an unexpected fault. */
+     * Only the exception handler does this, not mem_repair_fail_hang: a repair
+     * failure is a gated outcome with a bypass fuse, not an unexpected fault. */
     li      t0, SEP_COLD_SCRATCH_0
     li      t2, 0xDEADBEEF
     sw      t2, 0(t0)

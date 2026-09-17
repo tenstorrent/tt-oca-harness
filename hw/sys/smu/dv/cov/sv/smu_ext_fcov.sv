@@ -100,9 +100,13 @@ module smu_ext_fcov #(
   wire aw_in_accept_e = (s_axi_awvalid_i === 1'b1) && (s_axi_awready_i === 1'b1);
   wire aw_out_fire_e = (axi_out_aw_valid_i === 1'b1) && (axi_out_aw_ready_i === 1'b1);
   wire inbound_id_width_8_e = aw_in_accept_e && ($bits(s_axi_awid_i) == 8);
-  wire outbound_id_width_10_e = aw_out_fire_e && ($bits(axi_out_aw_id_i) == 10);
   `OCAH_FCOV_COVER(c_inbound_id_width_8, inbound_id_width_8_e, clk_smu_i, in_reset)
-  `OCAH_FCOV_COVER(c_outbound_id_width_10, outbound_id_width_10_e, clk_smu_i, in_reset)
+  // The 10-bit outbound ID is the SEP=0 converter path; with SEP present the
+  // crossbar widens it.
+  if (!SepPresent) begin : g_nosep
+    wire outbound_id_width_10_e = aw_out_fire_e && ($bits(axi_out_aw_id_i) == 10);
+    `OCAH_FCOV_COVER(c_outbound_id_width_10, outbound_id_width_10_e, clk_smu_i, in_reset)
+  end
 
   // ------------------------------------------------------------------
   // Mailbox interrupt vector: its top bit, index NUM_MAILBOXES-1, rising.
