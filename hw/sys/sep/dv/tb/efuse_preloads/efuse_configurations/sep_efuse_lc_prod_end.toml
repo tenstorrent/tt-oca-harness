@@ -7,7 +7,7 @@
 # path: rom_main.c, where the demotion decision short-circuits before the
 # manifest's selector bit or either demotion flag is read, and BL0 writes DEMOTE_2
 # -- the only case in which it touches that register at all (rom_main.c).
-# Used by all three PROD_END members of the [C15] demotion group:
+# Used by all three PROD_END members of the [S25] demotion group:
 # sep_firmware_demotion_decision_auth_flag_0_prod_end_test, and
 # sep_firmware_demotion_decision_no_flag_prod_end_test plus
 # sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test.

@@ -258,9 +258,9 @@ module gpio_shim
 
   if (INPUT_BY_DEFAULT) begin : gen_capture_strap
     prim_latch_n strap_latch (
-      .i_D(pad2core_o),
-      .i_Gn(rst_cold_ni),
-      .o_Q(captured_strap)
+      .d_i(pad2core_o),
+      .g_ni(rst_cold_ni),
+      .q_o(captured_strap)
     );
   end else begin : gen_no_strap
     assign captured_strap = 1'b0;

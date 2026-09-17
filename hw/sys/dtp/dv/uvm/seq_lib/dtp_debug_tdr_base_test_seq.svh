@@ -274,6 +274,47 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     family_check("CHK-DBG-PIN", name, sample_dbg_signal(name), 64'(expected), context_s);
   endfunction
 
+  // The debug-TDR pin observables sample_dbg_signal resolves.
+  static function void debug_output_names(output string names[$]);
+    names = {
+      "stop_clks",
+      "cla_clock_stop_en",
+      "jtag_boot_stall",
+      "jtag_boot_stall_ovrd",
+      "jtag_ic_reset_smc_ovrd",
+      "jtag_ic_reset_smc_ctrl_n",
+      "jtag_ic_reset_sep_ovrd",
+      "jtag_ic_reset_sep_ctrl_n",
+      "jtag_ic_reset_ext_ovrd",
+      "jtag_ic_reset_ext_ctrl_n"
+    };
+  endfunction
+
+  // Their values with DEBUG_CONTROL at 0x00 and IC_RESET at its all-ones
+  // default (every slice enable inactive drives ovrd=0, ctrl_n=1).
+  static function void debug_output_defaults(output bit [63:0] defaults[string]);
+    string names[$];
+    debug_output_names(names);
+    foreach (names[i]) defaults[names[i]] = 64'd0;
+    defaults["jtag_ic_reset_smc_ctrl_n"] = 64'd1;
+    defaults["jtag_ic_reset_sep_ctrl_n"] = 64'd1;
+    defaults["jtag_ic_reset_ext_ctrl_n"] = 64'd1;
+  endfunction
+
+  // Sample every debug-TDR pin observable by name.
+  function void snapshot_debug_outputs(output bit [63:0] snapshot[string]);
+    string names[$];
+    debug_output_names(names);
+    foreach (names[i]) snapshot[names[i]] = sample_dbg_signal(names[i]);
+  endfunction
+
+  // One comparison per debug-TDR pin observable.
+  function void check_debug_outputs(string check_id, bit [63:0] observed[string],
+                                    bit [63:0] expected[string], string context_s);
+    foreach (expected[name])
+    family_check(check_id, name, observed[name], expected[name], context_s);
+  endfunction
+
   // Bounded observable poll: stop_clks passes through a 2-flop
   // synchronizer and an output flop, so clock-stop checks poll across
   // system cycles instead of assuming a fixed immediate value. The final

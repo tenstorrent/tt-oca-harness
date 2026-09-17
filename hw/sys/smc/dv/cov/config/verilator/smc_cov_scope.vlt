@@ -46,7 +46,7 @@ coverage_off -file "*hw/sys/smc/dv/models/*"
 // ---------------------------------------------------------------------------
 // Generated third-party RTL that only the CPU-reaching tests exercise; the
 // same argument SEP used to drop `sep_uvm_top.u_dut.u_sep.sep_cpu`.
-// VCS equivalent: -tree smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
+// VCS equivalent: -tree smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 coverage_off -file "*chipyard_generated_files/*"
 
 // ---------------------------------------------------------------------------
@@ -57,6 +57,12 @@ coverage_off -file "*chipyard_generated_files/*"
 // tt-hw-debug trace/mmr. None of it is SMC-level DV's to close, and leaving it
 // in makes the headline number a statement about other projects' code.
 coverage_off -file "*vendor/*"
+
+// IP blocks and shared primitives SMC integrates carry their own DV packages
+// and their own coverage; SMC grades the integration it owns (rtl/, regs/ and
+// the cov/sv points), the same rule the SMU and DTP scopes apply.
+coverage_off -file "*hw/ip/*"
+coverage_off -file "*hw/common/*"
 
 // KNOWN GAP: this line drops chipsalliance/i3c-core and lowRISC/opentitan,
 // but not vendor/pulp-platform/** or vendor/tenstorrent/tt-hw-debug/**, which

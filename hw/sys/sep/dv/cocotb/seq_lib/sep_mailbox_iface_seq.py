@@ -21,6 +21,7 @@ from env.sep_mbox_golden import (
     CLOCK_GATE_CTRL,
     CLOCK_GATE_IMPL_MASK,
     CTRL,
+    CTRL_WFLUSH,
     OUTBOUND_BASE,
     READ_DATA,
     WRITE_DATA,
@@ -92,4 +93,4 @@ class SepMbox(SepAxiRegDriver):
     # --- FIFO control -------------------------------------------------------
     async def flush_write(self) -> None:
         """CTRL.wflush (bit 0) drains the TX FIFO."""
-        await self._wr(OUTBOUND_BASE + CTRL, 0x1)
+        await self._wr(OUTBOUND_BASE + CTRL, CTRL_WFLUSH)

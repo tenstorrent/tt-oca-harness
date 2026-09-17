@@ -42,6 +42,10 @@ Checkers:
               the seed (KV pull + KEYGEN vs direct-seed PK) is
               sep_km_abr_seed_sideload_test
   CHK-DEST    a transfer to an engine OUTSIDE the key's DEST_VALID is refused
+              RC_FAILURE, with the target released and idle so a parked engine
+              is not the cause, and with an unconditional control beat -- the
+              SAME handle to an in-mask dest returns rc=0 -- so a dead handle
+              is not the cause either
   CHK-SHRED   CMD_ENGINE_SHRED returns rc=0 with its destination echoed, and
               the engine is still correctly re-keyable afterwards: a second,
               DISTINCT known key transferred after the shred encrypts to its
@@ -396,15 +400,53 @@ class sep_km_command_set_rand_test(sep_base_test):
         # validation and is refused by the transfer itself: RC_FAILURE, not
         # RC_INVALID_ARG. Asserting the exact code keeps a refusal for the wrong
         # reason -- a malformed argument, say -- from reading as a pass.
+        #
+        # The engine is RELEASED for this beat. bad_dest is drawn from the three
+        # engines this test parks, so with it parked a refusal is equally
+        # consistent with the destination policy (the claim) and with the
+        # sideload target simply not running -- and the checker could not tell
+        # them apart. Released, the only thing still disqualifying it is that it
+        # is outside the key's permitted mask.
+        bad_name = DEST_NAME[cfg.bad_dest]
+        await self._release_ready(bad_name, "bad-dest-release")
         rc, _ = await self.km.key_transfer(handle=handle_a, dest=cfg.bad_dest)
+        await self.swrst.park(bad_name)
         assert rc == KM_RC_FAILURE, (
             f"CHK-DEST FAIL: transfer to 0x{cfg.bad_dest:02x} returned rc={rc}, expected "
             f"{KM_RC_FAILURE} (RC_FAILURE) -- the key was loaded for "
             f"mask 0x{cfg.load_dest:02x}"
         )
+        # The confirmation beat, and the reason the refusal above is attributable
+        # to the destination argument. RC_FAILURE is also the code a KM returns
+        # for a handle absent from the registry -- what CHK-CLOSED below grades
+        # -- and a registry slot is a finite resource that every CMD_KEY_LOAD
+        # between the load and this beat competes for. So the same handle is
+        # transferred once more to a dest INSIDE its mask: load_dest always
+        # contains KM_DEST_AES (SepKmCommandSetCfg), and AES is live throughout
+        # this test. Same handle, same registry state, same KM state -- only the
+        # dest differs, so rc=0 here means the refusal above was the destination
+        # policy and not a dead handle. It is unconditional, so every seed
+        # carries it.
+        rc_ok, arg_ok = await self.km.key_transfer(handle=handle_a, dest=KM_DEST_AES)
+        assert rc_ok == KM_RC_SUCCESS, (
+            f"CHK-DEST FAIL: the in-mask control transfer of handle 0x{handle_a:02x} to "
+            f"0x{KM_DEST_AES:02x} returned rc={rc_ok}, so the RC_FAILURE above is not "
+            "attributable to the destination -- the handle or the KM was already refusing "
+            "every transfer"
+        )
+        assert (arg_ok & 0xFF) == handle_a and ((arg_ok >> 8) & 0xFF) == KM_DEST_AES, (
+            f"CHK-DEST FAIL: in-mask control RETURN_ARG 0x{arg_ok:08x} does not echo handle "
+            f"0x{handle_a:02x} and dest 0x{KM_DEST_AES:02x}"
+        )
         self.logger.info(
-            "CHK-DEST PASS: transfer to 0x%02x refused with RC_FAILURE -- outside DEST_VALID",
+            "CHK-DEST PASS: transfer of handle 0x%02x to 0x%02x (%s, released and idle for "
+            "the beat) refused with RC_FAILURE, while the SAME handle to in-mask dest 0x%02x "
+            "returned rc=0 -- the refusal is the destination policy, not a parked engine and "
+            "not a dead handle",
+            handle_a,
             cfg.bad_dest,
+            bad_name,
+            KM_DEST_AES,
         )
         await self._check_alive("post-dest-refusal")
 
@@ -642,17 +684,36 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info("CHK-ALIVE PASS [%s]: CMD_STAT rc=0 and no latched recoverable error", tag)
 
+    async def _release_ready(self, name: str, tag: str) -> None:
+        """Release a parked sideload target and wait until it is accepting again.
+
+        A key-bus write to an engine that is still running its post-reset secure
+        wipe is refused for that reason, which is the same RC_FAILURE the
+        destination-policy checkers expect. Every engine whose driver exposes a
+        readiness poll gets one; AES needs none (it is never parked here) and the
+        remaining ABR/pool dests have no idle surface on this path.
+        """
+        await self.swrst.release(name)
+        if name == "otbn":
+            from seq_lib.sep_otbn_seq import SepOtbn
+
+            await SepOtbn(self).wait_idle(tag)
+        elif name == "hmac":
+            from seq_lib.sep_hmac_seq import SepHmac
+
+            await SepHmac(self).wait_idle(tag)
+        elif name == "kmac":
+            from seq_lib.sep_kmac_seq import SepKmac
+
+            await SepKmac(self).wait_idle(tag)
+
     async def _transfer_seeded_dest(self, handle: int, cfg: SepKmCommandSetCfg) -> None:
         """CHK-XFER-DEST: transfer the loaded handle to the seed-selected dest."""
         dest = cfg.xfer_dest
         name = DEST_NAME[dest]
         extra = dest != KM_DEST_AES
         if extra:
-            await self.swrst.release(name)
-            if name == "otbn":
-                from seq_lib.sep_otbn_seq import SepOtbn
-
-                await SepOtbn(self).wait_idle("xfer-dest-release")
+            await self._release_ready(name, "xfer-dest-release")
         rc, arg = await self.km.key_transfer(handle=handle, dest=dest)
         if extra:
             await self.swrst.park(name)

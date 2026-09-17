@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""CORE0 WDT first timeout sets WDOGIP0 and holds it, via J2A. SEP=0, no Force.
+"""CORE0 WDT first timeout sets WDOGIP0 and holds it, via J2A. SEP=1, no Force.
 
 "Sticky" is measured, not assumed: WDOGIP0 is clear before the enable, set
 once the counter has passed CMP, and then sampled STICKY_SAMPLES more times

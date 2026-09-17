@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SYS_IN inbound0 program via J2A then SMN admit; outside page still DECERR. SEP=0, no Force."""
+"""SYS_IN inbound0 program via J2A then SMN admit; outside page still DECERR. SEP=1, no Force."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from seq_lib.smu_filter_helpers import (
     inbound0_config_readback,
     page_align_window,
     program_inbound0_window,
+    program_smc_aperture_local_alias,
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -74,6 +75,8 @@ class smu_sys_in_filter_program_jtag_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:

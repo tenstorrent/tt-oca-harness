@@ -13,13 +13,13 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_axi_filter_in_instance_matrix_test(smu_base_test):
-    """Inbound filter S1–S5; SEP=0 J2A + s_axi; no Force."""
+    """Inbound filter S1–S5; SEP=1 J2A + s_axi; no Force."""
 
     use_shared_env = True
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_axi_filter_in_instance_matrix_test TierA FAB_SMC_023 SEP=0 J2A"
+            "DUT_TAG=WRAPPER smu_axi_filter_in_instance_matrix_test TierA FAB_SMC_023 SEP=1 J2A"
         )
         seq = smu_axi_filter_in_instance_matrix_test_seq(self)
         await seq.run()

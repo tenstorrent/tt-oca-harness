@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC CPU_CTRL SCRATCH_15 via fabric JTAG2AXI (SEP=0, no Force).
+"""SMC CPU_CTRL SCRATCH_15 via fabric JTAG2AXI (SEP=1, no Force).
 
 S1: After TCK sync, ``tb_smc_jtag2axi_security_disable`` is 0.
 S2: DEBUG_CONTROL boot_stall=1 / ovrd=1 so ROM cannot race the mailbox.
@@ -36,7 +36,7 @@ OTP_POLL = 128
 
 
 class smu_dtp_jtag_smc_cpu_register_test_seq:
-    """CPU_CTRL SCRATCH_15 two-pattern R/W; gate already open on SEP=0."""
+    """CPU_CTRL SCRATCH_15 two-pattern R/W; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test

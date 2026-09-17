@@ -6,10 +6,10 @@
 //
 //--------------------------------------------------
 module prim_stdmux2 (
-  input  i_I0,
-  input  i_I1,
-  input  i_SEL,
-  output o_Y
+  input  i0_i,
+  input  i1_i,
+  input  sel_i,
+  output y_o
 );
-  assign o_Y = i_SEL ? i_I1 : i_I0;
+  assign y_o = sel_i ? i1_i : i0_i;
 endmodule

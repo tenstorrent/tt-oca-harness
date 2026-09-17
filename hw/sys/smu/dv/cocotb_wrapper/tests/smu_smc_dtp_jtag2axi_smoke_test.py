@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_smc_dtp_jtag2axi_smoke_test — SMC fabric J2A smoke (SEP=0, no Force)."""
+"""smu_smc_dtp_jtag2axi_smoke_test — SMC fabric J2A smoke (SEP=1, no Force)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_smc_dtp_jtag2axi_smoke_test(smu_base_test):
-    """SMC fabric J2A SCRATCH_15 + SPM + series INCR; gate tied open on SEP=0."""
+    """SMC fabric J2A SCRATCH_15 + SPM + series INCR; gate open on the SEP=1 wrapper."""
 
     use_shared_env = True
     # Its last step is an SMC fabric SERIES INCR write, which returns zeros or
@@ -23,7 +23,7 @@ class smu_smc_dtp_jtag2axi_smoke_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_smc_dtp_jtag2axi_smoke_test TierC JTAG2AXI-SMOKE SEP=0 JTAG"
+            "DUT_TAG=WRAPPER smu_smc_dtp_jtag2axi_smoke_test TierC JTAG2AXI-SMOKE SEP=1 JTAG"
         )
         seq = smu_smc_dtp_jtag2axi_smoke_test_seq(self)
         await seq.run()

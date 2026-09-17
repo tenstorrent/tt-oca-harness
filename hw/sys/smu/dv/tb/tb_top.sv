@@ -547,11 +547,24 @@ module smu_uvm_top
   // rst_primary_periph_clk_no output, so observe it hierarchically.
   assign rst_primary_periph_clk_no = u_dut.u_smc.rst_primary_periph_clk_no;
 
+  // prim_rom's noXOnCsI is never disabled (its reset argument is '0), so on a
+  // four-state simulator it fires on the X that req_i carries before reset.
+  // Hold it off until the SMC primary reset has released and one SMC clock
+  // edge has sampled a known req_i, then re-arm it so a later X still fails.
+`ifndef VERILATOR
+  initial begin
+    $assertoff(0, u_smc_cpu_mem.rom_mem.mem.noXOnCsI);
+    wait (rst_primary_smc_clk_no === 1'b1);
+    @(posedge clk_smu_i);
+    $asserton(0, u_smc_cpu_mem.rom_mem.mem.noXOnCsI);
+  end
+`endif
+
   // WDT isolate clamp: observe only.
-  assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+  assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .wdt_reset_raw[0];
-  assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
-        .u_smc_cpu.cluster_boundary_isolate;
+  assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
+        .cluster_boundary_isolate;
 
   // Hierarchical observe of DTP boot-stall / CLA clock-stop.
   assign jtag_boot_stall_ovrd = u_dut.boot_stall_jtag_ovrd;
@@ -661,7 +674,9 @@ module smu_uvm_top
     .jtag_ptap_state_i           (jtag_ptap_state)
   );
 
-  smu_lc_fcov u_smu_lc_fcov (
+  smu_lc_fcov #(
+      .SepPresent (1'b0)
+  ) u_smu_lc_fcov (
     .clk_smu_i                (clk_smu_i),
     .rst_cold_ni              (rst_cold_ni),
     .rst_primary_smc_clk_ni   (rst_primary_smc_clk_no),
@@ -781,11 +796,7 @@ module smu_uvm_top
     .axi_out_rvalid_i   (smu_axi_out_resp.r_valid),
     .axi_out_rready_i   (smu_axi_out_req.r_ready),
     .axi_out_rlast_i    (smu_axi_out_resp.r.last),
-    .axi_out_rresp_i    (smu_axi_out_resp.r.resp),
-    .sep_otp_rvalid_i   (u_dut.dtp_axil_sep_otp_jtag_resp.r_valid),
-    .sep_otp_rready_i   (u_dut.dtp_axil_sep_otp_jtag_req.r_ready),
-    .sep_otp_rresp_i    (u_dut.dtp_axil_sep_otp_jtag_resp.r.resp),
-    .sep_otp_rdata_i    (u_dut.dtp_axil_sep_otp_jtag_resp.r.data)
+    .axi_out_rresp_i    (smu_axi_out_resp.r.resp)
   );
 
 `ifdef UVM

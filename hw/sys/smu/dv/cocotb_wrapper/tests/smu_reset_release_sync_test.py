@@ -7,7 +7,7 @@ in this tree: the `rst_cold_ni` row states "Asynchronous assertion, synchronous
 deassertion", and the `rst_cold_stable_ref_clk_no` / `rst_primary_ref_clk_no` /
 `rst_primary_smc_clk_no` rows name the domain each output is synchronized to.
 Those two statements are what the checks below require,
-on the `--dut smu` production wrapper built with compile_smu_chiplet_no_sep:
+on the `--dut smu` production wrapper built with compile_smu_chiplet:
 rst_cold_ni is released at a random phase that lies on no clock edge, and the
 deassertion of rst_cold_stable_ref_clk_no and rst_primary_ref_clk_no is
 required to land on a clk_ref_i rising edge while the SMC and DTP primary-reset

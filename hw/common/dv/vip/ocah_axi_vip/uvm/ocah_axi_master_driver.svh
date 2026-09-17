@@ -6,12 +6,16 @@
 // Executes one ocah_axi_item per sequence handshake: writes run the AW and
 // W phases concurrently (AXI permits either arrival order; the item's
 // aw/w_valid_delay knobs skew their launch) then B, reads run AR -> R beats
-// to RLAST; a single transaction is outstanding at a time. The item's
-// b_ready_delay defers the BREADY assert, and a nonzero r_ready_delay holds
-// RREADY low after RVALID asserts while the driver samples RDATA/RRESP
-// stability into hold_stable. cfg.protocol selects AXI4-Lite (single-beat;
-// the driver itself ties the AXI4-only request fields to the adapter
-// contract values from ocah_axi_if's header).
+// to RLAST; a single transaction is outstanding at a time unless the item
+// carries a `pair`, whose single-beat AW/W or AR launches as soon as the
+// first's is accepted and whose response is collected after the first's,
+// while the address channel's stall cycles and stability are sampled into
+// ax_stall_cycles / ax_stable. The item's b_ready_delay defers the BREADY
+// assert, and a nonzero r_ready_delay holds RREADY low after RVALID asserts
+// while the driver samples RDATA/RRESP stability into hold_stable.
+// cfg.protocol selects AXI4-Lite (single-beat; the driver itself ties the
+// AXI4-only request fields to the adapter contract values from ocah_axi_if's
+// header).
 //
 // Wire contract (the initiator mirror of ocah_axi_slave_driver): the driver
 // SAMPLES responder-driven signals through mon_cb (race-free preponed
@@ -61,6 +65,10 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       `uvm_info(get_type_name(), {"drive ", req.convert2string()}, UVM_HIGH)
       req.source     = get_full_name();
       req.start_time = $time;
+      if (req.pair != null) begin
+        req.pair.source     = req.source;
+        req.pair.start_time = req.start_time;
+      end
       case (req.direction)
         OCAH_AXI_DIR_WRITE: do_write(req);
         OCAH_AXI_DIR_READ:  do_read(req);
@@ -68,6 +76,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
                     "unsupported direction %s", req.direction.name()))
       endcase
       req.end_time = $time;
+      if (req.pair != null) req.pair.end_time = req.end_time;
       if (req.timed_out) timeout_count++;
       seq_item_port.item_done();
     end
@@ -122,6 +131,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
 
   protected function void flag_timeout(ocah_axi_item it, string phase_s);
     it.timed_out = 1'b1;
+    if (it.pair != null) it.pair.timed_out = 1'b1;
     `uvm_info(cfg.name_tag, $sformatf(
               "%s handshake timeout after %0d cycles: %s",
               phase_s,
@@ -129,6 +139,40 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
               it.convert2string()
               ), UVM_MEDIUM)
   endfunction
+
+  // Address-channel observation across a two-outstanding pair, until
+  // `handshakes` beats have been accepted: the cycles VALID was held while
+  // READY was low, and whether every such stalled beat kept VALID asserted
+  // with its address unchanged until READY (IHI 0022 A3.2.1 initiator
+  // rule). Bounded by cfg.timeout_cycles.
+  protected task watch_ax(ocah_axi_item it, bit is_read, int unsigned handshakes);
+    bit          pending = 1'b0;
+    bit [63:0]   pending_addr = '0;
+    int unsigned seen = 0;
+    int unsigned cycles = 0;
+    it.ax_stall_cycles = 0;
+    it.ax_stable       = 1'b1;
+    while (seen < handshakes) begin
+      bit valid, ready;
+      bit [63:0] addr;
+      @(cfg.vif.mon_cb);
+      valid = is_read ? (cfg.vif.mon_cb.arvalid === 1'b1) : (cfg.vif.mon_cb.awvalid === 1'b1);
+      ready = is_read ? (cfg.vif.mon_cb.arready === 1'b1) : (cfg.vif.mon_cb.awready === 1'b1);
+      addr  = is_read ? 64'(cfg.vif.mon_cb.araddr) : 64'(cfg.vif.mon_cb.awaddr);
+      if (valid && pending && addr !== pending_addr) it.ax_stable = 1'b0;
+      if (valid && !ready) begin
+        pending      = 1'b1;
+        pending_addr = addr;
+        it.ax_stall_cycles++;
+      end else begin
+        if (valid) seen++;
+        else if (pending) it.ax_stable = 1'b0;
+        pending = 1'b0;
+      end
+      cycles++;
+      if (cfg.timeout_cycles != 0 && cycles >= cfg.timeout_cycles) return;
+    end
+  endtask
 
   // ------------------------------------------------------------------
   // Sampled-handshake waits, bounded by cfg.timeout_cycles (0 = unbounded);
@@ -244,12 +288,29 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
     cfg.vif.arvalid <= 1'b1;
   endtask
 
+  protected task drive_w_beat(ocah_axi_item it, int unsigned beat, int unsigned beats);
+    cfg.vif.wdata  <= it.data_words[beat];
+    cfg.vif.wstrb  <= 8'((beat < it.strobes.size()) ? it.strobes[beat] : cfg.full_strb());
+    cfg.vif.wlast  <= (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) ? 1'b1 : (beat == beats - 1);
+    cfg.vif.wvalid <= 1'b1;
+  endtask
+
+  // One B handshake into `target`: BRESP/BID sampled on the accepted cycle.
+  protected task accept_b(ocah_axi_item target, output bit timed_out);
+    wait_b(timed_out);
+    if (timed_out) return;
+    target.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.bresp));
+    capture_observed_id(target, cfg.vif.mon_cb.bid);
+    write_bursts++;
+  endtask
+
   virtual task do_write(ocah_axi_item it);
     int unsigned beats = it.data_words.size();
-    bit aw_timed_out, w_timed_out;
-    bit timed_out;
+    bit aw_timed_out, w_timed_out, b_timed_out;
+    bit first_aw_done, first_w_done;
     it.resp_list.delete();
-    if (beats == 0) begin
+    if (it.pair != null) it.pair.resp_list.delete();
+    if (beats == 0 || (it.pair != null && it.pair.data_words.size() != 1)) begin
       `uvm_error(cfg.name_tag, "write item carries no data beats")
       return;
     end
@@ -259,114 +320,163 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       return;
     end
     // Address and data phases run concurrently; each channel's valid
-    // delay skews its launch (both zero = simultaneous assert).
+    // delay skews its launch (both zero = simultaneous assert). A pair's
+    // AW and W follow the first's on their channels once accepted. The
+    // response phase starts once the first write's request phase is
+    // complete: b_ready_delay defers the accept, then BRESP/BID are
+    // sampled on each accepted cycle, the pair's after the first's, so a
+    // responder that admits one write in flight retires the first B before
+    // the pair's W passes.
     fork
       begin : aw_phase
         repeat (it.aw_valid_delay) @(cfg.vif.mon_cb);
         drive_aw(it, beats);
         wait_aw(aw_timed_out);
+        first_aw_done = 1'b1;
+        if (it.pair != null && !aw_timed_out) begin
+          drive_aw(it.pair, 1);
+          wait_aw(aw_timed_out);
+        end
         cfg.vif.awvalid <= 1'b0;
       end
       begin : w_phase
         repeat (it.w_valid_delay) @(cfg.vif.mon_cb);
         for (int unsigned beat = 0; beat < beats; beat++) begin
-          cfg.vif.wdata  <= it.data_words[beat];
-          cfg.vif.wstrb  <= 8'((beat < it.strobes.size()) ? it.strobes[beat]
-                                         : cfg.full_strb());
-          cfg.vif.wlast  <= (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
-                                      ? 1'b1 : (beat == beats - 1);
-          cfg.vif.wvalid <= 1'b1;
+          drive_w_beat(it, beat, beats);
           wait_w(w_timed_out);
           if (w_timed_out) break;
         end
+        first_w_done = 1'b1;
+        if (it.pair != null && !w_timed_out) begin
+          drive_w_beat(it.pair, 0, 1);
+          wait_w(w_timed_out);
+        end
         cfg.vif.wvalid <= 1'b0;
       end
-    join
-    if (aw_timed_out || w_timed_out) begin
-      flag_timeout(it, aw_timed_out ? "AW" : "W");
-      return;
-    end
-    // Response phase: b_ready_delay defers the accept, then sample
-    // BRESP/BID on the accepted cycle.
-    repeat (it.b_ready_delay) @(cfg.vif.mon_cb);
-    cfg.vif.bready <= 1'b1;
-    wait_b(timed_out);
-    cfg.vif.bready <= 1'b0;
-    if (timed_out) begin
-      flag_timeout(it, "B");
-      return;
-    end
-    it.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.bresp));
-    capture_observed_id(it, cfg.vif.mon_cb.bid);
-    write_bursts++;
-  endtask
-
-  virtual task do_read(ocah_axi_item it);
-    int unsigned beats = (it.expected_beats == 0) ? 1 : it.expected_beats;
-    bit timed_out;
-    bit last;
-    it.data_words.delete();
-    it.resp_list.delete();
-    if (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE && beats > 1) begin
-      `uvm_error(cfg.name_tag,
-                 $sformatf("%0d-beat read on an AXI4-Lite master (single-beat protocol)", beats))
-      return;
-    end
-    // Address phase.
-    drive_ar(it, beats);
-    wait_ar(timed_out);
-    cfg.vif.arvalid <= 1'b0;
-    if (timed_out) begin
-      flag_timeout(it, "AR");
-      return;
-    end
-    // RREADY-hold window: with a nonzero r_ready_delay, wait for RVALID
-    // with RREADY still low, then sample RDATA/RRESP stability across the
-    // hold — RVALID must stay asserted with unchanged payload until the
-    // accept (hold_stable reports it; the deferred handshake below then
-    // consumes the beat normally).
-    if (it.r_ready_delay > 0) begin
-      bit [63:0]   held_data;
-      bit [1:0]    held_resp;
-      int unsigned cycles = 0;
-      forever begin
-        @(cfg.vif.mon_cb);
-        if (cfg.vif.mon_cb.rvalid === 1'b1) break;
-        cycles++;
-        if (cfg.timeout_cycles != 0 && cycles >= cfg.timeout_cycles) begin
-          flag_timeout(it, "R");
-          return;
+      begin : aw_watch
+        if (it.pair != null) watch_ax(it, 1'b0, 2);
+      end
+      begin : b_phase
+        wait (first_aw_done && first_w_done);
+        if (!aw_timed_out && !w_timed_out) begin
+          repeat (it.b_ready_delay) @(cfg.vif.mon_cb);
+          cfg.vif.bready <= 1'b1;
+          accept_b(it, b_timed_out);
+          if (it.pair != null && !b_timed_out) accept_b(it.pair, b_timed_out);
+          cfg.vif.bready <= 1'b0;
         end
       end
-      held_data      = cfg.vif.mon_cb.rdata;
-      held_resp      = cfg.vif.mon_cb.rresp;
-      it.hold_stable = 1'b1;
-      repeat (it.r_ready_delay) begin
-        @(cfg.vif.mon_cb);
-        if (cfg.vif.mon_cb.rvalid !== 1'b1 ||
-                    cfg.vif.mon_cb.rdata !== held_data ||
-                    cfg.vif.mon_cb.rresp !== held_resp)
-          it.hold_stable = 1'b0;
+    join
+    if (aw_timed_out || w_timed_out) flag_timeout(it, aw_timed_out ? "AW" : "W");
+    else if (b_timed_out) flag_timeout(it, "B");
+  endtask
+
+  // RREADY-hold window: with a nonzero r_ready_delay, wait for RVALID with
+  // RREADY still low, then sample RDATA/RRESP stability across the hold —
+  // RVALID must stay asserted with unchanged payload until the accept
+  // (hold_stable reports it; the deferred handshake then consumes the beat
+  // normally).
+  protected task hold_r_window(ocah_axi_item it, output bit timed_out);
+    bit [63:0]   held_data;
+    bit [1:0]    held_resp;
+    int unsigned cycles = 0;
+    timed_out = 1'b0;
+    if (it.r_ready_delay == 0) return;
+    forever begin
+      @(cfg.vif.mon_cb);
+      if (cfg.vif.mon_cb.rvalid === 1'b1) break;
+      cycles++;
+      if (cfg.timeout_cycles != 0 && cycles >= cfg.timeout_cycles) begin
+        timed_out = 1'b1;
+        return;
       end
     end
-    // Data phase: accumulate beats to RLAST (Lite adapters tie rlast=1,
-    // but the protocol itself bounds Lite reads to the single beat).
-    cfg.vif.rready <= 1'b1;
-    last = 1'b0;
+    held_data      = cfg.vif.mon_cb.rdata;
+    held_resp      = cfg.vif.mon_cb.rresp;
+    it.hold_stable = 1'b1;
+    repeat (it.r_ready_delay) begin
+      @(cfg.vif.mon_cb);
+      if (cfg.vif.mon_cb.rvalid !== 1'b1 ||
+                  cfg.vif.mon_cb.rdata !== held_data ||
+                  cfg.vif.mon_cb.rresp !== held_resp)
+        it.hold_stable = 1'b0;
+    end
+  endtask
+
+  // Data phase of one read: accumulate beats to RLAST (Lite adapters tie
+  // rlast=1, but the protocol itself bounds Lite reads to the single beat).
+  protected task collect_r_beats(ocah_axi_item it, output bit timed_out);
+    bit last = 1'b0;
     while (!last) begin
       wait_r(timed_out);
-      if (timed_out) break;
+      if (timed_out) return;
       it.data_words.push_back(mask_data(cfg.vif.mon_cb.rdata));
       it.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.rresp));
       last = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) || (cfg.vif.mon_cb.rlast === 1'b1);
       if (last) capture_observed_id(it, cfg.vif.mon_cb.rid);
     end
+    read_bursts++;
+  endtask
+
+  // Response side of a read: the optional hold window, then the beats of
+  // `it` and, for a pair, the single beat of `it.pair` behind them.
+  protected task read_responses(ocah_axi_item it, output bit timed_out);
+    hold_r_window(it, timed_out);
+    if (timed_out) return;
+    cfg.vif.rready <= 1'b1;
+    collect_r_beats(it, timed_out);
+    if (it.pair != null && !timed_out) collect_r_beats(it.pair, timed_out);
     cfg.vif.rready <= 1'b0;
-    if (timed_out) begin
-      flag_timeout(it, "R");
+  endtask
+
+  virtual task do_read(ocah_axi_item it);
+    int unsigned beats = (it.expected_beats == 0) ? 1 : it.expected_beats;
+    bit ar_timed_out, r_timed_out;
+    it.data_words.delete();
+    it.resp_list.delete();
+    if (it.pair != null) begin
+      it.pair.data_words.delete();
+      it.pair.resp_list.delete();
+    end
+    if (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE && beats > 1) begin
+      `uvm_error(cfg.name_tag,
+                 $sformatf("%0d-beat read on an AXI4-Lite master (single-beat protocol)", beats))
       return;
     end
-    read_bursts++;
+    if (it.pair == null) begin
+      // Address phase, then the response side.
+      drive_ar(it, beats);
+      wait_ar(ar_timed_out);
+      cfg.vif.arvalid <= 1'b0;
+      if (ar_timed_out) begin
+        flag_timeout(it, "AR");
+        return;
+      end
+      read_responses(it, r_timed_out);
+      if (r_timed_out) flag_timeout(it, "R");
+      return;
+    end
+    // Pair: the second AR follows the first's acceptance while the response
+    // side holds RREADY, so the responder meets it with the first read
+    // open.
+    fork
+      begin : ar_phase
+        drive_ar(it, beats);
+        wait_ar(ar_timed_out);
+        if (!ar_timed_out) begin
+          drive_ar(it.pair, 1);
+          wait_ar(ar_timed_out);
+        end
+        cfg.vif.arvalid <= 1'b0;
+      end
+      begin : ar_watch
+        watch_ax(it, 1'b1, 2);
+      end
+      begin : r_phase
+        read_responses(it, r_timed_out);
+      end
+    join
+    if (ar_timed_out || r_timed_out) flag_timeout(it, ar_timed_out ? "AR" : "R");
   endtask
 
 endclass : ocah_axi_master_driver

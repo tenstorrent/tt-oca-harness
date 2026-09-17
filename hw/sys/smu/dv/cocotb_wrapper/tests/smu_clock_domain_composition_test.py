@@ -9,7 +9,7 @@ which logic each domain clocks, and this tree carries no SMU clock/reset
 specification that does. What is checked below is therefore per-domain identity
 and rate at the consumers inside the elaborated design. On the `--dut smu`
 production wrapper built with
-compile_smu_chiplet_sep_rtl: the telemetry, SEP-watchdog and peripheral clocks
+compile_smu_chiplet: the telemetry, SEP-watchdog and peripheral clocks
 are read at their consumers for identity with the wrapper pins and for a toggle
 rate that matches their own period rather than clk_smu_i, their resets are read
 released at the consumers, and the SMC cold reset is then asserted through the

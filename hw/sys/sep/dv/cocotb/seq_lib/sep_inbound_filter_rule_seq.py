@@ -52,6 +52,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_SRC_ID_LSB,
     F_WRITE_ALLOWED,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
+    FILTER_START_ADDR,
     FILTER_STRIDE,
     INFILT_BASE,
     OUTFILT_BASE,
@@ -59,9 +61,6 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 )
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 
-# Inbound FILTER_* per-entry register offsets (64-bit START/END as lo/hi 32-bit words).
-FILTER_START_ADDR = 0x08
-FILTER_END_ADDR = 0x10
 # Same-page allow_burst=1 rewrites START down and END up to the 4 KB page
 # (hw/ip/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
 # readback model is sep_reg_bit_bash_seq.inbound_addr_expected().

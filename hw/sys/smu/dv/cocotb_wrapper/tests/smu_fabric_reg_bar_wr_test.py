@@ -16,7 +16,7 @@ class smu_fabric_reg_bar_wr_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_fabric_reg_bar_wr_test TierA FAB_SMC_032 SEP=0 J2A")
+        self.logger.info("DUT_TAG=WRAPPER smu_fabric_reg_bar_wr_test TierA FAB_SMC_032 SEP=1 J2A")
         seq = smu_fabric_reg_bar_wr_test_seq(self)
         await seq.run()
         assert seq.s1_ok and len(seq.observed) == 6, (

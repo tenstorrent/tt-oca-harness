@@ -83,22 +83,23 @@ jobs:
         #
         #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
         #
-        # No workflow edit needed to flip it, or to roll back. regress.yml uses
-        # the same variable for its weekly coverage jobs.
+        # No workflow edit needed to flip it, or to roll back. regress.yml
+        # promotes its regression rows with the same variable.
         include:
           - dut: dtp
             runner: ubuntu-latest
           - dut: sep
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
-          # `smu` carries the SMU regression (smu_wrapper.sv); `smu_block` is the
-          # bare block bench, down to the two leaves that cannot run on `smu`.
-          # Both are gated here so neither rots. `items` defaults to `smoke`
-          # below; `smu` overrides it because its own `smoke` group reaches the
-          # SEP=1 firmware tests, and this runner has Verilator and nothing
-          # else -- `smoke_sep0` is the toolchain-free equivalent.
+          # `smu` carries the SMU regression (smu_wrapper.sv, one compile
+          # profile with the real SEP); `smu_block` is the bare smu #(.SEP(0))
+          # bench with the SEP=0 composition proofs and the leaves that cannot
+          # run on `smu`. Both are gated here so neither rots. `items` defaults
+          # to `smoke` below; `smu` overrides it because its own `smoke` group
+          # reaches the firmware tests, and this runner has Verilator and
+          # nothing else -- `hosted_smoke` is the toolchain-free equivalent.
           - dut: smu
             runner: ubuntu-latest
-            items: smoke_sep0
+            items: hosted_smoke
           - dut: smu_block
             runner: ubuntu-latest
           - dut: smc
@@ -115,6 +116,40 @@ jobs:
       - name: Checkout
         if: env.RUN_HARDWARE_CI == 'true'
         uses: actions/checkout@v4
+
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
+      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
+      # as the authority for the OCA manifest layout, so without it 54 of 162
+      # test modules fail to import and the run dies before any simulation.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
+      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
+      # submodule at all, died on the repo checkout itself with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses the submodule over SSH, which a hosted runner has
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
+      # rewrite is undone afterwards so the credential does not outlive the
+      # step.
+      - name: Check out the tt-oca-manifest submodule
+        if: env.RUN_HARDWARE_CI == 'true' && matrix.dut == 'sep'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OCA_PAT:-}" ]; then
+            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
+            exit 1
+          fi
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
 
       # The run id keeps the recorded native run_dir unique per run; the
       # tier segment keeps every tier's tree separate.
