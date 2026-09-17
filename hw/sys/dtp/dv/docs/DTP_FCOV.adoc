@@ -491,7 +491,7 @@ change.
 |===
 |Item |Reason
 |SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the public flow
-|`jtag2axi_robustness_cg` reset-timing request-issued/data-phase/response-wait and CDC clear/isolate bins |Sampled only by the two reset-abort scenarios, which drive the system reset while the bridge is mid-flight; the bins carry dispositions in the coverage policy file, not waivers
+|`jtag2axi_robustness_cg` reset-timing request-issued and response-wait bins and CDC clear bins |Sampled only by the two reset-abort scenarios, which drive the system reset while the bridge is mid-flight; the bins carry dispositions in the coverage policy file, not waivers
 |Stimulus-intent bins (IC_RESET pattern source, seeded random request masks) |Test-layer randomization intent, not signal-observable; the modules record the resulting behavior instead
 |Invalid IDCODE marker, contradictory debug-disable outcomes |Checker failures in a passing run, never coverage bins
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract
