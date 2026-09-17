@@ -1599,8 +1599,7 @@ otherwise. A `FAIL` gives the `cov_report` record return code `1` and a
 `coverage_threshold` failure bucket, makes the run status `FAIL` and the exit
 code `1`, and names each missed threshold in the stage log. A DUT whose
 policy sets no `pass:[[[thresholds]]]` and whose configuration sets no
-`fail_under` grades against `0.0` and cannot fail on coverage; the hosted
-weekly rows run in that reference-only mode (<<runner-ci-budgets>>).
+`fail_under` grades against `0.0` and cannot fail on coverage.
 
 The grade is fail-closed on the policy itself, in two places. A policy that
 fails a grammar check is refused when `cov_merge` loads it, before any
