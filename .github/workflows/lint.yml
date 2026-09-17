@@ -24,7 +24,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
-          token: ${{ secrets.SUBMODULE_PAT }}
+          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
       - name: Classify the diff
         id: diff-class
         run: |

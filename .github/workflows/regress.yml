@@ -164,7 +164,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.SUBMODULE_PAT }}
+          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
       # The run id keeps the recorded native run_dir unique per run: the
       # dashboard trend-point identity hashes it, so a repeated path would
@@ -286,7 +286,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.SUBMODULE_PAT }}
+          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
       # Artifact name dv-run-<dut>-verilator-weekly and the run-dir shape are
       # the dashboard contract (dashboard.yml, tools/dv/run_dashboard.py); a
