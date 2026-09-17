@@ -98,7 +98,13 @@ accuracy through periodic resynchronization.
 
 The credit management system operates differently in PRIMARY and SECONDARY modes:
 
-[width="100%",cols="30%,70%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS credit management" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="32,68",options="header",role="port-reference"]
 |======================================================================
 |Feature |Description
 |PRIMARY Credit Counter |8-bit counter (0 to CREDIT_VAL-1) that increments each cycle when enabled. When it reaches CREDIT_VAL-1, it resets to 0 and generates a credit pulse output.
@@ -107,6 +113,12 @@ The credit management system operates differently in PRIMARY and SECONDARY modes
 |Step Input |8-bit external signal (timer_cnt_step_i) controlling increment rate in SECONDARY mode
 |Expiration Tracking |32-bit counter that increments when cur_credits >= CREDIT_VAL in SECONDARY mode, providing diagnostics
 |======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Synchronization Logic
 
@@ -133,7 +145,13 @@ coordination.
 
 === Pulse State Machine
 
-[width="100%",cols="25%,75%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS pulse states" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="30,70",options="header",role="port-reference"]
 |=======================================================================
 |State |Description
 |PULSE_IDLE |Normal operation, monitors for synchronization events
@@ -144,6 +162,12 @@ initialization
 |PULSE_CREDIT |Generates credit pulses for ongoing synchronization
 maintenance
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Pulse Width Control
 

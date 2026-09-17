@@ -217,8 +217,14 @@ multi-chiplet systems.
 
 === Reset Values and Power-On Behavior
 
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS register reset values" tabindex="0">
+++++
+endif::backend-html5[]
+
 .*Register Reset Values and Power-On Behavior*
-[width="100%",cols="20%,20%,60%",options="header",]
+[cols="32,20,48",options="header",role="port-reference"]
 |=======================================================================
 |Register |Reset Value |Notes
 |`TIMER_START` |0x00000000 |No automatic start, requires software
@@ -236,6 +242,12 @@ software before use
 
 |`CREDIT_EXPIRED` |0x00000000 |No credit expiration on startup
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Detailed Register Map
 

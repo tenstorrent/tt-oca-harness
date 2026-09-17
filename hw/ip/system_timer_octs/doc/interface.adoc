@@ -11,7 +11,13 @@ system clock.
 
 === Configuration Parameters
 
-[width="100%",cols="30%,20%,50%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS configuration parameters" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="30,16,54",options="header",role="port-reference"]
 |=======================================================================
 |Parameter |Default |Description
 |BUS_PROTOCOL |AXI4-Lite |Register interface protocol (AXI4-Lite or
@@ -22,13 +28,25 @@ APB4)
 |DATA_WIDTH |32 |Data bus width
 |=======================================================================
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 NOTE: Timer mode selection (PRIMARY vs SECONDARY) is controlled at runtime
 via the `is_primary_i` input signal, not through a compile-time parameter.
 
 === Global Interface
 
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS global interface signals" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Global Interface Signals
-[width="100%",cols="15%,10%,10%,10%,55%",options="header",]
+[cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
 |=======================================================================
 |Signal Name |Width |Direction |Active |Description
 |`clk_i` |1 |Input |Rising |System clock. All logic operates
@@ -45,10 +63,22 @@ timer that receives synchronization pulses). This signal determines timer
 behavior, register visibility, and synchronization signal direction.
 |=======================================================================
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 === Test Interface
 
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS test interface signals" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Test Interface Signals
-[width="100%",cols="15%,10%,10%,10%,55%",options="header",]
+[cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
 |=======================================================================
 |Signal Name |Width |Direction |Active |Description
 |`test_en_i` |1 |Input |High |Test enable signal for manufacturing test
@@ -59,10 +89,22 @@ Provides independent reset control for scan chain operation and ATPG
 support.
 |=======================================================================
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 === OCTS Synchronization Interface
 
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS synchronization interface signals" tabindex="0">
+++++
+endif::backend-html5[]
+
 .OCTS Synchronization Interface Signals
-[width="100%",cols="20%,10%,10%,10%,50%",options="header",]
+[cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
 |=======================================================================
 |Signal Name |Width |Direction |Active |Description
 |`timer_sync_load_i` |1 |Input |High |Synchronization load pulse input.
@@ -79,6 +121,12 @@ by the PRIMARY timer for maintaining synchronization of SECONDARY
 timers.
 |=======================================================================
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 When operating in PRIMARY mode, the timer generates synchronization
 pulses: `timer_sync_load_o` is asserted when the START register is
 written, and `timer_cnt_credit_o` is asserted periodically according to
@@ -91,8 +139,14 @@ inactive.
 
 === Timer Counter Interface
 
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS timer counter interface signals" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Timer Counter Interface Signals
-[width="100%",cols="20%,10%,10%,60%",options="header",]
+[cols="28,9,13,50",options="header",role="port-reference"]
 |=======================================================================
 |Signal Name |Width |Direction |Description
 |`timer_cnt_step_i` |8 |Input |Timer count step value (used in SECONDARY
@@ -101,6 +155,12 @@ mode) determines the increment per clock cycle.
 |`timer_count_o` |64 |Output |Real-time 64-bit timer value available to
 the system.
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 For SECONDARY timers, the step input (`timer_cnt_step_i`) enables
 granular control over the increment rate. Typically set to 1 for a
@@ -119,8 +179,14 @@ COUNT_HI registers.
 All input signals are required to meet setup and hold times with respect
 to the rising edge of clk_i.
 
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Timing Requirements
-[width="100%",cols="20%,15%,15%,50%",options="header",]
+[cols="30,15,15,40",options="header",role="port-reference"]
 |=======================================================================
 |Signal Group |Setup Time |Hold Time |Notes
 |Register Interface |2.0 ns |0.5 ns |AXI4-Lite/APB4 protocol signals
@@ -134,6 +200,12 @@ timer_cnt_step_i
 |Timer Count Output |N/A |N/A |Output signal with 3.0 ns clock-to-output
 delay
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 The interface ensures that register outputs are valid within 3.0 ns of a
 rising clock edge, while the timer count output also updates within 3.0
