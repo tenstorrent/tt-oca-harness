@@ -156,7 +156,8 @@ handshake stability, and protocol coverage.
 binding does not depend on DUT hierarchy. Protocol-specific SVA lives with its
 protocol VIP instead, for example
 `ocah_axi_vip/sva/ocah_axi_sva.sv` (clean-room AXI4/AXI4-Lite
-rules).
+rules) and, beside it, `ocah_axi_fv.sv`, the same rules in the boolean subset
+a formal environment binds with one side asserted and the other assumed.
 
 |DUT `cocotb/assertions/` or local SVA
 |Hierarchy, address, reset, lifecycle, security, and integration invariants.

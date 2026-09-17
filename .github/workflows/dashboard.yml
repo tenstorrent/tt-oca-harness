@@ -10,15 +10,15 @@ name: dashboard
 # publications.
 run-name: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && format('dashboard dry run (regress run {0})', inputs.run_id) || github.event_name == 'workflow_dispatch' && format('dashboard data publish (regress run {0})', inputs.run_id) || github.event.workflow_run.event == 'schedule' && 'dashboard data publish (scheduled regress run)' || format('dashboard skipped ({0} regress run; only scheduled weekly data is published)', github.event.workflow_run.event) }}
 
-# Data-only publication: this workflow collects the weekly regression run
-# into the normalized dashboard data contracts and publishes them for
-# consumption. Rendering is deliberately NOT done here — the website pipeline
-# that renders the dashboard is owned externally and consumes the published
-# data.
+# Data-only publication: this workflow collects every DUT of one weekly
+# regression run into the normalized dashboard data contracts and publishes
+# them. No HTML is rendered here. The pages that render the data read the
+# published branch: the documentation site in this repository
+# (tools/doc/stage_dashboard_data.sh, doc.yml) and any external consumer.
 #
 # Two access patterns carry identical content:
 #   - workflow artifact `dv-dashboard-data` (90-day retention): the per-run
-#     consumable bundle for the external website pipeline;
+#     consumable bundle;
 #   - branch `dv-dashboard-data`: the canonical cross-run store, required for
 #     trend-history continuity (artifacts expire; the history chain must not).
 on:
@@ -47,17 +47,17 @@ concurrency:
 jobs:
   publish:
     # Scheduled runs publish automatically; a nightly-tier run carries no
-    # weekly artifact and ends at the locate step without publishing.
-    # Manually dispatched weeklies are published by dispatching this workflow
-    # with their run id. PR/push smoke runs live in sim.yml and never reach
-    # this workflow: the dashboard tracks the weekly regression.
+    # weekly job and ends at the locate step without publishing. Manually
+    # dispatched weeklies are published by dispatching this workflow with
+    # their run id. PR/push smoke runs live in sim.yml and never reach this
+    # workflow: the dashboard tracks the weekly regression.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Budget for downloading and collecting every weekly run tree.
+    timeout-minutes: 30
     env:
       REGRESS_RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
-      # Email is optional until the mail secrets are provisioned; the step
-      # self-disables when OCAH_MAIL_TO is empty.
+      # The digest step self-disables when OCAH_MAIL_TO is empty.
       OCAH_MAIL_TO: ${{ secrets.OCAH_MAIL_TO }}
     steps:
       - name: Checkout main
@@ -79,101 +79,88 @@ jobs:
         with:
           python-version: "3.11"
 
-      # A dispatch can name any regress run; publish only runs that carry a
-      # weekly run tree. DUT and tool come from the artifact name
-      # (dv-run-<dut>-<tool>-weekly; dut/tool never contain hyphens). A labelled
-      # row's artifact ends in -<label>, so the -weekly$ anchor leaves it out.
-      #
-      # Everything downstream of here is single-DUT: the classification file is
-      # keyed by day alone, and ghdata/latest holds one result. The regress matrix
-      # carries several DUTs, so an unqualified "first artifact" pick would
-      # publish whichever the API happened to list first and make the trend
-      # series silently alternate between DUTs. DASHBOARD_DUT pins the published
-      # DUT, falling back to the alphabetically-first available artifact so a
-      # dispatch naming a run without that DUT still publishes something
-      # deterministic. Teaching the data branch to carry a series per DUT is the
-      # real fix; until then this is explicit rather than arbitrary.
-      - name: Locate weekly artifact
+      # The expected DUT set is the regress run's weekly jobs, named
+      # `verilator-weekly (<dut>)` by regress.yml. A labelled row's job is
+      # `verilator-weekly (<dut> <label>)` and its artifact ends in -<label>;
+      # both fall outside the patterns, so expected-failure rows never reach
+      # the dashboard. Publication is all or nothing: an expected DUT without
+      # a run-tree artifact fails the job, so the branch never carries a
+      # partial week. DUT and tool come from the artifact name
+      # (dv-run-<dut>-<tool>-weekly; neither contains a hyphen).
+      - name: Locate the weekly run trees
         id: art
         env:
           GH_TOKEN: ${{ github.token }}
-          DASHBOARD_DUT: dtp
         run: |
-          names=$(gh api "repos/${{ github.repository }}/actions/runs/$REGRESS_RUN_ID/artifacts" \
-            --jq '[.artifacts[].name | select(test("^dv-run-.+-weekly$"))] | sort | .[]')
-          name=$(printf '%s\n' "$names" | grep "^dv-run-$DASHBOARD_DUT-" | head -1 || true)
-          if [ -z "$name" ]; then
-            name=$(printf '%s\n' "$names" | head -1)
-          fi
-          skipped=$(printf '%s\n' "$names" | grep -vx "$name" | tr '\n' ' ')
-          if [ -n "${skipped// /}" ]; then
-            echo "Publishing $name; NOT published (dashboard is single-DUT): $skipped" \
-              | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -z "$name" ]; then
-            echo "No dv-run-*-weekly artifact on regress run $REGRESS_RUN_ID; nothing to publish (nightly-tier runs are not published)." | tee -a "$GITHUB_STEP_SUMMARY"
+          # A failed API call must fail the step, not read as "no weekly job".
+          set -o pipefail
+          expected=$(gh api "repos/${{ github.repository }}/actions/runs/$REGRESS_RUN_ID/jobs?per_page=100" --paginate \
+            --jq '.jobs[] | select(.conclusion != "skipped") | .name
+                  | capture("^verilator-weekly \\((?<dut>[a-z0-9_]+)\\)$").dut' | sort -u)
+          if [ -z "$expected" ]; then
+            echo "Regress run $REGRESS_RUN_ID ran no weekly job; nothing to publish (nightly-tier runs are not published)." | tee -a "$GITHUB_STEP_SUMMARY"
             echo "found=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          base=${name#dv-run-}
-          base=${base%-weekly}
+          names=$(gh api "repos/${{ github.repository }}/actions/runs/$REGRESS_RUN_ID/artifacts?per_page=100" --paginate \
+            --jq '.artifacts[] | select(.expired | not) | .name | select(test("^dv-run-[a-z0-9_]+-[a-z0-9_]+-weekly$"))' | sort -u)
+          missing=""
+          for dut in $expected; do
+            printf '%s\n' "$names" | grep -q "^dv-run-$dut-[a-z0-9_]*-weekly$" || missing="$missing $dut"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::regress run $REGRESS_RUN_ID has no weekly run-tree artifact for:$missing; nothing is published"
+            exit 1
+          fi
+          printf '%s\n' "$names" | awk -F- '{print $3 "\t" $4 "\t" $0}' > rows.tsv
+          count=$(wc -l < rows.tsv | tr -d ' ')
           {
             echo "found=true"
-            echo "name=$name"
+            echo "count=$count"
           } >> "$GITHUB_OUTPUT"
-          {
-            echo "DUT=${base%%-*}"
-            echo "TOOL=${base#*-}"
-          } >> "$GITHUB_ENV"
+          echo "DUT_COUNT=$count" >> "$GITHUB_ENV"
+          echo "Publishing $count weekly run trees: $(cut -f1 rows.tsv | tr '\n' ' ')" | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Download weekly run tree
+      # Each artifact unpacks under weekly-runs/<artifact name>/. Paths in the
+      # published records point into these trees, so a reader who extracts
+      # the retained artifact at the same place resolves them.
+      - name: Download the weekly run trees
         if: steps.art.outputs.found == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: ${{ steps.art.outputs.name }}
+          pattern: dv-run-*-weekly
+          path: weekly-runs
           run-id: ${{ env.REGRESS_RUN_ID }}
           github-token: ${{ github.token }}
-          path: weekly-run
 
-      # A dispatch re-grades the weekly against this checkout's coverage
-      # policy (not the regression commit's) before it is collected, so a
-      # waiver merged after the weekly ran reaches the published numbers.
-      # run_dv.py --waive rewrites only coverage values inside the run tree:
-      # exit 0 and 1 are applied grades (1 = thresholds not met, visible as the
-      # collected coverage status); exit 2 is the one error outcome and leaves
-      # the tree as recorded. A weekly whose report command crashed, or whose
-      # run did not finish (result.json tests.completed false), is refused
-      # and publishes as recorded; a weekly whose policy failed at grade time
-      # publishes its repaired grade once the policy is corrected. Every
-      # dispatch adds a trend point. The scheduled path does not run this step.
-      - name: Re-apply the checkout's coverage policy
-        if: steps.art.outputs.found == 'true' && github.event_name == 'workflow_dispatch'
-        run: |
-          rc=0
-          OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut "$DUT" --run-dir weekly-run --waive || rc=$?
-          case "$rc" in
-            0) ;;
-            1) echo "coverage policy applied; coverage thresholds not met" >> "$GITHUB_STEP_SUMMARY" ;;
-            *) echo "coverage policy not applied (exit $rc); publishing the recorded grade" >> "$GITHUB_STEP_SUMMARY" ;;
-          esac
-
-      # Fail closed on a malformed artifact: the run-level result.json must
-      # exist. A FAIL/UNKNOWN status still publishes -- a red weekly must
-      # appear in the data, not vanish. `collect` itself exits 0 even
-      # without usable input, so the file check is the real gate.
-      - name: Collect normalized result
+      # Fail closed on a malformed tree: every run-level result.json must
+      # exist, and every collected record must carry the normalized schema
+      # version and name its DUT. A FAIL/UNKNOWN status still publishes -- a
+      # red weekly must appear in the data, not vanish. `collect` itself
+      # exits 0 even without usable input, so these checks are the gate.
+      - name: Collect the normalized results
         if: steps.art.outputs.found == 'true'
         run: |
-          test -f weekly-run/result.json
           mkdir -p bundle
-          python3 tools/dv/run_dashboard.py collect \
-            --dut "$DUT" \
-            --run-dir weekly-run \
-            --output "bundle/$DUT.result.json"
-          echo "STATUS=$(jq -r .status "bundle/$DUT.result.json")" >> "$GITHUB_ENV"
+          while IFS=$'\t' read -r dut _ name; do
+            if [ ! -f "weekly-runs/$name/result.json" ]; then
+              echo "::error::$name carries no result.json; nothing is published"
+              exit 1
+            fi
+            python3 tools/dv/run_dashboard.py collect \
+              --dut "$dut" \
+              --run-dir "weekly-runs/$name" \
+              --output "bundle/$dut.result.json"
+            jq -e --arg dut "$dut" \
+              '.schema_version == "0.1" and .flow == $dut and (.status | IN("PASS", "FAIL", "UNKNOWN"))' \
+              "bundle/$dut.result.json" > /dev/null \
+              || { echo "::error::bundle/$dut.result.json is not a schema 0.1 record for $dut"; exit 1; }
+          done < rows.tsv
 
-      # Data-only aggregate: summary plus trend history, no HTML.
-      - name: Aggregate results and trend history
+      # Data-only aggregate: summary plus trend history, no HTML. The count
+      # gates hold the aggregate to the located DUT set: one flow and one
+      # per_dut entry per weekly run tree.
+      - name: Aggregate the results and the trend history
         if: steps.art.outputs.found == 'true'
         run: |
           mkdir -p ghdata/data
@@ -182,58 +169,92 @@ jobs:
             --summary-out bundle/summary.json \
             --history-in ghdata/data/history.json \
             --history-out ghdata/data/history.json
+          jq -e --argjson n "$DUT_COUNT" \
+            '.schema_version == "0.1" and .flows.total == $n and (.dut_status | length) == $n' \
+            bundle/summary.json > /dev/null \
+            || { echo "::error::summary.json does not carry $DUT_COUNT flows"; exit 1; }
+          jq -e --argjson n "$DUT_COUNT" \
+            '.schema_version == "0.2" and (.points[-1].per_dut | length) == $n' \
+            ghdata/data/history.json > /dev/null \
+            || { echo "::error::history.json's newest point does not carry $DUT_COUNT DUTs"; exit 1; }
           # The tool has no retention policy; keep the newest 90 trend points.
           jq '.points |= (sort_by(.generated_at) | .[-90:])' \
             ghdata/data/history.json > history.tmp
           mv history.tmp ghdata/data/history.json
+          overall=PASS
+          jq -e '.flows.passing == .flows.total' bundle/summary.json > /dev/null || overall=FAIL
+          echo "STATUS=$overall" >> "$GITHUB_ENV"
 
       # Native leaf taxonomy: ERROR/TIMEOUT = infrastructure, FAIL = design or
       # test, UNKNOWN = evidence gap. The dashboard schema collapses these
-      # into FAIL, so the split is computed here from the native records.
-      # Flaky = a test with both passing and non-passing seeds this week.
-      - name: Classify failures and build digest
+      # into FAIL, so the split is computed here from the native records, per
+      # DUT and summed. Flaky = a test with both passing and non-passing seeds
+      # this week.
+      - name: Classify failures and build the digest
         if: steps.art.outputs.found == 'true'
         run: |
-          find weekly-run -path '*/attempt_*/result.json' | while read -r f; do
-            t=${f#weekly-run/}
-            printf '%s\t%s\n' "${t%%/*}" "$(jq -r .status "$f")"
-          done | sort > leaves.tsv
-          total=$(wc -l < leaves.tsv | tr -d ' ')
-          pass=$(cut -f2 leaves.tsv | grep -cx PASS || true)
-          infra=$(cut -f2 leaves.tsv | grep -cxE 'ERROR|TIMEOUT' || true)
-          design=$(cut -f2 leaves.tsv | grep -cx FAIL || true)
-          unknown=$(cut -f2 leaves.tsv | grep -cx UNKNOWN || true)
-          flaky=$(awk -F'\t' '{s[$1]=s[$1]" "$2}
-            END{for (t in s) if (s[t] ~ /PASS/ && s[t] ~ /FAIL|ERROR|TIMEOUT|UNKNOWN/) print t}' \
-            leaves.tsv | sort)
-          failed_tests=$(awk -F'\t' '$2!="PASS"{print $1" ["$2"]"}' leaves.tsv | sort -u | head -20)
           day=$(date -u +%F)
           echo "DAY=$day" >> "$GITHUB_ENV"
           mkdir -p ghdata/data/classification
-          jq -n --arg date "$day" --arg run_id "$REGRESS_RUN_ID" --arg status "$STATUS" \
-            --argjson total "$total" --argjson pass "$pass" --argjson infra "$infra" \
-            --argjson design "$design" --argjson unknown "$unknown" \
-            --arg flaky "$flaky" \
+          : > duts.json
+          : > digest-rows.txt
+          : > failed.txt
+          while IFS=$'\t' read -r dut tool name; do
+            find "weekly-runs/$name" -path '*/attempt_*/result.json' | while read -r f; do
+              t=${f#weekly-runs/"$name"/}
+              printf '%s\t%s\n' "${t%%/*}" "$(jq -r .status "$f")"
+            done | sort > leaves.tsv
+            total=$(wc -l < leaves.tsv | tr -d ' ')
+            pass=$(cut -f2 leaves.tsv | grep -cx PASS || true)
+            infra=$(cut -f2 leaves.tsv | grep -cxE 'ERROR|TIMEOUT' || true)
+            design=$(cut -f2 leaves.tsv | grep -cx FAIL || true)
+            unknown=$(cut -f2 leaves.tsv | grep -cx UNKNOWN || true)
+            flaky=$(awk -F'\t' '{s[$1]=s[$1]" "$2}
+              END{for (t in s) if (s[t] ~ /PASS/ && s[t] ~ /FAIL|ERROR|TIMEOUT|UNKNOWN/) print t}' \
+              leaves.tsv | sort)
+            dut_status=$(jq -r .status "bundle/$dut.result.json")
+            native=$(jq -r .source.native_status "bundle/$dut.result.json")
+            jq -n --arg dut "$dut" --arg tool "$tool" --arg status "$dut_status" --arg native "$native" \
+              --argjson total "$total" --argjson pass "$pass" --argjson infra "$infra" \
+              --argjson design "$design" --argjson unknown "$unknown" --arg flaky "$flaky" \
+              '{($dut): {tool: $tool, status: $status, native_status: $native,
+                         leaves: {total: $total, pass: $pass},
+                         failures: {infra: $infra, design: $design, unknown: $unknown},
+                         flaky_tests: ($flaky | split("\n") | map(select(length > 0)))}}' \
+              >> duts.json
+            printf '%-24s %-7s leaves %s/%s  infra %s  design %s  unknown %s  flaky %s\n' \
+              "$dut/$tool" "$dut_status" "$pass" "$total" "$infra" "$design" "$unknown" \
+              "$(printf '%s' "${flaky:-none}" | tr '\n' ' ')" >> digest-rows.txt
+            awk -F'\t' -v dut="$dut" '$2!="PASS"{print dut": "$1" ["$2"]"}' leaves.tsv | sort -u >> failed.txt
+          done < rows.tsv
+          jq -s --arg date "$day" --arg run_id "$REGRESS_RUN_ID" --arg status "$STATUS" \
             '{date: $date, regress_run_id: $run_id, status: $status,
-              leaves: {total: $total, pass: $pass},
-              failures: {infra: $infra, design: $design, unknown: $unknown},
-              flaky_tests: ($flaky | split("\n") | map(select(length > 0)))}' \
-            > "ghdata/data/classification/$day.json"
+              leaves: {total: (map(.[].leaves.total) | add), pass: (map(.[].leaves.pass) | add)},
+              failures: {infra: (map(.[].failures.infra) | add),
+                         design: (map(.[].failures.design) | add),
+                         unknown: (map(.[].failures.unknown) | add)},
+              flaky_tests: (map(.[].flaky_tests) | add | unique),
+              duts: add}' duts.json > "ghdata/data/classification/$day.json"
+          jq -e --argjson n "$DUT_COUNT" '(.duts | length) == $n' "ghdata/data/classification/$day.json" > /dev/null \
+            || { echo "::error::classification does not carry $DUT_COUNT DUTs"; exit 1; }
+          green=$(jq -r '.flows.passing' bundle/summary.json)
+          pass=$(jq -r '.leaves.pass' "ghdata/data/classification/$day.json")
+          total=$(jq -r '.leaves.total' "ghdata/data/classification/$day.json")
           {
-            echo "Subject: [OCAH DV weekly] $STATUS $DUT/$TOOL $day - $pass/$total"
+            echo "Subject: [OCAH DV weekly] $STATUS $day - $green/$DUT_COUNT DUTs green, $pass/$total leaves"
             echo ""
-            echo "Weekly regression: $DUT / $TOOL"
-            echo "Status: $STATUS  (leaves: $pass passed, $((total - pass)) failed, of $total)"
-            echo "Infra failures (ERROR/TIMEOUT): $infra    Design/test failures (FAIL): $design    Evidence gaps (UNKNOWN): $unknown"
-            echo "Flaky (mixed per-seed results): ${flaky:-none}"
-            if [ -n "$failed_tests" ]; then
+            echo "Weekly regression: regress run $REGRESS_RUN_ID, $DUT_COUNT DUTs"
+            echo "Status: $STATUS  (DUTs: $green of $DUT_COUNT green; leaves: $pass passed, $((total - pass)) failed, of $total)"
+            echo "Per DUT (infra = ERROR/TIMEOUT, design = FAIL, unknown = evidence gap):"
+            cat digest-rows.txt
+            if [ -s failed.txt ]; then
               echo ""
               echo "Failed tests (first 20):"
-              echo "$failed_tests"
+              head -20 failed.txt
             fi
             echo ""
             echo "Run:       ${{ github.server_url }}/${{ github.repository }}/actions/runs/$REGRESS_RUN_ID"
-            echo "Artifacts: ${{ steps.art.outputs.name }} (run tree, 30-day retention);"
+            echo "Artifacts: dv-run-<dut>-<tool>-weekly (run trees, 30-day retention);"
             echo "           dv-dashboard-data (normalized data bundle, 90-day retention)"
           } > digest.txt
           {
@@ -243,7 +264,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # The data branch is canonical: normalized results, summary, bounded
-      # trend history, per-week gzipped archives, and classification.
+      # trend history, gzipped archives of the newest 90 runs per DUT, and
+      # classification.
+      #
+      # data/runs/<dut>/ holds every DUT's series. The flat data/runs/ series
+      # is the one tools/doc/aggregate_test_history.py reads for the
+      # documentation site's test-history page; it carries one DUT per run,
+      # named by TEST_HISTORY_DUT.
       #
       # A dispatch with dry_run stops before this step and the three that
       # follow: nothing is pushed, uploaded or mailed, so a workflow change is
@@ -251,14 +278,43 @@ jobs:
       # context is empty and the event term short-circuits.
       - name: Publish to the data branch
         if: steps.art.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
+        env:
+          TEST_HISTORY_DUT: dtp
         run: |
           rm -rf ghdata/latest
           mkdir -p ghdata/latest ghdata/data/runs
-          cp "bundle/$DUT.result.json" bundle/summary.json ghdata/latest/
-          gzip -c "bundle/$DUT.result.json" \
-            > "ghdata/data/runs/$DAY-run$REGRESS_RUN_ID.result.json.gz"
-          # Keep the newest 90 per-week archives.
-          find ghdata/data/runs -name '*.result.json.gz' | sort | head -n -90 | xargs -r rm --
+          cp bundle/*.result.json bundle/summary.json ghdata/latest/
+          if [ -d bundle/artifacts ]; then
+            cp -R bundle/artifacts ghdata/latest/artifacts
+          fi
+          while IFS=$'\t' read -r dut _ _; do
+            mkdir -p "ghdata/data/runs/$dut"
+            gzip -c "bundle/$dut.result.json" \
+              > "ghdata/data/runs/$dut/$DAY-run$REGRESS_RUN_ID.result.json.gz"
+            find "ghdata/data/runs/$dut" -name '*.result.json.gz' | sort | head -n -90 | xargs -r rm --
+          done < rows.tsv
+          if [ -f "bundle/$TEST_HISTORY_DUT.result.json" ]; then
+            gzip -c "bundle/$TEST_HISTORY_DUT.result.json" \
+              > "ghdata/data/runs/$DAY-run$REGRESS_RUN_ID.result.json.gz"
+          fi
+          find ghdata/data/runs -maxdepth 1 -name '*.result.json.gz' | sort | head -n -90 | xargs -r rm --
+          cat > ghdata/README.md <<'README'
+          # DV Dashboard Data
+
+          Canonical store for the OCAH DV weekly dashboard data. The `dashboard`
+          workflow on `main` (`.github/workflows/dashboard.yml`) writes `latest/`
+          and `data/`; publishers of other flows keep their own top-level
+          directory. The documentation site renders its verification dashboard
+          from this branch. Do not edit by hand.
+
+              latest/<dut>.result.json                      one normalized result per weekly DUT (schema "0.1")
+              latest/summary.json                           the aggregate over those results (schema "0.1")
+              latest/artifacts/<dut>/coverage/              staged coverage files of a run that collected coverage
+              data/history.json                             trend history, newest 90 points (schema "0.2")
+              data/runs/<dut>/<date>-run<id>.result.json.gz  archives of the newest 90 runs, per DUT
+              data/runs/<date>-run<id>.result.json.gz        the one-DUT-per-run series the documentation site's test-history page reads
+              data/classification/<date>.json               infrastructure / design / flaky split, per DUT and summed
+          README
           cd ghdata
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -267,19 +323,23 @@ jobs:
             echo "No dashboard data changes to publish."
             exit 0
           fi
-          git commit -m "dv dashboard: publish regress run $REGRESS_RUN_ID ($STATUS)"
+          git commit -m "dv dashboard: publish regress run $REGRESS_RUN_ID ($STATUS, $DUT_COUNT DUTs)"
           for _ in 1 2 3; do
             if git push origin dv-dashboard-data; then exit 0; fi
             git pull --rebase origin dv-dashboard-data
           done
           exit 1
 
-      # The per-run consumable bundle for the external website pipeline.
+      # The per-run consumable bundle, identical in content to latest/ plus
+      # the history snapshot and the week's classification.
       - name: Stage consumption bundle
         if: steps.art.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
         run: |
           mkdir -p consumption
-          cp "bundle/$DUT.result.json" bundle/summary.json consumption/
+          cp bundle/*.result.json bundle/summary.json consumption/
+          if [ -d bundle/artifacts ]; then
+            cp -R bundle/artifacts consumption/artifacts
+          fi
           cp ghdata/data/history.json consumption/
           cp "ghdata/data/classification/$DAY.json" consumption/classification.json
 
@@ -292,7 +352,7 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
-      # Self-disables until the mail secrets exist (see run-dashboard.adoc).
+      # Runs only when the mail secrets are set (see run-dashboard.adoc).
       - name: Email digest
         if: steps.art.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run) && env.OCAH_MAIL_TO != ''
         uses: dawidd6/action-send-mail@v3
@@ -304,5 +364,5 @@ jobs:
           password: ${{ secrets.OCAH_MAIL_PASSWORD }}
           from: OCAH DV CI
           to: ${{ secrets.OCAH_MAIL_TO }}
-          subject: "[OCAH DV weekly] ${{ env.STATUS }} ${{ env.DUT }}/${{ env.TOOL }}"
+          subject: "[OCAH DV weekly] ${{ env.STATUS }} ${{ env.DUT_COUNT }} DUTs"
           body: file://digest.txt

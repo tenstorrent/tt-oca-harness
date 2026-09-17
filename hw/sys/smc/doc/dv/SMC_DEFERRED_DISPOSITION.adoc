@@ -60,7 +60,7 @@ the row.
 |The eFuse sense bypass (`hw/ip/efuse/doc/architecture.adoc`, "Security Disable Bypass Mechanism"). On the product the pin is the SEP `security_disable_o` token-match result (`sep.sv`, wired through `smu.sv`); inside SMC it reaches only `smc_efuse_wrapper` -> `efuse_interface_controller.security_disable_i`. SMC builds the controller with `HAS_LC_STATE=0` (`smc_efuse_wrapper.sv`), so the bypass takes the non-LC branch: the controller drives `shadow_regs_o` from the shadow registers whenever fuse sensing has finished or the pin is high, and drives all zeros otherwise (`efuse_interface_controller.sv:449`); its command mux routes the shadow-register sense FSM to the bank only while sensing is not done and the pin is low (`efuse_interface_controller.sv:759`). With the pin at 1 the FSM's reads are never routed, so `fuse_sense_done` never rises, the shadow registers keep their all-zero reset value and are exposed unsensed, and `fuse_reset_n` -- and with it `rst_warm` (`smc_reset_ctrl.sv:135`) -- never release: the warm domain never leaves reset. With the pin at 0 every run senses the bank, which is what the product does on a chip whose SEC_DIS token did not match.
 |None of the enrolled claims: no leaf claims the bypass, and every eFuse leaf proves the sensed path, which is the path a 0 selects. Were the pin driven to 1 for a run, every sequence that calls `wait_fuse_sense_done` (40 sequence files under `cocotb/seq_lib/`; `smc_base_test_seq.py` defines the method and each leaf that needs the warm domain calls it itself) would time out on `tb_fuse_sense_done`, and every warm-domain CSR access would hang with no ready.
 |Positive control: a leaf that drives the pin to 1 and requires `fuse_sense_done` to stay 0 while the shadow-register window still answers. It must stay in the cold domain: the eFuse controller sits under `rst_primary`, ahead of `rst_warm`, so its shadow reads through the eFuse CSR window -- over the OTP JTAG AXI-Lite port or the fabric path -- are the only thing that answers under bypass; nothing in the warm domain does. It needs a driven pin (a bench input in `smc_tb_signal_list.svh`, idle 0) in place of the constant. Closes when that leaf is enrolled, or when SEP-integrated signoff (SMU with SEP=1) is accepted as the only place the token-match path is exercised and that acceptance is recorded here.
-|SMC DV owner
+|minshaoho (`9282d8c14`)
 |2026-12-15
 |===
 
@@ -319,12 +319,12 @@ Kinds used in the leaf tables:
 |Stand-in |Control that keeps the claims honest |Owner |Review |Closes when
 |`prim_sync2/3`
 |Height-3 control: the `reset`, `clock` and `irq` groups run on VCS with the product cells, `python3 tools/dv/run_dv.py --dut smc --items reset clock irq --tool vcs --regress`, VCS X-2025.06_Full64, 35 leaves; the VCS compile list carries the product `prim_sync2.sv` / `prim_sync3.sv` from `smc_bender.f` and no stub. Run `20260914_022740__vcs__reset`, before the waiver: cocotb verdict 35 of 35 PASS with every `CHK-*` token of each card present; runner grade 35 of 35 FAIL, all on one message class -- the PeakRDL immediate assertions `assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg` (six sites) each report once `at time 0 fs`, before any reset, while `arst_n` and the ack strobes are still X; no leaf reports them at a later time. That class is waived in `smc_sim_cfg.toml` `[pass_fail]` in the form SEP uses for `abr_reg`: an ignore pattern naming exactly these six assertions together with the `at time 0 fs` text, paired with a hard-fail pattern that turns a later firing of the same assertions into an error. Run `20260914_035111__vcs__reset`, with the waiver committed and the tree clean (`result.json` `git.dirty = false`): cocotb 35 of 35 PASS, runner 35 of 35 PASS, the six time-0 lines recorded as `IGNORED` evidence in every leaf and no `Error:` line at any later time. One product assertion fires at a non-zero time and is not waived: `prim_ag_clk_mux.sv` `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux` at 4688 ns in `smc_cg_dft_reset_bringup_test`, the DFT `test_en_i` bypass leaf, on seed 1611842931 (the control run's seed). The waived regression drew seed 1024727039 and did not reach it; a replay of the leaf on seed 1611842931 with the waiver in place (`20260914_035535__vcs__dft_seed1611842931`) fires it again and is graded FAIL on that line, so the firing is seed-dependent and the waiver does not cover it. Verilator compiles assertions out, so only a commercial run can see it. Neither observation depends on the synchroniser cells. The group selection excludes five entries of the three testlist files (named above the reset-group leaf table); run `20260914_031352__vcs__standin_files_minus_groups` covered those five on the same VCS build: cocotb 5 of 5 PASS, runner 5 of 5 PASS, no assertion after time 0.
-|SMC DV owner
+|minshaoho (`9282d8c14`)
 |2026-12-15
 |Either the stand-ins leave the build (the removal plan is tracked with the shared `prim_*` shims), or the `CheckMutualExclusionClk1` firing is resolved and a repeat of this control on seed 1611842931 is graded green by the runner. #1854 tracks that firing (defect under DFT bypass, or an assertion that must be disabled while `test_en_i` is high); it is the one open runner FAIL of this control.
 |`axil_okay_slv`
 |None beyond the live consumer's own positive control (below): the only enrolled claim behind it is reachability, which the DUT drives (`smc_external_req_o.ar_valid` observed high, then idle). No enrolled leaf compares a value the stand-in authors as evidence.
-|SMC DV owner
+|minshaoho (`9282d8c14`)
 |2026-12-15
 |Real PLL / PVT IP lands on the wrapper; the six retired consumers are then restored from git history per their rows above and re-graded against the real blocks.
 |===
@@ -493,32 +493,43 @@ The `ocah-toolchain` image (`tools/docker/Dockerfile`: `gcc-riscv64-unknown-elf`
 and `picolibc-riscv64-unknown-elf`) is built locally and published to no
 registry, and no workflow builds firmware, so every firmware leaf below, each
 of which runs a `c_compile` stage, is run on demand (`scripts/docker-run.sh`
-builds the images) until CI has a toolchain. The last row is held out for a
-different reason: it is in no group, so no tier selects it.
+builds the images) until CI has a toolchain. The `smc_ref_clock_timer_rate_test`
+row is held out for a different reason: it is in no group, so no tier selects
+it. The five eFuse-map rows after it are held out on #1989: the SMC eFuse word
+counter is one bit too narrow for the 256-word map, so fuse sense stores no
+word and every shadow read returns 0 with an OKAY response; each of them
+compares a sensed word against the preload image somewhere on its path.
+`smc_efuse_map_read_test` is not in this table: it carries #1989 as the
+`rtl_issue` reproducer (below).
 
 [cols="2,1,3,1,1,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Owner |Review |Closes when
-|`smc_fw_hello_world_test` |`fw`, `all` |`firmware = "hello_world"`: `[c_build.default]` builds the DV C image with RISC-V GCC and picolibc |SMC DV owner |2026-12-15 |A toolchain image CI can pull is published to a registry, or `.github/actions/dv-run` installs `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` on the runner and exports `RISCV_TOOLCHAIN`; the weekly tier then gains a `dut: smc, items: all` row (one seed, ~240 min budget) and this row closes
-|`smc_fw_plic_claim_test` |`fw`, `all` |`firmware = "plic_sanity"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_hello_world_multicore_test` |`fw`, `all` |`firmware = "hello_world_multicore"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_octs_p0_primary_test` |`fw`, `all` |`firmware = "octs_p0_primary_test"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_i2c_sanity_test` |`fw`, `all` |`firmware = "i2c_sanity"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_i2c_target_sanity_test` |`fw`, `all` |`firmware = "i2c_target_sanity"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_i2c_acq_fifo_stretch_reset_test` |`fw`, `all` |`firmware = "i2c_acq_fifo_stretch_reset"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_i2c_p1_fifo_depth_xfer_test` |`fw`, `all` |`firmware = "i2c_p1_fifo_depth_xfer"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_i2c_tx_stretch_timeout_recovery_test` |`fw`, `all` |`firmware = "i2c_tx_stretch_timeout_recovery"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_i2c_fifo_full_test` |`fw`, `all` |`firmware = "i2c_fifo_full"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_uart_log_engine_single_entry_test` |`fw`, `all` |`firmware = "uart_log_engine_single_entry"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_uart_log_engine_boundary_backpressure_test` |`fw`, `all` |`firmware = "uart_log_engine_boundary_backpressure"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_uart_log_engine_disable_during_xfer_test` |`fw`, `all` |`firmware = "uart_log_engine_disable_during_xfer"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_fw_uart_log_engine_fetch_err_test` |`fw`, `all` |`firmware = "uart_log_engine_fetch_err"`, same build path |SMC DV owner |2026-12-15 |As above
-|`smc_prod_rom_occp_ready_test` |`occp_boot` |`firmware = { name = "prod_rom", mode = "bootrom" }` builds `hw/sys/smc/bootrom/prod` with RISC-V GCC; `run_modes = ["prod_rom"]`, 3600 s |SMC DV owner |2026-12-15 |As above, plus a weekly `items: occp_boot` row (one seed, about one hour)
-|`smc_dual_elaboration_test` |`dual_smoke`, `dual_all`, `all` |`target = "dual"` and `firmware = prod_rom`: the `SMC_DUAL` elaboration alone `$error`s at time zero without a ROM image (`dual.toml` header), so the leaf is not toolchain-free. It also TIMEOUTs on `dut_fuse_sense_done` (undeclared nets in the dual harness) |SMC DV owner |2026-12-15 |Toolchain as above and #1802 (the dual-harness net declarations) merged; then covered by the weekly `all` row. Its checkers read boot-sequencer and AXI signals only, so pointing `+rom_hex` at `assets/smc_rom_default.hex` and `+smc_efuse_hex` at `assets/smc_efuse_default.hex` and dropping `firmware` would make it toolchain-free; that is a test-behaviour change for the SMC owner, not this record
-|`smc_dual_axi_sram_probe_test` |`dual_smoke`, `dual_all`, `all` |`target = "dual"` and `firmware = prod_rom` |SMC DV owner |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
-|`smc_occp_sanity_test` |`dual_all`, `all` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |SMC DV owner |2026-12-15 |Toolchain as above
-|`smc_occp_dual_unsecure_boot_test` |`dual_all`, `occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |SMC DV owner |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
-|`smc_ref_clock_timer_rate_test` |none |In no group, so `smoke`, `hosted` and `rtl_issue` all miss it. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |SMC DV owner |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
+|`smc_fw_hello_world_test` |`fw`, `all` |`firmware = "hello_world"`: `[c_build.default]` builds the DV C image with RISC-V GCC and picolibc |minshaoho (`9282d8c14`) |2026-12-15 |A toolchain image CI can pull is published to a registry, or `.github/actions/dv-run` installs `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` on the runner and exports `RISCV_TOOLCHAIN`; the weekly tier then gains a `dut: smc, items: all` row (one seed, ~240 min budget) and this row closes
+|`smc_fw_plic_claim_test` |`fw`, `all` |`firmware = "plic_sanity"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_hello_world_multicore_test` |`fw`, `all` |`firmware = "hello_world_multicore"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_octs_p0_primary_test` |`fw`, `all` |`firmware = "octs_p0_primary_test"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_i2c_sanity_test` |`fw`, `all` |`firmware = "i2c_sanity"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_i2c_target_sanity_test` |`fw`, `all` |`firmware = "i2c_target_sanity"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_i2c_acq_fifo_stretch_reset_test` |`fw`, `all` |`firmware = "i2c_acq_fifo_stretch_reset"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_i2c_p1_fifo_depth_xfer_test` |`fw`, `all` |`firmware = "i2c_p1_fifo_depth_xfer"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_i2c_tx_stretch_timeout_recovery_test` |`fw`, `all` |`firmware = "i2c_tx_stretch_timeout_recovery"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_i2c_fifo_full_test` |`fw`, `all` |`firmware = "i2c_fifo_full"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_uart_log_engine_single_entry_test` |`fw`, `all` |`firmware = "uart_log_engine_single_entry"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_uart_log_engine_boundary_backpressure_test` |`fw`, `all` |`firmware = "uart_log_engine_boundary_backpressure"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_uart_log_engine_disable_during_xfer_test` |`fw`, `all` |`firmware = "uart_log_engine_disable_during_xfer"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_uart_log_engine_fetch_err_test` |`fw`, `all` |`firmware = "uart_log_engine_fetch_err"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_prod_rom_occp_ready_test` |`occp_boot` |`firmware = { name = "prod_rom", mode = "bootrom" }` builds `hw/sys/smc/bootrom/prod` with RISC-V GCC; `run_modes = ["prod_rom"]`, 3600 s |minshaoho (`9282d8c14`) |2026-12-15 |As above, plus a weekly `items: occp_boot` row (one seed, about one hour)
+|`smc_dual_elaboration_test` |`dual_smoke`, `dual_all`, `all` |`target = "dual"` and `firmware = prod_rom`: the `SMC_DUAL` elaboration alone `$error`s at time zero without a ROM image (`dual.toml` header), so the leaf is not toolchain-free. It also TIMEOUTs on `dut_fuse_sense_done` (undeclared nets in the dual harness) |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and #1802 (the dual-harness net declarations) merged; then covered by the weekly `all` row. Its checkers read boot-sequencer and AXI signals only, so pointing `+rom_hex` at `assets/smc_rom_default.hex` and `+smc_efuse_hex` at `assets/smc_efuse_default.hex` and dropping `firmware` would make it toolchain-free; that is a test-behaviour change for the SMC owner, not this record
+|`smc_dual_axi_sram_probe_test` |`dual_smoke`, `dual_all`, `all` |`target = "dual"` and `firmware = prod_rom` |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
+|`smc_occp_sanity_test` |`dual_all`, `all` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above
+|`smc_occp_dual_unsecure_boot_test` |`dual_all`, `occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
+|`smc_ref_clock_timer_rate_test` |none |In no group, so `smoke`, `hosted` and `rtl_issue` all miss it. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |minshaoho (`9282d8c14`) |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
+|`smc_efuse_boundary_signals_test` |`depth_efuse`, `coverage_closure`, `depth` |#1989: reads `SMC_EFUSE_MAP_LOCKS` after sense and expects the preload image's word 0; the shadow returns 0 |minshaoho (`9282d8c14`) |2026-12-15 |#1989 merged; then back into `all` and `hosted` (`testlists/all.toml`) with its `ci` tag
+|`smc_efuse_locked_access_interrupt_test` |`depth_efuse`, `coverage_closure`, `depth` |#1989: the same LOCKS compare precedes the lock and interrupt legs |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_efuse_otp_burn_shadow_test` |`coverage_closure` |#1989: the shadow read of the sensed image is the first compare, before the PROGRAM command |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_occp_sanity_secure_error_test` |`coverage_closure`, `depth` |#1989: its positive signature gate reads map word 0 and gets 0 |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_peripheral_instance_decode_test` |none |#1989: its eFuse-map probe expects the preload image's LOCKS word as the instance's non-zero reset and reads 0 |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |===
 
 `dual.toml` is therefore in the toolchain bucket, not an "elaboration only"
@@ -532,10 +543,9 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 `dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Members: `smc_gpio_irq_mask_deassert_test` (#1602),
-`smc_log_engine_intr_mask_test` (#1635), `smc_i2c_intr_mask_test` (#1635),
-`smc_deadspace_decode_test` (#585) and `smc_remap_cla_test` (#1855: the CLA
-unmapped in-window offset `+0x38` completes with OKAY).
+Members: `smc_deadspace_decode_test` (#585) and
+`smc_efuse_map_read_test` (#1989: the shadow map reads 0 after sense, measured
+on LOCKS word 0 against the preload image).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in

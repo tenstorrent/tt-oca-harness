@@ -135,9 +135,8 @@ package smc_efuse_pkg;
   localparam int unsigned NumFuseByteWidth = $clog2(
       NumFuseBytes
   );  // 10 bits to encode 1024 bytes <- used to create byte address type for bank
-  localparam int unsigned NumFuseWordsWidth = $clog2(
-      NumFuseWords
-  );  // 8 bits to encode 256 words <- used to create counter type for bank - because we count by words
+  // NOTE: $clog2(256)=8 can only represent 0-255, but we need to represent 256 words
+  localparam int unsigned NumFuseWordsWidth = $clog2(NumFuseWords + 1);
   localparam int unsigned SHADOW_REG_BITS = NumEfuseBits;
 
   typedef logic [NumFuseBitsWidth-1:0] efuse_addr_bit_t;
