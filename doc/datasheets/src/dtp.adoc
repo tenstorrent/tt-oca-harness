@@ -43,8 +43,8 @@ HIGHLIGHTS
 * Configurable secondary TAP topology, compliant with IEEE 1838, for local and
   downstream chiplet access
 * JTAG-to-AXI paths for SMC fabric, SMC OTP, and SEP OTP debug access
-* Cross-trigger routing between chiplet-local interfaces and external Cross
-  Trigger Ports (CTPs)
+* Cross-trigger routing between chiplet-local interfaces and external cross
+  trigger ports (CTPs)
 * Lifecycle-controlled disable inputs for all internal and external debug access
   ports
 * Integrated debug clock-stop, boot-stall, and multi-target reset controls
