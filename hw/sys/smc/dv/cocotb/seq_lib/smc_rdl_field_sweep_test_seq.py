@@ -41,12 +41,10 @@ silently.
 
 from __future__ import annotations
 
-import re
-
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from .smc_addr_map import _REPO, smc_addr
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import RdlReg, rdl_array, rdl_register, rdl_registers_under
 
@@ -188,34 +186,35 @@ _MUTEX_HELD = 0
 _REF_COUNTER_SETTLE = 64
 
 # The straps block belongs to the open integration, not to smc.sv, so it is not
-# in the SMC register map: hw/top/smc_ip_integration.sv decodes it out of the
-# adopter external window at ExtStrapsBase, and that localparam is the only
-# declaration of the offset. It is read out of the integration source rather
-# than copied here so the two cannot drift.
-_INTEGRATION_SV = _REPO / "hw" / "top" / "smc_ip_integration.sv"
-_STRAPS_BASE_RE = re.compile(
-    r"localparam\s+int\s+unsigned\s+ExtStrapsBase\s*=\s*'h([0-9A-Fa-f]+)\s*;"
-)
-# straps.rdl: STRAPS_LO @0x0 straps[31:0] and STRAPS_HI @0x4 straps[28:0], both
-# `sw = r; hw = w`. hw/top/smc_ip_integration.sv drives both from rom_straps,
-# which the open integration ties to 0.
+# in the SMC register map. hw/sys/smc/doc/memmap.adoc ("Captured GPIO Straps")
+# places STRAPS_LO at BASE + 0x040_5800 and STRAPS_HI at BASE + 0x040_5804,
+# inside the adopter external window that starts at BASE + 0x040_0000, and
+# straps.rdl makes both `sw = r; hw = w`: STRAPS_LO @0x0 straps[31:0],
+# STRAPS_HI @0x4 straps[28:0]. What they hold is whatever the integration
+# latched from the bonded pads at cold reset, so the value is read once and
+# held against the write, not predicted.
+_STRAPS_WINDOW_OFFSET = 0x5800
 _STRAPS_REGS = (
     ("STRAPS_LO", 0x0, 0xFFFF_FFFF),
     ("STRAPS_HI", 0x4, 0x1FFF_FFFF),
 )
-_STRAPS_ROM_VALUE = 0
 _STRAPS_WRITE_PATTERN = 0xFFFF_FFFF
+
+# A software load of REFERENCE_COUNTER crosses into the reference-clock domain
+# and the count returns through the synchroniser, so the readback that first
+# shows the loaded value is some accesses after the write. The contract is
+# write-then-poll; a counter that never shows the load within this many
+# readbacks fails.
+_REF_COUNTER_LOAD_POLLS = 16
 
 
 def _straps_base() -> int:
-    match = _STRAPS_BASE_RE.search(_INTEGRATION_SV.read_text(encoding="utf-8"))
-    assert match is not None, f"no ExtStrapsBase localparam in {_INTEGRATION_SV}"
-    offset = int(match.group(1), 16)
     window = smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE")
-    assert offset + 8 <= window, (
-        f"ExtStrapsBase 0x{offset:x} + 8 falls outside the 0x{window:x}-byte adopter window"
+    assert _STRAPS_WINDOW_OFFSET + 8 <= window, (
+        f"strap window offset 0x{_STRAPS_WINDOW_OFFSET:x} + 8 falls outside the "
+        f"0x{window:x}-byte adopter window"
     )
-    return smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR") + offset
+    return smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR") + _STRAPS_WINDOW_OFFSET
 
 
 def _assert_partition() -> None:
@@ -436,11 +435,17 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
         )
         await self.csr_write("REFERENCE_COUNTER:load", reg.addr, 0, length=reg.width_bytes)
         self.write_groups += 1
-        loaded = await self.csr_read("REFERENCE_COUNTER:loaded", reg.addr, length=reg.width_bytes)
+        loaded = running
+        for _ in range(_REF_COUNTER_LOAD_POLLS):
+            loaded = await self.csr_read(
+                "REFERENCE_COUNTER:loaded", reg.addr, length=reg.width_bytes
+            )
+            if loaded < running:
+                break
         assert loaded < running, (
-            f"REFERENCE_COUNTER @ 0x{reg.addr:08x}: `sw = rw`, but a software write of 0 left it "
-            f"at 0x{loaded:x} against 0x{running:x} before the write, so the write did not load "
-            f"the counter"
+            f"REFERENCE_COUNTER @ 0x{reg.addr:08x}: `sw = rw`, but {_REF_COUNTER_LOAD_POLLS} "
+            f"readbacks after a software write of 0 it still reads 0x{loaded:x} against "
+            f"0x{running:x} before the write, so the write did not load the counter"
         )
         await ClockCycles(cocotb.top.clk_smc_i, _REF_COUNTER_SETTLE)
         resumed = await self.csr_read("REFERENCE_COUNTER:resumed", reg.addr, length=reg.width_bytes)
@@ -455,17 +460,15 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
 
     async def _straps_window(self) -> None:
         base = _straps_base()
+        captured: dict[str, int] = {}
         for label, offset, declared in _STRAPS_REGS:
             addr = base + offset
             value = await self.csr_read(f"{label}:capture", addr)
+            captured[label] = value
             outside = value & ~declared & 0xFFFF_FFFF
             assert outside == 0, (
                 f"{label} @ 0x{addr:08x}: reads 0x{value:08x}, which drives 0x{outside:x} "
                 f"outside the 0x{declared:08x} its RDL field occupies"
-            )
-            assert value == _STRAPS_ROM_VALUE, (
-                f"{label} @ 0x{addr:08x}: reads 0x{value:08x}; the open integration drives the "
-                f"capture register from rom_straps, which it ties to 0x{_STRAPS_ROM_VALUE:x}"
             )
             await self.csr_write(f"{label}:write", addr, _STRAPS_WRITE_PATTERN)
             self.write_groups += 1
@@ -477,10 +480,13 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
             )
             self.value_checks += 2
         cocotb.log.info(
-            "CHK-RDL-STRAPS-RO: both adopter strap capture registers at 0x%08x read their "
-            "driven value with every undeclared bit 0, and a software write of 0x%08x left "
-            "both unchanged, which is the `sw = r` contract of straps.rdl",
+            "CHK-RDL-STRAPS-RO: both adopter strap capture registers at 0x%08x read with "
+            "every undeclared bit 0 (STRAPS_LO=0x%08x STRAPS_HI=0x%08x), and a software "
+            "write of 0x%08x left both unchanged, which is the `sw = r` contract of "
+            "straps.rdl",
             base,
+            captured["STRAPS_LO"],
+            captured["STRAPS_HI"],
             _STRAPS_WRITE_PATTERN,
         )
 
