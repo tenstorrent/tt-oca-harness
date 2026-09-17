@@ -5,13 +5,13 @@
  *
  * Exhaustive CLA node0-EAP action -> SEP CPU control mapping/effect test. The SMC producer fw
  * fires each single custom action and the DV scoreboard checks the mapped SEP input + effect:
- *   action[0] mpc_debug_halt_req  -> DEBUG halt (freezes a BUSY core)          [functional]
- *   action[1] mpc_debug_run_req   -> DEBUG run/resume                          [functional]
- *   action[3] i_cpu_halt_req      -> PMU/FW halt (QUIESCENCE-GATED)            [DIAGNOSTIC]
- *   action[4] i_cpu_run_req       -> PMU run/resume                            [DIAGNOSTIC]
+ *   action[0] mpc_debug_halt_req_i -> DEBUG halt (freezes a BUSY core)          [functional]
+ *   action[1] mpc_debug_run_req_i  -> DEBUG run/resume                          [functional]
+ *   action[3] cpu_halt_req_i       -> PMU/FW halt (QUIESCENCE-GATED)            [DIAGNOSTIC]
+ *   action[4] cpu_run_req_i        -> PMU run/resume                            [DIAGNOSTIC]
  * action[3] is a PMU/FW halt request: it is characterized idle-vs-busy
  * (CHK-PMU-HALT-DIAG) and is NOT required to freeze a busy core. action[2]
- * (mpc_reset_run_req, inverted) and action[5] (unmapped) are checked for mapping only.
+ * (mpc_reset_run_req_i, inverted) and action[5] (unmapped) are checked for mapping only.
  *
  * Included by BOTH firmwares + parsed by the cocotb checker. Plain integer/hex #defines only.
  * Channels: SMC CPU_CTRL scratch (base 0xC0039080, 8-byte stride); s0=SMC status, s1=CLA arm
@@ -81,11 +81,11 @@
 #define CLADBG_CLA_CTRLSTATUS_EXPECT 0x60
 #define CLADBG_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define CLADBG_CLA_EAP1_RELEASE 0x144FBFC000ULL
-#define CLADBG_CLA_EAP0_ACT0 0x100FBFC000ULL /* mpc_debug_halt_req */
-#define CLADBG_CLA_EAP0_ACT1 0x101FBFC000ULL /* mpc_debug_run_req  */
-#define CLADBG_CLA_EAP0_ACT3 0x103FBFC000ULL /* i_cpu_halt_req     */
-#define CLADBG_CLA_EAP0_ACT4 0x104FBFC000ULL /* i_cpu_run_req      */
-#define CLADBG_CLA_EAP0_ACT2 0x102FBFC000ULL /* mpc_reset_run_req = ~cla[2] (inverted) */
-#define CLADBG_CLA_EAP0_ACT5 0x105FBFC000ULL /* unmapped [5..15]   */
+#define CLADBG_CLA_EAP0_ACT0 0x100FBFC000ULL /* mpc_debug_halt_req_i */
+#define CLADBG_CLA_EAP0_ACT1 0x101FBFC000ULL /* mpc_debug_run_req_i  */
+#define CLADBG_CLA_EAP0_ACT3 0x103FBFC000ULL /* cpu_halt_req_i       */
+#define CLADBG_CLA_EAP0_ACT4 0x104FBFC000ULL /* cpu_run_req_i        */
+#define CLADBG_CLA_EAP0_ACT2 0x102FBFC000ULL /* mpc_reset_run_req_i = ~cla[2] (inverted) */
+#define CLADBG_CLA_EAP0_ACT5 0x105FBFC000ULL /* unmapped [5..15]     */
 
 #endif /* SMU_CLA_SEP_CPU_DEBUG_PROTOCOL_H */
