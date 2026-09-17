@@ -2982,8 +2982,6 @@ releases. Both mux directions are graded.
 |After release `DIGEST_0` reads its reset value 0.
 |CHK-KMAC-DRAIN-ORDER
 |The KMAC gated reset does not assert until both the host and Key Manager AXI-Lite paths report isolated, sampled in the same cycle as the observed assert edge. Guarded by a check that the reset is still released when the request is issued, so a domain that asserted with no drain window fails rather than scoring a steady state.
-|CHK-KMAC-HOST-DRAIN
-|KMAC host reads accepted before the reset request all resolve, at least one OKAY, none DECERR and none hanging. Dropped traffic and a wedge both fail.
 |CHK-KMAC-DRAIN-ARRIVAL
 |A read issued on the first cycle a probe shows the KMAC drain window open also resolves OKAY or SLVERR. Fails explicitly if no window was ever observed, so the property cannot be satisfied by re-scoring the pre-request batch.
 |CHK-TRNG-NEIGHBORS
@@ -2996,8 +2994,11 @@ releases. Both mux directions are graded.
 *Drain-before-reset*: claimed for the HMAC domain by `CHK-DRAIN-ORDER`,
 `CHK-HOST-DRAIN` and `CHK-DRAIN-ARRIVAL`, for the Adams Bridge domain by
 `CHK-ABR-DRAIN-ORDER`, `CHK-ABR-HOST-DRAIN` and `CHK-ABR-DRAIN-ARRIVAL`, and
-for the KMAC domain by `CHK-KMAC-DRAIN-ORDER`, `CHK-KMAC-HOST-DRAIN` and
-`CHK-KMAC-DRAIN-ARRIVAL`. HMAC
+and for the KMAC domain by `CHK-KMAC-DRAIN-ORDER` and `CHK-KMAC-DRAIN-ARRIVAL`.
+The KMAC leg does not claim accepted-traffic drain: pre-request reads retire
+before the host path isolates on that domain, measured at 0 of 16 still in
+flight at isolate close, so there is no accepted traffic for the isolate to
+complete. Adams Bridge does carry that property, on a full-AXI isolate. HMAC
 drain runs against a live golden-checked result on a path this entry isolates.
 ABR drain counts outstanding host reads at isolate close so it grades traffic
 the isolate has to retire. The shared TRNG domain grades drain-before-reset in
