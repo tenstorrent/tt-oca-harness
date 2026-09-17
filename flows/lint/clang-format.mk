@@ -23,7 +23,12 @@ ocah_format_c_exclude_submodules = $(foreach p,$(ocah_format_c_submodules),-not 
 
 # .c/.h/.cpp files under FORMAT_C_PATH, excluding build output, vendored
 # third-party sources, and generated register headers (see hw/common/regs/).
-ocah_format_c_files = $(shell find $(OCAH_ROOT)/$(FORMAT_C_PATH) \( -name '*.c' -o -name '*.h' -o -name '*.cpp' \) -not -path '*/build/*' -not -path '*/vendor/*' -not -path '*/regs/gen/*' $(ocah_format_c_exclude_submodules) 2>/dev/null)
+#
+# 'build*' rather than 'build': the SEP boot ROM generates key_digests.c into its
+# BUILD_DIR, which is build_ot/, build_ot_pio/ or build_release/ for every variant
+# but the default one. Matching only 'build' would hand the formatter generated
+# sources whose formatting nobody can fix at the source.
+ocah_format_c_files = $(shell find $(OCAH_ROOT)/$(FORMAT_C_PATH) \( -name '*.c' -o -name '*.h' -o -name '*.cpp' \) -not -path '*/build/*' -not -path '*/build_*/*' -not -path '*/vendor/*' -not -path '*/regs/gen/*' $(ocah_format_c_exclude_submodules) 2>/dev/null)
 
 ocah_format_c_check_files = @[ -n "$(strip $(ocah_format_c_files))" ] || { echo "error: no .c/.h/.cpp files under $(FORMAT_C_PATH)" >&2; exit 1; }
 

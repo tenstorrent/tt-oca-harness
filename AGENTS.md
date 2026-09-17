@@ -184,6 +184,24 @@ bwrap: Can't mkdir parents for <repository path>: Read-only file system
 
 `unset OCAH_TOOLCHAIN_ROOTFS` to fall back to the container engine.
 
+### The toolchain sandbox has a compiler, not a Python environment
+
+Both the image and the extracted rootfs carry a bare `python3` with only the few
+distribution packages `tools/docker/Dockerfile` installs. A build step that imports
+anything else — `cryptography`, `ruamel.yaml`, the packer's dependencies — fails inside
+the sandbox with a bare `ModuleNotFoundError`, whichever backend is in use:
+
+```
+ModuleNotFoundError: No module named 'cryptography'
+```
+
+Run those steps on the host and the compile in the sandbox, and order the two so the
+host half produces what the compile consumes. The SEP boot ROM splits exactly this way:
+`key-digests` and `oca-images` on the host, `toolchain-images-build` in the sandbox —
+see `hw/sys/sep/bootrom/prod/README.md`. Adding a package to the Dockerfile does not
+fix the bwrap path, whose rootfs is extracted separately and is often not yours to
+rebuild.
+
 ### Rebuilding the image invalidates existing firmware objects
 
 Only the Dockerfile's base image is digest-pinned; the packages installed on top of it

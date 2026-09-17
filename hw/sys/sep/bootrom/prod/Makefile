@@ -79,7 +79,17 @@ ROM_ICCM_CLEAR_ENABLE ?= 1
 ROM_ICCM_CLEAR_FULL ?= 0
 PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0
-BUILD_TYPE ?= test
+
+# DV drives this Makefile directly (sep_sim_cfg.toml) and names build/, so debug is
+# the default.
+#
+# The build type selects the trust anchors: debug generates key_digests.c from the
+# private test keys in tests/signing_keys/, release from PUBLIC keys only, out of
+# tree, and refuses to build without them. See SEP_ROM_KEYS_DIR below.
+BUILD_TYPE ?= debug
+ifeq ($(filter $(BUILD_TYPE),debug release),)
+$(error Invalid BUILD_TYPE: $(BUILD_TYPE). Use 'debug' or 'release')
+endif
 
 # SPI flash transport selection. 0 = Cadence xSPI (default, memory-mapped XIP),
 # 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is dropped
@@ -91,11 +101,38 @@ BOOT_OT_SPI_USE_PIO ?= 0
 # OpenTitan timing/device profile index (used only when BOOT_SPI_CONTROLLER_OT=1).
 BOOT_OT_SPI_PROFILE ?= 0
 
-BUILD_DIR := build
+# `?=`, because the OT variants pass BUILD_DIR= on the sub-make command line and DV
+# names build/ directly; a command-line value has to win. Release lands in its own
+# tree, so a caller that means the debug image cannot pick up the release one.
+ifeq ($(BUILD_TYPE),release)
+BUILD_DIR ?= build_release
+else
+BUILD_DIR ?= build
+endif
 LINK_DIR  := link
 SRC_DIR   := src
 TOOLS_DIR := tools
 INCLUDE_DIR := include
+
+# ROM key material. The ROM anchors on SHA-256 of each slot's RSA-3072 modulus;
+# key_digests.c is generated from these files at build time rather than committed,
+# so the anchors cannot drift from the keys and no test digest can reach a mask.
+#
+# debug reads the private test keys already in the tree. release reads PUBLIC keys
+# only, from a directory that deliberately ships empty -- the production private
+# keys belong in a key store, never in source control -- and the generator refuses
+# a directory containing any private key.
+GENERATE_KEY_DIGESTS := $(TOOLS_DIR)/generate_key_digests.py
+SEP_ROM_RELEASE_SIGNING_KEYS_DIR ?= $(CURDIR)/release_signing_keys
+ifeq ($(BUILD_TYPE),release)
+SEP_ROM_KEYS_DIR  := $(SEP_ROM_RELEASE_SIGNING_KEYS_DIR)
+SEP_ROM_KEY_FORM  := public
+else
+SEP_ROM_KEYS_DIR  := $(CURDIR)/tests/signing_keys
+SEP_ROM_KEY_FORM  := private
+endif
+SEP_ROM_KEY_FILES := $(wildcard $(SEP_ROM_KEYS_DIR)/rsa_$(SEP_ROM_KEY_FORM)_key.rom_key*.pem)
+KEY_DIGESTS_C     := $(BUILD_DIR)/key_digests.c
 
 # The packer is the tt-oca-manifest repo, checked out as a submodule here rather
 # than copied in, so it tracks the upstream repo as that grows. Defined this early
@@ -192,6 +229,17 @@ OBJS += $(NONFREE_BOOTCODE_OBJS)
 # rv32im (no C) + no relax. zifencei is spelled out because binutils >= 2.38
 # rejects fence.i without it.
 CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
+
+# DEBUG gates the virtual console (include/rom_virt_console.h), whose ~230 call sites
+# write decoded text to a real SEP scratch CSR -- lifecycle state, fuse lock values,
+# key-slot selection and the BL1 load address among them. Without it the header's
+# #else turns every simput* name into a no-op. Machine-readable STATUS_OUT()
+# reporting does not pass through the console and is unaffected either way.
+ifeq ($(BUILD_TYPE),release)
+BUILD_TYPE_DEFINES := -DNDEBUG=1
+else
+BUILD_TYPE_DEFINES := -DTEST_BUILD=1 -DDEBUG
+endif
 # The generated register headers need <assert.h> for their packing checks, which
 # is not freestanding and only resolves through picolibc's spec file.
 CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
@@ -204,7 +252,7 @@ CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections 
 	-DOCA_SUPPORT_CLASSIC=$(OCA_SUPPORT_CLASSIC) -DOCA_SUPPORT_PQC=$(OCA_SUPPORT_PQC) \
 	-DOCA_TOC_MAX_IMAGES=$(OCA_TOC_MAX_IMAGES) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
-	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
+	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DSEP_BL0 $(BUILD_TYPE_DEFINES) \
 	-DROM_ICCM_CLEAR_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
 	-DROM_ICCM_CLEAR_FULL=$(ROM_ICCM_CLEAR_FULL) \
 	-DBL1_SRAM_EXEC_ENABLE=$(BL1_SRAM_EXEC_ENABLE) \
@@ -231,8 +279,21 @@ DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=
 .DELETE_ON_ERROR:
 
 .PHONY: all clean bl1_test ensure-pack-deps toolchain-images toolchain-images-build \
-        ot-toolchain-images ot-pio-toolchain-images
+        ot-toolchain-images ot-pio-toolchain-images debug release
+
+# Release stops at the ROM: oca-images signs its 17 flash images with the private
+# test keys the configs name, which a release build must never emit.
+ifeq ($(BUILD_TYPE),release)
+all: toolchain-images
+else
 all: toolchain-images oca-images
+endif
+
+# Same shorthands hw/sys/smc/bootrom/prod offers.
+debug:
+	@$(MAKE) BUILD_TYPE=debug all
+release:
+	@$(MAKE) BUILD_TYPE=release all
 
 # OpenTitan SPI-host ROM variants. Same sources, built with the OT transport
 # selected (boot_flash.h picks the driver on BOOT_SPI_CONTROLLER_OT) and each into
@@ -260,7 +321,9 @@ ot-pio-toolchain-images:
 # host. Otherwise it runs the compiler-dependent half in the OCAH container.
 OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 
-toolchain-images:
+# key-digests first, and always on this side of the sandbox boundary: the sandbox
+# has no python3-cryptography to read a PEM with.
+toolchain-images: key-digests
 	@if [ -n "$(RISCV_TOOLCHAIN)" ]; then \
 	  $(MAKE) toolchain-images-build; \
 	elif [ -x "$(OCAH_DOCKER_RUN)" ]; then \
@@ -272,6 +335,7 @@ toolchain-images:
 	    DCCM_SCRUB_BYTES="$(DCCM_SCRUB_BYTES)" SRAM_SCRUB_BYTES="$(SRAM_SCRUB_BYTES)" \
 	    ROM_ICCM_CLEAR_ENABLE="$(ROM_ICCM_CLEAR_ENABLE)" PMP_ENABLE="$(PMP_ENABLE)" \
 	    PMP_LOCK="$(PMP_LOCK)" BUILD_TYPE="$(BUILD_TYPE)" \
+	    SEP_ROM_RELEASE_SIGNING_KEYS_DIR="$(SEP_ROM_RELEASE_SIGNING_KEYS_DIR)" \
 	    BOOT_SPI_CONTROLLER_OT="$(BOOT_SPI_CONTROLLER_OT)" \
 	    BOOT_OT_SPI_USE_PIO="$(BOOT_OT_SPI_USE_PIO)" \
 	    BOOT_OT_SPI_PROFILE="$(BOOT_OT_SPI_PROFILE)" \
@@ -304,7 +368,8 @@ BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) 
 	OCA_CLASSIC=$(OCA_SUPPORT_CLASSIC) OCA_PQC=$(OCA_SUPPORT_PQC) \
 	OCA_TOC_MAX=$(OCA_TOC_MAX_IMAGES) ENTROPY=$(SEP_ENTROPY_BRINGUP) \
 	DEFER_FIPS=$(SEP_ENTROPY_DEFER_FIPS_LOCK) \
-	DEFER_SRCSEL=$(SEP_ENTROPY_DEFER_SRC_SEL_LOCK)
+	DEFER_SRCSEL=$(SEP_ENTROPY_DEFER_SRC_SEL_LOCK) \
+	KEYS_DIR=$(SEP_ROM_KEYS_DIR)
 FLAGS_STAMP := $(BUILD_DIR)/.build_flags
 
 .PHONY: FORCE
@@ -333,6 +398,42 @@ $(OBJS): $(FLAGS_STAMP)
 # Static version header.
 $(BUILD_DIR)/bl0_version.h: | $(BUILD_DIR)
 	echo '#define BL0_VERSION "oss-nonsecure"' > "$@"
+
+# ROM key digest table, generated from the key files rather than committed. The key
+# files are prerequisites, so rotating a key rebuilds the anchors instead of leaving
+# a table that silently disagrees with what signs the images.
+#
+# The digests depend on the key directory and form, nothing else in BUILD_FLAGS, and
+# regenerating them needs the host (below). So they carry their own stamp: an
+# unrelated flag change must not reach for the generator.
+KEY_INPUTS_STAMP := $(BUILD_DIR)/.key_inputs
+$(KEY_INPUTS_STAMP): FORCE | $(BUILD_DIR)
+	@echo '$(SEP_ROM_KEYS_DIR) form=$(SEP_ROM_KEY_FORM)' > "$@.tmp"
+	@if ! cmp -s "$@.tmp" "$@" 2>/dev/null; then mv "$@.tmp" "$@"; else rm "$@.tmp"; fi
+
+# GENERATED ON THE HOST, NOT IN THE TOOLCHAIN SANDBOX. Reading a PEM needs
+# python3-cryptography, and the sandbox carries a bare python3 -- the same boundary
+# that keeps oca-images on the host while toolchain-images-build runs in the
+# container. `toolchain-images` runs `key-digests` before it dispatches the compile.
+$(SEP_ROM_KEY_FILES): ;
+$(KEY_DIGESTS_C): $(GENERATE_KEY_DIGESTS) $(SEP_ROM_KEY_FILES) $(KEY_INPUTS_STAMP) | $(BUILD_DIR)
+	@python3 -c 'import cryptography' 2>/dev/null || { \
+	  echo "ERROR: cannot generate $@ here."; \
+	  echo "       Key digests are read from PEM files with python3-cryptography,"; \
+	  echo "       which the RISC-V toolchain sandbox does not carry. Generate them"; \
+	  echo "       on the host first:"; \
+	  echo "         make -C $(CURDIR) BUILD_DIR=$(BUILD_DIR) BUILD_TYPE=$(BUILD_TYPE) key-digests"; \
+	  exit 1; }
+	python3 "$(GENERATE_KEY_DIGESTS)" --keys-dir "$(SEP_ROM_KEYS_DIR)" \
+		--key-form "$(SEP_ROM_KEY_FORM)" -o "$@"
+
+.PHONY: key-digests
+key-digests: $(KEY_DIGESTS_C)
+
+# The generated source lives in $(BUILD_DIR), outside the $(SRC_DIR)/%.c pattern
+# rule below, so it needs its own.
+$(BUILD_DIR)/key_digests.o: $(KEY_DIGESTS_C) | $(BUILD_DIR)
+	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$<" -o "$@"
 
 $(BUILD_DIR)/vector.o: $(SRC_DIR)/vector.S | $(BUILD_DIR)
 	$(GCC_PREFIX)-gcc $(CFLAGS) $(ASFLAGS) -c "$<" -o "$@"
@@ -409,10 +510,6 @@ $(BL1_TEST_BIN):
 	@echo "error: BL1 image is missing; run 'make toolchain-images' first" >&2
 	@exit 1
 
-# The packer is the tt-oca-manifest repo, checked out as a submodule here rather
-# than copied in, so it tracks the upstream repo as that grows.
-TT_OCA_MANIFEST_DIR := $(TOOLS_DIR)/tt-oca-manifest
-
 # --no-project keeps this off the repo-root uv project: the root lockfile must
 # stay resolvable in a checkout where submodules were never init'd.
 #
@@ -455,9 +552,15 @@ ensure-pack-deps:
 	  echo "       (the ocah-toolchain container carries them as distro packages)."; \
 	  exit 1; }
 
-# ROM key 0's private key. The OCA configs name it by relative path; this is the
-# guard the oca-images recipe checks so a missing key fails with a reason rather
-# than a packer stack trace. Overridable for a locally generated key.
+# ROM key 0's private key, named so the oca-images recipe can check it exists and
+# fail with a reason rather than a packer stack trace.
+#
+# This is an existence check and nothing more. Pointing it elsewhere does NOT change
+# which key signs: each configs/oca_*_test.yaml names its own signing_key_file, the
+# packer reads the key from there (tt-oca-manifest src/manifest_signing.py), and
+# pack_images has no key option on the command line. To sign with a different key,
+# edit the config. To change the ROM's trust anchors, use SEP_ROM_KEYS_DIR above --
+# that is the one the ROM image depends on.
 SEP_SIGNING_KEY    ?= $(CURDIR)/tests/signing_keys/rsa_private_key.rom_key0.pem
 
 # --- OCA boot-manifest images (the format the ROM parses) ---------------------
@@ -512,7 +615,24 @@ OCA_SMC_BIN    := $(BUILD_DIR)/oca_smc_bundle.bin
 OCA_SMC_MEM_HEX := $(BUILD_DIR)/oca_smc_mem.hex
 
 .PHONY: oca-images
+ifeq ($(BUILD_TYPE),release)
+# Every config under configs/ names a private key in tests/signing_keys/, so packing
+# here would emit flashable images carrying a test signature. Release signing reaches
+# a key store instead of a file: the packer abstracts that as signing_authority
+# (local | aws | hsm, src/manifest_signing.py) with signing_key_id alongside, but its
+# OCA config path rejects hsm as a deferred feature, so wiring it needs a
+# tt-oca-manifest change as well as one here.
+oca-images:
+	@echo "ERROR: oca-images is not implemented for BUILD_TYPE=release."; \
+	echo "       The configs sign with the private test keys in tests/signing_keys/,"; \
+	echo "       which must never produce a flashable release image."; \
+	echo "       Production signing needs a key store (signing_authority=hsm/aws)"; \
+	echo "       and is not wired up yet."; \
+	echo "       For test images: make BUILD_TYPE=debug oca-images"; \
+	exit 1
+else
 oca-images: $(OCA_HEXS) $(OCA_SMC_BIN) $(OCA_SMC_MEM_HEX)
+endif
 
 # Static pattern rule so a new image is one line in OCA_IMAGES plus its two
 # configs -- there is no per-image recipe to copy and get subtly wrong.
@@ -522,8 +642,8 @@ $(OCA_BINS): $(BUILD_DIR)/oca_%.bin: $(CURDIR)/configs/oca_%_image.yaml \
 	@test -f "$(SEP_SIGNING_KEY)" || { \
 	  echo "ERROR: OCA images need the ROM key 0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
-	  echo "       It ships in the tt-oca-manifest submodule, so this normally means"; \
-	  echo "       the submodule is stale; re-run git submodule update."; \
+	  echo "       It is committed in this directory as a DV asset, so a missing one"; \
+	  echo "       means a modified working tree rather than a stale submodule."; \
 	  exit 1; }
 	$(PACK_RUN) --config "$<" --out "$@" -v
 
