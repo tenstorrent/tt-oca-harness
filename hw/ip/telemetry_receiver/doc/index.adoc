@@ -7,8 +7,8 @@
 ===== Overview
 
 The Telemetry Receiver decodes, buffers, and processes telemetry data from
-telemetry transmitters in multi-chiplet systems. It implements a receiver
-for a probe-ID and multi-counter message format.
+telemetry transmitters. It implements a receiver for a probe-ID and
+multi-counter message format.
 
 [[telemetry-receiver-message-format]]
 ===== Message Format
