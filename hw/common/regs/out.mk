@@ -20,6 +20,10 @@ ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_
 # expects the block itself to answer a bad access with an error.
 ocah_reg_err_checks  = $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_ERR_CHECK_BLOCKS))
 ocah_reg_regblock_opts = $(if $(call ocah_reg_err_checks,$(1)),--err-if-bad-addr --err-if-bad-rw)
+# Optional PeakRDL addrmap parameter overrides. Set
+# OCAH_REG_RDL_PARAMS_<block>=NAME=VALUE NAME=VALUE on the make command line
+# (block is the RDL stem, e.g. cross_trigger_matrix).
+ocah_reg_rdl_params = $(foreach p,$(OCAH_REG_RDL_PARAMS_$(call ocah_reg_name,$(1))),-P $(p))
 # Non-empty when the block's register RTL is sourced outside regblock.
 ocah_reg_sv_skipped  = $(filter skip,$(OCAH_REG_SVMODE_$(call ocah_reg_key,$(1))))
 # Composite sub-blocks by output class.
