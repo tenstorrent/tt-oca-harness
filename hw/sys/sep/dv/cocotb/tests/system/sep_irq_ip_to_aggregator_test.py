@@ -63,6 +63,7 @@ from seq_lib.sep_irq_aggregator_seq import (
     PERIPH_STATUS_ADDR,
     SepIrqIp,
     dma_reg_unmapped_addr,
+    hmac_misaligned_addr,
     periph_holes,
 )
 
@@ -282,3 +283,45 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 "CHK-BUSERR-CLR PASS: PERIPH_BUS_ERR_CLEAR.%s; STATUS=0; [42]=0",
                 hole.name,
             )
+
+        # CHK-BUSERR-MISALIGN. sep_cpu_ctrl.rdl and doc/interrupts.adoc both say
+        # PERIPH_BUS_ERR_STATUS latches on a "misaligned offset". It does not.
+        # Measured: the fabric refuses a misaligned beat inside a mapped extent
+        # with DECERR, so it never reaches the block and no TL-UL error exists to
+        # latch. Grade the refusal and the bits staying clear, so the claim
+        # cannot be relied on by firmware that expects to be told.
+        misaligned = hmac_misaligned_addr()
+        # The passive monitor fails on DECERR unless the beat is armed as an
+        # intentional negative-path probe. Arm exactly one, and hand the credit
+        # back if the DUT answered anything else -- a standing credit would
+        # silently absorb the next unexpected DECERR on this bus.
+        mon = self.env.axi_monitor
+        # Two beats are tallied for one refused read (AR-phase and R-phase), so
+        # arm two and return whatever the probe did not consume.
+        mon.arm_expected_decerr(2)
+        seen_before = mon.expected_decerr_seen
+        await self.irq.read_expect_decerr(misaligned)
+        unused = 2 - (mon.expected_decerr_seen - seen_before)
+        if unused > 0:
+            mon.release_expected_decerr(unused)
+        periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        assert periph_st == 0, (
+            f"PERIPH_BUS_ERR_STATUS=0x{periph_st:x} after a misaligned beat @"
+            f"0x{misaligned:08x}, expected 0: the fabric refused it before the "
+            f"block, so no TL-UL error was generated"
+        )
+        assert dma_st == 0, (
+            f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after the misaligned beat, expected 0"
+        )
+        agg_vec = await self._sample_agg_known(1 << IRQ_PERIPH_OR)
+        assert ((agg_vec >> IRQ_PERIPH_OR) & 1) == 0, (
+            f"sep_internal_interrupts[{IRQ_PERIPH_OR}] set by a misaligned beat "
+            f"@0x{misaligned:08x}"
+        )
+        self.logger.info(
+            "CHK-BUSERR-MISALIGN PASS: 0x%08x refused DECERR by the fabric; "
+            "PERIPH/DMA STATUS=0; [42]=0 -- the RDL/interrupts.adoc "
+            "\"misaligned offset\" latch condition is unreachable",
+            misaligned,
+        )
