@@ -1128,9 +1128,11 @@ and on licensed backends alike. The rules a contributor meets first:
 
 * *Subset.* Every property body is a boolean over current and `$past` values.
   The open frontend reads no sequences, implication operators, or the
-  `$stable`, `$rose`, `$fell` family; the concurrent SVA checkers under
-  `hw/common/dv/vip/*/sva/` and the `OCAH_ASSERT` macros elaborate on
-  licensed backends only (Accepted constructs).
+  `$stable`, `$rose`, `$fell` family; the concurrent SVA checkers
+  `ocah_axi_sva` and `ocah_jtag_sva` and the `OCAH_ASSERT` macros elaborate
+  on licensed backends only, while `ocah_axi_fv` and `ocah_jtag_fv` beside
+  them carry the handshake rules in the subset, each side asserted or
+  assumed by parameter (Accepted constructs, Shared protocol checkers).
 * *Macros and guards.* `hw/common/assert/ocah_fv_macros.svh` supplies
   `OCAH_FV_ASSERT`, `OCAH_FV_ASSUME`, `OCAH_FV_COVER`, and
   `OCAH_FV_INITIAL_RESET`, all gated on `FORMAL`, which every backend script
@@ -2289,9 +2291,8 @@ then prints one line and skips the simulation.
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
 DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the three
-`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage;
-each row carries its own `timeout-minutes` budget, sized for the standard
-runner. Nightly is not a merge gate; a red nightly run is a triage signal.
+`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage.
+Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
@@ -2332,9 +2333,10 @@ times out), so the default stays the always-present standard runner.
 [[runner-ci-budgets]]
 === Budgets, concurrency, and retention
 
-Every job carries a `timeout-minutes` budget: 60 for each smoke job, and a
-per-row value in the nightly and weekly matrices below the six-hour hosted
-cap. A job that exceeds its budget is cancelled by the hosted runner;
+Every job carries a `timeout-minutes` budget: 60 for each smoke job, and
+360, the hosted runner's cap, for every nightly and weekly job; the
+scheduled tiers are bounded by that cap alone. A job that exceeds its
+budget is cancelled by the hosted runner;
 `run_dv.py` receives the cancellation as a signal and, when its handler
 completes, writes the interruption checkpoint and the run-level JUnit
 testcase, and otherwise its last `UNKNOWN` checkpoint stands

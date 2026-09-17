@@ -292,10 +292,20 @@ and runs the pin rules. Its contents:
   collateral.
 - `sva/ocah_jtag_sva.sv` — clean-room SVA protocol rules for the TAP pins.
   Two trees by simulator capability: the TDO-timing and TAP-state rules use
-  `OCAH_SVA_ASSERT` (`hw/common/assert/ocah_sva_macros.svh`) and run on every
-  simulator, Verilator included under `--assert`; the X-hygiene rules and the
-  covers use `OCAH_ASSERT` / `OCAH_COVER` and run on four-state simulators
-  only.
+  `OCAH_SVA_RULE` (`hw/common/assert/ocah_sva_macros.svh`) and run on every
+  simulator, Verilator included under `--assert`, and on licensed formal
+  backends under `FORMAL`; the X-hygiene rules and the covers use
+  `OCAH_RULE` / `OCAH_COVER` and run on four-state simulators and licensed
+  backends only. Each rule belongs to the side that drives its signals, the
+  host (TMS, TDI) or the TAP (TDO, its enable, the state), and
+  `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
+  assumptions; both default to assertions.
+- `sva/ocah_jtag_fv.sv` — the TAP state, TDO and phase rules written in the
+  boolean subset the open-source formal frontend reads (`OCAH_FV_RULE`,
+  `hw/common/assert/ocah_fv_macros.svh`), with the port list of
+  `ocah_jtag_sva` and the same two side parameters; the DTP's formal
+  environment binds it on the primary TAP
+  (`hw/common/dv/docs/formal-property-style.adoc`, Shared protocol checkers).
 - `uvm/ocah_jtag_uvm_pkg.sv` — the SV-UVM VIP: item/config/driver/monitor/
   sequencer/agent plus the encoding-agnostic TAP reference model;
   `ocah_jtag_master_env` is the commercial-overridable unit that DUT envs

@@ -2,13 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Open-path environment for the cross_trigger_network formal top: the reset model, the AXI-Lite
-// manager's handshake rules, the far end of one point-to-point port, and the stretch bound. Bound
-// to cross_trigger_network by the statement at the end of this file and read only by the task
-// file.
+// manager's outstanding bound, the far end of one point-to-point port, and the stretch bound.
+// Bound to cross_trigger_network by the statement at the end of this file and read only by the
+// task file.
 //
 // The top has one clock, so the reset is asserted up to the first posedge and released there.
-// The manager is the DTP's JTAG bridge, which issues one write and one read at a time and holds
-// a valid with its payload until the ready. The peer model describes the far end of external
+// The manager is the DTP's JTAG bridge, which issues one write and one read at a time; its
+// handshake rules are the shared AXI checker's, bound in assume mode by dtp_ctn_axi_fv_bind.sv.
+// The peer model describes the far end of external
 // port 0 on its synchronized, de-inverted request and acknowledge: the far end acknowledges a
 // request it sees and withdraws the acknowledge after the request drops, and it holds its own
 // request until it sees the acknowledge and raises no new one while the acknowledge is high. The
@@ -58,15 +59,6 @@ module dtp_cross_trigger_network_sby_env
   `OCAH_FV_ASSUME(asm_axil_one_outstanding,
                   `OCAH_FV_IMPLIES(write_outstanding_q, !axil_req_i.aw_valid) &&
                   `OCAH_FV_IMPLIES(read_outstanding_q, !axil_req_i.ar_valid),
-                  clk_i, rst_ni)
-  // A valid holds with its payload until its ready.
-  `OCAH_FV_ASSUME(asm_axil_ready_valid_stable,
-                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(axil_req_i.aw_valid && !axil_resp_o.aw_ready),
-                                   axil_req_i.aw_valid && axil_req_i.aw == $past(axil_req_i.aw)) &&
-                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(axil_req_i.w_valid && !axil_resp_o.w_ready),
-                                   axil_req_i.w_valid && axil_req_i.w == $past(axil_req_i.w)) &&
-                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(axil_req_i.ar_valid && !axil_resp_o.ar_ready),
-                                   axil_req_i.ar_valid && axil_req_i.ar == $past(axil_req_i.ar)),
                   clk_i, rst_ni)
   // The far end acknowledges a request it sees and withdraws the acknowledge after it drops.
   `OCAH_FV_ASSUME(asm_ctp_peer_four_phase,
