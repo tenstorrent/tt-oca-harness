@@ -60,14 +60,15 @@ name = "all"
 #
 # Five eFuse-map leaves are held out on #1989: the SMC eFuse word counter is
 # one bit too narrow for the 256-word map, so fuse sense stores nothing and
-# every shadow read returns 0. Each keeps its [[tests]] entry and its feature
-# and depth groups (`depth_efuse`, `coverage_closure`, `depth`, `functional`,
-# `pyuvm`), which no tier schedules; `smc_efuse_map_read_test` carries the
-# defect as the `rtl_issue` reproducer. They return here, and to `hosted`, when
-# #1989 is fixed:
-#   smc_efuse_boundary_signals_test, smc_efuse_locked_access_interrupt_test,
-#   smc_efuse_otp_burn_shadow_test, smc_occp_sanity_secure_error_test,
-#   smc_peripheral_instance_decode_test.
+# every shadow read returns 0. Each keeps its [[tests]] entry and stays
+# selectable by name; the groups below are the unscheduled ones it still
+# belongs to. `smc_efuse_map_read_test` carries the defect as the `rtl_issue`
+# reproducer. They return here, and to `hosted`, when #1989 is fixed:
+#   smc_efuse_boundary_signals_test         per_ip, depth_efuse, coverage_closure, depth
+#   smc_efuse_locked_access_interrupt_test  per_ip, depth_efuse, coverage_closure, depth
+#   smc_efuse_otp_burn_shadow_test          per_ip, coverage_closure
+#   smc_occp_sanity_secure_error_test       coverage_closure, depth
+#   smc_peripheral_instance_decode_test     no group; reachable only as --items <name>
 #
 # `smc_ref_clock_timer_rate_test` is held out for a different reason: it fails
 # on the rate comparison it was written to make. clk_rst.adoc:37-39 places the

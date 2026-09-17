@@ -6,7 +6,8 @@ Firmware test: `fw/tests/uart_log_engine_disable_during_xfer` is loaded into
 scratch by the firmware loader. On wrap 0 with UART0 in MCR.LOOP it triggers a
 32-byte entry (as deep as the UART TX FIFO, so the writer is still moving
 bytes) and clears CTRL.EN one register access later, then counts the bytes the
-loopback returns: fewer than 32, all from the slot, none once the UART is idle,
+loopback returns: at least one and fewer than 32, all from the slot, none once
+the UART is idle,
 with INTR_STATUS held at 0 while both error interrupts are enabled. A 16-byte
 re-trigger must deliver exactly 16 bytes. It then fires four entries at once and
 waits for all four LOG_CTRL words to hwclr, aborts another 32-byte transfer from

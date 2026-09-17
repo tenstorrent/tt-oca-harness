@@ -398,7 +398,7 @@ the wrong reason.
 |`smc_fw_i2c_fifo_full_test` |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the declared depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 |`smc_fw_uart_log_engine_single_entry_test` |Log-engine golden path: one 16-byte SRAM entry fetched and written to UART0, returned through MCR.LOOP and read back from RBR in order; LOG_CTRL[0] hwclr; INTR_STATUS 0.
 |`smc_fw_uart_log_engine_boundary_backpressure_test` |Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
-|`smc_fw_uart_log_engine_disable_during_xfer_test` |CTRL.EN cleared mid-transfer halts the engine, measured as fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
+|`smc_fw_uart_log_engine_disable_during_xfer_test` |CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
 |`smc_fw_uart_log_engine_fetch_err_test` |A log-engine fetch from an unmapped address latches INTR_STATUS.LOG_FETCH_ERR: INTR_TEST self-test, INTR_ENABLE gating, stuck-cause re-latch and retirement by a good fetch, sustained DECERR with LOG_CTRL not hwclr, WRITE_ERR staying clear, and the fault on replica 1.
 |===
 
@@ -7344,11 +7344,11 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 
 *BFM / Model*: the SMC C image `fw/tests/uart_log_engine_disable_during_xfer`, executed by the CPU cluster, UART0 and UART1 in MCR.LOOP; both wraps' engine CSRs and the SPM source read over SEP_IN AXI
 
-*Objective*: CTRL.EN cleared mid-transfer halts the engine, measured as fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
+*Objective*: CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
 
 *Test Coverage*:
 
-* On wrap 0 with UART0 in MCR.LOOP: a 32-byte entry (as deep as the UART TX FIFO, so the writer is still moving bytes) triggered and CTRL.EN cleared one register access later, the loopback drained as bytes land and required to return fewer than 32 bytes, all from the slot and none once the UART is idle, with INTR_STATUS required to stay 0 while both error interrupts are enabled; a re-enable and a 16-byte re-trigger that must deliver exactly 16 bytes; four entries fired at once and all four LOG_CTRL words waited to hwclr; another 32-byte transfer aborted from the WAIT state with the same halt measurement and recovery; and a 16-byte entry on replica 1 (wrap 1). Every count, completion and status check is the firmware's.
+* On wrap 0 with UART0 in MCR.LOOP: a 32-byte entry (as deep as the UART TX FIFO, so the writer is still moving bytes) triggered and CTRL.EN cleared one register access later, the loopback drained as bytes land and required to return at least one and fewer than 32 bytes, all from the slot and none once the UART is idle, with INTR_STATUS required to stay 0 while both error interrupts are enabled; a re-enable and a 16-byte re-trigger that must deliver exactly 16 bytes; four entries fired at once and all four LOG_CTRL words waited to hwclr; another 32-byte transfer aborted from the WAIT state with the same halt measurement and recovery; and a 16-byte entry on replica 1 (wrap 1). Every count, completion and status check is the firmware's.
 * What the bench observes on its own: the 256-byte SPM source holds the multi-entry fill 0xC0 + (i & 0x3F) that the later scenarios reuse, and both engines read back programmed at that buffer with CTRL.EN and MCR.LOOP cleared on both wraps by the cleanup.
 
 *Test Procedure*:
@@ -7444,7 +7444,7 @@ Drive `smc_rdl_field_sweep_test_seq`. Each checker below is a named compare the 
 |`CHK-RDL-STRAPS-RO` |`STRAPS_LO` and `STRAPS_HI` read with every undeclared bit 0, and a software write of 0xffffffff left both unchanged
 |===
 
-*Pass Criteria*: all three checkers hold and the protocol-VIP record clears its 520-access floor. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all three checkers hold and the protocol-VIP record clears its 521-access floor. Enrolled in: `all`, `hosted`.
 
 '''''
 

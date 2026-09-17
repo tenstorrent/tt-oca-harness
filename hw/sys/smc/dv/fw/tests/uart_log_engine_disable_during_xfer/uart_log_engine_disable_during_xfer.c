@@ -8,8 +8,9 @@
 // moves comes back through RBR and the firmware can count what was moved:
 //   * Scenario A triggers a 32-byte entry -- the UART TX FIFO holds 32, so the
 //     writer is still moving bytes when CTRL.EN is cleared one register access
-//     later -- then drains RBR as the bytes arrive and requires fewer than 32,
-//     no further byte once the FIFOs are idle, and INTR_STATUS = 0. A re-trigger
+//     later -- then drains RBR as the bytes arrive and requires at least one
+//     and fewer than 32, no further byte once the FIFOs are idle, and
+//     INTR_STATUS = 0. A re-trigger
 //     of a 16-byte entry must then deliver exactly 16 bytes in order.
 //   * Scenario C repeats the abort with the fetch FSM past its first beat and
 //     pins the same three things, then the same recovery.
@@ -109,13 +110,20 @@ static uint32_t drain_uart_rx(uint8_t (*expect)(uint32_t), int *pattern_ok) {
 static uint8_t abort_pattern_a(uint32_t index) { return (uint8_t)(0xA0u + index); }
 static uint8_t abort_pattern_c(uint32_t index) { return (uint8_t)(0xC0u + (index & 0x3Fu)); }
 
-// Abort check shared by scenarios A and C: the entry moved fewer bytes than it
-// holds, the bytes it did move are the slot's, and nothing follows once the
-// UART is idle.
+// Abort check shared by scenarios A and C: the entry had started (at least one
+// byte reached the UART) and moved fewer bytes than it holds, the bytes it did
+// move are the slot's, and nothing follows once the UART is idle. A disable
+// that landed before the first byte would prove nothing about halting, so
+// zero fails too.
 static void check_aborted_transfer(const char *tag, uint8_t (*expect)(uint32_t)) {
     int pattern_ok = 0;
     uint32_t moved = drain_uart_rx(expect, &pattern_ok);
     info_msg_hex32_s(0, "bytes moved before the disable took effect=", moved);
+    if (moved == 0u) {
+        info_msg_s(0, tag);
+        info_msg_s(0, "FAIL: no byte reached the UART before the disable, so no transfer was halted");
+        test_fail(0);
+    }
     if (moved >= ABORT_ENTRY_BYTES) {
         info_msg_s(0, tag);
         info_msg_s(0, "FAIL: the whole entry arrived, so nothing halted");
