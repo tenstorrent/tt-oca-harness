@@ -71,10 +71,11 @@ python3 tools/dv/run_dv.py --dut sep --items smoke
 That group is `sep_axi_smoke_test` only. `--items all --tag smoke` is a tag
 filter over `all` and is not the CI command.
 
-### Nightly `all` group
+### Full regression, the `all` group
 
-The nightly command for the `all` group (every test this VPLAN grades:
-`cpu_stub` + `cpu`), one fresh seed per leaf:
+The command for the `all` group (every test this VPLAN grades: `cpu_stub` +
+`cpu`), one fresh seed per leaf. It is a local command -- no CI tier runs it,
+see below:
 
 ```bash
 # No --stage: builds the filelist, the firmware and the model, then regresses.
@@ -92,9 +93,20 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress \
 
 `all` includes firmware-boot tests, so a picolibc-enabled RISC-V GCC (or
 `scripts/docker-run.sh`) must be available -- the `c_compile` stage above builds
-the images with it (see [Prerequisites](#prerequisites)). Hosted GitHub nightly
-(`.github/workflows/regress.yml`) runs `--items cpu_stub` instead, because those
-runners have no RISC-V toolchain.
+the images with it (see [Prerequisites](#prerequisites)).
+
+### Scheduled tiers
+
+Both scheduled tiers in `.github/workflows/regress.yml` run
+`--items cpu_stub`, not `all`: the nightly tier (cron `0 18 * * 0-5`) and the
+weekly coverage tier (cron `0 18 * * 6`). Their runners are GitHub-hosted and
+the shared `dv-run` action installs uv, Bender and Verilator only, so a
+`c_compile` stage has no RISC-V toolchain to call.
+
+The consequence for reading a green CI badge: the `cpu` and `rom_fw` runtime
+classes are **never** exercised by any CI tier. Firmware-boot evidence comes
+only from a local `all` / `cpu` / `rom_fw` run on a host that has the
+toolchain.
 
 The pre-merge class split is the reliable local gate. `rom_fw` is a separate
 owner and is not a member of `all`:
