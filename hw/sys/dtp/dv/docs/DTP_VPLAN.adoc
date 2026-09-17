@@ -8070,6 +8070,81 @@ carried by the `ocah_axi_sva` rules and the `CHK-XTRIG-AXIL` records. On
 the commercial simulators the `cg_ctp` and `cg_ctm` covergroups carry the
 same bins.
 
+[[dtp-vplan-signoff-quality]]
+==== Test quality review and waiver register (all sections)
+
+Every canonical scenario of `all` is reviewed for reproducible stimulus,
+independent and non-trivial checking, diagnostic logs, legal interface use,
+observability of the design rather than of the bench, and a proof that its
+checking can fail. The scenarios of one family share a base sequence, an
+evidence path, and a negative hook, so the review is recorded per family;
+the per-scenario differences are the *Evidence* fields of the procedures and
+the disposition tables of the component subsections.
+
+[cols="2,2,3,2,2,2",options="header",]
+|===
+|Family (scenarios) |Stimulus and reproduction |Expected values and checker |Design observability |Interface legality |Must-fail proof
+|Smoke and basic JTAG with the family checker (17 of the 19 section 0 scenarios) |Sixteen passes per run, `scenario_seed = seed {plus} pass`, `DTP_RANDOM_COUNT` seeded patterns per pass, TCK and system-clock periods drawn by the test configuration; one seed reproduces one leaf |Opcodes, TAP-state encodings, and IDCODE fields transcribed from the PTAP and interface-unit documents; the VIP TAP model; the family checker with required IDs and the passive scan monitor cross-check |`jtag_ptap_state_o`, the decoded instruction, the BSR loopback, and the TMP state through `dtp_tb_if` |The VIP master driver; `ocah_jtag_sva` on the primary TAP |`DTP_JTAG_FAMILY_CHECKER_NEGATIVE`, `DTP_JTAG_TAP_CHECKER_NEGATIVE`
+|`dtp_sanity_test`, `dtp_jtag_undef_instr_test` |As above |cocotb: plain assertions of the sequence; SV-UVM: the TAP checker and the `bypass` and `idcode` features |As above |As above |SV-UVM only (<<dtp-vplan-signoff-jtag-dispositions>>)
+|Debug TDRs (the 12 section 1 scenarios) |As above; seeded IC_RESET patterns, clock-stop combinations, CAPS write-attempt patterns |TDR layouts and pin defaults from the PTAP document, the elaboration constants, the DV geometry table; cocotb: plain assertions; SV-UVM: the family checker |The TDR readbacks and the flattened pins through `dtp_tb_if`, polled across the synchronizer |The VIP master driver; `ocah_jtag_sva` |SV-UVM only (<<dtp-vplan-signoff-dbg-dispositions>>)
+|JTAG2AXI bridges (the 79 scenarios of sections 2 to 4) |As above; seeded addresses, data, strobes, operation mixes, error beats, skew and stall lengths |The responder memory backdoor, the DV geometry table, the armed error responses; the shared `ocah_axi_vip` passive environment per bridge port with required IDs and stream minimums; the sequence's own fault-beat judgements; SV-UVM: the bridge request and status features |The three bridge ports' monitors, the TDR status, and the FSM, pending, and CDC flags through `dtp_tb_if` |The VIP slave responders; `ocah_axi_sva` per bus |`DTP_AXI_SCOREBOARD_NEGATIVE`, `DTP_J2A_GEOMETRY_NEGATIVE`, `DTP_J2A_STATUS_BIT_NEGATIVE`; SV-UVM `DTP_J2A_REF_MODEL_NEGATIVE`
+|Scan routing (the 13 section 5 scenarios) |As above; seeded SIB patterns, disable masks, 3DCR payloads, marker words, downstream register values |The SIB and STAP models programmed from the sequence's intent; the downstream device table; the family checker |The host scan controls, `tms` and `tdo_oen` per port, the chain images, and the downstream devices' records |The VIP master driver and VIP slave devices; `ocah_jtag_sva` |`DTP_JTAG_FAMILY_CHECKER_NEGATIVE` in both realizations; the cocotb matrix through its ledger only (<<dtp-vplan-signoff-scan-dispositions>>)
+|Cross-trigger (the 28 section 6 scenarios) |As above; seeded ports, modes, stretch values, select masks, skew and hold lengths |The CTM model programmed from the written selects, the written CSR values under the SystemRDL field masks, the error subordinate's constant; the named-evidence checker; SV-UVM: the CSR shadow and decode features |The `dtp_xtrig_if` pins inside activity and reset windows, the busy flops, the demux mirrors, the stall counters |The shared AXI-Lite master and `ocah_axi_sva` on the CSR port; polarity-aware pad drivers |`DTP_XTRIG_CHECKER_NEGATIVE`, `DTP_XTRIG_NEGATIVE_CHECK=<n>`
+|===
+
+The logs of every family carry the seed and every randomized choice, one
+`CHK-<ID> PASS|FAIL expected= observed= context=` line per comparison
+where a checker is attached and one `CHECK <name> expected= observed=` line
+where the comparison is a plain assertion, and one `CHECKER_SUMMARY` per
+finalized checker, so a failure is located from the log alone and the
+leaf's recorded seed reproduces it.
+
+===== Fail-closed evidence
+
+A green result is trusted only where the checking can fail. Each checker
+family and each no-activity claim has a guard against vacuity and a
+positive control:
+
+[cols="1,3,3",options="header",]
+|===
+|Family |Vacuity guard |No-activity evidence and its positive control
+|JTAG family and TAP checkers |Finalization rejects zero checks and a missing required ID; `CHK-NONVAC` requires at least one IR and one DR scan per pass |Not a no-activity family
+|Shared AXI passive environment |Per-stream minimum compared transactions, `CHK-AXI-NONVAC` (every armed error consumed), `CHK-AXI-CREDITS` (the injection budget spent) |`CHK-AXI-NOACT` and the blocked window `CHK-AXI-BLOCKED`, which fails on any monitored transaction across a gated attempt; the positive control is the counted baseline access of the same bridge before the disable, and on SV-UVM the `CHK-AXI-GATE-*` exact request-count deltas
+|Scan windows |Every `CHK-SCAN-WIN` window records that its TCK edge count is non-zero before a quiet or active verdict; a window with no edges fails |A gated port's or SIB's quiet window is paired with the active window of the same signals while enabled in the same scenario
+|Cross-trigger windows |`CHK-XTRIG-QUIET` and `CHK-XTRIG-ISOLATION` record the window's cycle count; the route window stays open through the drain tail |The isolation verdict is judged inside the window in which the selected output fired (`CHK-XTRIG-ROUTE-MODEL`); the reset window spans the held cycles and the release
+|Debug-disable ledger |`require_cells` refuses to finish with a missing cell; a cell is recorded only after its checker passed; the contradictory tuples are failures, never bins |Every blocked cell has its allowed cell for the same field in the same matrix run
+|SV-UVM scoreboard |A required feature with zero comparisons fails; an unpaired expected or observed item fails |Not a no-activity family
+|===
+
+===== Waiver register
+
+Every waiver names the rows it covers, the fact it rests on, the owner
+role, and the event that reopens it; no blanket waiver exists. Coverage
+holes are not waivers: they are dispositions in the coverage policy file
+under the closure policy of `DTP_FCOV.adoc`, and the reset-timing and CDC
+points of the bridges are open holes bound to a tracked defect.
+
+[cols="1,3,2,1,2",options="header",]
+|===
+|Waiver |Scope |Basis |Owner and reviewer |Revisit trigger
+|Boundary-cell pin behavior |The fifteen section 0 checker rows named in <<dtp-vplan-signoff-jtag-dispositions>>: pin drive, output enables, glitch-free transitions, scan-control timing of the boundary-scan instructions |The BSR is the compact identity loopback of the scan model; the bench has no boundary cells |DTP DV owner; design owner |A boundary-cell model with pin observables joins the bench
+|Instrument and downstream TAP behavior |The instrument data of 5.1 to 5.5, the downstream TAP internals of 5.6 to 5.9, and the host scan data path of 5.10 |The instruments are 4-, 5-, and 6-bit loopback stubs, the downstream TAPs are behavioral VIP devices with one writable register, and the host scan-in loops back |DTP DV owner; design owner |An instrument model or a real downstream TAP joins the bench
+|Disabled elaboration parameters |The disabled-slice path of `ic_reset_slice_chk` and the disabled-instruction paths of every instruction-enable parameter |The bench elaborates one target with every feature enabled |DTP DV owner; design owner |A second build target with a feature disabled
+|Unreachable crossbar branches |The demux AW-lock branch of 6.9 and the register-block local stall of 6.7 |Every subordinate behind the crossbar accepts an AW into an empty slot, and the upstream path always presents a ready interface; T9 corroborates the address-map contract |DTP DV owner; design owner |A subordinate that refuses an AW, or an upstream path with backpressure
+|===
+
+===== Recorded gaps
+
+The gaps the review leaves open are recorded where their owners read them
+and are not absorbed here: the realization-parity items of the cocotb
+family (the two section 0 scenarios, the twelve section 1 scenarios, and
+the scan matrix carry no named evidence) in the scope matrix's gap table
+and the TB_ARCH departures; the plan rows without a realization (4.28 and
+4.32 FSM rows, the series-corner depth rows, `ext_stap_disable_chk`,
+`ctp_dst_port_sweep_ack_chk`) in the component dispositions; the two
+reset-abort leaves and the SV-UVM long-stall budget as tracked defects in
+the release qualification residuals.
+
 === Known Limitations
 
 [cols=",",options="header",]
