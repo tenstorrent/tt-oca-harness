@@ -5,8 +5,8 @@
 // sep_reset_ctrl_csr_test and wdt_sanity_test). Two phases, one EL2 boot:
 //
 // PHASE A -- reset controller (sep_reset_ctrl):
-//   * SW_RESET_N reads its reset default 0x3E (km held; crypto/TRNG released).
-//   * For each released crypto IP (otbn/aes/hmac/kmac): write a probe CSR, confirm
+//   * SW_RESET_N reads its reset default (km held; crypto/TRNG/ABR released).
+//   * For each released crypto IP (otbn/aes/hmac/kmac/abr): write a probe CSR, confirm
 //     it landed, pulse ONLY that IP's SW_RESET_N bit low->high, and confirm the
 //     probe returned to its reset default -- proving the reset wire reached the IP.
 //   * SW_RESET_N is back at default afterwards.
@@ -33,8 +33,9 @@
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 #include "sep_nmi.h"
-#include "sep_wdt.h"
+#include "abr_mldsa.h"
 #include "sep_reset.h"
+#include "sep_wdt.h"
 
 // Crypto-IP probe CSRs (och_sep_top_reg): default, the value we write, and the
 // value expected back after the reset pulse (== default if the reset cleared it).
@@ -45,6 +46,7 @@
 #define ESRC_DEBUG_CTRL_ADDR OCH_SEP_TOP_ENTROPY_SOURCE_DEBUG_CTRL_BASE_ADDR
 #define CSRNG_INTR_ENABLE_ADDR OCH_SEP_TOP_CSRNG_INTR_ENABLE_BASE_ADDR
 #define EDN_INTR_ENABLE_ADDR OCH_SEP_TOP_EDN_INTR_ENABLE_BASE_ADDR
+#define ABR_GLOBAL_INTR_ENABLE_ADDR (ABR_BASE + 0x8100u)
 
 #define RESET_CTRL_BAD_ADDR (SEP_RESET_CTRL_SW_RESET_N + 0x8u) // unmapped gap
 
@@ -159,6 +161,8 @@ int main(void) {
     errors += check_reset_wire("hmac", SEP_SW_RESET_N_HMAC_BIT, HMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u,
                                "kmac", KMAC_INTR_ENABLE_ADDR, 0x7u);
     errors += check_reset_wire("kmac", SEP_SW_RESET_N_KMAC_BIT, KMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("abr", SEP_SW_RESET_N_ABR_BIT, ABR_GLOBAL_INTR_ENABLE_ADDR, 0x3u, 0x0u,
                                "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
     errors += check_reset_wire("esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, 0x1u, 0x0u,
                                "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
@@ -281,7 +285,7 @@ int main(void) {
     }
 
     if (errors == 0) {
-        sep_mbx_puts("PASS: SW_RESET_N=0x3E + per-IP/TRNG reset wires + bad-addr NMI x2 "
+        sep_mbx_puts("PASS: SW_RESET_N default + per-IP/TRNG/ABR reset wires + bad-addr NMI x2 "
                      "+ WDT bark/pet/disable/re-bark (BITE pending)\n");
     }
     return errors;
