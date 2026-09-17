@@ -102,6 +102,7 @@ static int other_main(void) {
     for (;;) {
         __asm__ volatile("wfi");
     }
+    return 0;
 }
 
 int secondary_main(void) {
