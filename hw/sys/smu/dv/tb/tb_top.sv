@@ -561,10 +561,10 @@ module smu_uvm_top
 `endif
 
   // WDT isolate clamp: observe only.
-  assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+  assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .wdt_reset_raw[0];
-  assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
-        .u_smc_cpu.cluster_boundary_isolate;
+  assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
+        .cluster_boundary_isolate;
 
   // Hierarchical observe of DTP boot-stall / CLA clock-stop.
   assign jtag_boot_stall_ovrd = u_dut.boot_stall_jtag_ovrd;

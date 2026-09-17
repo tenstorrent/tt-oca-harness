@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# Full SPI image for the ROM key slot 2 signed bundle, placed at both
+# manifest slots the ROM reads. Same layout as oca_secure_boot_image.yaml; see
+# that file for why the combined image rather than the bare bundle is the
+# bootable artefact.
+manifest_format: oca-combined
+name: "OCAH SEP ROM key slot 2 SPI image"
+
+total_size: 0x50000
+pad_byte: 0xFF
+
+combos:
+  - name: primary
+    config: configs/oca_rom_key2_boot_test.yaml
+    manifest_offset: 0x1000
+    payload_offset: 0x2000
+
+  - name: backup
+    config: configs/oca_rom_key2_boot_test.yaml
+    manifest_offset: 0x41000
+    payload_offset: 0x42000

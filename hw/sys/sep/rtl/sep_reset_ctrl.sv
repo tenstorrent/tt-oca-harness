@@ -9,15 +9,16 @@
 // requests isolation of that domain's AXI paths, waits for them to drain,
 // and then asserts the domain's sequenced reset. Reset primitives combine the
 // sequenced resets with the SEP reset and apply the JTAG IC_RESET overrides
-// for KM, OTBN, AES, HMAC, KMAC, and the internal TRNG complex.
+// for KM, OTBN, AES, HMAC, KMAC, ABR, and the internal TRNG complex.
 //
-// Register map defined in meta/registers/rdl/sep_reset_ctrl.rdl
+// Register map defined in hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl
 //   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
 //   Bit 1: otbn_sw_rst     - write 1 to release OTBN from reset (0=hold)
 //   Bit 2: aes_sw_rst      - write 1 to release AES from reset (0=hold)
 //   Bit 3: hmac_sw_rst     - write 1 to release HMAC from reset (0=hold)
 //   Bit 4: kmac_sw_rst     - write 1 to release KMAC from reset (0=hold)
 //   Bit 5: trng_sw_rst      - write 1 to release internal TRNG (0=hold)
+//   Bit 6: abr_sw_rst       - write 1 to release ABR from reset (0=hold)
 
 `include "prim_assert.sv"
 
@@ -132,6 +133,7 @@ module sep_reset_ctrl (
   // =========================================================================
   sep_pkg::sep_sw_rst_t sw_reset_bits;
 
+  assign sw_reset_bits.abr    = hwif_out.SW_RESET_N.abr_sw_rst_n.value;
   assign sw_reset_bits.trng   = hwif_out.SW_RESET_N.trng_sw_rst_n.value;
   assign sw_reset_bits.kmac   = hwif_out.SW_RESET_N.kmac_sw_rst_n.value;
   assign sw_reset_bits.hmac   = hwif_out.SW_RESET_N.hmac_sw_rst_n.value;
@@ -146,9 +148,18 @@ module sep_reset_ctrl (
   // isolate with the KM domain: the KM path must be drained before either
   // side's reset may assert.
 
-  logic otbn_isolate_req, aes_isolate_req, hmac_isolate_req, kmac_isolate_req;
+  logic abr_isolate_req, otbn_isolate_req, aes_isolate_req, hmac_isolate_req, kmac_isolate_req;
   logic km_isolate_req, trng_isolate_req;
   sep_pkg::sep_sw_rst_t isolated_rst_n;
+
+  sep_isolate_rst_seq u_abr_isolate_seq (
+    .clk_i        (clk_i),
+    .rst_ni       (rst_ni),
+    .sw_rst_req_ni(sw_reset_bits.abr),
+    .isolated_i   (sep_crypto_isolated_i.host_abr & sep_crypto_isolated_i.km_abr),
+    .isolate_req_o(abr_isolate_req),
+    .gated_rst_no (isolated_rst_n.abr)
+  );
 
   sep_isolate_rst_seq u_otbn_isolate_seq (
     .clk_i        (clk_i),
@@ -219,11 +230,12 @@ module sep_reset_ctrl (
   assign sep_crypto_isolate_req_o.host_aes  = aes_isolate_req;
   assign sep_crypto_isolate_req_o.host_hmac = hmac_isolate_req;
   assign sep_crypto_isolate_req_o.host_kmac = kmac_isolate_req;
+  assign sep_crypto_isolate_req_o.host_abr  = abr_isolate_req;
   assign sep_crypto_isolate_req_o.km_otbn   = otbn_isolate_req | km_isolate_req;
   assign sep_crypto_isolate_req_o.km_aes    = aes_isolate_req  | km_isolate_req;
   assign sep_crypto_isolate_req_o.km_hmac   = hmac_isolate_req | km_isolate_req;
   assign sep_crypto_isolate_req_o.km_kmac   = kmac_isolate_req | km_isolate_req;
-  assign sep_crypto_isolate_req_o.km_abr    = km_isolate_req;
+  assign sep_crypto_isolate_req_o.km_abr    = abr_isolate_req  | km_isolate_req;
   assign sep_crypto_isolate_req_o.km_efuse  = km_isolate_req;
 
   // =========================================================================
@@ -240,6 +252,14 @@ module sep_reset_ctrl (
   // If stop clock propagation is used, there might not be a clock and the jtag_sep_reset_ctrl_i value can't propagate.
 
   sep_pkg::sep_sw_rst_t pre_jtag_rst_n;
+
+  prim_and2 #(
+    .Width(1)
+  ) u_abr_rst_and (
+    .in0_i (isolated_rst_n.abr),
+    .in1_i (sep_reset_n),
+    .out_o (pre_jtag_rst_n.abr)
+  );
 
   prim_and2 #(
     .Width(1)
@@ -287,6 +307,13 @@ module sep_reset_ctrl (
     .in0_i (isolated_rst_n.trng),
     .in1_i (sep_reset_n),
     .out_o (pre_jtag_rst_n.trng)
+  );
+
+  prim_rst_mux2_hf_n u_abr_rst_ovrd_mux (
+    .rst0_ni (pre_jtag_rst_n.abr),
+    .rst1_ni (jtag_sep_reset_ctrl_i.val.abr_jtag_rst_n_val),
+    .sel_i   (jtag_sep_reset_ctrl_i.ovrd.abr_jtag_rst_n_ovrd),
+    .rst_no  (sep_crypto_gated_rst_no.abr)
   );
 
   prim_rst_mux2_hf_n u_kmac_rst_ovrd_mux (

@@ -8,12 +8,12 @@ engines without a read-modify-write race, the way the reference consume base seq
 releases KM first and the target crypto engine later.
 
 The shadow is seeded with the generated HW reset default:
-km_sw_rst_n=0 (held), otbn/aes/hmac/kmac/trng=1 (released) => 0x3E.
+km_sw_rst_n=0 (held), otbn/aes/hmac/kmac/trng/abr=1 (released) => 0x7E.
 A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
 must park() them explicitly; the reset default leaves them released.
 
 Bit map (hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl):
-  km=0, otbn=1, aes=2, hmac=3, kmac=4, trng=5
+  km=0, otbn=1, aes=2, hmac=3, kmac=4, trng=5, abr=6
 """
 
 from __future__ import annotations
@@ -32,9 +32,10 @@ SW_RESET_N_BIT = {
     "hmac": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "hmac_sw_rst_n"),
     "kmac": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "kmac_sw_rst_n"),
     "trng": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "trng_sw_rst_n"),
+    "abr": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "abr_sw_rst_n"),
 }
 
-# HW reset default: km held; otbn/aes/hmac/kmac/trng released.
+# HW reset default: km held; otbn/aes/hmac/kmac/trng/abr released.
 SW_RESET_N_RESET_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
 
 

@@ -114,3 +114,6 @@ vendor/**/Bender.lock
 # npm install target for a11y
 tools/a11y/node_mo#dules/
 tools/a11y/report/
+
+# Rendered doc output (sep_book.html / sep_book.pdf)
+doc_render/

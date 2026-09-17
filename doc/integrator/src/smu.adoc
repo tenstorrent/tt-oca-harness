@@ -1158,7 +1158,7 @@ scan order: the first field is nearest TDI.
 |===
 |Slice |Ports |Defined by |Consumed by
 |SMC |68 |OCAH (`smc_pkg::jtag_smc_reset_ctrl_t`) |SMC reset unit; SMU-internal, no SMU port
-|SEP |7 when `SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
+|SEP |8 when `SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
 |External |`$bits(ic_reset_ext_t)/2` |Adopter (`ic_reset_ext_t`) |SMU output `jtag_ic_reset_ext_o`
 |`reset_hold` |1 bit |IEEE 1149.1 §17 |Nearest TDO; not a reset port
 |===
@@ -1187,12 +1187,13 @@ cold and warm resets. Vector index `[31]` of each SS field is nearer TDI than
 ==== SEP slice (TDI to TDO)
 
 When `SEP=1` the SEP slice covers the SEP main reset and the crypto, Key
-Manager, and TRNG resets consumed by `sep_reset_ctrl`. `trng_jtag_rst_n` is
+Manager, and TRNG resets consumed by `sep_reset_ctrl`. `abr_jtag_rst_n` is
 nearest TDI.
 
 [cols="<35%,<65%",options="header"]
 |===
 |Port |Reset domain
+|`abr_jtag_rst_n` |Adams Bridge
 |`trng_jtag_rst_n` |TRNG
 |`sep_reset_n` |SEP main reset
 |`kmac_jtag_rst_n` |KMAC

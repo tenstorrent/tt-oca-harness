@@ -43,7 +43,7 @@ SMC_STRAPS_HI_ADDR = SMC_STRAPS_LO_ADDR + 4  # STRAPS_HI, bits [63:32]
 # scratch[9]: SRAM_INIT | MANIFEST_READY | BUFFER_READY | SRAM_PROTECTED, so the
 # ROM's manifest-ready poll breaks.
 SMC_SEP_STATUS_DEFAULT = 0x0F
-# scratch[8]: the TBL1 manifest sits at this offset in the packed SMC image, so
+# scratch[8]: the OCA manifest sits at this offset in the packed SMC image, so
 # manifest_addr = SMC-SRAM base + 0x1000.
 SMC_MANIFEST_OFFSET_DEFAULT = 0x1000
 # DFX_CTRL_STATUS_SMU of a part that boots: bit 0 mem_repair_done, bit 1

@@ -3,85 +3,134 @@
 
 // KBKDF-HMAC-SHA256 key derivation for OROM.
 //
-// Implements NIST SP 800-108 KBKDF in counter mode with HMAC-SHA256 as PRF.
-// This is the ROM KBKDF-HMAC-SHA256 flow.
+// SP 800-108r1 counter-mode KBKDF with HMAC-SHA-256 as the PRF, reproducing the
+// OCAH Key Manager PREPARE_BL_DECRYPT_KEY flow:
 //
-// KDF input format (single iteration, counter=1):
-//   HMAC-SHA256(key, counter || info || 0x00 || salt || output_length_bits)
+//   block = header(32) || "KM_CLASS_BL"(32) || kdf_input(64) || entropy(64)
+//   key   = HMAC-SHA256(secret, be16(i) || block || be16(L))[0 : L/8]
 //
-// Where:
-//   counter = 4-byte big-endian (0x00000001)
-//   info    = 16 bytes from manifest KDF input (first half)
-//   0x00    = 1-byte separator
-//   salt    = 16 bytes from manifest KDF input (second half)
-//   output_length_bits = 4-byte big-endian (out_len * 8)
+// for i = 1,2,... with L = key_bits (128 for AES-128-CBC, 256 for AES-256-CBC).
+//
+// This code implements a soft version of the KDF function used in the OCAH Key
+// Manager. The OCA manifest carries a 64-byte kdf_input and wraps it in the Key
+// Manager's defined 192-byte expanded block. Reference implementation:
+// validators/oca/test/openssl_crypto.c derive_payload_key(); producer side
+// src/oca/encryption.py; known-answer tests tests/test_oca_kdf_kat.py.
+//
+// One HMAC iteration covers both ciphers -- HMAC-SHA-256 emits 32 bytes and the
+// largest key wanted is 32 -- so the counter loop collapses to i=1. The loop is
+// still written as a loop because the construction is defined that way and a
+// future 384-bit class key would otherwise silently truncate.
+
+// Note that the output for a 128-bit key request is not just a truncation of
+// a 256-bit key request. The requested length is part of the KDF input data
+// and thus forces the output values of the HMAC function to be totally different
 
 #include "kdf.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
-#include "hmac_sha256.h"
 #include "errors.h"
+#include "hmac_sha256.h"
 
-// Maximum KDF argument size.
-#define MAX_KDF_ARG_BYTES 16
+// Expanded KDF input block: 32-byte header, 32-byte label, 64-byte context,
+// 64-byte entropy.
+#define KDF_BLOCK_BYTES 192u
+#define KDF_LABEL_OFFSET 32u
+#define KDF_CONTEXT_OFFSET 64u
+#define KDF_CONTEXT_BYTES 64u
 
-int kbkdf_hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *info,
-                      const uint8_t *salt, uint8_t *out, uint32_t out_len) {
-    if (out_len > 32u) return -1; // Max one HMAC block.
+// PRF message: be16(counter) || block || be16(L_bits).
+#define KDF_MSG_BYTES (2u + KDF_BLOCK_BYTES + 2u)
 
-    // Build the PRF input message:
-    //   [4: counter=1] [16: info] [1: 0x00] [16: salt] [4: L_bits]
-    // Total: 41 bytes.
-    uint8_t msg[41];
-    uint32_t idx = 0;
+static void wipe(uint8_t *p, uint32_t len) {
+    for (uint32_t i = 0; i < len; ++i) {
+        ((volatile uint8_t *)p)[i] = 0u;
+    }
+}
 
-    // Counter = 1 (big-endian).
-    msg[idx++] = 0x00;
-    msg[idx++] = 0x00;
-    msg[idx++] = 0x00;
-    msg[idx++] = 0x01;
-
-    // Info (16 bytes).
-    for (uint32_t i = 0; i < MAX_KDF_ARG_BYTES; ++i) {
-        msg[idx++] = info[i];
+int oca_derive_payload_key(const uint8_t *secret, uint32_t secret_len, const uint8_t *kdf_input,
+                           uint32_t key_bits, uint8_t *out_key) {
+    if (secret == NULL || kdf_input == NULL || out_key == NULL) {
+        return -1;
+    }
+    if (key_bits != 128u && key_bits != 256u) {
+        return -1;
     }
 
-    // Separator.
-    msg[idx++] = 0x00;
-
-    // Salt (16 bytes).
-    for (uint32_t i = 0; i < MAX_KDF_ARG_BYTES; ++i) {
-        msg[idx++] = salt[i];
+    uint8_t msg[KDF_MSG_BYTES];
+    for (uint32_t i = 0; i < KDF_MSG_BYTES; ++i) {
+        msg[i] = 0u;
     }
 
-    // Output length in bits (big-endian).
-    uint32_t L_bits = out_len * 8u;
-    msg[idx++] = (uint8_t)(L_bits >> 24);
-    msg[idx++] = (uint8_t)(L_bits >> 16);
-    msg[idx++] = (uint8_t)(L_bits >> 8);
-    msg[idx++] = (uint8_t)(L_bits);
+    uint8_t *block = msg + 2u;
 
-    // Compute HMAC-SHA256(key, msg).
-    uint8_t hmac_out[32];
-    int rc = hmac_sha256(key, key_len, msg, idx, hmac_out);
+    // 32-byte header, little-endian km_kdf_input_t fields. Every value here is
+    // fixed by the Key Manager's BL-decrypt flow except out_bits, which is the
+    // only field that varies with the cipher.
+    block[0] = 0x01u;
+    block[1] = 0x00u; // version = 0x0001
+    block[2] = 0x01u; // out_class  = SYMMETRIC
+    block[3] = 0x00u; // out_type   = SYM_RAW
+    block[4] = 0x00u; // out_owner  = NONE
+    block[5] = 0x01u; // out_domain = SW
+    block[6] = 0x18u;
+    block[7] = 0x00u; // flags = ROM_CREATED|ROM_LINEAGE
+    block[8] = 0x00u;
+    block[9] = 0x00u;                        // purpose = 0
+    block[10] = (uint8_t)(key_bits & 0xFFu); // out_bits (LE)
+    block[11] = (uint8_t)((key_bits >> 8) & 0xFFu);
+    block[12] = 0x01u; // caps = SYM_AES (LE u32)
+    // device_state (16..19) and rsvd (20..31) stay zero.
+
+    // Label: "KM_CLASS_BL", NUL-padded to 32 bytes.
+    static const char label[] = "KM_CLASS_BL";
+    for (uint32_t i = 0; i < sizeof(label) - 1u; ++i) {
+        block[KDF_LABEL_OFFSET + i] = (uint8_t)label[i];
+    }
+
+    // Context: the manifest's 64-byte kdf_input, verbatim.
+    for (uint32_t i = 0; i < KDF_CONTEXT_BYTES; ++i) {
+        block[KDF_CONTEXT_OFFSET + i] = kdf_input[i];
+    }
+    // Entropy (128..191) stays zero.
+
+    // L, big-endian, in the two bytes after the block.
+    msg[2u + KDF_BLOCK_BYTES] = (uint8_t)((key_bits >> 8) & 0xFFu);
+    msg[2u + KDF_BLOCK_BYTES + 1u] = (uint8_t)(key_bits & 0xFFu);
+
+    const uint32_t out_len = key_bits / 8u;
+    uint32_t done = 0u;
+    int rc = 0;
+
+    for (uint32_t i = 1u; done < out_len; ++i) {
+        // Counter, big-endian, in the two bytes before the block.
+        msg[0] = (uint8_t)((i >> 8) & 0xFFu);
+        msg[1] = (uint8_t)(i & 0xFFu);
+
+        uint8_t mac[32];
+        rc = hmac_sha256(secret, secret_len, msg, KDF_MSG_BYTES, mac);
+        if (rc != 0) {
+            simputs("KDF_HMAC_FAIL\n");
+            wipe(mac, sizeof mac);
+            break;
+        }
+        uint32_t take = (out_len - done > 32u) ? 32u : (out_len - done);
+        for (uint32_t j = 0; j < take; ++j) {
+            out_key[done + j] = mac[j];
+        }
+        done += take;
+        wipe(mac, sizeof mac);
+    }
+
+    // The block carries the KDF context, not the secret, but it is still
+    // material an attacker would like off the stack.
+    wipe(msg, sizeof msg);
+
     if (rc != 0) {
-        simputs("KDF_HMAC_FAIL\n");
+        wipe(out_key, out_len);
         return rc;
     }
-
-    // Copy the requested number of output bytes.
-    for (uint32_t i = 0; i < out_len; ++i) {
-        out[i] = hmac_out[i];
-    }
-
-    // Wipe intermediate key material.
-    for (uint32_t i = 0; i < 32; ++i) {
-        ((volatile uint8_t *)hmac_out)[i] = 0;
-    }
-    for (uint32_t i = 0; i < sizeof(msg); ++i) {
-        ((volatile uint8_t *)msg)[i] = 0;
-    }
-
     return 0;
 }

@@ -288,7 +288,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             f"0x{self.dft_status_injected:08x}; the ROM did not read our DFX_CTRL_STATUS. "
             f"Observed {s10_hex}"
         )
-        self.logger.info("CHK-DFT-READ: ROM read DFT_STATUS=0x%08x", self.dft_status_injected)
+        self.logger.info("CHK-DFT-READ PASS: ROM read DFT_STATUS=0x%08x", self.dft_status_injected)
 
         # CHK-DFT-DETECT: the gate classified it as a failure and said so before
         # consulting the bypass fuse. Without this, a ROM that skipped straight to

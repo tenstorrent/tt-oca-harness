@@ -353,6 +353,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "jtag_hmac_rst_hold_i", 0)
         self._set_if_exists(dut, "jtag_kmac_rst_hold_i", 0)
         self._set_if_exists(dut, "jtag_trng_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_abr_rst_hold_i", 0)
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
@@ -441,13 +442,14 @@ class sep_base_test(uvm_test):
         "hmac": "jtag_hmac_rst_hold_i",
         "kmac": "jtag_kmac_rst_hold_i",
         "trng": "jtag_trng_rst_hold_i",
+        "abr": "jtag_abr_rst_hold_i",
     }
 
     def _jtag_sw_rst_hold(self, engines: tuple[str, ...], hold: bool) -> None:
         """Drive the JTAG SW-reset override so named engines never leave reset.
 
         Applied before ``rst_ni`` release so AES/KMAC/OTBN cannot raise
-        crypto ``edn_req`` (CSR reset 0x3E would release them). The caller
+        crypto ``edn_req`` (CSR reset 0x7E would release them). The caller
         drops the override after the hold window. Empty ``engines`` is a no-op.
         """
         dut = cocotb.top
@@ -550,7 +552,7 @@ class sep_base_test(uvm_test):
 
         ``park`` names SW_RESET_N engines to JTAG-hold through ``rst_ni``
         release and fuse sense, then park in the CSR, then drop the override.
-        AES/KMAC/OTBN power up released (reset 0x3E) and would assert crypto
+        AES/KMAC/OTBN power up released (reset 0x7E) and would assert crypto
         ``edn_req``; dropping that ungranted ``req`` fails the arbiter
         hold-until-grant assume. The CSR write waits until sense has opened
         the fabric — an in-flight ``SW_RESET_N`` beat across sense-done
@@ -610,7 +612,7 @@ class sep_base_test(uvm_test):
         With ``release_park`` (the default) the override drops after sense;
         with ``release_park=False`` the hold stays for the rest of the run
         so those engines never raise crypto ``edn_req``. The SW_RESET_N CSR
-        stays at reset 0x3E either way (JTAG is an override). Empty ``park``
+        stays at reset 0x7E either way (JTAG is an override). Empty ``park``
         leaves the hardware reset default.
         """
         dut = cocotb.top
@@ -681,7 +683,7 @@ class sep_base_test(uvm_test):
         boot-poll live in one place (do not duplicate this in concrete tests).
 
         ``park`` / ``release_park`` are forwarded to ``bring_up_cpu_boot``.
-        The SW_RESET_N CSR stays at reset 0x3E.
+        The SW_RESET_N CSR stays at reset 0x7E.
 
         The TCM responder backdoor-loads ``sep_itcm.hex`` / ``sep_dtcm.hex`` from
         the sim CWD, so the images are staged there. (CWD-shared: one CPU firmware
