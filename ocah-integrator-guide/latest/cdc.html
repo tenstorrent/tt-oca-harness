@@ -520,7 +520,7 @@ regeneration.</p>
 <p>This is the most important change.</p>
 </div>
 <div class="paragraph">
-<p>As shipped, the procs target the prim wrapper&#8217;s own port, <code>prim_sync3/i_d</code>. That
+<p>As shipped, the procs target the prim wrapper&#8217;s own port, <code>prim_sync3/d_i</code>. That
 port exists only as long as the wrapper survives as a hierarchical boundary, and a
 prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
 dissolving its ports.</p>
@@ -752,7 +752,7 @@ design assumes the more specific specification wins. Verify once in your tool:</
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">report_timing -to [get_pins &lt;a synchronizer&gt;/i_d] -nworst 1</code></pre>
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">report_timing -to [get_pins &lt;a synchronizer&gt;/d_i] -nworst 1</code></pre>
 </div>
 </div>
 <div class="paragraph">
