@@ -38,7 +38,7 @@ one parameterized sequence.
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
 - `dtp_sim_cfg.toml` — the DUT's simulation defaults, run modes, Bender targets, and tool knobs.
-- `formal/` — formal properties on the TAP controller (`props/`), the open-path SymbiYosys task file and reset environment (`fpv/sby/`), and the generated filelist and work directories (`build/`); see `hw/common/dv/docs/formal-property-style.adoc`.
+- `formal/` — formal property modules and bind files, one per described block of the plan's nine targets, and the binds of the shared AXI and JTAG checkers (`props/`), the open-path SymbiYosys task files and environment modules of the `dtp`, `jtag2axi` and `cross_trigger_network` tops (`fpv/sby/`), and the generated filelist and work directories (`build/`); see `hw/common/dv/docs/formal-property-style.adoc`.
 
 ## BFM Policy
 
@@ -53,7 +53,7 @@ protocol BFMs behind a stable API:
 | AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
 | AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM / `OcahAxiLiteMasterAgent`, cocotb) | Both flows drive the CSR port through the shared VIP master; the channel-skew, RREADY-hold, and partial-strobe operations live on its sequence APIs. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
-| iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
+| iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and the bench's 4/5/6-bit instrument stubs; topology-specific. |
 | STAP / 3DCR | DUT-local `DtpStap3dcrModel` over **`ocah_jtag_vip`** slave devices | Composed TAP_3DCR chain model (PTAP 3DCR, per-STAP SIB/3DCR, network-wide IR scans); the STAP host ports loop back by default, and the STAP-selection scenarios splice a shared `ocah_jtag_vip` reactive TAP behind every port (see "Downstream STAP TAPs"). |
 | CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCAH routing policy; promote only after parameterization and independent reuse. |
 
@@ -99,8 +99,8 @@ rules split into two trees by simulator capability:
 
 | Tree | Macros | Rules | Live on |
 |---|---|---|---|
-| Two-state | `OCAH_SVA_ASSERT` / `OCAH_SVA_ASSERT_I` (`hw/common/assert/ocah_sva_macros.svh`) | reset-VALID, handshake hold and payload stability, burst legality, WLAST/RLAST position, strobe lanes, response ordering and ID matching, JTAG TDO timing, TAP-state encoding and transition legality | every `SIMULATION` compile, which the DV profiles set on every simulator; Verilator evaluates them under `--assert` |
-| Four-state | `OCAH_ASSERT` / `OCAH_COVER` (`hw/common/assert/ocah_assert.svh`) | X-hygiene (`*_KNOWN`) and the non-vacuity covers | commercial simulators only: `OCAH_INC_ASSERT` is undefined under Verilator |
+| Two-state | `OCAH_SVA_RULE` / `OCAH_SVA_ASSERT_I` (`hw/common/assert/ocah_sva_macros.svh`) | reset-VALID, handshake hold and payload stability, burst legality, WLAST/RLAST position, strobe lanes, response ordering and ID matching, JTAG TDO timing, TAP-state encoding and transition legality | every `SIMULATION` compile, which the DV profiles set on every simulator, and every `FORMAL` elaboration of a licensed backend; Verilator evaluates them under `--assert` |
+| Four-state | `OCAH_RULE` (`hw/common/assert/ocah_sva_macros.svh`) / `OCAH_COVER` (`hw/common/assert/ocah_assert.svh`) | X-hygiene (`*_KNOWN`) and the non-vacuity covers | commercial simulators and licensed formal backends: `OCAH_INC_ASSERT` is undefined under Verilator |
 
 The Verilator target passes `--assert --no-assert-case`: `--assert` evaluates
 the two-state set, `--no-assert-case` keeps the `unique`/`priority` case checks
@@ -109,29 +109,41 @@ line and stops the simulation; the parser policy hard-fails the test on that
 line. `dtp_tb_if.jtag_sva_en` / `axi_sva_en` are the runtime suppress knobs
 (default on). The JTAG checker's reset input is TRST AND power-on reset, the
 TAP controller's effective reset. A new rule with two-state-safe operands goes on
-`OCAH_SVA_ASSERT`; one that needs `$isunknown` or X-propagation goes on
-`OCAH_ASSERT`.
+`OCAH_SVA_RULE`; one that needs `$isunknown` or X-propagation goes on
+`OCAH_RULE`. The first argument of either is the checker parameter of the
+side that drives the rule's signals, `ASSUME_MASTER_RULES` or
+`ASSUME_SLAVE_RULES`, so a formal backend can assume that side; both default
+to assertions here.
 
 ## Formal
 
 `formal/` is the reference implementation of the property style in
-`hw/common/dv/docs/formal-property-style.adoc`: a bound property module on the
-IEEE 1149.1 TAP controller in the boolean subset that the open-source frontend
-and the licensed backends both elaborate, with `bmc`, `cover` and `prove` tasks
-run against `dtp` as the formal top. `dtp_formal_cfg.toml` and
-`testlists/formal.toml` launch it through the runner; the plan section is
-"Formal Verification Plan" in `docs/DTP_VPLAN.adoc`, which scopes nine
-targets over the `dtp`, `jtag2axi` and `cross_trigger_network` formal tops
-and names the item, depth and path of each. `testlists/formal.toml` lists the
-items in the `smoke` and `fpv` groups.
+`hw/common/dv/docs/formal-property-style.adoc`: one bound property module per
+described block, in the boolean subset that the open-source frontend and the
+licensed backends both elaborate, each with a `bmc`, `cover` and `prove` task
+triple. Six blocks run on the `dtp` top (the TAP controller, the instruction
+register, the reset hierarchy, the STAP and SIB gating, the debug-control
+register), the bridge control on `jtag2axi`, and the clock stop, the
+cross-trigger transport and the CSR contract on `cross_trigger_network`.
+The shared AXI and JTAG checkers of the open path
+(`hw/common/dv/vip/*/sva/ocah_*_fv.sv`) are bound on the
+`cross_trigger_network` AXI-Lite port in the CSR item, on the request machine's side of the
+`jtag2axi` bridge's CDC and on the primary TAP of `dtp`, each asserting the design's side and
+assuming the environment's (`props/dtp_*_fv_bind.sv`).
+`dtp_formal_cfg.toml` and `testlists/formal.toml` launch them through the
+runner; the plan section is "Formal Verification Plan" in
+`docs/DTP_VPLAN.adoc`, which names each target's rows, labels, item, depth and
+path and records the observations the proofs settle. `testlists/formal.toml`
+lists `dtp_tap_fpv` in the `smoke` group and every item in `fpv`.
 
 ```bash
-python3 tools/dv/run_dv.py --dut dtp --mode formal            # flist, then sby bmc/cover/prove
-python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run  # the rendered command
+python3 tools/dv/run_dv.py --dut dtp --mode formal              # the smoke group: flist, then the TAP triple
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items fpv  # every item
+python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run    # the rendered command
 ```
 
 That chapter also carries the filelist generation and the `sby` invocation by
-hand. The item needs `sby`, Yosys with a yosys-slang build that carries the
+hand. The items need `sby`, Yosys with a yosys-slang build that carries the
 concurrent-assertion lowering, and `yices` on one `PATH`; a site whose tools
 live in a container or that supplies a licensed backend selects them through
 the site layer, as the Formal verification chapter of `tools/dv/doc/run-dv.adoc`
@@ -152,9 +164,9 @@ python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
 # Basic JTAG: all Smoke and Basic JTAG VPLAN scenarios
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 
-# JTAG2AXI SMC fabric write / read
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
+# JTAG2AXI SMC fabric write / write-read
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_read_test
 
 # Every JTAG2AXI test runs the shared ocah_axi_vip scoreboard (passive bus
 # monitors + reference model) with per-test required evidence IDs and

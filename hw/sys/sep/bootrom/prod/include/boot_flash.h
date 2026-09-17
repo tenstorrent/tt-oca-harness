@@ -22,9 +22,61 @@
 #include <stdint.h>
 
 #include "boot_straps.h"
-#include "manifest.h" /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
-#include "sep.h"      /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
-#include "harden.h"   /* fault-injection value launder (harden_u32)  */
+#include "sep.h"    /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
+#include "harden.h" /* fault-injection value launder (harden_u32)  */
+
+/*
+ * Boot-slot geometry on the SPI medium. A property of the flash layout, not of
+ * the manifest format.
+ *
+ * Flash carries two independent boot slots, so a primary that fails validation
+ * -- bad signature, revoked key, corrupt payload -- can be recovered from a
+ * complete second copy. The `rotate_update` strap swaps which is tried first.
+ * A slot opens with the SPI configuration TLV the Cadence controller reads
+ * during bring-up; the manifest follows it, and the manifest's own
+ * payload_offset field locates the payload after that.
+ *
+ *   slot 0   +0x00000  SPI configuration TLV
+ *            +0x01000  manifest, then payload   <- PRIMARY_MANIFEST_OFFSET
+ *   slot 1   +0x00000  SPI configuration TLV
+ *            +0x01000  manifest, then payload   <- BACKUP_MANIFEST_OFFSET
+ *
+ * BOOT_SLOT_SIZE is the knob. It is the stride from one slot to the next, and
+ * so the room a single manifest+payload bundle has to grow into. Raise it to
+ * give a slot more space (pushing the backup further out), lower it to fit both
+ * slots on a smaller part.
+ *
+ * Its ceiling is SEP SRAM: the ROM stages a slot's manifest and payload into
+ * SRAM to authenticate them, so a slot bigger than OCH_SEP_TOP_SEP_SRAM_SIZE
+ * has space the ROM can never consume. The default takes that ceiling exactly,
+ * which is the reasoning behind the historical 0x40000 stride. The assertions
+ * below are the only hard constraints; everything else is policy.
+ *
+ * Changing this moves no image by itself. The producer places the bundles --
+ * configs/oca_*_image.yaml, keys manifest_offset / payload_offset / total_size
+ * -- and those must be edited to match, or the ROM finds padding where the
+ * backup manifest should be. doc/rom.adoc's boot-flash-layout table is
+ * normative for producers and carries the same offsets.
+ */
+#ifndef BOOT_SLOT_SIZE
+#define BOOT_SLOT_SIZE 0x40000u
+#endif
+#ifndef BOOT_SLOT_MANIFEST_OFFSET
+#define BOOT_SLOT_MANIFEST_OFFSET 0x1000u
+#endif
+
+_Static_assert(BOOT_SLOT_SIZE <= (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE,
+               "BOOT_SLOT_SIZE exceeds SEP SRAM; the ROM stages manifest+payload into SRAM, so "
+               "a slot cannot usefully be larger than it");
+_Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
+               "BOOT_SLOT_MANIFEST_OFFSET must place the manifest inside its own slot");
+
+#ifndef PRIMARY_MANIFEST_OFFSET
+#define PRIMARY_MANIFEST_OFFSET (0u * BOOT_SLOT_SIZE + BOOT_SLOT_MANIFEST_OFFSET)
+#endif
+#ifndef BACKUP_MANIFEST_OFFSET
+#define BACKUP_MANIFEST_OFFSET (1u * BOOT_SLOT_SIZE + BOOT_SLOT_MANIFEST_OFFSET)
+#endif
 
 #if BOOT_SPI_CONTROLLER_OT
 #include "sep_ot_spi.h"
@@ -109,10 +161,14 @@ static inline uint32_t boot_flash_reinit(void) {
 static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32_t dst,
                                         uint32_t dst_len) {
 #if BOOT_SPI_CONTROLLER_OT
-    /* Static bound: the read must stay within a known primary/backup boot-slot
-     * window, and the destination within SEP SRAM. A slot's flash span cannot
-     * exceed the max staged size (header + payload <= SEP SRAM). */
-    const uint32_t slot_span = (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE;
+    /* Static bound: the read must stay within the boot slot it started in, and
+     * the destination within SEP SRAM. The window runs from the slot's manifest
+     * to the end of that slot, so it is the slot size less the manifest's offset
+     * within the slot. Sizing it from BOOT_SLOT_SIZE rather than SEP SRAM keeps
+     * the primary window from reaching into the backup slot should the slot size
+     * ever be reduced; the two are equal at the default geometry, where a slot is
+     * exactly one SRAM in size. */
+    const uint32_t slot_span = (uint32_t)BOOT_SLOT_SIZE - (uint32_t)BOOT_SLOT_MANIFEST_OFFSET;
     const uint32_t sram_base = (uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
     const uint32_t sram_size = (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE;
 

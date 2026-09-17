@@ -38,13 +38,16 @@ from seq_lib.sep_esrc_bringup_seq import (
     RING_OSC_ALL_ON,
 )
 
-PF_BIT = 16
-ALERT_BIT = 10
-ERR_BIT = 11
+# Field masks come from the generated entropy_source export, like the addresses
+# and encodings in this file; a field that moves in the RDL moves these with it.
+PF_MASK = ENTROPY_SOURCE.fields("INTR_STATUS")["PERSISTENT_FAILURE"]["bm"]
+ALERT_MASK = ENTROPY_SOURCE.fields("MAIN_SM_STATUS")["ALERT"]["bm"]
+ERR_MASK = ENTROPY_SOURCE.fields("MAIN_SM_STATUS")["ERR"]["bm"]
+PF_BIT = PF_MASK.bit_length() - 1
+ALERT_BIT = ALERT_MASK.bit_length() - 1
+ERR_BIT = ERR_MASK.bit_length() - 1
+# Aggregator slot, not an RDL CSR field: no symbol exists for it.
 IRQ_AGG_IDX = 15  # PIC source 16
-PF_MASK = 1 << PF_BIT
-ALERT_MASK = 1 << ALERT_BIT
-ERR_MASK = 1 << ERR_BIT
 TRIP_WINDOW = 64
 # Three failing windows, not one. At a threshold of one the alert comparator
 # (entropy_source.sv: alert_thresh_fail = ANY_FAIL_COUNT >= THRESHOLD) already

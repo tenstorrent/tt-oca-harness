@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_dtp_otp_smc_complete_rw_test — OTP MAP SPARE walk (SEP=0, no Force)."""
+"""smu_dtp_otp_smc_complete_rw_test — OTP MAP SPARE walk (SEP=1, no Force)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ class smu_dtp_otp_smc_complete_rw_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_dtp_otp_smc_complete_rw_test TierC DTP-OTP-SMC-COMPLETE-RW SEP=0 JTAG"
+            "DUT_TAG=WRAPPER smu_dtp_otp_smc_complete_rw_test TierC DTP-OTP-SMC-COMPLETE-RW SEP=1 JTAG"
         )
         seq = smu_dtp_otp_smc_complete_rw_test_seq(self)
         await seq.run()

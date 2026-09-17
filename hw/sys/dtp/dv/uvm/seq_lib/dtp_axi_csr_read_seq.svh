@@ -5,8 +5,11 @@
 // agent, returning the VIP result item (data, response, hold stability,
 // timeout). A non-zero hold_cycles selects the VIP's RREADY-hold read,
 // which also reports whether RDATA/RRESP stayed stable while RREADY was
-// low. Started by dtp_xtrig_base_test_seq::csr_read() and csr_read_hold().
-// The cocotb twin is seq_lib/dtp_axi_csr_read_seq.py.
+// low. With `pair` set, a second read of pair_addr launches while the
+// first response is held (the VIP's two-outstanding read), and pair_result
+// carries its item. Started by dtp_xtrig_base_test_seq::csr_read(),
+// csr_read_hold(), and read_pair_hold(). The cocotb twin is
+// seq_lib/dtp_axi_csr_read_seq.py.
 
 class dtp_axi_csr_read_seq extends ocah_axi_master_sequence;
   `uvm_object_utils(dtp_axi_csr_read_seq)
@@ -15,15 +18,22 @@ class dtp_axi_csr_read_seq extends ocah_axi_master_sequence;
   int unsigned hold_cycles    = 0;
   bit          check_response = 1'b1;
   bit          allow_timeout  = 1'b0;
-  // Result item (first_data() is the CSR word).
+  bit          pair = 1'b0;
+  bit [63:0]   pair_addr;
+  // Result items (first_data() is the CSR word); pair_result is the second
+  // read of a pair.
   ocah_axi_item result;
+  ocah_axi_item pair_result;
 
   function new(string name = "dtp_axi_csr_read_seq");
     super.new(name);
   endfunction
 
   task body();
-    if (hold_cycles == 0)
+    if (pair)
+      read_pair_hold_result(addr, pair_addr, hold_cycles, result, pair_result,
+                            .check_response(check_response), .allow_timeout(allow_timeout));
+    else if (hold_cycles == 0)
       read_result(addr, result, .check_response(check_response), .allow_timeout(allow_timeout));
     else
       read_hold_result(addr, hold_cycles, result, .check_response(check_response),

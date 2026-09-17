@@ -169,12 +169,14 @@ int main(void) {
 
     //--------------------------------------------------------------------------
     // SCENARIO A — requested length terminates the fetch before slot capacity.
-    // region 0x100 → slot capacity=16; log_len=8 produces one fetch beat.
+    // region 0x100 → slot capacity=16; log_len=8 produces one fetch beat. The
+    // whole 16-byte slot carries a pattern so a transfer that ignored log_len
+    // and moved the slot shows up as a ninth byte.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario A: requested length terminates before slot capacity");
     {
         volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
-        for (int i = 0; i < 8; i++) buf[i] = (uint8_t)(0xA0u + i);
+        for (int i = 0; i < 16; i++) buf[i] = (uint8_t)(0xA0u + i);
 
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);  // clear stale
@@ -187,6 +189,10 @@ int main(void) {
 
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
             info_msg_s(0, "FAIL: scenario A: log not done (LOG_CTRL hwclr timeout)");
+            test_fail(0);
+        }
+        if (verify_uart_transfer(0xA0u, 8u) != 0) {
+            info_msg_s(0, "FAIL: scenario A: expected exactly bytes 0xA0 through 0xA7");
             test_fail(0);
         }
         if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u) != 0u) {

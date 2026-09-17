@@ -26,6 +26,7 @@ from env.dtp_types import (
     unpack_series_data,
     unpack_single_op,
 )
+from ocah_axi_vip import OcahAxiItem
 from ocah_jtag_vip import OcahJtagChecker
 from ocah_lib import OcahKnobs
 
@@ -35,6 +36,9 @@ AXI_MEM_SIZE = 2**16
 AXI_BEAT_BYTES = 8
 GEOMETRY_CHECK_ID = "CHK-J2A-GEOMETRY"
 STATUS_BIT_CHECK_ID = "CHK-J2A-STATUS-BIT"
+ERR_RDATA_CHECK_ID = "CHK-J2A-ERR-RDATA"
+SERIES_ADDR_CHECK_ID = "CHK-J2A-SERIES-ADDR"
+BLOCKED_CHECK_ID = "CHK-AXI-BLOCKED"
 STATUS_BIT_NEGATIVE_KNOB = "DTP_J2A_STATUS_BIT_NEGATIVE"
 AXI_RESP_SLVERR = 2
 AXI_RESP_DECERR = 3
@@ -252,17 +256,47 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 context=f"{context} target={target} cycles={cycles} source=vip_monitor",
             )
 
+    async def scoreboard_expect_no_activity_since(
+        self, target: str, before: dict[str, int], *, context: str
+    ) -> dict[str, int]:
+        """Emit CHK-AXI-NOACT against a counter snapshot taken before the gated request.
+
+        Returns the closing snapshot so a later window can start from it.
+        """
+        after = await self.target_activity_counts(target)
+        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            scoreboard.expect_no_activity(
+                before=before,
+                after=after,
+                context=f"{context} target={target} source=tb_pulse_counters",
+            )
+        for key in ("aw", "w", "ar"):
+            self.assert_equal(f"{context}.{key}_count", after[key], before[key])
+        return after
+
     def scoreboard_begin_blocked(self, target: str) -> None:
         """Open a blocked window: any monitored item on the stream fails."""
         scoreboard = self.axi_scoreboard
         if scoreboard is not None:
             scoreboard.begin_blocked_window(stream=target)
 
-    def scoreboard_end_blocked(self, target: str, *, context: str) -> None:
-        """Close a blocked window and emit zero-transaction evidence."""
+    def scoreboard_end_blocked(
+        self, target: str, *, context: str, check_id: str | None = None
+    ) -> None:
+        """Close a blocked window and emit zero-transaction evidence.
+
+        ``check_id`` names the evidence ID; the scoreboard's default applies
+        without one.
+        """
         scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
+        if scoreboard is None:
+            return
+        if check_id is None:
             scoreboard.end_blocked_window(stream=target, context=context)
+        else:
+            scoreboard.end_blocked_window(stream=target, check_id=check_id, context=context)
 
     def scoreboard_check_target_memory(
         self,
@@ -794,6 +828,70 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 return status
         raise AssertionError(f"{context}: target {target} remained BUSY_OR_FULL")
 
+    # --- errored-beat evidence ------------------------------------------------
+    def last_observed_read(self, target: str) -> OcahAxiItem | None:
+        """The newest read the shared monitor completed on ``target``; None without a monitor."""
+        monitor = getattr(self.cfg, "axi_monitors", {}).get(target)
+        if monitor is None:
+            return None
+        reads = monitor.get_read_transactions()
+        if not reads:
+            raise AssertionError(f"no read observed on {target}")
+        return reads[-1]
+
+    def check_error_rdata(
+        self,
+        target: str,
+        addr: int,
+        rdata: int,
+        *,
+        resp: int,
+        preload: int,
+        size: int,
+        context: str,
+    ) -> None:
+        """Emit CHK-J2A-ERR-RDATA: the SINGLE_OP rdata is the RDATA of the errored beat.
+
+        The bridge latches the errored R beat's data together with its
+        status, so the capture returns the word the responder drove on that
+        beat: it equals the beat the monitor observed at ``addr`` with
+        ``resp`` and differs from the word preloaded in the slot.
+        """
+        item = self.last_observed_read(target)
+        if item is None:
+            return
+        cfg = self.target_cfg(target)
+        mask = self.target_data_mask(target, size)
+        observed = rdata & mask
+        beat_addr = int(item.address) - int(item.address) % cfg.beat_bytes
+        beat_word = int(item.data_words[0]) & mask
+        detail = f"{context} target={target} addr=0x{addr:x} preload=0x{preload & mask:x}"
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            scoreboard.expect_equal(
+                ERR_RDATA_CHECK_ID,
+                beat_addr,
+                addr - addr % cfg.beat_bytes,
+                context=f"{detail} field=beat_addr",
+            )
+            scoreboard.expect_equal(
+                ERR_RDATA_CHECK_ID, int(item.resp), int(resp), context=f"{detail} field=beat_resp"
+            )
+            scoreboard.expect_equal(
+                ERR_RDATA_CHECK_ID, observed, beat_word, context=f"{detail} field=rdata"
+            )
+            scoreboard.expect_true(
+                ERR_RDATA_CHECK_ID,
+                observed != (preload & mask),
+                context=f"{detail} field=rdata_not_preload",
+            )
+        self.assert_equal(
+            f"{context}.err_rdata",
+            observed,
+            beat_word,
+            f"addr=0x{addr:x} beat_addr=0x{beat_addr:x}",
+        )
+
     # --- raw series TDR helpers ----------------------------------------------
     async def jtag2axi_series_ctrl(
         self,
@@ -844,6 +942,21 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         # settled status — SUCCESS or an expected error, never BUSY).
         self.scoreboard_expect_completion(target, decoded[4], context=f"series_ctrl.{target}")
         return decoded
+
+    async def check_series_addr(
+        self, target: str, expected_addr: int, *, size: int, context: str
+    ) -> int:
+        """Emit CHK-J2A-SERIES-ADDR: the SERIES_CTRL capture holds ``expected_addr``; returns its status."""
+        cfg = self.target_cfg(target)
+        expected = expected_addr & ((1 << cfg.addr_width) - 1)
+        _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=target)
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            scoreboard.expect_equal(
+                SERIES_ADDR_CHECK_ID, addr_after, expected, context=f"{context} target={target}"
+            )
+        self.assert_equal(f"{context}.addr_after", addr_after, expected)
+        return status
 
     async def _series_data_shift(
         self,

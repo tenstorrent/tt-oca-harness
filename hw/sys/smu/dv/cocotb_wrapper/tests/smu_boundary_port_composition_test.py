@@ -13,7 +13,7 @@ which constant comes from where. The `SMU-<feature>.S<n>` ids the CHK-SMU-*
 evidence tokens are named after are the ids the coverage policies' deferral
 rationales use; no document in this tree defines them.
 
-On the `--dut smu` production wrapper built with compile_smu_chiplet_sep_rtl:
+On the `--dut smu` production wrapper built with compile_smu_chiplet:
 every named port is read on the elaborated `smu` instance for its declared
 width, the SMN request/response struct widths decode to the 8-bit inbound and
 10-bit outbound IDs, the ID-width converters carry 10 to 6 bits, and the CTP

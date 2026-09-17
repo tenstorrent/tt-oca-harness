@@ -102,7 +102,9 @@ class sep_warm_dispatch_base(sep_base_test):
                 f"cold_scratch[7] at its cold reset value of 0 to drive the beqz "
                 f"early-out"
             )
-            self.logger.info("CHK-STIMULUS-HANDLER: cold_scratch[7] left unarmed (reset value 0)")
+            self.logger.info(
+                "CHK-STIMULUS-HANDLER PASS: cold_scratch[7] left unarmed (reset value 0)"
+            )
         else:
             assert seeded is not None, (
                 "+sep_cold_scratch7 is not set: cold_scratch[7] would read 0, the "

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI WSTRB 1/2/4/8-byte on SPM. Bridge applies WSTRB, not AxSIZE. SEP=0, no Force."""
+"""JTAG2AXI WSTRB 1/2/4/8-byte on SPM. Bridge applies WSTRB, not AxSIZE. SEP=1, no Force."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def _full_wstrb(size: int) -> int:
 
 
 class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
-    """SIZE/WSTRB matrix on SPM via SMC J2A; gate already open on SEP=0."""
+    """SIZE/WSTRB matrix on SPM via SMC J2A; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test

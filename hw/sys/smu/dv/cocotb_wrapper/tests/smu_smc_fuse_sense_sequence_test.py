@@ -8,7 +8,7 @@ output") and `smc_fuse_reset_n_delayed_o` ("Delayed fuse reset output") rows of
 names the two ports but not their relative order, so the ordering leg below is
 a check on the elaborated design with no document behind it. On the `--dut smu`
 production wrapper built with
-compile_smu_chiplet_no_sep and run under the no_sep_fuse_sense run mode, which
+compile_smu_chiplet and run under the sep_rtl_fuse_sense run mode, which
 leaves +skip_fuse_sense unset so the SMC eFuse bank model answers the sense:
 smc_fuse_sense_done_o rises once, after the SMC primary reset released and after
 eFuse read traffic appeared on the SMU eFuse shim command port, and

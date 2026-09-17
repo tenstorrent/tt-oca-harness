@@ -62,6 +62,18 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
         dut.rst_cold_ni.value = 0
         await ClockCycles(dut.clk_ref_i, 64)
         dut.rst_cold_ni.value = 1
+        # Arm the sense-done observation at the release itself: the flag reads 0
+        # in reset, and the settle below can outlast the whole sense.
+        gate_held = cocotb.start_soon(
+            expect_gate_held_after_sense(
+                dut,
+                sb,
+                log,
+                phase="cold+GPIO stall",
+                name="fuse_reset gated by GPIO boot-stall",
+                evidence="STALL_COLD_STICKY",
+            )
+        )
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         await wait_signal_high(
             smc_primary_reset(dut),
@@ -72,14 +84,7 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
         await ClockCycles(dut.clk_smu_i, 64)
 
         # The cold reset restarted the sense; the gate is judged only once it is done.
-        await expect_gate_held_after_sense(
-            dut,
-            sb,
-            log,
-            phase="cold+GPIO stall",
-            name="fuse_reset gated by GPIO boot-stall",
-            evidence="STALL_COLD_STICKY",
-        )
+        await gate_held
 
         armed_ns = arm_gate_release(dut, sb, name="fuse_reset released after GPIO clear")
         stall.value = 0

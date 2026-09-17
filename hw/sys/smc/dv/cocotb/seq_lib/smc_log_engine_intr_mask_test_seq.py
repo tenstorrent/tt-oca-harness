@@ -1,52 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Log-engine `INTR_ENABLE` placement -- reproducer for the enable-on-set-path defect.
+"""Log-engine `INTR_ENABLE` as an output mask.
 
-**This sequence fails on an RTL that gates the interrupt set path with
-``INTR_ENABLE`` instead of the output**; it scores both consequences of that
-placement as evidence.
+`hw/ip/uart/log_engine/rtl/log_engine.sv` follows the vendored `prim_intr_hw`
+shape: `INTR_STATUS` latches an event whether or not the interrupt is enabled
+and clears only on W1C, and `irq_o` is the status ANDed with `INTR_ENABLE`.
+Two consequences follow, and this sequence scores both:
 
-The RDL states the intent, and the RTL does not implement it.
-`hw/ip/uart/log_engine/regs/log_engine.rdl:159-161` carries the two
-`INTR_STATUS.<field>->hwenable = INTR_ENABLE.<field>` assignments commented
-out, deferred by a note citing a PeakRDL bug. In SystemRDL `hwenable` on an
-`intr` field masks the **output**; the RTL gates the **set** path instead,
-which is not the same thing.
-`hw/ip/uart/log_engine/rtl/log_engine.sv:489-496`::
+* **Held.** Clearing `INTR_ENABLE` releases `irq_o` while `INTR_STATUS` keeps
+  the bit; only a W1C clears the status.
+* **Kept.** An event that arrives while `INTR_ENABLE` is 0 is latched, so
+  enabling later fires it and an `INTR_STATUS` poll finds it.
 
-    assign reg_in.INTR_STATUS.LOG_FETCH_ERR.next =
-          (log_fetch_err || reg_out.INTR_TEST.LOG_FETCH_ERR.value) &&
-          reg_out.INTR_ENABLE.LOG_FETCH_ERR.value;   // enable gates the SET
-    assign irq_o = reg_out.INTR_STATUS.intr;         // output NOT gated
-
-The vendored reference does the opposite on both halves.
-`vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_intr_hw.sv:66` latches
-unconditionally (``hw2reg_intr_state_d_o = new_event | reg2hw_intr_state_q_i``)
-and `:99` / `:107` mask the output (``intr_o <= status &
-reg2hw_intr_enable_q_i``).
-
-Two distinct consequences follow, and this sequence scores both:
-
-* **Stuck.** A bit latched while enabled keeps `irq_o` asserted after
-  `INTR_ENABLE` is cleared. Only a W1C releases it. Under the reference the
-  output would fall with the enable.
-* **Lost.** An event that arrives while `INTR_ENABLE` is 0 is never latched, so
-  enabling later never fires it and `INTR_STATUS` polling cannot find it. This
-  is the more serious of the two: an interrupt is silently dropped rather than
-  spuriously held.
-
-`hw/ip/i2c/rtl/i2c_core.sv:981` and `:995-1010` have the identical shape.
+Both are measured before either is allowed to raise, so neither hides the
+other. `hw/ip/i2c/rtl/i2c_core.sv` has the same shape and its own sequence.
 
 Stimulus. `INTR_TEST` is `sw = w` with `singlepulse` (log_engine.rdl), so a
-write is a one-cycle event and needs no bus traffic or log region -- the
-cleanest possible way to drive both directions. It is ANDed with `INTR_ENABLE`
-on the same line as the real event, so it exercises exactly the path under test.
+write is a one-cycle event on the same line as the real event and needs no bus
+traffic or log region.
 
-Observation. `irq_o` has no probe of its own. `smc_peripherals_cdc.sv:309` ORs
-it with the 16550 UART IRQ and the UART error line, flops it in the peripheral
-clock domain and synchronises it to the SMC clock, and
-`smc_peripherals.sv:1159` routes the result to `peripheral_interrupts[21:18]` --
-one bit per UART instance. `tb_uart_irq_combined` exports that slice.
+Observation. `irq_o` has no probe of its own. `smc_peripherals_cdc.sv` ORs it
+with the 16550 UART IRQ and the UART error line, flops it in the peripheral
+clock domain and synchronises it to the SMC clock, and `smc_peripherals.sv`
+routes the result to `peripheral_interrupts[21:18]` -- one bit per UART
+instance. `tb_uart_irq_combined` exports that slice.
 `tb_uart_irq_any` is *not* usable here: it is `|uart_interrupt`, the 16550 half
 only, and carries no log-engine contribution at all.
 
@@ -108,7 +85,6 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_log_engine_intr_mask_test_seq") -> None:
         super().__init__(name)
-        self.chk_seen: set[str] = set()
 
     def _irq(self, dut) -> int:
         """Instance 0's bit of peripheral_interrupts[21:18]."""
@@ -179,8 +155,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
         armed = await self.csr_read("LOG_INTR_STATUS_ARMED", LOG_INTR_STATUS)
         assert (armed & FETCH_ERR_STATUS) == FETCH_ERR_STATUS, (
             f"arm: INTR_TEST.LOG_FETCH_ERR written with INTR_ENABLE.LOG_FETCH_ERR "
-            f"set did not latch INTR_STATUS (0x{armed:x}); log_engine.sv:489-491 "
-            f"is the set path and INTR_TEST is singlepulse, so this is the "
+            f"set did not latch INTR_STATUS (0x{armed:x}); INTR_TEST is a "
+            f"singlepulse on the same line as the real event, so this is the "
             f"stimulus the legs below depend on"
         )
         await self._wait_irq(dut, 1, "arm irq")
@@ -197,15 +173,12 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
             _HOLD,
             pre_irq,
         )
-        self.chk_seen.add("CHK-LOG-ENGINE-INTR-MASK-ARM")
 
-        # Both symptoms below are measured before either is allowed to raise.
-        # Raising at the first would hide the second, and the two are separate
-        # RTL behaviours: whichever is repaired first, the other still needs to
-        # be visible.
+        # Both legs below are measured before either is allowed to raise, so a
+        # failure in the first cannot hide the second.
         failures: list[str] = []
 
-        # ---- Stuck: clear INTR_ENABLE only; nothing else changes -------------
+        # ---- Mask: clear INTR_ENABLE only; nothing else changes --------------
         await self.csr_write("LOG_INTR_ENABLE_CLR", LOG_INTR_ENABLE, 0)
         await ClockCycles(dut.clk_smc_i, _IRQ_BOUND)
         stuck = self._irq(dut)
@@ -220,17 +193,16 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
                 f"at hold cycle {broke[0]} of {_HOLD}, with no further stimulus"
             )
         elif stuck == 0 and (still & FETCH_ERR_STATUS) != FETCH_ERR_STATUS:
-            # The claim is that the ENABLE masks the *output*. A repair that
-            # cleared INTR_STATUS instead would also drop the line, and would
-            # satisfy this leg if the status were not required to survive.
+            # INTR_ENABLE masks the *output*. A DUT that cleared INTR_STATUS
+            # instead would also drop the line, and would satisfy this leg if
+            # the status were not required to survive.
             failures.append(
                 f"CHK-LOG-ENGINE-INTR-MASK-DEASSERT: the line dropped, but "
                 f"INTR_STATUS lost the bit too (0x{still:x}, wanted "
-                f"0x{FETCH_ERR_STATUS:x} still set). log_engine.rdl:160 makes "
-                f"INTR_ENABLE an `hwenable` output mask over a latched status, "
-                f"so the status must survive the mask -- a drop that also "
-                f"clears the status is a different mechanism than the one "
-                f"claimed"
+                f"0x{FETCH_ERR_STATUS:x} still set). INTR_ENABLE masks irq_o "
+                f"over a latched status, so the status must survive the mask "
+                f"-- a drop that also clears the status is a different "
+                f"mechanism"
             )
         elif stuck == 0:
             cocotb.log.info(
@@ -246,16 +218,11 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
                 f"CHK-LOG-ENGINE-INTR-MASK-DEASSERT: tb_uart_irq_combined[0] "
                 f"stayed {stuck} after INTR_ENABLE 0x{FETCH_ERR_ENABLE:x} -> 0x0 "
                 f"with no other stimulus (INTR_STATUS still 0x{still:x}). "
-                f"log_engine.rdl:160 binds INTR_ENABLE as `hwenable` on "
-                f"INTR_STATUS -- an output mask -- but the line is commented "
-                f"out, and log_engine.sv:496 drives "
-                f"`irq_o = reg_out.INTR_STATUS.intr` with no enable term. "
-                f"prim_intr_hw.sv:99 masks the output instead. Same shape as "
-                f"i2c_core.sv:981"
+                f"INTR_ENABLE masks irq_o, so the line must fall with the "
+                f"enable while INTR_STATUS keeps the bit"
             )
-        self.chk_seen.add("CHK-LOG-ENGINE-INTR-MASK-DEASSERT")
 
-        # ---- Lost: an event while masked must not be dropped -----------------
+        # ---- Latch: an event while masked must not be dropped ----------------
         # The W1C restores a known state, so this leg's own stimulus is the only
         # thing that can set the bit.
         await self.csr_write("LOG_INTR_STATUS_W1C", LOG_INTR_STATUS, FETCH_ERR_STATUS)
@@ -283,15 +250,10 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
                 f"CHK-LOG-ENGINE-INTR-MASK-LATCH: a singlepulse INTR_TEST "
                 f"issued with INTR_ENABLE=0 was never latched -- INTR_STATUS "
                 f"reads 0x{late:x} after INTR_ENABLE was set back to "
-                f"0x{FETCH_ERR_ENABLE:x}. log_engine.sv:489-491 ANDs the event "
-                f"with the enable before the flop, so the pulse is gone and no "
-                f"later enable or INTR_STATUS poll can recover it. "
-                f"prim_intr_hw.sv:66 latches unconditionally for exactly this "
-                f"reason. This is the lost-interrupt half of the defect and is "
-                f"the more serious: an interrupt is silently dropped rather "
-                f"than spuriously held"
+                f"0x{FETCH_ERR_ENABLE:x}. INTR_STATUS latches an event whether "
+                f"or not the interrupt is enabled, so the pulse must be held "
+                f"until a W1C and a later enable must surface it"
             )
-        self.chk_seen.add("CHK-LOG-ENGINE-INTR-MASK-LATCH")
 
         await self.csr_write("LOG_INTR_STATUS_W1C_POST", LOG_INTR_STATUS, FETCH_ERR_STATUS)
         await self.csr_write("UART_CG_RESTORE", CLOCK_GATE_CONTROL, cg)

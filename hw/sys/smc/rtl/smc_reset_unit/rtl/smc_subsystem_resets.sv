@@ -47,9 +47,9 @@ module smc_subsystem_resets (
   prim_sync3 #(
     .WIDTH(32)
   ) u_reset_complete_sync (
-    .i_clk(clk_i),
-    .i_d(ss_reset_complete_i),
-    .o_q(ss_reset_complete)
+    .clk_i(clk_i),
+    .d_i(ss_reset_complete_i),
+    .q_o(ss_reset_complete)
   );
 
   // Register Interface (Normal Registers)

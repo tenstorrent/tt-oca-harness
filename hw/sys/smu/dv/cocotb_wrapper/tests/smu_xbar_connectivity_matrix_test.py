@@ -10,7 +10,7 @@ master port, so an unmatched `ext_in` access decode-errors -- is stated as the
 still fail-capable against it: the DECERR and the silence at the SMN egress
 boundary are measured on the DUT, not read back off that parameter.
 
-On the `--dut smu` production wrapper built with compile_smu_chiplet_sep_rtl:
+On the `--dut smu` production wrapper built with compile_smu_chiplet:
 the external master issues a read and a write to an address outside both live
 apertures, the crossbar itself answers DECERR with the issued IDs, and the SMN
 egress boundary counters do not move. SMU-XBAR-CONN.S5 and S6 (sep_out and

@@ -15,6 +15,9 @@ IRQEN on mailbox 0 of each direction.
 
 from __future__ import annotations
 
+import cocotb
+from cocotb.triggers import ClockCycles
+
 from .smc_addr_map import _REPO, _field_mask, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
@@ -53,8 +56,146 @@ _MAILBOX_COUNT = 32
 _IRQEN_OFFSET = 0x038
 _IRQEN_MASK = 0x7
 
+# Interrupt leg on one channel above the low byte. `mailbox_interrupts` is a
+# 32-bit vector in `smc_base.sv` (`smc_pkg::NUM_MAILBOXES = 32`), and the CSR
+# sweep above only proves that each instance decodes. Nothing in the package
+# made an instance raise its own bit, so everything past bit 7 of that vector
+# was unobserved. Channel 31 is the far end of it.
+_IRQ_CHANNEL = 31
+_WRITE_DATA_OFFSET = 0x000
+_IRQS_OFFSET = 0x030
+_IRQP_OFFSET = 0x040
+_CTRL_OFFSET = 0x048
+_IRQEN_WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQEN__WTIRQ_bm")
+_IRQS_WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__WTIRQ_bm")
+_IRQP_WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQP__WTIRQ_bm")
+_STATUS_WRITE_ABOVE = _field_mask(
+    _AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_bm"
+)
+# STATUS with one word in this port's write FIFO: EMPTY still 1 (nothing was
+# pushed the other way, so this port's READ FIFO is empty) and
+# WRITE_LEVEL_ABOVE_THRESH 1. FULL stays 0 at one of two entries and
+# READ_LEVEL_ABOVE_THRESH stays 0. Every bit is accounted for.
+_STATUS_ONE_PUSHED = MAILBOX_STATUS_IDLE | _STATUS_WRITE_ABOVE
+_CTRL_WFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__WFLUSH_bm")
+# WIRQT resets to 0 and `axi_lite_mailbox.sv:307` compares
+# `mbox_w_usage_i > wirqt_q`, so one pushed word is already above the
+# threshold and no WIRQT programming is needed.
+_IRQ_PATTERN = 0xA5A5_5A5A_1234_5678
+# Liveness ceiling on WRITE_DATA push -> IRQS -> IRQP -> mailbox_interrupts.
+# Expiry is a FAILURE carrying the last observed vector.
+_IRQ_BOUND_CYCLES = 128
+
 
 class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
+    def __init__(self, name: str = "smc_mailbox_multi_instance_test_seq") -> None:
+        super().__init__(name)
+        #: Vector sampled while inbound mailbox `_IRQ_CHANNEL` was asserted.
+        self.irq_vector_asserted = -1
+
+    def _interrupt_vector(self) -> int:
+        raw = cocotb.top.tb_mailbox_interrupts.value
+        assert raw.is_resolvable, f"tb_mailbox_interrupts is X/Z: {raw}"
+        return int(raw)
+
+    async def _await_interrupt_vector(self, want: int, label: str) -> int:
+        last = -1
+        for cycle in range(1, _IRQ_BOUND_CYCLES + 1):
+            await ClockCycles(cocotb.top.clk_smc_i, 1)
+            last = self._interrupt_vector()
+            if last == want:
+                return cycle
+        raise AssertionError(
+            f"{label}: mailbox_interrupts never reached {want:#010x} within "
+            f"{_IRQ_BOUND_CYCLES} clk_smc_i cycles (last {last:#010x})"
+        )
+
+    async def _prove_channel_raises_its_own_bit(self) -> None:
+        """Inbound mailbox `_IRQ_CHANNEL` raises bit `_IRQ_CHANNEL` and no other.
+
+        The comparisons below are against the WHOLE 32-bit vector, not a masked
+        bit: a vector that is one channel wide, that ties the upper channels
+        together, or that offsets the index fails on the equality rather than
+        passing a per-bit test that another channel also satisfies.
+        """
+        base = _INBOUND_MAILBOX_BASE + _IRQ_CHANNEL * _MAILBOX_STRIDE
+        expected = 1 << _IRQ_CHANNEL
+        idle = self._interrupt_vector()
+        assert idle == 0, (
+            f"mailbox_interrupts is {idle:#010x} before this leg pushed anything; "
+            f"a later sample would not be attributable to channel {_IRQ_CHANNEL}"
+        )
+        await self.csr_write(
+            f"MBOX_IN_{_IRQ_CHANNEL}_IRQEN_WTIRQ",
+            base + _IRQEN_OFFSET,
+            _IRQEN_WTIRQ,
+            length=8,
+        )
+        await self.csr_read(
+            f"MBOX_IN_{_IRQ_CHANNEL}_IRQEN_WTIRQ_RB",
+            base + _IRQEN_OFFSET,
+            expected=_IRQEN_WTIRQ,
+            length=8,
+        )
+        # Enabling alone must not raise anything: IRQP is IRQS & IRQEN, so this
+        # separates the enable from the event.
+        armed = self._interrupt_vector()
+        assert armed == 0, (
+            f"mailbox_interrupts became {armed:#010x} on the IRQEN write alone, "
+            f"before any FIFO push"
+        )
+        await self.csr_write(
+            f"MBOX_IN_{_IRQ_CHANNEL}_WRITE_DATA",
+            base + _WRITE_DATA_OFFSET,
+            _IRQ_PATTERN,
+            length=8,
+        )
+        latency = await self._await_interrupt_vector(expected, f"MBOX_IN_{_IRQ_CHANNEL}_PUSH")
+        self.irq_vector_asserted = expected
+        await self.csr_read(
+            f"MBOX_IN_{_IRQ_CHANNEL}_STATUS_ABOVE_THRESH",
+            base + _STATUS_OFFSET,
+            expected=_STATUS_ONE_PUSHED,
+            length=8,
+        )
+        await self.csr_read(
+            f"MBOX_IN_{_IRQ_CHANNEL}_IRQP",
+            base + _IRQP_OFFSET,
+            expected=_IRQP_WTIRQ,
+            length=8,
+        )
+
+        # Disarm and restore. Dropping IRQEN is the deassert leg: it proves the
+        # enable gates the output, and it is the only clear that holds while the
+        # FIFO is still above threshold (`axi_lite_mailbox.sv:348-352` re-sets
+        # IRQS every cycle the level condition is true).
+        await self.csr_write(f"MBOX_IN_{_IRQ_CHANNEL}_IRQEN_OFF", base + _IRQEN_OFFSET, 0, length=8)
+        await self._await_interrupt_vector(0, f"MBOX_IN_{_IRQ_CHANNEL}_DISARM")
+        await self.csr_write(
+            f"MBOX_IN_{_IRQ_CHANNEL}_CTRL_WFLUSH", base + _CTRL_OFFSET, _CTRL_WFLUSH, length=8
+        )
+        await self.csr_write(
+            f"MBOX_IN_{_IRQ_CHANNEL}_IRQS_CLEAR", base + _IRQS_OFFSET, _IRQS_WTIRQ, length=8
+        )
+        await self.csr_read(
+            f"MBOX_IN_{_IRQ_CHANNEL}_STATUS_RESTORED",
+            base + _STATUS_OFFSET,
+            expected=MAILBOX_STATUS_IDLE,
+            length=8,
+        )
+        cocotb.log.info(
+            "CHK-MAILBOX-CHANNEL-VECTOR: inbound mailbox %d raised "
+            "mailbox_interrupts = %#010x (whole vector, %d clk_smc_i cycles "
+            "after the WRITE_DATA push), idle before the push was %#010x and "
+            "%#010x with IRQEN armed but nothing pushed; the vector returned to "
+            "0 when IRQEN was cleared",
+            _IRQ_CHANNEL,
+            expected,
+            latency,
+            idle,
+            armed,
+        )
+
     async def body(self) -> None:
         cg = await self.csr_read("CLOCK_GATE_CONTROL", _CLOCK_GATE_CONTROL)
         await self.csr_write("CLOCK_GATE_CONTROL_EN", _CLOCK_GATE_CONTROL, cg | _MAILBOX_CG_EN)
@@ -83,10 +224,12 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
             await self.csr_write(f"{label}_IRQEN_RESTORE", addr, 0)
             await self.csr_read(f"{label}_IRQEN_RESTORE_RB", addr, expected=0)
 
+        await self._prove_channel_raises_its_own_bit()
+
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", _CLOCK_GATE_CONTROL, cg)
         # `self.accesses` is bumped by this sequence's own csr_* calls, so
         # asserting it against a literal only restates the loops above and
         # cannot fail on anything the DUT did ([NO-ALWAYS-PASS-CHECKER]).
         # `assert_all_reachable` cross-checks the same count against the
         # scoreboard instead.
-        self.assert_all_reachable(3 + 2 * _MAILBOX_COUNT + 10, "MAILBOX_MULTI_INSTANCE")
+        self.assert_all_reachable(3 + 2 * _MAILBOX_COUNT + 10 + 9, "MAILBOX_MULTI_INSTANCE")

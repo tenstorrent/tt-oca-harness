@@ -6,17 +6,17 @@
 //
 //--------------------------------------------------
 module prim_clkgater (
-  input i_clk,
-  input i_en /*verilator clock_enable*/,
-  input i_te,
-  output o_clk
+  input clk_i,
+  input en_i /*verilator clock_enable*/,
+  input te_i,
+  output clk_o
 );
 
   logic latched_en;
   always_latch begin
-    if (~i_clk) begin
-      latched_en = i_en | i_te;
+    if (~clk_i) begin
+      latched_en = en_i | te_i;
     end
   end
-  assign o_clk = i_clk & latched_en;
+  assign clk_o = clk_i & latched_en;
 endmodule

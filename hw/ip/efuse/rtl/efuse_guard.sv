@@ -26,7 +26,7 @@ module efuse_guard #(
   localparam efuse_addr_t CHIPLET_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)
 ) (
   input logic clk_i,
-  input logic reset_n_i,
+  input logic rst_ni,
   input logic secure_tm_i,
 
   input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,
@@ -124,7 +124,7 @@ module efuse_guard #(
   end
 
   always_ff @(posedge clk_i) begin
-    if (!reset_n_i) begin
+    if (!rst_ni) begin
       err <= 1'b0;
     end else begin
       if (error_capture) begin

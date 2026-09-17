@@ -527,10 +527,11 @@ plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs on
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 The internal GitLab mirror loads its parent pipeline from a separately access-controlled
 configuration project rather than from this repository, so a pull request cannot replace the
-bootstrap that obtains the optional companion. Do not add a root `.gitlab-ci.yml`; change the
-trusted configuration through its own review path. That parent executes the `main` revision of
-`scripts/ci/diff_class.py`, rather than the revision under test, when deciding whether a
-documentation-only change can skip the nonfree child.
+bootstrap that obtains the optional companion. The root `.gitlab-ci.yml` is only a fail-fast
+sentinel in case the mirror stops using that trusted parent; change the real configuration
+through its own review path. That parent executes the `main` revision of `scripts/ci/diff_class.py`,
+rather than the revision under test, when deciding whether a documentation-only change can skip
+the nonfree child.
 
 Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
 They share the same base inventory but use separate exclusions, so a formatter limitation does

@@ -24,7 +24,7 @@ from seq_lib.smu_tb_pins import smc_primary_reset
 
 
 class smu_axi_crossbar_error_handling_test_seq:
-    """SMU_ALL_008: bare tb_top SEP=0 PTAP leave-TLR under power-good."""
+    """SMU_ALL_008: wrapper PTAP leave-TLR under power-good."""
 
     BOUND_TCK = 2000
 

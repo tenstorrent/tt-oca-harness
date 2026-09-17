@@ -307,6 +307,30 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         )
         await self.csr_write("ZEROER_DEST_ADDR", ZEROER_DEST_ADDR, OUTPUT_FABRIC_ADDR, length=8)
         await self.csr_write("ZEROER_SIZE", ZEROER_SIZE, len(ZEROER_POISON), length=8)
+        # Read both command words back before the trigger. `expected=` is the
+        # compare: the scoreboard applies an exact 64-bit equality and raises on
+        # mismatch, so a command register that dropped the write, aliased onto
+        # its sibling, or returned a reset value is caught here rather than
+        # showing up later as an unexplained wrong-sized operation. Neither
+        # register carries a write side effect (only CTRL_STATUS does --
+        # zeroer_ctrl.rdl gives INT_EN wr_swacc), so the readbacks cannot start
+        # the FSM early.
+        dest_rb = await self.csr_read(
+            "ZEROER_DEST_ADDR_RB", ZEROER_DEST_ADDR, expected=OUTPUT_FABRIC_ADDR, length=8
+        )
+        size_rb = await self.csr_read(
+            "ZEROER_SIZE_RB", ZEROER_SIZE, expected=len(ZEROER_POISON), length=8
+        )
+        assert dest_rb == OUTPUT_FABRIC_ADDR and size_rb == len(ZEROER_POISON), (
+            f"zeroer command registers did not hold the programmed values: "
+            f"DEST_ADDR read {dest_rb:#x} (wrote {OUTPUT_FABRIC_ADDR:#x}), "
+            f"SIZE read {size_rb:#x} (wrote {len(ZEROER_POISON):#x})"
+        )
+        cocotb.log.info(
+            "CHK-ZEROER-CMD-READBACK: DEST_ADDR@"
+            f"{ZEROER_DEST_ADDR:#x} reads {dest_rb:#x} and SIZE@{ZEROER_SIZE:#x} "
+            f"reads {size_rb:#x}, both equal to what S2 wrote"
+        )
         cocotb.log.info(
             "CHK-ZEROER-REGION-DECODE: csr_write ZEROER_DEST_ADDR@"
             f"{ZEROER_DEST_ADDR:#x}={OUTPUT_FABRIC_ADDR:#x} and ZEROER_SIZE@"

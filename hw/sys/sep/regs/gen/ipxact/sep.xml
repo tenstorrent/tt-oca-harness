@@ -1367,6 +1367,18 @@ Cleared automatically by the hardware when starting the transfer of a new chunk.
               <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>abr_sw_rst_n</ipxact:name>
+              <ipxact:description>Adams Bridge reset (0=assert, 1=release)</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
           </ipxact:register>
         </ipxact:registerFile>
         <ipxact:registerFile>
