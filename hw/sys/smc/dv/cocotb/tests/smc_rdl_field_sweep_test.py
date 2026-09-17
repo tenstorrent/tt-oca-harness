@@ -33,7 +33,8 @@ from smc_base_test import smc_base_test
 #   WDT_TIMEOUT_RESET singlepulse: 2 writes + 2 readbacks                      4
 #   MUTEX[0..3]: acquire + held + release + reacquire                         16
 #   SEMA[0..3]: start + inc + readback + dec + readback                       20
-#   REFERENCE_COUNTER: running sample + load + two samples after it            4
+#   REFERENCE_COUNTER: running sample + load + the first readback that shows
+#     it + one more after that; a load that takes longer to cross adds reads  4
 #   STRAPS_LO / STRAPS_HI: capture read + write + readback                     6
 #                                                                         ------
 #                                                                            521

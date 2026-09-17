@@ -15,7 +15,9 @@ leaves outside `all`, and why, are named in the `all` row under
 Regression Groups; where the reason is a defect, Known Limitations records
 the hole.
 
-Every entry below names a testcase that exists and runs. Where the harness
+Every entry below names a testcase that exists, and every card says which
+groups enrol it; a card whose groups no scheduled tier selects says so and
+records no pass. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is
 recorded under Known Limitations with the reason, so this plan states what
 is verified rather than what was once intended.
@@ -288,7 +290,7 @@ verifying the block behind the port.
 |`smc_i2c_p0_multictrl_test` |Three-phase I2C0/1/2 shared-bus write + ACQ proof.
 |`smc_i2c_p0_nack_test` |I2C NACK: allow-path + address NACK + data NACK.
 |`smc_i2c_p0_rdwr_test` |Internal dual-controller write/read proof.
-|`smc_i2c_p0_stretch_test` |TX stretch recover + RSTART read/write on shared I2C pads.
+|`smc_i2c_p0_stretch_test` |I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1 host READ stalls on TX_PENDING until TXDATA is supplied, then completes with that byte.
 |`smc_i2c_p0_timeout_test` |Stretch-timeout observation (empty target TX during host READ).
 |`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
 |`smc_i2c_target_smbus_test` |VIP ARA + external SMBSUS# into DUT I2C0 SMBus target.
@@ -355,7 +357,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_dual_elaboration_test` |Prove the two-instance model elaborates and both instances leave reset independently.
+|`smc_dual_elaboration_test` |Prove the two-instance model elaborates and both instances leave reset, sense their fuses and finish memory init from the shared cold reset.
 |`smc_dual_axi_sram_probe_test` |Measure that an inbound AXI manager reaches the CPU scratch SRAM window.
 |`smc_occp_sanity_test` |One SMC issues OCCP GET_VERSION at another and reports through an OCCP WRITE.
 |`smc_occp_dual_unsecure_boot_test` |OCCP unsecure boot end to end between two real SMCs over the shared I3C bus.
@@ -371,20 +373,13 @@ are enrolled through `rtl_issue` -- no `ci` tag, not in `smoke`, `hosted` or
 `expect_fail_match` pinned to the assertion it raises; the weekly tier runs
 the group on its own `regress.yml` row and grades the recorded failure as
 PASS, so the row goes red (`expected_fail_passed`) the week a defect is
-fixed and the leaf moves to its feature testlist. `smc_deadspace_decode_test`
-(#585) is a member too; its card is under FABRIC.
+fixed and the leaf moves to its feature testlist. The members are
+`smc_deadspace_decode_test` (#585), whose card is under FABRIC, and
+`smc_efuse_map_read_test` (#1989), whose card is under EFUSE.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
 the wrong reason.
-
-[cols="2,3",options="header",]
-|===
-|Testcase |Objective
-|`smc_gpio_irq_mask_deassert_test` |Clearing DATA_CTRL.interrupt_enable must de-assert interrupt_o.
-|`smc_log_engine_intr_mask_test` |INTR_ENABLE must mask the log-engine interrupt output, not its set path.
-|`smc_i2c_intr_mask_test` |INTR_ENABLE must mask the I2C interrupt output, not its set path.
-|===
 
 ==== FIRMWARE
 
@@ -402,7 +397,7 @@ the wrong reason.
 |`smc_fw_i2c_fifo_full_test` |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the declared depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 |`smc_fw_uart_log_engine_single_entry_test` |Log-engine golden path: one 16-byte SRAM entry fetched and written to UART0, returned through MCR.LOOP and read back from RBR in order; LOG_CTRL[0] hwclr; INTR_STATUS 0.
 |`smc_fw_uart_log_engine_boundary_backpressure_test` |Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
-|`smc_fw_uart_log_engine_disable_during_xfer_test` |CTRL.EN cleared mid-transfer halts the engine cleanly; a re-trigger completes; four entries triggered together all hwclr; an abort from WAIT; replica 1 runs an entry.
+|`smc_fw_uart_log_engine_disable_during_xfer_test` |CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
 |`smc_fw_uart_log_engine_fetch_err_test` |A log-engine fetch from an unmapped address latches INTR_STATUS.LOG_FETCH_ERR: INTR_TEST self-test, INTR_ENABLE gating, stuck-cause re-latch and retirement by a good fetch, sustained DECERR with LOG_CTRL not hwclr, WRITE_ERR staying clear, and the fault on replica 1.
 |===
 
@@ -661,7 +656,7 @@ Drive `smc_ext_interrupts_pin_test_seq`. Each checker below is a named compare t
 
 [arabic]
 . Build `plic_sanity` through `[c_build.default]`, stage `plic_sanity.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back.
-. Program the reset vector and release. The image clears every context's enable words, gives the eight contexts distinct thresholds, registers a handler for source 1, enables it, publishes the arm word 0xAAAA_AAAA and parks in `wfi`.
+. Program the reset vector and release. The image clears every context's enable words, gives the eight contexts distinct thresholds, registers a handler for source 1, enables it, publishes the arm word 0xAAAA_AAAA and parks in `wfi`. The handler masks the source through the context threshold (not the enable bit, which the PLIC requires set for a completion to count) and returns, so the driver's claim-complete write executes; main then lowers the threshold with the pin still high and requires a second delivery before it posts the verdict, because the gateway forwards a source again only after its previous claim was completed.
 . Require the arm word before any verdict. A PASS not preceded by it is failed: the image would have reached its verdict without passing through the state the stimulus acts on.
 . Hold the pin low for 2000 further `clk_smc_i` cycles and require SCRATCH_0 to still read the arm word.
 . Drive `ext_interrupts_i[0]` high and poll for the verdict.
@@ -673,7 +668,7 @@ Drive `smc_ext_interrupts_pin_test_seq`. Each checker below is a named compare t
 |Checker |Description
 |`CHK-FW-PLIC-QUIET` |With the PLIC armed and the pin still low, SCRATCH_0 does not move. Without this the PASS could have come from any interrupt already pending, and the testcase would be satisfied by a DUT that traps on something else
 |`CHK-FW-PLIC-STIMULUS` |The pin rises only after the quiet window, so the verdict below is ordered after the stimulus rather than merely coincident with it
-|`CHK-FW-PLIC-CLAIM` |The firmware's own PASS word reaches CPU_CTRL SCRATCH_0, and only a claim of the registered source can put it there. `riscv_plic0.c:106-107` dispatches `metal_exint_table[idx]` on the index the claim register returned, and the image registers a handler at one index only -- every other source reaches `__metal_plic0_default_handler`, which posts no verdict. The handler's own ID compare is unreachable for that reason and is not credited here
+|`CHK-FW-PLIC-CLAIM` |The firmware's own PASS word reaches CPU_CTRL SCRATCH_0, and only two completed claims of the registered source can put it there: the verdict is posted after the source, unmasked with the pin still high, is delivered a second time, which the PLIC gateway does only once the first claim has been completed. `riscv_plic0.c:106-107` dispatches `metal_exint_table[idx]` on the index the claim register returned, and the image registers a handler at one index only -- every other source reaches `__metal_plic0_default_handler`, which posts no verdict. The handler's own ID compare is unreachable for that reason and is not credited here
 |===
 
 *Pass Criteria*: all three checkers hold. The verdict poll is bounded at 6000 iterations of 100 `clk_smc_i` cycles; the image spends most of the boot in `__metal_driver_riscv_plic0_init`, which walks all 336 sources over MMIO. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
@@ -1890,7 +1885,7 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 |`CHK-PERIPHERAL-INSTANCE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
 
-*Pass Criteria*: every probed block matches its non-zero generated reset, every probed instance returns its own co-resident pattern, the PVT access drives the external port, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. The DTP window and the bus error units are recorded as not closed. Enrolled in: `all`.
+*Pass Criteria*: every probed block matches its non-zero generated reset, every probed instance returns its own co-resident pattern, the PVT access drives the external port, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. The DTP window and the bus error units are recorded as not closed. Enrolled in no scheduled group. Held out of `all` and `hosted` on #1989 (the shadow map reads 0 after sense); the row is in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 
 '''''
 
@@ -3776,7 +3771,7 @@ Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named com
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`, `coverage_closure`, `depth`.
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `coverage_closure`, `depth`. Held out of `all` and `hosted` on #1989 (the shadow map reads 0 after sense); the row is in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 '''''
 
 [[sec-081-smc_reference_counter_test]]
@@ -4061,7 +4056,7 @@ Drive `smc_efuse_boundary_signals_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-BND-BASIC`, `CHK-EFUSE-BND-HOLD`, `CHK-EFUSE-BND-MAP`, `CHK-EFUSE-BND-REL`, `CHK-EFUSE-BND-STAY` hold after their compares. Enrolled in: `all`, `hosted`, `per_ip`, `depth_efuse`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-EFUSE-BND-BASIC`, `CHK-EFUSE-BND-HOLD`, `CHK-EFUSE-BND-MAP`, `CHK-EFUSE-BND-REL`, `CHK-EFUSE-BND-STAY` hold after their compares. Enrolled in: `per_ip`, `depth_efuse`, `coverage_closure`, `depth`. Held out of `all` and `hosted` on #1989 (the shadow map reads 0 after sense); the row is in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 '''''
 
 [[sec-089-smc_efuse_chip_config_read_test]]
@@ -4233,7 +4228,7 @@ Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a name
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-LOCK-IRQ-RD`, `CHK-EFUSE-LOCK-IRQ-UNLOCK`, `CHK-EFUSE-LOCK-IRQ-WR`, `CHK-EFUSE-LOCK-PRE`, `CHK-EFUSE-LOCK-SCOREBOARD` hold after their compares. Enrolled in: `all`, `hosted`, `per_ip`, `depth_efuse`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-EFUSE-LOCK-IRQ-RD`, `CHK-EFUSE-LOCK-IRQ-UNLOCK`, `CHK-EFUSE-LOCK-IRQ-WR`, `CHK-EFUSE-LOCK-PRE`, `CHK-EFUSE-LOCK-SCOREBOARD` hold after their compares. Enrolled in: `per_ip`, `depth_efuse`, `coverage_closure`, `depth`. Held out of `all` and `hosted` on #1989 (the shadow map reads 0 after sense); the row is in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 '''''
 
 [[sec-093-smc_efuse_map_read_test]]
@@ -4265,7 +4260,7 @@ Drive `smc_efuse_map_read_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-MAP-READ` hold after their compares. Enrolled in: `all`, `hosted`, `per_ip`.
+*Pass Criteria*: `CHK-EFUSE-MAP-READ` hold after their compares. Enrolled in: `rtl_issue`, as the reproducer for #1989 (`expect_fail`, weekly `rtl_issue` row); it returns to `all`, `hosted` and `per_ip` when the defect is fixed.
 '''''
 
 [[sec-094-smc_efuse_otp_burn_shadow_test]]
@@ -4304,7 +4299,7 @@ Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compar
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-OTP-PRELOAD`, `CHK-EFUSE-OTP-PROGRAM-FAIL`, `CHK-EFUSE-OTP-PROGRAM-OK`, `CHK-EFUSE-OTP-SHADOW`, `CHK-EFUSE-OTP-STATUS` hold after their compares. Enrolled in: `all`, `hosted`, `per_ip`, `coverage_closure`.
+*Pass Criteria*: `CHK-EFUSE-OTP-PRELOAD`, `CHK-EFUSE-OTP-PROGRAM-FAIL`, `CHK-EFUSE-OTP-PROGRAM-OK`, `CHK-EFUSE-OTP-SHADOW`, `CHK-EFUSE-OTP-STATUS` hold after their compares. Enrolled in: `per_ip`, `coverage_closure`. Held out of `all` and `hosted` on #1989 (the shadow map reads 0 after sense); the row is in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 '''''
 
 [[sec-095-smc_efuse_otp_clock_config_depth_test]]
@@ -5709,11 +5704,12 @@ Drive `smc_i2c_p0_rdwr_test_seq`. Each checker below is a named compare the DUT 
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: TX stretch recover + RSTART read/write on shared I2C pads.
+*Objective*: I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1 host READ stalls on TX_PENDING until TXDATA is supplied, then completes with that byte and the host returns to idle.
 
 *Test Coverage*:
 
 * I2C1 READ with TX_STRETCH_CTRL_EN; I2C0 TX_PENDING then TXDATA.
+* One START, one read byte and a STOP: the sequence issues no repeated START, and the host write direction is `smc_i2c_p0_conti_test`'s.
 * Requires +smc_i2c_shared_bus.
 
 *Test Procedure*:
@@ -6639,12 +6635,12 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 *BFM / Model*: `SmcDualHarness` (hierarchical probes on both instances); production boot ROM loaded into both
 
-*Objective*: Prove the two-instance model elaborates and both instances leave reset independently.
+*Objective*: Prove the two-instance model elaborates and both instances leave reset, sense their fuses and finish memory init from the shared cold reset. The two reset trees are proven wired to both instances, not to be independent domains: one `rst_cold_ni` drives both.
 
 *Test Coverage*:
 
 * Two `smc_wrapper` instances built with `SMC_DUAL`, plus the I3C bus they share.
-* Reset release, fuse sense and memory init on each instance separately.
+* Reset release, fuse sense and memory init observed on each instance, after the one cold reset both share.
 * The testbench's own per-channel I3C counter indexing.
 
 *Test Procedure*:
@@ -6793,7 +6789,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 `CHK-OCCP-TRANSFER-LANDED` depends on `smc_scratch_map_pkg` decoding the drawn destination the same way `smc_dual_axi_sram_probe_test` holds against AXI. `pick_payload_addresses` draws from anywhere in the OCCP window, so the peek is almost never reading offset 0, and a decode right only for the first 256 bytes of the window would look in the wrong bank. The six-offset agreement in `smc_dual_axi_sram_probe_test` is what makes the checker able to raise.
 
-Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_all`, `occp_dual`.
+Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_all`, `occp_dual`. No scheduled tier selects either group, so this card states what a run of the leaf must show and records no pass; the hold-out row, its owner and its closing condition are in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 
 '''''
 
@@ -7315,7 +7311,7 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 
 *Test Coverage*:
 
-* Scenarios A..E on wrap 0: A, an 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request into a 64-byte slot that overfills the 32-entry UART TX FIFO so the write FSM runs against `uart_tx_ready` low; C, a completion check against a defined UART offset (the write-error path is unreachable, as the image documents); D, a 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to one 8-byte beat. D and E read back exactly the clamped byte count from RBR and require no extra byte. Those compares are the firmware's.
+* Scenarios A..E on wrap 0: A, an 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request into a 64-byte slot that overfills the 32-entry UART TX FIFO so the write FSM runs against `uart_tx_ready` low; C, a completion check against a defined UART offset (the write-error path is unreachable, as the image documents); D, a 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to one 8-byte beat. A, D and E read back exactly the requested or clamped byte count from RBR and require no extra byte. Those compares are the firmware's.
 * What the bench observes on its own: the SPM source holds E's 0xE0..0xEF in its first 16 bytes and B's 0x50..0x7F behind them -- B was the only scenario to write past byte 16 -- and the engine reads back programmed as E left it, with CTRL.EN and MCR.LOOP cleared by the cleanup.
 
 *Test Procedure*:
@@ -7347,11 +7343,11 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 
 *BFM / Model*: the SMC C image `fw/tests/uart_log_engine_disable_during_xfer`, executed by the CPU cluster, UART0 and UART1 in MCR.LOOP; both wraps' engine CSRs and the SPM source read over SEP_IN AXI
 
-*Objective*: CTRL.EN cleared mid-transfer halts the engine cleanly; a re-trigger completes; four entries triggered together all hwclr; an abort from WAIT; replica 1 runs an entry.
+*Objective*: CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
 
 *Test Coverage*:
 
-* On wrap 0 with UART0 in MCR.LOOP: a 16-byte entry triggered and CTRL.EN cleared immediately, with INTR_STATUS required to stay 0 while both error interrupts are enabled; a re-enable and a clean re-trigger; four entries fired at once and all four LOG_CTRL words waited to hwclr; another transfer aborted from the WAIT state; and a 16-byte entry on replica 1 (wrap 1). Every completion and status check is the firmware's.
+* On wrap 0 with UART0 in MCR.LOOP: a 32-byte entry (as deep as the UART TX FIFO, so the writer is still moving bytes) triggered and CTRL.EN cleared one register access later, the loopback drained as bytes land and required to return at least one and fewer than 32 bytes, all from the slot and none once the UART is idle, with INTR_STATUS required to stay 0 while both error interrupts are enabled; a re-enable and a 16-byte re-trigger that must deliver exactly 16 bytes; four entries fired at once and all four LOG_CTRL words waited to hwclr; another 32-byte transfer aborted from the WAIT state with the same halt measurement and recovery; and a 16-byte entry on replica 1 (wrap 1). Every count, completion and status check is the firmware's.
 * What the bench observes on its own: the 256-byte SPM source holds the multi-entry fill 0xC0 + (i & 0x3F) that the later scenarios reuse, and both engines read back programmed at that buffer with CTRL.EN and MCR.LOOP cleared on both wraps by the cleanup.
 
 *Test Procedure*:
@@ -7431,7 +7427,7 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 * A register array gets a phased pass: all elements take an index-derived signature, all are read back while the signatures are co-resident, and only then are they restored, so an array folded onto one physical register fails instead of returning the value just written through the same address.
 * Fields whose readback the contract does not pin -- hardware-driven, `singlepulse`, `oneToSet`, read-side-effect -- are never written by the generic cycle. The four CPU_CTRL registers that carry a contract of their own (`WDT_TIMEOUT_RESET`, `MUTEX`, `SEMA`, `REFERENCE_COUNTER`) are driven against that contract instead.
 * `_EXCLUDED` in the sequence names every remaining software-writable register of those blocks and what driving it here would do; `_assert_partition` fails when a register of the blocks is in neither list, so a regenerated map cannot add one silently.
-* The adopter strap capture registers are the `sw = r` half: `hw/top/smc_ip_integration.sv` decodes them out of the external window at `ExtStrapsBase` and drives them from `rom_straps`, which the open integration ties to 0. The offset is read out of the integration source, not copied.
+* The adopter strap capture registers are the `sw = r` half: `hw/sys/smc/doc/memmap.adoc` places `STRAPS_LO` / `STRAPS_HI` at BASE + 0x040_5800 / 0x040_5804 inside the adopter external window, and straps.rdl makes both `sw = r; hw = w`. What they captured at cold reset is read once and held against the write, not predicted from the integration; the contract proven is that every undeclared bit reads 0 and a software write changes nothing.
 
 *Test Procedure*:
 
@@ -7443,11 +7439,11 @@ Drive `smc_rdl_field_sweep_test_seq`. Each checker below is a named compare the 
 |===
 |Checker |Description
 |`CHK-RDL-SWEEP-CYCLE` |Every swept register instance read its RDL reset with all undeclared bits 0, took the pattern its access type allows through half-register writes and the co-resident array pass, and read back its RDL reset after the restore
-|`CHK-RDL-SWEEP-SPECIAL` |CPU_CTRL `WDT_TIMEOUT_RESET` self-cleared its `singlepulse` fields, `MUTEX[0..3]` handed the mutex out once and released it on a write, `SEMA[0..3]` added and subtracted the signed written value, and `REFERENCE_COUNTER` stayed ahead of its earlier sample across a software write of 0
-|`CHK-RDL-STRAPS-RO` |`STRAPS_LO` and `STRAPS_HI` read their driven value with every undeclared bit 0, and a software write of 0xffffffff left both unchanged
+|`CHK-RDL-SWEEP-SPECIAL` |CPU_CTRL `WDT_TIMEOUT_RESET` self-cleared its `singlepulse` fields, `MUTEX[0..3]` handed the mutex out once and released it on a write, `SEMA[0..3]` added and subtracted the signed written value, and `REFERENCE_COUNTER` dropped below its earlier sample once a software write of 0 had crossed into the reference-clock domain, then advanced again from the loaded value
+|`CHK-RDL-STRAPS-RO` |`STRAPS_LO` and `STRAPS_HI` read with every undeclared bit 0, and a software write of 0xffffffff left both unchanged
 |===
 
-*Pass Criteria*: all three checkers hold and the protocol-VIP record clears its 520-access floor. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all three checkers hold and the protocol-VIP record clears its 521-access floor. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -7488,7 +7484,7 @@ checked by inverting one assertion. `--validate-configs` then lists
 [cols=",",options="header",]
 |===
 |Group |Purpose
-|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Six enrolled leaves are outside it: `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime; each runs in its own group), and the four `rtl_issue` reproducers, whose job is to fail and which the weekly tier runs on their own row (`smc_deadspace_decode_test`, `smc_gpio_irq_mask_deassert_test`, `smc_i2c_intr_mask_test`, `smc_log_engine_intr_mask_test`). Seventeen members of `all` need more than a plain hosted runner: the fourteen `fw` leaves build a C image with the RISC-V toolchain, and the three dual-target leaves (`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test`) run the production ROM or a DV ROM image on the `SMC_DUAL` elaboration
+|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Nine enrolled leaves are outside it: `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime; each runs in its own group); the two `rtl_issue` reproducers, whose job is to fail and which the weekly tier runs on their own row (`smc_deadspace_decode_test`, `smc_efuse_map_read_test`); and the five eFuse-map leaves held out on #1989 until the shadow map senses again (`smc_efuse_boundary_signals_test`, `smc_efuse_locked_access_interrupt_test`, `smc_efuse_otp_burn_shadow_test`, `smc_occp_sanity_secure_error_test`, `smc_peripheral_instance_decode_test`). Seventeen members of `all` need more than a plain hosted runner: the fourteen `fw` leaves build a C image with the RISC-V toolchain, and the three dual-target leaves (`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test`) run the production ROM or a DV ROM image on the `SMC_DUAL` elaboration
 |`avsbus_depth` |avsbus depth coverage
 |`axil` |axil coverage
 |`per_ip` |One-per-IP breadth run used for routine regression
