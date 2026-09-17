@@ -2277,7 +2277,7 @@ change can never alter the pull-request gate:
 
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
-|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu_block`, and `smc`, and
+|`--items smoke --sim-jobs 2` for `dtp`, `sep`, and `smc`, and
 `--items hosted_smoke` for `smu`, whose own `smoke` group reaches firmware
 tests the hosted runner cannot build; 60-minute budget per job. The job
 names `verilator-smoke (<dut>)` are the stable check contexts. Every job
@@ -2288,24 +2288,23 @@ then prints one line and skips the simulation.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`, `smu_block` `all`; SMC `hosted` and
-the three `cross_trigger` benches' `all` groups run with `--reseed 3`. No
-coverage; each row carries its own `timeout-minutes` budget, sized for the
-standard runner. Nightly is not a merge gate; a red nightly run is a triage
-signal.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the three
+`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage;
+each row carries its own `timeout-minutes` budget, sized for the standard
+runner. Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The coverage regression the dashboard publishes. DTP `all` collects
-reference-only Verilator coverage; SEP `cpu_stub`, SMU `hosted`, and
-`smu_block` `all` add `--cov` when the repository variable `DV_LARGE_RUNNER`
-names a larger runner, because the coverage-instrumented SEP and SMU model
-builds exceed the standard runner's memory, and DTP reseeds three times on
-that runner. SMU, `smu_block`, SMC `hosted`, and the three `cross_trigger`
-benches run at three seeds; SMC `hosted` collects coverage on whichever
-runner the variable selects, and the `cross_trigger` benches collect it on
-the standard runner. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
+reference-only Verilator coverage; SEP `cpu_stub` and SMU `hosted` add
+`--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
+runner, because the coverage-instrumented SEP and SMU model builds exceed the
+standard runner's memory, and DTP reseeds three times on that runner. SMU,
+SMC `hosted`, and the three `cross_trigger` benches run at three seeds; SMC
+`hosted` collects coverage on whichever runner the variable selects, and the
+`cross_trigger` benches collect it on the standard runner. A second SMC row
+(`label: rtl_issue`) runs the `rtl_issue`
 reproducers at one seed without coverage: every leaf carries `expect_fail`
 (<<runner-expected-failures>>), so the row is green while the filed defects
 stand and red the week one is fixed. `--sim-jobs` follows the runner core
@@ -2379,7 +2378,7 @@ symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smu_block`, `smc` + Verilator; `cross_trigger_port`,
+|`dtp`, `sep`, `smu`, `smc` + Verilator; `cross_trigger_port`,
 `cross_trigger_matrix`, `cross_trigger_network` + Verilator (regression
 tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
@@ -2388,9 +2387,9 @@ regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
 row). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
-cancelled, or missing DTP or SEP smoke result blocks merge. SMU, `smu_block`,
-and SMC smoke run in the same matrix but are not required contexts; the
-`cross_trigger` benches are enrolled in the regression tiers only.
+cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
+run in the same matrix but are not required contexts; the `cross_trigger`
+benches are enrolled in the regression tiers only.
 
 |Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
@@ -2421,7 +2420,6 @@ whose scenarios lack a `uvm` entry rides `--skip-unimplemented`:
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi
 python3 tools/dv/run_dv.py --dut ocah_axi_vip --framework uvm --items smoke
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
 ----
