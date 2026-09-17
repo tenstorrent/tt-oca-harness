@@ -1692,10 +1692,10 @@ A leaf that passes after a failed attempt is recorded as flaky.
 
 `stages/regress/regression.json` is the scheduler's own summary beside the
 run-level `result.json`; both carry the run `status` and `exit_code`. Its
-`jobs` list holds one record per attempt: `item`, `target`, `seed`,
-`attempt`, `status`, `return_code`, `reason`, `duration_sec`, `log`,
-`artifacts`, `failure_buckets`, `parser`, `metadata`, and `result_json`, the
-per-attempt `<test>/seed_<seed>/attempt_<n>/result.json`. Attempts of one
+`jobs` list holds one record per attempt: `stage`, `item`, `target`, `seed`,
+`attempt`, `status`, `return_code`, `reason`, `duration_sec`, `started_at`,
+`ended_at`, `log`, `artifacts`, `failure_buckets`, `parser`, `metadata`, and
+`result_json`, the per-attempt `<test>/seed_<seed>/attempt_<n>/result.json`. Attempts of one
 `(item, seed, target)` leaf are grouped, and the highest attempt is the
 leaf's final result.
 
@@ -2172,9 +2172,9 @@ this order, and the first that decides ends the grading:
 . A `fail_patterns` match that no `ignore_patterns` entry covers is `FAIL`;
   an ignored match is recorded as evidence with status `IGNORED`.
 . The last match of each `summary_patterns` entry is read: counts with a
-  nonzero failure figure, or a total that the passing and skipped figures do
-  not add up to, are `FAIL` (`log_summary`); otherwise the summary is
-  positive evidence.
+  zero total, a nonzero failure figure, or a total that the passing and
+  skipped figures do not add up to, are `FAIL` (`log_summary`); otherwise the
+  summary is positive evidence.
 . A `pass_patterns` match is recorded, and counts as positive evidence only
   when the policy names no structured result.
 . With an inconclusive structured result remembered, the leaf is `UNKNOWN`
@@ -2195,7 +2195,7 @@ The policy is `[pass_fail].policy` in the sim config, else the framework's
 default: `cocotb-default` for cocotb (structured `results.xml`, the cocotb
 `TESTS=` summary line), `uvm-log` for SystemVerilog UVM (no structured
 result; `UVM_ERROR` and `UVM_FATAL` counts, `UVM Report Summary` required),
-and `generic-regex` otherwise, which validation rejects until the flow names
+and `generic-regex` otherwise, which validation rejects unless the flow names
 a positive-evidence source. `[pass_fail]` adds to a policy only:
 `extra_pass_patterns`, `extra_fail_patterns`, `extra_ignore_patterns`,
 `extra_required_patterns`, `extra_hard_fail_patterns`,
@@ -2210,7 +2210,7 @@ own error markers. Every pattern is compiled at validation time.
 
 [cols="<1,<1,<3,<2",options="header"]
 |===
-|`result.json` status |Exit code |Synthesized JUnit node |Dashboard status
+|`result.json` status |Exit code |Synthesized JUnit node |Dashboard flow status
 
 |`PASS` |0 |none |`PASS`
 |`FAIL` |1 |`<failure type="<bucket kind>">`, `sim_failure` when no bucket
