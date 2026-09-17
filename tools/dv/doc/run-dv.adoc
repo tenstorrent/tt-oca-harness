@@ -2280,9 +2280,9 @@ change can never alter the pull-request gate:
 |`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu_block`, and `smc`, and
 `--items hosted_smoke` for `smu`, whose own `smoke` group reaches firmware
 tests the hosted runner cannot build; 60-minute budget per job. The job
-names `verilator-smoke (<dut>)` are the stable check contexts. A
-documentation-only change still runs every job so the contexts report, and
-each job prints one line and skips the simulation.
+names `verilator-smoke (<dut>)` are the stable check contexts. Every job
+runs for a documentation-only change too, so the contexts report; each job
+then prints one line and skips the simulation.
 
 |`nightly`
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
@@ -2303,8 +2303,9 @@ reference-only Verilator coverage; SEP `cpu_stub`, SMU `hosted`, and
 names a larger runner, because the coverage-instrumented SEP and SMU model
 builds exceed the standard runner's memory, and DTP reseeds three times on
 that runner. SMU, `smu_block`, SMC `hosted`, and the three `cross_trigger`
-benches run at three seeds; SMC and the `cross_trigger` benches collect
-coverage on whichever runner the variable selects. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
+benches run at three seeds; SMC `hosted` collects coverage on whichever
+runner the variable selects, and the `cross_trigger` benches collect it on
+the standard runner. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
 reproducers at one seed without coverage: every leaf carries `expect_fail`
 (<<runner-expected-failures>>), so the row is green while the filed defects
 stand and red the week one is fixed. `--sim-jobs` follows the runner core
@@ -2334,19 +2335,21 @@ times out), so the default stays the always-present standard runner.
 
 Every job carries a `timeout-minutes` budget: 60 for each smoke job, and a
 per-row value in the nightly and weekly matrices below the six-hour hosted
-cap. A job that exceeds its budget is cancelled by the runner; the runner
-process receives the cancellation as a signal and writes its interruption
-checkpoint and run-level JUnit testcase before it exits
-(<<runner-interrupted-checkpoints>>), and the artifact upload runs
-regardless of the outcome, so a cancelled job still publishes non-passing
-evidence. Inside a job, each leaf is bounded by its resolved leaf timeout, and
+cap. A job that exceeds its budget is cancelled by the hosted runner;
+`run_dv.py` receives the cancellation as a signal and, when its handler
+completes, writes the interruption checkpoint and the run-level JUnit
+testcase, and otherwise its last `UNKNOWN` checkpoint stands
+(<<runner-interrupted-checkpoints>>). The artifact upload runs regardless of
+the outcome, so a cancelled job publishes non-passing evidence either way.
+Inside a job, each leaf is bounded by its resolved leaf timeout, and
 a leaf that exceeds it grades `TIMEOUT` without ending the run.
 
 Concurrency is per workflow: a pull-request push cancels the smoke run it
-supersedes, a push to `main` never cancels a run in progress, and the two
-regression crons are separate groups that are never cancelled, so a
-dispatched tier queues behind the scheduled one. Exactly one regression tier
-runs per day.
+supersedes, and a push to `main` never cancels a run in progress. The two
+regression crons and each dispatched tier are separate groups that are never
+cancelled: a dispatched tier runs beside a scheduled one and queues only
+behind an earlier dispatch of the same tier. Exactly one scheduled tier runs
+per day.
 
 Retention: smoke and nightly run trees for 14 days, weekly run trees for 30,
 the normalized dashboard bundle for 90; the `dv-dashboard-data` branch keeps
@@ -2362,9 +2365,10 @@ native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
 `status` `PASS`). Coverage-enabled jobs additionally require a numeric score
 and recorded report/summary paths, but do not enforce a score threshold. The
 action uploads `dv-run-<dut>-<tool>-<tier>` (`-<label>` appended for a
-labelled row; 14-day retention, 30 for the weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
-are excluded after merge while the merged coverage report and normalized
-summary remain. Explicit run directories never create or update the `latest`
+labelled row), including on failure, for the retention periods in
+<<runner-ci-budgets>>; per-leaf Verilator `coverage.dat` inputs are excluded
+after merge while the merged coverage report and normalized summary remain.
+Explicit run directories never create or update the `latest`
 symlink.
 
 [[runner-ci-support-matrix]]
@@ -2380,7 +2384,8 @@ symlink.
 tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `cpu_stub` / `hosted` / `smoke`). Main protection
+regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
+row). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU, `smu_block`,
