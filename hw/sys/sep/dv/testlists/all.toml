@@ -52,7 +52,7 @@ tests = ["sep_axi_smoke_test"]
 # a coverage run grades. expected_count fails the run when membership drifts
 # from the class groups instead of silently shrinking the suite.
 name = "all"
-expected_count = 101
+expected_count = 102
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -86,6 +86,10 @@ tests = [
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_efuse_km_axil_cpu_mux_coexist_test",
     "sep_irq_ip_to_aggregator_test",
+    # Expected FAIL: asserts the misaligned-offset latch condition the RDL and
+    # interrupts.adoc state for PERIPH_BUS_ERR_STATUS, which the DUT does not
+    # implement. See its [[tests]] entry in system.toml.
+    "sep_periph_bus_err_misaligned_reveal_test",
     "sep_drbg_real_sink_multi_km_aes_test",
     "sep_km_otbn_sideload_kat_test",
     "sep_km_aes_sideload_kat_test",

@@ -15,24 +15,7 @@ aggregator bits [40] and [42]. A dead-space beat past an adapter window is
 DECERR and never sets err_o, so the probes stay inside each routed extent.
 AES, CSRNG, EDN and WDT windows are packed to the last register; an unmapped
 beat there is past the rule and DECERRs. Their PERIPH_BUS_ERR_STATUS bits are
-unreachable from this testbench, which is why periph_holes() names three blocks
-and not seven. All three d_error sources in the block (reg_top
-reg_error = addrmiss | wr_err | intg_err) are closed for them:
-
-  * addrmiss -- the extents are fully packed. EDN maps 18 registers in 18 words
-    (72 B), CSRNG 24 in 24 (96 B), AES 35 in 35 (140 B): no in-window address
-    owns no register. HMAC/KMAC/OTBN differ only because their windows include a
-    memory region, leaving a CSR-to-memory gap.
-  * wr_err (sub-word write) -- a 1-byte write is refused upstream of the bridge.
-    Measured: the write completes SLVERR but PERIPH_BUS_ERR_STATUS stays 0.
-  * intg_err -- the bridge generates command integrity itself
-    (axi_lite_to_tlul EnableCmdIntgGen), so it cannot mismatch.
-
-Also issues one misaligned beat at a mapped HMAC register. sep_cpu_ctrl.rdl and
-interrupts.adoc both say the status bit latches on a "misaligned offset". It
-does not: the fabric refuses a misaligned beat with DECERR before it reaches the
-block, so no TL-UL error is generated and nothing can latch. That refusal, and
-the status bits staying clear, are what this leaf grades.
+unreachable here, which is why periph_holes() names three blocks and not seven.
 
 OpenTitan interrupt-register layout (per IP base):
   INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
@@ -63,7 +46,6 @@ INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR") - CSRNG_BASE
 INTR_TEST = sym("CSRNG_INTR_TEST_REG_ADDR") - CSRNG_BASE
 
 RESP_SLVERR = 2
-RESP_DECERR = 3
 
 # PIC source IDs from hw/sys/sep/doc/interrupts.adoc (1-based).
 # sep_internal_interrupts[N] feeds PIC source N+1.
@@ -161,10 +143,7 @@ def hmac_misaligned_addr() -> int:
     """A misaligned offset inside a mapped HMAC register.
 
     ``CFG`` is a live 32-bit register, so byte offset +2 lies inside the HMAC
-    extent but is not word-aligned. Measured behaviour: the fabric refuses the
-    beat with DECERR before it reaches the block, so the register adapter's
-    word-aligning (tlul_adapter_reg.sv:167) never comes into play and no TL-UL
-    error is generated for PERIPH_BUS_ERR_STATUS to latch.
+    extent but is not word-aligned.
     """
     return HMAC.addr("CFG") + 2
 
@@ -243,24 +222,6 @@ class SepIrqIp(SepAxiRegDriver):
 
     async def write32(self, addr: int, data: int) -> None:
         await self._wr(addr, data)
-
-    async def read_expect_decerr(self, addr: int) -> int:
-        """One 32-bit read that must be refused by the fabric with DECERR."""
-        seq = SepAxiAccessSeq(
-            f"{self._DRIVER_TAG.lower()}_rd_decerr",
-            op=SepAxiOp.READ,
-            addr=addr,
-            size=self._AXI_SIZE,
-            expect_error=True,
-        )
-        await self.test.start_seq(seq)
-        if seq.resp_code != RESP_DECERR:
-            raise AssertionError(
-                f"{self._DRIVER_TAG} read @0x{addr:08x} resp={seq.resp_code}, "
-                f"expected DECERR (3): a misaligned beat is refused by the fabric "
-                f"before it reaches the block adapter"
-            )
-        return seq.rdata
 
     async def read_expect_slverr(self, addr: int) -> int:
         """One 32-bit read that must complete SLVERR (through-adapter, not DECERR)."""

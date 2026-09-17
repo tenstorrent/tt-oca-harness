@@ -241,6 +241,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# EXPECTED FAIL. Asserts the misaligned-offset latch condition that
+# sep_cpu_ctrl.rdl:383 and doc/interrupts.adoc:227 state for
+# PERIPH_BUS_ERR_STATUS; the DUT refuses the beat at the fabric instead, so
+# nothing latches. The framework has no xfail mechanism, so a run whose only
+# failure is this leaf is the expected result. See issue 1993.
+name = "sep_periph_bus_err_misaligned_reveal_test"
+module = "system.sep_periph_bus_err_misaligned_reveal_test"
+seed = 1
+timeout_sec = 600
+tags = ["interrupt", "aggregator", "system", "subsystem", "reveal"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # LCC sep_debug -> inbound-filter gating (security boundary, the reference suite
 # sep_lcc_uvm_inbound_filter_gating_test). A custom OTP image with
 # LC_STATE=PROD is REAL-sensed (so NO +skip_fuse_sense -- the LCC feat_ctrl decode

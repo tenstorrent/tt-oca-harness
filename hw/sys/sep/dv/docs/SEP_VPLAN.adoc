@@ -263,6 +263,10 @@ appears.
 |no_cpu
 |ocah_axi_vip
 |Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 40 and 42, and clears both.
+|`sep_periph_bus_err_misaligned_reveal_test`
+|no_cpu
+|ocah_axi_vip
+|EXPECTED FAIL. Asserts the misaligned-offset latch condition `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` state for the bus-error status registers. The fabric refuses a misaligned in-extent beat with DECERR, so no TL-UL error reaches the block and no bit latches.
 |`sep_drbg_real_sink_multi_km_aes_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, entropy golden
@@ -2120,9 +2124,9 @@ recovery. Those are listed in <<phase-3>>.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter and one through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write. A final probe shows what the documented "misaligned offset" latch condition actually does: the fabric refuses the beat and no status bit latches.
+*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter and one through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write.
 
-*Test Coverage*: Entropy `INTR_TEST` bits, adapter SLVERR into the aggregator, and the response to a misaligned in-extent beat.
+*Test Coverage*: Entropy `INTR_TEST` bits plus adapter SLVERR into the aggregator.
 
 *Test Procedure*:
 
@@ -2137,7 +2141,6 @@ recovery. Those are listed in <<phase-3>>.
 . Write `DMA_BUS_ERR_CLEAR`; STATUS and bit 40 read 0.
 . Read the unused word between the HMAC CSRs and the message FIFO; require SLVERR, exclusive `hmac`, and bit 42. Write `PERIPH_BUS_ERR_CLEAR.hmac`; STATUS and bit 42 read 0.
 . Repeat for the KMAC CSR/STATE gap (`kmac`) and the OTBN CSR/IMEM gap (`otbn`).
-. Read a misaligned word inside the HMAC extent (`CFG` + 2). Require DECERR, and require both bus-error STATUS registers and aggregator bit 42 to stay 0.
 
 *Checkers*:
 
@@ -2154,15 +2157,52 @@ recovery. Those are listed in <<phase-3>>.
 |The DMA hole read completes SLVERR, not DECERR. `DMA_BUS_ERR_STATUS` is exactly `reg_path_err`. Aggregator bit 40 is 1; bits 41 and 42 stay 0.
 |CHK-BUSERR-PERIPH
 |Each HMAC, KMAC and OTBN hole read completes SLVERR, not DECERR. `PERIPH_BUS_ERR_STATUS` is exactly that block's bit. Aggregator bit 42 is 1; bit 40 stays 0.
-|CHK-BUSERR-MISALIGN
-|A misaligned beat inside a mapped extent is refused by the fabric with DECERR, and neither `PERIPH_BUS_ERR_STATUS` nor `DMA_BUS_ERR_STATUS` latches, and aggregator bit 42 stays 0. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` both state the status bit latches on a misaligned offset; it does not, and this checker is what keeps that claim from being relied on silently. Fails in either direction: if the fabric ever forwards a misaligned beat, or if any fault latches.
 |CHK-BUSERR-CLR
 |Each matching CLEAR write returns its STATUS word and its aggregator bit to 0. The CLEAR registers are write-only single-pulse fields that always read 0, so their read value is not graded.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset term is now graded on the peripheral path by CHK-BUSERR-MISALIGN, which shows it unreachable rather than working; the same term on the DMA register path, and the access-control term of both, stay unproven.
+*Not claimed*: DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of both status registers are not claimed here. The misaligned term is revealed as unimplemented by <<sep_periph_bus_err_misaligned_reveal_test>>, which fails by design against the documented contract.
+
+'''''
+
+[[sep_periph_bus_err_misaligned_reveal_test]]
+===== `sep_periph_bus_err_misaligned_reveal_test`
+
+*Phase*: 1
+
+*Run mode*: `no_cpu`
+
+*Source Module*: `sep_periph_bus_err_misaligned_reveal_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Reveals that the misaligned-offset latch condition stated for `PERIPH_BUS_ERR_STATUS` does not exist. `sep_cpu_ctrl.rdl:383` and `doc/interrupts.adoc:227` require a misaligned CPU access to a block's registers to receive SLVERR and latch that block's status bit; the fabric refuses the beat with DECERR instead, so no TL-UL error reaches the block and nothing latches.
+
+*Test Coverage*: The misaligned-offset term of the bus-error status contract.
+
+*Test Procedure*:
+
+[arabic]
+. Confirm `PERIPH_BUS_ERR_STATUS` reads 0, so the assertion below cannot be satisfied by stale state.
+. Read a misaligned word inside the mapped HMAC extent (`CFG` + 2).
+. Require SLVERR and the `hmac` bit latched, per the documented contract.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-MISALIGN-BASE
+|`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. Guards the reveal against a bit left set by an earlier step.
+|CHK-MISALIGN-LATCH
+|A misaligned in-extent access receives SLVERR and latches the owning block's bit. **Fails today**: the access returns DECERR and the register stays 0.
+|===
+
+*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The framework has no xfail mechanism, so a run whose only failure is this leaf is the expected result. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction. Tracked by https://github.com/tenstorrent/tt-oca-harness/issues/1993.
+
+*Not claimed*: the same term on the DMA register path (`reg_path_err`), and the access-control (RACL) term of either register — RACL is disabled in this design with its error output unconnected, so that term is unreachable for a separate reason.
 
 '''''
 
