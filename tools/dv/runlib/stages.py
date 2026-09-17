@@ -343,6 +343,44 @@ def _target_build_metadata(
     return metadata
 
 
+def _stamp_provenance(
+    root: Path,
+    log_path: Path,
+    metadata: dict[str, Any],
+    *,
+    fingerprint: str | None,
+    filelist: Path | None,
+    dry_run: bool,
+) -> None:
+    """Bind a per-test log to the sources and build that produced it.
+
+    Records the commit, the dirty flag, the build fingerprint and the filelist
+    digest in the stage metadata (so they reach ``result.json``) and appends the
+    same facts as one ``PROVENANCE`` line at the end of the per-test log, so the
+    log on its own names the build it came from.
+    """
+    from .results import git_info
+
+    git = git_info(root)
+    flist_sha = None
+    if filelist is not None and filelist.is_file():
+        flist_sha = hashlib.sha256(filelist.read_bytes()).hexdigest()[:16]
+    prov: dict[str, Any] = {
+        "commit": git.get("commit", ""),
+        "branch": git.get("branch", ""),
+        "dirty": git.get("dirty", ""),
+        "build_fingerprint": fingerprint or "",
+        "filelist": repo_rel(root, filelist) if filelist is not None else "",
+        "filelist_sha256": flist_sha or "",
+    }
+    metadata["provenance"] = prov
+    if dry_run or not log_path.is_file():
+        return
+    line = "PROVENANCE " + " ".join(f"{key}={value}" for key, value in prov.items() if value != "")
+    with log_path.open("a", encoding="utf-8") as log:
+        log.write(f"\n{line}\n")
+
+
 def _cocotb_target_build_metadata(
     info: dict[str, Any], tool: str, *, status: str | None = None
 ) -> dict[str, Any]:
@@ -3656,9 +3694,15 @@ def run_stage(
                 ),
                 "rebuild": bool(args.rebuild),
             }
-            metadata["target_build"] = _cocotb_target_build_metadata(
-                _cocotb_build_info(flow, root, sim_cfg, args, tool),
-                tool,
+            sim_info = _cocotb_build_info(flow, root, sim_cfg, args, tool)
+            metadata["target_build"] = _cocotb_target_build_metadata(sim_info, tool)
+            _stamp_provenance(
+                root,
+                log_path,
+                metadata,
+                fingerprint=str(sim_info.get("fingerprint", "")) or None,
+                filelist=sim_info.get("filelist"),
+                dry_run=bool(args.dry_run),
             )
         elif kind == "vcs_filelist":
             rc = generate_filelist(
@@ -3749,6 +3793,14 @@ def run_stage(
                 tool="vcs",
                 build_dir=info["build_dir"],
                 fingerprint=info["fingerprint"],
+            )
+            _stamp_provenance(
+                root,
+                log_path,
+                metadata,
+                fingerprint=str(info.get("fingerprint", "")) or None,
+                filelist=None,
+                dry_run=bool(args.dry_run),
             )
         elif kind == "xrun_filelist":
             rc = generate_filelist(

@@ -80,7 +80,7 @@ from .results import (
     coverage_summary,
     exit_code_for_status,
     fragment_payload,
-    git_info,
+    git_provenance,
     incomplete_run_note,
     regression_payload,
     result_payload,
@@ -2802,7 +2802,9 @@ def run_flow(
     replaying_coverage = existing_result is not None and replay_run_dir == run_dir
     checkpoint_enabled = bool(expected_leaves) and not args.dry_run and not replaying_coverage
     run_versions = tool_versions(root)
-    run_git = git_info(root)
+    # Archives the uncommitted diff beside result.json when the tree is dirty, so the
+    # commit hash plus that diff identify the sources every leaf of this run compiled.
+    run_git = git_provenance(root, run_dir)
 
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console
