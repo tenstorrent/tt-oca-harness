@@ -272,6 +272,28 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             st_stall,
         )
 
+        # stall_cnt_q saturates at StallThresh and the flag clears only on
+        # forward progress (sep_entropy_fifo.sv:264-272), so holding the same
+        # stall far past the threshold must leave [37] asserted. A counter that
+        # wrapped, or a flag that self-cleared on saturation, would drop the
+        # fault here and let a real EDN outage go unreported.
+        await ClockCycles(cocotb.top.clk_i, STALL_THRESH * 3)
+        assert await self._irq(IRQ_FILL_STALL) == 1, (
+            f"[37] dropped after {STALL_THRESH * 3} further cycles of the same "
+            f"stall; the flag tracks the live stall state, so a saturated counter "
+            f"cannot clear it without an edn_ack"
+        )
+        cause_held = await pool.irq_cause()
+        assert cause_held == 0x2, (
+            f"irq-cause 0x{cause_held:x} after the extended stall, expected 0x2"
+        )
+        self.logger.info(
+            "CHK-STALL-DURATION PASS: [37] still 1 and cause still 0x2 after "
+            "%d cycles, well past StallThresh=%d",
+            STALL_THRESH * 3,
+            STALL_THRESH,
+        )
+
         await pool.enable_edn()
         await pool.enable_esrc()
         await self._wait_irq(IRQ_FILL_STALL, 0, cycles=20000)
