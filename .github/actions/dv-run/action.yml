@@ -51,7 +51,7 @@ inputs:
     description: 'Explicit run directory (--run-dir). Keep the build/ci/runs/<dut>/<tool>/<tier>/<run_id> shape: the dashboard hashes it into the trend-point identity'
   verilator-version:
     required: false
-    default: 'v5.050'
+    default: 'v5.052'
     description: 'Verilator tag built from source on a cache miss. cocotb 2.x (locked in uv.lock) needs a newer Verilator than the Ubuntu apt package'
   python-version:
     required: false
