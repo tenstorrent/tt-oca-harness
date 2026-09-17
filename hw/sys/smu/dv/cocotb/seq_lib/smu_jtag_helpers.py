@@ -177,14 +177,18 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # 2n+2}, every bit resetting to 1 (reset_enable=1 is "override disabled"),
 # length 2 * ports + 1. doc/integrator/src/smu.adoc "IC_RESET TDR
 # Structure" gives the SMU composition: TDI -> SMC slice (68 ports) -> SEP
-# slice (0 ports at SEP=0, 7 at SEP=1) -> external slice -> reset_hold -> TDO, so with
+# slice (0 ports at SEP=0, 8 at SEP=1) -> external slice -> reset_hold -> TDO, so with
 # LSB-first shifting port 0 is the external port and the SMC slice follows.
+# The slice widths have to match the DUT exactly: a DR shorter than the TDR by
+# 2k bits lands every packed field k ports away from the one it names.
 # "SMC slice (TDI to TDO)" lists ss_warm_reset_n[31:0], ss_cold_reset_n[31:0],
 # cold, cool, warm, fuse (nearest the SEP slice), [31] nearer TDI than [0]:
 # counted from the TDO end that is fuse, warm, cool, cold, ss_cold[0..31],
 # ss_warm[0..31]. The external slice type is adopter-defined; the SMU bench
 # elaborates one port.
 SMU_IC_RESET_NUM_SMC_PORTS = 68
+# sep_pkg::jtag_sep_reset_ctrl_t carries eight override/value pairs.
+SMU_IC_RESET_NUM_SEP_PORTS_SEP1 = 8
 
 
 def _smu_ic_reset_sep_ports() -> int:
@@ -193,8 +197,10 @@ def _smu_ic_reset_sep_ports() -> int:
     jtag_ptap sizes the slice as $bits(ic_reset_sep_t)/2 when IC_RESET_SEP_ENABLE,
     which smu.sv ties to its SEP parameter. The production wrapper
     (tb_wrapper_top.sv, top module smu_wrapper_uvm_top) elaborates SEP=1, so its
-    slice is the seven ports of sep_pkg::jtag_sep_reset_ctrl_t and every SMC
-    port index moves up by seven. The bare block bench (tb_top.sv, smu_uvm_top)
+    slice is the eight ports of sep_pkg::jtag_sep_reset_ctrl_t (doc/integrator/
+    src/smu.adoc "IC_RESET TDR Structure": abr, trng, sep_reset, kmac, hmac,
+    aes, otbn, km) and every SMC port index moves up by eight. The bare block
+    bench (tb_top.sv, smu_uvm_top)
     instantiates smu #(.SEP(0)) and has no SEP slice. Resolved from the cocotb
     top handle so one helper serves both DUTs; outside a simulation it falls
     back to the SEP=0 shape.
@@ -203,7 +209,7 @@ def _smu_ic_reset_sep_ports() -> int:
         name = str(getattr(cocotb.top, "_name", "") or "")
     except Exception:  # noqa: BLE001 - no simulator, e.g. tooling imports
         return 0
-    return 7 if name == "smu_wrapper_uvm_top" else 0
+    return SMU_IC_RESET_NUM_SEP_PORTS_SEP1 if name == "smu_wrapper_uvm_top" else 0
 
 
 SMU_IC_RESET_NUM_SEP_PORTS = _smu_ic_reset_sep_ports()

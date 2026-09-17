@@ -2041,13 +2041,14 @@ benches are enrolled in the regression tiers only.
 tools. A pair joins the workflow matrix only with a qualifying run at head.
 
 |Unsupported in hosted CI
-|VCS/Xcelium anywhere; formal mode; `smu_wrapper` real-SEP group
-(`all_with_sep_exec`); non-local executors
+|VCS/Xcelium anywhere; formal mode; the `smu_wrapper` SEP firmware set
+(the part of its `all` outside `hosted`); non-local executors
 |VCS and Xcelium need licensed self-hosted runners. Formal mode is a
 developer-host flow: hosted CI runs no formal job and no formal result
-reaches the dashboard (<<runner-formal>>). The real-SEP `smu_wrapper` items stay
-out of the default `all` group. Non-local executor dispatch is not
-implemented.
+reaches the dashboard (<<runner-formal>>). The `smu_wrapper` SEP firmware
+items are in its `all` but need the RISC-V toolchain container, which hosted
+runners lack, so the workflows select `hosted`. Non-local executor dispatch is
+not implemented.
 |===
 
 === Framework-aware CI matrices

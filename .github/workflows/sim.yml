@@ -93,13 +93,12 @@ jobs:
           # `smu` carries the SMU regression (smu_wrapper.sv, one compile
           # profile with the real SEP); `smu_block` is the bare smu #(.SEP(0))
           # bench with the SEP=0 composition proofs and the leaves that cannot
-          # run on `smu`. Both are gated here so neither rots. `items` defaults
-          # to `smoke` below; `smu` overrides it because its own `smoke` group
-          # reaches the firmware tests, and this runner has Verilator and
-          # nothing else -- `hosted_smoke` is the toolchain-free equivalent.
+          # run on `smu`. Both are gated here so neither rots, and both run the
+          # default `smoke` group: on `smu` that group is toolchain-free by
+          # construction (its firmware smokes are `fw_smoke`), which this
+          # runner -- Verilator and nothing else -- needs.
           - dut: smu
             runner: ubuntu-latest
-            items: hosted_smoke
           - dut: smu_block
             runner: ubuntu-latest
           - dut: smc

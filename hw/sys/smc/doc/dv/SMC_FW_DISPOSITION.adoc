@@ -96,22 +96,22 @@ point at it. SMU's record of the tests that stage SMC images is
 |Image |Bucket |Consumer and what closes the row
 |smc_sep_xbar
 |external-consumer
-|SMU DV `smu_sep_smc_xbar_test`, group `sep_smc_sram_blocked` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_smc_xbar_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_sep_ext_axi
 |external-consumer
-|SMU DV `smu_sep_ext_axi_test`, group `sep_smc_sram_blocked` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_ext_axi_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_sep_debug_bus
 |external-consumer
-|SMU DV `smu_sep_debug_bus_test`, group `sep_smc_sram_blocked` and `sep_smc_dual` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_debug_bus_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_sep_lc_handoff
 |external-consumer
-|SMU DV `smu_sep_lc_handoff_test`, group `sep_smc_sram_blocked` and `sep_smc_dual` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_lc_handoff_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_cla_sep_cpu_debug
 |external-consumer
-|SMU DV `smu_cla_sep_cpu_debug_test`, group `sep_smc_sram_blocked` and `sep_smc_dual` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_cla_sep_cpu_debug_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_sep_boot
 |external-consumer
-|SMU DV `smu_sep_wdt_reset_to_smc_test`, group `sep_smc_sram_blocked` and `sep_smc_dual` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_wdt_reset_to_smc_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |uart_engine_sanity
 |external-consumer
 |Consumed by a companion regression outside this repository (UART engine controller/target pairs 0->3 and 1->2 with a four-phase scratch handshake only this image implements; the cocotb alias `smc_uart_engine_sanity_test` is waived in `SMC_DEFERRED_DISPOSITION.adoc`); not counted toward this tree's coverage. Closes when that regression runs on this bench, with a leaf here, or drops the image.
@@ -434,13 +434,13 @@ the first image that consumes it, not ahead of it.
 |BFM-side SECONDARY image for P2 recovery. DUT PRIMARY plus BFM SECONDARY firmware pair; `smc_octs_dual_sync_test` (`testlists/power.toml`) covers PRIMARY/SECONDARY sync on the dual bench. Closes when a dual sram-mode `[c_build.*]` stages two SMC images, or is superseded if none is added.
 |sep_interop
 |deferred
-|SEP_SMU_002 two-sided mailbox handshake. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_interop` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_002 two-sided mailbox handshake. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_interop` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU disposition bucket `SEP1-blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |sep_mbox_irq
 |deferred
-|SEP_SMU_015 mailbox source IRQ consumer; SMC is the sole functional consumer of the eight SEP mailbox IRQs. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_015 mailbox source IRQ consumer; SMC is the sole functional consumer of the eight SEP mailbox IRQs. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU disposition bucket `SEP1-blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |smu_smc_stall_sep
 |deferred
-|SEP_SMU_004 CLA halt/run of a live SEP. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/smu_smc_stall_sep` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_004 CLA halt/run of a live SEP. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/smu_smc_stall_sep` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU disposition bucket `SEP1-blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |smu_sep_axi_extension_decode
 |deferred
 |SMC pad-arm for the xSPI GPIO override on the SMU external AXI path; SMU's `smu_sep_ext_axi_test` stages `smu_sep_ext_axi` instead. Closes by SMU-owner agreement: an SMU test that stages this image, or removal.

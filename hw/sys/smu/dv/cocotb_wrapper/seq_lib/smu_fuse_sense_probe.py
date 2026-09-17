@@ -15,9 +15,10 @@ observable can rise once during that pre-drive and once at the real release,
 and a first-edge-only observer would time the pre-drive.
 
 The eFuse shim command ports carry ``fuse_command_req_t`` /
-``fuse_command_resp_t`` (hw/ip/efuse/rtl/svh/efuse_typedef.svh). Both structs
-are packed with ``valid`` as the last member, so ``valid`` is bit 0 of the
-packed net.
+``fuse_command_resp_t`` as the eFuse interface document lays them out
+(hw/ip/efuse/doc/interface.adoc, "Fuse Command Protocol"): both structs are
+packed with ``valid`` as the last member, so ``valid`` is bit 0 of the packed
+net.
 """
 
 from __future__ import annotations

@@ -13,10 +13,10 @@ from __future__ import annotations
 
 import os
 import random
-import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.utils import get_sim_time
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_jtag_helpers import make_smu_jtag_tap
@@ -32,6 +32,8 @@ class smu_axi_crossbar_error_handling_test_seq:
         self.test = test
         self.dut = cocotb.top
         self.cfg = test.cfg
+        # Simulation-time stamps (ns) of each step, so the fence below measures the DUT's
+        # clocks advancing and not the host.
         self._step_ts: dict[str, float] = {}
         self._timeout_paths: list[str] = []
         self._chk_pass: dict[str, bool] = {}
@@ -45,7 +47,7 @@ class smu_axi_crossbar_error_handling_test_seq:
         cocotb.log.info(msg)
 
     def _mark_step(self, step_id: str, detail: str) -> None:
-        self._step_ts[step_id] = time.monotonic()
+        self._step_ts[step_id] = get_sim_time("ns")
         self._log(f"STEP {step_id}: {detail}")
 
     def _sample(self, signal, name: str) -> int:
@@ -178,7 +180,7 @@ class smu_axi_crossbar_error_handling_test_seq:
         if not self._chk_pass.get("CHK-SMC-PWRGOOD-DTP-POR-S2"):
             raise AssertionError("CHK-NONVAC missing PASS term: CHK-SMC-PWRGOOD-DTP-POR-S2")
 
-        self._step_ts["PASS"] = time.monotonic()
+        self._step_ts["PASS"] = get_sim_time("ns")
         self._log("SMU_ALL_008 sequence complete (PASS term for NONVAC fence)")
         order = ["S1", "PASS"]
         for step_id in order:
@@ -186,7 +188,7 @@ class smu_axi_crossbar_error_handling_test_seq:
                 raise AssertionError(f"CHK-NONVAC missing step term: {step_id}")
         if self._step_ts["S1"] >= self._step_ts["PASS"]:
             raise AssertionError("CHK-NONVAC order fail: S1 not before PASS")
-        delta_ns = int((self._step_ts["PASS"] - self._step_ts["S1"]) * 1e9)
+        delta_ns = int(self._step_ts["PASS"] - self._step_ts["S1"])
         positive_deltas = 1 if delta_ns > 0 else 0
         if positive_deltas != 1:
             raise AssertionError(

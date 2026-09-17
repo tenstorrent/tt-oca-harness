@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-# DV-CARD:          SMU_ALL_001   ANCHOR: smu_wrapper_elaboration_sep_rtl_test
+# DV-CARD:          SMU_ALL_001   ANCHOR: smu_wrapper_elaboration_test
 """PyUVM entry point for the production SMU wrapper elaboration smoke."""
 
 from __future__ import annotations

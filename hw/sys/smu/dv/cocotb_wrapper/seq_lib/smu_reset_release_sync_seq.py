@@ -71,8 +71,12 @@ class smu_reset_release_sync_seq:
         await ClockCycles(dut.clk_smu_i, 8)
 
         signals = {name: getattr(dut, name) for name in REF_DOMAIN + SMU_DOMAIN}
-        sb.expect_eq(
-            "DTP primary reset input is the SMC-domain primary reset",
+        # smu.sv wires the DTP's rst_n_i to the SMC primary reset net, and the
+        # bench's obs_dtp_rst_n_o / obs_smc_rst_n_o taps read those two ends of
+        # the same net. A compare between them cannot fail on any RTL, so it is
+        # logged as the composition fact it is and carries no checker.
+        self.log.info(
+            "composition: u_dtp.rst_n_i=%d rst_primary_smc_clk_n_o=%d (one net, two taps)",
             sample(smu.u_dtp.rst_n_i, "u_dtp.rst_n_i"),
             sample(dut.rst_primary_smc_clk_n_o, "rst_primary_smc_clk_n_o"),
         )
@@ -154,11 +158,11 @@ class smu_reset_release_sync_seq:
                 rises[name] in smu_edges,
                 evidence="CHK-SMU-RST-COLD-S2",
             )
-        sb.expect_eq(
-            "SMC and DTP leave reset on the same clk_smu_i edge",
+        self.log.info(
+            "composition: obs_smc_rst_n_o and obs_dtp_rst_n_o rose at %d ps and %d ps "
+            "(one net, two taps; not a checker)",
             rises["obs_smc_rst_n_o"],
             rises["obs_dtp_rst_n_o"],
-            evidence="CHK-SMU-RST-COLD-S2",
         )
         sb.expect_true(
             "clock monitors observed edges across the release window",

@@ -21,13 +21,19 @@ closed-to-open demote -- a post-run open low-32 does not prove the write did
 anything. Debug follows from the same bits, so PROD_END is also where
 dbg_disable is expected to assert.
 
-Expectations arrive as plusargs rather than being derived here, so the testlist
-entry states the contract for its own eFuse image:
-  +lcc_expect_lc_state=<hex>       lc_state as the SMC receives it
+The lifecycle state under test is read out of the +sep_shadow_reg_preload
+image itself (seq_lib/smu_lifecycle_table.py, the spec-cited table), and the
+lc_state word and debug posture the SMC and DTP must see are derived from that
+state, not from the value the bench deposited. The testlist entry still states
+its contract as plusargs, and each one is reconciled against the derivation so
+an entry that contradicts the specification fails before the run starts:
+  +lcc_expect_lc_state=<hex>       lc_state as the SMC receives it; must equal
+                                   the table's word for the image's state
   +lcc_expect_demote_effective=0|1 post-run feat_ctrl[31:0] closed or open.
                                    When the reset baseline is already open
                                    this is not a demote delta.
-  +lcc_expect_dbg_disabled=0|1     whether the DTP-facing dbg_disable asserts
+  +lcc_expect_dbg_disabled=0|1     whether the DTP-facing dbg_disable asserts;
+                                   must equal the table's demoted posture
 """
 
 from __future__ import annotations
@@ -39,6 +45,7 @@ import cocotb
 from cocotb.triggers import RisingEdge
 
 from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
+from seq_lib.smu_lifecycle_table import lc_raw_from_shadow_preload, lc_state_name, posture
 
 SEP_BOOT_ROM_BASE = 0x1004_0000
 SEP_BOOT_ROM_END = 0x1005_0000
@@ -76,9 +83,27 @@ class SmuSepLccStateMatrixSeq:
     async def run(self) -> None:
         max_cycles = int(os.environ.get("SMU_SEP_FW_MAX_CYCLES", "300000"), 0)
 
-        want_lc = _plusarg_int("lcc_expect_lc_state")
+        preload = cocotb.plusargs.get("sep_shadow_reg_preload")
+        assert preload is not None, (
+            "+sep_shadow_reg_preload is required: it names the lifecycle state under test"
+        )
+        state = lc_state_name(lc_raw_from_shadow_preload(str(preload)))
+        # The firmware sets both demotes, so the posture the DTP must end in is
+        # the demoted one for this state.
+        want_posture = posture(state, demoted=True)
+        want_lc = want_posture.lc_state
+        want_dbg_dis = not want_posture.all_open
+        declared_lc = _plusarg_int("lcc_expect_lc_state")
+        assert declared_lc == want_lc, (
+            f"+lcc_expect_lc_state=0x{declared_lc:02x} contradicts the {state} word "
+            f"0x{want_lc:02x} the lifecycle table derives from the preload image"
+        )
+        declared_dbg_dis = bool(_plusarg_int("lcc_expect_dbg_disabled"))
+        assert declared_dbg_dis == want_dbg_dis, (
+            f"+lcc_expect_dbg_disabled={int(declared_dbg_dis)} contradicts the demoted "
+            f"{state} posture the specification gives (all_open={want_posture.all_open})"
+        )
         want_demote_eff = bool(_plusarg_int("lcc_expect_demote_effective"))
-        want_dbg_dis = bool(_plusarg_int("lcc_expect_dbg_disabled"))
 
         sym_path = str(cocotb.plusargs.get("sep_sym", "sep_smu_lcc_flow.tcm.sym"))
         syms = load_syms(sym_path)
@@ -90,7 +115,10 @@ class SmuSepLccStateMatrixSeq:
         self.log.info("TEST: SEP lifecycle state matrix -- eFuse image vs LCC profile")
         self.log.info("=" * 70)
         self.log.info(
-            "contract for this eFuse image: lc_state=0x%02x demote_effective=%s dbg_disabled=%s",
+            "contract for this eFuse image (%s from %s): lc_state=0x%02x "
+            "demote_effective=%s dbg_disabled=%s",
+            state,
+            preload,
             want_lc,
             want_demote_eff,
             want_dbg_dis,
@@ -222,8 +250,9 @@ class SmuSepLccStateMatrixSeq:
         assert not errors, "SEP LCC state matrix: " + "; ".join(errors)
 
         self.log.info(
-            "CHK-SEP-LCC-STATE-DECODE: PASS (eFuse image -> SMC lc_state 0x%02x as "
-            "contracted; the LCC is decoding the image, not a fixed value)",
+            "CHK-SEP-LCC-STATE-DECODE: PASS (eFuse image %s -> SMC lc_state 0x%02x, the "
+            "word the lifecycle table gives for that state)",
+            state,
             lc_state,
         )
         if want_demote_eff and baseline_open:

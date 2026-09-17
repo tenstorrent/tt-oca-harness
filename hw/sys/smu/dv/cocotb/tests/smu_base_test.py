@@ -21,9 +21,9 @@ for _path in (_COCOTB_ROOT,):
     if _s not in sys.path:
         sys.path.insert(0, _s)
 
+from env.smu_block_env_cfg import SmuEnvCfg
+from env.smu_env import SmuEnv
 from seq_lib.smu_axi_helpers import wait_signal_high
-from smu_dv_env.smu_env import SmuEnv
-from smu_dv_env.smu_env_cfg import SmuEnvCfg
 
 
 class smu_base_test(uvm_test):

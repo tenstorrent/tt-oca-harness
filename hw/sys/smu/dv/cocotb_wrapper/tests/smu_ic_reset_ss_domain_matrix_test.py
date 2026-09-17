@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ic_reset_ss_domain_matrix_test - P4 IC_RESET SS cold/warm domains.
 
-Exercises SS_COLD0 (port 12) and SS_WARM0 (port 44) on the wrapper, one at a
+Exercises SS_COLD0 (port 13) and SS_WARM0 (port 45) on the wrapper, one at a
 time, with mutual exclusion against fuse/warm/cool/cold and each other; the
 indices are SMU_IC_RESET_SMC_SS_*_PORT in smu_jtag_helpers.
 

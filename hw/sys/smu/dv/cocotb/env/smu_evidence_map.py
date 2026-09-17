@@ -14,7 +14,9 @@ proved, not what the test as a whole claims.
 
 Keys name the pyuvm type name of the test body. Every key names a test that
 is enrolled in a testlist or has a body under ``cocotb/tests`` or
-``cocotb_wrapper/tests``. A testcase that builds an ``SmuScoreboard`` and
+``cocotb_wrapper/tests``. This package is the ``env`` namespace package: the
+shared half lives here under ``cocotb/env`` and the wrapper-only half under
+``cocotb_wrapper/env``; both directories are on the wrapper flow's path. A testcase that builds an ``SmuScoreboard`` and
 carries no rows here must be listed in ``UNMAPPED_TESTS``;
 ``prove_mapped_features`` raises otherwise. Both base tests call
 ``prove_mapped_features`` after the scenario; the wrapper base test does so

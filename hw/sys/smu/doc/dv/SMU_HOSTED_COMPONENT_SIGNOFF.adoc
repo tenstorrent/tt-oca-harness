@@ -21,8 +21,8 @@ The JTAG2AXI, OTP and filter depth tests are enrolled in `hosted`:
   `smu_dtp_jtag2axi_wstrb_partial_sticky_test`,
   `smu_dtp_jtag2axi_back_to_back_error_ok_test`,
   `smu_jtag2axi_vs_smn_same_csr_race_test`
-  (`smu_dtp_jtag2axi_abort_mid_op_test` is in `needs_otp_stall` and in
-  `--dut smu_block` `all`, not in `hosted`)
+  (`smu_dtp_jtag2axi_abort_mid_op_test` is enrolled only on
+  `--dut smu_block`, in its `all`, not in `hosted`)
 * OTP: `smu_dtp_otp_smc_map_rw_test`,
   `smu_dtp_otp_smc_series_error_test`,
   `smu_dtp_otp_smc_complete_rw_test`,
@@ -70,17 +70,16 @@ Release-group (`hosted`) SMC-under-SMU names:
 `smu_smc_mailbox_sanity_test`.
 
 `smu_smc_smoke_test` -- the SMC ROM boot to PASS on the wrapper -- is not in
-`hosted`. It is enrolled in `smoke`, `all` and `all_with_sep_exec`, which
-need the SMC firmware compile; neither `sim.yml` nor `regress.yml` runs any
-of those groups, so it carries no release credit until one of them is
-scheduled.
+`hosted`. It is enrolled in `fw_smoke` and `all`, which need the SMC
+firmware compile; neither `sim.yml` nor `regress.yml` runs either group, so it
+carries no release credit until one of them is scheduled.
 
 `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are in
-`hosted` (the former also in `hosted_smoke`).
+`hosted` (the former also in `smoke`).
 
 eFuse / burn under SMU is OUT (SEP=1 / child-TB).
 `smu_smc_gpio_strap_sanity_test` is named in `SMU_FEATURE_LIST.adoc`
-but is enrolled in no group of `testlists/wrapper.toml`; it is not release credit.
+but is enrolled in no group of `testlists/all.toml`; it is not release credit.
 
 [[smu-signoff-482]]
 === DTP-under-SMU
