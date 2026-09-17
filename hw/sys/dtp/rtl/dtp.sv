@@ -44,16 +44,15 @@ module dtp
 
   localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (JTAG_NUM_EXTRA_STAPS > 0) ? JTAG_NUM_EXTRA_STAPS : 1,  // Minimum of 1 for tie-off case
 
-  // Cross trigger port counts, from dtp_pkg
-  localparam int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,           // The number of cross trigger ports
-  localparam int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT,        // Number of internal cross triggers
-  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ,  // The number of incoming clock stop requests
+  parameter int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,
+  parameter int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT,
+  parameter int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ,
 
   // Cross trigger matrix signaling protocol mode parameters
   // Each bit indicates the protocol for the corresponding CTM interface:
   // 0 = simple pulse synchronization (ack signals are unused in this mode)
   // 1 = req/ack four-phase handshaking
-  parameter logic [XTRIG_NUM_INT_CT-1:0]  XTRIG_INT_CT_MODE = dtp_pkg::DEFAULT_INT_CT_MODE,  // Internal cross trigger port protocol modes (default: simple pulse synchronization)
+  parameter logic [XTRIG_NUM_INT_CT-1:0]  XTRIG_INT_CT_MODE = '0,
 
   // Type parameters for JTAG TAP and scan control
   parameter type  jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t,
@@ -340,6 +339,9 @@ module dtp
   //--------------------------------------------------------------------------
 
   cross_trigger_network #(
+    .NUM_CTP          (XTRIG_NUM_CTP),
+    .NUM_INT_CT       (XTRIG_NUM_INT_CT),
+    .NUM_CLK_STOP_REQ (XTRIG_NUM_CLK_STOP_REQ),
     .INT_CT_MODE      (XTRIG_INT_CT_MODE),
     .axil_req_t       (xtrig_axil_req_t),
     .axil_resp_t      (xtrig_axil_resp_t)
