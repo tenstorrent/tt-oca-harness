@@ -12,42 +12,38 @@ so "it booted" is not accepted as the result here. The run must show the ROM
 reading the selector and the revocation bitmap and then verifying with them:
 
   * ``PUBK_SEL=0x00000000`` -- the selector the ROM read out of the backup
-    manifest (``manifest_crypto.c``), so the boot is attributable to slot 0
+    manifest, so the boot is attributable to slot 0
     rather than to some other or absent selection;
-  * ``PUBK_REVOKE=0x00000000`` -- the fuse word ``check_pubkey_revoked`` read
-    (``manifest_crypto.c``), proving the revocation check ran and
+  * ``PUBK_REVOKE=0x00000000`` -- the fuse word the revocation check read, proving the revocation check ran and
     PERMITTED this slot rather than being skipped. Note this marker alone does
-    NOT prove the ROM-key arm was taken: ``check_pubkey_revoked`` is called from
-    the fuse-key arm too (``manifest_crypto.c``). What excludes that arm is
-    the ``PUBK_SEL=0x00000000`` value above -- ``{index:4, selection:3}``
-    (``manifest.h``) makes 0x0000 uniquely "selection=PUBK_SEL_ROM_KEY,
-    index=0" -- together with ``BAD_KEY_SEL`` and ``FUSE_KEY_EMPTY`` being
-    forbidden below;
-  * ``RSA_VERIFY_START`` then ``SIG_VALID`` -- the modulus reached the verifier
-    and the signature really verified (``manifest_crypto.c``), which only
+    NOT prove the ROM-key arm was taken: the revocation check is called from
+    the fuse-key arm too. What excludes that arm is
+    the ``PUBK_SEL=0x00000000`` value above -- slot 0 is ROM classical key 0 --
+    together with ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` being forbidden
+    below;
+  * ``RSA_EXEC`` then ``RSA_VERIFY_OK`` -- the modulus reached the verifier
+    and the signature really verified, which only
     happens after the index bound, the revocation check and the digest bind have
     all passed;
   * and the shared base requires the failover ordering and the device-side read
     order, so the boot came from the backup ADDRESS and not from the primary.
 
-The reference asserts less than this. Its ``BACKUP_ROM_KEY_VALID`` expectation
-ends in ``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and -- unlike its
-own primary-side twin -- omits ``STATUS: USING_ROM_KEY``, so it never
-requires evidence that the ROM-key path was the one taken. The markers above close
-that gap rather than reproduce it.
+Its ``BACKUP_ROM_KEY_VALID`` expectation ends in ``BACKUP_BL1_LOADED /
+COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and -- unlike its own primary-side twin -- omits
+``STATUS: USING_ROM_KEY``, so it never requires evidence that the ROM-key path was the
+one taken. The markers above close that gap rather than reproduce it.
 
-THE MATCHED PAIR IS THE STRONGEST EVIDENCE HERE. This testcase and
-``sep_firmware_backup_pubkey_rom_0_revoked_key_test`` build their flash image from
-the same two calls -- ``mm.set_identifier(primary)`` and
-``select_backup_rom_slot(buf, 0)`` -- so the bytes are identical by construction.
-The ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear
-boots; bit 0 set is refused with ``KEY_REVOKED idx=0x00000000`` and never reaches
-``RSA_VERIFY_START``. Nothing else about revocation needs arguing.
+The matched pair is the strongest evidence here. This testcase and
+``sep_firmware_backup_pubkey_rom_0_revoked_key_test`` build their flash image from the
+same two calls -- ``mm.break_magic(primary)`` and ``select_backup_rom_slot(buf, 0)`` --
+so the bytes are identical by construction. The ONLY difference between them is one bit
+of ``CHIPLET_PUBK_REVOKE``. Fuse clear boots; bit 0 set is refused with the revocation
+error code and never reaches ``RSA_EXEC``. Nothing else about revocation needs arguing.
 
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut
 grants OTBN's EDN handshakes only; the RSA assertions are untouched, so
-``SIG_VALID`` still means the signature really verified.
+``RSA_VERIFY_OK`` still means the signature really verified.
 """
 
 from __future__ import annotations
@@ -70,13 +66,9 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# The only populated entry in key_digests.c, and the slot the shipped image
-# is signed against (configs/secure_boot_test.yaml:112-114). The reference draws a
-# valid index at random from [0..5] and re-signs with that slot's own private key
-# (sep_firmware_secure_boot_test.py); this tree ships one RSA key
-# (tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem), so slot 0
-# is the only index that is valid here in the sense the testcase needs -- a
-# populated digest the image actually binds to.
+# The slot the shipped image is signed against (configs/oca_secure_boot_test.yaml),
+# so the positive case needs no graft. All six slots carry a digest and their own
+# key; slot 0 is simply the one the shipped bytes already bind to.
 _VALID_SLOT = 0
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_VALID_SLOT:08x}"
 _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"
@@ -92,27 +84,24 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
     primary_expected_error = MANIFEST_ERR_BAD_MAGIC
     efuse_preload = _EFUSE_PRELOAD
     extra_required = (_PUBK_SEL_ECHO, _REVOKE_ECHO)
-    # Every rejecting arm of validate_signature. This is a positive test, so none
+    # Every rejecting arm of the signature path. This is a positive test, so none
     # of them may fire: seeing any one would mean the boot completed in spite of a
     # key-selection complaint, or from a slot this testcase did not select.
     extra_forbidden = (
-        "BAD_SIG_TYPE=",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "KEY_REVOKED",
-        "VERSION_ROLLBACK",
-        "RSA_VERIFY_FAIL",
+        "PUBK_ALGO_UNSUPPORTED",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
+        "PUBK_UNAUTHORIZED",
+        "RSA_PKCS1_FAIL",
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # The same failover trigger the revoke family uses: the magic word, which
-        # validate_manifest_header rejects before any hash or crypto work
-        # (manifest_load.c), so the trigger cannot interact with the key
+        # the manifest header check rejects before any hash or crypto work, so the trigger cannot interact with the key
         # selection under test.
-        mm.set_identifier(buf, "primary")
+        mm.break_magic(buf, "primary")
 
     def prepare_backup(self, buf: bytearray) -> None:
         got, tbs_changed = select_backup_rom_slot(buf, _VALID_SLOT)
@@ -139,9 +128,9 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
         )
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection (manifest_crypto.c:364 then :369) and would "
-            f"reject the backup before the key path is reached"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
 
     def check_transport(self, console: list[str], flash) -> None:
@@ -156,7 +145,7 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
         i_bsrc = index_of(f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")
         i_sel = index_of(_PUBK_SEL_ECHO)
         i_revoke = index_of(_REVOKE_ECHO)
-        i_rsa = index_of("RSA_VERIFY_START")
+        i_rsa = index_of("RSA_EXEC")
 
         # CHK-KEYSEL-RAN: key selection is the feature under test, so it must have
         # executed on the BACKUP and in the architected order -- selector read,
@@ -165,13 +154,13 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
         # backup read bounds it from below.
         assert i_bsrc < i_sel < i_rsa, (
             f"key selection did not run on the backup before the signature step: "
-            f"backup@{i_bsrc} -> {_PUBK_SEL_ECHO}@{i_sel} -> RSA_VERIFY_START"
+            f"backup@{i_bsrc} -> {_PUBK_SEL_ECHO}@{i_sel} -> RSA_EXEC"
             f"@{i_rsa}. Console: {console}"
         )
         assert i_sel < i_revoke < i_rsa, (
             f"the revocation bitmap was not consulted between the selector and the "
             f"verifier: {_PUBK_SEL_ECHO}@{i_sel} -> {_REVOKE_ECHO}@{i_revoke} -> "
-            f"RSA_VERIFY_START@{i_rsa}. Console: {console}"
+            f"RSA_EXEC@{i_rsa}. Console: {console}"
         )
         # Exactly once each: the primary died at BAD_MAGIC before any crypto, so a
         # second echo would mean a slot this testcase did not account for also
@@ -183,7 +172,7 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
                 f"Console: {console}"
             )
         self.logger.info(
-            "CHK-KEYSEL-RAN: backup@%d -> %s@%d -> %s@%d -> RSA_VERIFY_START@%d; "
+            "CHK-KEYSEL-RAN: backup@%d -> %s@%d -> %s@%d -> RSA_EXEC@%d; "
             "the ROM-key path executed and permitted slot %d",
             i_bsrc,
             _PUBK_SEL_ECHO,

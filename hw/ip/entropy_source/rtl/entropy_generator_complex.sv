@@ -258,10 +258,10 @@ module entropy_generator_complex #(
   // BIW GF(2^8) extractor: combines 3 groups of 4 lanes into 4 output bytes
   for (genvar i = 0; i < 4; i++) begin : gen_biw
     gf_muladd u_muladd (
-      .a (decorrelator_entropy_bytes[i]),
-      .b (decorrelator_entropy_bytes[i+4]),
-      .c (decorrelator_entropy_bytes[i+8]),
-      .y (biw_entropy               [i])
+      .a_i (decorrelator_entropy_bytes[i]),
+      .b_i (decorrelator_entropy_bytes[i+4]),
+      .c_i (decorrelator_entropy_bytes[i+8]),
+      .y_o (biw_entropy               [i])
     );
   end : gen_biw
 

@@ -33,24 +33,24 @@ module sep_wrapper
 
   output logic wdt_timer_rst_req_o,
 
-  input  logic jtag_tck,
-  input  logic jtag_tms,
-  input  logic jtag_tdi,
-  input  logic jtag_trst_n,
-  output logic jtag_tdo,
-  output logic jtag_tdoEn,
+  input  logic jtag_tck_i,
+  input  logic jtag_tms_i,
+  input  logic jtag_tdi_i,
+  input  logic jtag_trst_ni,
+  output logic jtag_tdo_o,
+  output logic jtag_tdoEn_o,
 
   input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
 
   input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
 
-  input  logic mpc_debug_halt_req,
-  input  logic mpc_debug_run_req,
-  input  logic mpc_reset_run_req,
+  input  logic mpc_debug_halt_req_i,
+  input  logic mpc_debug_run_req_i,
+  input  logic mpc_reset_run_req_i,
 
-  input  logic i_cpu_halt_req,
-  input  logic i_cpu_run_req,
+  input  logic cpu_halt_req_i,
+  input  logic cpu_run_req_i,
 
   input  logic test_en_i,
   input  logic scan_rst_ni,

@@ -32,6 +32,17 @@ REMAP_CLA_MIN_CSR_ACCESSES = 141
 class smc_remap_cla_test(smc_base_test):
     """ALIAS_REMAP address translation, remap-table reset sweep, CLA window."""
 
+    required_evidence = (
+        "CHK-CLA-RESET-SWEEP",
+        "CHK-CLA-WINDOW-ALLOW",
+        "CHK-CLA-WINDOW-DENY",
+        "CHK-REMAP-ALIAS0-IDENTITY",
+        "CHK-REMAP-ALIAS0-LANDING",
+        "CHK-REMAP-ALIAS0-OFF",
+        "CHK-REMAP-TABLE-RESET",
+    )
+    min_evidence = 7
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -60,6 +71,6 @@ class smc_remap_cla_test(smc_base_test):
             proxy=False,
             details=(
                 "ALIAS_REMAP_0 address translation proven at the SYS_OUT landing "
-                "site; MMODE/ALIAS reset sweep; CLA allow+deny window"
+                "site; MMODE/ALIAS reset sweep; CLA allow and in-window-hole window"
             ),
         )

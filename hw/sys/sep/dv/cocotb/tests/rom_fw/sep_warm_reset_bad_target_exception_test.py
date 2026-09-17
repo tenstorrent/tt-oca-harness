@@ -103,7 +103,7 @@ class sep_warm_reset_bad_target_exception_test(sep_warm_dispatch_base):
             f"(SEP_MSG_WARM_RESET_HANG): the ROM rejected an IN-RANGE handler. "
             f"Observed {status_hex}"
         )
-        self.logger.info("CHK-ACCEPT: cold_scratch[1] = 0x%08x", STATUS_WARM_JUMP)
+        self.logger.info("CHK-ACCEPT PASS: cold_scratch[1] = 0x%08x", STATUS_WARM_JUMP)
 
         # CHK-EXCEPTION: the jump landed on a non-instruction and the early trap
         # handler reported it. Same status word the reference requires.

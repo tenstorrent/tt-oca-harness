@@ -46,7 +46,7 @@ coverage_off -file "*hw/sys/smc/dv/models/*"
 // ---------------------------------------------------------------------------
 // Generated third-party RTL that only the CPU-reaching tests exercise; the
 // same argument SEP used to drop `sep_uvm_top.u_dut.u_sep.sep_cpu`.
-// VCS equivalent: -tree smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
+// VCS equivalent: -tree smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 coverage_off -file "*chipyard_generated_files/*"
 
 // ---------------------------------------------------------------------------

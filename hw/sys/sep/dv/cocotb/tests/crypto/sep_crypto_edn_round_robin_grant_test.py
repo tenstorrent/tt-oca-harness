@@ -120,7 +120,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         dut = cocotb.top
         await self.bring_up_no_cpu()
 
-        # OTBN is released at cold reset (SW_RESET_N reset 0x3E). Without EDN it
+        # OTBN is released at cold reset (SW_RESET_N reset 0x7E). Without EDN it
         # parks in UrndRefresh with crypto_edn_req[3] held.
         for _ in range(_DUAL_REQ_CYCLES):
             if _req() & (1 << _URND_BIT):

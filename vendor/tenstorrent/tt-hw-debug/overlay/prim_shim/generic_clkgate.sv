@@ -14,10 +14,10 @@ module generic_clkgate (
 );
 
   prim_clkgater u_clkgater (
-    .i_clk(clk),
-    .i_en (en),
-    .i_te (te),
-    .o_clk(clk_out)
+    .clk_i(clk),
+    .en_i (en),
+    .te_i (te),
+    .clk_o(clk_out)
   );
 
 endmodule
