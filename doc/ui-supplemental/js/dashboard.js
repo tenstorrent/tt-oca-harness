@@ -22,6 +22,7 @@
   var SUMMARY_URL = './data/summary.json';
   var TESTS_URL = './data/tests.json';
   var HISTORY_URL = './data/history.json';
+  var TEST_HISTORY_URL = './data/test-history.json';
 
   // Bands shared by pass rate and every coverage column.
   var PASS_AT = 95;
@@ -31,6 +32,22 @@
   var COVERAGE_COLUMNS = ['line', 'branch', 'expression', 'user'];
 
   var GRID_LINE = '#e6e6e6';
+
+  // Chart text is drawn by ECharts, so it does not inherit the stylesheet's
+  // link colour and has to be given one.
+  var LINK_COLOUR = '#1565c0';
+
+  // Where a cell's CI run is published.
+  var RUN_URL = 'https://github.com/tenstorrent/tt-oca-harness/actions/runs/';
+
+  // Per-test outcomes, in legend order.
+  var HISTORY_STATES = ['passed', 'flaky', 'failed', 'did not run'];
+  var HISTORY_COLOURS = {
+    passed: '#3A863D',
+    flaky: '#f6c343',
+    failed: '#C55050',
+    'did not run': '#e6e6e6',
+  };
 
   // Match to dut_status[] flows
   var CHIP_ROWS = ['chip_ocah'];
@@ -333,6 +350,16 @@
     nameEl.textContent = flow;
     document.title = flow + ' — Block Verification Detail';
 
+    var historyEl = document.getElementById('dashboard-block-history');
+    if (historyEl) {
+      var historyUrl = new URL('dashboard-test-history.html', window.location.href);
+      historyUrl.searchParams.set('flow', flow);
+      var historyLink = document.createElement('a');
+      historyLink.href = historyUrl.href;
+      historyLink.textContent = 'Per-test history for ' + flow + ' \u2192';
+      historyEl.appendChild(historyLink);
+    }
+
     fetchJson(SUMMARY_URL)
       .then(function (summary) {
         if (!renderSummary(summary)) {
@@ -561,8 +588,385 @@
       });
   }
 
+  /**
+   * Classify one aggregated cell.
+   * @param {?{pass: number, total: number}} cell Seeds passed out of seeds
+   *     run, or null when the test did not run.
+   * @return {string} One of the status names used by the heatmap legend.
+   */
+  function historyState(cell) {
+    if (!cell) return 'did not run';
+    if (cell.pass === cell.total) return 'passed';
+    return cell.pass === 0 ? 'failed' : 'flaky';
+  }
+
+  /**
+   * A seed, as text.
+   * @param {!{seed: ?number}} seed One entry from a cell's seeds.
+   * @return {string} The seed, or an empty string when the run did not record one.
+   */
+  function seedOf(seed) {
+    return seed.seed === null || seed.seed === undefined ? '' : String(seed.seed);
+  }
+
+  /**
+   * Build the cell naming a run, linking to the CI run that produced it.
+   * @param {!{date: string, id: string}} run The run the row describes.
+   * @return {!HTMLTableCellElement} The populated cell.
+   */
+  function runCell(run) {
+    var td = document.createElement('td');
+    // Anything but a run identifier leaves the date as plain text.
+    if (!/^[0-9]+$/.test(run.id || '')) {
+      td.textContent = run.date;
+      return td;
+    }
+    var link = document.createElement('a');
+    link.href = RUN_URL + encodeURIComponent(run.id);
+    link.textContent = run.date;
+    link.rel = 'noreferrer';
+    td.appendChild(link);
+    return td;
+  }
+
+  /**
+   * Build the cell showing how a run went, banded by the same colours as the
+   * history grid.
+   * @param {?{pass: number, total: number}} counts The cell, or null when the
+   *     test did not run.
+   * @param {string} state The cell's status name.
+   * @return {!HTMLTableCellElement} The populated cell.
+   */
+  function outcomeCell(counts, state) {
+    var td = document.createElement('td');
+    td.className = 'dashboard-outcome';
+    td.style.backgroundColor = HISTORY_COLOURS[state];
+    td.textContent = counts ? round1((counts.pass / counts.total) * 100) + ' %' : state;
+    return td;
+  }
+
+  /**
+   * Add the seed and reason columns for one seed, or empty ones when the run
+   * recorded none. A seed that passed leaves the reason blank.
+   * @param {!HTMLTableRowElement} row Row to append the two cells to.
+   * @param {?{seed: ?number, reason: (string|undefined)}} seed The seed, if any.
+   */
+  function seedCells(row, seed) {
+    cell(row, seed ? seedOf(seed) : '');
+    cell(row, (seed && seed.reason) || '', 'dashboard-detail-reason');
+  }
+
+  /**
+   * Match a name asked for in the query string against the names the data
+   * holds. Own keys only, so a built-in like "toString" matches nothing.
+   * @param {!Object} owner Object whose keys are the names that exist.
+   * @param {?string} requested Name taken from the query string.
+   * @return {string} The matching name from the data, or an empty string when
+   *     there is none.
+   */
+  function knownName(owner, requested) {
+    var names = Object.keys(owner || {});
+    var index = names.indexOf(requested || '');
+    return index >= 0 ? names[index] : '';
+  }
+
+  /**
+   * Fill in the back link, pointing at the given page for a block, or at the
+   * dashboard when no block was resolved.
+   * @param {?HTMLElement} backEl Paragraph holding the link, if the page has one.
+   * @param {string} page Page to return to when a block was resolved.
+   * @param {string} flow The resolved block, or an empty string.
+   * @param {string} label What to call the destination in the link text.
+   */
+  function backTo(backEl, page, flow, label) {
+    if (!backEl) return;
+    var link = document.createElement('a');
+    if (flow) {
+      var url = new URL(page, window.location.href);
+      url.searchParams.set('flow', flow);
+      link.href = url.href;
+      link.textContent = '← Back to ' + label;
+    } else {
+      link.href = 'dashboard.html';
+      link.textContent = '← Back to the verification dashboard';
+    }
+    backEl.appendChild(link);
+  }
+
+  /**
+   * Render every published run of one test.
+   * @param {!HTMLElement} statusEl Element carrying the summary, or the reason
+   *     the table is empty.
+   * @param {!HTMLElement} nameEl Heading showing which test is displayed.
+   * @param {!HTMLElement} wrapEl Wrapper revealed once the table is drawn.
+   * @param {!HTMLTableSectionElement} headEl Header row host.
+   * @param {!HTMLTableSectionElement} rowsEl Body the rows are appended to.
+   */
+  function renderTestDetail(statusEl, nameEl, wrapEl, headEl, rowsEl) {
+    var fail = failWith(statusEl);
+    var params = new URLSearchParams(window.location.search);
+    var backEl = document.getElementById('dashboard-detail-back');
+
+    fetchJson(TEST_HISTORY_URL)
+      .then(function (history) {
+        var runs = history.runs || [];
+        var flows = history.flows || {};
+        var flow = knownName(flows, params.get('flow'));
+        var tests = flow ? flows[flow] : {};
+        var test = knownName(tests, params.get('test'));
+        backTo(backEl, 'dashboard-test-history.html', flow, flow + ' test history');
+        if (!test) {
+          fail('no such test in the published archives; reach this page from a block’s test history');
+          return;
+        }
+        nameEl.textContent = test;
+        document.title = test + ' — Test Detail';
+
+        var cells = tests[test];
+        fillHead(headEl, ['Run', 'Outcome', 'Seeds', 'Failure reason(s)']);
+
+        var tally = { passed: 0, flaky: 0, failed: 0, 'did not run': 0 };
+        // Newest first
+        for (var i = runs.length - 1; i >= 0; i--) {
+          var counts = cells[i];
+          var state = historyState(counts);
+          var seeds = (counts && counts.seeds) || [];
+          tally[state] += 1;
+
+          // A run spans one sub-row per seed, so each seed sits beside the
+          // reason it gave.
+          var span = Math.max(1, seeds.length);
+          var row = document.createElement('tr');
+          var runTd = runCell(runs[i]);
+          var outcomeTd = outcomeCell(counts, state);
+          runTd.rowSpan = span;
+          outcomeTd.rowSpan = span;
+          row.appendChild(runTd);
+          row.appendChild(outcomeTd);
+          seedCells(row, seeds[0] || null);
+          rowsEl.appendChild(row);
+
+          for (var s = 1; s < seeds.length; s++) {
+            var extra = document.createElement('tr');
+            seedCells(extra, seeds[s]);
+            rowsEl.appendChild(extra);
+          }
+        }
+
+        statusEl.className = 'dashboard-status';
+        statusEl.textContent =
+          flow +
+          ' — ' +
+          tally.passed +
+          ' passed, ' +
+          tally.flaky +
+          ' flaky, ' +
+          tally.failed +
+          ' failed, ' +
+          tally['did not run'] +
+          ' did not run, across ' +
+          runs.length +
+          ' runs.';
+        wrapEl.hidden = false;
+      })
+      .catch(function (error) {
+        backTo(backEl, 'dashboard-test-history.html', '', '');
+        fail(error.message);
+      });
+  }
+
+  /**
+   * Render the per-test history for one block as a heatmap.
+   * @param {!HTMLElement} statusEl Element carrying the range, or the reason
+   *     the grid is empty.
+   * @param {!HTMLElement} nameEl Heading showing which block is displayed.
+   * @param {!HTMLElement} wrapEl Wrapper revealed once the grid is drawn.
+   * @param {!HTMLElement} chartEl Element the heatmap is drawn into.
+   */
+  function renderTestHistory(statusEl, nameEl, wrapEl, chartEl) {
+    var fail = failWith(statusEl);
+    var requested = new URLSearchParams(window.location.search).get('flow');
+    var backEl = document.getElementById('dashboard-history-back');
+
+    fetchJson(TEST_HISTORY_URL)
+      .then(function (history) {
+        var runs = history.runs || [];
+        var flows = history.flows || {};
+        var flow = knownName(flows, requested);
+        backTo(backEl, 'dashboard-block.html', flow, flow);
+        if (!flow) {
+          fail('no such block in the published archives; reach this page from the dashboard');
+          return;
+        }
+        nameEl.textContent = flow;
+        document.title = flow + ' — Test History';
+
+        var tests = flows[flow];
+        var names = Object.keys(tests).sort();
+        if (!runs.length || !names.length) {
+          fail('the published archives contain no test results');
+          return;
+        }
+
+        // One record per cell, carrying the seed counts for the tooltip.
+        var cells = [];
+        names.forEach(function (name, y) {
+          (tests[name] || []).forEach(function (counts, x) {
+            var state = historyState(counts);
+            cells.push({
+              value: [x, y, 1],
+              counts: counts,
+              state: state,
+              itemStyle: { color: HISTORY_COLOURS[state] },
+            });
+          });
+        });
+
+        wrapEl.hidden = false;
+        chartEl.style.height = Math.max(400, names.length * 15 + 140) + 'px';
+
+        var chart = echarts.init(chartEl, null, { renderer: 'svg' });
+        chart.setOption({
+          aria: { enabled: true },
+          animation: false,
+          // ECharts writes its text and axis styling inline, which a
+          // stylesheet cannot override, so both are taken from the theme here.
+          textStyle: {
+            fontFamily: themeValue('--oca-font-body', 'sans-serif'),
+            color: themeValue('--oca-text', '#484848'),
+          },
+          grid: { left: 270, right: 24, top: 56, bottom: 64 },
+          tooltip: {
+            backgroundColor: themeValue('--oca-cream-light', '#f8f4eb'),
+            borderColor: themeValue('--oca-green', '#103525'),
+            textStyle: {
+              color: themeValue('--oca-text', '#484848'),
+              fontFamily: themeValue('--oca-font-body', 'sans-serif'),
+            },
+            formatter: function (params) {
+              var cell = cells[params.dataIndex];
+              return (
+                names[cell.value[1]] +
+                '<br>' +
+                runs[cell.value[0]].date +
+                ': ' +
+                cell.state +
+                (cell.counts ? ' (' + cell.counts.pass + '/' + cell.counts.total + ')' : '')
+              );
+            },
+          },
+          // The legend is driven by scatter series carrying no data; a heatmap
+          // series has one name and so cannot label four outcomes.
+          legend: {
+            top: 8,
+            data: HISTORY_STATES,
+            // The entries label the colours rather than toggling anything, so
+            // the series they name stay shown.
+            selectedMode: false,
+            textStyle: { color: themeValue('--oca-text', '#484848'), fontSize: 11 },
+          },
+          xAxis: {
+            type: 'category',
+            data: runs.map(function (run) {
+              return run.date.slice(5);
+            }),
+            axisLabel: {
+              rotate: 90,
+              fontSize: 10,
+              color: themeValue('--oca-text', '#484848'),
+            },
+            axisLine: { lineStyle: { color: GRID_LINE } },
+            axisTick: { show: false },
+            splitArea: { show: false },
+          },
+          yAxis: {
+            type: 'category',
+            data: names,
+            // Lets the test names be clicked, not just the cells.
+            triggerEvent: true,
+            // Without interval, ECharts drops every other name to avoid
+            // collisions, leaving half the rows unlabelled.
+            axisLabel: { fontSize: 9, color: LINK_COLOUR, interval: 0 },
+            axisLine: { lineStyle: { color: GRID_LINE } },
+            axisTick: { show: false },
+            splitArea: { show: false },
+          },
+          series: [
+            {
+              type: 'heatmap',
+              data: cells,
+              itemStyle: { borderWidth: 0.5, borderColor: '#ffffff' },
+            },
+          ].concat(
+            HISTORY_STATES.map(function (state) {
+              return {
+                name: state,
+                type: 'scatter',
+                data: [],
+                itemStyle: { color: HISTORY_COLOURS[state] },
+              };
+            })
+          ),
+        });
+
+        chart.on('click', function (params) {
+          if (params.componentType !== 'yAxis') return;
+          var name = knownName(tests, params.value);
+          if (!name) return;
+          var url = new URL('dashboard-test-detail.html', window.location.href);
+          url.searchParams.set('flow', flow);
+          url.searchParams.set('test', name);
+          window.location.href = url.href;
+        });
+
+        if (window.ResizeObserver) {
+          new ResizeObserver(function () {
+            chart.resize();
+          }).observe(chartEl);
+        }
+
+        statusEl.className = 'dashboard-status';
+        statusEl.textContent =
+          names.length +
+          ' tests across ' +
+          runs.length +
+          ' runs, ' +
+          runs[0].date +
+          ' to ' +
+          runs[runs.length - 1].date +
+          '.';
+      })
+      .catch(function (error) {
+        backTo(backEl, 'dashboard-block.html', '', '');
+        fail(error.message);
+      });
+  }
+
   var statusEl = document.getElementById('dashboard-status');
   if (!statusEl) return;
+
+  var detailRowsEl = document.getElementById('dashboard-detail-rows');
+  if (detailRowsEl) {
+    renderTestDetail(
+      statusEl,
+      document.getElementById('dashboard-detail-name'),
+      document.getElementById('dashboard-test-detail'),
+      document.getElementById('dashboard-detail-head'),
+      detailRowsEl
+    );
+    return;
+  }
+
+  var historyChartEl = document.getElementById('dashboard-history-chart');
+  if (historyChartEl) {
+    renderTestHistory(
+      statusEl,
+      document.getElementById('dashboard-history-name'),
+      document.getElementById('dashboard-test-history'),
+      historyChartEl
+    );
+    return;
+  }
 
   var trendsEl = document.getElementById('dashboard-trends');
   var windowEl = document.getElementById('dashboard-window-select');
