@@ -133,7 +133,7 @@ appears.
 |Open-source files |PyUVM test under `cocotb/tests/`, stimulus in `cocotb/seq_lib/`, shared helpers on `sep_base_test` / `cocotb/env/`
 |Testlist enrollment |Leaf entry in the owning `testlists/*.toml` and in `testlists/all.toml`
 |Evidence |Every checker needs a positive log line naming the contract, as `CHK-<ID> PASS`
-|Evidence gate |`sep_base_test` counts the distinct `CHK-<ID> PASS` records a run emitted and fails a leaf whose OWN count is zero, so a clean exit cannot stand in for a graded contract. `own` excludes the records the base class emits during bring-up. `_EvidenceFilter.NO_OWN_EVIDENCE` names the leaves exempt from that floor because they grade through another channel, with the reason for each; the list may only shrink. A leaf may raise its own floor with `min_evidence = N`, or name the IDs it owes with `required_evidence = ("CHK-A", ...)`; both default to off. Each run logs `EVIDENCE_SUMMARY test=... observed=N own=N required=N missing=N ids=...`. See the evidence gate section of `README.md` for the full description
+|Evidence gate |A clean exit is not a pass: every graded contract logs `CHK-<ID> PASS`, and `sep_base_test` fails a leaf that graded nothing of its own. The mechanism, its `EVIDENCE_SUMMARY` line, the `min_evidence` / `required_evidence` knobs and the exemption list are described in the evidence gate section of `README.md`, which owns them
 |===
 
 === Open-Source BFM Policy
@@ -527,7 +527,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_wdt_aon_timer_internals_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Wakeup and watchdog tick, threshold expiry, wakeup cause and its RW1C, the watchdog pet, and the REGWEN lock on the AON timer, plus the `clk_ref_i` reference counter: that it advances at all, and that a software load takes and then resumes counting. Bark and bite are not claimed here: `sep_nmi_sanity_test` and `sep_reset_wdt_sanity_test` own those legs, and no checker in this entry observes either.
+|Wakeup and watchdog tick, threshold expiry, wakeup cause and its RW1C, the watchdog pet, and the REGWEN lock on the AON timer, plus the `clk_ref_i` reference counter advancing. The software LOAD of that counter is NOT claimed -- it is lost at high clk_i-to-clk_ref_i ratios; the detail card carries the measurement. Bark and bite are not claimed here: `sep_nmi_sanity_test` and `sep_reset_wdt_sanity_test` own those legs, and no checker in this entry observes either.
 |`sep_clock_gate_control_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -937,7 +937,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 [arabic]
 . Bring up in `no_cpu` mode with the LSU splice owning the bus.
 . Read every `sep_cpu_ctrl` reset-check register and require the exported reset value.
-. Response-check hardware-driven registers; value-check both halves of `REFERENCE_COUNTER` at reset (reference clock undriven).
+. Response-check hardware-driven registers; read the low half of `REFERENCE_COUNTER` twice and require it to advance (the reference clock is driven, so the counter is live and no reset value applies).
 . Write/readback/restore the SEP base/size CSRs and the pure-RW storage registers (masked).
 . Write the implemented `CLOCK_GATE_CTRL` bits, read them back, then restore reset after the fabric walk.
 . Walk one readable CSR per LSU-reachable block (DMA, WDT, scratch, reset, OTBN, AES, HMAC, KMAC, CSRNG, EDN, ESRC, ABR NAME, entropy-pool STATUS, lifecycle, KM mailbox, eFuse shadow, AXI mailbox, inbound filter CFG, alias remap, outbound remap, SPI) and require OKAY (value-check where reset is known).
@@ -949,7 +949,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |===
 |Checker |Contract
 |CHK-REFCNT-READ
-|Both halves of the reference counter read back the reset value exported by the generated map.
+|The reference counter is LIVE and readable: the low half is read twice and must advance. It counts on `clk_ref_i`, which the testbench drives, so no pinned value can be its expectation -- and the advance is a stronger statement than a reset compare, because a neighbouring register's storage, a stuck all-ones and a zero return all hold still between the two reads. The high half is read for the pair but is not value-checked.
 |CHK-RW-READBACK
 |Every pure read/write register returns exactly what was written, masked to its implemented bits, and is restored afterwards.
 |CHK-BASEADDR-RW
@@ -2217,7 +2217,7 @@ recovery. Those are listed in <<phase-3>>.
 |A misaligned in-extent access receives SLVERR and latches the owning block's bit. **Fails today**: the access returns DECERR and the register stays 0.
 |===
 
-*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The framework has no xfail mechanism, so a run whose only failure is this leaf is the expected result. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction. Tracked by https://github.com/tenstorrent/tt-oca-harness/issues/1993.
+*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The framework has no xfail mechanism, so a run whose only failure is this leaf is the expected result. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction. Tracked by issue #1993.
 
 *Not claimed*: the same term on the DMA register path (`reg_path_err`), and the access-control (RACL) term of either register — RACL is disabled in this design with its error output unconnected, so that term is unreachable for a separate reason.
 
@@ -4261,7 +4261,8 @@ feature credit. Closing the isolation claim needs both a run mode where
 *Objective*: Wakeup and watchdog tick, threshold expiry, wakeup cause and its RW1C, the watchdog pet, and the REGWEN lock on the AON timer. Bark and bite are not claimed here: `sep_nmi_sanity_test` and `sep_reset_wdt_sanity_test` own those legs, and no checker in this entry observes either.
 
 *Test Coverage*: AON timer tick, threshold, wakeup cause RW1C, pet, and REGWEN,
-plus the `clk_ref_i` reference counter and its crossing onto `clk_i`.
+plus that the `clk_ref_i` reference counter advances and its crossing onto
+`clk_i` hands the value over. The software load of that counter is not claimed.
 
 *Test Procedure*:
 
@@ -6731,13 +6732,10 @@ contracts owned by the vault test, and the wipe security contract.
 |`cpu_stub` |CPU not alive (`sep_cpu` stub); AXI-driver tests
 |`cpu` |Firmware-boot tests
 |`rom_fw` |Boot-ROM image class (separate owner); not a member of `all`
-|`all` |`cpu_stub` + `cpu`: every test this VPLAN grades, and the coverage set
+|`all` |Every test this VPLAN grades, and the coverage set: `cpu_stub` + `cpu` plus `sep_periph_bus_err_misaligned_reveal_test`, which is in neither class because it fails by design
 |===
 
-Canonical entry point: `python3 tools/dv/run_dv.py --dut sep …`
-(see `README.md`). Prefer the class regressions (`cpu_stub` / `cpu`) over a mixed
-`all` fan-out when closing a change. `rom_fw` is a separate owner's class and is
-not part of `all`.
+`README.md` owns how to run these groups, including which one to use when closing a change.
 
 [[known-limitations]]
 [[phase-3]]
