@@ -6,12 +6,27 @@
 
 ===== Overview
 
-The Telemetry Receiver is a high-performance hardware component designed
-to decode, buffer, and process telemetry data from telemetry
-transmitters in multi-chiplet systems. The component implements a
-specialized receiver for Tenstorrent-specific telemetry message formats
-while maintaining modularity for adaptation to other telemetry protocols
-and message structures.
+The Telemetry Receiver decodes, buffers, and processes telemetry data from
+telemetry transmitters in multi-chiplet systems. It implements a receiver
+for a probe-ID and multi-counter message format.
+
+[[telemetry-receiver-message-format]]
+===== Message Format
+
+Eight little-endian ATB beats form a 64-bit packet. One or more packets
+form a message that ends when `last_packet` is set.
+
+[width="100%",cols="20%,15%,65%",options="header",]
+|====================================================================================
+|Field |Width |Location
+|`last_packet` |1 bit |Bit 63 of each packet
+|`probe_id` |5 bits |Bits `[60:56]` of the first packet
+|block |9 bits |Seven per packet: 1-bit valid + 8-bit data
+|counter |32 bits |Four consecutive blocks, most-significant byte first
+|====================================================================================
+
+A counter is valid only when all four of its blocks are valid. The number of
+counters per message is parameterized (default 4); the field layout is fixed.
 
 ===== Description and Features
 
@@ -23,8 +38,6 @@ with ATB protocol compliance
 entries) with threshold-based monitoring
 * *Multi-Counter Message Support*: Decodes messages with probe ID and up
 to 4 counter values per message
-* *Flexible Message Format*: Modular design allows easy adaptation to
-different telemetry message formats
 * *Comprehensive Interrupt System*: Event-driven notifications for
 buffer thresholds and error conditions
 
