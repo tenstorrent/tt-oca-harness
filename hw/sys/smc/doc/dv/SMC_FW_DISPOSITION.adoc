@@ -495,7 +495,7 @@ the first image that consumes it, not ahead of it.
 |dual_octs_test
 |`octs_p1_credit_test` (deferred); duplicate differing in two lines.
 |efuse_reg_sanity
-|`smc_efuse_map_read_test` and `smc_efuse_shim_ctrl_test` (`testlists/efuse.toml`); the alias `smc_efuse_test` is waived.
+|`smc_efuse_map_read_test` (`testlists/rtl_issue.toml` while #1989 stands) and `smc_efuse_shim_ctrl_test` (`testlists/efuse.toml`); the alias `smc_efuse_test` is waived.
 |gpio_p0_int_test
 |`smc_gpio_p0_int_test` (`testlists/gpio.toml`), same objective.
 |gpio_p0_mux_test

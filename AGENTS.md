@@ -530,8 +530,12 @@ Each of these is an auto-generated alias for the `ocah-`-prefixed target of the 
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
 plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
-Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
-`scripts/ci/diff_class.py` is the classifier.
+The internal GitLab mirror loads its parent pipeline from a separately access-controlled
+configuration project rather than from this repository, so a pull request cannot replace the
+bootstrap that obtains the optional companion. Change the trusted configuration through its own
+review path. That parent executes the `main` revision of `scripts/ci/diff_class.py`, rather than
+the revision under test, when deciding whether a documentation-only change can skip the nonfree
+child.
 
 Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
 They share the same base inventory but use separate exclusions, so a formatter limitation does
