@@ -2277,29 +2277,34 @@ change can never alter the pull-request gate:
 
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
-|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, 60-minute
-budget per job. The job names `verilator-smoke (<dut>)` are the stable check
-contexts.
+|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu_block`, and `smc`, and
+`--items hosted_smoke` for `smu`, whose own `smoke` group reaches firmware
+tests the hosted runner cannot build; 60-minute budget per job. The job
+names `verilator-smoke (<dut>)` are the stable check contexts. A
+documentation-only change still runs every job so the contexts report, and
+each job prints one line and skips the simulation.
 
 |`nightly`
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the three
-`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
-budgets are sized for the standard runner. Nightly is not a merge gate; a red
-nightly run is a triage signal.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`, `smu_block` `all`; SMC `hosted` and
+the three `cross_trigger` benches' `all` groups run with `--reseed 3`. No
+coverage; each row carries its own `timeout-minutes` budget, sized for the
+standard runner. Nightly is not a merge gate; a red nightly run is a triage
+signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The coverage regression the dashboard publishes. DTP `all` collects
-reference-only Verilator coverage; SEP `cpu_stub` and SMU `hosted` add
-`--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
-runner, because their coverage-instrumented model builds exceed the standard
-runner's memory, and DTP reseeds three times on that runner. SMC `hosted` and
-the three `cross_trigger` benches' `all` groups run at three seeds with
-coverage. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
+reference-only Verilator coverage; SEP `cpu_stub`, SMU `hosted`, and
+`smu_block` `all` add `--cov` when the repository variable `DV_LARGE_RUNNER`
+names a larger runner, because the coverage-instrumented SEP and SMU model
+builds exceed the standard runner's memory, and DTP reseeds three times on
+that runner. SMU, `smu_block`, SMC `hosted`, and the three `cross_trigger`
+benches run at three seeds; SMC and the `cross_trigger` benches collect
+coverage on whichever runner the variable selects. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
 reproducers at one seed without coverage: every leaf carries `expect_fail`
 (<<runner-expected-failures>>), so the row is green while the filed defects
 stand and red the week one is fixed. `--sim-jobs` follows the runner core
@@ -2324,6 +2329,32 @@ gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
 A label with no matching runner does not fail fast (the job queues until it
 times out), so the default stays the always-present standard runner.
 
+[[runner-ci-budgets]]
+=== Budgets, concurrency, and retention
+
+Every job carries a `timeout-minutes` budget: 60 for each smoke job, and a
+per-row value in the nightly and weekly matrices below the six-hour hosted
+cap. A job that exceeds its budget is cancelled by the runner; the runner
+process receives the cancellation as a signal and writes its interruption
+checkpoint and run-level JUnit testcase before it exits
+(<<runner-interrupted-checkpoints>>), and the artifact upload runs
+regardless of the outcome, so a cancelled job still publishes non-passing
+evidence. Inside a job, each leaf is bounded by its resolved leaf timeout, and
+a leaf that exceeds it grades `TIMEOUT` without ending the run.
+
+Concurrency is per workflow: a pull-request push cancels the smoke run it
+supersedes, a push to `main` never cancels a run in progress, and the two
+regression crons are separate groups that are never cancelled, so a
+dispatched tier queues behind the scheduled one. Exactly one regression tier
+runs per day.
+
+Retention: smoke and nightly run trees for 14 days, weekly run trees for 30,
+the normalized dashboard bundle for 90; the `dv-dashboard-data` branch keeps
+the trend history and per-week archives trimmed to 90 entries. The runner has
+no automatic retry in hosted CI; a leaf is graded on its single attempt, and
+the weekly digest's flaky list comes from seeds of one test disagreeing
+within a run.
+
 Each job writes an explicit per-run directory
 (`build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; the workflow run id keeps the
 recorded run identity unique for downstream trend history), gates on the
@@ -2344,7 +2375,7 @@ symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smc` + Verilator; `cross_trigger_port`,
+|`dtp`, `sep`, `smu`, `smu_block`, `smc` + Verilator; `cross_trigger_port`,
 `cross_trigger_matrix`, `cross_trigger_network` + Verilator (regression
 tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
@@ -2352,9 +2383,9 @@ pull request and push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `hosted` / `smoke`). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
-cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
-run in the same matrix but are not required contexts; the `cross_trigger`
-benches are enrolled in the regression tiers only.
+cancelled, or missing DTP or SEP smoke result blocks merge. SMU, `smu_block`,
+and SMC smoke run in the same matrix but are not required contexts; the
+`cross_trigger` benches are enrolled in the regression tiers only.
 
 |Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
