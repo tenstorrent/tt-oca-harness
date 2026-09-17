@@ -3,7 +3,7 @@
 
 = Open Chiplet Atlas Harness (OCAH)
 
-The Open Chiplet Atlas Harness (OCAH) is an OCA-compliant, open-source chiplet
+The Open Chiplet Atlas Harness (OCAH) is an OCA architecture compliant, open-source chiplet
 framework: a reusable implementation vehicle for the Open Chiplet Atlas
 (OCA) standard. It packages the common, non-differentiating infrastructure
 every chiplet needs -- security, boot, system management, debug, test, and

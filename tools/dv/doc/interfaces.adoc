@@ -150,7 +150,7 @@ Runner]).
 |Coverage grade: `--cov`, the `cov_merge` and `cov_report` stages,
 `cov/coverage.json`, `cov/report/*.json`, and `--waive`
 |Runner coverage stages; policy files in the DUT tree
-|`collect`, the dashboard coverage view, the publication workflow's re-grade
+|`collect` and the dashboard coverage view
 |The merge takes the final attempt of every leaf that wrote a database,
 whatever its status, and refuses inputs of mixed target or build
 provenance (xref:run-dv.adoc#runner-coverage-inputs[Which databases merge]).
@@ -169,7 +169,8 @@ and after are separate series. A lapsed waiver grades as open. Checked by
 `--validate-configs` (expiry warnings), the coverage-inputs,
 coverage-thresholds, coverage-closure, policy-expiry, and waive tests, and
 the coverage evidence clause of the action's gate. Hosted CI publishes the
-score but enforces no threshold
+score but does not collect it; the coverage regression runs on the licensed
+simulator flow outside hosted CI
 (xref:run-dv.adoc#runner-coverage-record[The coverage record]).
 
 |Normalized dashboard data: `<dut>.result.json`, `summary.json`,
@@ -325,7 +326,7 @@ tool's `setup_hook`.
 |Scheduled tiers are never cancelled; a dispatch of the same tier queues
 behind the one in flight.
 
-|Move coverage rows to a larger runner
+|Move the regression rows to a larger runner
 |`gh variable set DV_LARGE_RUNNER --body <runner-label>`
 |A repository variable, not a workflow edit. A label with no matching runner
 queues until the job times out.
@@ -335,19 +336,14 @@ queues until the job times out.
 |Add `-f dry_run=true` to collect and aggregate without pushing the branch,
 uploading the bundle, or sending the digest.
 
-|Apply a merged waiver to a published weekly
-|Merge the policy change, then dispatch the publication for the weekly's
-run id
-|The job re-grades the downloaded tree with `--waive` against the checkout's
-policy (xref:run-dashboard.adoc#dashboard-waive[Waive coverage bins on a published weekly]).
-
 |Re-grade a downloaded run tree locally
 |`OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut <dut> --run-dir <tree> --waive`
 |No simulator or report tool runs; the tree is the only input.
 
 |Inspect the published data
 |Branch `dv-dashboard-data`: `latest/` (one record per weekly DUT, the
-summary, staged coverage files), `data/history.json`, `data/runs/<dut>/`,
+summary, and any staged coverage files), `data/history.json`,
+`data/runs/<dut>/`,
 `data/classification/`
 |The artifact of the same name carries the per-run bundle with identical
 content.

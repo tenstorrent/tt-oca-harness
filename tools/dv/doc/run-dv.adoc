@@ -1660,8 +1660,7 @@ Bare `--waive` applies the policy the DUT configures (`policy_file`, else
 `cov/config/<tool>/coverage_policy.toml`); a DUT without one needs `FILE`.
 `--waive FILE` applies that file instead, and it must name the run's `dut`. A
 relative `FILE` resolves against the repository root, like `--run-dir`.
-. Collect the run again for the dashboard, or re-dispatch the publication
-  workflow for a weekly (see the dashboard page).
+. Collect the run again for the dashboard.
 
 No simulator or report tool runs: the run tree is the only input, so the
 command works on a copied or downloaded run tree and on a host without the
@@ -2446,32 +2445,22 @@ then prints one line and skips the simulation.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the three
-`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the three
+`cross_trigger` benches' `all` groups. No coverage.
 Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
-|The coverage regression the dashboard publishes. DTP `all` collects
-reference-only Verilator coverage; SEP `cpu_stub` and SMU `hosted` add
-`--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
-runner, because the coverage-instrumented SEP and SMU model builds exceed the
-standard runner's memory, and DTP reseeds three times on that runner. SMU,
-SMC `hosted`, and the three `cross_trigger` benches run at three seeds; SMC
-`hosted` collects coverage on whichever runner the variable selects, and the
-`cross_trigger` benches collect it on the standard runner. A second SMC row
-(`label: rtl_issue`) runs the `rtl_issue`
-reproducers at one seed without coverage: every leaf carries `expect_fail`
-(<<runner-expected-failures>>), so the row is green while the filed defects
-stand and red the week one is fixed. `--sim-jobs` follows the runner core
-count. The score is published
-but does not determine test pass/fail. SEP, SMU, and DTP instrument
-line/branch/expression/user and SMC line/branch/user, none with toggle, and
-every coverage block compiles the generated model per file
-(`--output-groups 0`; see `[coverage.verilator]` in each DUT's sim config for
-the sizing and build rationale). The `cross_trigger` benches use the
-simulator default (all forms).
+|The regression the dashboard publishes, one random seed per test on every
+row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
+and the three `cross_trigger` benches' `all` groups. A second SMC row
+(`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
+`expect_fail` (<<runner-expected-failures>>), so the row is green while the
+filed defects stand and red the week one is fixed. `--sim-jobs` follows the
+runner core count. The coverage regression runs on the licensed simulator
+flow outside hosted CI; the coverage-instrumented Verilator models of DTP,
+SEP, and SMU do not fit a hosted job.
 |===
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
@@ -2520,19 +2509,18 @@ the normalized dashboard bundle for 90; the `dv-dashboard-data` branch keeps
 the trend history trimmed to 90 points and each DUT's weekly archives to 90
 runs. The runner has
 no automatic retry in hosted CI; a leaf is graded on its single attempt, and
-the weekly digest's flaky list comes from seeds of one test disagreeing
-within a run.
+the weekly digest's flaky list names a test whose seeds disagree within a
+run, which at one seed per test is only a test with its own `reseed` value.
 
 Each job writes an explicit per-run directory
 (`build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; the workflow run id keeps the
 recorded run identity unique for downstream trend history), gates on the
 native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
-`status` `PASS`). Coverage-enabled jobs additionally require a numeric score
-and recorded report/summary paths, but do not enforce a score threshold. The
+`status` `PASS`). A caller that sets the action's `coverage` input adds
+coverage evidence to that gate; no hosted row does. The
 action uploads `dv-run-<dut>-<tool>-<tier>` (`-<label>` appended for a
 labelled row), including on failure, for the retention periods in
-<<runner-ci-budgets>>; per-leaf Verilator `coverage.dat` inputs are excluded
-after merge while the merged coverage report and normalized summary remain.
+<<runner-ci-budgets>>.
 Explicit run directories never create or update the `latest`
 symlink.
 

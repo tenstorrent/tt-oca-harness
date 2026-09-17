@@ -28,4 +28,8 @@ SMU wires DTP internally.
 CPU ROM/scratch/L1$ live in `hw/top/smc_ip_integration.sv` (smc_wrapper,
 smu_wrapper TB, and bare SMU TB).
 
-Bender consumes only `regs/gen/sv/*_addrmap_pkg.sv` from the PeakRDL tree.
+`regs/gen/` holds every view `make regen-regs` emits from `regs/*.rdl` (`adoc/`,
+`c/`, `html/`, `ipxact/`, `py/`, `sv/`, `svh/`), committed beside the source as
+`CONTRIBUTING.md` requires. Bender consumes only `regs/gen/sv/*_addrmap_pkg.sv`;
+`doc/stage-docs.sh` stages `regs/gen/html/*.html` into the documentation site
+as the register-map partials for the two placeholder wraps.
