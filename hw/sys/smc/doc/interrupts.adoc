@@ -22,7 +22,13 @@ standardized interfaces. PLIC (AXI4-Lite) and CLINT (AXI4-Lite) are used
 for external and timer/software interrupts, respectively. Base addresses
 and interfaces (SMC-local view):
 
-[cols=",,,",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="smc-interrupt-table-scroll" role="region" aria-label="Interrupt controller address map" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="30%,40%,12%,18%",options="header",role="smc-interrupt-table"]
 |===================================================================
 |Block |Base Addr |Size |Interface
 |CPU Control Regs |0xC001_0000 |8 KB |AXI4-Lite
@@ -31,6 +37,12 @@ and interfaces (SMC-local view):
 |Watchdog Timers (N) |0xC000_0000 + (N * 0x400) |1 KB x4 |APB4
 |Bus Error Units (N) |0xC801_0000 + (N * 0x1000) |4 KB x4 |AXI4-Lite
 |===================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 == SMC interrupt vector (`cpu_interrupts_o`)
 
@@ -90,7 +102,13 @@ The table below shows the exact raw `cpu_interrupts_o` indexing. The
 `Source` column is intentionally human-readable; implementation signal
 names are called out in the `RTL trace` column instead.
 
-[width="100%",cols="12%,22%,28%,38%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="smc-interrupt-table-scroll" role="region" aria-label="SMC CPU interrupt vector map" tabindex="0">
+++++
+endif::backend-html5[]
+
+[width="100%",cols="12%,20%,28%,40%",options="header",role="smc-interrupt-table smc-interrupt-table-wide"]
 |=======================================================================
 |Bit(s) |Source |Description |RTL trace
 
@@ -345,6 +363,12 @@ overwritten in `smc_peripherals.sv`.
 tail bits in `smc_base.sv`.
 |=======================================================================
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 === Trace Notes
 
 * Peripheral interrupt construction is defined in
@@ -394,8 +418,14 @@ The SMC interrupt system brings together a broad set of interrupt
 sources that support reliable and responsive system monitoring and
 control, summarized in the following table.
 
+ifdef::backend-html5[]
+++++
+<div class="smc-interrupt-table-scroll" role="region" aria-label="SMC interrupt source integration" tabindex="0">
+++++
+endif::backend-html5[]
+
 .SMC interrupt sources
-[width="100%",cols="20%,25%,30%,25%",options="header",]
+[width="100%",cols="24%,28%,25%,23%",options="header",role="smc-interrupt-table"]
 |=======================================================================
 |Interrupt Component |Address Range & Configuration |System Management
 Function |Response Characteristics
@@ -418,6 +448,12 @@ external intervention
 monitoring instances, direct to cores (not PLIC) |Bus infrastructure integrity monitoring and fault
 isolation |Immediate fault reporting as NMI-like interrupt
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 For CPU cluster context (caches, TileLink attachment), see
 ifdef::backend-html5[]

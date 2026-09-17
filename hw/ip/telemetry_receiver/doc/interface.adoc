@@ -9,7 +9,13 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.
 
 === Configuration Parameters
 
-[width="100%",cols="30%,20%,50%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver configuration parameters" tabindex="0">
+++++
+endif::backend-html5[]
+
+[width="100%",cols="32%,12%,56%",options="header",role="telemetry-table"]
 |====================================================================================
 |Parameter |Default |Description
 |NUM_BUFFERS |2 |Number of telemetry buffers (dual-buffer architecture)
@@ -20,6 +26,12 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.
 |DATA_WIDTH |32 |Data bus width (bits)
 |====================================================================================
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 === Signal Interfaces
 
 === Global Interface
@@ -27,8 +39,14 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.
 The global interface provides fundamental clock and reset signals
 required for basic operation.
 
+ifdef::backend-html5[]
+++++
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver global signals" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Global Interface Signals
-[width="100%",cols="15%,10%,10%,10%,55%",options="header",]
+[width="100%",cols="18%,10%,16%,12%,44%",options="header",role="telemetry-table"]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description
 |`clk_i` |1 |Input |Rising |System clock input. All synchronous
@@ -37,6 +55,12 @@ operations are performed on the rising edge.
 |`rst_ni` |1 |Input |Low |System reset input. Asynchronous assertion,
 synchronous deassertion.
 |=====================================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Clock and Reset Specifications
 
@@ -52,8 +76,14 @@ reset deassertion
 The ATB (Advanced Trace Bus) interface receives telemetry data using standard
 ATB protocol.
 
+ifdef::backend-html5[]
+++++
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver ATB signals" tabindex="0">
+++++
+endif::backend-html5[]
+
 .ATB Interface Signals
-[width="100%",cols="15%,10%,10%,65%",options="header",]
+[width="100%",cols="20%,10%,16%,54%",options="header",role="telemetry-table"]
 |=================================================================================
 |Signal Name |Width |Direction |Description
 |`atdata_i` |8 |Input |Telemetry data input (8-bit data beats)
@@ -63,6 +93,12 @@ ATB protocol.
 |`afvalid_o` |1 |Output |ATB flush valid (flush request indication)
 |`afready_i` |1 |Input |ATB flush ready (flush acknowledgment)
 |=================================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === ATB Protocol Specifications
 
@@ -80,12 +116,24 @@ back-pressure
 The interrupt interface provides a single interrupt output for event
 notification.
 
+ifdef::backend-html5[]
+++++
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver interrupt signals" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Interrupt Interface Signals
-[width="100%",cols="15%,10%,10%,65%",options="header",]
+[width="100%",cols="20%,10%,16%,54%",options="header",role="telemetry-table"]
 |=====================================================================
 |Signal Name |Width |Direction |Description
 |`irq_o` |1 |Output |Interrupt request output (active high)
 |=====================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Interrupt Specifications
 

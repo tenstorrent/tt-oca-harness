@@ -28,7 +28,7 @@ management workloads
 The table below summarizes the key features of the Rocket CPU core, and
 its cache hierarchy
 
-[cols=",",options="header",]
+[cols="30%,70%",options="header"]
 |========================================================
 |Attribute |Description
 |Cores |4, Rocket RV64GC
@@ -41,7 +41,13 @@ its cache hierarchy
 
 == Cache and Memory Hierarchy
 
-[cols="25%,15%,35%,25%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="smc-memory-table-scroll" role="region" aria-label="Cache and memory hierarchy" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="25%,20%,30%,25%",options="header",role="smc-memory-table"]
 |=======================================================================
 |Component |Default Size |Notes |Configurability
 |L1 I-Cache per core |4 KiB (32 sets × 2 ways) |Write-through, Parity
@@ -55,6 +61,12 @@ its cache hierarchy
 
 |Boot ROM |128 KiB |Read-only, stores boot firmware |rom_cfg
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 All memory components (SRAM, caches, ROM) are configurable via top-level
 parameters. The scratchpad SRAM allows deterministic accesses,
@@ -141,7 +153,7 @@ repair unless explicitly bypassed via strap configuration.
 
 == System Interfaces
 
-[cols=",,",options="header",]
+[cols="25%,20%,55%",options="header"]
 |==============================================
 |Interface |Protocol |Description
 |MMIO |AXI4-Lite |56b addressing, low-latency

@@ -672,6 +672,30 @@
     color: #ffffff !important;
 }
 
+/* Register lists follow h2 headings; field tables follow h3 headings. */
+.ocah-reg-html h2 + table {
+    min-width: 740px;
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+}
+
+.ocah-reg-html h2 + table th:nth-child(1) {
+    width: 16%;
+}
+
+.ocah-reg-html h2 + table th:nth-child(2) {
+    width: 32%;
+}
+
+.ocah-reg-html h2 + table th:nth-child(3) {
+    width: 9%;
+}
+
+.ocah-reg-html h3 + table th:nth-child(2),
+.ocah-reg-html h3 + table td:nth-child(2) {
+    white-space: nowrap;
+}
+
 /* %autowidth tables get Asciidoctor's `fit-content` class, so this avoids
    table overrunning.  */
 .tableblock.fit-content {
@@ -690,6 +714,52 @@
 .tableblock:has(colgroup) code {
     overflow-wrap: break-word;
     word-break: break-word;
+}
+
+.telemetry-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.telemetry-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .telemetry-table-scroll table.telemetry-table {
+    min-width: 680px;
+}
+
+.smc-memory-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.smc-memory-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .smc-memory-table-scroll table.smc-memory-table {
+    min-width: 680px;
+}
+
+.smc-interrupt-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.smc-interrupt-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .smc-interrupt-table-scroll table.smc-interrupt-table {
+    min-width: 680px;
+}
+
+.doc .smc-interrupt-table-scroll table.smc-interrupt-table-wide {
+    min-width: 750px;
 }
 
 .lifecycle-table-scroll {

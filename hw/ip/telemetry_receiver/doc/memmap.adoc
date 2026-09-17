@@ -19,8 +19,14 @@ the following organization:
 
 === Register Map
 
+ifdef::backend-html5[]
+++++
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver register map" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Complete Register Map
-[width="100%",cols="15%,25%,10%,50%",options="header",]
+[width="100%",cols="14%,38%,12%,36%",options="header",role="telemetry-table"]
 |====================================================================================
 |Address |Register Name |Access |Description
 |0x00 |CTRL |RW |Control Register
@@ -37,6 +43,12 @@ the following organization:
 |... |... |... |...
 |0xFC |TELEMETRY_COUNTER[31] |R |Telemetry Counter Register 31
 |====================================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Reset Behavior
 
