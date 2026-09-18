@@ -29,9 +29,10 @@
 //       them all; a PTAP whose select cleared is read over the TDR return
 //       path with a marker that proves the path;
 //   tms_hold       per STAP and polarity (seeded order): select the STAP
-//       with TMS_HOLD=h, deselect it, and prove over a whole maintain scan
-//       that the host TMS parks at h, tdo_oen stays quiet, and the 3DCR
-//       reads back through the chain.
+//       with TMS_HOLD=h and prove over a maintain scan that the port
+//       forwards (the positive control of the deny that follows), deselect
+//       it, and prove over a whole maintain scan that the host TMS parks at
+//       h, tdo_oen stays quiet, and the 3DCR reads back through the chain.
 
 class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_stap_scan_test_seq)
@@ -128,8 +129,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     start_scan_window(watch);
     stap_chain_maintain('0, {stap_name(stap), ".observe"}, captured);
     stop_scan_window(edges, counts);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {
-                 stap_name(stap), ".selected"});
+    check_window_shifted("CHK-SCAN-WIN", {stap_name(stap), ".selected"});
     check_stap_forwarding(edges, counts, stap, 1'b1, {stap_name(stap), ".selected"});
     check_stap_chain_readback(captured, '0, {stap_name(stap), ".selected_readback"});
     if (downstream) begin
@@ -152,8 +152,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     stap_chain_write(gate, -1, -1, no_sib, iso_pl, {stap_name(stap), ".gated_update_attempt"},
                      captured);
     stop_scan_window(edges, counts);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {
-                 stap_name(stap), ".gated"});
+    check_window_shifted("CHK-SCAN-WIN", {stap_name(stap), ".gated"});
     check_stap_forwarding(edges, counts, stap, 1'b0, {stap_name(stap), ".gated"});
     check_stap_chain_readback(captured, gate, {stap_name(stap), ".gated_readback"});
     if (downstream) begin
@@ -176,8 +175,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     start_scan_window(watch);
     stap_chain_maintain('0, {stap_name(stap), ".resume"}, captured);
     stop_scan_window(edges, counts);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {
-                 stap_name(stap), ".resume"});
+    check_window_shifted("CHK-SCAN-WIN", {stap_name(stap), ".resume"});
     check_stap_forwarding(edges, counts, stap, 1'b1, {stap_name(stap), ".resume"});
     check_stap_chain_readback(captured, '0, {stap_name(stap), ".resume_readback"});
     if (downstream) begin
@@ -226,8 +224,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     start_scan_window(watch);
     stap_chain_maintain('0, {stap_name(stap), ".recover_observe"}, captured);
     stop_scan_window(edges, counts);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {
-                 stap_name(stap), ".recover"});
+    check_window_shifted("CHK-SCAN-WIN", {stap_name(stap), ".recover"});
     check_stap_forwarding(edges, counts, stap, 1'b1, {stap_name(stap), ".recover"});
     check_stap_chain_readback(captured, '0, {stap_name(stap), ".recover_readback"});
     if (downstream) ds_write_and_readback(stap, v_recover, '0, {stap_name(stap), ".recover_tdr"});
@@ -254,10 +251,18 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     shift_dr(64'h2, Ptap3dcrWidth, unused);
     check_scan_window(none, active, "ext.enabled_window");
 
+    // With the PTAP select clear the host scan strobes still follow every
+    // PTAP scan (they are the TAP's; the select routes the scan data), so
+    // the deselected scan is judged for pulsing strobes, not for silence.
     write_ptap_3dcr(1'b0, 1'b0, "ext.disable");
+    active.delete();
+    active.push_back("jtag_stap_host_shift_en");
+    start_scan_window(host_controls);
     shift_dr(64'h0, Ptap3dcrWidth, unused);
-    // The RTL keeps scan control active during PTAP scan activity and
-    // uses the PTAP_3DCR select for data routing: log-only here.
+    check_scan_window(none, active, "ext.deselected_window");
+    active.delete();
+    active.push_back("jtag_stap_host_select");
+    active.push_back("jtag_stap_host_shift_en");
 
     write_ptap_3dcr(1'b1, 1'b1, "ext.gate_enable");
     gate.stap_host = 1'b1;
@@ -343,10 +348,11 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     end
   endtask
 
-  // Select the STAP with tms_hold=hold, deselect it, then prove the
-  // deselected port drives its host TMS at that polarity for the whole
-  // maintain scan while tdo_oen stays quiet, and that the 3DCR reads back
-  // as written.
+  // Select the STAP with tms_hold=hold and prove the selected port forwards
+  // (tdo_oen pulses, tms follows the live TMS) under the window the parked
+  // leg reuses, deselect it, then prove the deselected port drives its host
+  // TMS at that polarity for the whole maintain scan while tdo_oen stays
+  // quiet, and that the 3DCR reads back as written.
   protected task tms_hold_case(int unsigned stap, bit hold);
     string ctx = $sformatf("tms_hold.%s.hold%0d", stap_name(stap), hold);
     string prefix = stap_prefix(stap);
@@ -365,13 +371,18 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     stap_chain_write('0, 1, -1, sib_en, no_pl, {ctx, ".open_sib"}, unused);
     payloads[stap] = '{1'b0, 1'b1, hold};
     stap_chain_write('0, -1, -1, no_sib, payloads, {ctx, ".select"}, unused);
+    start_scan_window(watch);
+    stap_chain_maintain('0, {ctx, ".selected_observe"}, captured);
+    stop_scan_window(edges, counts);
+    check_window_shifted("CHK-SCAN-WIN", {ctx, ".selected_window"});
+    check_stap_forwarding(edges, counts, stap, 1'b1, {ctx, ".selected"});
+    check_stap_chain_readback(captured, '0, {ctx, ".selected_readback"});
     payloads[stap] = '{1'b0, 1'b0, hold};
     stap_chain_write('0, -1, -1, no_sib, payloads, {ctx, ".deselect"}, unused);
     start_scan_window(watch);
     stap_chain_maintain('0, {ctx, ".observe"}, captured);
     stop_scan_window(edges, counts);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {ctx, ".window"
-                 });
+    check_window_shifted("CHK-SCAN-WIN", {ctx, ".window"});
     check_stap_forwarding(edges, counts, stap, 1'b0, {ctx, ".parked"});
     check_stap_chain_readback(captured, '0, {ctx, ".readback"});
   endtask

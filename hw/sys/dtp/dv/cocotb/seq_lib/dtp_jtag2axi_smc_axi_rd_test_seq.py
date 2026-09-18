@@ -88,8 +88,11 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
             self.log_iteration(idx + 1, beats, "series read incr addr=0x%08x obs=0x%x", addr, obs)
             self.assert_equal(f"series_wr_rd_incr.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
             self.operation_count += 1
-        _, _, _, _, status = await self.read_series_ctrl(size=size)
-        self.status = status
+        # The last primed incrementing read advanced the series address by
+        # one stride past the last beat.
+        self.status = await self.check_series_addr(
+            "smc_axi", addr + stride, size=size, context="series_wr_rd_incr.final"
+        )
 
     async def run_series_write_read_incr_narrow(self) -> None:
         self.log_banner("SMC_AXI Series Write-Read 32-bit Incrementing at Beat Offset +4")
@@ -135,8 +138,9 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
             )
             self.assert_equal(f"series_wr_rd_incr_narrow.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
             self.operation_count += 1
-        _, _, _, _, status = await self.read_series_ctrl(size=size)
-        self.status = status
+        self.status = await self.check_series_addr(
+            "smc_axi", addr + stride, size=size, context="series_wr_rd_incr_narrow.final"
+        )
 
     async def run_series_write_read_no_incr(self) -> None:
         self.log_banner("SMC_AXI Series Write-Read No-Increment")
