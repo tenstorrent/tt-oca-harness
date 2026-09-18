@@ -20,7 +20,7 @@ risk.
 
 ```bash
 make lint-slang-all     [BLOCK=<block>]              # slang --lint-only
-make synth-all          [BLOCK=<block>] [TECH=<pdk>] # yosys + yosys-slang
+make synth-yosys-all    [BLOCK=<block>] [TECH=<pdk>] # yosys + yosys-slang
 make format-sv          [FORMAT_PATH=<path>]         # verible-verilog-format --inplace
 make format-sv-check    [FORMAT_PATH=<path>]         # verible-verilog-format --verify
 ```
@@ -34,7 +34,7 @@ namespace, unconditionally, for every goal - `make lint-slang-all TARGET=smu` wo
 have no registers. `FORMAT_PATH` scopes formatting to a subtree (default
 `hw`); it is not called `PATH` for the same kind of reason - that would
 clobber the shell's own command-search path for every recipe. `make
-lint-slang*` / `format-sv*` / `lint-sv-verible` / `synth*` all require the
+lint-slang*` / `format-sv*` / `lint-sv-verible` / `synth-yosys*` all require the
 matching tool on `PATH`; if it is not found, Make prints a hint to use
 `./scripts/docker-run.sh run-here make …` and exits. `yosys` and `yosys-slang`
 are optional host installs — the container is the intended fallback for
@@ -71,8 +71,8 @@ two near-duplicate per-block files.
 a PDK later never touches an existing one:
 
 ```bash
-make synth-all BLOCK=smu TECH=ihp-sg13g2   # default
-make synth-all BLOCK=smu TECH=sky130A      # once wired up (see below)
+make synth-yosys-all BLOCK=smu TECH=ihp-sg13g2   # default
+make synth-yosys-all BLOCK=smu TECH=sky130A      # once wired up (see below)
 ```
 
 The value is the PDK name as used by `ciel` — `yosys.mk` passes it into the
@@ -105,7 +105,7 @@ synchronizer and async FIFO individually, using the procedures in
 `<block>_cdc_max_delay_generated.tcl`. "CDC Timing Constraints" in the Integrator
 Guide documents how the bounds are derived and the integration steps they require.
 
-**None of this is read by `make synth-all` today**, and that is intentional, not
+**None of this is read by `make synth-yosys-all` today**, and that is intentional, not
 an oversight. Yosys's ABC step (`scripts/synth.tcl`) does not consume SDC at
 all - ABC's timing model is a driving-cell/load pair
 (`tech/ihp-sg13g2/abc.constr`, i.e. `set_driving_cell`/`set_load`) plus a single
@@ -129,7 +129,7 @@ flows/
 │   ├── async_clock_groups.tcl   # set_async_clock_groups: -allow_paths + default inter-group bound
 │   └── cdc_max_delay_procs.tcl  # one set_cdc_max_delay_* proc per CDC element type
 ├── synth/yosys/
-│   ├── yosys.mk              # ocah-synth-all / ocah-synth, TECH ?= ihp-sg13g2
+│   ├── yosys.mk              # ocah-synth-yosys-all / ocah-synth-yosys, TECH ?= ihp-sg13g2
 │   ├── scripts/
 │   │   ├── common.tcl        # env vars, out/tmp/reports dirs
 │   │   ├── init_tech.tcl     # resolves $PDK, sources tech/$PDK/tech.tcl

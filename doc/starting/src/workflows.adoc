@@ -10,7 +10,7 @@ This section is currently under development.
 
 - More details on Yosys/Synthesis once finalised - Port local PDK usage from `lowrisc/container-testing`
 - DV FW sections reference source files frequently, how necessary is this?
-- Linters are still WIP - code is not clean yet
+- Linters are still WIP on findings; the shared `flow.mk` path is the one to run
 ====
 
 This document specifies the development methodology for this project.
@@ -371,15 +371,15 @@ The `--waves-on-fail` flag may be used instead of `--waves`, to only generate wa
 OCAH is designed around open-source workflows. For this reason, we have chosen to
 provide a synthesis flow using Yosys.
 
-`make ocah-synth-all` requires `yosys` on `PATH`. If it is not installed, Make
+`make ocah-synth-yosys-all` requires `yosys` on `PATH`. If it is not installed, Make
 prints a hint to use the container instead:
 
 ```bash
 # Native (yosys must be on PATH)
-make ocah-synth-all
+make ocah-synth-yosys-all
 
 # Via the container
-./scripts/docker-run.sh run-here make ocah-synth-all
+./scripts/docker-run.sh run-here make ocah-synth-yosys-all
 ```
 
 The PDK (`ihp-sg13g2` by default) is downloaded automatically by `ciel` on first
@@ -390,7 +390,9 @@ make ocah-synth-pdks
 ```
 
 This may be constrained with `BLOCK` to synthesise a single block only, and the PDK
-used for synthesis may be selected with `TECH`.
+used for synthesis may be selected with `TECH`. `BLOCK` is a `flow.mk` top
+(`dtp`, `sep`, `smc`, `smu`, `aou`), not an IP name. Discovery and `TECH=` are
+in https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/README.md[`flows/synth/yosys/README.md`].
 
 [WARNING]
 ====
@@ -408,6 +410,15 @@ formatting. They also enforce a consistent code style.
 ====
 Some linting workflows are still WIP, the code has not yet been cleaned up.
 ====
+
+Slang and Verilator use the same `flow.mk` tops as synthesis. Verible walks
+hand-authored files under `hw/`, including leaf IP. To restrict slang or
+Verilator output to one IP directory, lint the parent system:
+
+```bash
+make lint-slang-all BLOCK=smu SLANG_LINT_PATH=hw/ip/gpio
+make lint-verilator-all BLOCK=smu VERILATOR_LINT_PATH=hw/ip/gpio
+```
 
 === Verilog
 
@@ -464,7 +475,7 @@ make lint-verilator-all BLOCK=smu \
 
 ==== Style and Lint checking with Slang
 
-To run the slang linter on all SystemVerilog files, use the following command:
+To run the slang linter on each `flow.mk` top, use the following command:
 
 ```bash
 make lint-slang-all
@@ -605,9 +616,6 @@ The variable `TOML_PATH` may be used to limit the files checked.
 and no autofix, unlike yamllint/markdownlint. It mainly guards the DV
 testlists and sim configs under `hw/**/dv/**/*.toml`, catching a malformed
 file before the runner that reads it fails with a less legible error.
-`hw/ip/scrambler/dv/lint/scrambler.toml` is excluded: despite the extension,
-`slang-tidy` parses it with its own `Checks:`/`CheckConfigs:` grammar, not
-TOML.
 ====
 
 ==== YAML file Lint with `yamllint`

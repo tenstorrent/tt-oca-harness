@@ -21,7 +21,7 @@ make ocah-synth-pdks [PDK_ROOT=<path>]
 
 `sky130` and `gf180mcuD` have `ciel` version hashes and `ocah-synth-pdks`
 entries but no `tech/<pdk>/tech.tcl` yet, so they cannot be used with
-`make synth-all`.
+`make synth-yosys-all`.
 
 ## Adding a PDK
 

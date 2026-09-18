@@ -101,7 +101,7 @@ built automatically on first use:
 ./scripts/docker-run.sh run make dv-fw-tests TARGET=smc
 
 # Run with 1:1 host paths (needed for workflows using absolute paths)
-./scripts/docker-run.sh run-here make ocah-synth-all
+./scripts/docker-run.sh run-here make ocah-synth-yosys-all
 ```
 
 To pre-build the image explicitly (e.g. before going offline):
