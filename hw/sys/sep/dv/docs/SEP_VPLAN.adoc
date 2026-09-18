@@ -2217,7 +2217,7 @@ recovery. Those are listed in <<phase-3>>.
 |A misaligned in-extent access receives SLVERR and latches the owning block's bit. **Fails**: the access returns DECERR and the register stays 0.
 |===
 
-*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The leaf is left unmarked so a run of `all` stays a visible fail; a spec-vs-RTL gap is not masked as `expect_fail`. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction. Tracked by issue #1993.
+*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The leaf is left unmarked so a run of `all` stays a visible fail; a spec-vs-RTL gap is not masked as `expect_fail`. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction.
 
 *Not claimed*: the same term on the DMA register path (`reg_path_err`), and the access-control (RACL) term of either register — RACL is disabled in this design with its error output unconnected, so that term is unreachable for a separate reason.
 
