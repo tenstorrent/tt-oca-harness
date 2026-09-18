@@ -1,22 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PERIPH-EXT: the SMC peripheral crossbar's 0xC040_0000 window, over J2A.
+"""PERIPH-EXT: the SMC adopter external window, over J2A.
 
-The window splits in two at the crossbar: the eFuse bank-control shim takes
-the first EFUSE_SHIM_SIZE bytes and leaves smu_wrapper on its own AXI-Lite
-port, and everything above it is the macro AXI-Lite window that
-smc_ip_integration decodes.
+``hw/sys/smc/doc/memmap.adoc`` ("AXI-Lite External Window") places the window
+at SMC BASE + 0x040_0000, splits it into a mandatory region at the window base
+and a supplementary region at +0x4000, and passes whatever no block claims
+through to the adopter external port. The register map generated from
+``smc.rdl`` for the boot ROM (``hw/sys/smc/bootrom/prod/registers/smc_top_regs.h``)
+places EFUSE_SHIM_CTRL at the mandatory-region base and records how far the
+allocated blocks reach; the straps pair sits in the supplementary region at
+the address ``hw/sys/smc/bootrom/prod/doc/hardware-initialization.adoc``
+gives.
 
-S1: EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME reads its reset value, takes a new
-    value, and takes the reset value back -- the shim port carries both a
+S1: EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME reads its RDL reset value, takes a
+    new value, and takes the reset value back -- the shim port carries both a
     request and a response.
-S2: the straps block inside the macro window answers, and an offset above it
-    that no sub-window claims decode-errors. The pair is what separates "the
-    macro window is decoded" from "nothing is behind it".
+S2: the straps pair answers, and the first page above every allocation those
+    sources record returns DECERR. The pair is what separates "the window is
+    decoded" from "nothing is behind it": a default slave returning zeros
+    would answer the straps read too.
 S3: the SMC aperture decides whether any of that is reachable at all. Shrink
-    BASE_CONFIG.REGION_SIZE below the window and the same read leaves the
-    chiplet through the output fabric instead; set it to zero and no address
-    is local any more. S3 is last because it takes the fabric away.
+    BASE_CONFIG.REGION_SIZE so LOCAL_BASE + size ends at the window and the
+    same read leaves the chiplet through the output fabric instead; set it to
+    zero and no address is local any more. S3 is last because it takes the
+    fabric away.
 
 32-bit CSRs at addr[2]=1 use the upper 64b J2A lane (wstrb=0xF0), matching
 ``wdt_unlock``.
@@ -24,11 +31,19 @@ S3: the SMC aperture decides whether any of that is reachable at all. Shrink
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO, smc_addr
+from seq_lib.smu_addr_map import (
+    SMC_CHIP_CONFIG_VERSION_LO,
+    c_header_u32,
+    smc_addr,
+    smc_bootrom_addr,
+)
+from seq_lib.smu_boundary_regs import smc_base_config_u32
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_DECERR,
@@ -40,41 +55,97 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
 )
 
-# hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv: rule idx 6 places
-# efuse.efuse_shim at 0xC040_0000 and rule idx 11 puts external.external
-# directly above it, up to 0xC080_0000.
-EFUSE_SHIM_BASE = 0xC040_0000
-# hw/ip/efuse/dv/models/regs/gen/c/efuse_shim_ctrl_addr.h: the block's only
-# register sits at offset 0.
-EFUSE_BANK_INIT_TIME = EFUSE_SHIM_BASE + 0x0
-# hw/ip/efuse/dv/models/regs/gen/c/efuse_shim_ctrl.h:
-# EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_reset.
-EFUSE_BANK_INIT_TIME_RESET = 0x20
+_REPO_ROOT = Path(__file__).resolve().parents[6]
+_EFUSE_SHIM_CTRL_C = _REPO_ROOT / "hw" / "ip" / "efuse" / "dv" / "models" / "regs" / "gen" / "c"
+
+# hw/sys/smc/doc/memmap.adoc, "AXI-Lite External Window": the window, its
+# mandatory region at the base and its supplementary region at +0x4000.
+EXTERNAL_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
+EXTERNAL_END = EXTERNAL_BASE + smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE")
+EXT_MANDATORY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR")
+EXT_SUPPLEMENTARY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
+# smc_top_regs.h sizes the window by its last allocated block, not by the
+# aperture smc_addr.h reserves for it.
+EXT_ALLOCATED_END = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR") + smc_bootrom_addr(
+    "SMC_TOP_SMC_EXTERNAL_SIZE"
+)
+
+EFUSE_SHIM_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
+# The shim behind the eFuse bank-control port follows efuse_shim_ctrl.rdl; the
+# SMC map fixes only where the block sits.
+EFUSE_BANK_INIT_TIME = EFUSE_SHIM_BASE + c_header_u32(
+    _EFUSE_SHIM_CTRL_C / "efuse_shim_ctrl_addr.h",
+    "EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR",
+)
+EFUSE_BANK_INIT_TIME_RESET = c_header_u32(
+    _EFUSE_SHIM_CTRL_C / "efuse_shim_ctrl.h",
+    "EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_reset",
+)
 # A value the reset cannot be mistaken for, inside the 32-bit field.
 EFUSE_BANK_INIT_TIME_PROBE = 0x0000_0155
 
-# hw/top/smc_ip_integration.sv: ExtStrapsBase 'h5800 inside the macro window,
-# straps_reg_pkg::STRAPS_REG_SIZE = 'h8 -> STRAPS_LO then STRAPS_HI.
+# hw/sys/smc/bootrom/prod/doc/hardware-initialization.adoc, "Straps and
+# eFuses": the boot ROM reads the strap registers at 0xC0405800 and 0xC0405804.
+# straps.rdl keeps STRAPS_HI at STRAPS_LO + 4. The SMC memory map lists the
+# pair among the supplementary functions and leaves its placement to the
+# adopter.
 EXT_STRAPS_LO = 0xC040_5800
 EXT_STRAPS_HI = 0xC040_5804
-# Above every sub-window smc_ip_integration decodes, so its ExtUnmapped leg
-# terminates the access in an error slave.
-EXT_UNMAPPED = 0xC040_6000
+# The first 4 KiB page above every allocation the sources above record, still
+# inside the window. memmap.adoc passes what no block claims through to the
+# adopter external port, and hw/sys/smu/doc/port_table.adoc ties that port's
+# response to DECERR when nothing is attached.
+EXT_UNMAPPED = (max(EXT_ALLOCATED_END, EXT_STRAPS_HI + 4) + 0xFFF) & ~0xFFF
 
 REGION_SIZE_ADDR = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
-# hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl: REGION_SIZE.size
-# defaults to 16 MB and must be a non-zero power of two; zero "leaves no
-# reachable local aperture".
-REGION_SIZE_RESET = 0x0100_0000
-# Still a power of two, and small enough that LOCAL_BASE + size lands below
-# the 0xC040_0000 peripheral window.
-REGION_SIZE_SHRUNK = 0x0040_0000
+REGION_SIZE_RESET = smc_base_config_u32("SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
+LOCAL_BASE_RESET = smc_base_config_u32("SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
+# smc_base_config.rdl: REGION_SIZE.size is a non-zero power of two that
+# LOCAL_BASE is aligned to, and zero "leaves no reachable local aperture".
+# This size ends the local aperture exactly at the window, so the shim is the
+# first address outside it.
+REGION_SIZE_SHRUNK = EXTERNAL_BASE - LOCAL_BASE_RESET
 # Cycles allowed for an outbound-boundary counter to move after a J2A op.
 EGRESS_POLL_CYCLES = 2000
 
 
+def _require_window_map() -> None:
+    """Refuse to run if the sources above disagree about the window."""
+    facts = (
+        (EXT_MANDATORY_BASE == EXTERNAL_BASE, "mandatory region is not at the window base"),
+        (
+            EXT_SUPPLEMENTARY_BASE == EXTERNAL_BASE + 0x4000,
+            "supplementary region is not at +0x4000",
+        ),
+        (
+            EXT_MANDATORY_BASE <= EFUSE_SHIM_BASE < EXT_SUPPLEMENTARY_BASE,
+            "eFuse shim is outside the mandatory region",
+        ),
+        (
+            EXT_SUPPLEMENTARY_BASE <= EXT_STRAPS_LO and EXT_STRAPS_HI + 4 <= EXTERNAL_END,
+            "straps pair is outside the supplementary region",
+        ),
+        (EXT_UNMAPPED < EXTERNAL_END, "unallocated probe is outside the window"),
+        (
+            (REGION_SIZE_SHRUNK & (REGION_SIZE_SHRUNK - 1)) == 0
+            and LOCAL_BASE_RESET % REGION_SIZE_SHRUNK == 0,
+            "shrunk REGION_SIZE is not a power of two LOCAL_BASE is aligned to",
+        ),
+        (
+            0 < REGION_SIZE_SHRUNK < REGION_SIZE_RESET,
+            "shrunk REGION_SIZE does not shrink the reset",
+        ),
+    )
+    bad = [msg for ok, msg in facts if not ok]
+    if bad:
+        raise RuntimeError("adopter external window map: " + "; ".join(bad))
+
+
+_require_window_map()
+
+
 class smu_periph_ext_window_test_seq:
-    """eFuse bank-control shim CSR and the macro AXI-Lite window decode."""
+    """eFuse bank-control shim CSR and the adopter external window."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -181,7 +252,7 @@ class smu_periph_ext_window_test_seq:
         self.s1_ok = True
 
     async def _step_macro_window(self, jtag, sb) -> None:
-        """S2: the macro AXI-Lite window answers on straps and denies above it."""
+        """S2: the window answers on the straps pair and DECERRs above every allocation."""
         st_lo, data_lo = await self._j2a_rd32(jtag, EXT_STRAPS_LO, "STRAPS_LO")
         st_hi, data_hi = await self._j2a_rd32(jtag, EXT_STRAPS_HI, "STRAPS_HI")
         sb.expect_eq("CHK-PERIPH-EXT-STRAPS-LO decoded", st_lo, J2A_STATUS_SUCCESS)
@@ -253,7 +324,8 @@ class smu_periph_ext_window_test_seq:
             EFUSE_BANK_INIT_TIME_RESET,
         )
 
-        # Shrink below 0xC040_0000: the same address is no longer local.
+        # LOCAL_BASE + REGION_SIZE_SHRUNK ends at the window: the shim is no
+        # longer local.
         st_wr = await self._j2a_wr32(
             jtag, REGION_SIZE_ADDR, REGION_SIZE_SHRUNK, "REGION_SIZE shrink"
         )

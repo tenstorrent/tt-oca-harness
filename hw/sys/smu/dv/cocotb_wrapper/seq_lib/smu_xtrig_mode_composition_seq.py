@@ -3,13 +3,17 @@
 """Sequence for smu_xtrig_mode_composition_test (SMU_104).
 
 The per-internal-CT mode vector the SMU presents to the DTP is
-Cfg.XTRIG_INT_CT_MODE in the SMU-exposed lanes concatenated with
-SMC-reserved pulse-sync bits, declared as DTP_XTRIG_INT_CT_MODE in
-hw/sys/smu/rtl/smu.sv. Reading that parameter back and comparing it against the
-elaborated Cfg field, or against the +xtrig_int_ct_mode the same build was
-elaborated with, is a drift check on the elaboration: both sides come from the
-build, so no RTL defect can separate them. Those compares therefore carry no
-evidence token.
+Cfg.XTRIG_INT_CT_MODE in the SMU-exposed lanes above the SMC-reserved
+pulse-sync lanes. `doc/integrator/src/smu.adoc` ("Cross Trigger Parameters"
+and "Debug & Test Ports (DTP) Integration") states the lane counts: 8 exposed
+internal CT lanes, 10 at the DTP, the low 2 reserved for the SMC with their
+mode bits at zero. Those counts are the golden of the tokened S1 mask compare
+and the set of lanes the live leg walks.
+
+Reading the vector back and comparing it against the elaborated Cfg field, or
+against the +xtrig_int_ct_mode the same build was elaborated with, is a drift
+check on the elaboration: both sides come from the build, so no RTL defect can
+separate them. Those compares carry no evidence token.
 
 The evidence is the live leg. Each external CTM lane is requested in turn and
 the ack pins are sampled: port_table.adoc states the ack ports are "Unused in
@@ -61,7 +65,7 @@ class smu_xtrig_mode_composition_seq:
         smu_vec = hier(smu, "DTP_XTRIG_INT_CT_MODE")
         dtp_vec = hier(smu, "u_dtp.XTRIG_INT_CT_MODE")
         sb.expect_eq(
-            "mode vector width at the DTP",
+            "mode vector width at the DTP is the specified internal CT count",
             bit_width(dtp_vec, "u_dtp.XTRIG_INT_CT_MODE"),
             DTP_NUM_INT_CT,
         )
