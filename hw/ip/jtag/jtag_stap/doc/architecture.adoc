@@ -55,7 +55,7 @@ security gate masks `stap_sel`, `host_tdo_o`, and `update_en` when
 independent combinational outputs derived from `stap_sel` and TAP control
 signals, not outputs of the security gate.
 
-image::stap_module_diagram.svg[STAP Module Diagram showing SIB mux, 3DCR register and lifecycle enable gating,scaledwidth=90.0%]
+image::stap_module_diagram.svg["STAP Module Diagram showing SIB mux, 3DCR register and lifecycle enable gating",scaledwidth=90.0%]
 
 === 3DCR Register
 
