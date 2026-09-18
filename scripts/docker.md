@@ -42,7 +42,7 @@ docker-run.sh doc-stage
 | `OCAH_IMAGE_WITH_UV` | `false` | When `true`, uses the `ocah-uv-container` image (with uv-installed Python deps bundled) instead of `ocah-container`. |
 | `OCAH_DOCKER_CACHE_DIR` | _(unset)_ | Directory for the shared tarball image cache. When set, `build` publishes there and `ensure` checks it before building. CI sets this via its environment setup. |
 | `OCAH_DOCKER_UIDGID` | _(auto)_ | `--user` passed to the container engine. Defaults to empty for rootless podman (identity already mapped), or `uid:gid` for docker. Set to empty to run as the image's own default user. |
-| `OCAH_PODMAN_DIR` | `/tmp/ocah-podman-<uid>` | Base for podman runtime and storage when `XDG_RUNTIME_DIR` is unwritable (common on CI/LSF nodes without a pam_systemd session). |
+| `OCAH_PODMAN_DIR` | _(unset)_ | Explicit base for Podman runtime and storage. When unset, `/tmp/ocah-podman-<uid>` is used only if `XDG_RUNTIME_DIR` is unwritable. |
 | `OCAH_SKIP_GID_FIXUP` | `0` | Set to `1` to skip the automatic re-exec under the passwd primary group (see [GID fixup](#gid-fixup) below). |
 | `OCAH_TOOLCHAIN_ROOTFS` | _(unset)_ | Path to a rootfs extracted from the container image. When set and `bwrap` is present, `run`/`run-here`/`shell`/`verify` use bubblewrap instead of podman/docker (see [Bubblewrap backend](#bubblewrap-backend)). |
 | `OCAH_BWRAP_EXTRA_BINDS` | _(unset)_ | Space-separated list of extra host paths to bind into the bubblewrap sandbox at their own paths. |

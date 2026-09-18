@@ -30,9 +30,9 @@
 #      OCAH_DOCKER_UIDGID      container --user (default: empty for rootless
 #                               podman, caller's uid:gid for docker; set empty to
 #                               run as the image's own default user)
-#      OCAH_PODMAN_DIR         base for podman runtime+storage when the default
-#                               /run/user/<uid> is unwritable (default:
-#                               /tmp/ocah-podman-<uid>); used by CI accounts
+#      OCAH_PODMAN_DIR         optional base for podman runtime+storage; also
+#                               used when /run/user/<uid> is unwritable, with
+#                               default /tmp/ocah-podman-<uid>
 #      OCAH_SKIP_GID_FIXUP     set to 1 to skip re-running under the passwd
 #                               primary group for rootless podman (see below)
 #      OCAH_TOOLCHAIN_ROOTFS   rootfs extracted from the nix container image;
@@ -146,18 +146,17 @@ fi
 # have no such dir and can't create it ("mkdir /run/user/<uid>: permission
 # denied"), so podman won't even start. When that runtime dir is missing or
 # unwritable, redirect podman's runtime (XDG_RUNTIME_DIR) and image storage
-# (XDG_DATA_HOME) to a node-local, per-uid dir under /tmp: world-writable, fast
-# local disk, and - keyed by uid - stable so a loaded image persists across jobs
-# on the same runner. Hosts with a proper session (writable /run/user/<uid>) are
-# left untouched. Override the base dir with OCAH_PODMAN_DIR.
+# (XDG_DATA_HOME) to a node-local, per-uid directory. OCAH_PODMAN_DIR selects
+# that directory explicitly when the default image store is unsuitable even
+# though the runtime directory itself is writable.
 if [[ "$ENGINE" == podman && "$NEEDS_ENGINE" == 1 ]]; then
   _rt="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-  if [[ ! -w "$_rt" ]]; then
+  if [[ -n "${OCAH_PODMAN_DIR:-}" || ! -w "$_rt" ]]; then
     _base="${OCAH_PODMAN_DIR:-${TMPDIR:-/tmp}/ocah-podman-$(id -u)}"
     export XDG_RUNTIME_DIR="${_base}/run" XDG_DATA_HOME="${_base}/share"
     mkdir -p "$XDG_RUNTIME_DIR" "$XDG_DATA_HOME"
     chmod 700 "$XDG_RUNTIME_DIR"
-    echo "docker-run: default podman runtime dir '$_rt' unwritable; using $_base" >&2
+    echo "docker-run: using podman runtime and storage under $_base" >&2
   fi
 fi
 
