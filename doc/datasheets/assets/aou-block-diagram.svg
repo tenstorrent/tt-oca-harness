@@ -1,38 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000 420">
-<defs><marker id="end" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#484848"/></marker><marker id="start" markerWidth="7" markerHeight="7" refX="1" refY="3.5" orient="auto"><path d="M7 0 L0 3.5 L7 7 Z" fill="#484848"/></marker></defs>
-<text x="500" y="28" text-anchor="middle" font-family="Arial, sans-serif" font-size="23" fill="#103525">AoU in the OCAH chiplet architecture</text>
-<rect x="20" y="50" width="745" height="350" fill="none" stroke="#77736b" stroke-dasharray="7 5"/>
-<text x="392.5" y="72" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">Local chiplet</text>
-<rect x="45" y="105" width="205" height="80" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
-<text x="147.5" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">User subsystem</text>
-<text x="147.5" y="151" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Application AXI traffic</text>
-<rect x="45" y="265" width="205" height="70" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
-<text x="147.5" y="290" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">SMU / SMN</text>
-<text x="147.5" y="311" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Management traffic</text>
-<rect x="355" y="105" width="220" height="100" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
-<text x="465" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">AoU bridge</text>
-<text x="465" y="151" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">AXI protocol engine</text>
-<text x="465" y="172" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">FDI bring-up controller</text>
-<rect x="620" y="105" width="120" height="100" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
-<text x="680" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">UCIe PHY</text>
-<text x="680" y="151" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Integrator</text>
-<text x="680" y="172" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">supplied</text>
-<path d="M250 145 H355" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)" marker-start="url(#start)"/>
-<text x="301" y="133" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">AXI4</text>
-<path d="M250 298 H400 V205" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)" marker-start="url(#start)"/>
-<text x="298" y="285" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">AXI4</text>
-<path d="M575 145 H620" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)" marker-start="url(#start)"/>
-<text x="597" y="94" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#103525">FDI</text>
-<path d="M250 322 H540 V205" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)"/>
-<text x="519" y="310" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#103525">APB control / status</text>
-<rect x="815" y="105" width="170" height="100" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
-<text x="900" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">Peer OCA</text>
-<text x="900" y="151" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">chiplet</text>
-<text x="900" y="172" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">PHY + AoU endpoint</text>
-<path d="M740 165 H815" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)" marker-start="url(#start)"/>
-<text x="790" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#103525">Die-to-die link</text>
-<text x="392" y="373" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">PHY and physical-link integration are outside the beta deliverables.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" role="img" aria-labelledby="title description">
+  <title id="title">AoU system context</title>
+  <desc id="description">Within the local chiplet, application and management AXI4 traffic connect to the AoU bridge. An integrator-selected APB manager controls its registers. The bridge connects over FDI to an integrator-supplied UCIe PHY, then over a die-to-die link to a peer OCA chiplet.</desc>
+  <defs>
+    <marker id="end" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+      <path d="M0 0 L6 3 L0 6 Z" fill="#484848"/>
+    </marker>
+    <marker id="start" markerWidth="6" markerHeight="6" refX="0" refY="3" orient="auto">
+      <path d="M6 0 L0 3 L6 6 Z" fill="#484848"/>
+    </marker>
+  </defs>
+
+  <g font-family="Arial, sans-serif" text-anchor="middle" fill="#103525">
+    <rect x="8" y="8" width="600" height="332" rx="8" fill="none" stroke="#77736b" stroke-width="1.5" stroke-dasharray="7 5"/>
+    <text x="308" y="34" font-size="19" font-weight="bold">Local chiplet</text>
+
+    <g fill="#f8f4eb" stroke="#937027" stroke-width="1.5">
+      <rect x="24" y="65" width="156" height="84" rx="6"/>
+      <rect x="24" y="169" width="156" height="66" rx="6"/>
+    </g>
+    <text x="102" y="91" font-size="18" font-weight="bold">User subsystem</text>
+    <text x="102" y="114" font-size="17">Application</text>
+    <text x="102" y="135" font-size="17">AXI traffic</text>
+    <text x="102" y="196" font-size="18" font-weight="bold">SMU / SMN</text>
+    <text x="102" y="220" font-size="17">Management traffic</text>
+
+    <rect x="248" y="65" width="176" height="170" rx="6" fill="#edf3ee" stroke="#103525" stroke-width="2"/>
+    <path d="M254 65 H418 Q424 65 424 71 V108 H248 V71 Q248 65 254 65 Z" fill="#103525"/>
+    <text x="336" y="94" font-size="23" font-weight="bold" fill="#ffffff">AoU bridge</text>
+    <text x="336" y="141" font-size="18">AXI protocol engine</text>
+    <text x="336" y="184" font-size="18">FDI bring-up</text>
+    <text x="336" y="208" font-size="18">controller</text>
+
+    <rect x="484" y="106" width="108" height="129" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="2"/>
+    <text x="538" y="141" font-size="19" font-weight="bold">UCIe PHY</text>
+    <text x="538" y="180" font-size="17">Integrator</text>
+    <text x="538" y="204" font-size="17">supplied</text>
+
+    <rect x="636" y="106" width="116" height="129" rx="6" fill="#f3f3f1" stroke="#77736b" stroke-width="1.5"/>
+    <text x="694" y="135" font-size="19" font-weight="bold">Peer OCA</text>
+    <text x="694" y="159" font-size="19" font-weight="bold">chiplet</text>
+    <text x="694" y="188" font-size="17">PHY + AoU</text>
+    <text x="694" y="212" font-size="17">endpoint</text>
+
+    <g fill="none" stroke="#484848" stroke-width="2">
+      <path d="M180 121 H248" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M180 209 H248" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M424 173 H484" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M592 173 H636" marker-start="url(#start)" marker-end="url(#end)"/>
+    </g>
+    <text x="214" y="109" font-size="18">AXI4</text>
+    <text x="214" y="197" font-size="18">AXI4</text>
+    <text x="454" y="161" font-size="18">FDI</text>
+    <text x="694" y="265" font-size="17">Die-to-die</text>
+    <text x="694" y="287" font-size="17">link</text>
+
+    <rect x="24" y="263" width="156" height="60" rx="6" fill="#f3f3f1" stroke="#77736b" stroke-width="1.5"/>
+    <text x="102" y="287" font-size="18" font-weight="bold">APB manager</text>
+    <text x="102" y="310" font-size="16">Integrator-selected</text>
+    <path d="M180 296 H336 V235" fill="none" stroke="#484848" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#end)"/>
+    <text x="258" y="284" font-size="18">APB CSR</text>
+    <text x="258" y="320" font-size="17">Control / status</text>
+
+    <text x="380" y="369" font-size="17">Integrator supplies the PHY and physical link.</text>
+  </g>
 </svg>
