@@ -2593,7 +2593,7 @@ change can never alter the pull-request gate:
 
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
-|`--items smoke --sim-jobs 2` for `dtp`, `sep`, and `smc`, and
+|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu_block`, and `smc`, and
 `--items hosted_smoke` for `smu`, whose own `smoke` group reaches firmware
 tests the hosted runner cannot build; 60-minute budget per job. The job
 names `verilator-smoke (<dut>)` are the stable check contexts. Every job
@@ -2762,7 +2762,7 @@ promoting a pair into the CI-run tier.
 
 `--cores`, `--mem-mb`, and `--walltime` are executor metadata only and
 enforce nothing locally or in CI. The enforceable controls are the job
-`timeout-minutes` each caller sets (60 for smoke; per DUT for the regression
+`timeout-minutes` each caller sets (60 for smoke; 360 for the regression
 tiers), the pinned cached Verilator build, and the `--sim-jobs`/`--build-jobs`
 fan-out.
 

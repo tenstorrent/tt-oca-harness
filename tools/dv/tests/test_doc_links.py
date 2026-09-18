@@ -19,8 +19,12 @@ INDEX = DOC_ROOT / "index.adoc"
 ANCHOR_RE = re.compile(r"^\[\[([A-Za-z0-9_-]+)\]\]", re.M)
 HEADING_RE = re.compile(r"^=+ (.+?)\s*$", re.M)
 XREF_RE = re.compile(r"xref:([A-Za-z0-9_-]+\.adoc)(?:#([A-Za-z0-9_-]+))?\[")
+# Every xref-shaped token, however spelled; one the strict pattern rejects is malformed.
+LOOSE_XREF_RE = re.compile(r"xref:([^\[\s]+)\[")
 INTERNAL_REF_RE = re.compile(r"<<([^,>]+)(?:,[^>]*)?>>")
-SOURCE_BLOCK_RE = re.compile(r"^----\n.*?^----\n", re.M | re.S)
+# Listing, literal, and passthrough blocks: their text is not prose and defines no anchor.
+SOURCE_BLOCK_RE = re.compile(r"^(----|\.\.\.\.|\+\+\+\+)\n.*?^\1\n", re.M | re.S)
+LISTING_RE = re.compile(r"^----\n(.*?)^----\n", re.M | re.S)
 # The PDF book includes every page, so a block conditional on that backend may reference another
 # page's anchor in the same-page form.
 PDF_BLOCK_RE = re.compile(r"^ifdef::backend-pdf\[\]\n.*?^endif::backend-pdf\[\]\n", re.M | re.S)
@@ -31,14 +35,15 @@ def pages() -> dict[str, str]:
 
 
 def prose(text: str) -> str:
-    """The page without its listing blocks and PDF-only blocks: the text a standalone HTML build
-    of the page has to resolve."""
+    """The page without its listing, literal, passthrough, and PDF-only blocks: the text a
+    standalone HTML build of the page has to resolve."""
     return PDF_BLOCK_RE.sub("", SOURCE_BLOCK_RE.sub("", text))
 
 
 def targets(text: str) -> set[str]:
-    """Explicit anchors and section titles, both of which `<<...>>` may name."""
-    return set(ANCHOR_RE.findall(text)) | set(HEADING_RE.findall(text))
+    """Explicit anchors and section titles in the page's prose, both of which `<<...>>` may name."""
+    body = prose(text)
+    return set(ANCHOR_RE.findall(body)) | set(HEADING_RE.findall(body))
 
 
 class GuideIndexTest(unittest.TestCase):
@@ -56,15 +61,28 @@ class GuideIndexTest(unittest.TestCase):
         self.assertEqual(included, set(self.content_pages))
 
     def test_every_page_is_in_the_build_command(self) -> None:
+        listings = [m.group(1) for m in LISTING_RE.finditer(self.index)]
+        build = [text for text in listings if "asciidoctor -a data-uri" in text]
+        self.assertEqual(len(build), 1, "index.adoc carries one asciidoctor build listing")
         for name in self.content_pages:
             with self.subTest(page=name):
-                self.assertIn(f"tools/dv/doc/{name}", self.index)
+                self.assertIn(f"tools/dv/doc/{name}", build[0])
 
 
 class CrossReferenceTest(unittest.TestCase):
     def setUp(self) -> None:
         self.pages = pages()
         self.targets = {name: targets(text) for name, text in self.pages.items()}
+
+    def test_page_cross_references_are_well_formed(self) -> None:
+        for name, text in self.pages.items():
+            body = prose(text)
+            loose = LOOSE_XREF_RE.findall(body)
+            strict = [
+                f"{page}#{anchor}" if anchor else page for page, anchor in XREF_RE.findall(body)
+            ]
+            with self.subTest(page=name):
+                self.assertEqual(sorted(loose), sorted(strict))
 
     def test_page_cross_references_resolve(self) -> None:
         for name, text in self.pages.items():

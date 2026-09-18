@@ -1268,9 +1268,10 @@ Operational rules:
   those statuses into `FAIL`.
 * The workflow writes nothing to `gh-pages`; the documentation workflow
   copies the trimmed data into the built site.
-* An email digest is sent per weekly publication when the
-  `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
-  provisioned; the step self-disables while they are absent.
+* An email digest is sent per weekly publication through the
+  `OCAH_MAIL_USERNAME`, `OCAH_MAIL_PASSWORD`, and `OCAH_MAIL_TO` secrets; the
+  step is skipped while `OCAH_MAIL_TO` is empty and fails the run when it is
+  set and either of the other two is absent.
 * A `workflow_dispatch` accepts `dry_run=true`: the job collects,
   aggregates, and runs every gate but skips the data-branch push, the bundle
   upload, and the digest email, and the Actions list labels it
