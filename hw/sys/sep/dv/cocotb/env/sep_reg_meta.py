@@ -40,6 +40,7 @@ from __future__ import annotations
 import importlib.util
 import re
 import sys
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -52,6 +53,12 @@ if _GEN_PY.is_dir() and str(_GEN_PY) not in sys.path:
     sys.path.insert(0, str(_GEN_PY))
 
 import sep_reg  # noqa: E402  (path bootstrap must precede the import)
+
+# The Python header carries addresses, DEFAULTs and field structs, but not the
+# `sw`/`hw` access of a field and not whether the RDL declared a reset at all.
+# Both are in the IP-XACT emitted by the same generator run, so they are read
+# from there rather than retyped into a table that an RDL edit would not update.
+_GEN_IPXACT = Path(__file__).resolve().parents[3] / "regs" / "gen" / "ipxact" / "sep.xml"
 
 # RDL reserved-field names as emitted by the generator: `rsvd`, `rsvd_<n>`,
 # `reserved`, `reserved_<n>`. Anchored so real fields that merely contain the
@@ -391,6 +398,95 @@ _HW_ROOT = Path(__file__).resolve().parents[5]
 _REPO_ROOT = Path(__file__).resolve().parents[6]
 
 
+_IPXACT_NS = "{*}"
+
+
+def _ipxact_num(text: str | None) -> int | None:
+    """One IP-XACT numeric literal: ``'h1094_0000``, ``0x…``, or decimal."""
+    if text is None:
+        return None
+    text = text.strip().replace("_", "")
+    verilog = re.match(r"^'h([0-9a-fA-F]+)$", text)
+    if verilog is not None:
+        return int(verilog.group(1), 16)
+    return int(text, 0)
+
+
+@dataclass(frozen=True)
+class RegAccess:
+    """What the RDL says software may do with a register, and its reset."""
+
+    # Every distinct IP-XACT field access in the register: `read-only`,
+    # `write-only`, `read-write`. A register mixing them is neither pure shape
+    # and is left to the caller.
+    access: frozenset[str]
+    # Whether any field carries an IP-XACT reset element. A register with none
+    # has no declared POR value: the generated `_REG_DEFAULT` is the RDL field
+    # default (0 when the field omits one), and hardware drives the pins.
+    declared_reset: bool
+
+    @property
+    def write_only(self) -> bool:
+        return self.access == frozenset({"write-only"})
+
+    @property
+    def hw_driven(self) -> bool:
+        """Read-only to software with no declared reset, so hardware owns it."""
+        return self.access == frozenset({"read-only"}) and not self.declared_reset
+
+
+def _ipxact_access() -> dict[int, RegAccess]:
+    """Absolute address -> access shape, from the generated IP-XACT.
+
+    Keyed by address because the IP-XACT spells an array as one ``register``
+    with a ``dim`` while the Python header spells it as one symbol per element
+    (``MLDSA_NAME`` vs ``ABR_MLDSA_NAME_0_``). The address is what both agree
+    on, so the join cannot be broken by a naming convention change.
+    """
+    out: dict[int, RegAccess] = {}
+
+    def text(node: ET.Element, child: str) -> str | None:
+        found = node.find(_IPXACT_NS + child)
+        return None if found is None else found.text
+
+    def walk(node: ET.Element, base: int) -> None:
+        for child in node:
+            kind = child.tag.split("}")[-1]
+            if kind == "registerFile":
+                offset = _ipxact_num(text(child, "addressOffset")) or 0
+                stride = _ipxact_num(text(child, "range")) or 0
+                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                    walk(child, base + offset + index * stride)
+            elif kind == "register":
+                offset = _ipxact_num(text(child, "addressOffset")) or 0
+                width = _ipxact_num(text(child, "size")) or 32
+                fields = child.findall(_IPXACT_NS + "field")
+                shape = RegAccess(
+                    frozenset(text(one, "access") or "read-write" for one in fields),
+                    any(one.find(_IPXACT_NS + "resets") is not None for one in fields),
+                )
+                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                    out[base + offset + index * (width // 8)] = shape
+            elif kind == "addressBlock":
+                walk(child, base + (_ipxact_num(text(child, "baseAddress")) or 0))
+            else:
+                walk(child, base)
+
+    walk(ET.parse(_GEN_IPXACT).getroot(), 0)
+    if not out:
+        raise RuntimeError(
+            f"{_GEN_IPXACT} yielded no registers; the IP-XACT schema changed and "
+            "every access-shaped exclusion would silently exclude nothing"
+        )
+    return out
+
+
+# The shape of ordinary read-write storage, and the default for a hand-built
+# RegInfo: the self-tests and the wrap models name registers that are exactly
+# that. Frozen and hashable, so it needs no default_factory.
+_STORAGE_ACCESS = RegAccess(frozenset({"read-write"}), True)
+
+
 @dataclass(frozen=True)
 class RegInfo:
     """One generated register: address plus the two masks and the reset value."""
@@ -401,6 +497,8 @@ class RegInfo:
     reset: int
     mask: int
     mask_all: int
+    # Access shape from the IP-XACT; see _STORAGE_ACCESS for the default.
+    access: RegAccess = _STORAGE_ACCESS
 
     @property
     def reserved(self) -> int:
@@ -616,7 +714,9 @@ def iter_register_walk() -> RegisterWalk:
     three are kept apart and ``nometa`` sums them.
     """
     names = block_names()
+    access = _ipxact_access()
     found: list[RegInfo] = []
+    unjoined: list[str] = []
     seen: set[tuple[str, str]] = set()
     export = 0
     no_default = unknown_block = duplicate = 0
@@ -649,7 +749,17 @@ def iter_register_walk() -> RegisterWalk:
         except KeyError:
             no_default += 1
             continue
-        found.append(RegInfo(block, reg, addr, reset, mask, mask_all))
+        shape = access.get(addr)
+        if shape is None:
+            unjoined.append(f"{block}.{reg} @{addr:#010x}")
+            continue
+        found.append(RegInfo(block, reg, addr, reset, mask, mask_all, shape))
+    if unjoined:
+        raise RuntimeError(
+            f"{len(unjoined)} inventory register(s) have no IP-XACT entry at their "
+            f"address: {unjoined[:5]}; the two exports came from different generator "
+            "runs, and an access-shaped exclusion would be decided on missing data"
+        )
     found.sort(key=lambda info: (info.addr, info.block, info.name))
     return RegisterWalk(tuple(found), export, no_default, unknown_block, duplicate)
 

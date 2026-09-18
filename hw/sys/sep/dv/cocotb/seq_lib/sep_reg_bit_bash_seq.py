@@ -336,6 +336,13 @@ def touch_reason(info: RegInfo) -> str | None:
     why = reset_reason(info)
     if why is not None:
         return why
+    # Software cannot write a read-only register, so the touch would write
+    # nothing and then compare the readback against the value it meant to
+    # write. The reset arms above do not cover this one: a read-only register
+    # that DOES declare a reset (abr_reg.rdl MLDSA_VERIFY_RES, `sw = r` with
+    # `resetsignal`) is a real reset-compare row and a bogus touch row.
+    if info.access.access == frozenset({"read-only"}):
+        return "sw=r; a write does not reach storage"
     if info.mask == 0:
         return "no software-usable field"
     why = _suffix_reason(info.name)
@@ -379,6 +386,21 @@ def _suffix_reason(name: str) -> str | None:
 
 
 def reset_reason(info: RegInfo) -> str | None:
+    """Why a reset read-compare on this register proves nothing, or None.
+
+    The two access-shaped arms come first because they are derived from the
+    RDL, not from a name: a register the RDL declares write-only returns no
+    storage on a read, and a read-only register with no declared reset is
+    driven by hardware, so the generated ``_REG_DEFAULT`` is a field default
+    and not a POR value. Comparing a read against either one measures the
+    generator. Both shapes read back 0 against a default of 0 far more often
+    than not, so leaving them in makes the compare pass without the DUT having
+    demonstrated anything.
+    """
+    if info.access.write_only:
+        return "sw=w; a read does not return storage"
+    if info.access.hw_driven:
+        return "sw=r with no declared reset; the export DEFAULT is not a POR value"
     hit = _lookup(RESET_EXCLUDE, info.block, info.name) or _suffix_reason(info.name)
     if hit is not None:
         return hit
