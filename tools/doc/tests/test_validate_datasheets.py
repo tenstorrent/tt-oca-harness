@@ -224,8 +224,9 @@ class RepositoryContractTests(unittest.TestCase):
         source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
 
         self.assertNotIn("!Debug security !`dbg_disable_i`", source)
-        self.assertIn(
-            "|Lifecycle policy |Active-high, per-path debug and test disable controls", source
+        self.assertRegex(
+            source,
+            r"([|!])Lifecycle policy \1Active-high, per-path debug and test disable controls",
         )
 
     def test_dtp_points_to_current_status_and_uses_full_size_resources(self) -> None:

@@ -78,12 +78,6 @@ default; protection requires routing and gating all such access through a
 primary chiplet's SEP-controlled DTP path. For standalone DTP, the adopter
 supplies the policy source and permitted address ranges.
 
-// datasheet-section: system-context
-[.datasheet-section]
-SYSTEM CONTEXT
-
-image::../assets/dtp-block-diagram.svg[DTP system context,pdfwidth=4.15in,align=center]
-
 // datasheet-section: at-a-glance
 [.datasheet-section]
 AT A GLANCE
@@ -109,8 +103,17 @@ all 16 CTPs remain externally visible.
 
 |===
 
+// datasheet-section: system-context
+[.datasheet-section]
+SYSTEM CONTEXT
+
+image::../assets/dtp-block-diagram.svg[DTP system context,pdfwidth=7.5in,align=center]
+
 <<<
 
+[cols="50,2,48",frame=none,grid=none,stripes=none]
+|===
+a|
 // datasheet-section: capabilities
 [.datasheet-section]
 CAPABILITIES
@@ -146,19 +149,19 @@ CAPABILITIES
 [.datasheet-section]
 INTERFACES AND CONFIGURATION
 
-[cols="38,62",options="header"]
-|===
-|Feature |Integration options
-|Clocks and resets |System clock/reset, JTAG TCK/TRST_N, JTAG power-on reset,
+[cols="28,72",options="header"]
+!===
+!Feature !Integration options
+!Clocks and resets !System clock/reset, JTAG TCK/TRST_N, JTAG power-on reset,
 scan reset, test enable
-|Lifecycle policy |Active-high, per-path debug and test disable controls
-|Scan |PTAP pins; BSR/iJTAG scan controls; I/O, SMC, SEP, and extra STAPs
-|Fabric |One AXI4 manager, two AXI4-Lite managers, one AXI4-Lite subordinate
-|Cross trigger |External pad controls, internal source/sink interfaces,
+!Lifecycle policy !Active-high, per-path debug and test disable controls
+!Scan !PTAP pins; BSR/iJTAG scan controls; I/O, SMC, SEP, and extra STAPs
+!Fabric !One AXI4 manager, two AXI4-Lite managers, one AXI4-Lite subordinate
+!Cross trigger !External pad controls, internal source/sink interfaces,
 clock-stop requests and output
-|Build-time |Instruction/path enables, extra STAP count, IDCODE/version fields,
+!Build-time !Instruction/path enables, extra STAP count, IDCODE/version fields,
 reset-control output types, trigger protocol modes, AXI type parameters
-|===
+!===
 
 [.datasheet-small]
 Build-time parameters select the boundary and internal feature set. Optional
@@ -172,6 +175,18 @@ reset-control slices are enabled per domain (`JTAG_IC_RESET_SMC_ENABLE`,
 protocol, and AXI types are set through the IDCODE, `XTRIG_INT_CT_MODE`, and AXI
 type parameters.
 
+// datasheet-section: document-control
+[.datasheet-section]
+DOCUMENT CONTROL
+
+[cols="18,20,30,32",options="header"]
+!===
+!Version !Date !Author !Change
+! ! ! !
+!===
+
+|
+a|
 // datasheet-section: integration-dependencies
 [.datasheet-section]
 INTEGRATION DEPENDENCIES
@@ -190,8 +205,6 @@ INTEGRATION DEPENDENCIES
   tie-offs.
 * Integrate the cross-trigger CSR subordinate into the management address map
   and connect the required local, external, and clock-stop endpoints.
-
-<<<
 
 // datasheet-section: verification-and-maturity
 [.datasheet-section]
@@ -247,12 +260,4 @@ CTP: cross trigger port. DFD: design-for-debug. DFT: design for test.
 OTP: one-time programmable. PTAP: primary TAP. STAP: secondary TAP.
 CSR: control and status register.
 
-// datasheet-section: document-control
-[.datasheet-section]
-DOCUMENT CONTROL
-
-[cols="18,20,30,32",options="header"]
-|===
-|Version |Date |Author |Change
-| | | |
 |===
