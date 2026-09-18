@@ -64,6 +64,13 @@ class sep_reset_wdt_sanity_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         self.sb.expected_line = _BANNER
+
+        async def _bite_idle() -> None:
+            assert self.rd_known(cocotb.top.wdt_timer_rst_req_o) == 0, (
+                "CHK-BITE FAIL: wdt_timer_rst_req_o asserted before firmware "
+                "enabled the WDT, so a later 1 cannot be attributed to BITE"
+            )
+
         await self.boot_firmware(
             self.sb,
             _ITCM_HEX,
@@ -74,16 +81,19 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             progress_every=_PROGRESS_EVERY,
             park=("otbn", "aes", "hmac", "kmac"),
             release_park=True,
+            after_bring_up_hook=_bite_idle,
         )
 
         # The firmware PASS gates the reset_ctrl + WDT bark/pet/disable/re-bark
         # checks. Now observe the BITE: the still-enabled WDT reaches BITE_THOLD
         # and asserts the real wdt_timer_rst_req_o output.
         dut = cocotb.top
-        bite_seen = False
+        bite_seen = self.rd_known(dut.wdt_timer_rst_req_o) == 1
         for _ in range(_BITE_POLL_CYCLES):
+            if bite_seen:
+                break
             await RisingEdge(dut.clk_i)
-            if self.rd(dut.wdt_timer_rst_req_o):
+            if self.rd_known(dut.wdt_timer_rst_req_o):
                 bite_seen = True
                 break
         assert bite_seen, (

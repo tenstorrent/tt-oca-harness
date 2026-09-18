@@ -28,7 +28,8 @@ POOL_POP = POOL_BASE + 0x10
 # Occupancy ceiling used only as the CHK-WRITE-SLVERR room bound. The live
 # STATUS.level / pool_edn_req_o compare grades fullness, not this constant.
 FIFO_DEPTH = 32
-# Fill-stall wait ceiling in core cycles. The stall flag is the verdict.
+# DV-owned fill-stall poll ceiling in core cycles. Not a specification value;
+# the stall flag is the verdict, and this bound only names the wait.
 STALL_THRESH = 4096
 
 RESP_OKAY = 0

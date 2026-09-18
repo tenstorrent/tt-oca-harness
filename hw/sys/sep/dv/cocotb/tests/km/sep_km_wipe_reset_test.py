@@ -81,7 +81,7 @@ class sep_km_wipe_reset_test(sep_base_test):
             "km_wipe",
             op=SepAxiOp.WRITE,
             addr=wipe_addr,
-            wdata=1,
+            wdata=SEP_CPU_CTRL.field_mask("KM_WIPE_CTRL", "wipe_state"),
             size=2,
         )
         await self.start_seq(seq)

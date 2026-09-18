@@ -69,6 +69,11 @@ class sep_axi_smoke_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
+        if expected is not None:
+            assert item.resp_ok and item.rdata == expected, (
+                f"CHK-AXI-SMOKE FAIL: read 0x{addr:08x} resp_ok={item.resp_ok} "
+                f"got 0x{item.rdata:x} want 0x{expected:x}"
+            )
 
     async def _write(self, addr: int, data: int) -> None:
         item = SepAxiItem(f"wr_0x{addr:08x}")

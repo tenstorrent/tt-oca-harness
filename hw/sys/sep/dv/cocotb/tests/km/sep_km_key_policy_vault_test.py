@@ -3,7 +3,7 @@
 """KM key/policy vault: slot extent, SRAM write-lock, and the KPV seal.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_vault.parhex. RANDCFG.
-Loaded image md5 a10f770eb95fbf4fe79e7c6f9274dea2.
+Loaded image md5 8d1c9f0f40e680d11e15a37008f65fa9.
 Not ``rom_main``: KPV CTRL and SRAM_LOCK are on the KM CPU bus. The seal
 lives here rather than on the mailbox command set because no command
 seals a slot -- over the mailbox an erase always frees, so the retire

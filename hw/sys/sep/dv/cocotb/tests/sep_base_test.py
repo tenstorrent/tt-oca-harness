@@ -393,7 +393,9 @@ class sep_base_test(uvm_test):
         Every bring-up gates on this signal. With +skip_fuse_sense the RTL asserts
         the done flop ~1 cycle after reset release; without it the real 256-word
         sense runs and the sensed shadow is compared against the staged eFuse
-        image.
+        image. A skip without ``+sep_efuse_preload`` leaves the shadow at its
+        reset (zero). That is the intended default: no skip-mode leaf grades a
+        shadow value.
         """
         dut = cocotb.top
         for cycle in range(max_cycles):
@@ -646,6 +648,7 @@ class sep_base_test(uvm_test):
         run_pulse_cycles: int = 40,
         park: tuple[str, ...] = (),
         release_park: bool = True,
+        after_bring_up_hook: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         """Stage a firmware TCM image, boot the EL2 core, and sample boot
         observables into the boot scoreboard ``sb`` until the firmware signals
@@ -653,7 +656,9 @@ class sep_base_test(uvm_test):
         boot-poll live in one place (do not duplicate this in concrete tests).
 
         ``park`` / ``release_park`` are forwarded to ``bring_up_cpu_boot``.
-        The SW_RESET_N CSR stays at reset 0x7E.
+        ``after_bring_up_hook`` runs after the CPU is released and before the
+        boot poll, so a test can sample an idle output before firmware programs
+        it. The SW_RESET_N CSR stays at reset 0x7E.
 
         The TCM responder backdoor-loads ``sep_itcm.hex`` / ``sep_dtcm.hex`` from
         the sim CWD, so the images are staged there. (CWD-shared: one CPU firmware
@@ -702,6 +707,8 @@ class sep_base_test(uvm_test):
             park=park,
             release_park=release_park,
         )
+        if after_bring_up_hook is not None:
+            await after_bring_up_hook()
 
         await self.poll_boot(
             sb,
@@ -935,7 +942,7 @@ class sep_base_test(uvm_test):
         for _ in range(timeout):
             await RisingEdge(cocotb.top.clk_i)
             await ReadOnly()
-            sample = self.rd(cocotb.top.sep_internal_interrupts_probe_o)
+            sample = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << idx)
             if ((sample >> idx) & 1) == expect:
                 return sample
         raise AssertionError(
@@ -1343,6 +1350,11 @@ class sep_base_test(uvm_test):
             state,
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
+        plus_parts = []
+        for key in sorted(cocotb.plusargs):
+            val = cocotb.plusargs[key]
+            plus_parts.append(f"+{key}" if val is True or val == "" else f"+{key}={val}")
+        self.logger.info("RUN-IDENTITY-PLUSARGS: %s", " ".join(plus_parts) or "(none)")
         # Build identity: the binary this process IS. A commit names the
         # sources on disk at time 0, which is not the same claim as "the model
         # executing was compiled from them" -- a reused simv, or a rebuild that

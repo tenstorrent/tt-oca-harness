@@ -31,6 +31,22 @@ SPI_RX_JEDEC_WORD = 0x0018BA20
 
 STATUS_ACTIVE = SPI_CONTROLLER.field_mask("STATUS", "active")
 STATUS_READY = SPI_CONTROLLER.field_mask("STATUS", "ready")
+CTRL_ENABLE = (
+    (0x7F << SPI_CONTROLLER.field_lsb("CTRL", "rx_watermark"))
+    | SPI_CONTROLLER.field_mask("CTRL", "output_en")
+    | SPI_CONTROLLER.field_mask("CTRL", "spien")
+)
+CFG_JEDEC = (
+    (0x9 << SPI_CONTROLLER.field_lsb("CFG", "clkdiv"))
+    | (0x2 << SPI_CONTROLLER.field_lsb("CFG", "csnidle"))
+    | (0x2 << SPI_CONTROLLER.field_lsb("CFG", "csntrail"))
+    | (0x2 << SPI_CONTROLLER.field_lsb("CFG", "csnlead"))
+)
+CMD_DIR_LSB = SPI_CONTROLLER.field_lsb("CMD", "direction")
+CMD_LEN_LSB = SPI_CONTROLLER.field_lsb("CMD", "len")
+CMD_CSAAT = SPI_CONTROLLER.field_mask("CMD", "csaat")
+CMD_TX_CSAAT = (2 << CMD_DIR_LSB) | CMD_CSAAT
+CMD_RX_LEN2 = (1 << CMD_DIR_LSB) | (2 << CMD_LEN_LSB)
 
 
 class sep_spi_flash_jedec_seq(uvm_sequence):
@@ -74,17 +90,17 @@ class sep_spi_flash_jedec_seq(uvm_sequence):
         raise AssertionError("SPI controller did not become idle")
 
     async def body(self) -> None:
-        await self._write(SPI_CONTROLLER_CTRL, 0xA000_007F)
-        await self._write(SPI_CONTROLLER_CFG, 0x0222_0009)
+        await self._write(SPI_CONTROLLER_CTRL, CTRL_ENABLE)
+        await self._write(SPI_CONTROLLER_CFG, CFG_JEDEC)
         await self._write(SPI_CONTROLLER_CSID, 0)
         await self._write(SPI_CONTROLLER_ERROR_STATUS, 0xFFFF_FFFF)
 
         await self._wait_ready()
         await self._write(SPI_CONTROLLER_TXDATA, 0x0000_009F)
-        await self._write(SPI_CONTROLLER_CMD, (2 << 12) | (1 << 9))
+        await self._write(SPI_CONTROLLER_CMD, CMD_TX_CSAAT)
 
         await self._wait_ready()
-        await self._write(SPI_CONTROLLER_CMD, (1 << 12) | 2)
+        await self._write(SPI_CONTROLLER_CMD, CMD_RX_LEN2)
         await self._wait_idle()
         self.rxdata = await self._read(SPI_CONTROLLER_RXDATA, SPI_RX_JEDEC_WORD)
         await self._read(SPI_CONTROLLER_ERROR_STATUS, 0)

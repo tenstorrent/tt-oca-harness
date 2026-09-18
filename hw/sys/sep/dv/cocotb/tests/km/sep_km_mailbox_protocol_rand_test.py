@@ -176,7 +176,8 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         await self._chk_flush()
 
     def _irq_agg(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> KM_MBOX_IRQ_AGG) & 1
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << KM_MBOX_IRQ_AGG)
+        return (vec >> KM_MBOX_IRQ_AGG) & 1
 
     async def _expect_status(self, where: str, **fields) -> None:
         got = await self.mb.read_status()

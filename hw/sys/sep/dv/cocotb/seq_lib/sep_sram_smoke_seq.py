@@ -21,6 +21,12 @@ class sep_sram_smoke_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
+        if expected is not None:
+            mask = (1 << (length * 8)) - 1
+            assert item.resp_ok and (item.rdata & mask) == (expected & mask), (
+                f"CHK-SRAM-SMOKE FAIL: read 0x{addr:08x} resp_ok={item.resp_ok} "
+                f"got 0x{item.rdata & mask:x} want 0x{expected & mask:x}"
+            )
 
     async def _write(self, addr: int, data: int, length: int, size: int | None = None) -> None:
         item = SepAxiItem(f"wr_sram_0x{addr:08x}")

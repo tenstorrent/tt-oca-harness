@@ -146,6 +146,13 @@ class sep_sec_dis_override_test(sep_base_test):
         )
         self._check_reset_stays_sense_gated()
         await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        cpu_rst = self.rd_known(cocotb.top.sep_cpu_reset_n_o)
+        fabric_rst = self.rd_known(cocotb.top.dbg_sep_reset_n_o)
+        assert cpu_rst == 1 and fabric_rst == 1, (
+            f"CHK-SENSE-GATED-RESET FAIL: after sense-done "
+            f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 1/1 "
+            "-- the pre-sense low check has no live high control without this"
+        )
 
         mm = await self._present(_MISMATCH_TOKEN)
         assert mm.match_code == TOKEN_MISMATCH, (

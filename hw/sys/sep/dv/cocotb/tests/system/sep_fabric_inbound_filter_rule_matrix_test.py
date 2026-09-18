@@ -607,6 +607,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         deny_rule_logged = False
         src_match_logged = False
         src_mismatch_logged = False
+        walked = 0
         for (
             entry,
             widx,
@@ -620,6 +621,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             axi_user,
             expect_hit,
         ) in mcfg.cells():
+            walked += 1
             await self.filt.disable_all()
             cell = SepInboundFilterCfg(entry=entry, allow_addr=addr, allow_value=val)
             cell.src_id = cfg_src_id
@@ -757,11 +759,14 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             )
             first = False
 
+        assert walked == mcfg.n_cells(), (
+            f"CHK-RAND-REP FAIL: walked {walked} cells, n_cells()={mcfg.n_cells()}"
+        )
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
             "(entries %s x %d windows x rw/r/w match-all + "
             "entry0/window0 x rw/r/w match + 1 mismatch)",
-            mcfg.n_cells(),
+            walked,
             list(mcfg.entries),
             len(mcfg.windows),
         )

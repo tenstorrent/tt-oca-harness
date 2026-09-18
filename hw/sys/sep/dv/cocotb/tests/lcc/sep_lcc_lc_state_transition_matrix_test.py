@@ -91,13 +91,14 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env.sep_efuse_image import LC_WORD_IDX
+from env.sep_efuse_image import LC_WORD_IDX, lc_encode
 from env.sep_lc_transition import SIP_DIS, SYS_DIS, SepLcTransitionCfg
 from env.sep_lcc_golden import (
     LC_PROD,
     LC_PROD_END,
     LC_RMA_CHIP_0,
     LC_RMA_SIP_0,
+    feat_ctrl_expected,
     is_invalid_lc,
     is_valid_lc_transition,
     lc_state_name,
@@ -113,7 +114,11 @@ from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_RMA_SIP,
     SepRmaTokenMatchSeq,
 )
-from seq_lib.sep_lc_shadow_write_seq import SepLcShadowWriteSeq
+from seq_lib.sep_lc_shadow_write_seq import (
+    LC_STATE_BYTE_MASK,
+    LC_STATE_UPPER_MASK,
+    SepLcShadowWriteSeq,
+)
 from seq_lib.sep_lcc_inbound_filter_gating_seq import DEMOTE_BIT, SepLccDemoteSeq
 
 _MAX_SENSE_CYCLES = 20_000
@@ -160,7 +165,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._demote_2 = 0
         self._cur = lc_raw
         # Bytes [31:8] of the sensed LC word, before any shadow write.
-        self._upper = image.shadow_word(LC_WORD_IDX) & 0xFFFF_FF00
+        self._upper = image.shadow_word(LC_WORD_IDX) & LC_STATE_UPPER_MASK
         sec_dis = int(getattr(cocotb.top, "lcc_security_disable_probe_o").value) & 0x1
         assert sec_dis == 0, (
             "SEC_DIS is asserted, which forces FEAT_CTRL to all-ones and would "
@@ -244,7 +249,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         """Run one cell; the expected next state comes from the chapter golden."""
         prev = self._cur
         pattern = self.cfg_lc.nuisance if upper is None else upper
-        full_wdata = (wdata & 0xFF) | pattern
+        full_wdata = (wdata & LC_STATE_BYTE_MASK) | pattern
         if do_write:
             expected = lc_state_next(
                 prev,
@@ -286,9 +291,13 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         )
         if do_write:
             assert seq.observed_word is not None
-            assert (seq.observed_word & 0xFFFF_FF00) == expected_upper, (
+            assert (seq.observed_word & LC_STATE_UPPER_MASK) == expected_upper, (
                 f"CHK-UPPER-WRITE FAIL: {tag} LC_STATE[31:8] = "
-                f"0x{seq.observed_word & 0xFFFF_FF00:08x} want 0x{expected_upper:08x}"
+                f"0x{seq.observed_word & LC_STATE_UPPER_MASK:08x} want 0x{expected_upper:08x}"
+            )
+            assert seq.observed_word == (expected_upper | lc_encode(expected)), (
+                f"{tag}: LC_STATE word 0x{seq.observed_word:08x} != "
+                f"0x{(expected_upper | lc_encode(expected)):08x}"
             )
             if tag == "CHK-UPPER-WRITE":
                 self.logger.info(
@@ -298,6 +307,21 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                     self._upper,
                 )
             self._upper = expected_upper
+        want_feat = feat_ctrl_expected(
+            expected,
+            SIP_DIS,
+            SYS_DIS,
+            demote_1=self._demote_1,
+            demote_2=self._demote_2,
+            sec_dis=0,
+        )
+        assert observed == expected, (
+            f"{tag}: DUT LC 0x{observed:x} ({lc_state_name(observed)}) != "
+            f"golden 0x{expected:x} ({lc_state_name(expected)})"
+        )
+        assert seq.observed_feat == want_feat, (
+            f"{tag}: FEAT_CTRL 0x{seq.observed_feat:016x} != golden 0x{want_feat:016x}"
+        )
         self._cur = int(observed)
         action = f"write 0x{wdata:x}" if do_write else "no write"
         self.logger.info(
@@ -319,11 +343,11 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # Non-vacuity: the two patterns must differ in both directions, so a
         # DUT that OR-merged instead of replacing would fail this cell rather
         # than land on the same value either way.
-        assert second & ~self._upper & 0xFFFF_FF00, (
+        assert second & ~self._upper & LC_STATE_UPPER_MASK, (
             "CHK-UPPER-WRITE FAIL: second pattern adds no new bits "
             f"(prior=0x{self._upper:08x} second=0x{second:08x})"
         )
-        assert self._upper & ~second & 0xFFFF_FF00, (
+        assert self._upper & ~second & LC_STATE_UPPER_MASK, (
             "CHK-UPPER-WRITE FAIL: second pattern covers every prior bit, so an "
             f"OR would read the same (prior=0x{self._upper:08x} second=0x{second:08x})"
         )

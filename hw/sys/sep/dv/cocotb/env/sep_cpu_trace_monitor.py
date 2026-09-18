@@ -244,11 +244,11 @@ class SepCpuTraceMonitor(uvm_component):
         def rd(name: str) -> int:
             s = sig[name]
             if s is None:
-                return 0
+                raise AssertionError(f"CPU trace signal {name} is not bound")
             try:
                 return int(s.value)
-            except Exception:
-                return 0
+            except Exception as exc:
+                raise AssertionError(f"CPU trace signal {name} is not a known 0/1 value") from exc
 
         clk = dut.clk_i
         cycle = 0

@@ -45,7 +45,8 @@ class sep_esrc_alert_delivery_test(sep_base_test):
     """Trip persistent failure, claim PIC source 16, W1C-clear."""
 
     def _irq_bit(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_AGG_IDX) & 1
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
+        return (vec >> IRQ_AGG_IDX) & 1
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()

@@ -58,6 +58,9 @@ ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_START")
 ALIAS_END_RESET = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.reset32("REGION_REGION_END")
 ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_END")
 ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
+ALIAS_START_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_START")
+ALIAS_END_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_END")
+ALIAS_ATTRS_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_ATTRS")
 
 # --- AP / STEE output-remap ---------------------------------------------------
 AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
@@ -81,7 +84,8 @@ FILTER_CONFIG = INBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG")
 # remap valid[63] (R/W) and filter locked[63] (woset) both sit in the hi word.
 WOSET_HI_BIT = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
 
-# axi_pkg response codes (a locked filter entry rejects a further write with SLVERR).
+# AMBA AXI4 (IHI 0022): OKAY=0, SLVERR=2. A locked filter entry rejects a
+# further write with SLVERR.
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
@@ -156,12 +160,10 @@ class SepFabricCsrCfg:
         )
         # Masked-random field values (read back exactly). REGION_START/END are both
         # 4KB-aligned (low 12 bits masked in RTL); START must be nonzero for NONVAC.
-        self.start_lo = (
-            rng.getrandbits(32) & ~0xFFF & 0xFFFF_FFFF
-        ) or 0x1000  # 4KB-aligned, nonzero
+        self.start_lo = (rng.getrandbits(32) & ALIAS_START_MASK) or 0x1000  # 4KB-aligned, nonzero
         self.start_hi = rng.getrandbits(24)  # addr[55:32]
-        self.end_lo = rng.getrandbits(32) & ~0xFFF & 0xFFFF_FFFF  # 4KB-aligned
-        self.attrs_lo = rng.getrandbits(32) & 0xFFFF_F000  # remap offset [31:12]
+        self.end_lo = rng.getrandbits(32) & ALIAS_END_MASK  # 4KB-aligned
+        self.attrs_lo = rng.getrandbits(32) & ALIAS_ATTRS_MASK  # remap offset [31:12]
         self.ap_lo = rng.getrandbits(32) & 0xFFF0_0000  # offset [31:20]
         self.ap_hi = rng.getrandbits(24)  # offset [55:32]
         self.stee_lo = rng.getrandbits(32) & 0xFFF0_0000
@@ -235,7 +237,10 @@ class SepFabricCsrBank(SepAxiRegDriver):
         pattern sets a lock or valid bit -- bit 31 of every hi word is left clear
         so the filter woset lock stays available to the leg that grades it.
         """
-        hi_mask = 0x7FFF_FFFF  # leave bit 31 clear: woset lock / valid live there
+        hi_mask = ~(1 << WOSET_HI_BIT) & 0xFFFF_FFFF
+        # START/END RDL storage is full-width; the walk grades the 4 KB-aligned
+        # bits only (the same granule REGION_START uses). Bits [11:0] are not claimed.
+        filter_addr_walk = ALIAS_START_MASK
         # (bank, base, stride, entries, [(offset, mask)])
         banks = (
             (
@@ -244,10 +249,10 @@ class SepFabricCsrBank(SepAxiRegDriver):
                 ALIAS_STRIDE,
                 ALIAS_REGIONS,
                 (
-                    (ALIAS_START, 0xFFFF_F000),
+                    (ALIAS_START, ALIAS_START_MASK),
                     (ALIAS_START + 4, hi_mask),
-                    (ALIAS_END, 0xFFFF_F000),
-                    (ALIAS_ATTRS, 0xFFFF_F000),
+                    (ALIAS_END, ALIAS_END_MASK),
+                    (ALIAS_ATTRS, ALIAS_ATTRS_MASK),
                     (ALIAS_ATTRS + 4, hi_mask),
                 ),
             ),
@@ -261,8 +266,8 @@ class SepFabricCsrBank(SepAxiRegDriver):
                 INFILT_ENTRIES,
                 (
                     (FILTER_CONFIG, FILTER_RW_MASK),
-                    (FILTER_START_ADDR, 0xFFFF_F000),
-                    (FILTER_END_ADDR, 0xFFFF_F000),
+                    (FILTER_START_ADDR, filter_addr_walk),
+                    (FILTER_END_ADDR, filter_addr_walk),
                 ),
             ),
             (
@@ -272,8 +277,8 @@ class SepFabricCsrBank(SepAxiRegDriver):
                 OUTFILT_ENTRIES,
                 (
                     (FILTER_CONFIG, FILTER_RW_MASK),
-                    (FILTER_START_ADDR, 0xFFFF_F000),
-                    (FILTER_END_ADDR, 0xFFFF_F000),
+                    (FILTER_START_ADDR, filter_addr_walk),
+                    (FILTER_END_ADDR, filter_addr_walk),
                 ),
             ),
         )
