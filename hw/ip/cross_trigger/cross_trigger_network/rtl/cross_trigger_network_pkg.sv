@@ -9,12 +9,10 @@
 `ifndef CROSS_TRIGGER_NETWORK_PKG_SV
 `define CROSS_TRIGGER_NETWORK_PKG_SV
 
-// Import AXI package (required for typedef macros)
-import axi_pkg::*;
-import cross_trigger_network_addrmap_pkg::*;
-// Include AXI typedef macros
-
 package cross_trigger_network_pkg;
+
+  import axi_pkg::*;
+  import cross_trigger_network_addrmap_pkg::*;
 
   `include "axi/typedef.svh"
 
