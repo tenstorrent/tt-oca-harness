@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.rdlview import (  # noqa: E402
     compile_root,
     first_addrmap_name,
+    load_doc_overrides,
     parse_rdl_params,
     write_html,
 )
@@ -30,7 +31,12 @@ def main():
         args.top,
         parse_rdl_params(args.rdl_params),
     )
-    write_html(root, args.out, args.top or first_addrmap_name(root))
+    write_html(
+        root,
+        args.out,
+        args.top or first_addrmap_name(root),
+        load_doc_overrides(args.rdl),
+    )
 
 
 if __name__ == "__main__":
