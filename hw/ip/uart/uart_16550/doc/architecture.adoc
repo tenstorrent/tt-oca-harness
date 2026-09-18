@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550-architecture]]
-===== Architecture
+== Architecture
 
-====== Overview
+=== Overview
 
 The UART 16550 IP uses a hierarchical architecture with three main
 layers: a top-level wrapper handling the register interface, the core
@@ -12,7 +12,7 @@ UART logic with FIFO management, and the transmit/receive engines. This
 separation allows for clear division between interface, data flow, and
 serial processing.
 
-====== Hierarchical Structure
+=== Hierarchical Structure
 
 *Top Level* (uart_16550)
 
@@ -64,16 +64,16 @@ conditions. Sampling uses 16x oversampling with majority voting for
 noise immunity. Timeout detection flags when reception exceeds 4
 character periods.
 
-====== Data Flow Architecture
+=== Data Flow Architecture
 
-====== Transmit Data Flow
+=== Transmit Data Flow
 
 1.  *CPU Write*: Software writes data to THR or FIFO
 2.  *FIFO Buffering*: Data goes into transmit FIFO
 3.  *Serialization*: Transmit engine converts to serial
 4.  *Output*: Data is sent via `tx_o`
 
-====== Receive Data Flow
+=== Receive Data Flow
 
 1.  *Input Sampling*: Receive engine samples `rx_i` at 16x baud rate
 2.  *Frame Processing*: Detects start bit, extracts data, checks parity
@@ -85,12 +85,12 @@ When DLAB (Divisor Latch Access Bit) = 0: - Address 0x0: RBR (read), THR
 (write) - Address 0x4: IER - Standard UART 16550 register layout is
 active
 
-====== Divisor Latch Access Mode
+=== Divisor Latch Access Mode
 
 When DLAB = 1: - Address 0x0: DLL (Divisor Latch Low) - Address 0x4: DLM
 (Divisor Latch High) - Used for baud rate divisor programming
 
-====== Clock Domain Considerations
+=== Clock Domain Considerations
 
 UART 16550 operates in a single system clock domain (`clk_i`), with all
 external asynchronous inputs synchronized to prevent metastability. This
@@ -102,18 +102,18 @@ which also helps with synchronization. Reset is asserted asynchronously
 for immediate response but deasserts synchronously for safe recovery and
 predictable operation.
 
-====== Error Handling Architecture
+=== Error Handling Architecture
 
 The design includes thorough error detection and reporting:
 
-====== FIFO Parity Protection
+=== FIFO Parity Protection
 
 FIFO parity protection covers stored data and pointers, detecting
 single-bit errors and maintaining integrity in FIFO control structures.
 Errors generate interrupts and error outputs for quick response by
 system software.
 
-====== Serial Communication Errors
+=== Serial Communication Errors
 
 .Serial Communication Errors
 [cols=",",options="header",]

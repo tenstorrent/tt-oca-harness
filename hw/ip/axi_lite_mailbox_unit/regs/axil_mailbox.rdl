@@ -6,6 +6,7 @@
 
 addrmap axil_mailbox {
     desc = "";
+    ocah_aperture_size = 0x800;
 
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions

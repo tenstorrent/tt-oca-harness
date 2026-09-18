@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[mailbox-unit-interface]]
-===== Interface
+== Interface
 
 The Mailbox Unit exposes a single struct-based AXI4-Lite slave port. All
 mailbox apertures are decoded from this one port by an internal demux.
 
-====== AXI4-Lite Interface
+=== AXI4-Lite Interface
 
 [source,sourceCode,systemverilog]
 ----
@@ -30,7 +30,7 @@ the `axi_req_t`/`axi_resp_t` parameters, together with the per-channel types
 |Protocol |Standard AXI4-Lite with separate read/write channels
 |==============================================================
 
-====== Interrupt Outputs
+=== Interrupt Outputs
 
 [source,sourceCode,systemverilog]
 ----
@@ -48,7 +48,7 @@ output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o
 (read from empty or write to full)
 |=============================================================
 
-====== Control Signals
+=== Control Signals
 
 [source,sourceCode,systemverilog]
 ----
@@ -66,7 +66,7 @@ input logic test_en_i    // Test enable for DFT
 |`test_en_i` |Test enable for design-for-test (DFT) functionality
 |=====================================================================
 
-====== Timing Characteristics
+=== Timing Characteristics
 
 [width="100%",cols="30%,70%",options="header",]
 |========================================================
@@ -76,7 +76,7 @@ input logic test_en_i    // Test enable for DFT
 |Outstanding Transactions |`MAX_TRANS` per demux port (default: 32)
 |========================================================
 
-====== Error Handling
+=== Error Handling
 
 [width="100%",cols="30%,70%",options="header",]
 |===================================================================
@@ -102,7 +102,7 @@ the clearing read is retained
 |Interrupt Generation |Triggered if enabled via IRQEN register
 |===================================================================
 
-====== Integration Requirements
+=== Integration Requirements
 
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================

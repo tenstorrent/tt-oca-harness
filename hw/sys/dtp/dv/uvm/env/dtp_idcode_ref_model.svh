@@ -47,8 +47,7 @@ class dtp_idcode_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
     exp.timestamp = t.end_time;
     exp.compare   = 1'b0;
     if (t.is_ir) m_model.on_ir_scan(t);
-    else if (m_model.ir_known() && (t.bit_count != 0) &&
-                 (m_model.ir() == jtag_inst_reg_pkg::IDCODE_INSTR)) begin
+    else if (m_model.ir_known() && (t.bit_count != 0) && (m_model.ir() == IDCODE_INSTR)) begin
       int unsigned width = (t.bit_count < 32) ? t.bit_count : 32;
       exp.compare   = 1'b1;
       exp.mask      = ocah_rng::bit_mask(width);

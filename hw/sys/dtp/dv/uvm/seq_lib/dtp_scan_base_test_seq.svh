@@ -96,10 +96,11 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   // --- temporal windows (env dtp_scan_window_monitor) -------------------------
-  // Quiet signals must never pulse inside the window; active ones must.
+  // Quiet signals must never pulse inside a window the DUT shifted through;
+  // active ones must.
   function void check_window_counts(int unsigned edges, int unsigned counts[string],
                                     string quiet[$], string active[$], string context_s);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, context_s);
+    check_window_shifted("CHK-SCAN-WIN", $sformatf("%s edges=%0d", context_s, edges));
     foreach (quiet[i])
     family_check("CHK-SCAN-WIN", {quiet[i], " quiet"}, 64'(counts[quiet[i]]), 64'd0, $sformatf(
                  "%s edges=%0d", context_s, edges));
@@ -190,15 +191,20 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
 
   // (quiet, active) observables for a scan after programming: a
   // requested-but-gated SIB's controls never pulse, an effective SIB's
-  // select is seen high, a closed SIB's select stays quiet.
+  // select is seen high and its capture, shift, and update strobes pulse, a
+  // closed SIB's select stays quiet.
   function void ijtag_window_signals(bit requested[DtpIjtagSibCount], bit gated[DtpIjtagSibCount],
                                      bit effective[DtpIjtagSibCount], ref string quiet[$],
                                      ref string active[$]);
     quiet.delete();
     active.delete();
     for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++) begin
-      if (effective[sib]) active.push_back({ijtag_prefix(sib), "_select"});
-      else if (requested[sib] && gated[sib]) begin
+      if (effective[sib]) begin
+        active.push_back({ijtag_prefix(sib), "_select"});
+        active.push_back({ijtag_prefix(sib), "_shift_en"});
+        active.push_back({ijtag_prefix(sib), "_capture_en"});
+        active.push_back({ijtag_prefix(sib), "_update_en"});
+      end else if (requested[sib] && gated[sib]) begin
         quiet.push_back({ijtag_prefix(sib), "_select"});
         quiet.push_back({ijtag_prefix(sib), "_shift_en"});
         quiet.push_back({ijtag_prefix(sib), "_capture_en"});

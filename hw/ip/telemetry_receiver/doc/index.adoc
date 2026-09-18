@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver]]
-==== Telemetry Receiver
+= Telemetry Receiver
 
-===== Overview
+== Overview
 
 The Telemetry Receiver decodes, buffers, and processes telemetry data from
 telemetry transmitters. It implements a receiver for a probe-ID and
@@ -28,7 +28,7 @@ form a message that ends when `last_packet` is set.
 A counter is valid only when all four of its blocks are valid. The number of
 counters per message is parameterized (default 4); the field layout is fixed.
 
-===== Description and Features
+== Description and Features
 
 * *32-bit APB4 or AXI4-Lite Register Interface*: Standard bus interfaces
 for system integration and configuration access
@@ -41,6 +41,21 @@ to 4 counter values per message
 * *Comprehensive Interrupt System*: Event-driven notifications for
 buffer thresholds and error conditions
 
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]

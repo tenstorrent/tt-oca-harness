@@ -10,6 +10,7 @@ nav:
 asciidoc:
   attributes:
     source-highlighter: highlight.js
+    page-toclevels: 4
     sectanchors: ''
     sectlinks: ''
     sectnums: ''
@@ -19,3 +20,5 @@ asciidoc:
     allow-uri-read: ''
     basedir: doc/trm
     verbose: ''
+    ocah-trm: ''
+    page-pagination: ''
