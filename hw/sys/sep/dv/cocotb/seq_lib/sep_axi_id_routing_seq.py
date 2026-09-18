@@ -58,6 +58,7 @@ def _hs(valid, ready) -> bool:
     """A handshake completed on this edge."""
     return _bit(valid) and _bit(ready)
 
+
 # The TB drives the SEP slave port, whose AXI ID is 3 bits wide
 # (tb_top.sv ocah_axi_sva ID_WIDTH for s_axi), so 0..7 is the whole field and
 # 7 is the top of it.
