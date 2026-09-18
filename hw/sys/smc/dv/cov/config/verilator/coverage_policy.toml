@@ -246,24 +246,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_axil_dtp_csr_active"
 
 [[holes]]
-id = "fcov-smc-c_efuse_jtag_bresp_okay"
-title = "c efuse jtag bresp okay"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_efuse_jtag_bresp_okay"
-
-[[holes]]
 id = "fcov-smc-c_internal_addr_low"
 title = "c internal addr low"
 category = "missing_stimulus"
