@@ -8719,7 +8719,88 @@ Software must access the whole crypto region with single-beat transactions.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.10.3. HMAC-SHA2</a></h4>
+<h4 id="km-key-delivery"><a class="anchor" href="#km-key-delivery"></a><a class="link" href="#km-key-delivery">1.10.3. Key Manager Key Delivery</a></h4>
+<div class="paragraph">
+<p>The Key Manager delivers keys and seeds to the crypto accelerators over a
+private key interface that software cannot read. Every delivery uses the same
+format: the value is carried as two shares whose XOR is the value, and each
+share is presented as a sequence of 32-bit words in the <code>KEY_SHARE0</code> and
+<code>KEY_SHARE1</code> registers of the destination. Within a share, word index N carries
+value bits <code>[32N+31:32N]</code>, so index 0 is the least-significant word and the
+highest index is the most-significant.</p>
+</div>
+<div class="paragraph">
+<p>Both shares are always consumed. Delivering a value V therefore requires two
+shares whose XOR is V; writing a single share delivers V only because the
+unwritten share reads as zero. <code>KEY_CTRL.KEY_VALID</code> qualifies the delivered
+value, and while it is 0 the destination has no valid key or seed.</p>
+</div>
+<div class="paragraph">
+<p>The words per share, whether software must select the delivered key in
+preference to the accelerator&#8217;s own software key registers, whether software
+must also declare the key length, and the behavior on an invalid or mismatched
+key are accelerator-specific. They are stated in the sections below and
+summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per accelerator</a>.</p>
+</div>
+<table id="km-key-delivery-summary" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Key Manager key delivery per accelerator</caption>
+<colgroup>
+<col style="width: 12%;">
+<col style="width: 14%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 34%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Accelerator</th>
+<th class="tableblock halign-left valign-top">Words per share</th>
+<th class="tableblock halign-left valign-top">Select delivered key</th>
+<th class="tableblock halign-left valign-top">Key length</th>
+<th class="tableblock halign-left valign-top">Invalid or mismatched key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 (256-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CFG.key_length</code>, set by software</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Digest is wrong but repeatable; no error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 (256-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CTRL_SHADOWED.sideload</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CTRL_SHADOWED.key_len</code>, set by software</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Delivered key ignored while the select bit is 0; no error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 (256-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CFG_SHADOWED.sideload</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Applied automatically</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Keyed operation raises an error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12 (384-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not applicable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERR_BITS.KEY_INVALID</code>; the program stops</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ABR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 per block (256-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seed read enable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not applicable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seed read does not complete</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.10.4. HMAC-SHA2</a></h4>
 <div class="paragraph">
 <p>The HMAC component is based on the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC</a> design.</p>
@@ -8741,12 +8822,26 @@ Software must access the whole crypto region with single-beat transactions.</p>
 converts and isolates it as AXI-Lite, then <code>hmac_wrapper</code> bridges it to TL-UL
 for the <code>tt_hmac</code> core. The address path subtracts the HMAC base address and
 masks to a 13-bit window (8 KB), accommodating both the register space and the
-message FIFO window at offset <code>0x1000</code>. The Key Manager provides an
-8-word-per-share key through the <code>hmac_wrapper_key_reg</code> block, which maps
-directly to the <code>keymgr_key_i</code> sideload input. HMAC exposes a single fatal
+message FIFO window at offset <code>0x1000</code>. HMAC exposes a single fatal
 alert channel (index <code>[0]</code> in <a href="#sep-crypto-alert-policy">OpenTitan Alert Termination</a>), three interrupts
 (<code>done</code>, <code>fifo_empty</code>, <code>err</code>), and an <code>idle_o</code> status output. Unlike the other
 crypto wrappers, HMAC has no EDN connection.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager delivers a 256-bit HMAC key as eight words per share, in the
+format given in <a href="#km-key-delivery">Key Manager Key Delivery</a>. HMAC has no select bit: the delivered key
+is used in preference to the engine&#8217;s software key registers whenever
+<code>KEY_CTRL.KEY_VALID</code> is set.</p>
+</div>
+<div class="paragraph">
+<p>The delivered key is most-significant-bit justified in the engine&#8217;s 1024-bit
+key field, and the engine takes its key length from <code>CFG.key_length</code>, which the
+delivery path does not write. Software shall program <code>CFG.key_length</code> to the
+256-bit encoding to match the delivered key. An unset or unsupported length
+raises a configuration error when hashing starts. A supported length that
+disagrees with the delivered key does not raise an error: the engine takes key
+material from the top of the 1024-bit field, so the padding below the delivered
+key is mixed into the key and the resulting digest is wrong but repeatable.</p>
 </div>
 <div class="paragraph">
 <p>Consult the
@@ -8757,7 +8852,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.10.4. OTBN PKA Public Key Accelerator</a></h4>
+<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.10.5. OTBN PKA Public Key Accelerator</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan
@@ -8858,10 +8953,8 @@ drives the standard <code>otbn</code> core configured with <code>Stub = 0</code>
 <div class="paragraph">
 <p>OTBN&#8217;s instruction and data memories are external SRAM macros; the IMEM and
 DMEM <code>prim_ram_1p_scr</code> ports are brought out of the wrapper to the <code>sep_crypto</code>
-top level. The key bus is wider than other accelerators: the
-<code>otbn_wrapper_key_reg</code> block maps 12 words per share to the
-<code>keymgr_pkg::otbn_key_req_t</code> structure. The two random-number request ports
-(<code>edn_rnd</code>, <code>edn_urnd</code>) are served over native-protocol EDN by the shared
+top level. The two random-number request ports (<code>edn_rnd</code>, <code>edn_urnd</code>) are
+served over native-protocol EDN by the shared
 <code>drbg_axis_edn_adapter</code> instance <code>u_axis_edn_crypto_s3c_scan</code> in <code>sep_crypto</code>,
 which converts the post-CSRNG DRBG AXI-Stream feed assigned to the crypto sink
 domain into per-client EDN responses. The adapter forwards the per-beat FIPS
@@ -8872,6 +8965,18 @@ signals are tied to their inactive state. OTBN occupies alert indices <code>[2:1
 in <a href="#sep-crypto-alert-policy">OpenTitan Alert Termination</a> and exports a single <code>intr_done_o</code> interrupt.</p>
 </div>
 <div class="paragraph">
+<p>The Key Manager delivers a 384-bit OTBN key as twelve words per share, the
+widest delivery in the subsystem, in the format given in <a href="#km-key-delivery">Key Manager Key Delivery</a>.
+OTBN is the only accelerator that does not combine the shares in hardware. The
+shares are exposed to the executing program through the <code>KEY_S0_L</code> /
+<code>KEY_S0_H</code> and <code>KEY_S1_L</code> / <code>KEY_S1_H</code> special registers, each share split into
+a 256-bit low and a 128-bit high half, and the program is responsible for
+reconstructing the key as the XOR of the two shares. Each share is qualified
+independently: reading a share whose key is not valid sets
+<code>ERR_BITS.KEY_INVALID</code> and stops the program rather than returning key
+material.</p>
+</div>
+<div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan OTBN
 documentation</a> for the authoritative core functionality of the IP. The
@@ -8880,7 +8985,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.10.5. AES Cipher</a></h4>
+<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.10.6. AES Cipher</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
@@ -8923,9 +9028,8 @@ space and produces 128-bit output blocks <em>round</em> number of cycles. The
 <p>The AES host path follows the standard conversion and isolation sequence in the
 crypto interconnect (64-bit AXI → 32-bit AXI → AXI-Lite → isolate), without
 address adjustment or cache-attribute patching. <code>aes_wrapper</code> bridges the
-isolated path to TL-UL. The <code>aes_wrapper_key_reg</code> block provides an
-8-word-per-share key mapping to the <code>keymgr_pkg::hw_key_req_t</code> sideload input.
-EDN requests are served by the shared <code>drbg_axis_edn_adapter</code> instance
+isolated path to TL-UL. EDN requests are served by the shared
+<code>drbg_axis_edn_adapter</code> instance
 <code>u_axis_edn_crypto_s3c_scan</code>, which converts the post-CSRNG DRBG AXI-Stream feed
 for the crypto sink domain into AES&#8217;s native-protocol EDN response. The adapter
 forwards the per-beat FIPS bit from the stream&#8217;s <code>tuser</code> sideband into
@@ -8936,6 +9040,17 @@ inactive state. AES occupies alert indices <code>[4:3]</code> in
 interrupt.</p>
 </div>
 <div class="paragraph">
+<p>The Key Manager delivers a 256-bit AES key as eight words per share, in the
+format given in <a href="#km-key-delivery">Key Manager Key Delivery</a>. Software shall set
+<code>CTRL_SHADOWED.sideload</code> to select the delivered key. While that bit is 0 the
+engine uses its software key registers and the delivered key has no effect,
+and no error is reported. Software shall also program <code>CTRL_SHADOWED.key_len</code>
+to the 256-bit encoding to consume the whole delivered key: the key length is
+independent of the delivery path, and a shorter setting consumes only part of
+it. AES carries the two shares into the cipher datapath as a masked pair and
+does not combine them on the delivery path.</p>
+</div>
+<div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES
 documentation</a> for the authoritative core functionality of the IP. The
@@ -8944,7 +9059,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.10.6. KMAC-SHA3</a></h4>
+<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.10.7. KMAC-SHA3</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC</a> design.</p>
@@ -8966,14 +9081,24 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 address path subtracts the KMAC base address and masks to a 12-bit window
 (4 KB) before the <code>axi_to_axi_lite</code> stage, aligning the internal decoder with
 the OpenTitan register block. <code>kmac_wrapper</code> bridges the isolated AXI-Lite path
-to TL-UL. The <code>kmac_wrapper_key_reg</code> block provides the same 8-word-per-share
-key mapping. EDN is handled identically to AES: KMAC is one of the four clients
+to TL-UL. EDN is handled identically to AES: KMAC is one of the four clients
 arbitrated by <code>u_axis_edn_crypto_s3c_scan</code> (the shared
 <code>drbg_axis_edn_adapter</code>), served from the same post-CSRNG DRBG AXI-Stream feed.
 The <code>app_i</code> application interface is tied off since the SEP does not use the
 KMAC hardware application path. Life-cycle escalation is inactive. KMAC
 occupies alert indices <code>[6:5]</code> in <a href="#sep-crypto-alert-policy">OpenTitan Alert Termination</a> and exports three
 interrupts: <code>done</code>, <code>fifo_empty</code>, and <code>err</code>.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager delivers a 256-bit KMAC key as eight words per share, in the
+format given in <a href="#km-key-delivery">Key Manager Key Delivery</a>. Software shall set <code>CFG_SHADOWED.sideload</code>
+to select the delivered key; while that bit is 0 the engine uses its software
+key registers. Unlike AES and HMAC, software does not declare a key length for
+a delivered key: the engine applies the delivered key&#8217;s length automatically
+and ignores its key-length register for that operation. KMAC is also the only
+accelerator that fails loudly on a missing key&#8201;&#8212;&#8201;beginning a keyed operation
+that uses the delivered key while <code>KEY_CTRL.KEY_VALID</code> is 0 raises an error
+instead of producing a digest.</p>
 </div>
 <div class="paragraph">
 <p>Consult the
@@ -8984,7 +9109,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.10.7. Adams Bridge (ABR)</a></h4>
+<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.10.8. Adams Bridge (ABR)</a></h4>
 <div class="paragraph">
 <p>The module is a post-quantum accelerator based on the
 <a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge</a> design.</p>
@@ -9043,6 +9168,23 @@ the same kind of key path as every other accelerator, one mastered by the Key
 Manager.</p>
 </div>
 <div class="paragraph">
+<p>ABR is delivered seeds rather than keys, and is the only accelerator with more
+than one delivery destination. Four blocks are qualified independently&#8201;&#8212;&#8201;<code>MLDSA_SEED</code>, <code>MLKEM_SEED_D</code>, <code>MLKEM_SEED_Z</code> and <code>MLKEM_MSG</code>&#8201;&#8212;&#8201;each carrying
+eight words per share with its own <code>KEY_CTRL.KEY_VALID</code>, in the format given in
+<a href="#km-key-delivery">Key Manager Key Delivery</a>. The ML-DSA seed and the ML-KEM message are read as single
+256-bit values. The ML-KEM seed is read as one 512-bit value formed by
+concatenating <code>MLKEM_SEED_D</code> followed by <code>MLKEM_SEED_Z</code>, so that read completes
+only when both blocks are valid. Software shall enable the seed read before
+starting an operation that consumes a delivered seed.</p>
+</div>
+<div class="paragraph">
+<p>The ML-KEM shared key travels in the opposite direction, making this the only
+delivery destination that is also a source: the accelerator writes the shared
+key into <code>MLKEM_SHARED_KEY.KEY</code>, and on the final word sets that block&#8217;s
+<code>KEY_CTRL.KEY_VALID</code> and <code>IRQ_STATUS.KEY_VALID</code>, which raises the gated
+shared-key interrupt consumed by the Key Manager.</p>
+</div>
+<div class="paragraph">
 <p>The working SRAM is brought out of the wrapper as packed
 <code>abr_mem_req_t</code> / <code>abr_mem_rsp_t</code> structs. Word-write channels are <code>we</code> / <code>re</code> /
 address / data; <code>sig_z</code> and <code>pk</code> also carry one-bit-per-byte <code>wstrobe</code>.
@@ -9086,7 +9228,7 @@ source, so unlike the other accelerators they do not appear in
 </div>
 </div>
 <div class="sect3">
-<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.10.8. True Random Number Generator (TRNG)</a></h4>
+<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.10.9. True Random Number Generator (TRNG)</a></h4>
 <div class="paragraph">
 <p>Entropy bits are fundamental data for key generation as well as for
 attack countermeasure implementations. The entropy source must be high
@@ -9294,7 +9436,7 @@ integer width</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1.10.9. OTP Fuse Controller</a></h4>
+<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1.10.10. OTP Fuse Controller</a></h4>
 <div class="imageblock">
 <div class="content">
 <img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
@@ -11368,7 +11510,7 @@ feature is enabled and False (F) indicates that it is disabled. The disable vect
 the corresponding feature, and 1&#8217;b1 disables it.</p>
 </div>
 <table id="feature-control-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Per-LC-state feature control profile</caption>
+<caption class="title">Table 4. Per-LC-state feature control profile</caption>
 <colgroup>
 <col style="width: 13%;">
 <col style="width: 7%;">
