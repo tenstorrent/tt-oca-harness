@@ -56,11 +56,11 @@
   ],
   "flow": "smu",
   "framework": "cocotb",
-  "generated_at": "2026-09-17T19:59:55+00:00",
+  "generated_at": "2026-09-18T18:38:39+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "6629df4dd04433729f0245a51100e2e515861b02",
-    "short_sha": "6629df4dd"
+    "sha": "29eec0aa96c31d638826c2c25e4355f1e26c2178",
+    "short_sha": "29eec0aa9"
   },
   "junit_xml": [],
   "kind": "dv",
@@ -110,7 +110,7 @@
       "threshold_met": null,
       "total_percent": null
     },
-    "duration_sec": 2627.29,
+    "duration_sec": 164.387,
     "executor": "local",
     "exit_code": 2,
     "failed_tests": [],
@@ -118,10 +118,10 @@
     "flaky_tests": [],
     "flow": "smu",
     "framework": "cocotb",
-    "generated_at": "2026-09-17T19:59:45.962433+00:00",
+    "generated_at": "2026-09-18T18:38:39.158906+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "6629df4dd04433729f0245a51100e2e515861b02",
+      "commit": "29eec0aa96c31d638826c2c25e4355f1e26c2178",
       "dirty": "false"
     },
     "jobs": [],
@@ -285,10 +285,10 @@
   "run_metadata": {
     "dry_run": false,
     "executor": "local",
-    "generated_at": "2026-09-17T19:59:46.080007+00:00",
+    "generated_at": "2026-09-18T18:38:39.178750+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "6629df4dd04433729f0245a51100e2e515861b02",
+      "commit": "29eec0aa96c31d638826c2c25e4355f1e26c2178",
       "dirty": "false"
     },
     "interruption": {},
@@ -648,9 +648,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 2541.33,
-    "end_time": "2026-09-17T19:59:45.780519+00:00",
-    "start_time": "2026-09-17T19:15:59.566079+00:00"
+    "duration_sec": 163.667,
+    "end_time": "2026-09-18T18:38:39.153349+00:00",
+    "start_time": "2026-09-18T18:35:54.778854+00:00"
   },
   "tool": "vcs"
 }
