@@ -120,8 +120,8 @@ int main(void) {
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
            SPI_READ_OPCODE); // 0x03, then addr bytes 0,0,0
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           (SPI_CMD_DIR_TX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) | SPI_CONTROLLER__COMMAND__CSAAT_bm |
-               ((4u - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
+           (SPI_CMD_DIR_TX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) |
+               SPI_CONTROLLER__COMMAND__CSAAT_bm | ((4u - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
     if (spi_wait_ready(SPI_POLL_TIMEOUT) != 0) {
         sep_mbx_puts("FAIL: SPI host stuck after command phase\n");
         errors++;

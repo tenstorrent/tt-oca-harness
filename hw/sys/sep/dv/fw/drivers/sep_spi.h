@@ -15,7 +15,8 @@
 // CFG: CPOL/CPHA = 0 (Mode 0). CS timing CSNIDLE/TRAIL/LEAD=2 matches the OSS
 // flash BFM (composed from generated field positions, not a packed hex constant).
 #define SPI_CFG_CSN_TIMING \
-    ((2u << SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bp) | (2u << SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bp) | \
+    ((2u << SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bp) | \
+     (2u << SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bp) | \
      (2u << SPI_CONTROLLER__CONFIGOPTS__CSNLEAD_bp))
 #define SPI_CFG_CLKDIV9_CSN (SPI_CFG_CSN_TIMING | 9u)
 #define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv)&0xFFFFu))

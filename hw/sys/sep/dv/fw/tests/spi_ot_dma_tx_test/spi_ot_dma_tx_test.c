@@ -125,10 +125,10 @@ static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
 // and mask: the register layout is owned by the OpenTitan spi_host block, and
 // hand-packed bit positions silently break when it changes.
 static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
-    uint32_t v = ((direction << SPI_CONTROLLER__COMMAND__DIRECTION_bp) &
-                  SPI_CONTROLLER__COMMAND__DIRECTION_bm) |
-                 (((len_bytes - 1) << SPI_CONTROLLER__COMMAND__LEN_bp) &
-                  SPI_CONTROLLER__COMMAND__LEN_bm);
+    uint32_t v =
+        ((direction << SPI_CONTROLLER__COMMAND__DIRECTION_bp) &
+         SPI_CONTROLLER__COMMAND__DIRECTION_bm) |
+        (((len_bytes - 1) << SPI_CONTROLLER__COMMAND__LEN_bp) & SPI_CONTROLLER__COMMAND__LEN_bm);
     if (csaat) v |= SPI_CONTROLLER__COMMAND__CSAAT_bm;
     return v;
 }
@@ -137,8 +137,8 @@ static void spi_init(void) {
     // RX_WM=1 (RX kept quiescent), TX_WM drives the refill trigger.
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
            (TX_WATERMARK << SPI_CONTROLLER__CONTROL__TX_WATERMARK_bp) |
-               (1u << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp) | SPI_CONTROLLER__CONTROL__SPIEN_bm |
-               SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm);
+               (1u << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp) |
+               SPI_CONTROLLER__CONTROL__SPIEN_bm | SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
@@ -222,7 +222,8 @@ static int chk_trigger(void) {
            spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR) |
                SPI_CONTROLLER__CONTROL__SW_RST_bm); // drain FIFO
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
-           spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR) & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
+           spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR) &
+               ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
     st = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     uint32_t txqd_drain = st & SPI_CONTROLLER__STATUS__TXQD_bm;
     int txwm_drain = !!(st & SPI_CONTROLLER__STATUS__TXWM_bm);
@@ -490,7 +491,8 @@ static int chk_err_overflow(void) {
     // Recovery: SW_RST drains the FIFOs and the command queue, then W1C the latch.
     uint32_t ctrl = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+           ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
     uint32_t residual = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (residual != 0) {

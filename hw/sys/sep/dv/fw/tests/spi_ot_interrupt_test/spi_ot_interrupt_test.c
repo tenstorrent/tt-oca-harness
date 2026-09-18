@@ -234,8 +234,8 @@ int main(void) {
     intr_test.f.SPI_EVENT = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
-    if (!check_reg("INTR_STATE.spi_event=1 with INTR_ENABLE.spi_event=0",
-                   intr_status.f.SPI_EVENT, 1))
+    if (!check_reg("INTR_STATE.spi_event=1 with INTR_ENABLE.spi_event=0", intr_status.f.SPI_EVENT,
+                   1))
         pass = 0;
     intr_test.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);

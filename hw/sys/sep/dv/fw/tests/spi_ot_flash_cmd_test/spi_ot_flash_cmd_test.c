@@ -79,10 +79,10 @@ volatile uint32_t g_spi1_params[3 + MAX_WORDS] = {
 // and mask: the register layout is owned by the OpenTitan spi_host block, and
 // hand-packed bit positions silently break when it changes.
 static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
-    uint32_t v = ((direction << SPI_CONTROLLER__COMMAND__DIRECTION_bp) &
-                  SPI_CONTROLLER__COMMAND__DIRECTION_bm) |
-                 (((len_bytes - 1) << SPI_CONTROLLER__COMMAND__LEN_bp) &
-                  SPI_CONTROLLER__COMMAND__LEN_bm);
+    uint32_t v =
+        ((direction << SPI_CONTROLLER__COMMAND__DIRECTION_bp) &
+         SPI_CONTROLLER__COMMAND__DIRECTION_bm) |
+        (((len_bytes - 1) << SPI_CONTROLLER__COMMAND__LEN_bp) & SPI_CONTROLLER__COMMAND__LEN_bm);
     if (csaat) {
         v |= SPI_CONTROLLER__COMMAND__CSAAT_bm;
     }
@@ -135,7 +135,8 @@ static int flash_jedec(uint32_t *out) {
 static int flash_rdsr_checked(uint8_t *out) {
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_RX, 1, 0)); // RX 1 byte, release CS
@@ -151,7 +152,8 @@ static int flash_rdsr_checked(uint8_t *out) {
 static int flash_rdsr2(uint8_t *out) {
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR2);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
     if (spi_wait_idle(TIMEOUT)) return -1;
@@ -173,7 +175,8 @@ static int flash_page_program(uint32_t addr, const uint32_t *data, uint32_t nwor
         spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), data[i]); // data words, LSB-first
     }
     // total TX bytes = 4 (cmd+addr) + nwords*4
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 4 + nwords * 4, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_TX, 4 + nwords * 4, 0));
     return spi_wait_idle(TIMEOUT);
 }
 
@@ -223,7 +226,8 @@ static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
 static uint32_t spi_err_recover(void) {
     uint32_t ctrl = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+           ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
     return spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
 }
