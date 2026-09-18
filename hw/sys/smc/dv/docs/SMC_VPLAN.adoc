@@ -1982,6 +1982,40 @@ Drive `smc_axil_downstream_concurrency_test_seq` on the SEP_IN AXI sequencer wit
 '''''
 
 
+[[sec-188-smc_peripheral_instance_decode_test]]
+===== 188 `smc_peripheral_instance_decode_test`
+
+*Source Module*: `smc_peripheral_instance_decode_test`
+
+*BFM / Model*: SEP_IN AXI driver; `tb_axil_external_active` sampled on every `clk_smc_i` edge for the PVT wrapper access, which the bench PVT model answers OKAY with zero data
+
+*Objective*: Every peripheral block the generated map declares reads a register with a non-zero generated reset, every multi-instance peripheral is proven at its first and last instance, and the PVT wrapper is proven at the adopter external port.
+
+*Test Coverage*:
+
+* Single-instance blocks are closed by a register whose generated reset is non-zero, so the compare can tell a decoded block from an absent window that reads 0.
+* Multi-instance peripherals are additionally proven with distinct patterns written to all probed instances before any is read back, so a stride that aliases two instances returns a neighbour's pattern and fails: the I3C CSR windows, the GPIO interfaces, the mailbox pairs, the watchdog instances and the log engines are each driven at their first and last instance.
+* The PVT wrapper is proven at its consumer: the access must drive `smc_external_req_o` while in flight, not merely complete.
+* Left open and named, not claimed: the DTP control window (`tb_top` leaves its AXI-Lite response idle, so an access there would never complete) and the bus error units (behind the bit-25 fold of `smc_local_fabric`, so no SEP_IN access reaches one).
+
+*Test Procedure*:
+
+Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: sweep the I3C, GPIO, mailbox, watchdog and log-engine instances, then the single-instance blocks, then route the PVT access; name the two unreachable cells, require the exact-value compare count and the access count to have reached their floors, and print the cell ledger. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PERIPHERAL-INSTANCE` |The cell ledger: one line per block or instance cell closed with the measured evidence behind it, plus one line per cell left NOT closed in this bench with the tie-off or address fold that prevents it. The NOT-closed lines are recorded gaps, not compares
+|`CHK-PERIPHERAL-INSTANCE-DECODE` |Summary line: cells closed, the scoreboard exact-value compare count against its floor, the access count, the PVT external-port active cycles and the number of cells left open. Logged after the per-block compares and both floors have held
+|`CHK-PERIPHERAL-INSTANCE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
+|===
+
+*Pass Criteria*: every probed block matches its non-zero generated reset, every probed instance returns its own co-resident pattern, the PVT access drives the external port, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. The DTP window and the bus error units are recorded as not closed. Enrolled in no scheduled group.
+
+'''''
+
 ==== RESET
 
 [[sec-038-smc_cg_dft_reset_bringup_test]]
@@ -3725,6 +3759,40 @@ Drive `smc_spm_mem_boundary_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-SPM-MEM-BASIC`, `CHK-SPM-MEM-SPM_HI`, `CHK-SPM-MEM-SPM_LO`, `CHK-SPM-MEM-SPM_LO_NEXT` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
+[[sec-080-smc_occp_sanity_secure_error_test]]
+===== 80 `smc_occp_sanity_secure_error_test`
+
+*Source Module*: `smc_occp_sanity_secure_error_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Secure program-fail completes and reports done; recovery burn programs bit0; signature positive gate.
+
+*Test Coverage*:
+
+* OTP PROGRAM failure injection (secure programming error), via `+smc_efuse_prog_fail_count`.
+* DEFENDS: on the injected-failure burn the eFuse controller still reaches PROGRAM_DONE (bounded poll, expiry fails), and the subsequent recovery burn really does sticky-OR bit0 of word0 through the unmodified data path. The signature positive gate reads CHIP_CONFIG / EFUSE_MAP word0 against their expected values.
+* DOES NOT DEFEND, model-backed: "the failing burn left the OTP word unchanged" is *not DUT-earned*. `hw/ip/efuse/dv/models/efuse_bank_model.sv:120` drives the macro as `.s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata)`, so on the failing write the DV model substitutes 0 for whatever the controller put on the bus and the word cannot change whatever the controller does. The compare stands as a consistency check on the injection hook only. Same tap as testcase 95, which already carries this disclaimer.
+* GAP: the fail path is DUT-observable only if the model rejects the burn at the APB handshake (`pslverr`, macro write suppressed) instead of rewriting the data; the model is shared between the SEP and SMC benches.
+* No mismatched signature is injected -- no write, plusarg, image variant or force on the proof path produces one, and the only `+smc_efuse_hex` image's word 0 *is* the golden. The positive gate is what runs.
+
+*Test Procedure*:
+
+Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|===
+
+
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+'''''
+
 ==== JTAG
 
 [[sec-083-smc_dbs_idle_test]]
@@ -4360,6 +4428,154 @@ recorded under Known Limitations.
 
 *Pass Criteria*: `CHK-ZEROER-START-CONTROL` holds for all four illegal Zeroer encodings and `CHK-STATE-FAULT` holds, both after their compares; each deny's unchanged responder write count is preceded by that encoding's own control moving the same counter; and every bounded wait in the sequence completed rather than expiring. Enrolled in: `all`, `hosted`.
 
+'''''
+
+[[sec-093-smc_efuse_map_read_test]]
+===== 93 `smc_efuse_map_read_test`
+
+*Source Module*: `smc_efuse_map_read_test`
+
+*BFM / Model*: I3C VIP, SPI pad BFM, ocah_axi_vip (AXI)
+
+*Objective*: SMC_EFUSE_MAP 1 KiB window direct read.
+
+*Test Coverage*:
+
+* The sweep reads LOCKS lo/hi, `JTAG_PUBLIC_IDENTITY`, `SMC_CONFIG`, `OCCP_TRANSPORT_TIMEOUT`, all nine `I2C_I3C_ID` entries, and SPARE[0:1] -- every region that has both a generated base address and a generated `*_READ_LOCK` bit, plus LOCKS itself.
+* readable words -- `efuse_preload_word_at(addr)` parses `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time and indexes it by `(addr - SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)/4`, the same word ordering `efuse_bank_model.sv:140-160` uses. Regenerating the asset moves the expectation with it instead of leaving a stale literal asserting a false identity.
+* read-locked words -- `efuse_map_read_locked()` reads the `*_READ_LOCK` bit out of the *preloaded* `LOCKS` word using the generated bit position from `regs/gen/c/blocks/smc_efuse_map.h`; SPEC then fixes the data a blocked read returns: "When a request is blocked, the error slave returns an error response with data value `0xbadcab1e`" (`architecture.adoc:297-299`), and `lock[0] = 1` is "read-locked" (`architecture.adoc:198`).
+
+*Test Procedure*:
+
+Drive `smc_efuse_map_read_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-MAP-READ` |Named compare in `smc_efuse_map_read_test_seq.py`; the run fails if it mismatches
+|===
+
+
+*Pass Criteria*: `CHK-EFUSE-MAP-READ` hold after their compares. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-088-smc_efuse_boundary_signals_test]]
+===== 88 `smc_efuse_boundary_signals_test`
+
+*Source Module*: `smc_efuse_boundary_signals_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Sense completes under ext_boot hold; delayed fuse_reset_n waits release.
+
+*Test Coverage*:
+
+* `LOCKS` -- read from `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time via `efuse_preload_word_at` rather than a hand-transcribed literal, which cannot detect the asset and the model disagreeing. That asset is what `efuse_bank_model.sv:140-160` `$readmemh`s under the bench-wide `+smc_efuse_hex` (`smc_sim_cfg.toml:386` and `:392`), so this leg's proof class is **transport** (the map returns the sensed word), not fuse programming ([NO-UNJUSTIFIED-PRELOAD]).
+* `EFUSE_PROGRAM_INTERFACE_READ_DATA` -- the generated RDL reset `EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset` (`hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h:153`); no program read-back has been issued in this testcase, so the register must still hold it. That reset is `0x0` and the field is `sw = r`, so this compare is a transport/decode probe and **not** a liveness proof: a dead or unmapped window satisfies it equally. Since the field is driven only in the program FSM's `ST_CAPTURE_DATA` state ("Hardware debug only", `efuse_interface_ctrl.rdl:158`), which this testcase never enters, no distinguishing value can be placed in it. Block liveness is instead proven on the writable sibling `EFUSE_READ_REQ_TIMEOUT` @0x14 (`sw=rw`, `rdl:180`, non-zero reset `0x800000`) by a reset read plus a write/read-back/restore in the same run ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+* `SCRATCH_COLD_WARM_0` -- its own reset value 0, backed in the same run by a write/read-back positive control proving the register can hold a one ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+
+*Test Procedure*:
+
+Drive `smc_efuse_boundary_signals_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-BND-BASIC` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-BND-HOLD` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-BND-MAP` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-BND-REL` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-BND-STAY` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
+|===
+
+
+*Pass Criteria*: `CHK-EFUSE-BND-BASIC`, `CHK-EFUSE-BND-HOLD`, `CHK-EFUSE-BND-MAP`, `CHK-EFUSE-BND-REL`, `CHK-EFUSE-BND-STAY` hold after their compares. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-092-smc_efuse_locked_access_interrupt_test]]
+===== 92 `smc_efuse_locked_access_interrupt_test`
+
+*Source Module*: `smc_efuse_locked_access_interrupt_test`
+
+*BFM / Model*: ocah_axi_vip (AXI), ocah_jtag_vip
+
+*Objective*: JTAG_PUBLIC_IDENTITY unlocked write silent; locked write/read pulse `tb_efuse_locked_access_irq`.
+
+*Test Coverage*:
+
+* Locked eFuse shadow access raises `tb_efuse_locked_access_irq`.
+* DECLARED PRECONDITION -- the read-lock is supplied by the bench, not the DUT.
+* `JTAG_PUBLIC_IDENTITY` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `JTAG_PUBLIC_IDENTITY_READ_LOCK` set (LOCKS bit 1), and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/holdout.toml`).
+* The read-lock leg therefore proves that the DUT ENFORCES a lock it found already set; it does not prove a lock can be established through the fuse-programming path.
+* The write-lock leg does establish its own lock, through the real `LOCKS` CSR write path.
+* Everything asserted below -- lock enforcement, the non-disclosure property and the interrupt itself -- is produced by the design under test.
+* The read-locked read is not value-compared: `hw/ip/efuse/doc/architecture.adoc` fixes `0xbadcab1e` only for the JTAG lifecycle-demux error slave and does not state what a read-locked shadow register returns over the CSR path, so that leg claims the interrupt pulse and non-disclosure (`lock[0] = 1` is read-locked) and nothing about the substituted word.
+* The model contributes the fuse CONTENT only, and every expectation that depends on that content is derived from the asset at run time rather than hand-transcribed.
+
+*Test Procedure*:
+
+Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-LOCK-IRQ-RD` |The read of the read-locked `JTAG_PUBLIC_IDENTITY` pulses `tb_efuse_locked_access_irq` exactly once and the word it returns is neither the fuse content nor the pattern the unlocked write attempted (sequence asserts). The word itself is not value-compared: no document fixes what a read-locked shadow register returns over the CSR path (`smc_efuse_locked_access_interrupt_test_seq.py`)
+|`CHK-EFUSE-LOCK-IRQ-UNLOCK` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-LOCK-IRQ-WR` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-LOCK-PRE` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-LOCK-SCOREBOARD` |Named compare in `smc_efuse_locked_access_interrupt_test.py`; the run fails if it mismatches
+|===
+
+
+*Pass Criteria*: `CHK-EFUSE-LOCK-IRQ-RD`, `CHK-EFUSE-LOCK-IRQ-UNLOCK`, `CHK-EFUSE-LOCK-IRQ-WR`, `CHK-EFUSE-LOCK-PRE`, `CHK-EFUSE-LOCK-SCOREBOARD` hold after their compares. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-094-smc_efuse_otp_burn_shadow_test]]
+===== 94 `smc_efuse_otp_burn_shadow_test`
+
+*Source Module*: `smc_efuse_otp_burn_shadow_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
+
+*Test Coverage*:
+
+* Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv:674-679`, loaded by the sense FSM at `efuse_shadow_regs.sv:512-540`).
+* The eFuse interface controller issues a PROGRAM command, latches the readback comparison result and reports it in `PROGRAM_STATUS` (`efuse_interface_shim.sv:433` -> `efuse_program_interface.sv:160`), with both polarities observed: set on the injected failure, clear on the clean program.
+* `EFUSE_STATUS.efuse_sense_done` mirrors the sense handshake.
+* The bank model's storage is unchanged by a fail-injected program and sticky-ORs one bit on a successful one. This shows the controller's command reached the bank; it says nothing about fuse physics.
+* Foundry OTP macro analog timing / voltage.
+* Full OCCP ROM secure-boot stack (see smc_occp_sanity_secure_error_test).
+
+*Test Procedure*:
+
+Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-OTP-PRELOAD` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-OTP-PROGRAM-FAIL` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-OTP-PROGRAM-OK` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-OTP-SHADOW` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-OTP-STATUS` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
+|===
+
+
+*Pass Criteria*: `CHK-EFUSE-OTP-PRELOAD`, `CHK-EFUSE-OTP-PROGRAM-FAIL`, `CHK-EFUSE-OTP-PROGRAM-OK`, `CHK-EFUSE-OTP-SHADOW`, `CHK-EFUSE-OTP-STATUS` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== GPIO
@@ -7501,9 +7717,9 @@ in `smoke`, `hosted` or `all`. Every `[[tests]]` entry carries `expect_fail` nam
 `expect_fail_match` pinned to the assertion it raises; the weekly tier runs
 the group on its own `regress.yml` row and grades the recorded failure as
 PASS, so the row goes red (`expected_fail_passed`) the week a defect is
-fixed and the leaf moves to its feature testlist. The members are
-`smc_deadspace_decode_test` (#585) and `smc_efuse_map_read_test` (#1989); their
-cards follow, with the other held-out leaves.
+fixed and the leaf moves to its feature testlist. The member is
+`smc_deadspace_decode_test` (#585); its card follows, with the other held-out
+leaves.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -7544,153 +7760,9 @@ Drive `smc_deadspace_decode_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing (dead offsets in seven register windows wrap onto live registers with an OKAY response) and runs weekly in `rtl_issue` under `expect_fail`, with `expect_fail_match` pinned to the `wrap_to_live` / `read_alias` assertion; the observed failure grades PASS and an observed PASS grades `expected_fail_passed`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `rtl_issue` only -- an `rtl_issue` reproducer graded as an expected failure on the weekly tier (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
 '''''
 
-[[sec-088-smc_efuse_boundary_signals_test]]
-===== 88 `smc_efuse_boundary_signals_test`
-
-*Source Module*: `smc_efuse_boundary_signals_test`
-
-*BFM / Model*: ocah_axi_vip (AXI)
-
-*Objective*: Sense completes under ext_boot hold; delayed fuse_reset_n waits release.
-
-*Test Coverage*:
-
-* `LOCKS` -- read from `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time via `efuse_preload_word_at` rather than a hand-transcribed literal, which cannot detect the asset and the model disagreeing. That asset is what `efuse_bank_model.sv:140-160` `$readmemh`s under the bench-wide `+smc_efuse_hex` (`smc_sim_cfg.toml:386` and `:392`), so this leg's proof class is **transport** (the map returns the sensed word), not fuse programming ([NO-UNJUSTIFIED-PRELOAD]).
-* `EFUSE_PROGRAM_INTERFACE_READ_DATA` -- the generated RDL reset `EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset` (`hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h:153`); no program read-back has been issued in this testcase, so the register must still hold it. That reset is `0x0` and the field is `sw = r`, so this compare is a transport/decode probe and **not** a liveness proof: a dead or unmapped window satisfies it equally. Since the field is driven only in the program FSM's `ST_CAPTURE_DATA` state ("Hardware debug only", `efuse_interface_ctrl.rdl:158`), which this testcase never enters, no distinguishing value can be placed in it. Block liveness is instead proven on the writable sibling `EFUSE_READ_REQ_TIMEOUT` @0x14 (`sw=rw`, `rdl:180`, non-zero reset `0x800000`) by a reset read plus a write/read-back/restore in the same run ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
-* `SCRATCH_COLD_WARM_0` -- its own reset value 0, backed in the same run by a write/read-back positive control proving the register can hold a one ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
-
-*Test Procedure*:
-
-Drive `smc_efuse_boundary_signals_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
-*Checkers*:
 
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-EFUSE-BND-BASIC` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-BND-HOLD` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-BND-MAP` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-BND-REL` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-BND-STAY` |Named compare in `smc_efuse_boundary_signals_test_seq.py`; the run fails if it mismatches
-|===
-
-
-*Pass Criteria*: `CHK-EFUSE-BND-BASIC`, `CHK-EFUSE-BND-HOLD`, `CHK-EFUSE-BND-MAP`, `CHK-EFUSE-BND-REL`, `CHK-EFUSE-BND-STAY` hold after their compares. Enrolled in: `held_out` only -- held out of `all` and `hosted` until the defect its row names is fixed (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
-'''''
-
-[[sec-092-smc_efuse_locked_access_interrupt_test]]
-===== 92 `smc_efuse_locked_access_interrupt_test`
-
-*Source Module*: `smc_efuse_locked_access_interrupt_test`
-
-*BFM / Model*: ocah_axi_vip (AXI), ocah_jtag_vip
-
-*Objective*: JTAG_PUBLIC_IDENTITY unlocked write silent; locked write/read pulse `tb_efuse_locked_access_irq`.
-
-*Test Coverage*:
-
-* Locked eFuse shadow access raises `tb_efuse_locked_access_irq`.
-* DECLARED PRECONDITION -- the read-lock is supplied by the bench, not the DUT.
-* `JTAG_PUBLIC_IDENTITY` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `JTAG_PUBLIC_IDENTITY_READ_LOCK` set (LOCKS bit 1), and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/holdout.toml`).
-* The read-lock leg therefore proves that the DUT ENFORCES a lock it found already set; it does not prove a lock can be established through the fuse-programming path.
-* The write-lock leg does establish its own lock, through the real `LOCKS` CSR write path.
-* Everything asserted below -- lock enforcement, the non-disclosure property and the interrupt itself -- is produced by the design under test.
-* The read-locked read is not value-compared: `hw/ip/efuse/doc/architecture.adoc` fixes `0xbadcab1e` only for the JTAG lifecycle-demux error slave and does not state what a read-locked shadow register returns over the CSR path, so that leg claims the interrupt pulse and non-disclosure (`lock[0] = 1` is read-locked) and nothing about the substituted word.
-* The model contributes the fuse CONTENT only, and every expectation that depends on that content is derived from the asset at run time rather than hand-transcribed.
-
-*Test Procedure*:
-
-Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-EFUSE-LOCK-IRQ-RD` |The read of the read-locked `JTAG_PUBLIC_IDENTITY` pulses `tb_efuse_locked_access_irq` exactly once and the word it returns is neither the fuse content nor the pattern the unlocked write attempted (sequence asserts). The word itself is not value-compared: no document fixes what a read-locked shadow register returns over the CSR path (`smc_efuse_locked_access_interrupt_test_seq.py`)
-|`CHK-EFUSE-LOCK-IRQ-UNLOCK` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-LOCK-IRQ-WR` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-LOCK-PRE` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-LOCK-SCOREBOARD` |Named compare in `smc_efuse_locked_access_interrupt_test.py`; the run fails if it mismatches
-|===
-
-
-*Pass Criteria*: `CHK-EFUSE-LOCK-IRQ-RD`, `CHK-EFUSE-LOCK-IRQ-UNLOCK`, `CHK-EFUSE-LOCK-IRQ-WR`, `CHK-EFUSE-LOCK-PRE`, `CHK-EFUSE-LOCK-SCOREBOARD` hold after their compares. Enrolled in: `held_out` only -- held out of `all` and `hosted` until the defect its row names is fixed (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
-'''''
-
-[[sec-093-smc_efuse_map_read_test]]
-===== 93 `smc_efuse_map_read_test`
-
-*Source Module*: `smc_efuse_map_read_test`
-
-*BFM / Model*: I3C VIP, SPI pad BFM, ocah_axi_vip (AXI)
-
-*Objective*: SMC_EFUSE_MAP 1 KiB window direct read.
-
-*Test Coverage*:
-
-* The sweep reads LOCKS lo/hi, `JTAG_PUBLIC_IDENTITY`, `SMC_CONFIG`, `OCCP_TRANSPORT_TIMEOUT`, all nine `I2C_I3C_ID` entries, and SPARE[0:1] -- every region that has both a generated base address and a generated `*_READ_LOCK` bit, plus LOCKS itself.
-* readable words -- `efuse_preload_word_at(addr)` parses `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time and indexes it by `(addr - SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)/4`, the same word ordering `efuse_bank_model.sv:140-160` uses. Regenerating the asset moves the expectation with it instead of leaving a stale literal asserting a false identity.
-* read-locked words -- `efuse_map_read_locked()` reads the `*_READ_LOCK` bit out of the *preloaded* `LOCKS` word using the generated bit position from `regs/gen/c/blocks/smc_efuse_map.h`; SPEC then fixes the data a blocked read returns: "When a request is blocked, the error slave returns an error response with data value `0xbadcab1e`" (`architecture.adoc:297-299`), and `lock[0] = 1` is "read-locked" (`architecture.adoc:198`).
-
-*Test Procedure*:
-
-Drive `smc_efuse_map_read_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-EFUSE-MAP-READ` |Named compare in `smc_efuse_map_read_test_seq.py`; the run fails if it mismatches
-|===
-
-
-*Pass Criteria*: `CHK-EFUSE-MAP-READ` hold after their compares. Enrolled in: `rtl_issue` only -- an `rtl_issue` reproducer graded as an expected failure on the weekly tier (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
-'''''
-
-[[sec-094-smc_efuse_otp_burn_shadow_test]]
-===== 94 `smc_efuse_otp_burn_shadow_test`
-
-*Source Module*: `smc_efuse_otp_burn_shadow_test`
-
-*BFM / Model*: ocah_axi_vip (AXI)
-
-*Objective*: Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
-
-*Test Coverage*:
-
-* Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv:674-679`, loaded by the sense FSM at `efuse_shadow_regs.sv:512-540`).
-* The eFuse interface controller issues a PROGRAM command, latches the readback comparison result and reports it in `PROGRAM_STATUS` (`efuse_interface_shim.sv:433` -> `efuse_program_interface.sv:160`), with both polarities observed: set on the injected failure, clear on the clean program.
-* `EFUSE_STATUS.efuse_sense_done` mirrors the sense handshake.
-* The bank model's storage is unchanged by a fail-injected program and sticky-ORs one bit on a successful one. This shows the controller's command reached the bank; it says nothing about fuse physics.
-* Foundry OTP macro analog timing / voltage.
-* Full OCCP ROM secure-boot stack (see smc_occp_sanity_secure_error_test).
-
-*Test Procedure*:
-
-Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-EFUSE-OTP-PRELOAD` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-OTP-PROGRAM-FAIL` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-OTP-PROGRAM-OK` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-OTP-SHADOW` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
-|`CHK-EFUSE-OTP-STATUS` |Named compare in `smc_efuse_otp_burn_shadow_test_seq.py`; the run fails if it mismatches
-|===
-
-
-*Pass Criteria*: `CHK-EFUSE-OTP-PRELOAD`, `CHK-EFUSE-OTP-PROGRAM-FAIL`, `CHK-EFUSE-OTP-PROGRAM-OK`, `CHK-EFUSE-OTP-SHADOW`, `CHK-EFUSE-OTP-STATUS` hold after their compares. Enrolled in: `held_out` only -- held out of `all` and `hosted` until the defect its row names is fixed (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
-'''''
 
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
 ===== 161 `smc_occp_dual_unsecure_boot_test`
@@ -7741,73 +7813,7 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_d
 
 '''''
 
-[[sec-080-smc_occp_sanity_secure_error_test]]
-===== 80 `smc_occp_sanity_secure_error_test`
 
-*Source Module*: `smc_occp_sanity_secure_error_test`
-
-*BFM / Model*: ocah_axi_vip (AXI)
-
-*Objective*: Secure program-fail completes and reports done; recovery burn programs bit0; signature positive gate.
-
-*Test Coverage*:
-
-* OTP PROGRAM failure injection (secure programming error), via `+smc_efuse_prog_fail_count`.
-* DEFENDS: on the injected-failure burn the eFuse controller still reaches PROGRAM_DONE (bounded poll, expiry fails), and the subsequent recovery burn really does sticky-OR bit0 of word0 through the unmodified data path. The signature positive gate reads CHIP_CONFIG / EFUSE_MAP word0 against their expected values.
-* DOES NOT DEFEND, model-backed: "the failing burn left the OTP word unchanged" is *not DUT-earned*. `hw/ip/efuse/dv/models/efuse_bank_model.sv:120` drives the macro as `.s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata)`, so on the failing write the DV model substitutes 0 for whatever the controller put on the bus and the word cannot change whatever the controller does. The compare stands as a consistency check on the injection hook only. Same tap as testcase 95, which already carries this disclaimer.
-* GAP: the fail path is DUT-observable only if the model rejects the burn at the APB handshake (`pslverr`, macro write suppressed) instead of rewriting the data; the model is shared between the SEP and SMC benches.
-* No mismatched signature is injected -- no write, plusarg, image variant or force on the proof path produces one, and the only `+smc_efuse_hex` image's word 0 *is* the golden. The positive gate is what runs.
-
-*Test Procedure*:
-
-Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
-|===
-
-
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `held_out` only -- held out of `all` and `hosted` until the defect its row names is fixed (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
-'''''
-
-[[sec-188-smc_peripheral_instance_decode_test]]
-===== 188 `smc_peripheral_instance_decode_test`
-
-*Source Module*: `smc_peripheral_instance_decode_test`
-
-*BFM / Model*: SEP_IN AXI driver; `tb_axil_external_active` sampled on every `clk_smc_i` edge for the PVT wrapper access, which the bench PVT model answers OKAY with zero data
-
-*Objective*: Every peripheral block the generated map declares reads a register with a non-zero generated reset, every multi-instance peripheral is proven at its first and last instance, and the PVT wrapper is proven at the adopter external port.
-
-*Test Coverage*:
-
-* Single-instance blocks are closed by a register whose generated reset is non-zero, so the compare can tell a decoded block from an absent window that reads 0.
-* Multi-instance peripherals are additionally proven with distinct patterns written to all probed instances before any is read back, so a stride that aliases two instances returns a neighbour's pattern and fails: the I3C CSR windows, the GPIO interfaces, the mailbox pairs, the watchdog instances and the log engines are each driven at their first and last instance.
-* The PVT wrapper is proven at its consumer: the access must drive `smc_external_req_o` while in flight, not merely complete.
-* Left open and named, not claimed: the DTP control window (`tb_top` leaves its AXI-Lite response idle, so an access there would never complete) and the bus error units (behind the bit-25 fold of `smc_local_fabric`, so no SEP_IN access reaches one).
-
-*Test Procedure*:
-
-Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: sweep the I3C, GPIO, mailbox, watchdog and log-engine instances, then the single-instance blocks, then route the PVT access; name the two unreachable cells, require the exact-value compare count and the access count to have reached their floors, and print the cell ledger. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-PERIPHERAL-INSTANCE` |The cell ledger: one line per block or instance cell closed with the measured evidence behind it, plus one line per cell left NOT closed in this bench with the tie-off or address fold that prevents it. The NOT-closed lines are recorded gaps, not compares
-|`CHK-PERIPHERAL-INSTANCE-DECODE` |Summary line: cells closed, the scoreboard exact-value compare count against its floor, the access count, the PVT external-port active cycles and the number of cells left open. Logged after the per-block compares and both floors have held
-|`CHK-PERIPHERAL-INSTANCE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
-|===
-
-*Pass Criteria*: every probed block matches its non-zero generated reset, every probed instance returns its own co-resident pattern, the PVT access drives the external port, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. The DTP window and the bus error units are recorded as not closed. Enrolled in no scheduled group. Held out of `all` and `hosted` on #1989 (the shadow map reads 0 after sense); the row is in <<smc-deferred-disposition>>.
-
-'''''
 
 [[sec-162-smc_prod_rom_occp_ready_test]]
 ===== 162 `smc_prod_rom_occp_ready_test`
@@ -8341,13 +8347,8 @@ and `picolibc-riscv64-unknown-elf`) is built locally and published to no
 registry, and no workflow builds firmware, so every firmware leaf below, each
 of which runs a `c_compile` stage, is run on demand (`scripts/docker-run.sh`
 builds the images) until CI has a toolchain. The `smc_ref_clock_timer_rate_test`
-row is held out for a different reason: it is in no group, so no tier selects
-it. The five eFuse-map rows after it are held out on #1989: the SMC eFuse word
-counter is one bit too narrow for the 256-word map, so fuse sense stores no
-word and every shadow read returns 0 with an OKAY response; each of them
-compares a sensed word against the preload image somewhere on its path.
-`smc_efuse_map_read_test` is not in this table: it carries #1989 as the
-`rtl_issue` reproducer (below).
+row is held out for a different reason: it fails the comparison it was written
+to make, and waits on a ruling.
 
 [cols="2,1,3,1,1,3",options="header"]
 |===
@@ -8372,11 +8373,6 @@ compares a sensed word against the preload image somewhere on its path.
 |`smc_occp_sanity_test` |`all`, `dual` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above
 |`smc_occp_dual_unsecure_boot_test` |`occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
 |`smc_ref_clock_timer_rate_test` |none |In no group, so `smoke`, `hosted` and `rtl_issue` all miss it. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |minshaoho (`9282d8c14`) |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
-|`smc_efuse_boundary_signals_test` |`held_out` |#1989: reads `SMC_EFUSE_MAP_LOCKS` after sense and expects the preload image's word 0; the shadow returns 0 |minshaoho (`9282d8c14`) |2026-12-15 |#1989 merged; then back into `all` and `hosted` (`testlists/all.toml`) with its `ci` tag
-|`smc_efuse_locked_access_interrupt_test` |`held_out` |#1989: the same LOCKS compare precedes the lock and interrupt legs |minshaoho (`9282d8c14`) |2026-12-15 |As above
-|`smc_efuse_otp_burn_shadow_test` |`held_out` |#1989: the shadow read of the sensed image is the first compare, before the PROGRAM command |minshaoho (`9282d8c14`) |2026-12-15 |As above
-|`smc_occp_sanity_secure_error_test` |`held_out` |#1989: its positive signature gate reads map word 0 and gets 0 |minshaoho (`9282d8c14`) |2026-12-15 |As above
-|`smc_peripheral_instance_decode_test` |none |#1989: its eFuse-map probe expects the preload image's LOCKS word as the instance's non-zero reset and reads 0 |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |===
 
 `dual.toml` is therefore in the toolchain bucket, not an "elaboration only"
@@ -8389,9 +8385,7 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 `dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Members: `smc_deadspace_decode_test` (#585) and
-`smc_efuse_map_read_test` (#1989: the shadow map reads 0 after sense, measured
-on LOCKS word 0 against the preload image).
+Member: `smc_deadspace_decode_test` (#585).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in
@@ -8891,7 +8885,7 @@ the first image that consumes it, not ahead of it.
 |dual_octs_test
 |`octs_p1_credit_test` (deferred); duplicate differing in two lines.
 |efuse_reg_sanity
-|`smc_efuse_map_read_test` (`testlists/holdout.toml` while #1989 stands) and `smc_efuse_shim_ctrl_test` (`testlists/efuse.toml`); the alias `smc_efuse_test` is waived.
+|`smc_efuse_map_read_test` (`testlists/efuse.toml`) and `smc_efuse_shim_ctrl_test` (`testlists/efuse.toml`); the alias `smc_efuse_test` is waived.
 |gpio_p0_int_test
 |`smc_gpio_p0_int_test` (`testlists/gpio.toml`), same objective.
 |gpio_p0_mux_test

@@ -93,3 +93,51 @@ run_modes = ["smoke"]
 # covered by smc_ext_interrupts_pin_test (irq.toml). ext_interrupts_i[255:1] is
 # tied to 0 in tb/tb_top.sv, so an external-interrupt testcase beyond bit 0
 # needs TB work before it can exist.
+
+[[tests]]
+# #1989: smc_efuse_pkg.sv sizes the fuse word counter as $clog2(256) = 8 bits,
+# so efuse_shadow_regs.sv's `efuse_word_counter_t'(NumShadowWords)` is 0, the
+# sense request asks for no words and the store guard admits none. Sense still
+# completes and every shadow word reads 0 with OKAY; the first row of this
+# leaf's map sweep, LOCKS word 0 against the preload image, is the measurement.
+name = "smc_efuse_map_read_test"
+module = "smc_efuse_map_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_boundary_signals_test"
+module = "smc_efuse_boundary_signals_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+args = ["+smc_hold_ext_boot"]
+
+[[tests]]
+name = "smc_efuse_locked_access_interrupt_test"
+module = "smc_efuse_locked_access_interrupt_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+# The read-lock precondition of this scenario is supplied by this asset (word 0
+# sets JTAG_PUBLIC_IDENTITY_READ_LOCK), so it is named here rather than inherited
+# silently from the bench-wide default in smc_sim_cfg.toml.
+args = [
+    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smc_efuse_otp_burn_shadow_test"
+module = "smc_efuse_otp_burn_shadow_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci"]
+run_modes = ["smoke"]
+args = [
+    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+    "+smc_efuse_prog_fail_count=1",
+]

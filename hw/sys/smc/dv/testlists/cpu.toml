@@ -161,3 +161,15 @@ args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.ecc.hex",
 ]
+
+[[tests]]
+name = "smc_occp_sanity_secure_error_test"
+module = "smc_occp_sanity_secure_error_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci"]
+run_modes = ["smoke"]
+args = [
+    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+    "+smc_efuse_prog_fail_count=1",
+]

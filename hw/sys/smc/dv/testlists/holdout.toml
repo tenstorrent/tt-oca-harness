@@ -25,16 +25,13 @@ schema_version = 1
 #     dual-SMC unsecure boot (hours of wall clock while a full sram image
 #     crosses a ~2.6 MHz serial bus that Verilator simulates cycle by cycle).
 #     Each runs on demand as its own group.
-#   * `held_out` -- leaves whose current failure is a filed RTL defect, or a
-#     comparison the leaf cannot make on this RTL. Five read the eFuse shadow
-#     map after sense and get 0 (#1989: the SMC eFuse word counter is one bit
-#     too narrow for the 256-word map, so fuse sense stores nothing);
-#     smc_efuse_map_read_test carries that defect as the `rtl_issue`
-#     reproducer, and the five return to their feature testlists, `all` and
-#     `hosted` when #1989 is fixed. smc_ref_clock_timer_rate_test fails the
-#     rate comparison it was written to make: clk_rst.adoc places the OCTS
-#     system timer in the reference clock domain and the RTL clocks it from
-#     clk_smc_i.
+#   * `held_out` -- leaves whose current failure is a comparison the leaf
+#     cannot make on this RTL until a ruling. smc_ref_clock_timer_rate_test
+#     fails the rate comparison it was written to make: clk_rst.adoc places
+#     the OCTS system timer in the reference clock domain and the RTL clocks
+#     it from clk_smc_i. A leaf whose blocker is a filed RTL defect goes here
+#     too, with the issue in its comment, and returns to its feature testlist,
+#     `all` and `hosted` when the fix merges.
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
@@ -54,21 +51,6 @@ tags = ["rtl_issue"]
 run_modes = ["smoke"]
 expect_fail = "#585: dead offsets in seven register windows wrap onto live registers with an OKAY response"
 expect_fail_match = "aliased live registers \\(wrap_to_live=[1-9][0-9]* read_alias="
-
-[[tests]]
-# #1989: smc_efuse_pkg.sv sizes the fuse word counter as $clog2(256) = 8 bits,
-# so efuse_shadow_regs.sv's `efuse_word_counter_t'(NumShadowWords)` is 0, the
-# sense request asks for no words and the store guard admits none. Sense still
-# completes and every shadow word reads 0 with OKAY; the first row of this
-# leaf's map sweep, LOCKS word 0 against the preload image, is the measurement.
-name = "smc_efuse_map_read_test"
-module = "smc_efuse_map_read_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "#1989: the SMC eFuse word counter truncates the 256-word sense length to 0, so the shadow map reads 0 after sense"
-expect_fail_match = "SYS AXI read 0x0*c0007000 = 0x0, expected 0x2"
 
 [[tests]]
 name = "smc_prod_rom_occp_ready_test"
@@ -117,63 +99,6 @@ args = [
     "+occp_payload_sym=hello_world.sram.sym",
 ]
 
-# BFM: ext_boot_seq_done hold keeps fuse_reset_n low after sense (G6).
-[[tests]]
-name = "smc_efuse_boundary_signals_test"
-module = "smc_efuse_boundary_signals_test"
-seed = 1
-timeout_sec = 1800
-tags = []
-run_modes = ["smoke"]
-args = ["+smc_hold_ext_boot"]
-
-# BFM: JTAG_PUBLIC_IDENTITY lock IRQ on tb_efuse_locked_access_irq.
-[[tests]]
-name = "smc_efuse_locked_access_interrupt_test"
-module = "smc_efuse_locked_access_interrupt_test"
-seed = 1
-timeout_sec = 1800
-tags = []
-run_modes = ["smoke"]
-# The read-lock precondition of this scenario is supplied by this asset (word 0
-# sets JTAG_PUBLIC_IDENTITY_READ_LOCK), so it is named here rather than inherited
-# silently from the bench-wide default in smc_sim_cfg.toml.
-args = [
-    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
-]
-
-[[tests]]
-name = "smc_efuse_otp_burn_shadow_test"
-module = "smc_efuse_otp_burn_shadow_test"
-seed = 1
-timeout_sec = 3600
-tags = []
-run_modes = ["smoke"]
-args = [
-    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
-    "+smc_efuse_prog_fail_count=1",
-]
-
-[[tests]]
-name = "smc_occp_sanity_secure_error_test"
-module = "smc_occp_sanity_secure_error_test"
-seed = 1
-timeout_sec = 3600
-tags = []
-run_modes = ["smoke"]
-args = [
-    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
-    "+smc_efuse_prog_fail_count=1",
-]
-
-[[tests]]
-name = "smc_peripheral_instance_decode_test"
-module = "smc_peripheral_instance_decode_test"
-seed = 1
-timeout_sec = 1800
-tags = ["fabric", "decode"]
-run_modes = ["smoke"]
-
 [[tests]]
 name = "smc_ref_clock_timer_rate_test"
 module = "smc_ref_clock_timer_rate_test"
@@ -185,10 +110,9 @@ run_modes = ["smoke"]
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 2
+expected_count = 1
 tests = [
     "smc_deadspace_decode_test",
-    "smc_efuse_map_read_test",
 ]
 
 [[groups]]
@@ -206,15 +130,9 @@ tests = [
 ]
 
 [[groups]]
-# Leaves waiting on an RTL fix (#1989) or an RTL/spec ruling; run on demand to
-# re-measure. Guarded so a returning leaf is removed here deliberately.
+# Leaves waiting on an RTL/spec ruling; run on demand to re-measure. Guarded so a
 name = "held_out"
-expected_count = 6
+expected_count = 1
 tests = [
-    "smc_efuse_boundary_signals_test",
-    "smc_efuse_locked_access_interrupt_test",
-    "smc_efuse_otp_burn_shadow_test",
-    "smc_occp_sanity_secure_error_test",
-    "smc_peripheral_instance_decode_test",
     "smc_ref_clock_timer_rate_test",
 ]
