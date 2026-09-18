@@ -20,12 +20,15 @@ from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_efuse_vip_utils import efuse_preload_word_at
 
 EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 
-OTP_WORD0_MARKER = 0xA5A55A5A
+# Word 0 of the preload asset the bank model $readmemh's at time 0, read from
+# the asset so the gate follows a regenerated image.
+OTP_WORD0_MARKER = efuse_preload_word_at(EFUSE_MAP_0)
 _PROG_DATA = 1 << 16
 _PROG_GO = 1 << 17
 _PROG_READBACK = 1 << 18
