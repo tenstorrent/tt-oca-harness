@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP outbound-mailbox -> PIC -> CPU interrupt-delivery firmware test (OSS port
-// of the reference sep_mailbox_plic_test). The EL2 CPU arms outbound mailbox 0 to
+// SEP inbound-mailbox -> PIC -> CPU interrupt-delivery firmware test (OSS port
+// of the reference sep_mailbox_plic_test). The EL2 CPU arms inbound mailbox 0 to
 // raise its threshold interrupt, self-triggers it by pushing a word into the
 // FIFO, and proves the interrupt traverses
 //
-//     axil_mailbox.outbound_interrupt_o[0]
+//     axil_mailbox.inbound_interrupt_o[0]
 //       -> sep.sv sep_mailbox_interrupt[0] -> sep_internal_interrupts[0]
 //       -> sep_interrupts[0] -> VeeR EL2 PIC source 1 -> mip.MEIP -> CPU trap
 //       -> mailbox_isr
 //
-// all internal to bare `sep` (no testbench injection). Edge: outbound mailbox
+// all internal to bare `sep` (no testbench injection). Edge: inbound mailbox
 // IRQ -> PIC -> CPU -> ISR.
 //
 // Checks (every failure increments errors; main() returns it and start.S turns
@@ -59,7 +59,7 @@ static volatile uint32_t g_irqs_before = 0;
 static volatile uint32_t g_irqs_after = 0;
 static volatile uint32_t g_irqp_after = 0;
 
-// Outbound mailbox 0 ISR: record the claim id and the asserted IRQ state, clear
+// Inbound mailbox 0 ISR: record the claim id and the asserted IRQ state, clear
 // the interrupt at the source (raise WIRQT past the FIFO usage so the level
 // condition drops, then W1C IRQS), and re-read to prove the clear stuck.
 void __attribute__((interrupt("machine"))) mailbox_isr(void) {
@@ -101,7 +101,7 @@ int main(void) {
     // Written for sequence parity; not on the proof path.
     sep_axil_mbox_clock_enable();
 
-    // Route outbound mailbox 0 -> PIC source 1 -> ISR. The block is built
+    // Route inbound mailbox 0 -> PIC source 1 -> ISR. The block is built
     // level-triggered active-high, so the gateway matches (type 0, polarity 0).
     pic_register_handler(SEP_AXIL_MBOX0_PIC_SRC, mailbox_isr);
     pic_set_gateway(SEP_AXIL_MBOX0_PIC_SRC, 0, 0);
@@ -121,7 +121,7 @@ int main(void) {
     g_isr_count = 0;
     __asm__ volatile("fence" ::: "memory");
 
-    // Trigger: push a word -> FIFO usage 1 > WIRQT 0 -> outbound_interrupt_o[0].
+    // Trigger: push a word -> FIFO usage 1 > WIRQT 0 -> inbound_interrupt_o[0].
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_WRITE_DATA, MBOX_TRIGGER_WORD);
     sep_mbx_puts("STEP one word pushed into the mailbox queue\n");
 
