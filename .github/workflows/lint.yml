@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
+      run_nix_ci: ${{ steps.diff-class.outputs.run_nix_ci }}
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request' || github.event_name == 'push'
@@ -38,6 +39,7 @@ jobs:
               ;;
             *)
               echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
+              echo "run_nix_ci=true" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -447,6 +449,30 @@ jobs:
             %-G%.%#
           level: error
           name: format-c
+
+  format-nix:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_nix_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+      - name: Run nix-fmt
+        run: |
+          make format-nix-check 2>&1 | tee format_nix.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: format_nix.log
+          format: diff
+          level: error
+          name: format-nix
 
   lint-tcl:
     needs: [diff-class, setup-tools]

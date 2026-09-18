@@ -7,8 +7,7 @@
   runCommand,
   makeWrapper,
   ...
-}:
-let
+}: let
   pkgList = [
     (antora-lunr-extension.overrideAttrs (old: {
       postInstall = "";
@@ -17,9 +16,9 @@ let
   ];
   nodePath = lib.concatMapStringsSep ":" (p: "${p}/lib/node_modules") pkgList;
 in
-runCommand "ocah-antora"
+  runCommand "ocah-antora"
   {
-    nativeBuildInputs = [ makeWrapper ];
+    nativeBuildInputs = [makeWrapper];
   }
   ''
     mkdir -p $out/bin

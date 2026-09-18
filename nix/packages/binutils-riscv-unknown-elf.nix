@@ -21,7 +21,7 @@ stdenv.mkDerivation rec {
     flex
     texinfo
   ];
-  buildInputs = [ zlib ];
+  buildInputs = [zlib];
 
   configureFlags = [
     "--target=riscv64-unknown-elf"

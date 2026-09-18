@@ -8,11 +8,15 @@ include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 ## @section Format (nix fmt)
 
-## Format nix infrastructure files using nix-declared formatted - see flake.nix#formatter
+## Format nix infrastructure files using nix-declared formatter (alejandra) - see flake.nix#formatter
 .PHONY: ocah-format-nix
 ocah-format-nix:
 	$(OCAH_ROOT)/scripts/docker-run.sh nix-fmt
 
-OCAH_PHONY += ocah-format-nix
+## Check Nix Infrastructure files formatting without modification
+ocah-format-nix-check:
+	$(OCAH_ROOT)/scripts/docker-run.sh nix-fmt-check
+
+OCAH_PHONY += ocah-format-nix ocah-format-nix-check
 
 endif

@@ -4,4 +4,4 @@
   yosys-slang,
   ...
 }:
-yosys.withPlugins [ yosys-slang ]
+yosys.withPlugins [yosys-slang]
