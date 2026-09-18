@@ -123,6 +123,17 @@ from .waves import (
 REGRESSION_SEED_MAX = 2_147_483_647
 SUPPORTED_PYTHON_MIN = (3, 11)
 SUPPORTED_PYTHON_MAX_EXCLUSIVE = (3, 14)
+# The distributions the locked `dv` group provides; the doctor reports one row per entry.
+DOCTOR_DISTRIBUTIONS = ("cocotb", "pyuvm", "cocotbext-axi", "cocotbext-jtag")
+# Registry tool name -> version-query argument; the doctor reports the first output line.
+_DOCTOR_VERSION_ARGS = {
+    "verilator": ["--version"],
+    "vcs": ["-ID"],
+    "xcelium": ["-version"],
+    "sby": ["--version"],
+}
+# A release number as the tool registry's `min_version` and a tool's version line spell it.
+_RELEASE_NUMBER_RE = compile(r"\d+(?:\.\d+)+")
 _COVERAGE_STAGES = {"cov_merge", "cov_report"}
 _WAIVE_REGRADEABLE_BUCKETS = {"coverage_threshold", "config_error"}
 # --doctor import probe: modules per child interpreter, and the seconds each child
@@ -1115,10 +1126,76 @@ def _probe_imports(
     return results
 
 
-def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
+def _tool_version_line(tool: str, executable: str, env: dict[str, str]) -> str:
+    """The first line the located binary prints for its version query; "" when `tool` has none."""
+    version_args = _DOCTOR_VERSION_ARGS.get(tool)
+    if version_args is None:
+        return ""
+    try:
+        proc = subprocess.run(
+            [executable, *version_args],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    text = (proc.stdout or proc.stderr).strip()
+    return text.splitlines()[0] if text else "unknown"
+
+
+def _release_key(text: str) -> tuple[int, ...] | None:
+    """The first dotted release number in `text` as integers, so `5.036` orders as (5, 36)."""
+    match = _RELEASE_NUMBER_RE.search(text)
+    if match is None:
+        return None
+    return tuple(int(part) for part in match.group(0).split("."))
+
+
+def _below_min_version(cfg: dict[str, Any], version_line: str) -> str:
+    """The registry table's `min_version` when `version_line` reports an older release, else ""."""
+    floor = cfg.get("min_version")
+    if not isinstance(floor, str):
+        return ""
+    found = _release_key(version_line)
+    required = _release_key(floor)
+    if found is None or required is None or found >= required:
+        return ""
+    return floor
+
+
+def _doctor_module_selection(
+    catalog: TestCatalog, args: argparse.Namespace | None
+) -> tuple[list[str], str]:
+    """The tests whose modules the doctor probes, and the selection that named them.
+
+    `--items` and `--tag` select as a run selects; without either, every test in the catalog is
+    probed and the returned scope is empty.
+    """
+    items = list(getattr(args, "items", None) or [])
+    tags = list(getattr(args, "tag", None) or [])
+    if not items and not tags:
+        return list(catalog.tests), ""
+    names = expand_items(catalog, items, True) if items else list(catalog.tests)
+    if tags:
+        names = select_by_tags(catalog, names, tags)
+        if not names:
+            raise ConfigError(f"no tests match tag(s): {', '.join(tags)}")
+    parts = [f"--items {' '.join(items)}"] if items else []
+    parts.extend(f"--tag {tag}" for tag in tags)
+    return names, " ".join(parts)
+
+
+def _doctor_python_environment(
+    root: Path, flow: Flow | None, selection: tuple[list[str], str] | None = None
+) -> bool:
     """Check Python package/import readiness for OSS DV contributor flows.
 
-    Returns True when a selected flow cannot run in the current Python environment.
+    `selection` is the (test names, scope) pair :func:`_doctor_module_selection` returns for a
+    `--items`/`--tag` selection; None probes every test in the catalog. Returns True when a
+    selected flow cannot run in the current Python environment.
     """
     print("python/package:")
     failed = False
@@ -1133,25 +1210,19 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             "use Python 3.11, 3.12, or 3.13 for OSS DV; cocotb rejects Python >=3.14",
         )
 
-    distributions = [
-        ("cocotb", "cocotb"),
-        ("pyuvm", "pyuvm"),
-        ("cocotbext-axi", "cocotbext-axi"),
-        ("cocotbext-jtag", "cocotbext-jtag"),
-    ]
-    for label, dist_name in distributions:
+    for dist_name in DOCTOR_DISTRIBUTIONS:
         version = _dist_version(dist_name)
         if version is None:
             failed = True
             _print_doctor_row(
-                label,
+                dist_name,
                 "FAIL",
                 "missing distribution "
                 f"`{dist_name}`; launch via `python3 tools/dv/run_dv.py` (uv-managed) "
                 "or run `uv sync --locked --group dv` at the repository root",
             )
         else:
-            _print_doctor_row(label, "OK", version)
+            _print_doctor_row(dist_name, "OK", version)
 
     # The shared VIP (`ocah-dv`) needs no installed distribution: every run rebuilds
     # PYTHONPATH from the DUT config, which carries the in-repo VIP root.
@@ -1210,25 +1281,44 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             _print_doctor_row("test modules", "FAIL", f"testlist did not load: {exc}")
             print()
             return True
-        modules = sorted({test.module for test in catalog.tests.values()})
+        selected, scope = selection if selection is not None else (list(catalog.tests), "")
+        modules = sorted({catalog.tests[name].module for name in selected} - {""})
         results = _probe_imports(run_paths, modules, timeout=probe_timeout)
         failures = [(name, results[name][1]) for name in modules if not results[name][0]]
-        if not modules:
+        suffix = f" ({scope})" if scope else ""
+        if not modules and scope:
+            _print_doctor_row(
+                "test modules",
+                "WARN",
+                f"the selection has no module for framework `{flow.framework}`{suffix}",
+            )
+        elif not modules:
             _print_doctor_row("test modules", "WARN", "testlist declares no tests")
         elif not failures:
             _print_doctor_row(
-                "test modules", "OK", f"{len(modules)} modules import with the run PYTHONPATH"
+                "test modules",
+                "OK",
+                f"{len(modules)} modules import with the run PYTHONPATH{suffix}",
             )
         else:
             failed = True
             _print_doctor_row(
-                "test modules", "FAIL", f"{len(failures)}/{len(modules)} modules failed to import"
+                "test modules",
+                "FAIL",
+                f"{len(failures)}/{len(modules)} modules failed to import{suffix}",
             )
             for name, why in failures[:5]:
                 _print_doctor_row(f"  {name}", "FAIL", why)
             if len(failures) > 5:
                 _print_doctor_row(
                     "  ...", "FAIL", f"{len(failures) - 5} more (same run PYTHONPATH)"
+                )
+            if not scope:
+                _print_doctor_row(
+                    "test modules fix",
+                    "INFO",
+                    "add --items <group or test> or --tag <tag> to probe only the modules "
+                    "that selection imports",
                 )
     elif flow is not None:
         _print_doctor_row(
@@ -1292,11 +1382,21 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         tools = sorted(simulators)
         scope = "all registered tools (survey)"
 
+    selection: tuple[list[str], str] | None = None
+    scoped = bool(getattr(args, "items", None) or getattr(args, "tag", None))
+    if flow is not None and flow.framework == "cocotb" and scoped:
+        try:
+            selection = _doctor_module_selection(load_test_catalog(flow, root), args)
+        except ConfigError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+
     print(f"checking: {scope}\n")
-    python_failed = _doctor_python_environment(root, flow)
+    python_failed = _doctor_python_environment(root, flow, selection)
 
     print(f"  {'tool':<10} {'binary':<12} {'status':<26} {'licenses':<14} source")
     missing_required = False
+    required_too_old: tuple[str, str] | None = None
     for tool in tools:
         cfg = simulators.get(tool)
         if not isinstance(cfg, dict):
@@ -1336,6 +1436,14 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         )
         if hook_error:
             print(f"  {'':<10} {hook_error}")
+        version = _tool_version_line(tool, found, env) if found and not launch.launcher else ""
+        if version:
+            floor = _below_min_version(cfg, version)
+            print(
+                f"  {'':<10} version: {version}{f'  <- below min_version {floor}' if floor else ''}"
+            )
+            if floor and tool == required:
+                required_too_old = (version, floor)
 
     print()
     if required is None:
@@ -1349,6 +1457,13 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         hint = license_hint(flow, simulators, required)
         if hint:
             print(f"Note: {hint}")
+        return 2
+    if required_too_old is not None:
+        version, floor = required_too_old
+        print(
+            f"Result: required tool `{required}` is too old: {version}; "
+            f"its registry table sets min_version {floor}"
+        )
         return 2
     print(f"Result: required tool `{required}` is available")
     return 0
