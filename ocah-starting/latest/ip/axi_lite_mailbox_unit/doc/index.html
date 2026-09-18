@@ -736,21 +736,695 @@ sequencing; single clock domain (no CDC required)</p></td>
 <div class="paragraph">
 <p>Each mailbox aperture occupies a dedicated 2KB (0x800) address space.
 The total address space is 0x20000 bytes supporting up to 64 mailbox
-apertures (32 pairs):</p>
+apertures (32 pairs). The SMC and SEP wrapper layouts are generated from
+their SystemRDL compositions:</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">Base + 0x00000 - 0x007FF: Outbound Mailbox 0
-Base + 0x00800 - 0x00FFF: Inbound Mailbox 0
-Base + 0x01000 - 0x017FF: Outbound Mailbox 1
-Base + 0x01800 - 0x01FFF: Inbound Mailbox 1
-Base + 0x02000 - 0x027FF: Outbound Mailbox 2
-Base + 0x02800 - 0x02FFF: Inbound Mailbox 2
-...
-Base + 0x1F000 - 0x1F7FF: Outbound Mailbox 31
-Base + 0x1F800 - 0x1FFFF: Inbound Mailbox 31</code></pre>
-</div>
-</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC Mailbox Aperture Layout</caption>
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Instances</th>
+<th class="tableblock halign-left valign-top">Stride</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x0 – BASE + 0x7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800 – BASE + 0xFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1000 – BASE + 0x17FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1800 – BASE + 0x1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2000 – BASE + 0x27FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2800 – BASE + 0x2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x3000 – BASE + 0x37FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x3800 – BASE + 0x3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4000 – BASE + 0x47FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4800 – BASE + 0x4FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x5000 – BASE + 0x57FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x5800 – BASE + 0x5FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x6000 – BASE + 0x67FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x6800 – BASE + 0x6FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x7000 – BASE + 0x77FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x7800 – BASE + 0x7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8000 – BASE + 0x87FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8800 – BASE + 0x8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x9000 – BASE + 0x97FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x9800 – BASE + 0x9FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xA000 – BASE + 0xA7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xA800 – BASE + 0xAFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xB000 – BASE + 0xB7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xB800 – BASE + 0xBFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xC000 – BASE + 0xC7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xC800 – BASE + 0xCFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xD000 – BASE + 0xD7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xD800 – BASE + 0xDFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xE000 – BASE + 0xE7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xE800 – BASE + 0xEFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xF000 – BASE + 0xF7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xF800 – BASE + 0xFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x10000 – BASE + 0x107FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x10800 – BASE + 0x10FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x11000 – BASE + 0x117FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x11800 – BASE + 0x11FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x12000 – BASE + 0x127FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x12800 – BASE + 0x12FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x13000 – BASE + 0x137FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_19</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x13800 – BASE + 0x13FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_19</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x14000 – BASE + 0x147FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x14800 – BASE + 0x14FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x15000 – BASE + 0x157FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x15800 – BASE + 0x15FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x16000 – BASE + 0x167FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x16800 – BASE + 0x16FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x17000 – BASE + 0x177FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x17800 – BASE + 0x17FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x18000 – BASE + 0x187FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x18800 – BASE + 0x18FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x19000 – BASE + 0x197FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x19800 – BASE + 0x19FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1A000 – BASE + 0x1A7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1A800 – BASE + 0x1AFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1B000 – BASE + 0x1B7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1B800 – BASE + 0x1BFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1C000 – BASE + 0x1C7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1C800 – BASE + 0x1CFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1D000 – BASE + 0x1D7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1D800 – BASE + 0x1DFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1E000 – BASE + 0x1E7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1E800 – BASE + 0x1EFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1F000 – BASE + 0x1F7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_31</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1F800 – BASE + 0x1FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_31</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SEP Mailbox Aperture Layout</caption>
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Instances</th>
+<th class="tableblock halign-left valign-top">Stride</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x0 – BASE + 0x7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800 – BASE + 0xFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1000 – BASE + 0x17FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1800 – BASE + 0x1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2000 – BASE + 0x27FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2800 – BASE + 0x2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x3000 – BASE + 0x37FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x3800 – BASE + 0x3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4000 – BASE + 0x47FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4800 – BASE + 0x4FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x5000 – BASE + 0x57FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x5800 – BASE + 0x5FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x6000 – BASE + 0x67FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x6800 – BASE + 0x6FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x7000 – BASE + 0x77FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_mailbox_7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x7800 – BASE + 0x7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_mailbox_7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+</tbody>
+</table>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>Address Space Characteristics:</strong></dt>
@@ -787,100 +1461,11 @@ same AXI4-Lite slave port.</p>
 <div class="paragraph">
 <p>Within each 2KB mailbox aperture, registers are organized as follows.
 Offsets are spaced by <code>DATA_WIDTH</code>/8, so they are 8 bytes apart in the
-64-bit configurations used today:</p>
+64-bit configurations used today. The generated detailed register map below is
+authoritative for offsets, widths, access, and field descriptions. The <code>CTRL</code>
+flush bits are pulses rather than stored state, so reads return zero with an
+OKAY response.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Register Address Map</caption>
-<colgroup>
-<col style="width: 15%;">
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 15%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Offset</th>
-<th class="tableblock halign-left valign-top">Register Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Access</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x00</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_DATA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write data to mailbox FIFO</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x08</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">READ_DATA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read data from mailbox FIFO</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO status (empty, full, threshold)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x18</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_FLAGS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Error flags (write/read errors), clear on read</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x20</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WIRQT</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write interrupt threshold</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x28</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RIRQT</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read interrupt threshold</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x30</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IRQS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt status (write-1-to-clear)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x38</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IRQEN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt enable control</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x40</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IRQP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt pending status</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x48</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CTRL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Control register (FIFO flush); the flush bits are
-not registered, so reads return 0 with OKAY</p></td>
-</tr>
-</tbody>
-</table>
 <div class="paragraph">
 <p>Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.</p>
 </div>
@@ -888,119 +1473,15 @@ not registered, so reads return 0 with OKAY</p></td>
 <div class="sect2">
 <h3 id="address-examples"><a class="anchor" href="#address-examples"></a><a class="link" href="#address-examples">5.3. Address Examples</a></h3>
 <div class="paragraph">
-<p>For a system with 2 mailbox pairs (NUM_MAILBOXES = 2) at base address
-0x10000000:</p>
+<p>For mailbox pair <code>N</code>, the outbound aperture begins at
+<code>BASE + N * 0x1000</code>; the inbound aperture begins 0x800 bytes later. A
+register address is the aperture base plus the generated register offset. For
+example, in pair zero, <code>READ_DATA</code> is at <code>BASE + 0x8</code> outbound and
+<code>BASE + 0x808</code> inbound.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. Address Map Example (2 Mailbox Pairs)</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 30%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Mailbox Pair</th>
-<th class="tableblock halign-left valign-top">Address Range</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000000 - 0x100007FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound Mailbox 0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000800 - 0x10000FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound Mailbox 0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10001000 - 0x100017FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound Mailbox 1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10001800 - 0x10001FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound Mailbox 1</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 <div class="sect2">
-<h3 id="specific-register-examples"><a class="anchor" href="#specific-register-examples"></a><a class="link" href="#specific-register-examples">5.4. Specific Register Examples:</a></h3>
-<table class="tableblock frame-all grid-all" style="width: 60%;">
-<caption class="title">Table 6. Register Address Example (Mailbox Pair 0)</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 40%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Address</th>
-<th class="tableblock halign-left valign-top">Register Name</th>
-<th class="tableblock halign-left valign-top">Mailbox Direction</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_DATA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000008</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">READ_DATA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000010</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000018</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_FLAGS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000800</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_DATA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000808</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">READ_DATA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000810</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000818</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_FLAGS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.5. Detailed Register Map</a></h3>
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.4. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">

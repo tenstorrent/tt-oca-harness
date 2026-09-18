@@ -1146,23 +1146,60 @@ output logic [NUM_INT_CT-1:0] ctm_dst_ack_o
 <div class="sectionbody">
 <div id="ctn-memory-map" class="paragraph">
 <p>The Cross Trigger Network combines the Cross Trigger Matrix (CTM) and Cross
-Trigger Port (CTP) registers into a unified address space:</p>
+Trigger Port (CTP) registers into a unified address space. Its generated map
+keeps the CTP instance count and stride with the allocated apertures:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>0x0000 - 0x01FF: Cross Trigger Matrix (CTM) - 512 bytes</p>
-</li>
-<li>
-<p>0x0200 - 0x02FF: Cross Trigger Ports (CTP[0-15]) - 16 bytes each</p>
-</li>
-</ul>
-</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Cross Trigger Network Address Map</caption>
+<colgroup>
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Instances</th>
+<th class="tableblock halign-left valign-top">Stride</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000001FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">208 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger Matrix Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration registers for the cross trigger matrix</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000200</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000002FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">252 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger Port Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration and status registers for the cross trigger port</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
-<p>The CTN itself has no register block of its own: it decodes the AXI-Lite CSR
-interface onto the CTM and CTP blocks it instantiates. The base addresses above
-come from <code>cross_trigger_network_pkg</code>, and the register content of each window
-is generated from the CTM and CTP SystemRDL sources.</p>
+<p>The CTN adds no CTN-specific registers; it decodes the AXI-Lite CSR interface
+onto the CTM and CTP blocks it instantiates. The composite SystemRDL top is the
+common source for these addresses and for the generated RTL constants.</p>
 </div>
 <div class="sect2">
 <h3 id="cross-trigger-matrix-registers"><a class="anchor" href="#cross-trigger-matrix-registers"></a><a class="link" href="#cross-trigger-matrix-registers">5.1. Cross Trigger Matrix Registers</a></h3>

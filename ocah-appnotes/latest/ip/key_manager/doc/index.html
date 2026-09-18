@@ -330,7 +330,7 @@ fault: the KM notifies the SEP host and halts (see
 </div>
 </div>
 <div class="sect1">
-<h2 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">2. Memory Map</a></h2>
+<h2 id="key-manager-memory-map"><a class="anchor" href="#key-manager-memory-map"></a><a class="link" href="#key-manager-memory-map">2. Memory Map</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.</p>
@@ -338,84 +338,223 @@ fault: the KM notifies the SEP host and halts (see
 <div class="paragraph">
 <p>Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.</p>
 </div>
+<div class="paragraph">
+<p>The OTP/eFuse window is the exception: hardware preserves its lower 12 address
+bits and replaces the upper bits with the integration parameter
+<code>OTP_EFUSE_REMAP_BASE</code> before forwarding the transaction to SEP.</p>
+</div>
 <table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Key Manager CPU Memory Map</caption>
 <colgroup>
-<col style="width: 32%;">
-<col style="width: 18%;">
-<col style="width: 50%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.667%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Address Range</th>
-<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
 <th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_0000</code> – <code>0x0000_3FFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ROM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16 KB boot ROM (read-only, parity-protected).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00003FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager boot ROM</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_4000</code> – <code>0x0000_7FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00004000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00007FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Unmapped; returns a decode error.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_8000</code> – <code>0x0000_FFFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 KB data SRAM (parity-protected, optional scrambling, region-based write-lock).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00008000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager data and executable SRAM</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_0000</code> – <code>0x0001_001F</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KM-side mailbox read/write and control registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00010000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001001F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Mailbox KM Side</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_1000</code> – <code>0x0001_1FFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP/eFuse</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite pass-through to SEP eFuse controller. Hardware remaps KM-local addresses to <code>OTP_EFUSE_REMAP_BASE</code>, which needs the whole page.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00010020</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00010FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4064 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4064 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_2000</code> – <code>0x0001_3FFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KPV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key and Policy Vault register and key storage region (8 KB, 8 KB-aligned).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00011000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000113FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">otp_efuse_map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse shadow-register pass-through.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_4000</code> – <code>0x0001_47FF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KMCSR</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Control and Status Registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00011400</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000114FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">otp_efuse_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse command and status pass-through.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_5000</code> – <code>0x0001_500F</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00011500</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000115FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">116 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">otp_efuse_mmr</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse security-token pass-through.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00011600</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00011FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2560 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2560 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00012000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00013FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4360 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key and Policy Vault (KM Port)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00014000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000147FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1216 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Control and Status Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status registers for the Key Manager subsystem</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00014800</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00014FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00015000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001500F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DRBG Sampler</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG random data, configuration, and status registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG random data interface and configuration/status registers</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_8000</code> – <code>0x0001_807F</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for OTBN key storage.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00015010</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00017FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12272 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12272 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_9000</code> – <code>0x0001_907F</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for AES key storage.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00018000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001807F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">100 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN Wrapper Key Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key storage registers for the OTBN sideload interface. Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_A000</code> – <code>0x0001_A07F</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for KMAC key storage.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00018080</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00018FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_B000</code> – <code>0x0001_B07F</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for HMAC key storage.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00019000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001907F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">68 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES Wrapper Key Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key storage registers for the AES sideload interface. Written by Key Manager CPU, drives keymgr_key_i on the OT AES core.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_C000</code> – <code>0x0001_C7FF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ABR</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for Adams Bridge key storage.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00019080</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00019FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001A000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001A07F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">68 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC Wrapper Key Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key storage registers for the KMAC sideload interface. Written by Key Manager CPU, drives keymgr_key_i on the OT KMAC core.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001A080</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001AFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001B000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001B07F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">68 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC Wrapper Key Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key storage registers for the HMAC sideload interface. Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001B080</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001BFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001C000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001C7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1068 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge Key Sideload Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge. Contains four dual-share secret-seed inputs and one shared-key output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001C800</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001CFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 </tr>
 </tbody>
 </table>
@@ -738,130 +877,10 @@ stored in the KM ROM. Other KDFs could also be implemented in firmware
 loaded into the instruction/data SRAM.</p>
 </div>
 <div class="paragraph">
-<p>The 32-bit memory map of the KM subsystem is shown below. KM only
-consumes the bottom 4MB of address space leaving the remaining space
-unallocated.</p>
+<p>The KM CPU map is generated once in <a href="#key-manager-memory-map">Memory Map</a>. KM uses only
+the low portion of its 32-bit address space; every address outside the listed
+windows is unallocated and returns a decode error.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 22%;">
-<col style="width: 22%;">
-<col style="width: 8%;">
-<col style="width: 14%;">
-<col style="width: 34%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Base Address</th>
-<th class="tableblock halign-left valign-top">End Address</th>
-<th class="tableblock halign-left valign-top">Size</th>
-<th class="tableblock halign-left valign-top">Unit</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_0000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_3FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16 kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KM ROM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Program ROM</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_4000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_7FFF</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em> (decode error)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_8000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KM SRAM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Prgm/Data SRAM</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_0000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_001F</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox Message</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_1000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_1FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP/eFuse</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse pass-through. KM-local addresses remapped to SEP the value of <code>OTP_EFUSE_REMAP_BASE</code>.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_2000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_3FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KPV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key and Policy Vault</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_4000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_47FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KMCSR</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration, Status, Interrupt
-and Interrupt Mask Registers</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_5000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_500F</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG Sampling Interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_8000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_807F</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Public Key Cryptography
-Accelerator key storage</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_9000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_907F</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AES block cipher key storage</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_A000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_A07F</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC key storage</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_B000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_B07F</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC key storage</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_C000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_C7FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ABR key storage</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_D000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0xFFFF_FFFF</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
-</tr>
-</tbody>
-</table>
 <div class="paragraph">
 <p>Separating the key and data domains explicitly as described above
 increases security as it makes it more difficult for an adversary to
@@ -2581,7 +2600,7 @@ chaining state (<code>rs1</code>) and the next input unit (<code>rs2</code>) —
 updated chaining state to <code>rd</code>.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. CRC Accelerator Instructions</caption>
+<caption class="title">Table 2. CRC Accelerator Instructions</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 17%;">
@@ -3122,7 +3141,7 @@ zero within the message or payload shown. In the message layouts, <code>n</code>
 <div class="title">Figure 1. Command Message</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Message Field Description</caption>
+<caption class="title">Table 3. Message Field Description</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 78%;">
@@ -3164,7 +3183,7 @@ zero within the message or payload shown. In the message layouts, <code>n</code>
 <p>The rest of this section describes all valid commands and their payloads.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. KM Command Summary</caption>
+<caption class="title">Table 4. KM Command Summary</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 40%;">
@@ -3380,7 +3399,7 @@ and a return argument containing the KM status information.</p>
 <div class="title">Figure 5. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. KM_STATUS Payload</caption>
+<caption class="title">Table 5. KM_STATUS Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3556,7 +3575,7 @@ This ordering is required because the assembly wipes the C stack.</p>
 <div class="title">Figure 6. CMD_SRAM_LOAD_EXEC Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. CMD_SRAM_LOAD_EXEC Payload Fields</caption>
+<caption class="title">Table 6. CMD_SRAM_LOAD_EXEC Payload Fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3590,7 +3609,7 @@ This ordering is required because the assembly wipes the C stack.</p>
 mailbox frame with the following structure:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. CMD_SRAM_LOAD_EXEC Image Frame (sent by SEP after confirmation)</caption>
+<caption class="title">Table 7. CMD_SRAM_LOAD_EXEC Image Frame (sent by SEP after confirmation)</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -3687,7 +3706,7 @@ is responsible for sending its own ready message to the SEP.</p>
 <div class="title">Figure 7. Command Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. DEST_VALID Payload</caption>
+<caption class="title">Table 8. DEST_VALID Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3845,7 +3864,7 @@ destination crypto engines.</p>
 <div class="title">Figure 11. Command Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. DEST_ENGINE Payload</caption>
+<caption class="title">Table 9. DEST_ENGINE Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3927,7 +3946,7 @@ and a bitfield of the crypto engines to which the key was transferred.</p>
 <div class="title">Figure 12. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. DEST_ENGINE Payload</caption>
+<caption class="title">Table 10. DEST_ENGINE Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4007,7 +4026,7 @@ number of engines may be selected.</p>
 <div class="title">Figure 13. Command Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. DEST_ENGINE Payload</caption>
+<caption class="title">Table 11. DEST_ENGINE Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4088,7 +4107,7 @@ engines that were purged.</p>
 <div class="title">Figure 14. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. DEST_ENGINE Payload</caption>
+<caption class="title">Table 12. DEST_ENGINE Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4169,7 +4188,7 @@ followed by the key material itself.</p>
 <div class="title">Figure 15. Command Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. DEST_VALID Payload</caption>
+<caption class="title">Table 13. DEST_VALID Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4243,7 +4262,7 @@ The return argument is the fixed header-word index of the offending field
 <code>KEY_DATA</code> position.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 13. CMD_KEY_LOAD Validation Order</caption>
+<caption class="title">Table 14. CMD_KEY_LOAD Validation Order</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 55%;">
@@ -4357,7 +4376,7 @@ key-management command.</p>
 <div class="title">Figure 17. Command Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 14. DEST_VALID Payload</caption>
+<caption class="title">Table 15. DEST_VALID Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4477,7 +4496,7 @@ check precedes any inspection of the argument.</p>
 <div class="title">Figure 19. Command Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 15. LOCK_BITS Field Encoding</caption>
+<caption class="title">Table 16. LOCK_BITS Field Encoding</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 20%;">
@@ -4584,7 +4603,7 @@ sequence numbers of command messages. There is also no direct
 relationship between command IDs and response IDs.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. KM Response Summary</caption>
+<caption class="title">Table 17. KM Response Summary</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 40%;">
@@ -4648,7 +4667,7 @@ signed 8-bit return code, and an optional argument.</p>
 <div class="title">Figure 22. Response Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. Return Codes</caption>
+<caption class="title">Table 18. Return Codes</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 18%;">
@@ -4787,7 +4806,7 @@ full payload word. Only <code>[7:0]</code> is meaningful; because every code is 
 <div class="title">Figure 23. Response Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. Fault Codes</caption>
+<caption class="title">Table 19. Fault Codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -4853,7 +4872,7 @@ full payload word. Only <code>[7:0]</code> is meaningful; because every code is 
 <div class="title">Figure 24. Response Payload</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Fault Codes</caption>
+<caption class="title">Table 20. Fault Codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -6800,7 +6819,7 @@ PicoRV32 in-memory byte representation; only the surrounding counter and
 output-length fields are big-endian.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. KDF Fixed Input Layout</caption>
+<caption class="title">Table 21. KDF Fixed Input Layout</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -6942,7 +6961,7 @@ and engine behavior.</p>
 <p>Compute the CRC-8/ROHC for a given block of data.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. CRC-8/ROHC Parameters</caption>
+<caption class="title">Table 22. CRC-8/ROHC Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -6995,7 +7014,7 @@ from least significant byte to most significant byte.</p>
 <p>Compute the CRC-32C (Castagnoli) for a given block of data.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. CRC-32C Parameters</caption>
+<caption class="title">Table 23. CRC-32C Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">

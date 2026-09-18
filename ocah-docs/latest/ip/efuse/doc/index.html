@@ -1508,48 +1508,146 @@ control rules</p></td>
 <div class="sect2">
 <h3 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">4.1. Overview</a></h3>
 <div class="paragraph">
-<p>The eFuse IP address space is divided into four regions. Base addresses and
-sizes are set by the instantiating subsystem through module parameters; the
-values below are defaults. The MMR region is only present when the instance
-is configured with a lifecycle controller (<code>HAS_LC_STATE=1</code>).</p>
+<p>eFuse is not one universally placed address space. SEP, SMC, and the Key
+Manager pass-through expose different subsets and placements. The generated
+tables below compose those integration-specific views from their canonical
+SystemRDL roots.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Address Space Overview</caption>
+<caption class="title">Table 2. SEP eFuse Placement</caption>
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 23%;">
-<col style="width: 52%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.667%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Default Address Range</th>
-<th class="tableblock halign-left valign-top">Register Block</th>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
 <th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000-0x0FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10930000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109303FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Shadow Registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cached eFuse contents; size parameterized by <code>EFUSE_MAP_REG_MAP_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cached eFuse shadow registers.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000-0x1FFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MMR Registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Security tokens; present only when <code>HAS_LC_STATE=1</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2000-0x2FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10930400</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109304FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Control CSR</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command and status registers; size parameterized by <code>EFUSE_CTRL_REG_MAP_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command and status registers.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x3000-&#8230;&#8203;</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SHIM Control CSR</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Foundry-specific timing and initialization; outside harness</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10930500</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109305FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">116 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MMR Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse security-token registers.</p></td>
 </tr>
 </tbody>
 </table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SMC eFuse Placement</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x7000 – BASE + 0x7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address map for efuse shadow registers providing access to various chip configuration and ID fields</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8000 – BASE + 0x8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Control CSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command and status registers.</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Key Manager eFuse Pass-Through</caption>
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00011000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000113FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse shadow-register pass-through.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00011400</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000114FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Control CSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse command and status pass-through.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00011500</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000115FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">116 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MMR Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse security-token pass-through.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>At the IP boundary, each region&#8217;s base address and aperture size are
+integration parameters; the generated tables show the selected integration
+values. The MMR region exists only when the eFuse instance includes lifecycle
+state (<code>HAS_LC_STATE=1</code>).</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="shadow-registers"><a class="anchor" href="#shadow-registers"></a><a class="link" href="#shadow-registers">4.2. Shadow Registers</a></h3>
@@ -1873,7 +1971,9 @@ and verification operations on the eFuse array.</p>
 <h3 id="shim-control-registers"><a class="anchor" href="#shim-control-registers"></a><a class="link" href="#shim-control-registers">4.5. SHIM Control Registers</a></h3>
 <div class="paragraph">
 <p>The SHIM Control CSR provides foundry-specific configuration registers for
-timing adaptation and eFuse bank initialization.</p>
+timing adaptation and eFuse bank initialization. Its placement is
+adopter-defined within the adopter-owned SMC external aperture; it therefore
+does not appear at a fixed address in the generated OCAH map.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
