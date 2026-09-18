@@ -206,7 +206,6 @@ nixos-shell | nix-fmt | nix-fmt-check)
   ;;
 esac
 
-
 # Open a shell in the Nix Container - even on a nix-enabled host
 nixos_shell() {
   local NIX_CONFIG="experimental-features = nix-command flakes"
