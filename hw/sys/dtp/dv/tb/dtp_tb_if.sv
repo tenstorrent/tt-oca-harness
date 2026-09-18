@@ -28,6 +28,12 @@ interface dtp_tb_if;
   logic por_rst_n;
   logic sys_rst_n;
 
+  // DFT controls of the DUT: test_en_i (scan-enable for the clock gaters)
+  // and scan_rst_ni (reset-synchronizer bypass, active-low), both idle in
+  // functional mode; a DFT-mode scenario drives them here.
+  logic test_en    = 1'b0;
+  logic scan_rst_n = 1'b1;
+
   // Reset-assertion counters (driven by tb_top): the scoreboard predictors
   // re-baseline the CSR shadow and the TAP instruction on them.
   logic [31:0] sys_rst_assert_count;

@@ -76,7 +76,7 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
     expected_onehot = 16'h1 << int'(expected);
     m_cycles++;
 
-    if (!is_onehot(tb_vif.tap_state) || !is_valid_tap_state(tb_vif.tap_state)) begin
+    if (!dtp_tap_state_is_valid(tb_vif.tap_state)) begin
       m_mismatches++;
       `uvm_error(
           "sanity_fsm_visit_chk",

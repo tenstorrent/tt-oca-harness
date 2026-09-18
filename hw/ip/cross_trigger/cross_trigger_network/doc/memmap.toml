@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+version = 1
+
+[[views]]
+name = "cross-trigger-network"
+title = "Cross Trigger Network Address Map"
+include_all = true
+columns = ["base", "end", "size", "occupied_size", "label", "instances", "stride", "description"]

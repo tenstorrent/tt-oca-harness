@@ -17,7 +17,7 @@ from collections.abc import Iterable
 import cocotb
 from env.dtp_jtag_item import DtpJtagItem
 from env.dtp_scan_model import DtpScanModel
-from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor
+from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor, DtpTapShiftMonitor
 from env.dtp_tap_device import DTP_BSR_MODEL_LEN
 from env.dtp_tb_if import JTAG_SIGNAL_MAP
 from env.dtp_types import (
@@ -61,10 +61,15 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
     # Optional shared-VIP checker; when attached, TAP resets and every raw TMS
     # step also emit reference-model named evidence.
     tap_checker: OcahJtagChecker | None = None
-    # Optional passive scan monitor; when started, load_ir/shift_dr record the
-    # sequence's own scan intent so finalize can cross-check the pin-level
-    # reconstruction (CHK-SCAN-COUNT / CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN).
+    # Optional passive scan monitors; when started, load_ir/shift_dr record the
+    # sequence's own scan intent so finalize can cross-check the Shift-x
+    # episodes of the DUT's exported TAP state against it (CHK-SCAN-COUNT /
+    # CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN); the pin-level reconstruction stays
+    # available to the scenarios.
     family_monitor: OcahJtagMasterMonitor | None = None
+    shift_monitor: DtpTapShiftMonitor | None = None
+    # The scan-control window most recently opened by this sequence.
+    _last_window: DtpScanControlWindowMonitor | None = None
     _family_negative: bool = False
 
     def attach_tap_checker(self, checker: OcahJtagChecker) -> None:
@@ -84,9 +89,10 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         then records named ``CHK-*`` evidence instead of bare asserts, and
         ``finalize_family_checker()`` rejects a pass with zero checks or a
         missing required ID. With ``use_monitor`` a passive pin-level scan
-        monitor independently reconstructs every IR/DR scan for cross-checks;
-        disable it only for sequences whose scans go through driver-level TDR
-        ops the sequence cannot count.
+        monitor reconstructs every IR/DR scan and a TAP shift monitor counts
+        the DUT's Shift-x episodes for the cross-checks; disable them only for
+        sequences whose scans go through driver-level TDR ops the sequence
+        cannot count.
 
         DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 is the documented negative-
         validation hook: every integer family expectation is corrupted so the
@@ -111,6 +117,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
                 signal_map=JTAG_SIGNAL_MAP,
             )
             await self.family_monitor.start()
+            self.shift_monitor = DtpTapShiftMonitor(self.cfg.tb_if).start()
         return checker
 
     def family_check(
@@ -133,34 +140,54 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         )
 
     async def finalize_family_checker(self) -> None:
-        """Cross-check monitored scans against sequence intent and finalize."""
+        """Cross-check the DUT's Shift-x episodes against sequence intent and finalize.
+
+        The DUT exports its TAP state on ``jtag_ptap_state_o``; the shift
+        monitor turns every Shift-IR / Shift-DR visit into an episode whose
+        length is the scan the DUT performed. As many episodes as scans issued,
+        each as long as the width driven, is the scan evidence.
+        """
         checker = self.tap_checker
         assert checker is not None, "family checker was never attached"
         if self.family_monitor is not None:
             await self.family_monitor.stop()
-            ir_items = self.family_monitor.get_ir_transactions()
-            dr_items = self.family_monitor.get_dr_transactions()
+        if self.shift_monitor is not None:
+            self.shift_monitor.stop()
+            ir_lens = self.shift_monitor.ir_lens
+            dr_lens = self.shift_monitor.dr_lens
             checker.expect_equal(
                 "CHK-SCAN-COUNT",
-                (len(ir_items), len(dr_items)),
+                (len(ir_lens), len(dr_lens)),
                 (len(self._expected_ir_widths), len(self._expected_dr_widths)),
-                context="monitored (ir, dr) scans vs sequence-issued scans",
+                context="DUT Shift episodes (ir, dr) vs sequence-issued scans",
             )
-            if len(ir_items) == len(self._expected_ir_widths) and len(dr_items) == len(
+            if len(ir_lens) == len(self._expected_ir_widths) and len(dr_lens) == len(
                 self._expected_dr_widths
             ):
-                for idx, (item, width) in enumerate(
-                    zip(ir_items, self._expected_ir_widths), start=1
+                for idx, (length, width) in enumerate(
+                    zip(ir_lens, self._expected_ir_widths), start=1
                 ):
-                    checker.check_scan_length(item, expected_width=width, context=f"ir_scan#{idx}")
-                for idx, (item, width) in enumerate(
-                    zip(dr_items, self._expected_dr_widths), start=1
+                    self.family_check(
+                        "CHK-SCAN-IR-LEN",
+                        f"ir_scan#{idx}",
+                        length,
+                        width,
+                        context="source=jtag_ptap_state_o",
+                    )
+                for idx, (length, width) in enumerate(
+                    zip(dr_lens, self._expected_dr_widths), start=1
                 ):
-                    checker.check_scan_length(item, expected_width=width, context=f"dr_scan#{idx}")
+                    self.family_check(
+                        "CHK-SCAN-DR-LEN",
+                        f"dr_scan#{idx}",
+                        length,
+                        width,
+                        context="source=jtag_ptap_state_o",
+                    )
             checker.expect_true(
                 "CHK-NONVAC",
-                len(ir_items) > 0 and len(dr_items) > 0,
-                context=f"ir_scans={len(ir_items)} dr_scans={len(dr_items)}",
+                len(ir_lens) > 0 and len(dr_lens) > 0,
+                context=f"DUT Shift-IR episodes={len(ir_lens)} Shift-DR episodes={len(dr_lens)}",
             )
         checker.finalize()
 
@@ -480,7 +507,24 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
     # --- scan-control windows --------------------------------------------------
     def start_scan_window(self, signals: Iterable[str]) -> DtpScanControlWindowMonitor:
         """Begin sampling named scan observables on every rising TCK edge."""
-        return DtpScanControlWindowMonitor(self.cfg.tb_if, signals).start()
+        self._last_window = DtpScanControlWindowMonitor(self.cfg.tb_if, signals).start()
+        return self._last_window
+
+    def check_window_shifted(self, check_id: str, monitor, *, context: str) -> None:
+        """Record that the DUT's TAP shifted inside the closed window.
+
+        Its exported state visited Shift-DR or Shift-IR, so the counts judged
+        next were taken across a scan the DUT performed; a TAP held in reset or
+        a dead state output records zero cycles here and fails.
+        """
+        cycles = monitor.dut_shift_cycles
+        self.family_check(
+            check_id,
+            "window DUT shift cycles nonvacuous",
+            int(cycles > 0),
+            1,
+            context=f"{context} dut_shift_cycles={cycles}",
+        )
 
     @staticmethod
     def scan_ctrl_signals(prefix: str) -> tuple[str, ...]:
@@ -547,8 +591,9 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         *,
         context: str,
     ) -> None:
-        """Record that a live window saw every counted observable stay low."""
-        self.family_check(check_id, "window edges nonvacuous", int(edges > 0), 1, context=context)
+        """Record that a window the DUT shifted through saw every counted observable stay low."""
+        assert self._last_window is not None, "no scan window was opened"
+        self.check_window_shifted(check_id, self._last_window, context=f"{context} edges={edges}")
         for name, count in counts.items():
             self.family_check(check_id, f"{name} quiet", count, 0, context=context)
 

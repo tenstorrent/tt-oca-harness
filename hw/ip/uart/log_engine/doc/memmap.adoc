@@ -12,45 +12,6 @@ accessible via a 32-bit AXI4-Lite interface and follow standard
 read/write access patterns. The register map is organized into logical
 groups for ease of use and programming.
 
-=== Register Address Map
-
-.Register Address Map
-[width="100%",cols="10%,20%,10%,60%",options="header",]
-|=====================================================================================
-|Address |Name |Access |Description
-|0x00 |CTRL |RW |Control Register - Global enable/disable
-
-|0x04 |LOG_REGION_SIZE |RW |Log Region Size Register - Memory region
-size in bytes
-
-|0x08 |LOG_REGION_ADDR (Low) |RW |Log Region Address Register (64-bit, low
-word)
-
-|0x0C |LOG_REGION_ADDR (High) |RW |Log Region Address Register (high word,
-bits [55:32] of the address; register bits [63:56] are reserved and read as 0)
-
-|0x10 |LOG_WRITE_ADDR |RW |Log Write Address Register - UART target
-address
-
-|0x14 |INTR_STATUS |RW |Interrupt Status Register - Error status
-(write-1-to-clear)
-
-|0x18 |INTR_ENABLE |RW |Interrupt Enable Register - Error interrupt
-enables
-
-|0x1C |INTR_TEST |W |Interrupt Test Register - Force interrupts for
-testing
-
-|0x40 |LOG_CTRL[0] |RW |Log Control Register 0 - Entry 0 length control
-
-|0x44 |LOG_CTRL[1] |RW |Log Control Register 1 - Entry 1 length control
-
-|... |... |... |...
-
-|0x7C |LOG_CTRL[15] |RW |Log Control Register 15 - Entry 15 length
-control
-|=====================================================================================
-
 === Detailed Register Map
 
 ifdef::backend-html5[]

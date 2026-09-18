@@ -22,17 +22,13 @@ chiplet-global base programmed in `SEP_GLOBAL_BASE_ADDR`; SEP CPU
 software uses either direct internal addresses (`0x1000_0000`,
 `0x1080_0000`, and so on) or the local alias view described below.
 
-[cols="<20%,<20%,<10%,<15%,<35%",options="header",]
-|=======================================================================
-|Base Address |End Address |Size |Unit |Description
-|0x0000_0000 |0x1000_0000 |256 MB |External |External to chiplet, but not in SMU (SMC, DTP, etc).
-|0x1000_0000 |0x2000_0000 |256 MB |SEP Local |SEP Local resources (DMA, Crypto, etc)
-|0x2000_0000 |0x4000_0000 |512 MB |SEP External |Reserved for adopter extension IP
-|0x4000_0000 |0x8000_0000 |1 GB |SMC |SMC Resources
-|0x8000_0000 |0xC000_0000 |1 GB |SMU |SMU Resources (DTP, etc)
-|0xC000_0000 |0xD000_0000 |256 MB |SEP CPU Resources |EL2 Veer Resources (DCCM, ICCM, PIC)
-|0xD000_0000 |0x1_0000_0000 |768 MB |SEP Local Alias |Corresponds to 0x1000_0000 - 0x4000_0000
-|=======================================================================
+ifdef::backend-html5[]
+include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-cpu-logical]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[tag=sep-cpu-logical]
+endif::backend-pdf[]
 
 The `SEP Local Alias` row is an alternate CPU-side name for the same
 hardware listed in the `SEP Local` and `SEP External` rows. For
@@ -55,15 +51,13 @@ chiplet-global SEP aperture configured by `SEP_GLOBAL_BASE_ADDR` /
 `SEP_REGION_SIZE` controls the SMU xbar and inbound global-to-local
 remap.
 
-[cols="<20%,<20%,<10%,<15%,<35%",options="header",]
-|=======================================================================
-|Base Address |End Address |Size |Unit |Description
-|0xC000_0000 |0xC003_FFFF |256 kB |ICCM |Tightly Coupled Instruction SRAM
-|0xC004_0000 |0xC005_FFFF |128 kB |DCCM |Tightly Coupled Data SRAM
-|0xC006_0000 |0xC007_FFFF | | |Reserved
-|0xC008_0000 |0xC008_7FFF |32 kB |PIC |Interrupt controller for El2 CPU
-|0xC008_8000 |0xCFFF_FFFF | | |Reserved
-|=======================================================================
+ifdef::backend-html5[]
+include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-cpu-resources]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[tag=sep-cpu-resources]
+endif::backend-pdf[]
 
 The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 
@@ -89,42 +83,13 @@ Integrator Guide.
 The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
 single-beat transactions only; see {sep-crypto-access-ref}.
 
-[width="100%",cols="<20%,<20%,<10%,<15%,<35%",options="header",]
-|=======================================================================
-|Base Address |End Address |Size |Unit |Description
-|0x1000_0000 |0x1000_FFFF |64 kB |SRAM |Scratch SRAM
-|0x1001_0000 |0x1003_FFFF |192 kB |_RSV_ |Reserved Scratch SRAM expansion
-|0x1004_0000 |0x1004_FFFF |64 kB |ROM |BL0 immutable instruction memory
-|0x1005_0000 |0x107F_FFFF |7,872 KB |_RSV_ |reserved
-|0x1080_0000 |0x1080_0FFF |4 kB |DMA |DMA CSR
-|0x1080_1000 |0x1080_1FFF |4 kB |WDT |Watchdog Timer
-|0x1080_2000 |0x1080_2FFF |4 kB |SRB |Dual Scratch Register Banks
-|0x1080_3000 |0x1080_3007 |8 B |RST_CTRL |SEP Reset Controller (software reset for KM, the crypto accelerators and the TRNG)
-|0x1080_3008 |0x108F_FFFF |1,043 kB |_RSV_ |reserved
-|0x1090_0000 |0x1090_FFFF |64kB |OTBN |Public Key processor memory and CSR
-|0x1091_0000 |0x1091_0FFF |4 kB |AES |Block Cipher
-|0x1091_1000 |0x1091_2FFF |8 kB |HMAC-SHA2 |Hash / MAC
-|0x1091_3000 |0x1091_3FFF |4 kB |KMAC-SHA3 |Hash / MAC
-|0x1091_4000 |0x1091_4FFF |4 kB |_RSV_ |Reserved
-|0x1091_5000 |0x1091_5FFF |4 kB |DRBG |Deterministic Random Bit Generator
-|0x1091_6000 |0x1091_6FFF |4 kB |ESRC |Entropy Source
-|0x1091_7000 |0x1091_7FFF |4 kB |TRNG |External TRNG CSR passthrough
-|0x1091_8000 |0x1091_FFFF |32 kB |LC |Life Cycle Controller
-|0x1092_0000 |0x1092_0FFF |4 kB |KM |Key Manager
-|0x1092_1000 |0x1092_FFFF | |_RSV_ |Reserved
-|0x1093_0000 |0x1093_7FFF |32 kB |OTP |Fuse Control and Shadow Memory
-|0x1093_8000 |0x1093_FFFF |32 kB |_RSV_ |Reserved
-|0x1094_0000 |0x1094_FFFF |64 kB |ABR |Adams Bridge post-quantum accelerator (ML-DSA-87 / ML-KEM-1024) CSR aperture
-|0x1095_0000 |0x1095_FFFF |64 kB |EPOOL |Entropy Pool FIFO (read-only drain; writes return SLVERR). Filled by native EDN.
-|0x1096_0000 |0x109F_FFFF | |_RSV_ |Reserved
-|0x10A0_0000 |0x10A3_FFFF |256 kB |SYS |System Bus I/F
-|0x10A4_0000 |0x10AF_FFFF | |_RSV_ |Reserved
-|0x10B0_0000 |0x10BF_FFFF |1 MB |IO |External IO Peripherals Bridge: UART, GPIO etc.
-|0x1100_0000 |0x117F_FFFF |8 MB |AP Remap Region |Write to this region to be routed to the AP remapper
-|0x1180_0000 |0x11FF_FFFF |8 MB |STEE Remap Region |Write to this region to be routed to the STEE remapper
-|0x1200_0000 |0x1FFF_FFFF |20 MB |_RSV_ |Reserved
-|0x2000_0000 |0x4000_0000 |512 MB |SEP External Region |Reserved for adopter extension IP
-|=======================================================================
+ifdef::backend-html5[]
+include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-components]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[tag=sep-components]
+endif::backend-pdf[]
 
 [[sep-detailed-register-map]]
 == Detailed Register Map
