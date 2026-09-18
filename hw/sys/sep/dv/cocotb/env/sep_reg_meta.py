@@ -1031,6 +1031,52 @@ def _selftest() -> int:
     if ot_reg_map_size("entropy_source") != 0x17C:
         failures.append(f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
 
+    # Pin the access shapes, not just the OFFSET join. The join counts stay
+    # green if the IP-XACT renames its `access` or `resets` child: a missing
+    # access reads as read-write and a missing resets makes every read-only
+    # look hardware-driven, so a sweep filtering on either one silently
+    # filters the wrong set. Without these four the next generator change can
+    # walk the ten identity rows back into a reset compare against a DEFAULT
+    # the RDL never declared, or drop the 154 read-only rows that carry a real
+    # one.
+    shapes = iter_register_walk().regs
+    hw_driven = sorted(f"{i.block}.{i.name}" for i in shapes if i.access.hw_driven)
+    expect_hw_driven = [
+        "ABR.MLDSA_NAME_0_",
+        "ABR.MLDSA_NAME_1_",
+        "ABR.MLDSA_VERSION_0_",
+        "ABR.MLDSA_VERSION_1_",
+        "ABR.MLKEM_NAME_0_",
+        "ABR.MLKEM_NAME_1_",
+        "ABR.MLKEM_VERSION_0_",
+        "ABR.MLKEM_VERSION_1_",
+        "ENTROPY_POOL.DATA",
+        "ENTROPY_POOL.IRQ_CAUSE",
+    ]
+    if hw_driven != expect_hw_driven:
+        extra = sorted(set(hw_driven) - set(expect_hw_driven))
+        absent = sorted(set(expect_hw_driven) - set(hw_driven))
+        failures.append(
+            f"hardware-driven registers: {len(hw_driven)} found, "
+            f"{len(expect_hw_driven)} expected; {len(extra)} unexpected "
+            f"{extra[:5]}, {len(absent)} absent {absent[:5]}; the IP-XACT reset "
+            "elements moved and a reset sweep would skip or admit the wrong rows"
+        )
+    write_only = [i for i in shapes if i.access.write_only]
+    if len(write_only) != 554:
+        failures.append(f"write-only registers {len(write_only)} != 554")
+    nonzero_wo = sorted(f"{i.block}.{i.name}" for i in write_only if i.reset != 0)
+    if nonzero_wo != ["ABR.MLDSA_MSG_STROBE", "AES.TRIGGER"]:
+        failures.append(f"write-only registers with a non-zero DEFAULT {nonzero_wo}")
+    # Read-only WITH a declared reset is the shape that must stay in the reset
+    # sweep. These two are the witnesses at either end: a CPU identity register
+    # and one of the sixteen ABR verify-result words.
+    readable = {f"{i.block}.{i.name}": i.access for i in shapes}
+    for name in ("SEP_CPU_CTRL.SEP_VERSION_ID", "ABR.MLDSA_VERIFY_RES_0_"):
+        shape = readable.get(name)
+        if shape is None or shape.access != frozenset({"read-only"}) or not shape.declared_reset:
+            failures.append(f"{name} is no longer read-only with a declared reset: {shape}")
+
     if failures:
         for line in failures:
             print(f"FAIL {line}")

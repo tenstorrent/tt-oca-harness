@@ -38,6 +38,7 @@ from env.sep_spec_tables import AXI_BUS_BYTES
 from sep_reg_meta import (
     INBOUND_FILTER_CTRL_0,
     KM_MAILBOX_SEP,
+    RegAccess,
     RegInfo,
     iter_register_walk,
     reg_hw_updating,
@@ -840,6 +841,32 @@ def _selftest() -> None:
     assert side_effect_reason(start) is None
     assert write_reason(scratch) is None
     assert write_reason(outbound) == "side-effect: outbound filter drop"
+
+    # The three access-shaped arms. Every RegInfo above carries the default
+    # read-write storage shape, so without these the arms are never taken here
+    # and a change to them shows up only in a simulation.
+    def shaped(access: str, declared_reset: bool) -> RegInfo:
+        return RegInfo(
+            block="ABR",
+            name="SHAPE_PROBE",
+            addr=0,
+            reset=0xF,
+            mask=0xFFFF_FFFF,
+            mask_all=0xFFFF_FFFF,
+            access=RegAccess(frozenset({access}), declared_reset),
+        )
+
+    write_only = shaped("write-only", True)
+    hw_driven = shaped("read-only", False)
+    read_only = shaped("read-only", True)
+    assert reset_reason(write_only) == "sw=w; a read does not return storage"
+    assert reset_reason(hw_driven) == (
+        "sw=r with no declared reset; the export DEFAULT is not a POR value"
+    )
+    # Read-only WITH a reset stays a reset row, and only the touch refuses it.
+    assert reset_reason(read_only) is None
+    assert touch_reason(read_only) == "sw=r; a write does not reach storage"
+    assert touch_reason(scratch) is None
 
     rng = SepSeededRng(1)
     v = touch_write_value(0x11, 0xF, rng)
