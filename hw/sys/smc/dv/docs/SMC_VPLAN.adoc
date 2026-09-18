@@ -2012,7 +2012,7 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 |`CHK-PERIPHERAL-INSTANCE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
 
-*Pass Criteria*: every probed block matches its non-zero generated reset, every probed instance returns its own co-resident pattern, the PVT access drives the external port, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. The DTP window and the bus error units are recorded as not closed. Enrolled in no scheduled group.
+*Pass Criteria*: every probed block matches its non-zero generated reset, every probed instance returns its own co-resident pattern, the PVT access drives the external port, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. The DTP window and the bus error units are recorded as not closed. Enrolled in: `all`, `hosted`.
 
 '''''
 
