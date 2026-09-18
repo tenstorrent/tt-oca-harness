@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs-architecture]]
-===== Architecture
+== Architecture
 
 The System Timer OCTS (Open Chiplet Time Synchronization) IP provides
 precise time coordination across distributed multi-chiplet systems. The
@@ -22,7 +22,7 @@ specifications, version , using credit-based synchronization for
 continuous maintenance that adapts to varying system loads and
 communication delays.
 
-====== Timer Core Processing
+=== Timer Core Processing
 
 The timer core implements 64-bit counter management supporting both
 PRIMARY and SECONDARY operational modes.
@@ -57,13 +57,13 @@ alignment with the overall timeline. Credit expiration is monitored via a
 32-bit counter that increments when cur_credits exceeds CREDIT_VAL,
 providing diagnostics for synchronization health.
 
-====== Clock Domain Crossing
+=== Clock Domain Crossing
 
 The CDC architecture maintains signal integrity and timing precision
 across clock domains with different frequencies, phase relationships,
 and jitter characteristics.
 
-====== Edge Detection
+=== Edge Detection
 
 To ensure robust metastability protection during clock domain crossing,
 the design employs prim_edge_detector modules. These modules reliably
@@ -73,7 +73,7 @@ a result, they enable precise temporal coordination across clock domains
 and maintain stable operation despite potential variations in signal
 arrival times or delays.
 
-====== Synchronization Protocol
+=== Synchronization Protocol
 
 The synchronization protocol relies on a two-level mechanism to
 establish and maintain timer alignment across chiplets. During
@@ -87,18 +87,24 @@ changes. Edge-triggered signaling is used throughout, removing tight
 timing dependencies and promoting robust synchronization regardless of
 clock differences.
 
-====== Credit-Based Synchronization
+=== Credit-Based Synchronization
 
 Credit-based synchronization balances autonomous operation with
 centralized coordination, allowing SECONDARY timers to maintain temporal
 progression during communication interruptions while ensuring long-term
 accuracy through periodic resynchronization.
 
-====== Credit Management
+=== Credit Management
 
 The credit management system operates differently in PRIMARY and SECONDARY modes:
 
-[width="100%",cols="30%,70%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS credit management" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="32,68",options="header",role="port-reference"]
 |======================================================================
 |Feature |Description
 |PRIMARY Credit Counter |8-bit counter (0 to CREDIT_VAL-1) that increments each cycle when enabled. When it reaches CREDIT_VAL-1, it resets to 0 and generates a credit pulse output.
@@ -108,7 +114,13 @@ The credit management system operates differently in PRIMARY and SECONDARY modes
 |Expiration Tracking |32-bit counter that increments when cur_credits >= CREDIT_VAL in SECONDARY mode, providing diagnostics
 |======================================================================
 
-====== Synchronization Logic
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Synchronization Logic
 
 In SECONDARY mode, the timer advances when credits are available. The
 credit accumulator (cur_credits) increments by the step input value
@@ -126,14 +138,20 @@ carry-select adder. This expected value provides a basis for
 synchronization validation and helps detect drift between the actual timer
 count and the expected timeline.
 
-====== Pulse Generation
+=== Pulse Generation
 
 PRIMARY timers generate synchronization signals for SECONDARY timer
 coordination.
 
-====== Pulse State Machine
+=== Pulse State Machine
 
-[width="100%",cols="25%,75%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS pulse states" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="30,70",options="header",role="port-reference"]
 |=======================================================================
 |State |Description
 |PULSE_IDLE |Normal operation, monitors for synchronization events
@@ -145,7 +163,13 @@ initialization
 maintenance
 |=======================================================================
 
-====== Pulse Width Control
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Pulse Width Control
 
 The pulse width for synchronization can be configured between 1 and 255
 cycles using the CTRL.PULSE_WIDTH register. If PULSE_WIDTH is set to 0, it
@@ -161,7 +185,7 @@ The credit value (CREDIT_VAL) must be greater than the pulse width
 (PULSE_WIDTH) to ensure credit pulses are not missed during pulse
 generation.
 
-====== Data Flow and Control Path
+=== Data Flow and Control Path
 
 In PRIMARY mode, the timer core begins with software issuing a preset
 value and asserting the START register. This action loads the counter
@@ -194,7 +218,7 @@ synchronization events, providing a basis for synchronization validation.
 The expected count is incremented by CREDIT_VAL on credit pulse events
 using a carry-select adder.
 
-====== Control Path Overview
+=== Control Path Overview
 
 The control path of the System Timer OCTS integrates subsystems for
 enabling, mode selection, and credit tracking. The global enable signal
@@ -222,7 +246,7 @@ with each credit using carry-select adders, and provides a real-time
 32-bit counter (credit_expired_o) that increments when cur_credits >=
 CREDIT_VAL—essential for synchronization health diagnostics.
 
-====== Pulse Generation in PRIMARY Mode
+=== Pulse Generation in PRIMARY Mode
 
 In PRIMARY mode, the timer autonomously produces two kinds of
 synchronization pulses: sync_load, which resets all timers system-wide

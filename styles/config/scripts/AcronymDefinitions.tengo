@@ -34,7 +34,7 @@ canonical := {
   SMO:    ["safety monitor"], // doc/trm/src/architecture.adoc
   AoU:    ["axi-over-ucie bridge", "axi-over-ucie"], // doc/home/src/features.adoc
   CLA:    ["core logic analyzer"], // hw/sys/smc/doc/dfd.adoc
-  PTAP:   ["primary tap"], // hw/ip/jtag/jtag_ptap/doc/index.adoc
+  PTAP:   ["primary tap", "jtag primary tap"], // hw/ip/jtag/jtag_ptap/doc/index.adoc
   STAP:   ["secondary tap"], // hw/ip/jtag/jtag_stap/doc/index.adoc
   SIB:    ["segment insertion bit"], // hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc
   ATB:    ["advanced trace bus"], // hw/sys/smc/doc/clk_rst.adoc

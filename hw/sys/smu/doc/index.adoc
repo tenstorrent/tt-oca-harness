@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= System Management Unit (SMU)
+:description: SMU overview — composition, AXI crossbar and child subsystem roles.
+
+[[system-management-unit]]
+
+The System Management Unit (SMU) is the chiplet's system-management subsystem.
+It integrates three functional blocks around a runtime-programmable AXI crossbar
+and presents a single boundary to the System Management Network (SMN).
+
+[[smu-composition]]
+== Composition
+
+anchor:composition[]The SMU combines:
+
+:smu-dtp-desc: Standardised debug and test access across heterogeneous, \
+  multi-vendor chiplet systems. Covers JTAG scan chains, JTAG2AXI debug \
+  bridges, cross-trigger network and synchronised clock control.
+:smu-sep-desc: Root of Trust with a physically isolated RISC-V execution \
+  environment for secure boot, lifecycle control, device attestation and \
+  hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3, \
+  TRNG, DRBG, Key Manager).
+:smu-smc-desc: Firmware-driven orchestration engine responsible for clock, \
+  voltage and reset management, platform bootstrapping, system initialisation, \
+  and power/thermal management. Built on a RISC-V micro-controller with DMA \
+  and memory-zeroer accelerators.
+
+ifdef::backend-html5[]
+* xref:dtp:index.adoc[*Debug and Test Ports (DTP)*] — {smu-dtp-desc}
+* xref:sep:index.adoc[*Security Processor (SEP)*] — {smu-sep-desc}
+* xref:smc:index.adoc[*System Management Controller (SMC)*] — {smu-smc-desc}
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* *Debug and Test Ports (DTP)* — {smu-dtp-desc} See <<debug-test-ports>>.
+* *Security Processor (SEP)* — {smu-sep-desc} See <<security-processor-sep>>.
+* *System Management Controller (SMC)* — {smu-smc-desc}
+  See <<system-management-controller>>.
+endif::backend-pdf[]
+
+These three subsystems share a single primary clock domain (`clk_smu_i`) and
+are released from reset by the SMC's reset unit in a controlled sequence.
+Platform-wide clock, power and reset behaviour is described in the
+ifdef::backend-html5[]
+xref:ROOT:architecture.adoc#ocah-clock-domains[OCAH Architecture] chapter.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-clock-domains,OCAH Architecture>> chapter.
+endif::backend-pdf[]
+
+[[smu-axi-crossbar]]
+== AXI Crossbar
+
+Inside the SMU, the `smu_axi_xbar` module is the system-level arbitration
+fabric between SEP, SMC, and the rest of the chiplet (reached through the
+`smu_axi_in` / `smu_axi_out` boundary pair). It is a 3×3 AXI4 crossbar with
+non-reflexive connectivity: each master can reach the other two subordinates
+but never its own inbound port.
+
+.SMU AXI crossbar ports
+[cols="<22%,<22%,<56%",options="header"]
+|===
+|Master (from) |Subordinate (to) |Purpose
+
+|`sep_out` |`smc_in`  |SEP-initiated transactions into SMC resources
+|`sep_out` |`ext_out` |SEP-initiated transactions leaving the SMU
+|`smc_out` |`sep_in`  |SMC-initiated transactions into SEP resources
+|`smc_out` |`ext_out` |SMC-initiated transactions leaving the SMU
+|`ext_in`  |`sep_in`  |External transactions targeting SEP
+|`ext_in`  |`smc_in`  |External transactions targeting SMC
+|===
+
+Routing decisions use a runtime address map with two programmable rules (SEP
+and SMC apertures) and one static catch-all (`ext_out`). See
+ifdef::backend-html5[]
+xref:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-memory-map,OCAH Memory Map>>
+endif::backend-pdf[]
+for the fixed-vs-programmable split and the reference envelope convention, and
+see the SMU AXI Crossbar Address Map section in the Integrator Guide for
+firmware programming order.
+
+[[child-subsystems]]
+anchor:smu-child-subsystems[]The subsystem chapters (DTP, SEP, SMC) follow
+immediately; see the <<smu-composition,Composition>> section above for roles
+and cross-references.

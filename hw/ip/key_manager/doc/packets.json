@@ -1,0 +1,353 @@
+{
+  "SPDX-License-Identifier": "CC-BY-4.0",
+  "SPDX-FileCopyrightText": "2026 Tenstorrent USA, Inc.",
+  "packets": [
+    {
+      "id": "km_packet_command_message",
+      "title": "Command message",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "HEADER_CRC8", "bits": [31, 24]},
+            {"name": "PAYLOAD_LEN", "bits": [23, 16]},
+            {"name": "COMMAND_ID", "bits": [15, 8]},
+            {"name": "CMD_SEQ_NUM", "bits": [7, 0]}
+          ]
+        },
+        {
+          "word": "1",
+          "fields": [
+            {"name": "PAYLOAD_WORD[0]", "bits": [31, 0]}
+          ]
+        },
+        {"ellipsis": true},
+        {
+          "word": "n",
+          "fields": [
+            {"name": "PAYLOAD_WORD[n-1]", "bits": [31, 0]}
+          ]
+        },
+        {
+          "word": "n + 1",
+          "fields": [
+            {"name": "PAYLOAD_CRC32", "bits": [31, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_hw_version",
+      "title": "Hardware version return argument",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 24]},
+            {"name": "HW_MAJOR_REV", "bits": [23, 16]},
+            {"name": "HW_MINOR_REV", "bits": [15, 8]},
+            {"name": "HW_PATCH_REV", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_rom_version",
+      "title": "ROM firmware version return argument",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 24]},
+            {"name": "ROM_MAJOR_REV", "bits": [23, 16]},
+            {"name": "ROM_MINOR_REV", "bits": [15, 8]},
+            {"name": "ROM_PATCH_REV", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_sram_version",
+      "title": "SRAM firmware version return argument",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 24]},
+            {"name": "SRAM_MAJOR_REV", "bits": [23, 16]},
+            {"name": "SRAM_MINOR_REV", "bits": [15, 8]},
+            {"name": "SRAM_PATCH_REV", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_status",
+      "title": "KM status return argument",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "KM_STATUS", "bits": [31, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_sram_load_exec",
+      "title": "SRAM load and execute payload",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 16]},
+            {"name": "FW_WORDS", "bits": [15, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_key_generate_payload",
+      "title": "Key generate payload",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 7]},
+            {"name": "REQ_SIZE", "bits": [6, 0]}
+          ]
+        },
+        {
+          "word": "1",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "DEST_VALID", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_key_result",
+      "title": "Key generation or load return argument",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 24]},
+            {"name": "DEST_VALID", "bits": [23, 16]},
+            {"name": "RESERVED", "bits": [15, 15]},
+            {"name": "REQ_SIZE", "bits": [14, 8]},
+            {"name": "KEY_HANDLE", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_key_handle",
+      "title": "Key handle",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "KEY_HANDLE", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_key_transfer_payload",
+      "title": "Key transfer payload",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "KEY_HANDLE", "bits": [7, 0]}
+          ]
+        },
+        {
+          "word": "1",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "DEST_ENGINE", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_key_transfer_result",
+      "title": "Key transfer result",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 16]},
+            {"name": "DEST_ENGINE", "bits": [15, 8]},
+            {"name": "KEY_HANDLE", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_engine_mask",
+      "title": "Engine mask",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "DEST_ENGINE", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_key_load_payload",
+      "title": "Key load payload",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 7]},
+            {"name": "KEY_SIZE", "bits": [6, 0]}
+          ]
+        },
+        {
+          "word": "1",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "DEST_VALID", "bits": [7, 0]}
+          ]
+        },
+        {
+          "word": "2",
+          "fields": [
+            {"name": "KEY_DATA[0]", "bits": [31, 0]}
+          ]
+        },
+        {"ellipsis": true},
+        {
+          "word": "KEY_SIZE + 2",
+          "fields": [
+            {"name": "KEY_DATA[KEY_SIZE]", "bits": [31, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_destination_mask",
+      "title": "Destination mask",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "DEST_VALID", "bits": [7, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_otp_read_locks",
+      "title": "OTP cold read-lock mask",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 9]},
+            {"name": "SsI", "bits": [8, 8]},
+            {"name": "SiI", "bits": [7, 7]},
+            {"name": "cI", "bits": [6, 6]},
+            {"name": "CK", "bits": [5, 5]},
+            {"name": "SU", "bits": [4, 4]},
+            {"name": "SiU", "bits": [3, 3]},
+            {"name": "cU", "bits": [2, 2]},
+            {"name": "D", "bits": [1, 1]},
+            {"name": "LC", "bits": [0, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_response_message",
+      "title": "Response message",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "HEADER_CRC8", "bits": [31, 24]},
+            {"name": "PAYLOAD_LEN", "bits": [23, 16]},
+            {"name": "RESPONSE_ID", "bits": [15, 8]},
+            {"name": "RESP_SEQ_NUM", "bits": [7, 0]}
+          ]
+        },
+        {
+          "word": "1",
+          "fields": [
+            {"name": "PAYLOAD_WORD[0]", "bits": [31, 0]}
+          ]
+        },
+        {"ellipsis": true},
+        {
+          "word": "n",
+          "fields": [
+            {"name": "PAYLOAD_WORD[n-1]", "bits": [31, 0]}
+          ]
+        },
+        {
+          "word": "n + 1",
+          "fields": [
+            {"name": "PAYLOAD_CRC32", "bits": [31, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_response_payload",
+      "title": "RESP_CMD response payload",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "CMD_SEQ_NUM", "bits": [7, 0]}
+          ]
+        },
+        {
+          "word": "1",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "COMMAND_ID", "bits": [7, 0]}
+          ]
+        },
+        {
+          "word": "2",
+          "fields": [
+            {"name": "RESERVED", "bits": [31, 8]},
+            {"name": "RETURN_CODE", "bits": [7, 0]}
+          ]
+        },
+        {
+          "word": "3",
+          "fields": [
+            {"name": "RETURN_ARG", "bits": [31, 0], "optional": true}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "km_packet_fault_code",
+      "title": "Fault code response payload",
+      "words": [
+        {
+          "word": "0",
+          "fields": [
+            {"name": "SIGN_EXTENSION", "bits": [31, 8]},
+            {"name": "FAULT_CODE", "bits": [7, 0]}
+          ]
+        }
+      ]
+    }
+  ]
+}

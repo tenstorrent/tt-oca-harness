@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Memory Map and Register Reference
+:description: SEP address regions and generated register tables.
+ifdef::backend-html5[]
+:sep-crypto-access-ref: xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]
+:sep-drbg-architecture-ref: xref:ip:drbg/doc/index.adoc[Architecture]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:sep-crypto-access-ref: <<crypto-single-beat-only,Single-Beat Access Only>>
+:sep-drbg-architecture-ref: <<drbg-deterministic-random-bit-generator,Architecture>>
+endif::backend-pdf[]
+
 [[sep-memory-map]]
-=== Memory Map
+
+== Memory Map
 
 SEP uses 32-bit addressing. The following table outlines the SEP CPU's
 logical view of the SEP-local address space. External masters use the
@@ -10,7 +22,7 @@ chiplet-global base programmed in `SEP_GLOBAL_BASE_ADDR`; SEP CPU
 software uses either direct internal addresses (`0x1000_0000`,
 `0x1080_0000`, and so on) or the local alias view described below.
 
-[cols="<,<,<,<,<",options="header",]
+[cols="<20%,<20%,<10%,<15%,<35%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
 |0x0000_0000 |0x1000_0000 |256 MB |External |External to chiplet, but not in SMU (SMC, DTP, etc).
@@ -43,7 +55,7 @@ chiplet-global SEP aperture configured by `SEP_GLOBAL_BASE_ADDR` /
 `SEP_REGION_SIZE` controls the SMU xbar and inbound global-to-local
 remap.
 
-[cols="<,<,<,<,<",options="header",]
+[cols="<20%,<20%,<10%,<15%,<35%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
 |0xC000_0000 |0xC003_FFFF |256 kB |ICCM |Tightly Coupled Instruction SRAM
@@ -75,9 +87,9 @@ no register must return SLVERR and must not alias onto a live register. See the
 Integrator Guide.
 
 The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
-single-beat transactions only; see <<crypto-single-beat-only>>.
+single-beat transactions only; see {sep-crypto-access-ref}.
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header",]
+[width="100%",cols="<20%,<20%,<10%,<15%,<35%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
 |0x1000_0000 |0x1000_FFFF |64 kB |SRAM |Scratch SRAM
@@ -115,14 +127,14 @@ single-beat transactions only; see <<crypto-single-beat-only>>.
 |=======================================================================
 
 [[sep-detailed-register-map]]
-=== Detailed Register Map
+== Detailed Register Map
 
 The following register tables are generated from the SEP register description
 (RDL) sub-blocks under `hw/sys/sep/regs/`, plus the eFuse MMR and Entropy Source
 IP blocks under `hw/ip/efuse/regs/` and `hw/ip/entropy_source/regs/`. Each entry
 corresponds to a unit in the SEP memory map above.
 
-==== CPU Control and Interrupts
+=== CPU Control and Interrupts
 
 ifdef::backend-html5[]
 ++++
@@ -144,7 +156,7 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/blocks/el2_pic.adoc[]
 endif::backend-pdf[]
 
-==== Reset and Lifecycle
+=== Reset and Lifecycle
 
 ifdef::backend-html5[]
 ++++
@@ -158,7 +170,7 @@ include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[]
 include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[]
 endif::backend-pdf[]
 
-==== Scratch and eFuse
+=== Scratch and eFuse
 
 The eFuse MMR block is an IP-level block (`hw/ip/efuse/regs/`); its register map
 is generated from the IP RDL rather than the SEP aggregate.
@@ -177,7 +189,7 @@ include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[]
 include::../../../ip/efuse/regs/gen/adoc/efuse_mmr.adoc[]
 endif::backend-pdf[]
 
-==== Timers
+=== Timers
 
 ifdef::backend-html5[]
 ++++
@@ -189,7 +201,7 @@ ifdef::backend-pdf[]
 include::../../../../vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc[]
 endif::backend-pdf[]
 
-==== Cryptographic Accelerators
+=== Cryptographic Accelerators
 
 ifdef::backend-html5[]
 ++++
@@ -207,7 +219,7 @@ include::../../../../vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/km
 include::../../../../vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc[]
 endif::backend-pdf[]
 
-==== Entropy Source
+=== Entropy Source
 
 The entropy source is an IP-level block (`hw/ip/entropy_source/regs/`) that
 feeds the DRBG. Its register map is generated from the IP RDL rather than the
@@ -223,10 +235,10 @@ ifdef::backend-pdf[]
 include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 
-==== DRBG
+=== DRBG
 
 The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
-(see <<drbg-deterministic-random-bit-generator,Architecture>>). Their register maps are reported here.
+(see {sep-drbg-architecture-ref}). Their register maps are reported here.
 
 ifdef::backend-html5[]
 ++++
@@ -240,7 +252,7 @@ include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/c
 include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[]
 endif::backend-pdf[]
 
-==== Key Manager
+=== Key Manager
 
 The generated maps live with the IP.
 
@@ -256,7 +268,7 @@ include::../../../ip/key_manager/regs/gen/adoc/key_manager.adoc[]
 include::../../../ip/key_manager/regs/gen/adoc/km_csr.adoc[]
 endif::backend-pdf[]
 
-==== Secure DMA
+=== Secure DMA
 
 The secure DMA controller register map follows.
 
@@ -270,7 +282,7 @@ ifdef::backend-pdf[]
 include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[]
 endif::backend-pdf[]
 
-==== SPI Controller
+=== SPI Controller
 
 Consult the
 https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host

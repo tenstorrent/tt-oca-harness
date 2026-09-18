@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Zeroer
+:description: SMC hardware-assisted memory clearing architecture and operation.
+
 [[memory-zeroer]]
-=== Zeroer
 
 The SMC Memory Zeroer efficiently initializes large memory regions to
 zero without CPU intervention. The unit uses a state machine-based
@@ -19,7 +21,7 @@ architecture with dual clock domains.
 |Outstanding Transactions |Up to 32 concurrent AXI transactions
 |===================================================================
 
-==== Use Cases
+== Use Cases
 
 * *System Initialization*: Clear memory regions during boot or reset
 sequences
@@ -27,9 +29,9 @@ sequences
 * *Memory Management*: Initialize allocated memory blocks
 * *Error Recovery*: Clear corrupted memory regions
 
-==== Architecture
+== Architecture
 
-===== State Machine
+=== State Machine
 
 The zeroer implements a three-state operation model:
 
@@ -42,7 +44,7 @@ The zeroer implements a three-state operation model:
 |ST_ISSUE_DATA (3'b100) |Data phase - streaming zero data for all beats
 |======================================================================
 
-===== Operation Flow
+=== Operation Flow
 
 1.  *Configuration*: Software writes destination address and size to
 registers
@@ -54,7 +56,7 @@ beats
 5.  *Completion*: State machine returns to idle with status update and
 optional interrupt
 
-===== AXI Master Interface
+=== AXI Master Interface
 
 .AXI4 Master Characteristics
 [width="100%",cols="30%,70%",options="header",]
@@ -70,7 +72,7 @@ optional interrupt
 |Boundary Handling |Automatic burst fragmentation at page boundaries
 |====================================================================
 
-===== Outstanding Transaction Management
+=== Outstanding Transaction Management
 
 The zeroer efficiently manages outstanding AXI transactions using a
 32-bit counter to track in-flight writes. When the number of pending
@@ -85,12 +87,12 @@ continuous operation. By supporting multiple bursts in flight, the
 zeroer achieves high parallelism and optimal memory bandwidth
 utilization.
 
-===== Dual Clock Domain Architecture
+=== Dual Clock Domain Architecture
 
 The zeroer implements dual clock domain operation for power management
 and interface isolation.
 
-===== Clock Domains
+=== Clock Domains
 
 .Clock Domain Characteristics
 [width="100%",cols="25%,75%",options="header",]
@@ -103,7 +105,7 @@ only during active zeroing
 independent of AXI activity
 |=======================================================================
 
-===== Clock Gating
+=== Clock Gating
 
 .Clock Gating Control
 [width="100%",cols="30%,70%",options="header",]
@@ -121,9 +123,9 @@ independent of AXI activity
 |Reset Override |Ensures proper reset domain operation
 |=======================================================================
 
-===== Control and Status
+=== Control and Status
 
-====== Operation Control
+==== Operation Control
 
 .Configuration and Control
 [width="100%",cols="30%,70%",options="header",]
@@ -136,14 +138,14 @@ independent of AXI activity
 |Validation |Hardware validates configuration parameters
 |===============================================================
 
-====== Status Features
+==== Status Features
 
 * *Busy Status*: Real-time indication of zeroing operation in progress
 * *Completion Status*: Updates when all write responses received
 * *Error Status*: AXI error response detection and reporting
 * *Interrupt Generation*: Optional interrupt on operation completion
 
-==== Operation Details
+== Operation Details
 
 .Data Generation and Control
 [width="100%",cols="30%,70%",options="header",]
@@ -163,7 +165,7 @@ unaligned addresses
 |Safe Abort |Ability to safely abort operation if needed
 |=======================================================================
 
-==== Detailed Register Map
+== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
