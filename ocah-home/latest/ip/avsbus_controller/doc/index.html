@@ -202,28 +202,32 @@ addressing.</p>
 through a two-wire protocol interface</p>
 </li>
 <li>
-<p><strong>Dual Bus Interface</strong>: Supports both APB4 and AXI4-Lite register
-interfaces for system integration flexibility</p>
+<p><strong>AXI4-Lite Register Interface</strong>: A 32-bit AXI4-Lite port, bridged internally
+to the APB4 register file</p>
 </li>
 <li>
-<p><strong>Command FIFO</strong>: 8-deep command queue for efficient transaction
-management and burst operations</p>
+<p><strong>Command FIFO</strong>: 8-deep command queue, crossing from the register clock
+domain to the AVS clock domain</p>
 </li>
 <li>
-<p><strong>Readback FIFO</strong>: 8-deep response buffer with automatic retry mechanism
-for reliable data collection</p>
+<p><strong>Readback FIFO</strong>: 8-deep response buffer with automatic hardware retry on a
+failed acknowledgment or a bad CRC</p>
 </li>
 <li>
-<p><strong>Flexible Clock Configuration</strong>: Programmable AVS clock generation with
-configurable divider and duty cycle control</p>
+<p><strong>Flexible Clock Configuration</strong>: AVS clock generated from either the register
+clock or a reference clock, with a programmable divider and duty cycle</p>
 </li>
 <li>
-<p><strong>Comprehensive Interrupt Support</strong>: Status monitoring with configurable
-interrupt sources for system-level event handling</p>
+<p><strong>Maskable Interrupts</strong>: Nine sources covering FIFO overruns, retry
+exhaustion, an unresponsive target and target-signalled interrupts</p>
 </li>
 <li>
-<p><strong>Slave Resync Operation</strong>: Automatic periodic resynchronization with
-configurable intervals</p>
+<p><strong>Slave Resync Operation</strong>: Automatic periodic resynchronization at a
+configurable interval, or forced by software</p>
+</li>
+<li>
+<p><strong>CRC-3 Protection</strong>: Hardware generation on every command and checking on
+every response</p>
 </li>
 </ul>
 </div>
@@ -233,56 +237,48 @@ configurable intervals</p>
 <h2 id="avsbus-controller-architecture"><a class="anchor" href="#avsbus-controller-architecture"></a><a class="link" href="#avsbus-controller-architecture">Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The AVSBus Controller implements an Adaptive Voltage Scaling Bus
-(AVSBus) 1.3.1 controller for dynamic voltage and frequency scaling (DVFS)
-in single-target systems. The controller enables
-communication with a single AVS target device through a standardized
+<p>The AVSBus Controller implements an Adaptive Voltage Scaling Bus (AVSBus)
+1.3.1 controller for dynamic voltage and frequency scaling (DVFS) in
+single-target systems, communicating with one AVS target device over a
 two-wire protocol interface.</p>
 </div>
 <div class="paragraph">
-<p>The modular design includes separate command processing, response
-handling, clock generation, and CRC verification subsystems. FIFO-based
-command queuing enables autonomous operation with monitoring and error
-handling capabilities.</p>
+<p>The design is a register file, a pair of asynchronous FIFOs that carry
+commands and responses between the register and AVS clock domains, a protocol
+FSM that serializes and deserializes subframes, a CRC-3 engine shared between
+transmit and receive, and the AVS clock generation logic.</p>
 </div>
 <div class="sect2">
 <h3 id="avs-protocol-engine"><a class="anchor" href="#avs-protocol-engine"></a><a class="link" href="#avs-protocol-engine">AVS Protocol Engine</a></h3>
 <div class="paragraph">
-<p>The protocol engine serves as the heart of AVSBus communication,
-orchestrating all state machine transitions and transaction management.
-Incoming transactions are first queued through an 8-entry command FIFO,
-which supports all AVSBus command types—including commit write, hold
-write, commit, and read—while automatically constructing proper frames
-with built-in CRC calculation. Configurable timeouts and retry logic
-ensure that even in the face of transient failures, reliable
-communication is maintained.</p>
+<p>Software queues commands by writing <code>AVS_CMD</code>, which pushes a 32-bit word into
+the command FIFO. The protocol FSM pops each command, prepends the fixed
+preamble, appends a calculated CRC-3, and shifts the resulting 32-bit subframe
+out on <code>avs_mdata_o</code>. The target&#8217;s reply arrives one subframe later: it is
+shifted in from <code>avs_sdata_i</code> during the 32 cycles that carry the next
+command, checked for a valid frame bit and a good CRC, and pushed into the
+readback FIFO.</p>
 </div>
 <div class="paragraph">
-<p>On the response side, an 8-deep readback FIFO buffers data returned from
-the target, allowing for efficient response handling and minimizing
-latency. The protocol engine provides real-time acknowledgment tracking
-for the target device, and each response is immediately subjected
-to hardware CRC verification for error detection. For operations
-demanding the lowest latency, the engine includes a bypass path enabling
-instantaneous access to target responses.</p>
+<p>Retries are automatic. A slave acknowledgment of 1 (resource unavailable) or 2
+(bad CRC) causes the master to resend the command, up to
+<code>AVS_CFG_0.MAX_RETRIES</code> times; exhausting that budget raises
+<code>MAX_RETRIES_ATTEMPTED_INT</code>. Setting <code>MAX_RETRIES</code> to 0 suppresses retries
+altogether, and the failing response is delivered to software instead. A reply
+whose frame valid bit is set means the target did not respond at all and
+raises <code>SLAVE_UNRESPONSIVE_INT</code>. There is no separate programmable response
+timeout.</p>
 </div>
 <div class="paragraph">
-<p>Transaction control is further enhanced by automatic slave resync
-operations, allowing periodic resynchronization with configurable
-intervals. An abort
-function immediately cancels pending operations as needed, while
-automatic idle state detection enables power-efficient clock gating.
-Throughout, the protocol engine offers detailed status monitoring and
-debug access to facilitate robust system integration and
-troubleshooting.</p>
+<p>The master also issues periodic slave resync operations, holding <code>avs_mdata_o</code>
+high for 34 AVS clock cycles. <code>AVS_CFG_0.RESYNC_INTERVAL</code> sets the interval in
+register-clock cycles, and <code>AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION</code> requests
+one immediately. Both take effect three cycles later, after synchronization
+into the AVS clock domain.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="clock-generation-and-management"><a class="anchor" href="#clock-generation-and-management"></a><a class="link" href="#clock-generation-and-management">Clock Generation and Management</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="multi-source-clock-selection"><a class="anchor" href="#multi-source-clock-selection"></a><a class="link" href="#multi-source-clock-selection">Multi-Source Clock Selection</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -297,50 +293,49 @@ troubleshooting.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">clk_reg_i</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface clock, synchronous with system register
-access</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface clock, synchronous with register access</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">clk_ref_i</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock, independent AVS bus timing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock, independent of AVS bus timing</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Selection</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Software-configurable via AVS_CFG_1 register</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software-configurable via <code>AVS_CFG_1.AVS_CLOCK_SELECT</code></p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The clock generation logic features a programmable divider with 8-bit
-resolution, enabling AVS clock frequencies to be finely adjusted
-anywhere between divide-by-2 and divide-by-255. Both the division ratio
-and the duty cycle (also 8-bit configurable) can be optimized by
-software for signal integrity, with the controller shipping by default
-at a divide-by-4, 50% duty cycle setting. These clock parameters may be
-reprogrammed on the fly without interrupting protocol activity.</p>
+<p>The selected source passes through an anti-glitch mux and then a programmable
+divider, whose ratio and duty cycle are both 8-bit values in <code>AVS_CFG_1</code>. Out
+of reset the controller runs on <code>clk_ref_i</code> divided by 4 at a 50% duty cycle.
+Both divider fields reset to 0, which is a sentinel: the divider keeps its
+hardware defaults until software writes a non-zero value.</p>
 </div>
 <div class="paragraph">
-<p>Power efficiency is built in at multiple levels: the AVS clock is
-automatically gated during bus idle conditions, and all unused input
-clocks are selectively disabled to further reduce dynamic power
-consumption.</p>
+<p>Changing the clock configuration is not glitch-free on its own. Set
+<code>AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS</code> to gate both source clocks before
+changing the source selection or the divider settings, then clear it
+afterwards.</p>
+</div>
+<div class="paragraph">
+<p>Power is saved at two levels: <code>AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE</code> gates the AVS
+clock whenever the bus is idle, and <code>TURN_OFF_ALL_PREMUX_CLOCKS</code> gates the
+clocks entering the mux. Restarting a gated AVS clock always begins with a
+34-cycle slave resync.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="crc-verification-engine"><a class="anchor" href="#crc-verification-engine"></a><a class="link" href="#crc-verification-engine">CRC Verification Engine</a></h3>
 <div class="paragraph">
-<p>The controller features a hardware-accelerated CRC-3 engine, implemented
-as the dedicated avsbus_crc3 module. This logic works in real time,
-processing each 32-bit message and generating or checking the required
-3-bit CRC with zero-cycle latency, ensuring continuous protocol
-operation.</p>
-</div>
-<div class="paragraph">
-<p>CRC calculation runs in parallel for both outgoing and incoming frames,
-automatically verifying all received responses and flagging the
-result—good or bad—on a per-transaction basis. Any CRC errors are
-tracked in dedicated statistics registers, and the CRC system is tightly
-integrated with the retry mechanism to ensure robust error recovery.</p>
+<p>The <code>avsbus_crc3</code> module computes a 3-bit CRC combinationally over a 32-bit
+subframe. Two instances are used. The generate instance is fed the outgoing
+master subframe with its CRC field zeroed, and its output becomes the three
+bits shifted out last. The check instance is fed the received slave subframe
+intact, including the CRC the target sent, and reports a good check when the
+result is zero. A failed check prevents the subframe from updating
+<code>AVS_LATEST_SLAVE_SUBFRAME</code> and <code>AVS_SLAVE_STATUS</code>, and the retry logic
+resends the command.</p>
 </div>
 </div>
 <div class="sect2">
@@ -355,341 +350,232 @@ integrated with the retry mechanism to ensure robust error recovery.</p>
 <tr>
 <th class="tableblock halign-left valign-top">FIFO</th>
 <th class="tableblock halign-left valign-top">Command FIFO</th>
-<th class="tableblock halign-left valign-top">Response FIFO</th>
+<th class="tableblock halign-left valign-top">Readback FIFO</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Depth</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 entries</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 entries</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>COMMAND_FIFO_DEPTH</code>, 8 entries by default</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>READBACK_FIFO_DEPTH</code>, 8
+entries by default</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Purpose</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command queue for batch operations</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Response buffer with
-automatic collection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direction</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register clock domain to AVS clock domain</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS clock domain to
+register clock domain</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Features</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Full/empty status, automatic frame formatting, CRC insertion,
-overflow protection</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Acknowledgment tracking, CRC
-verification, underflow protection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Occupancy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_FIFOS_STATUS.CMD_FIFO_*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_FIFOS_STATUS.READBACK_FIFO_*</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Overrun behaviour</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A write to <code>AVS_CMD</code> when full is dropped and raises
+<code>CMD_FIFO_OVERFLOW_INT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A response received when full is dropped and raises
+<code>READBACK_OVERFLOW_INT</code></p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>Both are instances of <code>avsbus_async_fifo</code>, which requires a power-of-two
+depth. Pointers cross between the two clock domains as Gray codes through
+three-stage synchronizers.</p>
+</div>
+<div class="paragraph">
+<p>While the readback FIFO is full the master launches no further commands, so a
+software reader that stops draining <code>AVS_READBACK</code> stalls the bus rather than
+losing responses.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="reset-and-initialization"><a class="anchor" href="#reset-and-initialization"></a><a class="link" href="#reset-and-initialization">Reset and Initialization</a></h3>
 <div class="paragraph">
-<p>The AVSBus Controller employs a dual reset scheme to ensure robust,
-phased hardware bring-up. The primary reset signal (rst_ni) governs
-all core clocking and register functions; it must be asserted first to
-stabilize the system. Only after this clock and register domain is
-reliably up can configuration begin.</p>
+<p>The controller takes three resets. <code>rst_clk_div_ni</code> resets the programmable
+clock divider, <code>rst_reg_ni</code> resets the register file and the protocol logic,
+and <code>rst_ref_ni</code> resets the <code>clk_ref_i</code> leg of the anti-glitch clock mux.</p>
 </div>
 <div class="paragraph">
-<p>The clock divider reset (rst_clk_div_ni) must be deasserted before
-the main reset to ensure proper clock generation initialization.</p>
+<p><strong><code>rst_clk_div_ni</code> must be deasserted before <code>rst_reg_ni</code></strong>. The divider has to
+be producing a clock before the logic it feeds leaves reset, otherwise the AVS
+clock domain never starts.</p>
 </div>
 <div class="paragraph">
-<p><strong>Initialization Sequence</strong>:</p>
+<p>Because the divider defaults to divide-by-4 on <code>clk_ref_i</code> and the protocol
+FSM starts as soon as reset is released, the controller begins issuing slave
+resync operations without any software configuration. Configuration is
+therefore a matter of adjusting defaults rather than enabling the block:</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p><strong>Clock Configuration Phase</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Configure clock source selection (AVS_CFG_1.AVS_CLOCK_SELECT)</p>
+<p>Release <code>rst_clk_div_ni</code>, then <code>rst_reg_ni</code>.</p>
 </li>
 <li>
-<p>Set clock divider and duty cycle parameters (AVS_CFG_1)</p>
+<p>If the default AVS clock is not wanted, set
+<code>AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS</code>, write <code>AVS_CLOCK_SELECT</code>,
+<code>CLK_DIVIDER_VALUE</code> and <code>CLK_DIVIDER_DUTY_CYCLE_NUMERATOR</code>, then clear
+<code>TURN_OFF_ALL_PREMUX_CLOCKS</code>.</p>
 </li>
 <li>
-<p>Enable appropriate clock gating controls</p>
-</li>
-</ul>
-</div>
+<p>Set <code>AVS_CFG_0.MAX_RETRIES</code> and <code>AVS_CFG_0.RESYNC_INTERVAL</code>.</p>
 </li>
 <li>
-<p><strong>Clock Divider Reset Release</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Deassert rst_clk_div_ni to enable clock divider</p>
+<p>Clear the <code>AVS_INTERRUPT_MASK</code> bits for the sources of interest; all
+sources are masked out of reset.</p>
 </li>
 <li>
-<p>Verify clock divider stability</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Primary Reset Release</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Deassert rst_ni to enable clocking subsystems</p>
-</li>
-<li>
-<p>Verify clock stability and register access functionality</p>
-</li>
-<li>
-<p>Configure basic controller parameters</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Protocol Initialization</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Configure retry parameters (AVS_CFG_0.MAX_RETRIES)</p>
-</li>
-<li>
-<p>Configure resync interval (AVS_CFG_0.RESYNC_INTERVAL)</p>
-</li>
-<li>
-<p>Set up interrupt masks and status monitoring</p>
-</li>
-<li>
-<p>Clear any residual FIFO contents</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Begin Operations</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Enable protocol engine and FIFO operations</p>
-</li>
-<li>
-<p>Begin normal command processing operations</p>
-</li>
-</ul>
-</div>
+<p>Write commands to <code>AVS_CMD</code> and collect responses from <code>AVS_READBACK</code>.</p>
 </li>
 </ol>
 </div>
 </div>
 <div class="sect2">
 <h3 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">Data Flow and Control Path</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="command-processing-data-flow"><a class="anchor" href="#command-processing-data-flow"></a><a class="link" href="#command-processing-data-flow">Command Processing Data Flow</a></h3>
+<div class="sect3">
+<h4 id="command-path"><a class="anchor" href="#command-path"></a><a class="link" href="#command-path">Command Path</a></h4>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p><strong>Command Initiation</strong>: Software writes transaction parameters to
-AVS_CMD register</p>
+<p>Software writes <code>AVS_CMD</code>; the 32-bit word enters the command FIFO. The
+write is dropped if the FIFO is full.</p>
 </li>
 <li>
-<p><strong>FIFO Queuing</strong>: Command parameters queued in 8-deep command FIFO</p>
+<p>The protocol FSM pops a command, builds the master subframe as preamble,
+<code>AVS_CMD[29:3]</code> and CRC-3, and shifts it out on <code>avs_mdata_o</code>.</p>
 </li>
 <li>
-<p><strong>Frame Construction</strong>: Protocol engine constructs 32-bit AVSBus frame
-with:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Command type and data type encoding</p>
+<p>The target&#8217;s reply shifts in on <code>avs_sdata_i</code> during the following
+subframe.</p>
 </li>
 <li>
-<p>16-bit data payload</p>
+<p>A reply that is valid and passes CRC updates <code>AVS_SLAVE_STATUS</code> and
+<code>AVS_LATEST_SLAVE_SUBFRAME</code> and is pushed into the readback FIFO; otherwise
+the retry logic resends the command.</p>
 </li>
 <li>
-<p>3-bit CRC calculated by avsbus_crc3 module</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Serial Transmission</strong>: Frame transmitted bit-by-bit on avs_mdata_o</p>
-</li>
-<li>
-<p><strong>Response Collection</strong>: Target response collected from
-avs_sdata_i</p>
-</li>
-<li>
-<p><strong>CRC Verification</strong>: Received response verified using CRC-3 engine</p>
-</li>
-<li>
-<p><strong>FIFO Storage</strong>: Valid response queued in readback FIFO for software
-access</p>
+<p>Software reads <code>AVS_READBACK</code>, which pops the readback FIFO.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p><strong>Command Flow Control</strong>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Typical command processing sequence
-while (!cmd_fifo_full) {
-    // Queue multiple commands
-    write_reg(AVS_CMD, {cmd_type, data_type, rail_sel, data});
-}
-
-// Monitor command execution
-while (cmd_fifo_not_empty) {
-    status = read_reg(AVS_NORMAL_STATUS);
-    if (status.bus_idle) break;
-}</code></pre>
+<p>Because writes to a full command FIFO are silently dropped, software that
+queues commands in a burst should check <code>AVS_NORMAL_STATUS.CMD_FIFO_FULL</code> or
+<code>AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS</code> first, or enable
+<code>CMD_FIFO_OVERFLOW_INT</code>.</p>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="response-processing-data-flow"><a class="anchor" href="#response-processing-data-flow"></a><a class="link" href="#response-processing-data-flow">Response Processing Data Flow</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p><strong>Target Response Reception</strong>: Serial collection from target
-via avs_sdata_i</p>
-</li>
-<li>
-<p><strong>Target Acknowledgment Processing</strong>: ACK/NACK detection
-and status update</p>
-</li>
-<li>
-<p><strong>CRC Validation</strong>: Hardware CRC-3 verification for response
-frame</p>
-</li>
-<li>
-<p><strong>Retry Logic</strong>: Automatic retry for CRC errors or missing
-acknowledgments</p>
-</li>
-<li>
-<p><strong>Status Update</strong>: Real-time update of AVS_SLAVE_STATUS register</p>
-</li>
-<li>
-<p><strong>FIFO Queuing</strong>: Valid response stored in 8-deep readback FIFO</p>
-</li>
-<li>
-<p><strong>Interrupt Generation</strong>: Configurable interrupts for response
-availability</p>
-</li>
-</ol>
-</div>
+<div class="sect3">
+<h4 id="response-inspection"><a class="anchor" href="#response-inspection"></a><a class="link" href="#response-inspection">Response Inspection</a></h4>
 <div class="paragraph">
-<p><strong>Response Bypass Mode</strong>: - AVS_LATEST_SLAVE_SUBFRAME provides immediate
-access to target responses - Bypasses FIFO for real-time monitoring
-applications - Useful for debugging and system commissioning</p>
+<p><code>AVS_READBACK</code> is the normal path and advances the FIFO on every read.
+<code>AVS_DEBUG_READBACK</code> mirrors the top of the FIFO without advancing it, and
+reads 0xFFFFFFFF when the FIFO is empty. <code>AVS_LATEST_SLAVE_SUBFRAME</code> holds the
+most recent valid subframe regardless of FIFO state, which is what to read
+when the question is what the target is doing now rather than what it said
+several commands ago.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="clock-domain-architecture"><a class="anchor" href="#clock-domain-architecture"></a><a class="link" href="#clock-domain-architecture">Clock Domain Architecture</a></h3>
 <div class="paragraph">
-<p>The AVSBus Controller is designed around a multi-clock domain
-architecture to balance performance, flexibility, and safe communication
-across hardware boundaries. At its heart is the Register Interface
-Domain, clocked by clk_reg_i, which orchestrates all register accesses,
-manages FIFO write operations, updates status registers, and handles the
-generation of interrupts. This domain is responsible for interfacing
-with software and ensuring that the system configuration and state
-reporting remain responsive and reliable.</p>
+<p>Two domains carry functional logic. The register domain, clocked by
+<code>clk_reg_i</code>, holds the AXI4-Lite bridge, the register file, the command FIFO
+write side, the readback FIFO read side and interrupt generation. The AVS
+domain, clocked by the generated <code>avs_clock_o</code>, holds the protocol FSM, the
+shift registers and the CRC engines.</p>
 </div>
 <div class="paragraph">
-<p>Parallel to this, the AVS Protocol Domain operates using its own clock
-(clk_avs), which is flexibly derived from either the register interface
-clock (clk_reg_i) or a separate reference clock (clk_ref_i). The choice
-of source, along with programmable division ratios and tunable duty
-cycles, enables precise control over protocol timing and ensures the
-protocol engine state machine can meet demanding bit-level timing
-requirements. This separation allows the protocol core to run
-independently of software activity, optimizing throughput and timing
-closure.</p>
-</div>
-<div class="paragraph">
-<p>To ensure robust operation between these asynchronous domains, the
-design employs classic cross-domain synchronization strategies.
-Gray-coded counters facilitate the safe passage of FIFO pointer
-information, minimizing hazards from metastability. Control signals
-crossing domain boundaries are handled through two-stage synchronizers,
-guarding against timing violations. With these measures in place, all
-domain crossings benefit from strong metastability protection,
-maintaining data integrity and system stability even as the domains
-operate at different rates.</p>
-</div>
-<div class="paragraph">
-<p><strong>Clock Generation</strong>:</p>
-</div>
-<div class="paragraph">
-<p>The AVSBus Controller&#8217;s clock generation subsystem is both flexible and
-power-efficient, adapting seamlessly to system requirements. Clock
-source selection is based on a straightforward logic: when the
-AVS_CLOCK_SELECT signal is set to 00 or 01, the register interface clock
-(clk_reg_i) is chosen as the protocol clock; when set to 10 or 11, the
-controller selects the reference clock (clk_ref_i). This mechanism
-enables precise control over protocol timing, allowing the designer to
-align the AVS domain with either the register clock or an external
-reference source as system needs dictate.</p>
-</div>
-<div class="paragraph">
-<p>To further refine clock characteristics, the controller incorporates a
-programmable divider. This divider accepts an 8-bit value, enabling
-clock ratios from 2 up to 255, and supports fine-grained duty cycle
-adjustment via another 8-bit parameter that maps directly to a 0–100%
-range. These features together allow for highly accurate protocol clock
-generation and make it possible to match stringent timing requirements
-or optimize interface throughput.</p>
-</div>
-<div class="paragraph">
-<p>The design includes automatic clock gating that disables the protocol
-clock during idle periods, complemented by software controls that can
-explicitly turn off the protocol clock when needed to conserve energy.
-This strategy minimizes unnecessary clock activity, reducing overall
-power consumption and ensuring that the clock tree is only as active as
-required by ongoing operations.</p>
+<p>FIFO pointers cross between the domains as Gray codes. Individual control and
+status bits cross through <code>prim_sync3</code> three-stage synchronizers, and pulses
+through <code>prim_sync3_pulse</code>. The reset synchronizers are six stages deep and
+take their scan bypass from <code>scan_rst_ni</code>.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="protocol-state-machine"><a class="anchor" href="#protocol-state-machine"></a><a class="link" href="#protocol-state-machine">Protocol State Machine</a></h3>
 <div class="paragraph">
-<p>The protocol engine implements a state machine for AVSBus communication:</p>
+<p><code>cur_state_debug_o</code> exposes the FSM state as a 17-bit one-hot vector,
+resynchronized to <code>clk_reg_i</code>. The states, in bit order from 0, are:</p>
 </div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 45%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bit</th>
+<th class="tableblock halign-left valign-top">State</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_RESET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out of reset, before the first resync</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_SLAVE_RESYNC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Holding <code>avs_mdata_o</code> high for 34 cycles</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_LAUNCH_FRAME_POST_RESYNC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">First command launch after a resync</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_IDLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No command queued; the AVS clock may be gated</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4, 5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_SHIFT_1ST_SUBFRAME, AVS_END_1ST_SUBFRAME</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">First subframe after
+idle or resync, launching a command</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6, 7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_SHIFT_MID_SUBFRAME, AVS_END_MID_SUBFRAME</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transmitting one command
+while receiving the reply to the previous one</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8, 9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_SHIFT_LAST_SUBFRAME, AVS_END_LAST_SUBFRAME</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Final subframe, draining
+the last reply with no new command to send</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10-15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_RETRY_*</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The same shift and end pairs used while retrying a failed
+command, split into transmit-and-receive, transmit-only and receive-only
+variants</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_PROCESS_PREVIOUS_SDATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Evaluating a received subframe</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
-<p><strong>IDLE State</strong>: - Waiting for commands from software - AVS clock
-optionally gated for power savings - Monitoring for FIFO empty/full
-conditions</p>
-</div>
-<div class="paragraph">
-<p><strong>FRAME_SETUP State</strong>: - Frame construction and CRC calculation - Clock
-enable assertion and timing setup - Command
-preparation</p>
-</div>
-<div class="paragraph">
-<p><strong>TRANSMIT State</strong>: - Bit-by-bit frame transmission on avs_mdata_o -
-Parallel bit counter and frame position tracking - Clock generation and
-data synchronization</p>
-</div>
-<div class="paragraph">
-<p><strong>RESPONSE_WAIT State</strong>: - Target response collection from
-avs_sdata_i - Acknowledgment detection and timeout monitoring -
-CRC verification preparation</p>
-</div>
-<div class="paragraph">
-<p><strong>RESPONSE_PROCESS State</strong>: - CRC validation and error detection -
-Response data extraction and formatting - FIFO write operations and
-status updates</p>
-</div>
-<div class="paragraph">
-<p><strong>RETRY_DECISION State</strong>: - Error analysis and retry determination - Retry
-counter management - Abort condition evaluation</p>
-</div>
-<div class="paragraph">
-<p><strong>RESYNC State</strong>: - Slave resynchronization operation (34 clock cycles) -
-Automatic periodic resync with configurable intervals</p>
+<p>Command transmission and response reception overlap: the reply to a command
+arrives during the subframe that carries the next command, which is why the
+mid-subframe states do both at once.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="performance-characteristics"><a class="anchor" href="#performance-characteristics"></a><a class="link" href="#performance-characteristics">Performance Characteristics</a></h3>
+<h3 id="error-handling-and-diagnostics"><a class="anchor" href="#error-handling-and-diagnostics"></a><a class="link" href="#error-handling-and-diagnostics">Error Handling and Diagnostics</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 35%;">
@@ -697,104 +583,54 @@ Automatic periodic resync with configurable intervals</p>
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Characteristic</th>
-<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Condition</th>
+<th class="tableblock halign-left valign-top">Handling</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Protocol Timing</strong></p></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bad CRC from the target</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Automatic retry, up to <code>AVS_CFG_0.MAX_RETRIES</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Max AVS clock frequency</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">system clock / 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resource unavailable acknowledgment</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Automatic retry, up to
+<code>AVS_CFG_0.MAX_RETRIES</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Frame transmission time</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 AVS clock cycles minimum</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bad data, data type or selector acknowledgment</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No retry; the response is
+delivered to software</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Response processing</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2-5 AVS clock cycles</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Retry budget exhausted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_RETRIES_ATTEMPTED_INT</code>;
+<code>AVS_NORMAL_STATUS.TOTAL_RETRIES</code> counts every retry attempted</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command-to-response latency</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">40-80 AVS clock cycles (including
-retries)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Target not responding</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SLAVE_UNRESPONSIVE_INT</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Sustainable throughput</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">~1 command per 50 AVS clock cycles</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command FIFO overrun</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write dropped, <code>CMD_FIFO_OVERFLOW_INT</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Resource Utilization (estimates)</strong></p></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Readback FIFO overrun</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Response dropped, <code>READBACK_OVERFLOW_INT</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Logic resources</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">~1200 LUTs total (protocol: ~400, FIFO: ~300, clock:
-~200, CRC: ~100, register: ~200)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">576 bits (command FIFO: 320, response FIFO: 256), register
-file: 128-256 bytes</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock resources</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2-4 global clocks, 8-16 local enables, 4-8 gating
-cells</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Error Handling</strong></p></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable retry count</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1-255 attempts (via AVS_CFG_0.MAX_RETRIES)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Error recovery time</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">3-10 AVS clock cycles per retry</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Max transaction latency</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">(retry_count + 1) × base_latency</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read of an empty readback FIFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>READBACK_UNDERFLOW_INT</code></p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="sect2">
-<h3 id="error-handling-and-diagnostics"><a class="anchor" href="#error-handling-and-diagnostics"></a><a class="link" href="#error-handling-and-diagnostics">Error Handling and Diagnostics</a></h3>
 <div class="paragraph">
-<p>Robust error handling in the AVSBus Controller is achieved through a
-combination of proactive detection, on-the-fly diagnostics, and
-versatile recovery strategies. The controller continuously monitors for
-common protocol errors such as CRC mismatches, missed acknowledgments,
-and protocol violations. CRC errors trigger automatic retry, while
-target response timeouts are detected using programmable thresholds.
-Additional safeguards guard against FIFO overflow or underflow, errors
-in clock domain crossings, and excessive retry attempts, ensuring
-resilient bus operation even under adverse conditions.</p>
-</div>
-<div class="paragraph">
-<p>To aid diagnostics, the controller offers real-time visibility into
-internal protocol states and maintains detailed target response
-status. A transaction history and error logging subsystem assist with
-deeper debugging, supplemented by a comprehensive register interface
-designed for both system monitoring and low-level inspection. Real-time
-metrics on bus utilization further augment the visibility available to
-software and hardware integrators.</p>
-</div>
-<div class="paragraph">
-<p>When recovery is necessary, the controller combines automatic
-mechanisms—including configurable retry, slave resync operations,
-transaction aborts, and FIFO flushing—with software-intervenable
-controls such as manual abort triggers, direct diagnostic
-access, and customization of error thresholds. This multi-tiered
-approach provides both rapid error response and ample opportunity for
-system-level management and adaptation.</p>
+<p>For diagnosis, <code>AVS_NORMAL_STATUS</code> reports bus idle, resync, retry-in-progress
+and FIFO states; <code>AVS_FIFOS_STATUS</code> reports occupied and vacant slots in both
+FIFOs; <code>AVS_SLAVE_STATUS</code> and <code>AVS_LATEST_SLAVE_SUBFRAME</code> report the target&#8217;s
+most recent acknowledgment and status response; and <code>cur_state_debug_o</code> exposes
+the FSM state to the surrounding system.</p>
 </div>
 </div>
 </div>
@@ -803,11 +639,10 @@ system-level management and adaptation.</p>
 <h2 id="avsbus-controller-interface"><a class="anchor" href="#avsbus-controller-interface"></a><a class="link" href="#avsbus-controller-interface">Interface</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The AVSBus Controller provides a configurable system bus interface
-(APB4 or AXI4-Lite), a two-wire AVSBus protocol interface, and
-clock/reset interfaces for system integration. Dual clock domain support
-enables flexible clock source selection for optimal timing and power
-management.</p>
+<p>The AVSBus Controller presents an AXI4-Lite register interface, a two-wire
+AVSBus protocol interface, and clock, reset, interrupt and DFT interfaces for
+system integration. The register file itself is APB4; the controller contains
+an <code>axi_lite_to_apb</code> bridge, so APB4 is not exposed at the module boundary.</p>
 </div>
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h3>
@@ -826,46 +661,59 @@ management.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BUS_PROTOCOL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System bus interface (APB4 or AXI4-Lite)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">COMMAND_FIFO_DEPTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command FIFO depth in entries; must be a power of two</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CMD_FIFO_DEPTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">READBACK_FIFO_DEPTH</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command FIFO depth (entries)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RSP_FIFO_DEPTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Response FIFO depth (entries)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLK_DIV_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock divider bit width (2-255 ratios)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DUTY_CYCLE_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Duty cycle control bit width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Readback FIFO depth in entries; must be a power of two</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="sect2">
-<h3 id="avsbus-protocol-interface"><a class="anchor" href="#avsbus-protocol-interface"></a><a class="link" href="#avsbus-protocol-interface">AVSBus Protocol Interface</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="avsbus-signal-definition"><a class="anchor" href="#avsbus-signal-definition"></a><a class="link" href="#avsbus-signal-definition">AVSBus Signal Definition</a></h3>
+<h3 id="port-list"><a class="anchor" href="#port-list"></a><a class="link" href="#port-list">Port List</a></h3>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. AVSBus Protocol Signals</caption>
+<caption class="title">Table 1. Register Interface</caption>
 <colgroup>
-<col style="width: 20%;">
+<col style="width: 25%;">
 <col style="width: 10%;">
 <col style="width: 10%;">
-<col style="width: 60%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">axil_req_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">struct</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite request, <code>avsbus_axil_req_t</code> (32-bit
+address, 32-bit data, 4-bit strobe)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">axil_resp_o</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">struct</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite response, <code>avsbus_axil_resp_t</code></p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. AVSBus Protocol Signals</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 55%;">
 </colgroup>
 <thead>
 <tr>
@@ -880,53 +728,151 @@ management.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">avs_clock_o</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus protocol clock - Generated by controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus protocol clock, generated by the controller</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">avs_mdata_o</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Master data - Serial command transmission</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Master data, serial command transmission</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">avs_sdata_i</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Slave data - Serial response from target device</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Slave data, serial response from the target device</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">avs_gpio_enable_o</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drives the pad enables for the three AVSBus
+pins; see <a href="#avsbus-controller-gpio-enable">Pad Enable Interface</a></p></td>
 </tr>
 </tbody>
 </table>
-<div class="paragraph">
-<p><strong>AVSBus Clock Characteristics</strong>: - Frequency: Programmable division of
-system clock (divide by 2-255) - Duty Cycle: Configurable 8-bit control
-(0-255 maps to 0-100%) - Clock Gating: Automatic gating during idle
-periods if enabled - Clock Domain: Independent from register interface
-clock</p>
-</div>
-<div class="paragraph">
-<p><strong>Serial Data Protocol</strong>: - avs_mdata_o: LSB-first serial transmission at
-avs_clock_o rate - Frame Length: 32 bits total (29 data + 3 CRC bits) -
-Bit Rate: 1 bit per avs_clock_o rising edge - Idle State: avs_mdata_o
-held high between transactions</p>
-</div>
-<div class="paragraph">
-<p><strong>Target Response Collection</strong>: - avs_sdata_i: Serial collection
-from target device - Response sampled on avs_clock_o edges - Target
-acknowledgment extracted from response frame</p>
-</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Clock, Reset and DFT Signals</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">clk_reg_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface clock; also an AVS clock source</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">clk_ref_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock; the alternative AVS clock source</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">clk_test_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT clock, substituted for the pre-divider clock while
+<code>test_en_i</code> is high</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rst_reg_ni</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous reset, deasserted synchronously to
+<code>clk_reg_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rst_ref_ni</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous reset, deasserted synchronously to
+<code>clk_ref_i</code>; resets the <code>clk_ref_i</code> leg of the anti-glitch clock mux</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rst_clk_div_ni</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous reset for the programmable clock
+divider</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">scan_rst_ni</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scan reset, substituted for the synchronized resets
+while <code>test_en_i</code> is high</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">test_en_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT test enable; selects <code>clk_test_i</code>, forces the clock
+source muxes to their test setting and enables the clock-gate test inputs</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Interrupt and Debug Signals</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">interrupt_o</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level-sensitive, active high; the OR of the unmasked
+<code>AVS_INTERRUPT</code> bits</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cur_state_debug_o</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One-hot protocol FSM state, resynchronized to
+<code>clk_reg_i</code></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="sect2">
 <h3 id="avsbus-frame-format"><a class="anchor" href="#avsbus-frame-format"></a><a class="link" href="#avsbus-frame-format">AVSBus Frame Format</a></h3>
 <div class="paragraph">
-<p><strong>Command Frame Structure (32 bits total)</strong>:</p>
+<p>Both subframes are 32 bits: 29 bits of payload followed by a 3-bit CRC. The
+master subframe carries a fixed <code>2&#8217;b01</code> preamble in its two most significant
+bits; the remaining fields occupy the same bit positions as the <code>AVS_CMD</code>
+register, so software writes a command in wire order.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. AVSBus Command Frame Format</caption>
+<caption class="title">Table 5. AVSBus Master Subframe</caption>
 <colgroup>
-<col style="width: 15%;">
+<col style="width: 25%;">
 <col style="width: 10%;">
 <col style="width: 10%;">
-<col style="width: 65%;">
+<col style="width: 55%;">
 </colgroup>
 <thead>
 <tr>
@@ -938,92 +884,53 @@ acknowledgment extracted from response frame</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command Type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Preamble</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:30]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Operation type (0=commit write, 1=hold write,
-2=read)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed <code>2&#8217;b01</code>, inserted by hardware</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command Type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[29:28]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD.R_OR_W</code>: 0 = commit write, 1 = hold write,
+2 = read</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Command Group</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[29]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[27]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command group (0=standard, 1=manufacturer-specific)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD.CMD_GRP</code>: 0 = standard, 1 =
+manufacturer-specific</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Command Code</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[28:25]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[26:23]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data category (0=voltage, 1=rate, 2=current,
-3=temp, etc.)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD.CMD_CODE</code>, see <a href="#avsbus-controller-cmd-codes">AVSBus Command Codes (Command Group 0)</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Rail Select</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[24:21]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[22:19]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rail selection (0-15, 0xF=broadcast)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD.RAIL_SEL</code>: rail index, 0xF = broadcast</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data Payload</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[20:5]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command Data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[18:3]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command-specific data (voltage values,
-configuration, etc.)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[4:3]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD.CMD_DATA</code>; 0xFFFF for read commands</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CRC-3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[2:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cyclic redundancy check for error detection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Calculated by hardware over bits [31:3]</p></td>
 </tr>
 </tbody>
 </table>
-<div class="paragraph">
-<p><strong>Command Type Encoding</strong>:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. AVSBus Command Types</caption>
-<colgroup>
-<col style="width: 10%;">
-<col style="width: 20%;">
-<col style="width: 70%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Code</th>
-<th class="tableblock halign-left valign-top">Command Name</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Commit Write</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write data and immediately commit voltage changes</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hold Write</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write data but hold changes until commit command</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read current values from target device</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p><strong>Data Type Encoding</strong>:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. AVSBus Data Types</caption>
+<table id="avsbus-controller-cmd-codes" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. AVSBus Command Codes (Command Group 0)</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 25%;">
@@ -1042,63 +949,65 @@ configuration, etc.)</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Target Rail Voltage</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1mV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16-bit voltage values for power rails</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 mV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16-bit unsigned, read or write</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vout Transition Rate</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1mV/μs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rise/fall rate configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 mV/us</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MSByte rise rate, LSByte fall rate</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Rail Current</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">10mA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Current measurement readback</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10 mA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16-bit unsigned, read only</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Temperature</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0.1°C</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Temperature sensor readings</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.1 degC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16-bit signed, read only</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Force Voltage Reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Emergency voltage reset command</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Requires a command data field of 0x0000</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Power Mode</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Efficiency vs performance mode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3 bits, LSB aligned: 0x0 maximum efficiency, 0x3
+maximum power, 0x4-0x7 manufacturer-specific</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xE</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus Status</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Target status and error reporting</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 bits, encoded per the AVS specification</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus Version</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Target version readback</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 bits, LSB aligned, read only</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p><strong>Response Frame Structure (32 bits)</strong>:</p>
+<p>With command group 1 the command code is manufacturer-specific and the table
+above does not apply.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. AVSBus Response Frame Format</caption>
+<caption class="title">Table 7. AVSBus Slave Subframe</caption>
 <colgroup>
-<col style="width: 15%;">
+<col style="width: 25%;">
 <col style="width: 10%;">
 <col style="width: 10%;">
-<col style="width: 65%;">
+<col style="width: 55%;">
 </colgroup>
 <thead>
 <tr>
@@ -1113,452 +1022,324 @@ configuration, etc.)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Slave Acknowledgment</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:30]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ACK/NACK status (0=action performed,
-1=resource unavailable, 2=bad CRC, 3=bad data)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0 = action performed, 1 = good CRC but
+resource unavailable, 2 = bad CRC received, 3 = good CRC but bad data, data
+type or selector. Codes 1 and 2 trigger a hardware retry</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Frame Valid</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[29]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0 in a valid frame. A 1 means the target did not
+respond and raises <code>SLAVE_UNRESPONSIVE_INT</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Status Response</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[29:25]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[28:24]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">5-bit status field indicating general
-condition of slave</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per the AVS specification: bit 4 VDone, bit 3
+StatusAlert, bit 2 AVS_Control, bits 1-0 manufacturer-specific</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Response Data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[24:5]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">20</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Target-specific response data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[23:8]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read data; 0xFFFF when the master issued a write</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[4:3]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[7:3]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CRC-3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[2:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cyclic redundancy check for error detection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CRC received from the target, checked by hardware</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>A received subframe reaches software by two paths. It is pushed into the
+readback FIFO and read out of <code>AVS_READBACK</code>, which pops the FIFO, or
+inspected without popping through <code>AVS_DEBUG_READBACK</code>. Independently of the
+FIFO, a subframe whose frame valid bit is 0 and whose CRC checks also latches
+into <code>AVS_LATEST_SLAVE_SUBFRAME</code> and <code>AVS_SLAVE_STATUS</code>, so the current target
+status is visible without waiting for the FIFO to drain.</p>
+</div>
 </div>
 <div class="sect2">
-<h3 id="clock-and-reset-interface"><a class="anchor" href="#clock-and-reset-interface"></a><a class="link" href="#clock-and-reset-interface">Clock and Reset Interface</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="multi-clock-architecture"><a class="anchor" href="#multi-clock-architecture"></a><a class="link" href="#multi-clock-architecture">Multi-Clock Architecture</a></h3>
+<h3 id="clock-architecture"><a class="anchor" href="#clock-architecture"></a><a class="link" href="#clock-architecture">Clock Architecture</a></h3>
 <div class="paragraph">
-<p>The controller supports flexible clocking for optimal system integration
-and timing closure.</p>
+<p>The AVS clock is derived from one of two sources, optionally divided, and
+optionally gated while the bus is idle.</p>
 </div>
 <div class="paragraph">
-<p><strong>Clock Input Signals</strong>:</p>
+<p><code>AVS_CFG_1.AVS_CLOCK_SELECT[1:0]</code> selects both the source and whether the
+divider is used: bit 1 picks the source (0 = <code>clk_reg_i</code>, 1 = <code>clk_ref_i</code>) and
+bit 0 picks the divider (0 = bypass, 1 = divided). The reset value is <code>2&#8217;b11</code>,
+so the controller comes up on a divided <code>clk_ref_i</code>.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. Clock Input Signals</caption>
+<caption class="title">Table 8. AVS Clock Configuration Fields</caption>
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 60%;">
+<col style="width: 45%;">
+<col style="width: 15%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Reset</th>
 <th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">clk_reg_i</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface clock - Synchronous with bus
-operations</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_CFG_1.AVS_CLOCK_SELECT[1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock source and divider bypass</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">clk_ref_i</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock - Independent AVS timing source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_CFG_1.CLK_DIVIDER_VALUE[23:16]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Division ratio. A value below 2 is
+treated as 2. The reset value 0 is a sentinel that leaves the divider at its
+hardware default of 4</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">test_en_i</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable - DFT override for clock selection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_CFG_1.CLK_DIVIDER_DUTY_CYCLE_NUMERATOR[31:24]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High-pulse fraction
+in 1/256 units, so 128 is 50%. A 50% duty cycle is only reachable with an even
+divider. The reset value 0 is a sentinel that leaves the numerator at its
+hardware default of 0x80</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">scan_rst_ni</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scan reset - Test infrastructure reset control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE[8]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gate the AVS clock while the bus is
+idle. The master issues a 34-cycle slave resync whenever the clock restarts</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS[10]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gate both clocks feeding the
+source mux</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p><strong>Clock Output Signals</strong>:</p>
+<p>Gate the clocks with <code>TURN_OFF_ALL_PREMUX_CLOCKS</code> before changing
+<code>AVS_CLOCK_SELECT</code>, <code>CLK_DIVIDER_VALUE</code> or
+<code>CLK_DIVIDER_DUTY_CYCLE_NUMERATOR</code>, then release the gate afterwards.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. Clock Output Signals</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 60%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">avs_clock_o</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus protocol clock - Drives target device</p></td>
-</tr>
-</tbody>
-</table>
 <div class="paragraph">
-<p><strong>Clock Configuration and Control</strong>: - Clock source selection via
-AVS_CFG_1.AVS_CLOCK_SELECT[1:0] - Programmable divider:
-AVS_CFG_1.CLK_DIVIDER_VALUE[7:0] (range 2-255) - Duty cycle control:
-AVS_CFG_1.CLK_DIVIDER_DUTY_CYCLE_NUMERATOR[7:0] (0-255) - Clock gating controls
-for power management (AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE)</p>
+<p>While <code>test_en_i</code> is high the source and divider-bypass muxes ignore
+<code>AVS_CLOCK_SELECT</code>, and <code>clk_test_i</code> drives the AVS clock directly.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">Reset Architecture</a></h3>
-<div class="paragraph">
-<p>Dual-domain reset system providing staged initialization control.</p>
-</div>
-<div class="paragraph">
-<p><strong>Reset Input Signals</strong>:</p>
-</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. Reset Input Signals</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 60%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">rst_ni</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Primary system reset - Active low asynchronous</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">rst_clk_div_ni</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock divider reset - Active low asynchronous</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">scan_rst_ni</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scan chain reset - Test infrastructure control</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p><strong>Internal Reset Domains</strong>:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Internal Reset Domains</caption>
+<caption class="title">Table 9. Reset Domains</caption>
 <colgroup>
 <col style="width: 25%;">
-<col style="width: 10%;">
-<col style="width: 65%;">
+<col style="width: 75%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Reset Domain</th>
-<th class="tableblock halign-left valign-top">Control</th>
-<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Scope</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock Divider Domain</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">rst_clk_div_ni</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Controls clock divider (must be
-deasserted first)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The programmable clock divider</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock/Register Domain</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">rst_ni</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Controls basic clocking and register
-access</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rst_reg_ni</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The register file, the protocol FSM and the reset synchronizers
+for the register, pre-divider and AVS clock domains</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rst_ref_ni</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <code>clk_ref_i</code> leg of the anti-glitch source mux</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p><strong>Reset Timing Requirements</strong>: 1. Assert rst_clk_div_ni and rst_ni to initialize all
-domains 2. Configure clock sources and parameters 3. Deassert rst_clk_div_ni
-to enable clock divider 4. Deassert rst_ni to enable register access 5. Configure protocol parameters and FIFO
-settings 6. Begin normal AVSBus operations</p>
+<p><code>rst_clk_div_ni</code> must be deasserted before <code>rst_reg_ni</code>. The divider has to be
+producing a clock before the logic it feeds leaves reset, otherwise the AVS
+clock domain never starts.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">Interrupt Interface</a></h3>
 <div class="paragraph">
-<p>Comprehensive interrupt generation for system-level event handling and
-status monitoring.</p>
-</div>
-<div class="paragraph">
-<p><strong>Interrupt Output Signal</strong>:</p>
+<p><code>interrupt_o</code> is a level output, asserted while any <code>AVS_INTERRUPT</code> bit is set
+and its corresponding <code>AVS_INTERRUPT_MASK</code> bit is clear.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. Interrupt Output</caption>
+<caption class="title">Table 10. Interrupt Sources (AVS_INTERRUPT)</caption>
 <colgroup>
-<col style="width: 20%;">
 <col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 60%;">
+<col style="width: 35%;">
+<col style="width: 55%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Bit</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Raised when</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">irq_o</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt request - Active high level assertion</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p><strong>Interrupt Sources and Control</strong>: - Command FIFO status events (full,
-empty, overflow) - Response FIFO status events (data available, full,
-underflow) - Transaction completion and error conditions - Target
-acknowledgment and timeout events - Protocol state changes and error
-recovery - Clock domain issues and reset events - Slave resync operations</p>
-</div>
-<div class="paragraph">
-<p><strong>Interrupt Configuration</strong>: - Individual interrupt source enable/disable
-control via AVS_INTERRUPT_MASK - Interrupt status register (AVS_INTERRUPT) with clear-on-write functionality (AVS_INTERRUPT_CLEAR) -
-Level triggering for all interrupt sources</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="gpio-and-test-interface"><a class="anchor" href="#gpio-and-test-interface"></a><a class="link" href="#gpio-and-test-interface">GPIO and Test Interface</a></h3>
-<div class="paragraph">
-<p>Additional interface signals for system integration and testing support.</p>
-</div>
-<div class="paragraph">
-<p><strong>General Purpose I/O</strong>:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. GPIO Signals</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 60%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_GPIO_ENABLE</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO mode enable - Overrides normal AVS
-operation (AVS_CONFIG register)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">READBACK_OVERFLOW_INT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A target response was dropped because the readback
+FIFO was full</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pins</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">READBACK_UNDERFLOW_INT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_READBACK</code> was read while the readback FIFO
+was empty</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CMD_FIFO_OVERFLOW_INT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD</code> was written while the command FIFO was
+full, so the command was dropped</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_RETRIES_ATTEMPTED_INT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A command failed <code>AVS_CFG_0.MAX_RETRIES</code>
+consecutive times</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLAVE_UNRESPONSIVE_INT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The target did not drive a valid subframe</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I/O</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AVS clock, master data, and slave data (GPIO mode)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">READBACK_HAS_DATA_INT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The readback FIFO holds data for software</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">READBACK_FIFO_FULL_INT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The readback FIFO is full; no further commands
+launch until it drains</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CMD_FIFO_FULL_INT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The command FIFO is full</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS_SLAVE_ISSUED_INTERRUPT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The target signalled an interrupt</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p><strong>Test and Debug Interface</strong>:</p>
+<p><code>AVS_INTERRUPT_MASK</code> is a <strong>disable</strong> mask and every bit resets to 1, so all
+sources are masked after reset and software must clear a bit to enable that
+source. Interrupt bits are cleared by writing 1 to the matching bit of
+<code>AVS_INTERRUPT_CLEAR</code>; those bits self-clear.</p>
 </div>
+</div>
+<div class="sect2">
+<h3 id="avsbus-controller-gpio-enable"><a class="anchor" href="#avsbus-controller-gpio-enable"></a><a class="link" href="#avsbus-controller-gpio-enable">Pad Enable Interface</a></h3>
+<div class="paragraph">
+<p><code>AVS_CONFIG.AVS_GPIO_ENABLE</code> drives <code>avs_gpio_enable_o</code>, which enables the
+pads carrying the AVSBus signals: output enable for the <code>avs_clock</code> and
+<code>avs_mdata</code> pins and input enable for the <code>avs_sdata</code> pin. It resets to 1,
+because the protocol FSM begins running as soon as reset is deasserted.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="timing"><a class="anchor" href="#timing"></a><a class="link" href="#timing">Timing</a></h3>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. Test Interface Signals</caption>
+<caption class="title">Table 11. Protocol Timing</caption>
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
+<col style="width: 40%;">
 <col style="width: 60%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Value</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">test_en_i</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Test mode enable - Affects clock selection logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Subframe length</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 <code>avs_clock_o</code> cycles</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">scan_rst_ni</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scan chain reset for manufacturing test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Slave resync</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">34 <code>avs_clock_o</code> cycles with <code>avs_mdata_o</code> held high</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">scan_mode_i</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scan mode control - Enables scan chain operation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Minimum AVS clock division</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2, when the divider is selected</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resync interval</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CFG_0.RESYNC_INTERVAL</code> in <code>clk_reg_i</code> cycles, plus a
+3-cycle synchronization delay before the FSM observes the request</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="sect2">
-<h3 id="protocol-timing-specifications"><a class="anchor" href="#protocol-timing-specifications"></a><a class="link" href="#protocol-timing-specifications">Protocol Timing Specifications</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="avsbus-timing-parameters"><a class="anchor" href="#avsbus-timing-parameters"></a><a class="link" href="#avsbus-timing-parameters">AVSBus Timing Parameters</a></h3>
 <div class="paragraph">
-<p><strong>Clock Timing</strong>: - Minimum avs_clock_o period: 2 * clk_reg_i period -
-Maximum avs_clock_o frequency: clk_reg_i frequency / 2 - Duty cycle
-range: 10% to 90% (configurable) - Clock jitter tolerance: ±5% of clock
-period</p>
-</div>
-<div class="paragraph">
-<p><strong>Data Setup and Hold Times</strong>: - avs_mdata_o setup time: 1ns before
-avs_clock_o rising edge - avs_sdata_i setup time: 2ns before avs_clock_o
-rising edge - avs_sdata_i hold time: 1ns after avs_clock_o rising edge -
-Propagation delay: avs_clock_o to avs_mdata_o &lt; 10ns</p>
-</div>
-<div class="paragraph">
-<p><strong>Transaction Timing</strong>: - Frame transmission time: 32 avs_clock_o cycles -
-Slave resync operation: 34 avs_clock_o cycles - Inter-frame gap: Automatic
-based on protocol state - Target response timeout: Configurable per application - Maximum
-transaction latency: Frame time + response time + processing overhead</p>
+<p>Pin-level setup, hold and propagation figures are a function of the
+implementation and are not specified by this IP.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="system-integration-guidelines"><a class="anchor" href="#system-integration-guidelines"></a><a class="link" href="#system-integration-guidelines">System Integration Guidelines</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="bus-interface-integration"><a class="anchor" href="#bus-interface-integration"></a><a class="link" href="#bus-interface-integration">Bus Interface Integration</a></h3>
+<h3 id="integration-example"><a class="anchor" href="#integration-example"></a><a class="link" href="#integration-example">Integration Example</a></h3>
 <div class="paragraph">
-<p><strong>APB4 Integration</strong>:</p>
+<p>The register port takes the AXI4-Lite structs from <code>avsbus_controller_pkg</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">avsbus_controller_apb4 u_avs_ctrl (
-    // APB4 interface
-    .pclk_i     (apb_clk),
-    .presetn_i  (apb_rst_n),
-    .paddr_i    (apb_paddr[7:0]),   // 8-bit address for 256-byte space
-    .psel_i     (apb_psel_avs),
-    .penable_i  (apb_penable),
-    .pwrite_i   (apb_pwrite),
-    .pwdata_i   (apb_pwdata),
-    .pstrb_i    (apb_pstrb),
-    .pready_o   (apb_pready_avs),
-    .prdata_o   (apb_prdata_avs),
-    .pslverr_o  (apb_pslverr_avs),
-
-    // Clock and reset
-    .clk_reg_i  (apb_clk),
-    .clk_ref_i  (ref_clk_100m),
-    .rst_ni     (system_rst_n),
-    .rst_clk_div_ni (system_rst_n),
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">avsbus_controller #(
+    .COMMAND_FIFO_DEPTH  (8),
+    .READBACK_FIFO_DEPTH (8)
+) u_avs_ctrl (
+    // Clocks and resets
+    .clk_reg_i      (reg_clk),
+    .clk_ref_i      (ref_clk),
+    .rst_ref_ni     (ref_rst_n),
+    .rst_reg_ni     (reg_rst_n),
+    .rst_clk_div_ni (clk_div_rst_n),  // deassert before rst_reg_ni
 
     // AVSBus interface
-    .avs_clock_o (avs_clk_out),
-    .avs_mdata_o (avs_cmd_out),
-    .avs_sdata_i (avs_response_in),
+    .avs_sdata_i       (avs_sdata),
+    .avs_mdata_o       (avs_mdata),
+    .avs_clock_o       (avs_clock),
+    .avs_gpio_enable_o (avs_pad_enable),
 
-    // System interface
-    .irq_o      (avs_irq)
-);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p><strong>AXI4-Lite Integration</strong>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">avsbus_controller_axi4lite u_avs_ctrl (
-    // AXI4-Lite interface
-    .aclk_i     (axi_clk),
-    .aresetn_i  (axi_rst_n),
+    // AXI4-Lite register interface
+    .axil_req_i  (avs_axil_req),
+    .axil_resp_o (avs_axil_resp),
 
-    // AXI4-Lite Write Channels
-    .awvalid_i  (axi_awvalid),
-    .awready_o  (axi_awready),
-    .awaddr_i   (axi_awaddr[7:0]),
-    .wvalid_i   (axi_wvalid),
-    .wready_o   (axi_wready),
-    .wdata_i    (axi_wdata),
-    .wstrb_i    (axi_wstrb),
-    .bvalid_o   (axi_bvalid),
-    .bready_i   (axi_bready),
-    .bresp_o    (axi_bresp),
+    .interrupt_o (avs_irq),
 
-    // AXI4-Lite Read Channels
-    .arvalid_i  (axi_arvalid),
-    .arready_o  (axi_arready),
-    .araddr_i   (axi_araddr[7:0]),
-    .rvalid_o   (axi_rvalid),
-    .rready_i   (axi_rready),
-    .rdata_o    (axi_rdata),
-    .rresp_o    (axi_rresp),
+    // DFT
+    .scan_rst_ni (scan_rst_n),
+    .test_en_i   (test_en),
+    .clk_test_i  (test_clk),
 
-    // Clock and reset
-    .clk_reg_i  (axi_clk),
-    .clk_ref_i  (ref_clk_100m),
-    .rst_ni     (system_rst_n),
-    .rst_clk_div_ni (system_rst_n),
-
-    // AVSBus interface
-    .avs_clock_o (avs_clk_out),
-    .avs_mdata_o (avs_cmd_out),
-    .avs_sdata_i (avs_response_in),
-
-    // System interface
-    .irq_o      (avs_irq)
+    .cur_state_debug_o (avs_fsm_state)
 );</code></pre>
 </div>
 </div>
@@ -1571,43 +1352,52 @@ transaction latency: Frame time + response time + processing overhead</p>
 <div class="sect2">
 <h3 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">Overview</a></h3>
 <div class="paragraph">
-<p>The AVSBus Controller provides a comprehensive register interface
-through a 256-byte address space (0x00-0xFF) accessible via AXI4-Lite or
-APB4 protocols. The register map is organized into functional groups
-including control registers for transaction management, status registers
-for monitoring operations, configuration registers for system
-parameters, and FIFO interfaces for command and response data handling.</p>
-</div>
-<div class="paragraph">
-<p>All registers are 32-bit aligned and designed for efficient software
-access patterns. The interface supports both polling and
-interrupt-driven operation modes, with extensive status reporting and
-diagnostic capabilities for robust system integration and debugging.</p>
+<p>The AVSBus Controller occupies a 128-byte address space (0x00-0x7F) reached
+through its AXI4-Lite port. The register map holds the command and readback
+FIFO windows, status registers for monitoring the bus and the target,
+interrupt status, mask and clear registers, and configuration registers for
+the clock, the retry budget and the resync interval.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="address-alignment-and-access-requirements"><a class="anchor" href="#address-alignment-and-access-requirements"></a><a class="link" href="#address-alignment-and-access-requirements">Address Alignment and Access Requirements</a></h3>
 <div class="paragraph">
-<p><strong>Address Alignment</strong>: - All registers aligned to 32-bit boundaries
-(addresses multiples of 4) - 256-byte total address space (0x00-0xFF) -
-Compatible with standard AXI4-Lite and APB4 addressing schemes</p>
+<p>All registers are 32 bits wide and aligned to a 4-byte boundary. The highest
+allocated offset is <code>0x58</code>; offsets <code>0x5C</code> through <code>0x7F</code> are unallocated and
+reserved.</p>
 </div>
 <div class="paragraph">
-<p><strong>Access Width Requirements</strong>: - All registers must be accessed using
-32-bit operations - Byte and halfword accesses not supported - may cause
-unpredictable behavior - AXI4-Lite: Write strobes should be 4&#8217;b1111 for
-all register writes - APB4: All pstrb_i bits should be asserted for
-register writes</p>
+<p>The controller decodes only the low 7 address bits, so an access above <code>0x7F</code>
+aliases back onto a live register rather than erroring. The integrating
+address decoder is responsible for confining the block to its 128-byte window.</p>
 </div>
 <div class="paragraph">
-<p><strong>Atomic Access Considerations</strong>: - FIFO registers (AVS_CMD, AVS_READBACK)
-are inherently atomic - Status registers provide consistent snapshots of
-hardware state - No special atomic access patterns required for normal
-operation</p>
+<p>Stored registers honour byte strobes, so a partial write updates only the
+addressed byte lanes. The two FIFO windows do not:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong><code>AVS_CMD</code></strong> ignores write strobes and pushes the whole 32-bit write data
+word into the command FIFO, so it must be written with a single full-width
+access. A partial write enqueues a malformed command.</p>
+</li>
+<li>
+<p><strong><code>AVS_READBACK</code></strong> pops the readback FIFO on any read, whatever the access
+width, so it must be read exactly once per response. <code>AVS_DEBUG_READBACK</code>
+returns the same data without popping.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>Offsets <code>0x5C</code> through <code>0xFF</code> are unallocated and reserved for future
-extensions.</p>
+<p>Neither FIFO window back-pressures the bus; both report a failed access
+instead. A write to <code>AVS_CMD</code> while the command FIFO is full is dropped, and a
+read of <code>AVS_READBACK</code> while the readback FIFO is empty returns the FIFO
+contents at the read pointer rather than a defined value. Each case raises its
+interrupt and completes the access with an error response, so software can
+detect the condition from the bus response alone. <code>AVS_DEBUG_READBACK</code> reads
+0xFFFFFFFF when the FIFO is empty and never errors, which makes it the safer
+register to poll.</p>
 </div>
 </div>
 <div class="sect2">
