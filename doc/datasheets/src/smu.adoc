@@ -30,7 +30,7 @@ image::../../ui-supplemental/img/tt_logo_color-yellow-black.png[Tenstorrent,pdfw
 [.datasheet-status]
 {datasheet-status} release | Open-source RTL | Apache 2.0
 
-[cols="35,65",frame=none,grid=none,stripes=none]
+[cols="40,60",frame=none,grid=none,stripes=none]
 |===
 a|
 // datasheet-section: highlights
@@ -54,6 +54,25 @@ external debug and test equipment, adopter implementation resources, and the
 OCAH SMC, DTP, and optional SEP. It supplies their integration wiring and
 control handoffs; the adopter owns chiplet-level address assignment,
 non-vendor-neutral IPs, firmware policy, and product security authorization.
+
+// datasheet-section: at-a-glance
+[.datasheet-section]
+AT A GLANCE
+
+[cols="34,66",options="header",grid=rows,stripes=even]
+!===
+!Feature !Description
+!Main configuration !SMC + SEP + DTP
+!Alternate configuration !SMC + DTP
+!Full-config fabric !3 AXI4 inputs by 3 outputs; 2 runtime address rules
+!AXI4 boundary !56-bit address, 64-bit data, 12-bit user
+!AXI IDs !8-bit input; 10-bit crossbar output; 6-bit SMC/SEP target
+!External interrupts !256 to SMC; 212 to SEP when present
+!Mailbox instances !32 SMC; 8 SEP when present
+!External cross-trigger interfaces !Current reference: 16 CTPs; 8 internal
+CTs; 8 clock-stop requests. Adopter-facing parameterization is tracked in
+https://github.com/tenstorrent/tt-oca-harness/issues/1503[issue #1503]
+!===
 
 a|
 // datasheet-section: overview
@@ -83,31 +102,15 @@ and the propagation of lifecycle and debug controls between chiplets.
 [.datasheet-section]
 SYSTEM CONTEXT
 
-image::../assets/smu-block-diagram.svg[SMU system context,pdfwidth=4.75in,align=center]
-
-// datasheet-section: at-a-glance
-[.datasheet-section]
-AT A GLANCE
-
-[cols="43,57",options="header"]
-!===
-!Feature !Description
-!Main configuration !SMC + SEP + DTP
-!Alternate configuration !SMC + DTP
-!Full-config fabric !3 AXI4 inputs by 3 outputs; 2 runtime address rules
-!AXI4 boundary !56-bit address, 64-bit data, 12-bit user
-!AXI IDs !8-bit input; 10-bit crossbar output; 6-bit SMC/SEP target
-!External interrupts !256 to SMC; 212 to SEP when present
-!Mailbox instances !32 SMC; 8 SEP when present
-!External cross-trigger interfaces !Current reference: 16 CTPs; 8 internal
-CTs; 8 clock-stop requests. Adopter-facing parameterization is tracked in
-https://github.com/tenstorrent/tt-oca-harness/issues/1503[issue #1503]
-!===
+image::../assets/smu-block-diagram.svg[SMU system context,pdfwidth=100%,align=center]
 
 |===
 
 <<<
 
+[cols="51,49",frame=none,grid=none,stripes=none]
+|===
+a|
 // datasheet-section: capabilities
 [.datasheet-section]
 CAPABILITIES
@@ -148,28 +151,27 @@ CAPABILITIES
 [.datasheet-section]
 INTERFACES AND CONFIGURATION
 
-[cols="37,63",options="header"]
-|===
-|Feature |Integration options
-|Clocks and resets |SMU, reference, peripheral, telemetry, SEP watchdog, and
+[cols="23,77",options="header",grid=rows,stripes=even]
+!===
+!Feature !Integration options
+!Clocks and resets !SMU, reference, peripheral, telemetry, SEP watchdog, and
 entropy-sample clocks; cold reset, power-good, boot/repair, DFT, and reset outputs
-|System fabric |Inbound and outbound 56-address/64-data AXI4; programmable SMC
+!System fabric !Inbound and outbound 56-address/64-data AXI4; programmable SMC
 and SEP aperture status; adopter AXI/AXI4-Lite extensions
-|Debug and triggers |Primary JTAG, boundary/iJTAG/secondary scan chains, external
+!Debug and triggers !Primary JTAG, boundary/iJTAG/secondary scan chains, external
 reset-control slice, and current-reference counts of 16 CTPs, 8 local trigger
 paths, and 8 clock-stop requests
-|Management |256 SMC and 212 SEP external interrupts; 32 reset/isolation
+!Management !256 SMC and 212 SEP external interrupts; 32 reset/isolation
 controls of chiplet resources; 32 SMC and 8 SEP mailbox interrupts; GPIO/UART
 events, telemetry, timer, straps, and RAS status. SEP resources apply only when
 SEP is present
-|Technology interfaces |SMC/SEP ROM and SRAM, eFuse/OTP, I3C table memory,
+!Technology interfaces !SMC/SEP ROM and SRAM, eFuse/OTP, I3C table memory,
 trace memory, GPIO pads, PLL/PVT, entropy, and SEP crypto-memory boundaries
-|Build-time |SEP configuration, external entropy sources, JTAG
+!Build-time !SEP configuration, external entropy sources, JTAG
 functions/identity, and SEP memory/Adams Bridge options
-|===
+!===
 
-<<<
-
+a|
 // datasheet-section: integration-dependencies
 [.datasheet-section]
 INTEGRATION DEPENDENCIES
@@ -245,8 +247,9 @@ OTP: one-time programmable. RAS: reliability, availability, and serviceability.
 [.datasheet-section]
 DOCUMENT CONTROL
 
-[cols="18,20,30,32",options="header"]
-|===
-|Version |Date |Author |Change
-| | | |
+[cols="14,16,25,45",options="header"]
+!===
+!Version !Date !Author !Change
+! ! ! !
+!===
 |===
