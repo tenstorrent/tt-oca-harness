@@ -103,16 +103,39 @@ jobs:
             echo 'which the default `GITHUB_TOKEN` cannot reach.'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # submodules: recursive pulls tt-oca-harness-model (private), its own
-      # sep/utils/csml (public), and tt-oca-manifest (private, needed by the
-      # bootcode tests). checkout rewrites the .gitmodules git@github.com: URLs to
-      # HTTPS and reuses this token for them, so no .gitmodules change is needed.
       - name: Checkout
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
+      # Both submodules are private: tt-oca-harness-model is the simulator, and
+      # the bootcode tests read tt-oca-manifest's src/oca/constants.py as the
+      # authority for the manifest layout.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants the two submodule repositories but NOT tt-oca-harness,
+      # so the repository's own checkout fails with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses both over SSH, which a hosted runner has no key
+      # for, so rewrite that remote to HTTPS carrying the PAT. The rewrite is
+      # undone afterwards so the credential does not outlive the step.
+      - name: Check out the private submodules
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init --recursive \
+            virtual_platform/tt-oca-harness-model \
+            hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than deep into a configure or a test import.
+          test -d virtual_platform/tt-oca-harness-model/vp
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
 
       - name: Install VP build dependencies
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'native'
@@ -337,9 +360,23 @@ jobs:
       - name: Checkout
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
+      # See the sep-vp job: checkout's `token` would break this repository's own
+      # fetch, so the private submodules are initialised separately.
+      - name: Check out the private submodules
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init --recursive \
+            virtual_platform/tt-oca-harness-model \
+            hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          test -d virtual_platform/tt-oca-harness-model/vp
 
       # Identical to the sep-vp native leg's set: smc-vp and smu-vp need no
       # extra packages. gcc-riscv64-unknown-elf is what the two firmware suites
