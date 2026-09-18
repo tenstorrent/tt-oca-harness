@@ -205,15 +205,23 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         for idx in range(1, self.random_count + 1):
             addr = self.random_target_aligned_addr(self.target, rng)
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
+            # Any non-empty legal strobe pattern; the memory check judges the
+            # enabled lanes only.
+            wstrb = rng.randint(1, self.target_full_wstrb(self.target, size))
             self.log_iteration(
-                idx, self.random_count, "random write addr=0x%08x data=0x%x", addr, data
+                idx,
+                self.random_count,
+                "random write addr=0x%08x data=0x%x wstrb=0x%x",
+                addr,
+                data,
+                wstrb,
             )
             status, _ = await self.write_target_single_and_check(
                 self.target,
                 addr,
                 data,
                 size=size,
-                wstrb=cfg.wstrb_bits and self.target_full_wstrb(self.target, size),
+                wstrb=wstrb,
                 context=f"random_write#{idx}",
             )
             self.status = status
@@ -402,8 +410,11 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             obs, _ = self.unpack_series_value(raw, size)
             self.assert_equal(f"series_wr_rd_incr.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
             self.operation_count += 1
-        _, _, _, _, status = await self.read_series_ctrl(size=size, target=self.target)
-        self.status = status
+        # The last primed incrementing read advanced the series address by
+        # one stride past the last beat.
+        self.status = await self.check_series_addr(
+            self.target, addr + stride, size=size, context="series_wr_rd_incr.final"
+        )
 
     async def run_series_write_read_no_incr(self) -> None:
         self.log_banner(f"{self.target} Series Write-Read No-Increment")
