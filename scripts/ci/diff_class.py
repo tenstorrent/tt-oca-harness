@@ -369,7 +369,8 @@ def changed_files() -> tuple[list[str], str | None]:
         # pipeline (not a separate downstream project), so GitLab forwards
         # the parent's CI_MERGE_REQUEST_*/CI_COMMIT_* variables unchanged;
         # only the pipeline-source classification itself needs recovering,
-        # which .gitlab-ci.yml's `nonfree:` job does via PARENT_PIPELINE_SOURCE.
+        # which the trusted GitLab parent's `nonfree:` job does via
+        # PARENT_PIPELINE_SOURCE.
         source = os.environ.get("PARENT_PIPELINE_SOURCE") or source
     if source == "merge_request_event":
         base = os.environ.get("CI_MERGE_REQUEST_DIFF_BASE_SHA", "")

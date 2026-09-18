@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     width="960" height="480" viewBox="0 0 960 480">
+  <defs>
+    <style>
+      text { font-family: sans-serif; fill: #333333; }
+      .title  { font-size: 14px; font-weight: bold; }
+      .label  { font-size: 12px; }
+      .small  { font-size: 10px; fill: #555555; }
+      .port   { font-size: 10px; font-family: monospace; fill: #333333; }
+      .note   { font-size: 9px; fill: #666666; }
+    </style>
+    <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#4a7baa"/>
+    </marker>
+    <marker id="arr-g" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#555555"/>
+    </marker>
+    <marker id="arr-r" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#aa5555"/>
+    </marker>
+  </defs>
+
+  <text x="14" y="22" class="title">STAP — Secondary TAP (one instance per STAP port)</text>
+
+  <!-- Layout key:
+       x=0..155:   input port label column
+       x=155..195: left margin / wire routing lane
+       x=195..820: STAP boundary (blocks + return path)
+       x=820..960: output port label column
+  -->
+
+  <!-- ── Outer STAP boundary  x=195..820, y=34..334 ────────────────────── -->
+  <rect x="195" y="34" width="625" height="300" rx="6"
+        fill="none" stroke="#4a7baa" stroke-width="2" stroke-dasharray="8 4"/>
+  <text x="211" y="54" class="label" font-weight="bold" fill="#4a7baa">STAP (N-th instance)</text>
+
+  <!-- ── Scan-in selection + SIB block  x=215..395, y=68..210 ─────────── -->
+  <rect x="215" y="68" width="180" height="142" rx="4"
+        fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
+  <text x="305" y="92"  class="label" text-anchor="middle">Scan-in Selection</text>
+  <text x="305" y="108" class="label" text-anchor="middle">+ SIB</text>
+  <text x="305" y="124" class="small" text-anchor="middle">stap_sel mux (jtag_stap wrapper):</text>
+  <text x="305" y="140" class="small" text-anchor="middle">sel=1 → host_tdi_i (stap_tdi)</text>
+  <text x="305" y="156" class="small" text-anchor="middle">sel=0 → client_scan_in_i</text>
+  <text x="305" y="172" class="small" text-anchor="middle">→ prim_jtag_sib_mux_pre</text>
+  <text x="305" y="188" class="small" text-anchor="middle">host_scan_out / host_scan_in</text>
+  <text x="305" y="204" class="small" text-anchor="middle">client_scan_out (±lockup)</text>
+
+  <!-- ── 3DCR block  x=475..655, y=68..148 ──────────────────────────────── -->
+  <rect x="475" y="68" width="180" height="80" rx="4"
+        fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
+  <text x="565" y="100" class="label" text-anchor="middle">3DCR</text>
+  <text x="565" y="116" class="small" text-anchor="middle">prim_jtag_scan_reg</text>
+  <text x="565" y="132" class="small" text-anchor="middle">tms_hold · stap_sel · config_hold</text>
+
+  <!-- SIB host_scan_out → 3DCR scan_in -->
+  <line x1="395" y1="108" x2="475" y2="108"
+        stroke="#4a7baa" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="433" y="103" class="note" text-anchor="middle">host_scan_out</text>
+
+  <!-- 3DCR scan_out → SIB host_scan_in.
+       Down from 3DCR bottom (565,148) → y=220 → left to SIB bottom-centre (305,220) →
+       up to SIB bottom edge (305,210). -->
+  <polyline points="565,148 565,220 305,220 305,210"
+            fill="none" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
+  <text x="433" y="232" class="note" text-anchor="middle">client_reg_scan_out → host_sib_scan_in</text>
+
+  <!-- ── TDO Lockup block  x=475..655, y=250..300 ──────────────────────── -->
+  <rect x="475" y="250" width="180" height="50" rx="4"
+        fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
+  <text x="565" y="272" class="label" text-anchor="middle">TDO Lockup</text>
+  <text x="565" y="288" class="small" text-anchor="middle">flop on ~TCK → host_tdo_int</text>
+
+  <!-- stap_scan_in → TDO lockup.
+       Branch taps the client_scan_in_i wire at x=207 (inside STAP boundary x=195,
+       right of label text extent x≈60..190), then routes DOWN to y=275 and right
+       into TDO lockup left edge (475,275). -->
+  <polyline points="207,80 207,275 475,275"
+            fill="none" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
+  <!-- Label for the branch, placed below all input rows and above SIB bottom -->
+  <text x="14" y="246" class="port">stap_scan_in</text>
+  <text x="14" y="259" class="port">(→ TDO lockup)</text>
+
+  <!-- ── Security gate block  x=675..815, y=100..180 ───────────────────── -->
+  <rect x="675" y="100" width="140" height="80" rx="4"
+        fill="#fce8e8" stroke="#aa5555" stroke-width="1.5"/>
+  <text x="745" y="124" class="label" text-anchor="middle" fill="#aa5555">Security</text>
+  <text x="745" y="140" class="label" text-anchor="middle" fill="#aa5555">Gate</text>
+  <text x="745" y="158" class="small" text-anchor="middle">stap_sel masked</text>
+  <text x="745" y="172" class="small" text-anchor="middle">update_en masked</text>
+
+  <!-- TDO lockup → security gate.
+       Right from lockup (655,275) → up at x=664 → into gate left (675,140). -->
+  <polyline points="655,275 664,275 664,140 675,140"
+            fill="none" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
+  <text x="663" y="225" class="note" text-anchor="middle">host_tdo_int</text>
+
+  <!-- security_disable_i: from below into gate -->
+  <line x1="745" y1="218" x2="745" y2="180"
+        stroke="#aa5555" stroke-width="1.2" marker-end="url(#arr-r)"/>
+  <text x="745" y="232" class="port" text-anchor="middle" fill="#aa5555">security_disable_i</text>
+
+  <!-- stap_sel_int from 3DCR data_out_o[1] → security gate (dashed control path).
+       Route stays above both blocks; label placed above the line. -->
+  <polyline points="655,108 665,108 665,120 675,120"
+            fill="none" stroke="#aa5555" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr-r)"/>
+  <text x="660" y="96" class="note" text-anchor="start">stap_sel_int (data_out_o[1])</text>
+
+  <!-- ── Input ports — each on a separate row, labels at x=14, lines at left boundary ──
+       Rows spaced 28px apart starting at y=80 to match SIB interior port positions.
+       Lines run x=14 → x=213 (2px left of SIB left x=215). -->
+
+  <!-- Input port labels placed ABOVE their wire (text y = wire y - 2, baseline above line) -->
+  <text x="190" y="77" class="port" text-anchor="end">client_scan_in_i</text>
+  <line x1="14" y1="80" x2="213" y2="80" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <text x="190" y="105" class="port" text-anchor="end">host_tdi_i  (stap_tdi)</text>
+  <line x1="14" y1="108" x2="213" y2="108" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <text x="190" y="133" class="port" text-anchor="end">client_tap_ctrl_i</text>
+  <line x1="14" y1="136" x2="213" y2="136" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <text x="190" y="161" class="port" text-anchor="end">client_scan_ctrl_i</text>
+  <line x1="14" y1="164" x2="213" y2="164" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <!-- client_scan_out_o exits SIB left at y=196; label above the line -->
+  <text x="190" y="193" class="port" text-anchor="end">client_scan_out_o</text>
+  <line x1="215" y1="196" x2="14" y2="196" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <!-- ── Output ports — labels start at x=826 (6px clear of STAP boundary x=820) ── -->
+
+  <!-- host_tdo_o exits security gate right -->
+  <text x="826" y="144" class="port">host_tdo_o</text>
+  <line x1="815" y1="140" x2="824" y2="140" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <!-- host_tdo_oen_o: independent combinational (stap_sel && shift_en) -->
+  <text x="826" y="262" class="port">host_tdo_oen_o</text>
+  <text x="826" y="274" class="note">(stap_sel &amp;&amp; shift_en)</text>
+  <line x1="815" y1="258" x2="824" y2="258" stroke="#555555" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arr-g)"/>
+
+  <!-- host_tap_ctrl_o: independent combinational -->
+  <text x="826" y="292" class="port">host_tap_ctrl_o</text>
+  <text x="826" y="304" class="note">(TMS mux per stap_sel)</text>
+  <line x1="815" y1="288" x2="824" y2="288" stroke="#555555" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arr-g)"/>
+
+  <!-- ── Notes ─────────────────────────────────────────────────────────── -->
+  <rect x="10" y="346" width="940" height="126" rx="4"
+        fill="#f8f8f8" stroke="#cccccc" stroke-width="1"/>
+  <text x="480" y="362" class="small" text-anchor="middle" font-weight="bold">
+    Key signal relationships (from jtag_stap.sv):
+  </text>
+  <text x="480" y="378" class="small" text-anchor="middle">
+    Scan-in mux (jtag_stap wrapper, feeds prim_jtag_sib_mux_pre input): stap_sel=1 routes host_tdi_i (stap_tdi); stap_sel=0 routes client_scan_in_i (stap_scan_in).
+  </text>
+  <text x="480" y="394" class="small" text-anchor="middle">
+    TDO path: stap_scan_in → TDO lockup flop (~TCK) → host_tdo_int → security gate → host_tdo_o.
+  </text>
+  <text x="480" y="410" class="small" text-anchor="middle">
+    SIB↔3DCR: host_sib_scan_out feeds 3DCR scan_in directly; 3DCR scan_out returns to SIB host_scan_in. No extra flop.
+  </text>
+  <text x="480" y="426" class="small" text-anchor="middle">
+    Security: security_disable_i forces stap_sel=0, host_tdo_o=0, masks update_en. stap_sel_int = data_out_o[1] of 3DCR.
+  </text>
+  <text x="480" y="442" class="small" text-anchor="middle">
+    host_tdo_oen_o and host_tap_ctrl_o are independent combinational outputs; they are NOT outputs of the security gate.
+  </text>
+  <text x="480" y="458" class="small" text-anchor="middle">
+    Optional: SCAN_IN_PIPE flop on client_scan_in_i → stap_scan_in (default 0 for all DTP instances); TDI_LOCKUP flop on host_tdi_i → stap_tdi (default 0; set to 1 for I/O STAP die crossing).
+  </text>
+
+</svg>

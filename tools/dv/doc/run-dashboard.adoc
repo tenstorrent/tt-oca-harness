@@ -1203,10 +1203,7 @@ reads the same files.
   set from the run's `verilator-weekly (<dut>)` jobs, downloads every
   `dv-run-*-weekly` artifact under `weekly-runs/<artifact name>/`, runs
   `collect` once per DUT, and then a data-only `dashboard` aggregate (no
-  `--html-out`) over all the records with the trend history file. On a
-  `workflow_dispatch` the job first re-grades each downloaded run tree
-  against the checkout's coverage policy (`run_dv.py --waive`, see
-  <<dashboard-waive>>).
+  `--html-out`) over all the records with the trend history file.
 . Publication is all or nothing. The job fails, and publishes nothing, when
   an expected DUT has no run-tree artifact or its tree has no `result.json`,
   when a collected record does not carry `schema_version` `"0.1"`, its
@@ -1220,7 +1217,7 @@ Consumption interfaces:
 
 * **Workflow artifact `dv-dashboard-data`** (90-day retention) — the per-run
   consumable bundle: the per-DUT normalized results (schema `"0.1"`) with
-  their staged coverage files, `summary.json`, the current `history.json`
+  any staged coverage files, `summary.json`, the current `history.json`
   snapshot (schema `"0.2"`), and the week's `classification.json`.
 * **Branch `dv-dashboard-data`** — the canonical cross-run store. Trend
   history must chain across weeks indefinitely, and artifacts expire, so
@@ -1276,48 +1273,11 @@ Operational rules:
 * A `workflow_dispatch` accepts `dry_run=true`: the job collects,
   aggregates, and runs every gate but skips the data-branch push, the bundle
   upload, and the digest email, and the Actions list labels it
-  `dashboard dry run`. Use it to verify a workflow change or to preview a
-  re-grade against a published weekly.
+  `dashboard dry run`. Use it to verify a workflow change against a
+  published weekly.
 * Every dispatch adds a trend point: the point identity includes the
   dashboard checkout revision, so a re-dispatched weekly does not replace its
   earlier point.
-
-[[dashboard-waive]]
-=== Waive coverage bins on a published weekly
-
-A waiver merged after a weekly ran reaches that weekly's published numbers
-through a re-dispatch:
-
-. Review the holes in the published data (`coverage.holes_summary`, or the
-  staged `coverage-details.json`) and add the `pass:[[[holes]]]` entry to the DUT's
-  `coverage_policy.toml`; the waiver section of xref:run-dv.adoc[DV and FV
-  Runner] gives the fields and the guardrails.
-. Merge the policy change to `main`.
-. Dispatch the publication for the weekly's regress run id, as a dry run
-  first when the outcome is uncertain:
-+
-[source,bash]
-----
-gh workflow run dashboard.yml -f run_id=<regress run id> -f dry_run=true
-gh workflow run dashboard.yml -f run_id=<regress run id>
-----
-+
-The job downloads the weekly artifact, runs
-`OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut <dut> --run-dir weekly-run --waive`
-with the checkout's policy, and collects the re-graded tree. Exit 0 and 1
-are applied grades (1 surfaces as the collected `coverage.status` and as a
-step summary line); exit 2 leaves the tree as recorded, appends
-`coverage policy not applied` to the step summary, and publishes the recorded
-grade. Publication continues in every case. The scheduled `workflow_run`
-path does not run the step.
-
-The re-grade uses the policy of the commit the workflow ran from, not the
-regression commit's. A changed policy changes `comparison_key`, so the
-re-graded point starts a new comparable series in `history.json`; compare
-trend points only when their `comparison_key` values match. A weekly whose
-report command crashed is refused (exit 2) and publishes as recorded; a
-weekly whose grade failed on the policy publishes its repaired grade once the
-policy is corrected.
 
 == Troubleshooting
 

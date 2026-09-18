@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i3ccore-wrap-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 The I3C Core Controller provides a comprehensive register interface organized
 into five major sections accessible through an AXI4-Lite slave interface. The
@@ -16,7 +16,7 @@ The register map follows the MIPI I3C HCI v1.2 specification with OCA-specific
 extensions for recovery and enhanced IBI handling. All registers are 32-bit
 aligned and support only 32-bit access widths.
 
-====== Register Organization
+=== Register Organization
 
 * *I3CBase Section* (0x00-0x68): Core controller configuration and status
 registers including bus control, capabilities, interrupts, and reset management
@@ -32,7 +32,7 @@ includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
 * *DCT Section* (0x800-0xFFF): Device Characteristic Table, 128-entry address window
 (4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=16 (usable index 0-15)
 
-====== Address Alignment and Access
+=== Address Alignment and Access
 
 *Address Alignment:*
 * All registers are aligned to 32-bit boundaries (addresses are multiples of 4)
@@ -49,7 +49,7 @@ includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
 * Bit numbering: Bit 0 is LSB, bit 31 is MSB
 * Multi-byte fields follow little-endian byte ordering
 
-====== Register Address Map
+=== Register Address Map
 
 The following table lists the most important registers used by the I3C
 controller RTL (flow_active.sv, i3c_controller_fsm.sv, controller_active.sv,
@@ -120,7 +120,7 @@ normal operation and initialization.
 |0x18C |STBY_CR_CAPABILITIES |R |Standby Controller capabilities (read-only)
 |=====================================================================================
 
-====== Reset Values and Power-On State
+=== Reset Values and Power-On State
 
 .Register Reset Values
 [width="100%",cols="30%,20%,50%",options="header",]
@@ -152,12 +152,12 @@ normal operation and initialization.
 |Standby Controller Registers |0x00000000 |Disabled by default, no addresses configured
 |=====================================================================================
 
-====== Detailed Register Descriptions
+=== Detailed Register Descriptions
 
 The following sections provide detailed bit-field descriptions for the most
 important registers used during normal controller operation.
 
-====== HC_CONTROL (0x04) - Host Controller Control
+=== HC_CONTROL (0x04) - Host Controller Control
 
 *Description:* Primary control register for enabling and configuring the I3C
 Host Controller. Software must configure this register during initialization
@@ -235,7 +235,7 @@ indicate bus is idle and not owned by this controller
 * ABORT can be used to cancel stuck transactions, but may leave devices in
 unexpected states requiring bus reset
 
-====== RESET_CONTROL (0x10) - Reset Control
+=== RESET_CONTROL (0x10) - Reset Control
 
 *Description:* Software reset control for the Host Controller and individual
 queue structures. Allows selective reset of queues without full controller
@@ -293,7 +293,7 @@ not the underlying storage
 * Reset individual queues for error recovery (e.g., TX underflow, RX overflow)
 * Never reset queues while HC_CONTROL.BUS_ENABLE=1 and transactions are active
 
-====== PRESENT_STATE (0x14) - Present State
+=== PRESENT_STATE (0x14) - Present State
 
 *Description:* Read-only status register indicating current controller state
 including bus ownership and activity. Hardware updates this register automatically
@@ -328,7 +328,7 @@ controller or loses arbitration
 * In single-controller systems with HC_CONTROL.BUS_ENABLE=1, AC_CURRENT_OWN
 typically remains 1
 
-====== INTR_STATUS (0x20) - Interrupt Status
+=== INTR_STATUS (0x20) - Interrupt Status
 
 *Description:* Interrupt status register indicating error and exceptional
 conditions. Bits are set by hardware when events occur and cleared by writing
@@ -383,7 +383,7 @@ and perform full reset
 * Multiple interrupt bits can be set simultaneously - software should check all
 bits in interrupt handler
 
-====== COMMAND_PORT (0x80) - Command Queue Port
+=== COMMAND_PORT (0x80) - Command Queue Port
 
 *Description:* Write-only port for submitting command descriptors to the command
 queue. Command descriptors are 64 bits (2 DWORDs), requiring two sequential
@@ -424,7 +424,7 @@ to avoid queue overflow
 * For bulk command submission, use threshold-based interrupts to minimize
 polling overhead
 
-====== RESPONSE_PORT (0x84) - Response Queue Port
+=== RESPONSE_PORT (0x84) - Response Queue Port
 
 *Description:* Read-only port for retrieving response descriptors from the
 response queue. Each read returns a 32-bit response descriptor providing
@@ -474,7 +474,7 @@ completion or error
 * Software must drain response queue to avoid blocking command execution
 * Non-zero error status requires software error handling (retry, device reset, etc.)
 
-====== TX_DATA_PORT (0x88) - Transmit Data Port
+=== TX_DATA_PORT (0x88) - Transmit Data Port
 
 *Description:* Write-only port for writing transmit data to the TX FIFO. Data
 is consumed by controller during write transactions. Each write provides 32 bits
@@ -506,7 +506,7 @@ data threshold)
 * TX FIFO depth: 2^(QUEUE_SIZE.TX_DATA_BUFFER_SIZE + 1) DWORDs
 * Underflow (insufficient data) triggers TRANSFER_ERR response and may abort transaction
 
-====== RX_DATA_PORT (0x88) - Receive Data Port
+=== RX_DATA_PORT (0x88) - Receive Data Port
 
 *Description:* Read-only port for reading received data from the RX FIFO. Data
 is written by controller during read transactions. Each read returns 32 bits
@@ -540,7 +540,7 @@ free space)
 transaction
 * Software should drain RX FIFO promptly to prevent overflow on subsequent reads
 
-====== IBI_PORT (0x8C) - IBI Status and Data Port
+=== IBI_PORT (0x8C) - IBI Status and Data Port
 
 *Description:* Read-only port for retrieving In-Band Interrupt status
 descriptors and associated IBI data. First read returns 32-bit IBI status
@@ -584,7 +584,7 @@ larger
 * Software must service IBI queue promptly to avoid losing subsequent IBIs
 * Check INTR_STATUS.HC_INTERNAL_ERR_STAT if unexpected IBI queue behavior occurs
 
-====== QUEUE_THLD_CTRL (0x90) - Queue Threshold Control
+=== QUEUE_THLD_CTRL (0x90) - Queue Threshold Control
 
 *Description:* Configures threshold values for command, response, and IBI queues.
 Thresholds determine when queue-related interrupts trigger, enabling efficient
@@ -631,7 +631,7 @@ performance
 * For low-latency applications, keep thresholds at minimum (1) for immediate
 notification
 
-====== DATA_BUFFER_THLD_CTRL (0x94) - Data Buffer Threshold Control
+=== DATA_BUFFER_THLD_CTRL (0x94) - Data Buffer Threshold Control
 
 *Description:* Configures threshold values for TX and RX data buffers. Thresholds
 control when transfers start (start threshold) and when threshold interrupts
@@ -695,7 +695,7 @@ half full/empty
 * For maximum throughput, set start thresholds low and buffer thresholds high
 * For minimum latency, set all thresholds to minimum value (0 = 2 entries)
 
-====== STBY_CR_CONTROL (0x184) - Standby Controller Control
+=== STBY_CR_CONTROL (0x184) - Standby Controller Control
 
 *Description:* Control register for Standby Controller Mode operation. Enables
 secondary controller functionality, configures dynamic address assignment methods,
@@ -791,7 +791,7 @@ is idle
 * OCA implementation primarily uses ENTDAA for dynamic address assignment
 * Handoff features (bits [4:0]) are used for advanced multi-controller scenarios
 
-====== Backend Conditional Content
+=== Backend Conditional Content
 
 ifdef::backend-html5[]
 For complete register bit-field documentation including all registers and

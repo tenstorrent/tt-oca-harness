@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Threat Model
+:description: Remote software, physical, and supply-chain threats considered by SEP.
+
 [[threat-model]]
-==== Threat Model
 
 The threat model covers remote software attacks, physical attacks and
 supply chain attacks. Software attacks are universal and the primary
@@ -53,4 +55,3 @@ such as bias fault injection
 * Thermal gradients to influence entropy source and induce timing
 faults
 * Supply chain attacks
-

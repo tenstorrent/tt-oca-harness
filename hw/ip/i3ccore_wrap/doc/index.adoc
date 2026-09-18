@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// I3C Core Controller component documentation. interface.adoc carries the page
+// title and overview and pulls in architecture.adoc and memmap.adoc in turn.
+ifdef::backend-html5[]
+include::partial$i3ccore_wrap/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::interface.adoc[]
+endif::backend-pdf[]

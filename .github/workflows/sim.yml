@@ -83,8 +83,8 @@ jobs:
         #
         #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
         #
-        # No workflow edit needed to flip it, or to roll back. regress.yml uses
-        # the same variable for its weekly coverage jobs.
+        # No workflow edit needed to flip it, or to roll back. regress.yml
+        # promotes its regression rows with the same variable.
         include:
           - dut: dtp
             runner: ubuntu-latest
@@ -129,9 +129,9 @@ jobs:
       # "remote: Write access to repository not granted".
       #
       # .gitmodules addresses the submodule over SSH, which a hosted runner has
-      # no key for, so rewrite just that remote to HTTPS carrying the PAT. Same
-      # shape as .gitlab-ci.yml's OCAH_NONFREE_REMOTE. The rewrite is undone
-      # afterwards so the credential does not outlive the step.
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
+      # rewrite is undone afterwards so the credential does not outlive the
+      # step.
       - name: Check out the tt-oca-manifest submodule
         if: env.RUN_HARDWARE_CI == 'true' && matrix.dut == 'sep'
         env:

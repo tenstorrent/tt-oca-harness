@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[mailbox-unit-architecture]]
-===== Architecture
+== Architecture
 
 The Mailbox IP provides inter-processor and inter-chiplet communication
 through a register-based interface. A single AXI4-Lite slave port is demuxed
 into one register aperture per mailbox direction, and each mailbox pair owns
 the two FIFOs that carry data between its two apertures.
 
-====== Configuration Parameters
+=== Configuration Parameters
 
 [width="100%",cols="25%,15%,60%",options="header",]
 |=======================================================================
@@ -29,7 +29,7 @@ multi-processor coordination
 status
 |=======================================================================
 
-====== Address Space
+=== Address Space
 
 The architecture supports up to 64 mailbox instances (32 bidirectional
 pairs):
@@ -46,7 +46,7 @@ information without multi-word transfers. The 2KB allocation per aperture
 leaves the ten registers sparsely mapped; offsets above the register map are
 unmapped rather than aliased.
 
-====== Internal Structure
+=== Internal Structure
 
 The unit is an `axi_lite_demux` in front of `NUM_MAILBOXES` mailbox instances.
 Each mailbox instance has two AXI4-Lite slave ports, one per aperture, and
@@ -55,7 +55,7 @@ cross-coupled between the two ports: the push side of one port is the pop side
 of the other. The FIFOs are internal to the IP; there is no external FIFO
 interface.
 
-====== Transaction Processing
+=== Transaction Processing
 
 AXI4-Lite transactions follow this flow:
 
@@ -70,7 +70,7 @@ in the Error Handling table
 giving one cycle of latency and keeping the response path free of
 combinational paths from the request
 
-====== Bidirectional Communication
+=== Bidirectional Communication
 
 Each mailbox pair provides two register apertures, conventionally used as an
 outbound and an inbound direction. The two are not independent storage: they
@@ -82,7 +82,7 @@ naming reflects intended use, not an access restriction.
 Separate apertures give each direction its own thresholds, status, error flags
 and interrupt output.
 
-====== Clock and Reset
+=== Clock and Reset
 
 The mailbox uses a single clock domain for integration reliability:
 
@@ -100,7 +100,7 @@ mailbox state
 No internal clock domain crossings eliminates CDC complexity. Single
 clock domain simplifies timing analysis and integration verification.
 
-====== Interrupt Architecture
+=== Interrupt Architecture
 
 The mailbox provides independent interrupt outputs for each mailbox
 instance:

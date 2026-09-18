@@ -1,9 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[.small,stretch]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="SEP port reference" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide.small,stretch]
 .SEP Port Declaration
+ifdef::backend-html5[]
+[cols="<19%,<15%,<11%,<8%,<20%,<14%,<13%",options="header",frame=all,grid=all]
+endif::backend-html5[]
+ifndef::backend-html5[]
 [%autowidth,options="header",frame=all,grid=all]
+endif::backend-html5[]
 |===
 |Interface Name |Type |Direction |Width |Description |Connection |Default value (if applicable)
 
@@ -120,3 +131,9 @@
 
 |`ext_debug_bus_o` |`logic` |Output |`[511:0]` |External debug observation bus. |Debug infrastructure |N/A
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]

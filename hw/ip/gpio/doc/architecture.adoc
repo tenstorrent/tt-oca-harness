@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[gpio-architecture]]
-===== Architecture
+== Architecture
 
 At the heart of the OCAH system’s digital I/O lies the GPIO peripheral, a
 controller designed for both versatility and robust security. Its
@@ -11,7 +11,7 @@ register-driven control and direct hardware guidance via the LSIO
 interface, all while maintaining strict access governance and flexible
 interrupt handling throughout.
 
-====== Functional Blocks
+=== Functional Blocks
 
 The top-level GPIO controller (gpio.sv) sits at the center of the
 architecture, orchestrating the actions of all internal components. It
@@ -55,7 +55,7 @@ pull-up and pull-down configuration, signal conditioning to guard
 against glitches, and fully independent TX/RX enables, making true
 bidirectional I/O possible.
 
-====== Data Flow Architecture
+=== Data Flow Architecture
 
 In typical register-driven mode, the data path forms a tight,
 predictable loop: software writes an output value into a DATA_CTRL
@@ -71,7 +71,7 @@ the status of LSIO is reflected back to software for monitoring
 purposes. Thanks to the clear priority scheme, LSIO always wins control
 if contention arises.
 
-====== Control Path and Mode Selection
+=== Control Path and Mode Selection
 
 Configuration sources follow a strict ranking: LSIO commands always take
 the highest precedence, overriding any register settings when active. If
@@ -100,7 +100,7 @@ if (lsio_interface_select_i && !lsio_disable) {
 }
 ----
 
-====== Interrupts: Flexible and Responsive
+=== Interrupts: Flexible and Responsive
 
 The GPIO’s interrupt subsystem is engineered for flexibility. It
 supports both level and edge detection, allowing software to choose
@@ -122,7 +122,7 @@ endcase
 interrupt_o = interrupt_enable && interrupt_trigger;
 ----
 
-====== Clocking and Reset: Safe and Predictable
+=== Clocking and Reset: Safe and Predictable
 
 All GPIO logic is synchronized to a single system clock (clk_i). There
 are no internal clock domains or generated clocks to complicate timing—

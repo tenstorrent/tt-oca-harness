@@ -2,13 +2,13 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i2c-interface]]
-===== Interface
+== Interface
 
 The I2C Interface Component provides signal interfaces supporting I2C,
 SMBus, and PMBus protocols with AXI4-Lite register access and DMA
 integration.
 
-====== Configuration Parameters
+=== Configuration Parameters
 
 [width="100%",cols="30%,20%,50%",options="header",]
 |===========================================================================
@@ -21,9 +21,9 @@ integration.
 |DATA_WIDTH |32 |Data bus width (bits)
 |===========================================================================
 
-====== Signal Interfaces
+=== Signal Interfaces
 
-====== Global Interface
+=== Global Interface
 
 .Global Interface Signals
 [width="100%",cols="20%,10%,10%,10%,50%",options="header",]
@@ -38,7 +38,7 @@ synchronous deassertion. Resets all state machines, FIFOs, and control
 logic to known states.
 |=====================================================================================
 
-====== Memory Configuration Interface
+=== Memory Configuration Interface
 
 .Memory Configuration Interface Signals
 [width="100%",cols="20%,10%,10%,60%",options="header",]
@@ -57,7 +57,7 @@ retention settings, and power-on sequences - *Test Features*: BIST
 control, scan chain integration, and debug access - *ECC Support*: Error
 correction enable, threshold settings (when available)
 
-====== I2C Physical Interface
+=== I2C Physical Interface
 
 The I2C physical interface implements true open-drain signaling with
 proper electrical characteristics.
@@ -79,7 +79,7 @@ through appropriate I/O cell. Must have pull-up resistor.
 drives low only. External pull-up required.
 |=====================================================================================
 
-====== Electrical Characteristics:
+=== Electrical Characteristics:
 
 * *Logic Levels*: Compatible with I2C specification voltage levels
 (3.3V, 1.8V, etc.)
@@ -90,7 +90,7 @@ operation
 * *Output Drive*: Open-drain outputs with configurable drive strength
 * *Rise/Fall Times*: Configurable to meet I2C specification requirements
 
-====== Input Delay Configuration
+=== Input Delay Configuration
 
 The IP's input pins do not reflect the start point for the full input path delay, since pads and nets from I/O buffers also contribute.
 The RTL parameter `InputDelayCycles` must be set to the maximum number of cycles of delay from the IP's output pin driving SCL or SDA to the IP's corresponding input pin sensing the transition.
@@ -102,7 +102,7 @@ This parameter affects timing constraints:
 * `TLOW` must be at least 3 cycles + `T_R` + `InputDelayCycles`
 * `THIGH` must be at least 4 cycles + `InputDelayCycles`
 
-====== Virtual Open Drain Implementation
+=== Virtual Open Drain Implementation
 
 In devices which lack a true open drain buffer functionality, this IP implements a "virtual Open Drain" functionality.
 The SDA and SCL outputs are assumed to be connected to a tri-state buffer, with independent enable outputs for both signals.
@@ -113,7 +113,7 @@ This arrangement allows the output pins to float high if there is no conflict fr
 
 This arrangement is necessary for FPGA builds and provides the same electrical behavior as true open-drain outputs.
 
-====== Bus Configuration:
+=== Bus Configuration:
 
 * *Pull-up Resistors*: External pull-up resistors required (typically
 1kΩ-10kΩ)
@@ -123,7 +123,7 @@ for fast-mode plus
 * *Termination*: No special termination required beyond pull-up
 resistors
 
-====== SMBus Extension Interface
+=== SMBus Extension Interface
 
 SMBus-specific signals support System Management Bus protocol
 extensions.
@@ -145,7 +145,7 @@ Interrupt-style signaling from target devices. Wired-AND signal.
 Open-drain output for alert generation.
 |=====================================================================================
 
-====== SMBus Protocol Support:
+=== SMBus Protocol Support:
 
 * *SMBSUS# Handling*: Automatic suspend detection and response
 generation
@@ -154,7 +154,7 @@ resolution
 * *Timeout Extensions*: SMBus-specific timeout handling
 * *PEC Support*: Packet Error Checking capability (software implemented)
 
-====== Signal Characteristics:
+=== Signal Characteristics:
 
 * *Open-Drain Outputs*: Both outputs are open-drain with external
 pull-up requirements
@@ -164,7 +164,7 @@ lines
 * *Timing*: Meets SMBus timing requirements for signal assertion and
 deassertion
 
-====== DMA Interface
+=== DMA Interface
 
 DMA interface signals provide efficient data transfer support for
 high-throughput applications.
@@ -186,7 +186,7 @@ Asserted when FIFO level is below threshold.
 Asserted when FIFO level is above threshold.
 |=====================================================================================
 
-====== DMA Operation Modes:
+=== DMA Operation Modes:
 
 * *Single Transfer*: One data word per DMA request
 * *Burst Transfer*: Multiple words per request (up to FIFO capacity)
@@ -195,7 +195,7 @@ assert
 * *Flow Control*: Ready signals provide natural flow control for DMA
 engines
 
-====== Threshold Configuration:
+=== Threshold Configuration:
 
 * *TX Ready Threshold*: Signal asserts when FIFO has space for N or more
 entries
@@ -205,7 +205,7 @@ entries
 * *Disable Capability*: DMA ready signals can be disabled for
 polling-only operation
 
-====== Interrupt Interface
+=== Interrupt Interface
 
 Comprehensive interrupt interface aggregates all interrupt sources.
 
@@ -217,14 +217,14 @@ Comprehensive interrupt interface aggregates all interrupt sources.
 interrupt condition occurs. Level-sensitive.
 |=====================================================================================
 
-====== Interrupt Sources:
+=== Interrupt Sources:
 
 * *FIFO Interrupts*: Threshold, overflow, underflow conditions
 * *Transaction Interrupts*: Completion, NACK, arbitration loss
 * *Error Interrupts*: Timeout, protocol violations, bus errors
 * *Status Interrupts*: Bus idle, address match, mode changes
 
-====== Interrupt Control:
+=== Interrupt Control:
 
 * *Individual Enables*: Each interrupt source has dedicated enable bit
 * *Status Registers*: Separate status bits for each interrupt condition
