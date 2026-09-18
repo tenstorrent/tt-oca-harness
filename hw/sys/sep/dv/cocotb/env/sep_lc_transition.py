@@ -44,10 +44,13 @@ class SepLcTransitionCfg:
         # are exactly the ones SepRmaTokenMatchSeq will present.
         self.tokens = SepRmaTokenCfg(seed)
         rng = SepSeededRng(seed)
-        # Bytes 1..3 of the LC_STATE shadow word. Non-zero so the OR-merge check
-        # is falsifiable; byte 0 left clear so it never collides with the
-        # lifecycle nibble under test.
-        self.nuisance = (rng.getrandbits(24) | 0x01) << 8
+        # Bytes 1..3 of the LC_STATE shadow word. Two patterns, each with a
+        # unique bit, so OR-merge (a|b) differs from overwrite (b). Byte 0
+        # stays clear so it never collides with the lifecycle nibble.
+        raw1 = rng.getrandbits(24)
+        raw2 = rng.getrandbits(24)
+        self.nuisance = ((raw1 | 0x01) & ~0x02) << 8
+        self.nuisance2 = ((raw2 | 0x02) & ~0x01) << 8
 
     def image_fixed(self) -> dict[str, int]:
         """``select_efuse_image(fixed=...)`` pins that match this config.
@@ -64,4 +67,7 @@ class SepLcTransitionCfg:
         }
 
     def summary(self) -> str:
-        return f"seed={self.seed} nuisance=0x{self.nuisance:08x} {self.tokens.summary()}"
+        return (
+            f"seed={self.seed} nuisance=0x{self.nuisance:08x} "
+            f"nuisance2=0x{self.nuisance2:08x} {self.tokens.summary()}"
+        )

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
-from sep_reg_meta import sym
+from sep_reg_meta import SPI_CONTROLLER, sym
 
 SPI_CONTROLLER_CTRL = sym("SPI_CONTROLLER_CTRL_REG_ADDR")
 SPI_CONTROLLER_STATUS = sym("SPI_CONTROLLER_STATUS_REG_ADDR")
@@ -29,8 +29,8 @@ SPI_CONTROLLER_ERROR_STATUS = sym("SPI_CONTROLLER_ERROR_STATUS_REG_ADDR")
 SPI_JEDEC_ID = 0x20BA18
 SPI_RX_JEDEC_WORD = 0x0018BA20
 
-STATUS_ACTIVE = 1 << 30
-STATUS_READY = 1 << 31
+STATUS_ACTIVE = SPI_CONTROLLER.field_mask("STATUS", "active")
+STATUS_READY = SPI_CONTROLLER.field_mask("STATUS", "ready")
 
 
 class sep_spi_flash_jedec_seq(uvm_sequence):

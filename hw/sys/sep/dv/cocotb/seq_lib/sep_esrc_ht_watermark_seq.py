@@ -50,7 +50,7 @@ def _rdl_watermark_modes() -> dict[str, int]:
     }
 
 
-# entropy_source.sv watermark_test_e
+# WATERMARK_TEST encodings from entropy_source.rdl via _rdl_watermark_modes().
 REPCNT_HI = 0x0
 APT_HI = 0x1
 APT_LO = 0x2
@@ -67,8 +67,8 @@ SEL_NAMES = {
     MARKOV_LO: "MARKOV_LO",
 }
 PATHS = ("module_enable",)
-WATERMARK_MASK = 0xFFFF
-SEL_MASK = 0xF
+WATERMARK_MASK = ENTROPY_SOURCE.fields("HT_WATERMARK")["WATERMARK_VALUE"]["bm"]
+SEL_MASK = ENTROPY_SOURCE.fields("HT_WATERMARK_NUM")["WATERMARK_NUM"]["bm"]
 ARM_HIGH = 0x0000
 ARM_LOW = 0xFFFF
 # Independent of SUPPORTED: the count the RDL enum defines, so a walk that
@@ -133,9 +133,18 @@ class SepHtWatermark(SepAxiRegDriver):
         await ClockCycles(self._clk, cycles)
 
     async def write_num(self, sel: int) -> None:
-        await self._wr(ESRC_HT_WATERMARK_NUM, sel & SEL_MASK)
-        # HW writes the sanitized selector every cycle that is not a SW write.
-        await self._settle()
+        want = sel & SEL_MASK
+        resolved = want if want in SUPPORTED else REPCNT_HI
+        await self._wr(ESRC_HT_WATERMARK_NUM, want)
+        for _ in range(16):
+            if await self.read_num() == resolved:
+                return
+            await ClockCycles(self._clk, 1)
+        got = await self.read_num()
+        raise AssertionError(
+            f"HT_WATERMARK_NUM wrote 0x{want:x} (resolves 0x{resolved:x}), "
+            f"read back 0x{got:x}"
+        )
 
     async def read_num(self) -> int:
         return (await self._rd(ESRC_HT_WATERMARK_NUM)) & SEL_MASK

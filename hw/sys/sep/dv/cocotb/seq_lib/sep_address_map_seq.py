@@ -55,7 +55,17 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
-from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, SEP_RESET_CTRL, iter_registers, sym
+from sep_reg_meta import (
+    CSRNG,
+    EDN,
+    HMAC,
+    KMAC,
+    OTBN,
+    SEP_CPU_CTRL,
+    SEP_RESET_CTRL,
+    iter_registers,
+    sym,
+)
 
 from seq_lib.sep_abr_keygen_seq import ABR_NAME0, NAME0_EXP
 from seq_lib.sep_entropy_pool_seq import POOL_STATUS
@@ -194,8 +204,8 @@ FABRIC_BLOCKS = [
     ("AES", sym("AES_REG_MAP_BASE_ADDR"), None),
     ("HMAC", HMAC.addr("INTR_STATE"), HMAC.reset32("INTR_STATE")),
     ("KMAC", KMAC.addr("INTR_STATE"), KMAC.reset32("INTR_STATE")),
-    ("DRBG_CSRNG", sym("CSRNG_INTR_STATE_REG_ADDR"), 0x0000_0000),
-    ("DRBG_EDN", sym("EDN_INTR_STATE_REG_ADDR"), 0x0000_0000),
+    ("DRBG_CSRNG", sym("CSRNG_INTR_STATE_REG_ADDR"), CSRNG.reset("INTR_STATE")),
+    ("DRBG_EDN", sym("EDN_INTR_STATE_REG_ADDR"), EDN.reset("INTR_STATE")),
     ("ENTROPY_SRC", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR"), None),
     ("ADAMS_BRIDGE", ABR_NAME0, NAME0_EXP),  # MLDSA_NAME[0]; no OSS RDL block
     ("ENTROPY_POOL", POOL_STATUS, None),  # adapter not in PeakRDL

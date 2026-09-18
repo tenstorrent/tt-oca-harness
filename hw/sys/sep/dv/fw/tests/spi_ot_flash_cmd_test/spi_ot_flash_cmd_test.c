@@ -580,10 +580,10 @@ int main(void) {
                      "ERROR_STATUS.CMDINVAL and W1C released it\n");
     }
 
-    // CHK-ERR-CSIDINVAL: an otherwise legal segment issued with CSID beyond the
-    // one chip-select this instance has (sep_io.sv NUM_CS=1; spi_controller.sv:
-    // test_csid_inval = CSID >= NUM_CS).
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 1u);
+    // CHK-ERR-CSIDINVAL: an otherwise legal segment issued with CSID at the
+    // top of the 32-bit field, so the stimulus does not assume a particular
+    // NumCS. Any legal instance refuses this value.
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0xFFFFFFFFu);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
     uint32_t csid_es = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0u); // restore before recovery
@@ -605,7 +605,7 @@ int main(void) {
     }
     errors += cs_err;
     if (cs_err == 0) {
-        sep_mbx_puts("CHK-ERR-CSIDINVAL PASS: CSID==1 with NUM_CS==1 latched only "
+        sep_mbx_puts("CHK-ERR-CSIDINVAL PASS: CSID=0xFFFFFFFF latched only "
                      "ERROR_STATUS.CSIDINVAL and W1C released it\n");
     }
 

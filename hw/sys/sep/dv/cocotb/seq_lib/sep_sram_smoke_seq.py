@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import cocotb
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 from sep_reg_meta import sym
@@ -40,3 +41,4 @@ class sep_sram_smoke_seq(uvm_sequence):
         # nothing else in the suite exercises a narrow AxSIZE on this bus.
         await self._write(base + 4, 0xFEED_FACE, 4, size=2)
         await self._read(base, 8, expected=0xFEED_FACE_89AB_CDEF)
+        cocotb.log.info("CHK-SRAM-SMOKE PASS: 64-bit then 32-bit write/readback at 0x%08x", base)

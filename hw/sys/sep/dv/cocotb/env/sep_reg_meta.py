@@ -76,6 +76,9 @@ _TYPE_ALIAS = {
     # it. The register is in the RDL and the block is in the SEP addrmap; only the
     # generated name differs.
     "SEP_STATUS": "STATUS_REG",
+    "SEP_IRQ_STATUS": "IRQ_STATUS_REG",
+    "SEP_IRQ_ENABLE": "IRQ_ENABLE_REG",
+    "SEP_CTRL": "CTRL_REG",
 }
 
 # PeakRDL type name when it is not ``<block>_<reg>`` and the suffix walk is
@@ -83,6 +86,8 @@ _TYPE_ALIAS = {
 _TYPE_KEY_OVERRIDE = {
     ("AXIL_MAILBOX_OUTBOUND_MAILBOX_0", "ERROR_FLAGS"): "AXIL_MAILBOX_ERROR",
     ("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): ("REMAP_REGION_REGION_ATTRS"),
+    ("AP_OUTPUT_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): "OUTPUT_REMAP_REGION_REGION_ATTRS",
+    ("STEE_OUTPUT_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): "OUTPUT_REMAP_REGION_REGION_ATTRS",
 }
 
 
@@ -216,6 +221,13 @@ class RegBlock:
         if mask == 0:
             raise KeyError(f"{self.block}.{name}.{field_name} has an empty mask")
         return (mask & -mask).bit_length() - 1
+
+    def field_width(self, name: str, field_name: str) -> int:
+        """Width in bits of one named generated bitfield."""
+        mask = self.field_mask(name, field_name)
+        if mask == 0:
+            raise KeyError(f"{self.block}.{name}.{field_name} has an empty mask")
+        return bin(mask).count("1")
 
     def mask_all(self, name: str) -> int:
         """Union of EVERY field bit, reserved included -- the storage mask.
@@ -744,11 +756,13 @@ SPI_CONTROLLER = RegBlock("SPI_CONTROLLER")
 CSRNG = CHeaderRegBlock("CSRNG", ot_c_header("csrng"))
 EDN = CHeaderRegBlock("EDN", ot_c_header("edn"))
 EFUSE_INTERFACE_CTRL = RegBlock("EFUSE_INTERFACE_CTRL")
+EFUSE_MMR = RegBlock("EFUSE_MMR")
 AXIL_MAILBOX_OUTBOUND_0 = RegBlock("AXIL_MAILBOX_OUTBOUND_MAILBOX_0")
 SEP_LIFECYCLE_CTRL = RegBlock("SEP_LIFECYCLE_CTRL")
 KM_MAILBOX_SEP = RegBlock("KM_MAILBOX_SEP")
 INBOUND_FILTER_CTRL_0 = RegBlock("INBOUND_FILTER_CTRL_0_")
 LOCAL_MASTER_ALIAS_REMAP_CTRL_0 = RegBlock("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_")
+AP_OUTPUT_REMAP_CTRL_0 = RegBlock("AP_OUTPUT_REMAP_CTRL_0_")
 
 
 def _selftest() -> int:

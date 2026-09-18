@@ -178,11 +178,10 @@ EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
 
 `own` excludes the records `sep_base_test` emits during bring-up, so a leaf
 cannot satisfy the gate on infrastructure alone. A leaf whose `own` count is
-zero **fails** — unless it is named in `_EvidenceFilter.NO_OWN_EVIDENCE`, which
-lists the leaves that grade through another channel (firmware console verdict,
-a sequence-level compare, a base-class golden compare) together with the reason
-for each. That list may only shrink; retire an entry by making the check that
-already runs log a `CHK-` ID where it happens.
+zero **fails**. Firmware-console leaves emit `CHK-FW-CONSOLE` from `poll_boot`
+after the mailbox PASS magic, and that ID is not in `BASE_IDS`, so it counts
+as the leaf's own evidence. `_EvidenceFilter.NO_OWN_EVIDENCE` is empty and
+may only shrink.
 
 Leaves may also declare more: `min_evidence = N` sets a floor on `own`, and
 `required_evidence = ("CHK-A", ...)` names IDs that must appear.

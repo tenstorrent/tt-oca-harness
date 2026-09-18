@@ -501,17 +501,20 @@
 `SEP_TB_OUT(logic [1:0], lcc_demote_state_2_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_1_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_2_probe_o)
-// OTP JTAG2AXIL disable bits of DUT dbg_disable_o (frontdoor). LCC ties
-// both to 0; the fuse controller enforces access. Sliced here so cocotb
-// can read them without a packed-struct field walk.
+// Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
+// read these by name so a packed-struct reorder cannot swap two same-case
+// bits past the golden. The flattened vector stays for a width self-test.
+`SEP_TB_OUT(logic, dbg_disable_stap_io_o)
+`SEP_TB_OUT(logic, dbg_disable_stap_smc_o)
+`SEP_TB_OUT(logic, dbg_disable_stap_sep_o)
+`SEP_TB_OUT(logic, dbg_disable_stap_extra_o)
+`SEP_TB_OUT(logic, dbg_disable_stap_host_o)
+`SEP_TB_OUT(logic, dbg_disable_dft_secure_o)
+`SEP_TB_OUT(logic, dbg_disable_dft_nonsecure_o)
+`SEP_TB_OUT(logic, dbg_disable_dfd_o)
+`SEP_TB_OUT(logic, dbg_disable_smc_jtag2axi_o)
 `SEP_TB_OUT(logic, dbg_disable_smc_otp_jtag2axi_o)
 `SEP_TB_OUT(logic, dbg_disable_sep_otp_jtag2axi_o)
-// The whole dbg_disable_o struct, flattened to one vector. The two bits
-// above are the pair LCC ties to zero and cannot tell a correct gating
-// formula from a broken one. The other nine follow feat_ctrl: sip_debug
-// as the mandatory outer gate, chiplet_dbg per scope, sep_debug
-// additionally for the SEP S-TAP. Exported whole rather than bit by bit
-// so a field added to the struct widens the vector.
 `SEP_TB_OUT(logic [$bits(sep_lifecycle_ctrl_pkg::dbg_disable_t)-1:0], dbg_disable_all_o)
 // DFT-inserted fuse-path disables. Real DUT outputs (sep_wrapper), not
 // internal probes: no functional consumer and no CSR mirror. Disable

@@ -7,9 +7,8 @@ the mailbox_plic firmware, which walks all eight outbound mailbox channels
 (axil_mailbox @ 0x10A0_0000, stride 0x1000). Each channel self-triggers its
 threshold interrupt by pushing a word into that FIFO, and proves the interrupt
 reaches the CPU through the VeeR PIC (WFI + ISR):
-``axil_mailbox.outbound_interrupt_o[ch]`` -> ``sep_internal_interrupts[ch]`` ->
-PIC source ``ch+1`` -> CPU trap -> ISR. The whole path is internal to bare
-``sep`` -- no testbench injection.
+PIC source ``ch+1`` (``interrupts.adoc`` Mailbox interrupt ``ch``) -> CPU trap
+-> ISR. The whole path is internal to bare ``sep`` -- no testbench injection.
 
 Like the other FW-boot tests this is firmware-self-checking: the firmware
 returns its error count and start.S emits the PASS (0xCAFEBABE) / FAIL

@@ -59,6 +59,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     INFILT_BASE,
     OUTFILT_BASE,
     STEE_BASE,
+    DBW_RO_VAL,
 )
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 
@@ -77,10 +78,9 @@ WINDOW_B_VALUE = 0xA11C_BEEF
 BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
 RESP_SLVERR = 2
+# AMBA AXI4-Lite decode error (IHI 0022). Denied-access data sentinel graded
+# by every deny checker that shares this table.
 RESP_DECERR = 3
-# axi_filter_wrap instantiates axi_err_slv without overriding RespData, so a
-# denied beat returns the module default. The external master grades the low
-# 32 bits (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv).
 ERR_SLV_RDATA = 0xBADC_AB1E
 # Entry count from the generated export, not a literal: the bank is an RDL
 # array (`inbound_filter_ctrl[16]`), and a sequence that carries its own number
@@ -112,7 +112,7 @@ BURST_ALLOW_SPAN = 0x2000
 # reach a neighbouring block.
 PAGE_SHIFT = 12
 PAGE_SIZE = 1 << PAGE_SHIFT
-GRANULE_BYTES = 8  # FILTER_CONFIG.data_bus_width reset 3 => 8-byte beat
+GRANULE_BYTES = 1 << DBW_RO_VAL
 SCRATCH_STRIDE = 0x8  # sep_scratch.rdl: 8 x 64-bit per bank
 SCRATCH_BANK_REGS = 8
 # The dual scratch banks are the widen page: both banks are plain RW storage, so

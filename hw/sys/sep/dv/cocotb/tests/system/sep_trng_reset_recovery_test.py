@@ -321,10 +321,9 @@ class sep_trng_reset_recovery_test(sep_base_test):
         # all three source legs back to the internal DRBG.
         await self._wait_pool_level(nonzero=False)
         empty_pop = await self._read(POOL_POP, length=8, expect_error=True)
-        # sep_entropy_fifo.sv answers an empty pop, and a pending read during
-        # clear, with RESP_SLVERR on both paths. Accepting any non-OKAY would let
-        # a DECERR pass -- and a DECERR here would mean the aperture had fallen
-        # into the reset domain, which is the opposite of what this proves.
+        # A live empty pool refuses the pop with SLVERR. DECERR would mean the
+        # aperture decoded as unused or reset-isolated, which is the opposite
+        # of recovery. The VPLAN CHK-TRNG-STALE row states that pin.
         assert empty_pop.resp_code == RESP_SLVERR, (
             f"empty pool resp={empty_pop.resp_code} after TRNG reset, expected SLVERR"
         )

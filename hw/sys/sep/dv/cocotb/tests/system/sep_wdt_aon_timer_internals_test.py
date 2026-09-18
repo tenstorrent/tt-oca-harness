@@ -28,7 +28,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_spec_tables import aon_timer_regwen_gates, aon_timer_wkup_ticks_per_count
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import SEP_CPU_CTRL
 from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
     INTR_TEST,
@@ -68,11 +68,13 @@ WDT_CLK_RATIO = 8
 _COUNT_RUN_FLOOR = 40
 
 
-# SEP_CPU_CTRL.REFERENCE_COUNTER: a 64-bit free-running count kept by
-# prim_refclk_count_w_cdc, which counts on clk_ref_i and resynchronises the
-# value onto clk_i. Two 32-bit halves at +0 and +4.
-REFERENCE_COUNTER_LO = sym("SEP_CPU_CTRL_REFERENCE_COUNTER_REG_ADDR")
-REFERENCE_COUNTER_HI = REFERENCE_COUNTER_LO + 4
+# SEP_CPU_CTRL.REFERENCE_COUNTER is one 64-bit field. The high 32-bit AXI
+# window is the last word of that field.
+REFERENCE_COUNTER_LO = SEP_CPU_CTRL.addr("REFERENCE_COUNTER")
+_RC_BITS = SEP_CPU_CTRL.field_width("REFERENCE_COUNTER", "rc")
+if _RC_BITS % 32:
+    raise RuntimeError(f"REFERENCE_COUNTER.rc is {_RC_BITS} bits, not a multiple of 32")
+REFERENCE_COUNTER_HI = REFERENCE_COUNTER_LO + 4 * ((_RC_BITS // 32) - 1)
 
 
 @pyuvm.test()
@@ -241,6 +243,13 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-WKUP-COUNT: high threshold expired in the count window "
             f"(INTR_STATE=0x{intr:08x}, count2={count2}, thold={self.cfg_wdt.wkup_high_thold})"
         )
+        await self.wdt.write(INTR_TEST, INTR_TEST_WKUP_EXPIRED)
+        forced = await self.wdt.read(INTR_STATE)
+        assert forced & INTR_WKUP_EXPIRED, (
+            f"CHK-WKUP-COUNT: INTR_STATE.wkup_expired stayed 0 after INTR_TEST "
+            f"(0x{forced:08x})"
+        )
+        await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)
         self.logger.info(
             "CHK-WKUP-COUNT PASS: WKUP_COUNT %d -> %d (advances on clk_wdt); "
             "INTR_STATE.wkup_expired stayed 0 under the high threshold",

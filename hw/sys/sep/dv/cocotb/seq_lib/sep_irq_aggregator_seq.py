@@ -33,7 +33,7 @@ from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_spec_tables import pic
-from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, RegBlock, sym
+from sep_reg_meta import CSRNG, EDN, HMAC, KMAC, OTBN, SEP_CPU_CTRL, RegBlock, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -199,12 +199,42 @@ class IrqSrc:
 # (Status). agg_idx is PIC source − 1 from interrupts.adoc. HMAC/KMAC
 # fifo_empty Status bits are idle-true and are not in this table.
 IRQ_TABLE = (
-    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, agg_from_pic(PIC_CSRNG_CMD_REQ_DONE)),
-    IrqSrc("csrng_entropy_req", CSRNG_BASE, 1, agg_from_pic(PIC_CSRNG_ENTROPY_REQ)),
-    IrqSrc("csrng_hw_inst_exc", CSRNG_BASE, 2, agg_from_pic(PIC_CSRNG_HW_INST_EXC)),
-    IrqSrc("csrng_fatal_err", CSRNG_BASE, 3, agg_from_pic(PIC_CSRNG_FATAL_ERR)),
-    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, agg_from_pic(PIC_EDN_CMD_REQ_DONE)),
-    IrqSrc("edn_fatal_err", EDN_BASE, 1, agg_from_pic(PIC_EDN_FATAL_ERR)),
+    IrqSrc(
+        "csrng_cmd_req_done",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_CMD_REQ_DONE"]["bp"],
+        agg_from_pic(PIC_CSRNG_CMD_REQ_DONE),
+    ),
+    IrqSrc(
+        "csrng_entropy_req",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_ENTROPY_REQ"]["bp"],
+        agg_from_pic(PIC_CSRNG_ENTROPY_REQ),
+    ),
+    IrqSrc(
+        "csrng_hw_inst_exc",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_HW_INST_EXC"]["bp"],
+        agg_from_pic(PIC_CSRNG_HW_INST_EXC),
+    ),
+    IrqSrc(
+        "csrng_fatal_err",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_FATAL_ERR"]["bp"],
+        agg_from_pic(PIC_CSRNG_FATAL_ERR),
+    ),
+    IrqSrc(
+        "edn_cmd_req_done",
+        EDN_BASE,
+        EDN.fields("INTR_STATE")["EDN_CMD_REQ_DONE"]["bp"],
+        agg_from_pic(PIC_EDN_CMD_REQ_DONE),
+    ),
+    IrqSrc(
+        "edn_fatal_err",
+        EDN_BASE,
+        EDN.fields("INTR_STATE")["EDN_FATAL_ERR"]["bp"],
+        agg_from_pic(PIC_EDN_FATAL_ERR),
+    ),
     IrqSrc(
         "hmac_err",
         HMAC_BASE,

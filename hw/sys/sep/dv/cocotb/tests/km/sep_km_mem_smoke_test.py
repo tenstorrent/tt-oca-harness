@@ -52,3 +52,10 @@ class sep_km_mem_smoke_test(sep_base_test):
         assert sram_word0 == KM_SMOKE_SRAM_WORD0, (
             f"KM SRAM word0 = 0x{sram_word0:08x}, expected 0x{KM_SMOKE_SRAM_WORD0:08x}"
         )
+        self.logger.info(
+            "CHK-KM-MEM PASS: rom=%d sram=%d writes=%d word0=0x%08x",
+            rom_count,
+            sram_count,
+            sram_writes,
+            sram_word0,
+        )

@@ -214,10 +214,9 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
 
         # AW and W carry no ordering requirement between them (AMBA IHI 0022
-        # A3.3), and sep_entropy_fifo.sv:390 states it accepts either order and
-        # answers one SLVERR. The backend presents both in the same cycle, so
-        # the aw_recv_q-first and w_recv_q-first arms of that handshake are
-        # unreachable without arming the master.
+        # A3.3); one write transaction answers one BRESP. The backend presents
+        # both in the same cycle, so the aw-first and w-first arms of that
+        # handshake are unreachable without arming the master.
         drv = self.env.axi_agent.driver.axi.driver
         for order, profile in (
             ("aw-first", AxiTimingProfile(w_delay=4)),

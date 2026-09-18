@@ -202,8 +202,10 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     f"RRESP sequence for the burst at 0x{start:08x}"
                 )
 
-            # The aggregate still fails a fabric that answers the whole burst
-            # OKAY while refusing the same address as a single beat.
+            # CHK-DEADSPACE-BURST: any non-OKAY single-beat refusal, not
+            # DECERR-only. The specification does not mandate DECERR vs SLVERR.
+            # A window whose past-extent single beat answers SLVERR must still
+            # fail an OKAY burst to the same address.
             worst = max(resps) if resps else RESP_OKAY
             for i, (sresp, sdata) in enumerate(singles):
                 addr = start + 4 * i

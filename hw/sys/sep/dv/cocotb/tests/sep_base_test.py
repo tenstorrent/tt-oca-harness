@@ -102,43 +102,11 @@ class _EvidenceFilter(logging.Filter):
     # floor of one on this record alone.
     BASE_IDS = frozenset({"CHK-OTP-JTAG2AXI-UNGATED"})
 
-    # Leaves that emit no CHK-* record of their own, with the reason each one
-    # does not. Every entry is a LOGGING gap, not a verification gap: these are
-    # thin shells whose checks live further down the proof path -- in the
-    # sequence they start, or in a base-class golden compare -- and none of them
-    # is a clean exit that checks nothing. Naming them is what lets the floor
-    # below be unconditional for every other leaf.
-    #
-    # This list may only shrink. To remove an entry, make the check that already
-    # runs log `CHK-<ID> PASS` where it actually happens (in the sequence, not
-    # here -- a record emitted by sep_base_test lands in BASE_IDS and is
-    # excluded from `own`).
-    NO_OWN_EVIDENCE = {
-        # Verdict comes from the firmware console PASS/FAIL magic, not from a
-        # leaf-side check. Real grading, wrong channel for this counter.
-        "sep_boot_rom_lsu_read_test": "firmware console verdict",
-        "sep_cpu_ifu_lsu_alias_remap_matrix_test": "firmware console verdict",
-        "sep_dma_cpu_contention_test": "firmware console verdict",
-        "sep_dma_hash_test": "firmware console verdict",
-        "sep_hello_world_test": "firmware console verdict",
-        "sep_hmac_kmac_cpu_crypto_smoke_test": "firmware console verdict",
-        "sep_mailbox_plic_test": "firmware console verdict",
-        "sep_nmi_sanity_test": "firmware console verdict",
-        "sep_spi_ot_dma_rx_test": "firmware console verdict",
-        # Asserts in the leaf itself, but the log line carries no CHK- ID.
-        # These are the cheapest entries to retire: label the existing assert.
-        "sep_clock_uvm_wdt_rst_input_reset_path_test": "in-leaf asserts, unlabelled",
-        "sep_efuse_km_axil_cpu_mux_coexist_test": "in-leaf asserts, unlabelled",
-        "sep_km_mem_smoke_test": "in-leaf asserts, unlabelled",
-        "sep_otbn_mem_smoke_test": "in-leaf asserts, unlabelled",
-        "sep_spi_flash_jedec_smoke_test": "in-leaf asserts, unlabelled",
-        # Checks live in the sequence the leaf starts.
-        "sep_axi_smoke_test": "sequence-level compares plus AXI scoreboard check_phase",
-        "sep_sram_smoke_test": "sequence-level compares",
-        # Backdoor leaf: the golden compare is
-        # sep_base_test._check_efuse_shadow_after_sense.
-        "sep_efuse_sense_test": "base-class eFuse shadow golden compare",
-    }
+    # Empty: firmware-console leaves emit CHK-FW-CONSOLE from poll_boot after
+    # the mailbox PASS magic is observed. That ID is intentionally not in
+    # BASE_IDS, so it counts as the leaf's own evidence. This list may only
+    # shrink. A new exemption is a logging gap, not a verification gap.
+    NO_OWN_EVIDENCE: dict[str, str] = {}
 
     def __init__(self) -> None:
         super().__init__()
@@ -411,8 +379,8 @@ class sep_base_test(uvm_test):
         ``sep_otp_jtag2axi`` to 0. The fuse controller enforces access.
         """
         dut = cocotb.top
-        smc = self.rd(dut.dbg_disable_smc_otp_jtag2axi_o)
-        sep = self.rd(dut.dbg_disable_sep_otp_jtag2axi_o)
+        smc = self.rd_known(dut.dbg_disable_smc_otp_jtag2axi_o)
+        sep = self.rd_known(dut.dbg_disable_sep_otp_jtag2axi_o)
         if smc != 0 or sep != 0:
             raise AssertionError(
                 f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, expected both 0"
@@ -526,7 +494,7 @@ class sep_base_test(uvm_test):
         from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
         dut = cocotb.top
-        assert not self.rd(dut.sep_fuse_sense_done_o), (
+        assert not self.rd_known(dut.sep_fuse_sense_done_o), (
             "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sep_fuse_sense_done_o already 1; no pre-sense window"
         )
         # LC_STATE_INVALID low nibble is 4'hF — not a legal raw state.
@@ -534,7 +502,7 @@ class sep_base_test(uvm_test):
         assert closed == 0, "CHK-PRE-SENSE-FAIL-CLOSED FAIL: invalid-LC golden is not 0"
         seq = SepLccFeatCtrlCheckSeq(closed)
         await self.start_seq(seq)
-        assert not self.rd(dut.sep_fuse_sense_done_o), (
+        assert not self.rd_known(dut.sep_fuse_sense_done_o), (
             "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sense completed during the FEAT_CTRL "
             "read; the closed side was not observed"
         )
@@ -813,6 +781,10 @@ class sep_base_test(uvm_test):
                 break
         if sb.console:
             self.logger.info("firmware console: %r", sb.console_text())
+        if sb.fw_done and sb.fw_pass:
+            self.logger.info(
+                "CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic"
+            )
         if not (sb.fw_done and sb.fw_pass):
             # Hang, no-boot, run-cycle exhaustion, or firmware FAIL: put the
             # symbolized backtrace in the log before the scoreboard's
@@ -1077,22 +1049,22 @@ class sep_base_test(uvm_test):
         first CHK5_km AXIS beat the scoreboard tapped is the expected SRAM
         content: a wrong-word store, a dropped store, or a store to the wrong
         offset all fail here, where the non-zero poll passes. Logged under
-        `CHK5_km_sram` so the plan can cite it apart from the handshake row.
+        `CHK-KM-SRAM` so the plan can cite it apart from the handshake row.
         """
         delivered = self.drbg_sb.km_words()
         assert delivered, (
-            "CHK5_km_sram: no EDN->KM AXIS beat was tapped, so there is no "
+            "CHK-KM-SRAM: no EDN->KM AXIS beat was tapped, so there is no "
             "delivered word to compare KM SRAM word0 against"
         )
         expected = delivered[0]
         actual = self.rd(cocotb.top.km_sram_word0_o)
         assert actual == expected, (
-            f"CHK5_km_sram FAIL: KM SRAM word0 = 0x{actual:08x}, but the KM "
+            f"CHK-KM-SRAM FAIL: KM SRAM word0 = 0x{actual:08x}, but the KM "
             f"consumed 0x{expected:08x} on the AXIS endpoint "
             f"({len(delivered)} beat(s) tapped)"
         )
         self.logger.info(
-            "CHK5_km_sram PASS: KM SRAM word0 = 0x%08x == the delivered "
+            "CHK-KM-SRAM PASS: KM SRAM word0 = 0x%08x == the delivered "
             "EDN->KM AXIS word (beat 1 of %d)",
             actual,
             len(delivered),

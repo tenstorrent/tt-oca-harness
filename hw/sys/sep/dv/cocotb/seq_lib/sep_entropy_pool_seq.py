@@ -25,7 +25,10 @@ POOL_BASE = window("EPOOL").base
 POOL_STATUS = POOL_BASE + 0x00
 POOL_IRQ_CAUSE = POOL_BASE + 0x08
 POOL_POP = POOL_BASE + 0x10
+# Occupancy ceiling used only as the CHK-WRITE-SLVERR room bound. The live
+# STATUS.level / pool_edn_req_o compare grades fullness, not this constant.
 FIFO_DEPTH = 32
+# Fill-stall wait ceiling in core cycles. The stall flag is the verdict.
 STALL_THRESH = 4096
 
 RESP_OKAY = 0

@@ -12,7 +12,14 @@ converter.
 from __future__ import annotations
 
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spec_tables import abr_off, agg_from_pic, mldsa_name_words, window
+from env.sep_spec_tables import (
+    abr_ctrl_cmd,
+    abr_field_mask,
+    abr_off,
+    agg_from_pic,
+    mldsa_name_words,
+    window,
+)
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -36,16 +43,16 @@ ABR_NOTIF_INTR = ABR_INTR + abr_off("notif_internal_intr_r")
 
 NAME0_EXP, NAME1_EXP = mldsa_name_words()
 
-CMD_KEYGEN = 0x1
-CMD_SIGN = 0x2
-CMD_VERIFY = 0x3
-CTRL_ZEROIZE = 1 << 3
+CMD_KEYGEN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN")
+CMD_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "SIGN")
+CMD_VERIFY = abr_ctrl_cmd("MLDSA_CTRL", "VERIFY")
+CTRL_ZEROIZE = abr_field_mask("MLDSA_CTRL", "ZEROIZE")
 # MLDSA_CTRL.EXTERNAL_MU. The vendored sigGen/sigVer vectors are the ACVP
 # external-mu groups, so the engine is handed mu directly instead of a message.
-CTRL_EXTERNAL_MU = 1 << 5
-ST_READY = 1 << 0
-ST_VALID = 1 << 1
-ST_ERROR = 1 << 3
+CTRL_EXTERNAL_MU = abr_field_mask("MLDSA_CTRL", "EXTERNAL_MU")
+ST_READY = abr_field_mask("MLDSA_STATUS", "READY")
+ST_VALID = abr_field_mask("MLDSA_STATUS", "VALID")
+ST_ERROR = abr_field_mask("MLDSA_STATUS", "ERROR")
 
 SEED_WORDS = 8
 ENTROPY_WORDS = 16
@@ -66,9 +73,13 @@ ABR_PRIVKEY_IN = ABR_BASE + abr_off("MLDSA_PRIVKEY_IN")
 IRQ_ABR_ERROR = agg_from_pic("Adams Bridge error")
 IRQ_ABR_NOTIF = agg_from_pic("Adams Bridge notification")
 
-# global_intr_en_r: error_en[0] + notif_en[1]; per-event enables at +4/+8 bit 0.
-INTR_GLOBAL_BOTH = 0x3
-INTR_EVENT_EN = 0x1
+# Caliptra interrupt-block field positions (abr_reg.rdl `intr_block_rf`):
+# global_intr_en_r.error_en[0], .notif_en[1]; each event-enable register's
+# first source is bit 0. The offset parser does not emit these field masks.
+INTR_ERROR_EN = 1 << 0
+INTR_NOTIF_EN = 1 << 1
+INTR_GLOBAL_BOTH = INTR_ERROR_EN | INTR_NOTIF_EN
+INTR_EVENT_EN = 1 << 0
 
 
 class SepAbrKeygenCfg:

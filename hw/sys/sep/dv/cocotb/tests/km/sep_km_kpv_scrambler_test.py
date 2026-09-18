@@ -62,6 +62,7 @@ use.
 from __future__ import annotations
 
 import pyuvm
+from env.sep_spec_tables import kpv_scrambler_ctrl_mask
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_kpv_scrambler_seq import (
     KPV_N_WORDS,
@@ -205,7 +206,7 @@ class sep_km_kpv_scrambler_test(sep_base_test):
             f"0x{rep.refused_round_trip:08x}, expected 0x{expected_pt:08x} -- one of "
             "the two writes was accepted"
         )
-        assert rep.ctrl_after_refused & 0x1, (
+        assert rep.ctrl_after_refused & kpv_scrambler_ctrl_mask("ENABLE"), (
             f"CHK-SWWEL FAIL: KPV_SCRAMBLER_CTRL reads 0x{rep.ctrl_after_refused:08x} "
             "after a write clearing ENABLE on the locked scrambler; ENABLE should still "
             "be set"

@@ -44,7 +44,7 @@
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_iso.parhex
 
 #include "key_manager_addr.h"
-#include "km_csr_fields.inc"
+#include "km_fields.inc"
 
     .equ MBOX_READ_DATA,   (KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
     .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
@@ -58,7 +58,7 @@
     # IRQ_STATUS AXI_SLVERR | AXI_DECERR -- the mask that carries
     # CHK-KM-ISO-TERM, so it comes from the generated field masks, not from a
     # typed number. km_csr.h itself is a C header the assembler cannot pull in;
-    # km_csr_fields.inc is the assembler-safe extract the km_fw Makefile lifts
+    # km_fields.inc is the assembler-safe extract the km_fw Makefile lifts
     # out of it, so a field that moves at the next RDL regeneration moves here.
     .equ AXI_ERR_BITS, (KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm | \
                         KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bm)

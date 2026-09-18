@@ -54,7 +54,7 @@ from env.sep_lcc_golden import (
     LC_TEST_DEV,
     SIP_DBG_BIT,
     dbg_disable_expected,
-    dbg_disable_unpack,
+    dbg_disable_sample,
     is_legal_lc,
     is_valid_lc_transition,
     lc_state_name,
@@ -278,13 +278,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         same bit at both polarities. A formula of ``!secure_tm`` fails here
         whenever Case 3 and the strap disagree.
         """
-        probe = cocotb.top.dbg_disable_all_o
-        val = probe.value
-        width = getattr(val, "n_bits", None)
-        if width is None:
-            bits = getattr(val, "binstr", None)
-            width = len(bits) if bits is not None else len(probe)
-        got = dbg_disable_unpack(int(val), int(width))
+        got = dbg_disable_sample(cocotb.top)
         want = dbg_disable_expected(feat_ctrl)
         for name, exp in want.items():
             assert got[name] == exp, (

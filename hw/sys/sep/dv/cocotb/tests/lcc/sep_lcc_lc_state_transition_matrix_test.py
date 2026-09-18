@@ -75,8 +75,9 @@ Checkers, by leaf (``+lc_start`` value):
     * CHK-TRANSIENT-INVALID  the transient path applies the same W1S and token
                              rules with no bus request, INVALID result included.
 
-Every leaf also runs CHK-UPPER-MERGE: LC_STATE bytes [31:8] OR-merge as ordinary
-shadow bytes and do not disturb the lifecycle nibble.
+Every leaf with a bus-write cell also runs CHK-UPPER-MERGE: two seed-derived
+[31:8] patterns with a unique bit each, so the second write's result is the
+OR of both and cannot pass as an overwrite of the second pattern.
 
 RANDCFG: the tokens and the byte [31:8] pattern come from the run seed
 (``SepLcTransitionCfg``); the cells within a leaf are fixed, so no contract is
@@ -237,10 +238,12 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         *,
         do_write: bool = True,
         expect: int | None = None,
+        upper: int | None = None,
     ) -> int:
         """Run one cell; the expected next state comes from the chapter golden."""
         prev = self._cur
-        full_wdata = (wdata & 0xFF) | self.cfg_lc.nuisance
+        pattern = self.cfg_lc.nuisance if upper is None else upper
+        full_wdata = (wdata & 0xFF) | pattern
         if do_write:
             expected = lc_state_next(
                 prev,
@@ -248,7 +251,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 sip_match=self._sip_match,
                 chiplet_match=self._chiplet_match,
             )
-            expected_upper = self._upper | self.cfg_lc.nuisance
+            expected_upper = self._upper | pattern
         else:
             # Readback-only cell: the move was caused by something other than a
             # bus write, so the caller supplies the golden.
@@ -286,6 +289,12 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 f"CHK-UPPER-MERGE FAIL: {tag} LC_STATE[31:8] = "
                 f"0x{seq.observed_word & 0xFFFF_FF00:08x} want 0x{expected_upper:08x}"
             )
+            if tag == "CHK-UPPER-MERGE":
+                self.logger.info(
+                    "CHK-UPPER-MERGE PASS: LC_STATE[31:8]=0x%08x is the OR of "
+                    "the prior upper byte and the second pattern, not an overwrite",
+                    expected_upper,
+                )
             self._upper = expected_upper
         self._cur = int(observed)
         action = f"write 0x{wdata:x}" if do_write else "no write"
@@ -302,6 +311,20 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         )
         return int(observed)
 
+    async def _prove_upper_or_merge(self) -> None:
+        """Second [31:8] write: OR-merge, not overwrite of the second pattern."""
+        second = self.cfg_lc.nuisance2
+        expected = self._upper | second
+        assert expected != second, (
+            "CHK-UPPER-MERGE FAIL: second pattern hides the bits already stored "
+            f"(prior=0x{self._upper:08x} second=0x{second:08x})"
+        )
+        assert expected != self._upper, (
+            "CHK-UPPER-MERGE FAIL: second pattern adds no new bits "
+            f"(prior=0x{self._upper:08x} second=0x{second:08x})"
+        )
+        await self._cell(0x0, "CHK-UPPER-MERGE", upper=second)
+
     # -- per-leaf walks ------------------------------------------------------
     async def _walk_prod(self) -> None:
         # Read the preloaded state before touching it. Two things depend on
@@ -311,6 +334,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # start state is never observed.
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_PROD)
         await self._cell(0x0, "CHK-W1S-NO-CLEAR")
+        await self._prove_upper_or_merge()
         await self._cell(0x2, "CHK-GATE-SIP")
         # CHIPLET matched but RMA_SIP not established: the ordering gate holds
         # here with the token gate already open.
@@ -340,6 +364,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # Non-vacuity for the advance below: this readback's FEAT_CTRL golden
         # carries demote_1/2=1, so it passes only if the demotion took effect.
         await self._cell(0x0, "CHK-DEMOTE-OPEN")
+        await self._prove_upper_or_merge()
         await self._match(TOKEN_RMA_SIP)
         got = await self._cell(0x2, "CHK-DEMOTE-NO-BLOCK")
         assert got == 0x3, (
@@ -355,6 +380,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # start state is never observed.
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_RMA_SIP_0)
         got = await self._cell(0x1, "CHK-RMA-BIT0")
+        await self._prove_upper_or_merge()
         assert got == 0x3, f"RMA_SIP is 4'b001X: 0x2 + bit0 must be 0x3, got 0x{got:x}"
         # No CHIPLET token presented yet: the token gate alone.
         await self._cell(0x4, "CHK-GATE-CHIP-TOK")
@@ -390,6 +416,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # start state is never observed.
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_RMA_CHIP_0)
         got = await self._cell(0x1, "CHK-RMA-BIT0")
+        await self._prove_upper_or_merge()
         assert got == 0x7, f"RMA_CHIPLET is 4'b011X: 0x6 + bit0 must be 0x7, got 0x{got:x}"
 
     async def _walk_prod_end(self) -> None:
@@ -400,9 +427,20 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # start state is never observed.
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_PROD_END)
         got = await self._cell(0x1, "CHK-PROD-END-INVALID")
+        await self._prove_upper_or_merge()
         assert is_invalid_lc(got) and got == 0x9, (
             "CHK-PROD-END-INVALID: PROD_END's reachable destination is INVALID "
             f"(0x9), got {lc_state_name(got)}"
+        )
+        # Bits 1 and 2 are still clear. Both tokens matched, so a DUT that
+        # treated INVALID as ordinary W1S would set them. The chapter's
+        # end-of-life rule holds them.
+        await self._match(TOKEN_RMA_SIP)
+        await self._match(TOKEN_RMA_CHIPLET)
+        held = await self._cell(0x6, "CHK-INVALID-TERM")
+        assert held == 0x9, (
+            "CHK-INVALID-TERM: from INVALID 0x9 a write of the remaining "
+            f"lifecycle bits with both tokens matched must hold, got 0x{held:x}"
         )
 
     async def _walk_transient(self) -> None:
@@ -422,6 +460,10 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             "CHK-TRANSIENT-INVALID: the transient path must apply the same W1S and "
             f"token rules as the bus path; expected 0x{expected:x}, got 0x{got:x}"
         )
+        # The transient cells never write the shadow. A later bus write of 0
+        # keeps INVALID and lets the two-pattern OR-merge run on this leaf too.
+        await self._cell(0x0, "CHK-W1S-NO-CLEAR")
+        await self._prove_upper_or_merge()
 
     # -- entry ---------------------------------------------------------------
     async def run_scenario(self) -> None:

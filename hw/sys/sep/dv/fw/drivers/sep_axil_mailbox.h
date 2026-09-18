@@ -7,9 +7,8 @@
 // eight outbound mailboxes. Addresses and IRQ field masks come from generated
 // sep_addr.h / axil_mailbox_sep_wrap.h (via sep.h).
 //
-// In hw/sys/sep/rtl/sep.sv outbound_interrupt_o feeds sep_internal_interrupts[7:0]
-// (one slot per mailbox), so mailbox m -> sep_internal_interrupts[m] -> VeeR EL2
-// PIC source (m + 1). CLOCK_GATE_CTRL in this map implements only
+// interrupts.adoc PIC sources 1-8 are Mailbox interrupt 0-7. Channel ch
+// drives PIC source (ch + 1). CLOCK_GATE_CTRL in this map implements only
 // pka_cg_enable (bit 0). Bit 2 is written for sequence parity; it is not a
 // defined mailbox-clock field and is not on the proof path.
 //
@@ -40,11 +39,11 @@
 #define SEP_AXIL_MBOX_IRQ_ALL \
     (SEP_AXIL_MBOX_IRQ_WRITE | SEP_AXIL_MBOX_IRQ_READ | SEP_AXIL_MBOX_IRQ_ERROR)
 
-// Mailbox 0 outbound interrupt -> sep_internal_interrupts[0] -> PIC source 1.
+// Mailbox 0 interrupt -> PIC source 1 (interrupts.adoc).
 #define SEP_AXIL_MBOX0_PIC_SRC 1u
 
 // Eight outbound channels, stride from generated mailbox 0 vs 1 WRITE_DATA.
-// Channel ch drives sep_internal_interrupts[ch] -> PIC source (ch + 1).
+// Channel ch drives PIC source (ch + 1) (interrupts.adoc Mailbox interrupt ch).
 #define SEP_AXIL_MBOX_N 8u
 #define SEP_AXIL_MBOX_STRIDE                                                         \
     (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WRITE_DATA_BASE_ADDR -              \

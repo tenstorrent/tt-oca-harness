@@ -124,10 +124,23 @@ class sep_abr_mlkem_kat_test(sep_base_test):
         assert (st & KEM_ST_ERROR) == 0, f"{what}: VALID with ERROR (0x{st:08x})"
         return st
 
-    async def _zeroize(self, kem, *, what: str) -> None:
+    async def _zeroize(self, kem, *, what: str, grade_shared_key: bool = False) -> None:
         await kem.wr32(MLKEM_CTRL, KEM_CTRL_ZEROIZE)
         await self._wait_status(kem, KEM_ST_VALID, 0, what=f"{what} post-zeroize VALID clear")
         await self._wait_status(kem, KEM_ST_READY, KEM_ST_READY, what=f"{what} post-zeroize READY")
+        if not grade_shared_key:
+            return
+        k_z = await kem.read_words(MLKEM_SHARED_KEY, KEM_K_WORDS)
+        live = [(i, w) for i, w in enumerate(k_z) if w != 0]
+        assert not live, (
+            f"CHK-KEM-ZEROIZE FAIL: shared key still live in {len(live)} of "
+            f"{KEM_K_WORDS} words, first at index {live[0][0]}=0x{live[0][1]:08x}"
+        )
+        self.logger.info(
+            "CHK-KEM-ZEROIZE PASS: all %d shared-key words read 0 after ZEROIZE "
+            "(read-gated, not a proven RAM wipe)",
+            KEM_K_WORDS,
+        )
 
     @staticmethod
     def _first_mismatch(got: list[int], exp: list[int]) -> int | None:
@@ -196,7 +209,7 @@ class sep_abr_mlkem_kat_test(sep_base_test):
             "the ACVP encaps vector for (ek, m)",
             KEM_CT_WORDS,
         )
-        await self._zeroize(kem, what="after encaps")
+        await self._zeroize(kem, what="after encaps", grade_shared_key=True)
 
         # --- CHK-KEM-DECAPS and CHK-KEM-DECAPS-REJECT -------------------------
         # Walked from one helper so the accepting and rejecting cases cannot
@@ -320,20 +333,4 @@ class sep_abr_mlkem_kat_test(sep_base_test):
             "VALID clear (0x%08x)",
             st_live,
             st_back,
-        )
-
-        # --- CHK-KEM-ZEROIZE --------------------------------------------------
-        # Same contract class and the same stated limit as the ML-DSA leaves:
-        # the read port is gated on the valid register, so a zero window shows
-        # the read port is closed, NOT that the RAM was wiped.
-        k_z = await kem.read_words(MLKEM_SHARED_KEY, KEM_K_WORDS)
-        live = [(i, w) for i, w in enumerate(k_z) if w != 0]
-        assert not live, (
-            f"CHK-KEM-ZEROIZE FAIL: shared key still live in {len(live)} of "
-            f"{KEM_K_WORDS} words, first at index {live[0][0]}=0x{live[0][1]:08x}"
-        )
-        self.logger.info(
-            "CHK-KEM-ZEROIZE PASS: all %d shared-key words read 0 after zeroize "
-            "(read-gated, not a proven RAM wipe)",
-            KEM_K_WORDS,
         )

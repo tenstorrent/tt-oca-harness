@@ -7,10 +7,9 @@
  * mailbox channels. Each channel raises its threshold interrupt by pushing one
  * word into that channel's FIFO and proves the interrupt reaches the CPU:
  *
- *     axil_mailbox.outbound_interrupt_o[ch]
- *       -> sep.sv sep_mailbox_interrupt[ch] -> sep_internal_interrupts[ch]
- *       -> sep_interrupts[ch] -> VeeR EL2 PIC source (ch + 1) -> mip.MEIP
- *       -> mailbox_isr
+ *     axil_mailbox outbound channel ch
+ *       -> interrupts.adoc PIC source (ch + 1) (Mailbox interrupt ch)
+ *       -> mip.MEIP -> mailbox_isr
  *
  * all internal to bare `sep` (no testbench injection).
  *

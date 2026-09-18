@@ -24,10 +24,8 @@ RESP_OKAY = 0
 RESP_DECERR = 3
 MASK32 = 0xFFFF_FFFF
 
-# The sep_external aperture carries a single 4-byte eFuse-shim window; every
-# other address in it leaves SEP. sep.sv ext_demux_decode() selects the shim
-# port for [BASE, BASE+SIZE) and the external port otherwise, and the external
-# port terminates in an axi_err_slv that answers DECERR.
+# Generated SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP window. An unmapped address
+# in the remainder of that external aperture answers DECERR (AXI decode).
 EFUSE_SHIM_BASE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR")
 EFUSE_SHIM_SIZE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
 

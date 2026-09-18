@@ -28,3 +28,4 @@ class sep_efuse_sense_test(sep_base_test):
         img = self.select_efuse_image()
         self.write_efuse_image(img)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        self.logger.info("CHK-SENSE PASS: sensed shadow matched the staged image")

@@ -94,7 +94,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         # --- Boot the real KM firmware on real entropy -------------------------
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD (KM reads OTP at boot)
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac"))
+        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac", "abr"))
 
         self.km = SepKmMailbox(self)
         self.hmac = SepHmac(self)
@@ -132,16 +132,17 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             (1 << SW_RESET_N_BIT["aes"])
             | (1 << SW_RESET_N_BIT["kmac"])
             | (1 << SW_RESET_N_BIT["otbn"])
+            | (1 << SW_RESET_N_BIT["abr"])
         )
         assert (rst & parked) == 0, (
-            f"key-bus isolation: AES/KMAC/OTBN not parked (SW_RESET_N=0x{rst:08x})"
+            f"key-bus isolation: AES/KMAC/OTBN/ABR not parked (SW_RESET_N=0x{rst:08x})"
         )
         assert rst & (1 << SW_RESET_N_BIT["hmac"]), (
             f"HMAC not released for the transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+HMAC released, AES/KMAC/OTBN "
-            "parked (SW_RESET_N=0x%02x)",
+            "CHK-ISO key-bus isolation PASS: only KM+HMAC released, "
+            "AES/KMAC/OTBN/ABR parked (SW_RESET_N=0x%02x)",
             rst,
         )
 

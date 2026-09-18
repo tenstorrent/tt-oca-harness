@@ -18,6 +18,7 @@ Offsets and reset values follow the generated map
 
 from __future__ import annotations
 
+import cocotb
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 from sep_reg_meta import SEP_CPU_CTRL, sym
@@ -86,3 +87,7 @@ class sep_axi_smoke_seq(uvm_sequence):
         for _name, addr, pattern, mask in WRITE_READBACK:
             await self._write(addr, pattern)
             await self._read(addr, expected=pattern & mask)
+        cocotb.log.info(
+            "CHK-AXI-SMOKE PASS: SEP_LOCAL_BASE_ADDR reset plus %d write/readback CSRs",
+            len(WRITE_READBACK),
+        )

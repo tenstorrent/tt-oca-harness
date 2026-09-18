@@ -216,12 +216,29 @@ class sep_dma_basic_test(sep_base_test):
             f"(last raw value {bit!r}); an X here is not a cleared bit"
         )
 
+    async def _check_host_fabric_pin(self) -> None:
+        """Require the integrity inject pin low at the fabric-DECERR arm."""
+        dut = cocotb.top
+        for _ in range(_MAX_RUN_CYCLES):
+            if "CHK-HOSTFABRIC-ARM" in self.sb.console_text():
+                pin = self.rd_known(dut.dma_host_intg_inject_i)
+                assert pin == 0, (
+                    f"CHK-HOSTFABRIC-ARM: dma_host_intg_inject_i={pin}, expected 0"
+                )
+                self.logger.info("CHK-HOSTFABRIC-ARM PASS: dma_host_intg_inject_i=0")
+                return
+            if self.sb.fw_done:
+                raise AssertionError("firmware finished without printing CHK-HOSTFABRIC-ARM")
+            await RisingEdge(dut.clk_i)
+        raise AssertionError("firmware never printed CHK-HOSTFABRIC-ARM")
+
     async def run_scenario(self) -> None:
         # Override the boot scoreboard's expected banner here (after its own
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         dtcm = self._stage_dtcm()
         inj = cocotb.start_soon(self._drive_host_intg_inject())
+        fabric = cocotb.start_soon(self._check_host_fabric_pin())
         await self.boot_firmware(
             self.sb,
             _ITCM_HEX,
@@ -232,6 +249,7 @@ class sep_dma_basic_test(sep_base_test):
             progress_every=_PROGRESS_EVERY,
         )
         await inj
+        await fabric
         cfg = self._dma_cfg
         needle = (
             f"SCENARIO src=0x{_SRAM_BASE + cfg.src_off:08x} "

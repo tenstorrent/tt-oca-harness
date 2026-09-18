@@ -157,8 +157,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                     valid = dut.sys_csr_axil_arvalid_o
                     ready = dut.sys_csr_axil_arready_o
                     addr = dut.sys_csr_axil_araddr_o
-                if self.rd(valid) and self.rd(ready):
-                    addrs.append(self.rd(addr) & 0xFFFF_FFFF)
+                if self.rd_known(valid) and self.rd_known(ready):
+                    addrs.append(self.rd_known(addr) & 0xFFFF_FFFF)
 
         return cocotb.start_soon(_mon()), addrs
 

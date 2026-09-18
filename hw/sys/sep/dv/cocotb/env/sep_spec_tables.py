@@ -83,6 +83,8 @@ PIC = {
     "OTBN done": 30,
     "KM unrecoverable error": 31,
     "KM recoverable error": 32,
+    "Locked field access": 34,
+    "Token match fault": 40,
     "Adams Bridge error": 35,
     "Adams Bridge notification": 36,
     "Entropy pool low": 37,
@@ -219,7 +221,119 @@ def abr_off(name: str) -> int:
         raise KeyError(f"{name!r} missing from abr_reg.rdl") from exc
 
 
+# Implicit-packed `reg { ... } NAME;` blocks in abr_reg.rdl. Field [N] is a
+# width; field [hi:lo] is an explicit range; a bare field is one bit.
+_ABR_REG = re.compile(
+    r"    reg \{\n(?P<body>.*?)\n    \} (?P<name>[A-Za-z0-9_]+)(?:\[\d+\])?;",
+    re.S,
+)
+_ABR_FIELD = re.compile(
+    r"field\s*\{(?P<body>[^{}]*)\}\s*(?P<name>[A-Za-z_]\w*)"
+    r"(?:\s*\[(?P<hi>\d+)(?::(?P<lo>\d+))?\])?\s*=",
+    re.S,
+)
+_ABR_CMD = re.compile(r"\[br\]\s*([01]{3})\s+for\s+([A-Za-z+]+)")
+
+# Packed crypto-EDN probe word order. Consuming tests bind each name with a
+# single-client beat delta before any concurrent fork.
+CRYPTO_EDN_SINKS = ("aes", "kmac", "otbn_rnd", "otbn_urnd")
+
+
+@lru_cache(maxsize=1)
+def abr_reg_fields() -> dict[str, dict[str, tuple[int, int]]]:
+    """``reg -> field -> (lsb, width)`` from ``abr_reg.rdl`` packing."""
+    text = _ABR_RDL.read_text(encoding="utf-8")
+    out: dict[str, dict[str, tuple[int, int]]] = {}
+    for m in _ABR_REG.finditer(text):
+        lsb = 0
+        fields: dict[str, tuple[int, int]] = {}
+        for f in _ABR_FIELD.finditer(m.group("body")):
+            if f.group("hi") and f.group("lo"):
+                hi, lo = int(f.group("hi")), int(f.group("lo"))
+                width = hi - lo + 1
+                flsb = lo
+            elif f.group("hi"):
+                width = int(f.group("hi"))
+                flsb = lsb
+            else:
+                width = 1
+                flsb = lsb
+            fields[f.group("name")] = (flsb, width)
+            lsb = flsb + width
+        out[m.group("name")] = fields
+    return out
+
+
+def abr_field_lsb(reg: str, field: str) -> int:
+    try:
+        return abr_reg_fields()[reg][field][0]
+    except KeyError as exc:
+        raise KeyError(f"{reg}.{field} missing from abr_reg.rdl") from exc
+
+
+def abr_field_mask(reg: str, field: str) -> int:
+    try:
+        lsb, width = abr_reg_fields()[reg][field]
+    except KeyError as exc:
+        raise KeyError(f"{reg}.{field} missing from abr_reg.rdl") from exc
+    return ((1 << width) - 1) << lsb
+
+
+@lru_cache(maxsize=None)
+def abr_ctrl_cmds(reg: str) -> dict[str, int]:
+    """CTRL encodings from the ``CTRL`` field description of ``reg``."""
+    fields = abr_reg_fields().get(reg)
+    if not fields or "CTRL" not in fields:
+        raise KeyError(f"{reg}.CTRL missing from abr_reg.rdl")
+    text = _ABR_RDL.read_text(encoding="utf-8")
+    block = next((m for m in _ABR_REG.finditer(text) if m.group("name") == reg), None)
+    if block is None:
+        raise KeyError(f"{reg} missing from abr_reg.rdl")
+    ctrl = next((f for f in _ABR_FIELD.finditer(block.group("body")) if f.group("name") == "CTRL"), None)
+    if ctrl is None:
+        raise KeyError(f"{reg}.CTRL field body missing from abr_reg.rdl")
+    alias = {"SIGNING": "SIGN", "VERIFYING": "VERIFY"}
+    cmds: dict[str, int] = {}
+    for enc, label in _ABR_CMD.findall(ctrl.group("body")):
+        key = alias.get(label.upper(), label.replace("+", "_").upper())
+        cmds[key] = int(enc, 2)
+    if not cmds:
+        raise RuntimeError(f"{reg}.CTRL description has no encodings")
+    return cmds
+
+
+def abr_ctrl_cmd(reg: str, name: str) -> int:
+    try:
+        return abr_ctrl_cmds(reg)[name]
+    except KeyError as exc:
+        raise KeyError(f"{reg}.CTRL {name!r} missing from abr_reg.rdl") from exc
+
+
 _ESRC_RDL = _REPO / "hw" / "ip" / "entropy_source" / "regs" / "entropy_source.rdl"
+_KPV_RDL = _REPO / "hw" / "ip" / "key_manager" / "regs" / "km_kpv.rdl"
+
+
+@lru_cache(maxsize=1)
+def kpv_scrambler_ctrl_fields() -> dict[str, tuple[int, int]]:
+    """``ENABLE`` / ``LOCK`` ``(lsb, width)`` from ``km_kpv.rdl``."""
+    text = _KPV_RDL.read_text(encoding="utf-8")
+    block = re.search(r"reg kpv_scrambler_ctrl_reg \{(.*?)\n    \};", text, re.S)
+    if block is None:
+        raise RuntimeError("kpv_scrambler_ctrl_reg missing from km_kpv.rdl")
+    out: dict[str, tuple[int, int]] = {}
+    for name, hi, lo in re.findall(r"\} (enable|lock)\[(\d+):(\d+)\]", block.group(1), re.I):
+        out[name.upper()] = (int(lo), int(hi) - int(lo) + 1)
+    if "ENABLE" not in out or "LOCK" not in out:
+        raise RuntimeError(f"KPV_SCRAMBLER_CTRL fields incomplete: {out}")
+    return out
+
+
+def kpv_scrambler_ctrl_mask(name: str) -> int:
+    try:
+        lsb, width = kpv_scrambler_ctrl_fields()[name]
+    except KeyError as exc:
+        raise KeyError(f"KPV_SCRAMBLER_CTRL.{name} missing from km_kpv.rdl") from exc
+    return ((1 << width) - 1) << lsb
 
 _RDL_REG = re.compile(r"^\s*reg\s+([A-Za-z_]\w*)\s*\{", re.M)
 _RDL_FIELD = re.compile(r"field\s*\{(?P<body>[^{}]*)\}\s*(?P<name>[A-Za-z_]\w*)\s*\[", re.S)
@@ -376,6 +490,24 @@ def _selftest() -> None:
     assert abr_off("MLDSA_CTRL") == 0x10
     assert abr_off("MLDSA_PUBKEY") == 0x1000
     assert abr_off("kv_mldsa_seed_rd_ctrl") == 0x8000
+    assert abr_field_lsb("MLDSA_CTRL", "CTRL") == 0
+    assert abr_field_mask("MLDSA_CTRL", "ZEROIZE") == 1 << 3
+    assert abr_field_mask("MLDSA_CTRL", "EXTERNAL_MU") == 1 << 5
+    assert abr_field_mask("MLDSA_STATUS", "READY") == 1 << 0
+    assert abr_field_mask("MLDSA_STATUS", "VALID") == 1 << 1
+    assert abr_field_mask("MLDSA_STATUS", "ERROR") == 1 << 3
+    assert abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN") == 1
+    assert abr_ctrl_cmd("MLDSA_CTRL", "SIGN") == 2
+    assert abr_ctrl_cmd("MLDSA_CTRL", "VERIFY") == 3
+    assert abr_ctrl_cmd("MLKEM_CTRL", "KEYGEN") == 1
+    assert abr_ctrl_cmd("MLKEM_CTRL", "ENCAPS") == 2
+    assert abr_field_mask("MLKEM_CTRL", "ZEROIZE") == 1 << 3
+    assert abr_field_mask("MLKEM_STATUS", "ERROR") == 1 << 2
+    assert pic("Token match fault") == 40
+    assert agg_from_pic("Token match fault") == 39
+    assert CRYPTO_EDN_SINKS == ("aes", "kmac", "otbn_rnd", "otbn_urnd")
+    assert kpv_scrambler_ctrl_mask("ENABLE") == 1
+    assert kpv_scrambler_ctrl_mask("LOCK") == 2
     name0, name1 = mldsa_name_words()
     assert name0 == 0x44534D4C
     assert name1 == 0x3837412D

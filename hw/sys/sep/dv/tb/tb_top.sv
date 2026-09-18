@@ -278,9 +278,18 @@ module sep_uvm_top
     sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i = '0;
     sep_pkg::sep_lockstep_status_t lockstep_status_o;
     sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_w;
-    assign dbg_disable_smc_otp_jtag2axi_o = dbg_disable_w.smc_otp_jtag2axi;
-    assign dbg_disable_sep_otp_jtag2axi_o = dbg_disable_w.sep_otp_jtag2axi;
-    assign dbg_disable_all_o              = dbg_disable_w;
+    assign dbg_disable_stap_io_o            = dbg_disable_w.stap_io;
+    assign dbg_disable_stap_smc_o           = dbg_disable_w.stap_smc;
+    assign dbg_disable_stap_sep_o           = dbg_disable_w.stap_sep;
+    assign dbg_disable_stap_extra_o         = dbg_disable_w.stap_extra;
+    assign dbg_disable_stap_host_o          = dbg_disable_w.stap_host;
+    assign dbg_disable_dft_secure_o         = dbg_disable_w.dft_secure;
+    assign dbg_disable_dft_nonsecure_o      = dbg_disable_w.dft_nonsecure;
+    assign dbg_disable_dfd_o                = dbg_disable_w.dfd;
+    assign dbg_disable_smc_jtag2axi_o       = dbg_disable_w.smc_jtag2axi;
+    assign dbg_disable_smc_otp_jtag2axi_o   = dbg_disable_w.smc_otp_jtag2axi;
+    assign dbg_disable_sep_otp_jtag2axi_o   = dbg_disable_w.sep_otp_jtag2axi;
+    assign dbg_disable_all_o                = dbg_disable_w;
 
     // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
     // mode. They remain at the idle TAP-reset values for no-CPU tests.
@@ -1307,9 +1316,12 @@ module sep_uvm_top
     // `efuse_program_interface` assert on it. Both states are two bits whose
     // legal encodings are 2'b01 and 2'b10, and no frontdoor stimulus can
     // produce 2'b00 or 2'b11 -- the design is what guarantees that. The force
-    // targets the state register only, for one cycle, and never the error,
-    // data or request outputs the checker reads: the recovery is the DUT's.
-    // Same clock-reissued force/release convention as the digest hook above.
+    // targets the state register only, for one cycle. Seeing the injected
+    // encoding on *_state_o confirms the force landed. After release the
+    // recovered encoding must be a legal idle/wait value. Command withdraw
+    // and the error/done/busy/data terms are claimed only on the in-flight
+    // leg. Same clock-reissued force/release convention as the digest hook
+    // above.
     // ------------------------------------------------------------------
 `define EFUSE_CTRL `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
 `define EFUSE_RD `EFUSE_CTRL.u_efuse_read_interface
@@ -1332,10 +1344,12 @@ module sep_uvm_top
     // sense and frontdoor paths can never present another, so the fail-closed
     // recovery the RTL specifies for 2'b00 and 2'b11 has no frontdoor
     // stimulus. Scope: the two state registers named below, for one cycle at
-    // a time, and no other signal -- never the error, data, busy or request
-    // outputs the checkers read, so the recovery they observe is the design's
-    // own. Owner: sep_efuse_illegal_state_fail_closed_test. Review at the next
-    // change to the state encoding in efuse_read_interface.sv or
+    // a time. Seeing the injected encoding on *_state_o confirms the force
+    // landed; it is not fail-closed evidence. After release the recovered
+    // encoding must be a legal idle/wait value (DUT-driven). Command
+    // withdraw and the error/done/busy/data terms are claimed only on the
+    // in-flight leg. Owner: sep_efuse_illegal_state_fail_closed_test. Review
+    // at the next change to the state encoding in efuse_read_interface.sv or
     // efuse_program_interface.sv.
     //
     // The registers are enum-typed and the injected encodings are, by

@@ -40,8 +40,9 @@ Checks:
                            ERROR_STATUS.UNDERFLOW; SW_RST + W1C releases it.
     CHK-ERR-CMDINVAL     : a COMMAND with the reserved SPEED encoding latches
                            exactly ERROR_STATUS.CMDINVAL; recovery clears it.
-    CHK-ERR-CSIDINVAL    : a segment with CSID beyond NUM_CS latches exactly
-                           ERROR_STATUS.CSIDINVAL; recovery clears it.
+    CHK-ERR-CSIDINVAL    : a segment with CSID at the top of the 32-bit field
+                           latches exactly ERROR_STATUS.CSIDINVAL; recovery
+                           clears it.
     CHK-ERR-RECOVER      : JEDEC works again afterwards, so the host was really
                            released rather than left disabled by a stuck latch.
   cocotb golden cross-check (independent of the firmware readback):

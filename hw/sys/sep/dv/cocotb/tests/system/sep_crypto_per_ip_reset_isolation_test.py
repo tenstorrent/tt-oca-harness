@@ -48,8 +48,9 @@ Isolation proof (both directions, then the remaining isolated bits):
                     reset value.
   * CHK-DRAIN-ORDER  the HMAC reset does not assert until BOTH AXI-Lite paths
                     that domain depends on -- the SEP host path and the Key
-                    Manager path -- report isolated. Each accelerator
-                    reset depends on both.
+                    Manager path -- report isolated. Both isolate bits start
+                    at 0 when the request is issued, so neither term is a
+                    pre-settled idle 1.
   * CHK-HOST-DRAIN  host reads accepted before the reset request resolve OKAY
                     or SLVERR, never DECERR and never a hang, and at least one
                     drains OKAY -- so accepted traffic completed rather than
@@ -65,8 +66,8 @@ Isolation proof (both directions, then the remaining isolated bits):
                     SEP host path and the shared Key Manager path. An ABR-only
                     reset request must raise the Key Manager bit on its own --
                     a design that raises it only for a Key Manager reset never
-                    releases the sequencer and fails here rather than passing
-                    on a steady state.
+                    releases the sequencer and fails here. Both isolate bits
+                    start at 0 when the request is issued.
   * CHK-ABR-HOST-DRAIN  host reads accepted before the ABR reset request resolve
                     OKAY or SLVERR, never DECERR and never a hang, and at least
                     one drains OKAY. The count still unretired as the isolate
@@ -227,6 +228,35 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         assert got == OTBN_CHECKSUM_MARK, f"OTBN LOAD_CHECKSUM hold write failed 0x{got:08x}"
         return got, dmem
 
+    def _require_open_isolate_terms(self, *, host, km, rst, name: str) -> None:
+        """Host path and gated reset must be live before the request.
+
+        Sample here, not in the drain loop. An idle or KM-held Key Manager
+        path can already read isolated (``km_* = hmac/kmac/abr | km``), so a
+        loop that treats ``km_iso==1`` at iteration 0 as the window opening
+        is scoring a settled bit. The host path is the one this request
+        opens; it must still be 0. The KM bit is logged, not required to
+        start at 0.
+        """
+        host_iso = self.rd_known(host)
+        km_iso = self.rd_known(km)
+        gated = self.rd_known(rst)
+        assert gated == 1, (
+            f"{name} gated reset was already asserted before the reset request "
+            "was issued, so this domain asserted reset with no drain window"
+        )
+        assert host_iso == 0, (
+            f"{name} host isolate was already 1 before the reset request, so "
+            "the host term of the drain-order check cannot fail"
+        )
+        self.logger.info(
+            "CHK-%s-DRAIN-OPEN PASS: host_iso=0 gated=1 before the reset "
+            "request (km_iso=%d already; the KM path ORs this engine with the "
+            "held Key Manager isolate and is not required to start at 0)",
+            name,
+            km_iso,
+        )
+
     async def _drain_kmac(self) -> None:
         """Assert the KMAC reset and grade its drain window.
 
@@ -242,19 +272,20 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         Bridge leg does carry that property, on a full-AXI isolate.
         """
         axi_driver = self.env.axi_agent.driver
-        reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_KMAC.rst_bit))
-
-        assert int(cocotb.top.kmac_gated_rst_n_probe_o.value) == 1, (
-            "KMAC gated reset was already asserted before the reset request was "
-            "issued, so this domain asserted reset with no drain window at all"
+        self._require_open_isolate_terms(
+            host=cocotb.top.kmac_host_isolated_probe_o,
+            km=cocotb.top.kmac_km_isolated_probe_o,
+            rst=cocotb.top.kmac_gated_rst_n_probe_o,
+            name="KMAC",
         )
+        reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_KMAC.rst_bit))
 
         arrival_read = None
         arrival_iso = None
         for _ in range(1_000):
-            host_iso = int(cocotb.top.kmac_host_isolated_probe_o.value)
-            km_iso = int(cocotb.top.kmac_km_isolated_probe_o.value)
-            if int(cocotb.top.kmac_gated_rst_n_probe_o.value) == 0:
+            host_iso = self.rd_known(cocotb.top.kmac_host_isolated_probe_o)
+            km_iso = self.rd_known(cocotb.top.kmac_km_isolated_probe_o)
+            if self.rd_known(cocotb.top.kmac_gated_rst_n_probe_o) == 0:
                 assert host_iso == 1 and km_iso == 1, (
                     "KMAC reset asserted before its AXI-Lite paths isolated: "
                     f"host_kmac={host_iso} km_kmac={km_iso}"
@@ -422,35 +453,24 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         drain_reads = [
             axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2) for _ in range(4)
         ]
+        self._require_open_isolate_terms(
+            host=cocotb.top.hmac_host_isolated_probe_o,
+            km=cocotb.top.hmac_km_isolated_probe_o,
+            rst=cocotb.top.hmac_gated_rst_n_probe_o,
+            name="HMAC",
+        )
         reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_HMAC.rst_bit))
 
-        # The HMAC reset may not assert until BOTH paths that domain depends on
-        # report isolated. Sampling every cycle catches the assert edge -- but
-        # only if the reset is still RELEASED here: entering the loop after the
-        # edge would grade a steady state in which both isolate bits are high
-        # anyway, and the check could not fail.
-        assert int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 1, (
-            "HMAC gated reset was already asserted before the reset request was "
-            "issued, so this domain asserted reset with no drain window at all"
-        )
-
-        # The drain window is the interval in which an isolate bit is asserted
-        # while the gated reset is still released. The arrival beat (#245) is
-        # issued INSIDE that window, on the first cycle a probe shows it open.
-        # A fixed delay cannot place it there: the window opens relative to the
-        # SW_RESET_N write's own B response, so any constant delay can land the
-        # beat beside the pre-request batch instead, before the window exists.
-        # The probe values at issue are kept
-        # in the log, so the beat's position in the window is evidence, and a
-        # design that never opens a window fails below rather than scoring the
-        # pre-request property a second time.
+        # The arrival beat travels the HOST path. The window that matters for
+        # it is the first cycle host_hmac is 1 while the gated reset is still
+        # released. Both isolate bits were 0 when the request went out.
         arrival_read = None
         host_outstanding = 0
         arrival_iso = None
         for _ in range(1_000):
-            host_iso = int(cocotb.top.hmac_host_isolated_probe_o.value)
-            km_iso = int(cocotb.top.hmac_km_isolated_probe_o.value)
-            if int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 0:
+            host_iso = self.rd_known(cocotb.top.hmac_host_isolated_probe_o)
+            km_iso = self.rd_known(cocotb.top.hmac_km_isolated_probe_o)
+            if self.rd_known(cocotb.top.hmac_gated_rst_n_probe_o) == 0:
                 assert host_iso == 1 and km_iso == 1, (
                     "HMAC reset asserted before its AXI-Lite paths isolated: "
                     f"host_hmac={host_iso} km_hmac={km_iso}"
@@ -461,7 +481,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "same cycle as the observed assert edge)"
                 )
                 break
-            if arrival_read is None and (host_iso == 1 or km_iso == 1):
+            if arrival_read is None and host_iso == 1:
                 # Beats still unretired as the isolate closes. Without this the
                 # drain check below would pass on traffic that had already
                 # completed before the reset request went out -- the reads and
@@ -722,10 +742,6 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # sampled state would be the settled one in which both bits are high
         # anyway and the order could not fail.
         abr_rst = SepCryptoResetIso(self)
-        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 1, (
-            "ABR gated reset was already asserted before the reset request was "
-            "issued, so this domain asserted reset with no drain window at all"
-        )
         # Queue host reads the fabric can accept BEFORE the request, so the
         # full-AXI isolate has real traffic to drain. This is the only full-AXI
         # host isolate in the design; every other accelerator path is AXI-Lite,
@@ -734,14 +750,20 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         abr_drain_reads = [
             abr_axi.axi.init_read(address=MLKEM_STATUS, length=4, size=2) for _ in range(16)
         ]
+        self._require_open_isolate_terms(
+            host=cocotb.top.abr_host_isolated_probe_o,
+            km=cocotb.top.abr_km_isolated_probe_o,
+            rst=cocotb.top.abr_gated_rst_n_probe_o,
+            name="ABR",
+        )
         abr_task = cocotb.start_soon(abr_rst.assert_reset(RST_ABR))
         abr_arrival = None
         abr_outstanding = None
         abr_saw_window = False
         for _ in range(1_000):
-            host_iso = int(cocotb.top.abr_host_isolated_probe_o.value)
-            km_iso = int(cocotb.top.abr_km_isolated_probe_o.value)
-            if int(cocotb.top.abr_gated_rst_n_probe_o.value) == 0:
+            host_iso = self.rd_known(cocotb.top.abr_host_isolated_probe_o)
+            km_iso = self.rd_known(cocotb.top.abr_km_isolated_probe_o)
+            if self.rd_known(cocotb.top.abr_gated_rst_n_probe_o) == 0:
                 assert host_iso == 1 and km_iso == 1, (
                     "ABR reset asserted before its AXI paths isolated: "
                     f"host_abr={host_iso} km_abr={km_iso}"
@@ -753,7 +775,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "assert edge)"
                 )
                 break
-            if not abr_saw_window and (host_iso == 1 or km_iso == 1):
+            if not abr_saw_window and host_iso == 1:
                 abr_saw_window = True
                 # Beats still unretired as the isolate closes. Without this the
                 # drain check below would pass on traffic that had already

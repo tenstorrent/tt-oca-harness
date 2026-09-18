@@ -1036,7 +1036,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |CHK-CHAIN-SYM
 |Retired PCs cover `main`, `diag_leaf1`, `diag_leaf2`, and `diag_leaf3`.
 |CHK-DEPTH
-|The shadow call stack reached depth ≥ 4 while the trap frame was live (the three linking calls plus the trap frame).
+|The shadow call stack reached depth ≥ 5 while the trap frame was live (`main`, the three linking calls, and the trap as the innermost frame). The depth is the snapshot at the breakpoint push, not the run-global maximum.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -1543,7 +1543,7 @@ starved it to a handful of writes fails.
 |CHK-B
 |`CMD_KEY_TRANSFER` succeeds with OTBN as destination.
 |CHK-ISO
-|Only the Key Manager and OTBN are out of reset during the transfer; the other three engines are parked.The reset-control readback that records this is `SW_RESET_N=0x23`: the TRNG bit stays released, and the check is a mask over the four engine bits rather than an equality.
+|Only the Key Manager and OTBN are out of reset during the transfer. AES, HMAC, KMAC and Adams Bridge are parked. The check is a mask over those bits, not an equality on the whole register.
 |CHK-C
 |The OTBN program loads, executes to idle, and reports no error bits.
 |CHK-F
@@ -1652,7 +1652,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 
 *Leaves*: `sep_lcc_lc_state_w1s_prod_test`, `sep_lcc_lc_state_w1s_prod_demote_test`, `sep_lcc_lc_state_w1s_rma_sip_test`, `sep_lcc_lc_state_w1s_rma_chiplet_test`, `sep_lcc_lc_state_w1s_prod_end_test`, `sep_lcc_lc_state_w1s_transient_test` — one module, one sensed starting state per leaf, selected by `+lc_start` and staged at t=0 by `cocotb/dv_sim_prestage.py`.
 
-*FEAT_CTRL liveness across the six leaves*: the specification makes the feature-control word exactly zero for the PROD_END to INVALID step, so on `sep_lcc_lc_state_w1s_prod_end_test` both FEAT_CTRL reads compare against `0x0000_0000` and that leaf never observes the register non-zero. The live control is the module, not the leaf: `prod`, `rma_sip` and `rma_chiplet` read a non-zero decoded profile at the same RDL-derived address, and these six are one module with one sensed starting state each. The deciding check on the PROD_END leaf is the LC_STATE word itself, an exact compare against a non-zero seed-varying value that cannot pass on a dead bus.
+*FEAT_CTRL liveness across the six leaves*: the specification makes the feature-control word exactly zero for the PROD_END to INVALID step. On `sep_lcc_lc_state_w1s_prod_end_test` the first FEAT_CTRL read is the sensed PROD_END profile (`0xF000_0000_0000_0000` with the pinned DIS vectors) and is the in-leaf positive control; the second read, after the write that lands on INVALID, is 0. `prod`, `rma_sip` and `rma_chiplet` also read a non-zero decoded profile at the same RDL-derived address. The deciding check on the PROD_END leaf is still the LC_STATE word itself, an exact compare against a non-zero seed-varying value that cannot pass on a dead bus.
 
 *Objective*: Prove the next lifecycle state computed on the frontdoor shadow write. This is the second writer of the lifecycle state and the stitch walk does not reach it: that walk programs a one-time-programmable bit and re-senses, which never evaluates this logic. The contract is the specification's three rules — write-one-to-set, a don't-care low bit inside each return-material-authorisation state, and the two hardware-ordered token gates — from which the reachable destinations follow.
 
@@ -1707,7 +1707,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-TRANSIENT-INVALID
 |The transient return-material-authorisation path applies the same write-one-to-set and token rules with no bus request at all, including when the result falls outside the named set.
 |CHK-UPPER-MERGE
-|The upper three bytes of the lifecycle word merge as ordinary set-only shadow bytes and do not disturb the lifecycle nibble, and the nibble's special handling does not leak into them. The pattern comes from the run seed, so this is not a fixed-constant check.
+|The upper three bytes of the lifecycle word merge as ordinary set-only shadow bytes and do not disturb the lifecycle nibble. Two seed-derived patterns each carry a unique bit, so the second write's result is the OR of both and cannot pass as an overwrite of the second pattern.
 |CHK-LEAF
 |Per-leaf closing line naming which walk ran, the sensed starting state, and the seed the tokens and upper-byte pattern came from.
 |===
@@ -1971,7 +1971,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 *Test Procedure*:
 
 [arabic]
-. Real-sense a production fuse image; park OTBN, KMAC and HMAC; leave AES released.
+. Real-sense a production fuse image; park OTBN, KMAC, HMAC and Adams Bridge; leave AES released. The isolation check is a mask over those bits, not an equality on the whole register.
 . Bring up real entropy; release the Key Manager and wait for firmware ready.
 . Load the known 256-bit key for AES; require a non-zero handle.
 . Encrypt the plaintext with a decoy software key; check against golden.
@@ -1990,7 +1990,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |CHK-B
 |The transfer to AES succeeds.
 |CHK-ISO
-|Only the Key Manager and AES are released during the transfer.The reset-control readback that records this is `SW_RESET_N=0x25`: the TRNG bit stays released, and the check is a mask over the engine bits rather than an equality.
+|Only the Key Manager and AES are released during the transfer. OTBN, HMAC, KMAC and Adams Bridge are parked. The check is a mask over those bits, not an equality on the whole register.
 |CHK-NEG
 |The decoy-key ciphertext matches its own golden, so the comparison baseline is sound.
 |CHK-F
@@ -2048,7 +2048,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |CHK-B
 |The transfer to HMAC succeeds.
 |CHK-ISO
-|Only the Key Manager and HMAC are released during the transfer.
+|Only the Key Manager and HMAC are released during the transfer. AES, KMAC, OTBN and Adams Bridge are parked. The check is a mask over those bits, not an equality on the whole register.
 |CHK-MAC
 |The digest equals the independent HMAC-SHA256 golden for the known key.
 |CHK-RW1C
@@ -2102,7 +2102,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |CHK-B
 |The transfer to KMAC succeeds.
 |CHK-ISO
-|Only the Key Manager and KMAC are released during the transfer.
+|Only the Key Manager and KMAC are released during the transfer. AES, HMAC, OTBN and Adams Bridge are parked. The check is a mask over those bits, not an equality on the whole register.
 |CHK-SIDE
 |The sideload digest differs from the decoy-key digest.
 |CHK-MAC
@@ -2947,10 +2947,12 @@ one word and parks, which is enough for the legality check to execute.
 |CHK-ABR-DRAIN-ORDER
 |The Adams Bridge reset does not assert until both paths its domain depends on
 report isolated: the full-AXI SEP host path and the shared Key Manager path. The
-two are sampled every cycle from the reset request, so the order is observed at
-the assert edge rather than read off a settled state. It also grades the Key
-Manager path's ABR term -- a design that raised that bit only for a Key
-Manager reset never releases the sequencer and fails here.
+host isolate bit is 0 when the request is issued. The Key Manager path may
+already be isolated (the request is the OR of this engine and the held Key
+Manager isolate). The two are sampled every cycle from the reset request, so the
+order is observed at the assert edge rather than read off a settled host path. A
+design that never isolates the host path never releases the sequencer and fails
+here.
 |CHK-ABR-HOST-DRAIN
 |Host reads accepted before the ABR reset request resolve OKAY or SLVERR, never
 DECERR and never a hang, and at least one drains OKAY. The number still
@@ -2981,7 +2983,7 @@ releases. Both mux directions are graded.
 |CHK-ISOLATE-SIBLING
 |AES `DATA_OUT_0` answers OKAY with the held ciphertext in the same HMAC window (port-scoped, not a global bus kill).
 |CHK-DRAIN-ORDER
-|The HMAC gated reset does not assert until both AXI-Lite paths that domain depends on — the SEP host path and the Key Manager path — report isolated. Read from the two named TB probe bits, sampled every cycle so the assert edge cannot be missed.
+|The HMAC gated reset does not assert until both AXI-Lite paths that domain depends on — the SEP host path and the Key Manager path — report isolated. The host isolate bit is 0 when the request is issued. The Key Manager path may already be isolated: that request is the OR of this engine and the Key Manager isolate, and the Key Manager stays at its reset default on this leaf. Read from the two named TB probe bits, sampled every cycle so the assert edge cannot be missed.
 |CHK-HOST-DRAIN
 |Host reads the fabric accepted before the reset request resolve OKAY or SLVERR — never DECERR, never a hang — and at least one resolves OKAY, so accepted traffic provably drained rather than being dropped.
 |CHK-DRAIN-ARRIVAL
@@ -2991,7 +2993,7 @@ releases. Both mux directions are graded.
 |CHK-ISOLATE-RESET-DEFAULT
 |After release `DIGEST_0` reads its reset value 0.
 |CHK-KMAC-DRAIN-ORDER
-|The KMAC gated reset does not assert until both the host and Key Manager AXI-Lite paths report isolated, sampled in the same cycle as the observed assert edge. Guarded by a check that the reset is still released when the request is issued, so a domain that asserted with no drain window fails rather than scoring a steady state.
+|The KMAC gated reset does not assert until both the host and Key Manager AXI-Lite paths report isolated, sampled in the same cycle as the observed assert edge. The host isolate bit and the gated reset are 0 / released when the request is issued. The Key Manager path may already be isolated (same OR as HMAC; Key Manager held). A domain that asserted with no host-path drain window fails rather than scoring a steady state.
 |CHK-KMAC-DRAIN-ARRIVAL
 |A read issued on the first cycle a probe shows the KMAC drain window open also resolves OKAY or SLVERR. Fails explicitly if no window was ever observed, so the property cannot be satisfied by re-scoring the pre-request batch.
 |CHK-TRNG-NEIGHBORS
@@ -5780,8 +5782,8 @@ error path works.
 *Test Procedure*:
 
 [arabic]
-. A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token.
-. The comparator hashes the written `SEC_DISABLE_TOKEN_I` and compares it to the metal expected digest reconstructed from `SEP_SEC_DISABLE_TOKEN` (`hw/ip/efuse/rtl/efuse_token_processing.sv`, `hw/sys/sep/doc/token_processing.adoc`).
+. A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token (`CHK-MATCH` is the bind proof).
+. The comparator hashes the written `SEC_DISABLE_TOKEN_I` and compares it to the metal expected digest (`hw/sys/sep/doc/token_processing.adoc`).
 . After `release_no_cpu_reset`, write the all-zero token before `sep_fuse_sense_done_o`. Match must assert, and `sep_cpu_reset_n_o` must stay 0 while sense is still open (`ext_boot_seq_done_i` is already 1, so sense is the only held term).
 . Wait for sense-done. Token `1` mismatches.
 . On a later match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1).
@@ -5791,10 +5793,8 @@ error path works.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-DIGEST-BIND
-|DV consistency: independent SHA-256 of the all-zero token equals the TB digest constant. This is not a DUT or bind-port read. `CHK-MATCH` is the bind proof.
 |CHK-SENSE-GATED-RESET
-|A match with `sep_fuse_sense_done_o=0` and `ext_boot_seq_done_i=1` leaves `sep_cpu_reset_n_o` and `dbg_sep_reset_n_o` at 0. `reset_n` carries no SEC_DIS term; the release is a separate DTP `sep_reset_n` TDR step.
+|A match with `sep_fuse_sense_done_o=0` and `ext_boot_seq_done_i=1` leaves `sep_cpu_reset_n_o` and `dbg_sep_reset_n_o` at 0. The architecture sentence that SEP can boot if sense never completes is the DTP `sep_reset_n` TDR path, outside this DUT. This leaf grades the implemented sense-gated reset: match does not release it.
 |CHK-MISMATCH
 |Written token=1 returns `SEC_DISABLE_TOKEN_MATCH=0x2a`.
 |CHK-NO-OVERRIDE

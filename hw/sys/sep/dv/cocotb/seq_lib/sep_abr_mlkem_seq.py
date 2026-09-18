@@ -5,7 +5,8 @@
 ML-KEM has its own register block beside ML-DSA in the Caliptra ``abr_reg.rdl``:
 a separate ``MLKEM_CTRL`` / ``MLKEM_STATUS`` pair and its own key, ciphertext
 and shared-key windows. Offsets come from that RDL by symbol, the same way
-``sep_abr_keygen_seq`` resolves the ML-DSA ones.
+``sep_abr_keygen_seq`` resolves the ML-DSA ones. Identity words are the ASCII
+of ML-KEM-1024 from ``crypto.adoc``, packed as ``KEM-1024``.
 
 Two properties of this block shape the driver, and both are false-pass hazards:
 
@@ -20,7 +21,7 @@ Two properties of this block shape the driver, and both are false-pass hazards:
 
 from __future__ import annotations
 
-from env.sep_spec_tables import abr_off, mldsa_name_words, window
+from env.sep_spec_tables import abr_ctrl_cmd, abr_field_mask, abr_off, mldsa_name_words, window
 
 from seq_lib.sep_abr_keygen_seq import SepAbr
 
@@ -55,18 +56,16 @@ MLKEM_KV_SK_WR_CTRL = MLKEM_KV_SEED_RD_CTRL + 0x10
 KV_READ_EN = 1 << 0
 KV_WRITE_EN = 1 << 0
 
-# MLKEM_CTRL.CTRL, the 3-bit command field.
-KEM_CMD_NONE = 0x0
-KEM_CMD_KEYGEN = 0x1
-KEM_CMD_ENCAPS = 0x2
-KEM_CMD_DECAPS = 0x3
-KEM_CMD_KEYGEN_DECAPS = 0x4
-KEM_CTRL_ZEROIZE = 1 << 3
+KEM_CMD_NONE = abr_ctrl_cmd("MLKEM_CTRL", "NONE")
+KEM_CMD_KEYGEN = abr_ctrl_cmd("MLKEM_CTRL", "KEYGEN")
+KEM_CMD_ENCAPS = abr_ctrl_cmd("MLKEM_CTRL", "ENCAPS")
+KEM_CMD_DECAPS = abr_ctrl_cmd("MLKEM_CTRL", "DECAPS")
+KEM_CMD_KEYGEN_DECAPS = abr_ctrl_cmd("MLKEM_CTRL", "KEYGEN_DECAPS")
+KEM_CTRL_ZEROIZE = abr_field_mask("MLKEM_CTRL", "ZEROIZE")
 
-# MLKEM_STATUS
-KEM_ST_READY = 1 << 0
-KEM_ST_VALID = 1 << 1
-KEM_ST_ERROR = 1 << 2
+KEM_ST_READY = abr_field_mask("MLKEM_STATUS", "READY")
+KEM_ST_VALID = abr_field_mask("MLKEM_STATUS", "VALID")
+KEM_ST_ERROR = abr_field_mask("MLKEM_STATUS", "ERROR")
 
 # ML-KEM-1024 window sizes, in 32-bit words.
 KEM_SEED_WORDS = 8
@@ -76,9 +75,8 @@ KEM_EK_WORDS = 392
 KEM_DK_WORDS = 792
 KEM_CT_WORDS = 392
 
-# Identity words. The Caliptra NAME packing is the same half-word swap for
-# every core in this block, so the ML-DSA helper derives the ML-KEM pair from
-# its label rather than the value being copied in.
+# Identity words. crypto.adoc names ML-KEM-1024; the Caliptra NAME field is the
+# 8-char label KEM-1024, packed the same way as the ML-DSA-87 pair.
 KEM_NAME0_EXP, KEM_NAME1_EXP = mldsa_name_words("KEM-1024")
 
 
@@ -114,7 +112,7 @@ def _selftest() -> None:
     assert MLKEM_ENCAPS_KEY + 4 * KEM_EK_WORDS <= MLKEM_CIPHERTEXT
     # And the whole ML-KEM aperture must stay inside the ABR decode window.
     assert MLKEM_CIPHERTEXT + 4 * KEM_CT_WORDS <= window("ABR").end
-    # abr_params_pkg MLKEM_CORE_NAME is 64'h32343130_4D2D4B45, low word first.
+    # Encoding of the crypto.adoc label through the shared NAME packer.
     assert KEM_NAME0_EXP == 0x4D2D4B45
     assert KEM_NAME1_EXP == 0x32343130
 
