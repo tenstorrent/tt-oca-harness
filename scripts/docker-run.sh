@@ -203,11 +203,13 @@ nixos_run() {
   if command -v nix >/dev/null 2>&1; then
     if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
       NIX_CONFIG="$NIX_CONFIG" \
-        GIT_CONFIG_COUNT=2 \
+        GIT_CONFIG_COUNT=3 \
         GIT_CONFIG_KEY_0=protocol.file.allow \
         GIT_CONFIG_VALUE_0=always \
         GIT_CONFIG_KEY_1="url.file://${ROOT}/${MANIFEST_SUBMODULE}.insteadOf" \
         GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git \
+        GIT_CONFIG_KEY_2="url.file://${ROOT}/${MANIFEST_SUBMODULE}.insteadOf" \
+        GIT_CONFIG_VALUE_2=ssh://git@github.com/tenstorrent/tt-oca-manifest.git \
         bash -c "$*"
     else
       NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
@@ -220,11 +222,13 @@ nixos_run() {
     if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
       nix_git_env=(
         env
-        GIT_CONFIG_COUNT=2
+        GIT_CONFIG_COUNT=3
         GIT_CONFIG_KEY_0=protocol.file.allow
         GIT_CONFIG_VALUE_0=always
         "GIT_CONFIG_KEY_1=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
         GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git
+        "GIT_CONFIG_KEY_2=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
+        GIT_CONFIG_VALUE_2=ssh://git@github.com/tenstorrent/tt-oca-manifest.git
       )
     fi
     run_image "$NIXOS_IMAGE" "${nix_git_env[@]}" sh -c "
