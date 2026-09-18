@@ -192,19 +192,58 @@
 <h1 class="page">eFuse</h1>
 <div id="preamble">
 <div class="sectionbody">
-<div class="paragraph">
-<p>TODO</p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+In this chapter, <strong>eFuse</strong> and <strong>OTP</strong> are used interchangeably.
+</td>
+</tr>
+</table>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">1. Description and Features</a></h2>
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
 <div class="sectionbody">
-
+<div class="paragraph">
+<p>The eFuse IP provides secure One-Time Programmable (OTP) memory access
+for the OCAH system. A foundry-agnostic controller caches the array into
+shadow registers at boot, then exposes program and read operations over
+AXI4-Lite with layered hardware and software locks. Foundry-specific
+timing and macro signaling sit behind a replaceable SHIM so the software
+interface stays the same across OTP technologies.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="efuse-architecture"><a class="anchor" href="#efuse-architecture"></a><a class="link" href="#efuse-architecture">2. Architecture</a></h2>
+<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Boot-time fuse sense</strong>: An automatic bulk read loads the full OTP
+array into shadow registers so later CSR access is not bound to OTP
+timing.</p>
+</li>
+<li>
+<p><strong>Dual AXI4-Lite paths</strong>: SMC is the functional access path; JTAG is
+the debug path, with lifecycle-dependent restrictions.</p>
+</li>
+<li>
+<p><strong>Lifecycle and token gating</strong>: SEP instances further restrict access
+by lifecycle state, secure test mode, and RMA or security-disable
+tokens.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="efuse-architecture"><a class="anchor" href="#efuse-architecture"></a><a class="link" href="#efuse-architecture">3. Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The eFuse IP provides secure One-Time Programmable (OTP) memory
@@ -214,14 +253,14 @@ details, enabling deployment across different OTP technologies while
 maintaining consistent security characteristics and software interfaces.</p>
 </div>
 <div class="sect2">
-<h3 id="interface-controller"><a class="anchor" href="#interface-controller"></a><a class="link" href="#interface-controller">2.1. Interface Controller</a></h3>
+<h3 id="interface-controller"><a class="anchor" href="#interface-controller"></a><a class="link" href="#interface-controller">3.1. Interface Controller</a></h3>
 <div class="paragraph">
 <p>The eFuse Interface Controller (efuse_interface_controller.sv) provides
 dual-path access control with security policy enforcement.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="access-paths"><a class="anchor" href="#access-paths"></a><a class="link" href="#access-paths">2.2. Access Paths</a></h3>
+<h3 id="access-paths"><a class="anchor" href="#access-paths"></a><a class="link" href="#access-paths">3.2. Access Paths</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -236,7 +275,19 @@ development</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="destination-endpoints"><a class="anchor" href="#destination-endpoints"></a><a class="link" href="#destination-endpoints">2.3. Destination Endpoints</a></h3>
+<h3 id="command-path-ownership"><a class="anchor" href="#command-path-ownership"></a><a class="link" href="#command-path-ownership">3.3. Command-path ownership</a></h3>
+<div class="paragraph">
+<p>After fuse sense completes, software program and read requests share one
+command path to the OTP bank. <code>EFUSE_PROGRAM_CTRL.program_enable</code> takes
+that path in preference to <code>EFUSE_READ_CTRL.read_enable</code>, so the two
+enables must be asserted exclusively. <code>program_enable</code> is a mode-ownership
+bit: after <code>PROGRAM_DONE</code>, software deasserts <code>program_enable</code>
+before any later read. The programming sequence is in
+<a href="#smc-dv-efuse-programming">Programming</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="destination-endpoints"><a class="anchor" href="#destination-endpoints"></a><a class="link" href="#destination-endpoints">3.4. Destination Endpoints</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -272,13 +323,13 @@ access control</p></td>
 </table>
 </div>
 <div class="sect2">
-<h3 id="shadow-register-subsystem"><a class="anchor" href="#shadow-register-subsystem"></a><a class="link" href="#shadow-register-subsystem">2.4. Shadow Register Subsystem</a></h3>
+<h3 id="shadow-register-subsystem"><a class="anchor" href="#shadow-register-subsystem"></a><a class="link" href="#shadow-register-subsystem">3.5. Shadow Register Subsystem</a></h3>
 <div class="paragraph">
 <p>The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with <code>access_length_words</code> set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">2.5. Features</a></h3>
+<h3 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">3.6. Features</a></h3>
 <div class="paragraph">
 <p>The feature list for the shadow register subsystem is as follows:</p>
 </div>
@@ -314,7 +365,7 @@ access control</p></td>
 </table>
 </div>
 <div class="sect2">
-<h3 id="state-machine-architecture"><a class="anchor" href="#state-machine-architecture"></a><a class="link" href="#state-machine-architecture">2.6. State Machine Architecture</a></h3>
+<h3 id="state-machine-architecture"><a class="anchor" href="#state-machine-architecture"></a><a class="link" href="#state-machine-architecture">3.7. State Machine Architecture</a></h3>
 <div class="paragraph">
 <p>The read interface FSM (efuse_read_interface.sv) operates in a simple
 two-state sequence, transitioning from idle to waiting for a response as
@@ -333,7 +384,7 @@ maintain data integrity.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="parameterized-command-typedefs"><a class="anchor" href="#parameterized-command-typedefs"></a><a class="link" href="#parameterized-command-typedefs">2.7. Parameterized Command Typedefs</a></h3>
+<h3 id="parameterized-command-typedefs"><a class="anchor" href="#parameterized-command-typedefs"></a><a class="link" href="#parameterized-command-typedefs">3.8. Parameterized Command Typedefs</a></h3>
 <div class="paragraph">
 <p>The fuse command request/response structs exchanged between the
 controller and the SHIM are not declared with fixed types. Instead, they
@@ -413,7 +464,7 @@ types:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="foundry-specific-signals"><a class="anchor" href="#foundry-specific-signals"></a><a class="link" href="#foundry-specific-signals">2.8. Foundry-Specific Signals</a></h3>
+<h3 id="foundry-specific-signals"><a class="anchor" href="#foundry-specific-signals"></a><a class="link" href="#foundry-specific-signals">3.9. Foundry-Specific Signals</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Example Hardware Interfaces by OTP Variant</caption>
 <colgroup>
@@ -439,7 +490,7 @@ types:</p>
 </table>
 </div>
 <div class="sect2">
-<h3 id="interface-shim-layer"><a class="anchor" href="#interface-shim-layer"></a><a class="link" href="#interface-shim-layer">2.9. Interface SHIM Layer</a></h3>
+<h3 id="interface-shim-layer"><a class="anchor" href="#interface-shim-layer"></a><a class="link" href="#interface-shim-layer">3.10. Interface SHIM Layer</a></h3>
 <div class="paragraph">
 <p>The Interface SHIM (<code>efuse_interface_shim.sv</code>) is an example, foundry-specific
 implementation of the custom fuse command interface. Its role is to translate
@@ -472,7 +523,7 @@ are exposed through the SHIM Control CSRs, accessed over the
 </div>
 </div>
 <div class="sect2">
-<h3 id="efuse-bank-model"><a class="anchor" href="#efuse-bank-model"></a><a class="link" href="#efuse-bank-model">2.10. eFuse Bank Model</a></h3>
+<h3 id="efuse-bank-model"><a class="anchor" href="#efuse-bank-model"></a><a class="link" href="#efuse-bank-model">3.11. eFuse Bank Model</a></h3>
 <div class="paragraph">
 <p>The eFuse bank model (<code>efuse_bank_model.sv</code>) is a reference, simulation-only
 stand-in for the real foundry OTP macro. It is a 3KB (768 x 32-bit word) store
@@ -483,7 +534,7 @@ macro driven by the SHIM.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="access-permissions-and-security"><a class="anchor" href="#access-permissions-and-security"></a><a class="link" href="#access-permissions-and-security">2.11. Access Permissions and Security</a></h3>
+<h3 id="access-permissions-and-security"><a class="anchor" href="#access-permissions-and-security"></a><a class="link" href="#access-permissions-and-security">3.12. Access Permissions and Security</a></h3>
 <div class="paragraph">
 <p>Access control is layered for defense in depth: per-field permissions
 are described by <code>efuse_field_map_i</code>, lock state is enforced by the eFuse
@@ -541,7 +592,7 @@ for the field:</p>
 </table>
 </div>
 <div class="sect2">
-<h3 id="hardware-vs-software-locks"><a class="anchor" href="#hardware-vs-software-locks"></a><a class="link" href="#hardware-vs-software-locks">2.12. Hardware vs. Software Locks</a></h3>
+<h3 id="hardware-vs-software-locks"><a class="anchor" href="#hardware-vs-software-locks"></a><a class="link" href="#hardware-vs-software-locks">3.13. Hardware vs. Software Locks</a></h3>
 <div class="paragraph">
 <p>The same permission semantics are reached through two independent
 mechanisms, and the guard enforces whichever is more restrictive:</p>
@@ -603,7 +654,7 @@ override protections, can access to these resources be granted.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="security-disable-bypass-mechanism"><a class="anchor" href="#security-disable-bypass-mechanism"></a><a class="link" href="#security-disable-bypass-mechanism">2.13. Security Disable Bypass Mechanism</a></h3>
+<h3 id="security-disable-bypass-mechanism"><a class="anchor" href="#security-disable-bypass-mechanism"></a><a class="link" href="#security-disable-bypass-mechanism">3.14. Security Disable Bypass Mechanism</a></h3>
 <div class="paragraph">
 <p>The eFuse interface controller supports a security disable bypass mechanism
 via the <code>security_disable_i</code> input signal. This mechanism is primarily used
@@ -658,7 +709,7 @@ asserted, shadow registers are initialized to zero (default reset value for SMC)
 </div>
 </div>
 <div class="sect2">
-<h3 id="lifecycle-state-lc_state-effects"><a class="anchor" href="#lifecycle-state-lc_state-effects"></a><a class="link" href="#lifecycle-state-lc_state-effects">2.14. Lifecycle State (LC_STATE) Effects</a></h3>
+<h3 id="lifecycle-state-lc_state-effects"><a class="anchor" href="#lifecycle-state-lc_state-effects"></a><a class="link" href="#lifecycle-state-lc_state-effects">3.15. Lifecycle State (LC_STATE) Effects</a></h3>
 <div class="paragraph">
 <p>The eFuse interface controller enforces access restrictions based on the
 chip&#8217;s lifecycle state.</p>
@@ -770,7 +821,7 @@ for manufacturing and field returns without exposing sensitive eFuse contents.</
 </div>
 </div>
 <div class="sect2">
-<h3 id="secure-test-mode-secure_tm_i"><a class="anchor" href="#secure-test-mode-secure_tm_i"></a><a class="link" href="#secure-test-mode-secure_tm_i">2.15. Secure Test Mode (secure_tm_i)</a></h3>
+<h3 id="secure-test-mode-secure_tm_i"><a class="anchor" href="#secure-test-mode-secure_tm_i"></a><a class="link" href="#secure-test-mode-secure_tm_i">3.16. Secure Test Mode (secure_tm_i)</a></h3>
 <div class="paragraph">
 <p>The eFuse interface controller supports a Secure Test Mode via the <code>secure_tm_i</code>
 input signal. This mode provides additional protection for sensitive security
@@ -825,10 +876,10 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 </div>
 </div>
 <div class="sect1">
-<h2 id="efuse-interface"><a class="anchor" href="#efuse-interface"></a><a class="link" href="#efuse-interface">3. Interface</a></h2>
+<h2 id="efuse-interface"><a class="anchor" href="#efuse-interface"></a><a class="link" href="#efuse-interface">4. Interface</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">3.1. Configuration Parameters</a></h3>
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -862,11 +913,11 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 </table>
 </div>
 <div class="sect2">
-<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">3.2. Signal Interfaces</a></h3>
+<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">4.2. Signal Interfaces</a></h3>
 
 </div>
 <div class="sect2">
-<h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">3.3. Clock and Reset</a></h3>
+<h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">4.3. Clock and Reset</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 24%;">
@@ -899,14 +950,14 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 </table>
 </div>
 <div class="sect2">
-<h3 id="main-axi4-lite-interfaces"><a class="anchor" href="#main-axi4-lite-interfaces"></a><a class="link" href="#main-axi4-lite-interfaces">3.4. Main AXI4-Lite Interfaces</a></h3>
+<h3 id="main-axi4-lite-interfaces"><a class="anchor" href="#main-axi4-lite-interfaces"></a><a class="link" href="#main-axi4-lite-interfaces">4.4. Main AXI4-Lite Interfaces</a></h3>
 <div class="paragraph">
 <p>The eFuse controller provides two AXI4-Lite interfaces for register
 access:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="smc-interface-functional-access"><a class="anchor" href="#smc-interface-functional-access"></a><a class="link" href="#smc-interface-functional-access">3.5. SMC Interface (Functional Access)</a></h3>
+<h3 id="smc-interface-functional-access"><a class="anchor" href="#smc-interface-functional-access"></a><a class="link" href="#smc-interface-functional-access">4.5. SMC Interface (Functional Access)</a></h3>
 <div class="port-reference-scroll" role="region" aria-label="eFuse SMC Interface (Functional Access)" tabindex="0">
 <table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
@@ -941,7 +992,7 @@ access:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="jtag-interface-debug-access"><a class="anchor" href="#jtag-interface-debug-access"></a><a class="link" href="#jtag-interface-debug-access">3.6. JTAG Interface (Debug Access)</a></h3>
+<h3 id="jtag-interface-debug-access"><a class="anchor" href="#jtag-interface-debug-access"></a><a class="link" href="#jtag-interface-debug-access">4.6. JTAG Interface (Debug Access)</a></h3>
 <div class="port-reference-scroll" role="region" aria-label="eFuse JTAG Interface (Debug Access)" tabindex="0">
 <table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
@@ -978,7 +1029,7 @@ JTAG</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="fuse-bank-control-interface"><a class="anchor" href="#fuse-bank-control-interface"></a><a class="link" href="#fuse-bank-control-interface">3.7. Fuse Bank Control Interface</a></h3>
+<h3 id="fuse-bank-control-interface"><a class="anchor" href="#fuse-bank-control-interface"></a><a class="link" href="#fuse-bank-control-interface">4.7. Fuse Bank Control Interface</a></h3>
 <div class="paragraph">
 <p>APB interface for communicating with the eFuse bank model:</p>
 </div>
@@ -1018,7 +1069,7 @@ eFuse bank</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="fuse-command-interface"><a class="anchor" href="#fuse-command-interface"></a><a class="link" href="#fuse-command-interface">3.8. Fuse Command Interface</a></h3>
+<h3 id="fuse-command-interface"><a class="anchor" href="#fuse-command-interface"></a><a class="link" href="#fuse-command-interface">4.8. Fuse Command Interface</a></h3>
 <div class="paragraph">
 <p>Custom interface for SHIM state machine communication:</p>
 </div>
@@ -1058,7 +1109,7 @@ from SHIM</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">3.9. Security and Control Signals</a></h3>
+<h3 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">4.9. Security and Control Signals</a></h3>
 <div class="port-reference-scroll" role="region" aria-label="eFuse Security and Control Signals" tabindex="0">
 <table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
@@ -1130,7 +1181,7 @@ control rules</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="debug-and-status-signals"><a class="anchor" href="#debug-and-status-signals"></a><a class="link" href="#debug-and-status-signals">3.10. Debug and Status Signals</a></h3>
+<h3 id="debug-and-status-signals"><a class="anchor" href="#debug-and-status-signals"></a><a class="link" href="#debug-and-status-signals">4.10. Debug and Status Signals</a></h3>
 <div class="port-reference-scroll" role="region" aria-label="eFuse Debug and Status Signals" tabindex="0">
 <table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
@@ -1231,7 +1282,7 @@ control rules</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="fuse-command-protocol"><a class="anchor" href="#fuse-command-protocol"></a><a class="link" href="#fuse-command-protocol">3.11. Fuse Command Protocol</a></h3>
+<h3 id="fuse-command-protocol"><a class="anchor" href="#fuse-command-protocol"></a><a class="link" href="#fuse-command-protocol">4.11. Fuse Command Protocol</a></h3>
 <div class="paragraph">
 <p>Custom command interface between controller and SHIM:</p>
 </div>
@@ -1281,10 +1332,10 @@ control rules</p></td>
 </div>
 </div>
 <div class="sect1">
-<h2 id="efuse-memory-map"><a class="anchor" href="#efuse-memory-map"></a><a class="link" href="#efuse-memory-map">4. Memory Map</a></h2>
+<h2 id="efuse-memory-map"><a class="anchor" href="#efuse-memory-map"></a><a class="link" href="#efuse-memory-map">5. Memory Map</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">4.1. Overview</a></h3>
+<h3 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">5.1. Overview</a></h3>
 <div class="paragraph">
 <p>eFuse is not one universally placed address space. SEP, SMC, and the Key
 Manager pass-through expose different subsets and placements. The generated
@@ -1428,7 +1479,7 @@ state (<code>HAS_LC_STATE=1</code>).</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="shadow-registers"><a class="anchor" href="#shadow-registers"></a><a class="link" href="#shadow-registers">4.2. Shadow Registers</a></h3>
+<h3 id="shadow-registers"><a class="anchor" href="#shadow-registers"></a><a class="link" href="#shadow-registers">5.2. Shadow Registers</a></h3>
 <div class="paragraph">
 <p>The shadow registers provide cached read access to eFuse contents, loaded
 automatically from the physical eFuse array during boot. The field layout is
@@ -1563,7 +1614,7 @@ instance documented in this section.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="mmr-registers"><a class="anchor" href="#mmr-registers"></a><a class="link" href="#mmr-registers">4.3. MMR Registers</a></h3>
+<h3 id="mmr-registers"><a class="anchor" href="#mmr-registers"></a><a class="link" href="#mmr-registers">5.3. MMR Registers</a></h3>
 <div class="paragraph">
 <p>The MMR (Memory Mapped Register) space provides access to security tokens for
 authentication, including RMA tokens and security disable tokens.</p>
@@ -1652,10 +1703,13 @@ authentication, including RMA tokens and security disable tokens.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="efuse-control-registers"><a class="anchor" href="#efuse-control-registers"></a><a class="link" href="#efuse-control-registers">4.4. eFuse Control Registers</a></h3>
+<h3 id="efuse-control-registers"><a class="anchor" href="#efuse-control-registers"></a><a class="link" href="#efuse-control-registers">5.4. eFuse Control Registers</a></h3>
 <div class="paragraph">
 <p>The eFuse Control CSR provides command and status registers for read, write,
-and verification operations on the eFuse array.</p>
+and verification operations on the eFuse array. <code>program_enable</code> and
+<code>read_enable</code> are mutually exclusive; software deasserts <code>program_enable</code>
+after <code>PROGRAM_DONE</code> before issuing a read. See
+<a href="#smc-dv-efuse-programming">Programming</a>.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -1712,7 +1766,7 @@ and verification operations on the eFuse array.</p>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>28</td><td>read_enable</td><td>RW</td><td>0x0</td><td>When set, enables the read request</td></tr>
 <tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Logic error, assert read_go when read is not enabled</td></tr>
+<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</td></tr>
 <tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status</td></tr>
 <tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
 <tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1746,7 +1800,7 @@ and verification operations on the eFuse array.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="shim-control-registers"><a class="anchor" href="#shim-control-registers"></a><a class="link" href="#shim-control-registers">4.5. SHIM Control Registers</a></h3>
+<h3 id="shim-control-registers"><a class="anchor" href="#shim-control-registers"></a><a class="link" href="#shim-control-registers">5.5. SHIM Control Registers</a></h3>
 <div class="paragraph">
 <p>The SHIM Control CSR provides foundry-specific configuration registers for
 timing adaptation and eFuse bank initialization. Its placement is
@@ -1778,18 +1832,35 @@ does not appear at a fixed address in the generated OCAH map.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="smc-dv-efuse-programming"><a class="anchor" href="#smc-dv-efuse-programming"></a><a class="link" href="#smc-dv-efuse-programming">5. Programming</a></h2>
+<h2 id="smc-dv-efuse-programming"><a class="anchor" href="#smc-dv-efuse-programming"></a><a class="link" href="#smc-dv-efuse-programming">6. Programming</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="usage-examples"><a class="anchor" href="#usage-examples"></a><a class="link" href="#usage-examples">5.1. Usage Examples</a></h3>
+<h3 id="exclusive-program-and-read-enables"><a class="anchor" href="#exclusive-program-and-read-enables"></a><a class="link" href="#exclusive-program-and-read-enables">6.1. Exclusive program and read enables</a></h3>
+<div class="paragraph">
+<p><code>EFUSE_PROGRAM_CTRL.program_enable</code> and <code>EFUSE_READ_CTRL.read_enable</code> are
+mutually exclusive. After fuse sense completes, program and read share a
+single command path to the OTP bank, and <code>program_enable</code> owns that path
+whenever it is set. A read issued while <code>program_enable</code> is still high
+does not reach the bank.</p>
+</div>
+<div class="paragraph">
+<p>Treat <code>program_enable</code> as a mode-ownership bit, not sticky configuration.
+After a program completes (<code>PROGRAM_DONE</code>), deassert <code>program_enable</code>
+before any later read. Leave address, data, and the other program
+fields as they are. Deassert <code>read_enable</code> the same way before starting
+a program. The two enables are never asserted together.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="usage-examples"><a class="anchor" href="#usage-examples"></a><a class="link" href="#usage-examples">6.2. Usage Examples</a></h3>
 
 </div>
 <div class="sect2">
-<h3 id="example-1-programming-a-single-bit"><a class="anchor" href="#example-1-programming-a-single-bit"></a><a class="link" href="#example-1-programming-a-single-bit">5.2. Example 1: Programming a Single Bit</a></h3>
+<h3 id="example-1-programming-a-single-bit"><a class="anchor" href="#example-1-programming-a-single-bit"></a><a class="link" href="#example-1-programming-a-single-bit">6.3. Example 1: Programming a Single Bit</a></h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Enable programming
-EFUSE_PROGRAM_CTRL = (1 &lt;&lt; 28) | (1 &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Own the program path (program_enable is bit 27). read_enable must be 0.
+EFUSE_PROGRAM_CTRL = (1 &lt;&lt; 27) | (1 &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
 
 // Trigger program
 EFUSE_PROGRAM_CTRL |= (1 &lt;&lt; 17);
@@ -1800,15 +1871,18 @@ while (EFUSE_PROGRAM_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
 // Check status
 if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x3) {
     // Handle error
-}</code></pre>
+}
+
+// Release program ownership before any later read
+EFUSE_PROGRAM_CTRL &amp;= ~(1 &lt;&lt; 27);</code></pre>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">5.3. Example 2: Reading Multiple Words</a></h3>
+<h3 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">6.4. Example 2: Reading Multiple Words</a></h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Setup read operation
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Own the read path (read_enable is bit 28). program_enable must already be 0.
 EFUSE_READ_CTRL = (1 &lt;&lt; 28) | (num_words &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
 
 // Trigger read
@@ -1818,18 +1892,24 @@ EFUSE_READ_CTRL |= (1 &lt;&lt; 17);
 while (EFUSE_READ_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
 
 // Read data
-uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
+uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
+
+// Release read ownership before any later program
+EFUSE_READ_CTRL &amp;= ~(1 &lt;&lt; 28);</code></pre>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="program-operation-sequence"><a class="anchor" href="#program-operation-sequence"></a><a class="link" href="#program-operation-sequence">5.4. Program Operation Sequence</a></h3>
+<h3 id="program-operation-sequence"><a class="anchor" href="#program-operation-sequence"></a><a class="link" href="#program-operation-sequence">6.5. Program Operation Sequence</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
 <p><strong>Setup Phase</strong>:</p>
 <div class="ulist">
 <ul>
+<li>
+<p>Confirm <code>EFUSE_READ_CTRL.read_enable</code> is 0</p>
+</li>
 <li>
 <p>Set <code>program_enable</code> = 1 in <code>EFUSE_PROGRAM_CTRL</code></p>
 </li>
@@ -1887,17 +1967,31 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 </ul>
 </div>
 </li>
+<li>
+<p><strong>Release</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Clear <code>program_enable</code> in <code>EFUSE_PROGRAM_CTRL</code>. This returns the
+command path so a subsequent read can proceed.</p>
+</li>
+</ul>
+</div>
+</li>
 </ol>
 </div>
 </div>
 <div class="sect2">
-<h3 id="read-operation-sequence"><a class="anchor" href="#read-operation-sequence"></a><a class="link" href="#read-operation-sequence">5.5. Read Operation Sequence</a></h3>
+<h3 id="read-operation-sequence"><a class="anchor" href="#read-operation-sequence"></a><a class="link" href="#read-operation-sequence">6.6. Read Operation Sequence</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
 <p><strong>Setup Phase</strong>:</p>
 <div class="ulist">
 <ul>
+<li>
+<p>Confirm <code>EFUSE_PROGRAM_CTRL.program_enable</code> is 0</p>
+</li>
 <li>
 <p>Set <code>read_enable</code> = 1 in <code>EFUSE_READ_CTRL</code></p>
 </li>
@@ -1935,6 +2029,17 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 </li>
 <li>
 <p>Check <code>read_status</code> for any errors</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Release</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Clear <code>read_enable</code> in <code>EFUSE_READ_CTRL</code> so a subsequent program can
+own the command path.</p>
 </li>
 </ul>
 </div>

@@ -180,15 +180,54 @@
 <h1 class="page">eFuse</h1>
 <div id="preamble">
 <div class="sectionbody">
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+In this chapter, <strong>eFuse</strong> and <strong>OTP</strong> are used interchangeably.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>TODO</p>
+<p>The eFuse IP provides secure One-Time Programmable (OTP) memory access
+for the OCAH system. A foundry-agnostic controller caches the array into
+shadow registers at boot, then exposes program and read operations over
+AXI4-Lite with layered hardware and software locks. Foundry-specific
+timing and macro signaling sit behind a replaceable SHIM so the software
+interface stays the same across OTP technologies.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h2>
 <div class="sectionbody">
-
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Boot-time fuse sense</strong>: An automatic bulk read loads the full OTP
+array into shadow registers so later CSR access is not bound to OTP
+timing.</p>
+</li>
+<li>
+<p><strong>Dual AXI4-Lite paths</strong>: SMC is the functional access path; JTAG is
+the debug path, with lifecycle-dependent restrictions.</p>
+</li>
+<li>
+<p><strong>Lifecycle and token gating</strong>: SEP instances further restrict access
+by lifecycle state, secure test mode, and RMA or security-disable
+tokens.</p>
+</li>
+</ul>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -221,6 +260,18 @@ operations</p>
 development</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="command-path-ownership"><a class="anchor" href="#command-path-ownership"></a><a class="link" href="#command-path-ownership">Command-path ownership</a></h3>
+<div class="paragraph">
+<p>After fuse sense completes, software program and read requests share one
+command path to the OTP bank. <code>EFUSE_PROGRAM_CTRL.program_enable</code> takes
+that path in preference to <code>EFUSE_READ_CTRL.read_enable</code>, so the two
+enables must be asserted exclusively. <code>program_enable</code> is a mode-ownership
+bit: after <code>PROGRAM_DONE</code>, software deasserts <code>program_enable</code>
+before any later read. The programming sequence is in
+<a href="#smc-dv-efuse-programming">Programming</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1272,7 +1323,7 @@ control rules</p></td>
 <h2 id="efuse-memory-map"><a class="anchor" href="#efuse-memory-map"></a><a class="link" href="#efuse-memory-map">Memory Map</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h3>
+<h3 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">Overview</a></h3>
 <div class="paragraph">
 <p>eFuse is not one universally placed address space. SEP, SMC, and the Key
 Manager pass-through expose different subsets and placements. The generated
@@ -1643,7 +1694,10 @@ authentication, including RMA tokens and security disable tokens.</p>
 <h3 id="efuse-control-registers"><a class="anchor" href="#efuse-control-registers"></a><a class="link" href="#efuse-control-registers">eFuse Control Registers</a></h3>
 <div class="paragraph">
 <p>The eFuse Control CSR provides command and status registers for read, write,
-and verification operations on the eFuse array.</p>
+and verification operations on the eFuse array. <code>program_enable</code> and
+<code>read_enable</code> are mutually exclusive; software deasserts <code>program_enable</code>
+after <code>PROGRAM_DONE</code> before issuing a read. See
+<a href="#smc-dv-efuse-programming">Programming</a>.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -1700,7 +1754,7 @@ and verification operations on the eFuse array.</p>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>28</td><td>read_enable</td><td>RW</td><td>0x0</td><td>When set, enables the read request</td></tr>
 <tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Logic error, assert read_go when read is not enabled</td></tr>
+<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</td></tr>
 <tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status</td></tr>
 <tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
 <tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1769,6 +1823,23 @@ does not appear at a fixed address in the generated OCAH map.</p>
 <h2 id="smc-dv-efuse-programming"><a class="anchor" href="#smc-dv-efuse-programming"></a><a class="link" href="#smc-dv-efuse-programming">Programming</a></h2>
 <div class="sectionbody">
 <div class="sect2">
+<h3 id="exclusive-program-and-read-enables"><a class="anchor" href="#exclusive-program-and-read-enables"></a><a class="link" href="#exclusive-program-and-read-enables">Exclusive program and read enables</a></h3>
+<div class="paragraph">
+<p><code>EFUSE_PROGRAM_CTRL.program_enable</code> and <code>EFUSE_READ_CTRL.read_enable</code> are
+mutually exclusive. After fuse sense completes, program and read share a
+single command path to the OTP bank, and <code>program_enable</code> owns that path
+whenever it is set. A read issued while <code>program_enable</code> is still high
+does not reach the bank.</p>
+</div>
+<div class="paragraph">
+<p>Treat <code>program_enable</code> as a mode-ownership bit, not sticky configuration.
+After a program completes (<code>PROGRAM_DONE</code>), deassert <code>program_enable</code>
+before any later read. Leave address, data, and the other program
+fields as they are. Deassert <code>read_enable</code> the same way before starting
+a program. The two enables are never asserted together.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="usage-examples"><a class="anchor" href="#usage-examples"></a><a class="link" href="#usage-examples">Usage Examples</a></h3>
 
 </div>
@@ -1776,8 +1847,8 @@ does not appear at a fixed address in the generated OCAH map.</p>
 <h3 id="example-1-programming-a-single-bit"><a class="anchor" href="#example-1-programming-a-single-bit"></a><a class="link" href="#example-1-programming-a-single-bit">Example 1: Programming a Single Bit</a></h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Enable programming
-EFUSE_PROGRAM_CTRL = (1 &lt;&lt; 28) | (1 &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Own the program path (program_enable is bit 27). read_enable must be 0.
+EFUSE_PROGRAM_CTRL = (1 &lt;&lt; 27) | (1 &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
 
 // Trigger program
 EFUSE_PROGRAM_CTRL |= (1 &lt;&lt; 17);
@@ -1788,7 +1859,10 @@ while (EFUSE_PROGRAM_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
 // Check status
 if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x3) {
     // Handle error
-}</code></pre>
+}
+
+// Release program ownership before any later read
+EFUSE_PROGRAM_CTRL &amp;= ~(1 &lt;&lt; 27);</code></pre>
 </div>
 </div>
 </div>
@@ -1796,7 +1870,7 @@ if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x3) {
 <h3 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">Example 2: Reading Multiple Words</a></h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Setup read operation
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Own the read path (read_enable is bit 28). program_enable must already be 0.
 EFUSE_READ_CTRL = (1 &lt;&lt; 28) | (num_words &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
 
 // Trigger read
@@ -1806,7 +1880,10 @@ EFUSE_READ_CTRL |= (1 &lt;&lt; 17);
 while (EFUSE_READ_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
 
 // Read data
-uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
+uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
+
+// Release read ownership before any later program
+EFUSE_READ_CTRL &amp;= ~(1 &lt;&lt; 28);</code></pre>
 </div>
 </div>
 </div>
@@ -1818,6 +1895,9 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 <p><strong>Setup Phase</strong>:</p>
 <div class="ulist">
 <ul>
+<li>
+<p>Confirm <code>EFUSE_READ_CTRL.read_enable</code> is 0</p>
+</li>
 <li>
 <p>Set <code>program_enable</code> = 1 in <code>EFUSE_PROGRAM_CTRL</code></p>
 </li>
@@ -1875,6 +1955,17 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 </ul>
 </div>
 </li>
+<li>
+<p><strong>Release</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Clear <code>program_enable</code> in <code>EFUSE_PROGRAM_CTRL</code>. This returns the
+command path so a subsequent read can proceed.</p>
+</li>
+</ul>
+</div>
+</li>
 </ol>
 </div>
 </div>
@@ -1886,6 +1977,9 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 <p><strong>Setup Phase</strong>:</p>
 <div class="ulist">
 <ul>
+<li>
+<p>Confirm <code>EFUSE_PROGRAM_CTRL.program_enable</code> is 0</p>
+</li>
 <li>
 <p>Set <code>read_enable</code> = 1 in <code>EFUSE_READ_CTRL</code></p>
 </li>
@@ -1923,6 +2017,17 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 </li>
 <li>
 <p>Check <code>read_status</code> for any errors</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Release</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Clear <code>read_enable</code> in <code>EFUSE_READ_CTRL</code> so a subsequent program can
+own the command path.</p>
 </li>
 </ul>
 </div>
