@@ -49,7 +49,10 @@ class sep_esrc_alert_delivery_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
-        await self.assert_noise_force_active()
+        # Routing only: this leaf holds the raw noise at a constant below to
+        # trip the persistent health-test failure, so a toggling generator is
+        # the opposite of what it needs.
+        await self.assert_noise_force_routed()
         esrc = SepEsrcAlert(self)
 
         sm = await esrc.read_main_sm()

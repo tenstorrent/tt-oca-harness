@@ -243,7 +243,7 @@ class sep_base_test(uvm_test):
     def build_phase(self) -> None:
         # Installed before anything can log, so no evidence predates the filter.
         self._evidence = _EvidenceFilter()
-        self.logger.addFilter(self._evidence)
+        self._install_evidence_filter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
         self.cfg.randomize_timing(self.random_seed())
@@ -1139,6 +1139,33 @@ class sep_base_test(uvm_test):
             prev = drv
         assert toggled, "driven ESRC noise is static (LFSR not toggling)"
 
+    async def assert_noise_force_routed(self) -> None:
+        """Prove +esrc_noise_force routed the port, without needing live noise.
+
+        The drive half of ``assert_noise_force_active`` requires a running
+        generator, so a test that holds the raw noise at a constant on purpose
+        -- the persistent-failure trips, which need a degenerate stream --
+        cannot use it. This drives both values by hand and checks lane-0's
+        actual DUT noise_i follows each, which is the routing contract alone.
+        """
+        dut = cocotb.top
+        for bit in (1, 0):
+            dut.esrc_noise_ext_i.value = bit
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            act = self.rd(dut.esrc_noise_active_o)
+            assert act == bit, (
+                f"+esrc_noise_force not active: drove raw noise {bit} and lane0 "
+                f"noise_i read {act}; the plusarg did not route the port"
+            )
+            # Leave ReadOnly before the next iteration drives the port again:
+            # a write in that phase is a RuntimeError, not a DUT failure.
+            await NextTimeStep()
+        self.logger.info(
+            "CHK-NOISE-FORCE PASS: lane0 noise_i followed the driven bit both ways, "
+            "so +esrc_noise_force routed esrc_noise_ext_i"
+        )
+
     async def bring_up_entropy(
         self,
         cfg=None,
@@ -1438,6 +1465,32 @@ class sep_base_test(uvm_test):
                     "" if len(areas) == len(shown_areas) else f", first {len(shown_areas)} shown",
                     ",".join(shown_areas),
                 )
+
+    def _install_evidence_filter(self, filt: "_EvidenceFilter") -> None:
+        """Put the evidence filter where every CHK-* record passes through it.
+
+        A logger-level filter sees only records logged on that exact logger --
+        it is not applied to records propagating up from children. Sequences
+        grade their own contracts on their own loggers (`cocotb.log`, the
+        component tree), so filtering `self.logger` alone drops them and the
+        leaf reads as grading nothing. Handler-level filters do see propagated
+        records, so the handlers the simulator already installed are the one
+        place that observes the whole run.
+        """
+        handlers = list(logging.getLogger().handlers)
+        for name in ("cocotb", "test", "gpi", "uvm"):
+            handlers.extend(logging.getLogger(name).handlers)
+        installed = 0
+        for handler in handlers:
+            if filt not in handler.filters:
+                handler.addFilter(filt)
+                installed += 1
+        # No handler yet means nothing has emitted and the run would grade
+        # nothing at all, so fall back to the loggers a check is logged on.
+        if not installed:
+            for name in ("cocotb", "test", "uvm"):
+                logging.getLogger(name).addFilter(filt)
+        self.logger.addFilter(filt)
 
     def _finalize_evidence(self) -> None:
         """Report the evidence this run produced, and grade it if the leaf asked.

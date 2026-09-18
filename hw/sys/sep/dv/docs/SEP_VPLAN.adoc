@@ -1706,8 +1706,8 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |With the transient enable armed and no token presented, the sensed terminal product state holds. The transient path applies the token gates; it does not move on the enable bit alone.
 |CHK-TRANSIENT-INVALID
 |The transient return-material-authorisation path applies the same write-one-to-set and token rules with no bus request at all, including when the result falls outside the named set.
-|CHK-UPPER-MERGE
-|The upper three bytes of the lifecycle word merge as ordinary set-only shadow bytes and do not disturb the lifecycle nibble. Two seed-derived patterns each carry a unique bit, so the second write's result is the OR of both and cannot pass as an overwrite of the second pattern.
+|CHK-UPPER-WRITE
+|The upper three bytes of the lifecycle word take a plain shadow write and do not disturb the lifecycle nibble. `LC_STATE[31:8]` is the `rsvd` field of `sep_efuse_map.rdl`, and `efuse_shadow_regs.sv` assigns those bytes from the write data rather than OR-ing them, so the second of two seed-derived patterns replaces the first. Each pattern carries a bit the other lacks, so a stale value or an OR of the two both fail.
 |CHK-LEAF
 |Per-leaf closing line naming which walk ran, the sensed starting state, and the seed the tokens and upper-byte pattern came from.
 |===
@@ -4563,7 +4563,7 @@ static per-field entry of the compile-time field map in
 `LOCKS_SPARE` are one map entry, so a refusal on either is the same lock.
 A refused write is terminated in the access-control block itself, so it never
 reaches the shadow storage and the response carries no error. `LC_STATE` is
-written in bytes [31:8], which OR-merge as ordinary shadow bytes and leave the
+written in bytes [31:8], which take a plain shadow write and leave the
 lifecycle nibble alone.
 
 *Anti-vacuity*: each field takes the same address and the same payload in both

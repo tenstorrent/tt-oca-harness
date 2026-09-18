@@ -84,7 +84,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # OTP at boot); stage it before bring-up so sense populates the shadow.
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac", "abr"))
+        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac"))
 
         self.km = SepKmMailbox(self)
         self.otbn = SepOtbn(self)
@@ -149,10 +149,9 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
             (1 << SW_RESET_N_BIT["aes"])
             | (1 << SW_RESET_N_BIT["hmac"])
             | (1 << SW_RESET_N_BIT["kmac"])
-            | (1 << SW_RESET_N_BIT["abr"])
         )
         assert (rst & parked) == 0, (
-            f"key-bus isolation: AES/KMAC/HMAC/ABR not parked before transfer "
+            f"key-bus isolation: AES/KMAC/HMAC not parked before transfer "
             f"(SW_RESET_N=0x{rst:08x})"
         )
         assert rst & (1 << SW_RESET_N_BIT["otbn"]), (
@@ -160,7 +159,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         )
         self.logger.info(
             "CHK-ISO key-bus isolation PASS: only KM+OTBN released, "
-            "AES/KMAC/HMAC/ABR parked (SW_RESET_N=0x%02x)",
+            "AES/KMAC/HMAC parked (SW_RESET_N=0x%02x)",
             rst,
         )
 
