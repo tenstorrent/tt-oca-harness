@@ -100,6 +100,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         "xtrig_ctp_ack_out_dout",
         "xtrig_ctp_busy",
     )
+    # Observables that must show no activity while a CSR access is in flight:
+    # the request and acknowledge enables and the CTP busy flops. The pad
+    # levels are left out because they follow the polarity CSR the accesses
+    # write.
+    IN_FLIGHT_SIGNALS = QUIET_GROUPS + ("xtrig_ctp_busy",)
     # Crossbar demux state watched across a two-outstanding write.
     DEMUX_SIGNALS = ("xtrig_demux_aw_lock", "xtrig_demux_w_pending")
     # Cycles the window stays open after the last expected output, so a late
@@ -1126,12 +1131,25 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # AXI-Lite skew/default path scenarios
     # ------------------------------------------------------------------
     async def run_reg_stall(self) -> None:
+        """Accepted-path CSR accesses under an activity window.
+
+        No request or acknowledge enable or CTP busy flop moves while an
+        access is in flight, the crossbar's READY-low stall counters do not
+        advance, and a routed pulse afterwards is the positive control of the
+        same observables.
+        """
         self.log_banner("DTP XTRIG accepted-path CSR access and stall rationale")
         # Seeded per-pass CSR payloads: each loop writes different values down
         # the accepted path.
         rng = self.rng("reg_stall")
         stretch = rng.getrandbits(16)
         select = rng.randint(1, XTRIG_CTM_SELECT_MASK)
+        int_idx = rng.randrange(XTRIG_NUM_INT_CT)
+        ctp_idx = rng.randrange(XTRIG_NUM_CTP)
+        before = await self.sample_xtrig("accepted_path.before")
+        await self.idle_inputs()
+        window = self.xtrig.activity_window(self.IN_FLIGHT_SIGNALS)
+        window.start()
         await self.write_read_check(
             ctp_config_addr(0),
             pack_ctp_config(invert=1),
@@ -1149,8 +1167,26 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         await self.write_read_check(
             ctm_config_addr(0), select, select, mask=XTRIG_CTM_SELECT_MASK, label="regstall.ctm0"
         )
+        await ClockCycles(self.xtrig.clk, 2)
+        activity, _hold, _last = await window.stop()
+        for name in self.IN_FLIGHT_SIGNALS:
+            self.check_evidence(
+                self.CHK_QUIET,
+                f"regstall.in_flight.{name}",
+                activity.get(name, 0),
+                0,
+                context=f"cycles={window.cycles}",
+            )
         await self.check_quiet("reg_stall_accepted")
         sample = await self.sample_xtrig("accepted_path")
+        for channel in ("aw", "ar"):
+            self.check_evidence(
+                self.CHK_AXIL,
+                f"regstall.{channel}_stall_count_delta",
+                sample[f"xtrig_axil_{channel}_stall_count"]
+                - before[f"xtrig_axil_{channel}_stall_count"],
+                0,
+            )
         self.check_evidence(
             self.CHK_AXIL,
             "regstall.awvalid_count_nonzero",
@@ -1163,6 +1199,16 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             int(sample["xtrig_axil_arvalid_count"] > 0),
             1,
         )
+        # Positive control: the observables the quiet records judged move for
+        # a routed pulse in the same pass.
+        await self.clear_xtrig()
+        await self.verify_route(
+            internal_ct_port(int_idx),
+            1 << external_ctp_port(ctp_idx),
+            XTRIG_CTP_MODE_WIRE_OR,
+            label="regstall.control",
+        )
+        await self.clear_xtrig()
         self.log_summary(
             "reg_stall",
             rationale="local regblock stall path documented as structurally unreachable",
@@ -1606,21 +1652,43 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.log_banner("DTP CTM reset across wire-OR and P2P modes")
         # Seeded per-pass ports: each loop resets and recovers different routes.
         rng = self.rng("ctm_reset_all_modes")
-        int_a, int_b = rng.sample(range(XTRIG_NUM_INT_CT), 2)
+        int_a, int_b, int_c = rng.sample(range(XTRIG_NUM_INT_CT), 3)
         ctps = rng.sample(range(XTRIG_NUM_CTP), 4)
-        await self.verify_route(
-            internal_ct_port(int_a),
-            ctp_mask(ctps[0], ctps[1]),
-            XTRIG_CTP_MODE_WIRE_OR,
-            label="reset_all.pre_wire",
+        # Both classes programmed together and each pulsed, so the reset lands
+        # on live routing state of both kinds: one wire-OR source to two CTPs
+        # and one internal CT (so the internal request outputs are a live
+        # observable of this test), and one P2P source to a third CTP.
+        wire_in = 1 << internal_ct_port(int_a)
+        wire_outputs = (
+            external_ctp_port(ctps[0]),
+            external_ctp_port(ctps[1]),
+            internal_ct_port(int_c),
         )
-        await self.verify_route(
-            internal_ct_port(int_b),
-            1 << external_ctp_port(ctps[2]),
-            XTRIG_CTP_MODE_P2P,
-            label="reset_all.pre_p2p",
+        wire_mask = sum(1 << port for port in wire_outputs)
+        p2p_in = 1 << internal_ct_port(int_b)
+        p2p_mask = 1 << external_ctp_port(ctps[2])
+        await self.configure_ctp_modes_for_route_mask(wire_in, wire_mask, XTRIG_CTP_MODE_WIRE_OR)
+        await self.configure_ctp_modes_for_route_mask(p2p_in, p2p_mask, XTRIG_CTP_MODE_P2P)
+        await self.clear_ctm_routes()
+        for port in wire_outputs:
+            await self.program_ctm_src(port, wire_in)
+        await self.program_ctm_src(external_ctp_port(ctps[2]), p2p_in)
+        await self.run_route_window(
+            wire_in, wire_mask, XTRIG_CTP_MODE_WIRE_OR, label="reset_all.pre_wire"
         )
+        await self.run_route_window(p2p_in, p2p_mask, XTRIG_CTP_MODE_P2P, label="reset_all.pre_p2p")
+        self.log_step(2, "A P2P request stays pending without its acknowledge when the reset lands")
+        await self.idle_inputs()
+        await self.drive_input_mask(p2p_in, XTRIG_CTP_MODE_P2P)
+        await self.wait_signal_mask(
+            "xtrig_ctp_req_out_dout",
+            p2p_mask,
+            self.pad_level(p2p_mask, asserted=True),
+            label="reset_all.stuck_req",
+        )
+        await self.check_status(ctps[2], "reset_all.before", busy=1, req_out=1)
         await self.reset_window("ctm_reset_all")
+        await self.check_status(ctps[2], "reset_all.after", busy=0, req_out=0)
         await self.check_all_ctm_cleared("reset_all")
         await self.check_ctp_defaults("reset_all")
         await self.verify_route(
@@ -1662,10 +1730,51 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             "ctp_to_cla", source_class="ctp", dest_class="internal", multicast=True, p2p=True
         )
 
+    async def run_p2p_pair_isolation(
+        self,
+        rng: Random,
+        input_mask: int,
+        output_mask: int,
+        *,
+        source_pool: list[int],
+        dest_pool: list[int],
+        label: str,
+    ) -> None:
+        """A second point-to-point route alongside ``input_mask -> output_mask``.
+
+        Programmed without clearing the first and each pulsed alone: a request
+        on either route reaches only its own destination while the other stays
+        live.
+        """
+        used = input_mask | output_mask
+        free_src = [port for port in source_pool if not (used >> port) & 1]
+        if not free_src:
+            return
+        in2 = rng.choice(free_src)
+        used |= 1 << in2
+        free_dst = [port for port in dest_pool if not (used >> port) & 1]
+        if not free_dst:
+            return
+        out2 = rng.choice(free_dst)
+        self.log.info("%s: second P2P route input=%d output=%d alongside", label, in2, out2)
+        await self.configure_ctp_modes_for_route_mask(1 << in2, 1 << out2, XTRIG_CTP_MODE_P2P)
+        await self.program_ctm_src(out2, 1 << in2)
+        await self.run_route_window(
+            1 << in2, 1 << out2, XTRIG_CTP_MODE_P2P, label=f"{label}.pair_second"
+        )
+        await self.run_route_window(
+            input_mask, output_mask, XTRIG_CTP_MODE_P2P, label=f"{label}.pair_first"
+        )
+
     async def run_ctm_random(
         self, name: str, *, source_class: str, dest_class: str, multicast: bool, p2p: bool
     ) -> None:
-        """Seeded route mixes: a wire-OR iteration selects one or two sources on every output."""
+        """Seeded route mixes.
+
+        A wire-OR iteration selects one or two sources on every output; a
+        point-to-point iteration adds a second, disjoint route alongside its
+        own and pulses each alone.
+        """
         self.log_banner(f"DTP CTM seeded random routing {name}")
         rng = self.rng(f"ctm_random_{name}")
         source_pool = self.port_pool(source_class)
@@ -1695,6 +1804,15 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 output_mask,
             )
             await self.verify_route_mask(input_mask, output_mask, mode, label=f"rand.{name}.{idx}")
+            if mode == XTRIG_CTP_MODE_P2P:
+                await self.run_p2p_pair_isolation(
+                    rng,
+                    input_mask,
+                    output_mask,
+                    source_pool=source_pool,
+                    dest_pool=dest_pool,
+                    label=f"rand.{name}.{idx}",
+                )
         self.log_summary(f"ctm_rand_{name}", iterations=self.random_count)
 
     @staticmethod

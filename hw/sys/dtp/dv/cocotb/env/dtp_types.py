@@ -320,6 +320,10 @@ ABORT_FSM_CHECK_ID = "CHK-J2A-ABORT-FSM"
 CDC_CLEAR_CHECK_ID = "CHK-J2A-CDC-CLEAR"
 ABORT_ESCAPE_CHECK_ID = "CHK-J2A-ABORT-ESCAPE"
 ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
+# A READY stall observed from the DUT side: the bridge FSM dwells on the
+# stalled path and the first status poll reads BUSY_OR_FULL.
+STALL_FSM_CHECK_ID = "CHK-J2A-STALL-FSM"
+STALL_BUSY_CHECK_ID = "CHK-J2A-STALL-BUSY"
 
 
 def size_field_bits(data_width: int) -> int:

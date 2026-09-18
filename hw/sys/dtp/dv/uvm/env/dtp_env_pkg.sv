@@ -27,8 +27,6 @@ package dtp_env_pkg;
   import ocah_lib_pkg::*;  // shared framework bases, knobs, rng
   import ocah_jtag_uvm_pkg::*;
   import ocah_axi_uvm_pkg::*;
-  import jtag_tap_pkg::*;  // DUT one-hot tap_state_e + is_onehot/is_valid helpers
-  import jtag_inst_reg_pkg::*;  // DUT instruction opcodes and decoded one-hots
 
   // Generated register headers of the cross-trigger IP: field masks and
   // shifts behind the XTRIG CSR constants in dtp_types.svh.

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Interrupts
+:description: SMC interrupt routing, CPU vector map, PLIC, CLINT, and error delivery.
+
 [[interrupts]]
-=== Interrupts
 
 The SMC can handle interrupt sources across diverse system management
 functions. The architecture centers around the Platform-Level
@@ -13,14 +15,20 @@ This chapter is the single place for interrupt **address maps**, the
 **`cpu_interrupts_o` vector**, **PLIC/CLINT register** includes, and **bus
 error (NMI)** behavior.
 
-==== Interrupt controllers (MMIO)
+== Interrupt controllers (MMIO)
 
 The CPU cluster integrates with system interrupt controllers via
 standardized interfaces. PLIC (AXI4-Lite) and CLINT (AXI4-Lite) are used
 for external and timer/software interrupts, respectively. Base addresses
 and interfaces (SMC-local view):
 
-[cols=",,,",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="smc-interrupt-table-scroll" role="region" aria-label="Interrupt controller address map" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="30%,40%,12%,18%",options="header",role="smc-interrupt-table"]
 |===================================================================
 |Block |Base Addr |Size |Interface
 |CPU Control Regs |0xC001_0000 |8 KB |AXI4-Lite
@@ -30,7 +38,13 @@ and interfaces (SMC-local view):
 |Bus Error Units (N) |0xC801_0000 + (N * 0x1000) |4 KB x4 |AXI4-Lite
 |===================================================================
 
-==== SMC interrupt vector (`cpu_interrupts_o`)
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+== SMC interrupt vector (`cpu_interrupts_o`)
 
 The PLIC exposes 332 global interrupt sources (indices 0–331). Most
 indices are driven from the SMC `cpu_interrupts_o` assembly documented below;
@@ -38,7 +52,7 @@ additional globals (for example per-core Chipyard watchdog timers at indices
 328–331) are bound inside the CPU cluster and do not appear on the raw
 `cpu_interrupts_o` bus.
 
-===== Bus Error Unit interrupts
+=== Bus Error Unit interrupts
 
 The Bus Error Units (BEU) provide per-core bus error monitoring. Unlike
 other interrupt sources, BEU interrupts bypass the PLIC and connect
@@ -53,7 +67,7 @@ see the following section.
 // Canonical SMC interrupt documentation: maintain this section with RTL changes;
 // other guides xref <<cpu-interrupt-vector-map>>.
 [[cpu-interrupt-vector-map]]
-==== SMC CPU Interrupt Vector Map
+== SMC CPU Interrupt Vector Map
 
 This section documents the raw `cpu_interrupts_o` vector assembled in
 `hw/sys/smc/rtl/smc_base.sv`. The vector is built from four sources:
@@ -82,13 +96,19 @@ cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+3]     = zeroer_intp;
 
 `NUM_EXT_INTERRUPTS = 256` and `NUM_CPU_INTERRUPTS = 328`.
 
-===== Exact Indexed Map
+=== Exact Indexed Map
 
 The table below shows the exact raw `cpu_interrupts_o` indexing. The
 `Source` column is intentionally human-readable; implementation signal
 names are called out in the `RTL trace` column instead.
 
-[width="100%",cols="12%,22%,28%,38%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="smc-interrupt-table-scroll" role="region" aria-label="SMC CPU interrupt vector map" tabindex="0">
+++++
+endif::backend-html5[]
+
+[width="100%",cols="12%,20%,28%,40%",options="header",role="smc-interrupt-table smc-interrupt-table-wide"]
 |=======================================================================
 |Bit(s) |Source |Description |RTL trace
 
@@ -343,7 +363,13 @@ overwritten in `smc_peripherals.sv`.
 tail bits in `smc_base.sv`.
 |=======================================================================
 
-===== Trace Notes
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Trace Notes
 
 * Peripheral interrupt construction is defined in
   `hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`. Bit 31 is the one
@@ -360,7 +386,7 @@ tail bits in `smc_base.sv`.
 * The raw vector documents SMC-generated sources only. The meaning of each
   external interrupt bit is defined by the enclosing SoC integration.
 
-==== RISC-V PLIC
+== RISC-V PLIC
 
 The SMC uses a standards-compliant Platform-Level Interrupt
 Controller (PLIC) at 0xC400_0000–0xC43F_FFFF (4MB) to manage 332
@@ -386,14 +412,20 @@ registers have no hardware reset, and undefined values can block setting
 The `mie` CSR also has no reset value. Clear and initialize it before setting
 individual enable bits and `mstatus.MIE`.
 
-==== System Management Interrupt Source Integration
+== System Management Interrupt Source Integration
 
 The SMC interrupt system brings together a broad set of interrupt
 sources that support reliable and responsive system monitoring and
 control, summarized in the following table.
 
+ifdef::backend-html5[]
+++++
+<div class="smc-interrupt-table-scroll" role="region" aria-label="SMC interrupt source integration" tabindex="0">
+++++
+endif::backend-html5[]
+
 .SMC interrupt sources
-[width="100%",cols="20%,25%,30%,25%",options="header",]
+[width="100%",cols="24%,28%,25%,23%",options="header",role="smc-interrupt-table"]
 |=======================================================================
 |Interrupt Component |Address Range & Configuration |System Management
 Function |Response Characteristics
@@ -417,9 +449,21 @@ monitoring instances, direct to cores (not PLIC) |Bus infrastructure integrity m
 isolation |Immediate fault reporting as NMI-like interrupt
 |=======================================================================
 
-For CPU cluster context (caches, TileLink attachment), see <<cpu-memory-system>>.
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
-==== Multi-Tier Interrupt Classification and Response Strategy
+For CPU cluster context (caches, TileLink attachment), see
+ifdef::backend-html5[]
+xref:smc:cpu.adoc#cpu-memory-system[CPU and Memory System].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<cpu-memory-system>>.
+endif::backend-pdf[]
+
+== Multi-Tier Interrupt Classification and Response Strategy
 
 The SMC interrupt architecture classifies interrupt sources by system
 management function and response needs. System-wide events are delivered
@@ -432,7 +476,7 @@ communication. Dedicated interrupts for watchdog timeouts and bus errors
 ensure system management can respond quickly to faults or infrastructure
 issues with appropriate, targeted actions.
 
-==== Multi-Core Interrupt Distribution and Load Management
+== Multi-Core Interrupt Distribution and Load Management
 
 The SMC supports independent interrupt delivery to each CPU core,
 enabling distribution of interrupt handling and specialized core roles.
@@ -445,7 +489,7 @@ interrupts without software overhead. Per-core interrupt masking gives
 software precise control, so interrupt delivery can be dynamically tuned
 to operational needs and system management policies.
 
-==== RISC-V CLINT and Precise System Management Timing
+== RISC-V CLINT and Precise System Management Timing
 
 The Core Local Interruptor (CLINT) in the SMC provides per-core timer
 and software interrupt functionality for precise, deterministic timing
@@ -457,14 +501,14 @@ low-latency software interrupts directly, bypassing the PLIC. This
 supports both accurate RTOS scheduling and fast inter-processor
 communication essential to reliable multi-core system management.
 
-==== Fault Detection and Recovery Architecture
+== Fault Detection and Recovery Architecture
 
 The SMC provides fault detection and recovery through per-core watchdog
 timers and bus error monitoring, enabling both local fault recovery and
 coordination with broader system reliability mechanisms. They are
 described in the following sections.
 
-==== Advanced PLIC Management and Adaptive Priority Control
+== Advanced PLIC Management and Adaptive Priority Control
 
 In the PLIC, each interrupt source has a configurable priority, letting
 software focus on critical events without overloading the system.
@@ -481,7 +525,7 @@ The atomic claim and completion system ensures reliable, efficient
 interrupt handling with low software cost. It prevents lost or
 duplicated interrupts and smoothly handles high interrupt rates.
 
-==== Multi-Context Architecture and Privilege Level Integration
+== Multi-Context Architecture and Privilege Level Integration
 
 The multi-context architecture supports security boundaries and
 privilege separation in interrupt handling. Machine-mode and
@@ -497,7 +541,7 @@ privilege level enforces security so that privilege escalation cannot
 compromise interrupt handling, while still allowing flexible processing
 at different privilege levels.
 
-==== Precision Timer Management and Inter-Core Coordination
+== Precision Timer Management and Inter-Core Coordination
 
 The CLINT timer system delivers precise timing for managing both
 individual cores and coordinated multi-core operations, using a 64-bit
@@ -514,7 +558,7 @@ software logic.
 Software interrupts enable fast communication between cores, supporting
 efficient and responsive multi-core management.
 
-==== Register Interfaces
+== Register Interfaces
 
 ifdef::backend-html5[]
 ++++

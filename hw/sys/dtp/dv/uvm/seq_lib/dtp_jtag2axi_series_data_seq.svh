@@ -15,7 +15,7 @@ class dtp_jtag2axi_series_data_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag2axi_series_data_seq)
 
   dtp_j2a_target_t                      target;
-  jtag_inst_reg_pkg::jtag_instruction_e instr;
+  dtp_jtag_instr_e instr;
   bit [63:0]                            data;
   int unsigned                          size;
   // With-status mode carries one increment/status bit above the payload;

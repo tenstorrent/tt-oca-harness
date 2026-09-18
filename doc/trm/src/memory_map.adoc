@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH Memory Map
+:description: The chiplet-visible SMU aperture and the SEP/SMC global apertures firmware programs.
+
+[[ocah-memory-map]]
+
+OCAH separates the chiplet-visible SMU aperture from the internal address
+maps used by SEP and SMC firmware. The chiplet integrator decides which
+system address range reaches the SMU external AXI input. Firmware then
+programs the SEP and SMC global base/size CSRs so the SMU crossbar can
+route incoming traffic to the correct inbound port.
+
+[cols="<24%,<24%,<32%,<20%",options="header"]
+|===
+|Concept |Configured by |Purpose |Example
+
+|Chiplet NoC envelope
+|Integrator / chiplet address map
+|Controls which external-master addresses reach SMU `ext_in`
+|Example only: 64 MiB total SMU aperture
+
+|SEP global aperture
+|SEP firmware via `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`
+|Controls SMU `ext_in` to `sep_in` routing and SEP inbound global-to-local remap
+|Example only: 32 MiB SEP slot in a 32 MiB + 32 MiB SEP/SMC partition
+
+|SMC global aperture
+|SMC firmware via `GLOBAL_BASE` / `REGION_SIZE`
+|Controls SMU `ext_in` to `smc_in` routing and SEP-to-SMC decode
+|Example only: 32 MiB SMC slot in a 32 MiB + 32 MiB SEP/SMC partition
+|===
+
+External masters use chiplet-global addresses and are bounded first by the
+chiplet NoC decode. The SMU crossbar applies the firmware-programmed SEP and
+SMC global apertures to route those transactions to `sep_in` or `smc_in`.
+Subsystem-internal CPU maps and local aliases are described in the SEP and SMC
+chapters.
+
+The current reset defaults are conservative boot values:
+`SEP_REGION_SIZE` resets to `0x0100_0000` (16 MiB) and SMC `REGION_SIZE`
+resets to `0x0100_0000` (16 MiB). Firmware may reprogram these values during
+early boot to match the chiplet address assignment. If the reset values are
+changed to a 32 MiB SEP/SMC split, this section should be updated
+accordingly.

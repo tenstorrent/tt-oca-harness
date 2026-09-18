@@ -2,16 +2,30 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smc-dv-efuse-programming]]
-===== Programming
+== Programming
 
-====== Usage Examples
+=== Exclusive program and read enables
 
-====== Example 1: Programming a Single Bit
+`EFUSE_PROGRAM_CTRL.program_enable` and `EFUSE_READ_CTRL.read_enable` are
+mutually exclusive. After fuse sense completes, program and read share a
+single command path to the OTP bank, and `program_enable` owns that path
+whenever it is set. A read issued while `program_enable` is still high
+does not reach the bank.
+
+Treat `program_enable` as a mode-ownership bit, not sticky configuration.
+After a program completes (`PROGRAM_DONE`), deassert `program_enable`
+before any later read. Leave address, data, and the other program
+fields as they are. Deassert `read_enable` the same way before starting
+a program. The two enables are never asserted together.
+
+=== Usage Examples
+
+=== Example 1: Programming a Single Bit
 
 [source,sourceCode,c]
 ----
-// Enable programming
-EFUSE_PROGRAM_CTRL = (1 << 28) | (1 << 16) | (bit_addr & 0xFFFF);
+// Own the program path (program_enable is bit 27). read_enable must be 0.
+EFUSE_PROGRAM_CTRL = (1 << 27) | (1 << 16) | (bit_addr & 0xFFFF);
 
 // Trigger program
 EFUSE_PROGRAM_CTRL |= (1 << 17);
@@ -23,13 +37,16 @@ while (EFUSE_PROGRAM_CTRL & (1 << 24)); // Wait for busy to clear
 if ((EFUSE_PROGRAM_CTRL >> 26) & 0x3) {
     // Handle error
 }
+
+// Release program ownership before any later read
+EFUSE_PROGRAM_CTRL &= ~(1 << 27);
 ----
 
-====== Example 2: Reading Multiple Words
+=== Example 2: Reading Multiple Words
 
 [source,sourceCode,c]
 ----
-// Setup read operation
+// Own the read path (read_enable is bit 28). program_enable must already be 0.
 EFUSE_READ_CTRL = (1 << 28) | (num_words << 16) | (bit_addr & 0xFFFF);
 
 // Trigger read
@@ -40,11 +57,15 @@ while (EFUSE_READ_CTRL & (1 << 24)); // Wait for busy to clear
 
 // Read data
 uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
+
+// Release read ownership before any later program
+EFUSE_READ_CTRL &= ~(1 << 28);
 ----
 
-====== Program Operation Sequence
+=== Program Operation Sequence
 
 1.  *Setup Phase*:
+* Confirm `EFUSE_READ_CTRL.read_enable` is 0
 * Set `program_enable` = 1 in `EFUSE_PROGRAM_CTRL`
 * Configure `efuse_addr` with target bit address
 * Set `efuse_data` = 1 (only 1s can be programmed)
@@ -59,10 +80,14 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
 ** 1: Bad data (data was not 1)
 ** 2: Bad enables (program_enable not set or lock active)
 ** 3: Programming failure (verification failed)
+4.  *Release*:
+* Clear `program_enable` in `EFUSE_PROGRAM_CTRL`. This returns the
+command path so a subsequent read can proceed.
 
-====== Read Operation Sequence
+=== Read Operation Sequence
 
 1.  *Setup Phase*:
+* Confirm `EFUSE_PROGRAM_CTRL.program_enable` is 0
 * Set `read_enable` = 1 in `EFUSE_READ_CTRL`
 * Configure `efuse_addr` with target bit address
 * Set `efuse_read_length_words` for multi-word reads
@@ -73,3 +98,6 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
 3.  *Data Retrieval*:
 * Read data from `EFUSE_READ_INTERFACE_READ_DATA`
 * Check `read_status` for any errors
+4.  *Release*:
+* Clear `read_enable` in `EFUSE_READ_CTRL` so a subsequent program can
+own the command path.

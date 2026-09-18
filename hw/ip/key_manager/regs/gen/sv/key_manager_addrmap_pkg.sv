@@ -8,6 +8,12 @@ package key_manager_addrmap_pkg;
 localparam longint unsigned KEY_MANAGER_BASE_ADDR = 64'h0;
 localparam longint unsigned KEY_MANAGER_SIZE = 64'h1C42C;
 
+localparam longint unsigned KEY_MANAGER_ROM_BASE_ADDR = 64'h0;
+localparam longint unsigned KEY_MANAGER_ROM_SIZE = 64'h4000;
+
+localparam longint unsigned KEY_MANAGER_SRAM_BASE_ADDR = 64'h8000;
+localparam longint unsigned KEY_MANAGER_SRAM_SIZE = 64'h8000;
+
 localparam longint unsigned KEY_MANAGER_MAILBOX_KM_BASE_ADDR = 64'h10000;
 localparam longint unsigned KEY_MANAGER_MAILBOX_KM_SIZE = 64'h1C;
 

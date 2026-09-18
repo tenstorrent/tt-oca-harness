@@ -1,55 +1,77 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= JTAG Interface Unit
+:description: JTAG Interface Unit — top-level JTAG control, STAP configuration, iJTAG chains and JTAG2AXI bridges.
+
 [[jtag-interface-unit]]
-=== JTAG Interface Unit
 
-==== Overview
+The JTAG Interface Unit (JIU) is the top-level JTAG control module for the
+DTP subsystem. It manages the primary JTAG port and all supporting instrument
+logic.
 
-The JTAG Interface Unit serves as the top-level JTAG control module, managing
-the primary JTAG port for the chiplet and all supporting instrument logic. It
-contains the following design blocks and features:
+== Overview
 
-* One PTAP
-** Chiplet IDCODE register
-** Boundary scan control
-** BIST control
-** Reset control
-* A configurable number of STAPs
-** Downstream chiplet JTAG
-** SMC TAP interface
-** SEP TAP Interface
-** An optional number of additional STAPs
-** Extended STAP scan interface
-* An iJTAG network
-** A debug port for the SMC fabric
-** A debug port for the SMC OTP
-** A debug port for the SEP OTP
-** A port for extending the iJTAG network outside the interface unit
-* Per-path debug-disable inputs that gate STAPs, iJTAG SIBs, and JTAG2AXI
-  bridges
+The JIU contains:
 
-The PTAP, STAP and all other supporting logic conform to IEEE standards
-1149.1-2013 _Test Access Port and Boundary-Scan Architecture_, 1687-2014 _Access
-and Control of Instrumentation Embedded within a Semiconductor Device_, and
-1838-2019 _Test Access Architecture for Three-Dimensional Stacked Integrated
-Circuits_.
+* A Primary TAP (PTAP) with chiplet IDCODE, boundary scan, BIST, reset
+  control and JTAG2AXI bridges.
+* A configurable number of Secondary TAPs (STAPs) for downstream chiplet JTAG,
+  SMC CPU debug, SEP CPU debug, and optional additional TAPs.
+* An iJTAG network with SIB-based chains for DFT (secure and non-secure), DFD,
+  and JTAG2AXI bridges to the SMC fabric, SMC OTP and SEP OTP controllers.
 
-==== Configuration Parameters
+* Per-path debug-disable inputs gate STAPs, iJTAG SIBs, and JTAG2AXI bridges.
 
-[cols="<,<,<,<",options="header"]
+The PTAP, STAP and all supporting logic conform to IEEE 1149.1-2013 (JTAG),
+IEEE 1687-2014 (iJTAG) and IEEE 1838-2019 (3DIC).
+
+== Configuration Parameters
+
+[cols="<28%,<12%,<12%,<48%",options="header"]
 |===
 |Parameter |Range |Default |Description
-|NUM_STAP |0-8 |4 |Number of STAP interfaces
-|STAP_IO_EN |0/1 |1 |Enable I/O STAP for chiplet-to-chiplet connectivity
-|SMC_DBG_EN |0/1 |1 |Enable SMC debug STAP
-|SEP_DBG_EN |0/1 |1 |Enable SEP debug STAP
-|NUM_XTRA_STAP |0-4 |0 |Number of additional STAPs
+
+|`NUM_STAP`
+|0–8
+|4
+|Number of STAP interfaces.
+
+|`STAP_IO_EN`
+|0/1
+|1
+|Enable I/O STAP for chiplet-to-chiplet connectivity.
+
+|`SMC_DBG_EN`
+|0/1
+|1
+|Enable SMC debug STAP.
+
+|`SEP_DBG_EN`
+|0/1
+|1
+|Enable SEP debug STAP.
+
+|`NUM_XTRA_STAP`
+|0–4
+|0
+|Number of additional STAPs.
 |===
 
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$jtag_intf_unit/doc/architecture.adoc[]
+endif::backend-html5[]
 ifdef::backend-pdf[]
-:imagesdir: assets
+include::architecture.adoc[]
 endif::backend-pdf[]
 
-include::architecture.adoc[]
+== Interface
+
+ifdef::backend-html5[]
+include::partial$jtag_intf_unit/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]

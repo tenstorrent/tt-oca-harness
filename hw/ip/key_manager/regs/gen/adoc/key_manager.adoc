@@ -804,7 +804,7 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 | 31:29 | `Reserved` | - | - a| Reserved
 | 28 | `read_enable` | RW | 0x0 a| When set, enables the read request
 | 27 | `Reserved` | - | - a| Reserved
-| 26 | `read_status` | R | 0x0 a| 0: No Error.  1: Logic error, assert read_go when read is not enabled
+| 26 | `read_status` | R | 0x0 a| 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
 | 25 | `read_done` | R | 0x0 a| When set, the read has completed, the status of which is in read_status
 | 24 | `read_busy` | R | 0x0 a| When set, the read is in progress
 | 23:17 | `Reserved` | - | - a| Reserved

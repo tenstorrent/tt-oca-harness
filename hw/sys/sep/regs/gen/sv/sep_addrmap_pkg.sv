@@ -65,6 +65,12 @@ localparam longint unsigned OCH_SEP_TOP_EDN_SIZE = 64'h48;
 localparam longint unsigned OCH_SEP_TOP_ENTROPY_SOURCE_BASE_ADDR = 64'h10916000;
 localparam longint unsigned OCH_SEP_TOP_ENTROPY_SOURCE_SIZE = 64'h17C;
 
+localparam longint unsigned OCH_SEP_TOP_TRNG_BASE_ADDR = 64'h10917000;
+localparam longint unsigned OCH_SEP_TOP_TRNG_SIZE = 64'h1000;
+
+localparam longint unsigned OCH_SEP_TOP_TRNG_APERTURE_BASE_ADDR = 64'h10917000;
+localparam longint unsigned OCH_SEP_TOP_TRNG_APERTURE_SIZE = 64'h1000;
+
 localparam longint unsigned OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR = 64'h10918000;
 localparam longint unsigned OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE = 64'h18;
 
@@ -79,6 +85,39 @@ localparam longint unsigned OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE = 64'h1C;
 
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR = 64'h10930500;
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_SIZE = 64'h74;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_BASE_ADDR = 64'h10940000;
+localparam longint unsigned OCH_SEP_TOP_ABR_SIZE = 64'hC018;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_PUBKEY_BASE_ADDR = 64'h10941000;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_PUBKEY_SIZE = 64'hA20;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_SIGNATURE_BASE_ADDR = 64'h10942000;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_SIGNATURE_SIZE = 64'h1214;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_PRIVKEY_OUT_BASE_ADDR = 64'h10944000;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_PRIVKEY_OUT_SIZE = 64'h1320;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_PRIVKEY_IN_BASE_ADDR = 64'h10946000;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_PRIVKEY_IN_SIZE = 64'h1320;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_BASE_ADDR = 64'h10948100;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_SIZE = 64'h208;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_MSG_BASE_ADDR = 64'h10949080;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_MSG_SIZE = 64'h20;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_DECAPS_KEY_BASE_ADDR = 64'h1094A000;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_DECAPS_KEY_SIZE = 64'hC60;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_ENCAPS_KEY_BASE_ADDR = 64'h1094B000;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_ENCAPS_KEY_SIZE = 64'h620;
+
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_CIPHERTEXT_BASE_ADDR = 64'h1094B800;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_CIPHERTEXT_SIZE = 64'h620;
+
+localparam longint unsigned OCH_SEP_TOP_ENTROPY_POOL_BASE_ADDR = 64'h10950000;
+localparam longint unsigned OCH_SEP_TOP_ENTROPY_POOL_SIZE = 64'h18;
 
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_BASE_ADDR = 64'h10A00000;
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_SIZE = 64'h7850;
@@ -550,6 +589,92 @@ localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR 
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR = 64'h10930568;
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR = 64'h1093056C;
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR = 64'h10930570;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLDSA_NAME_BASE_ADDR(input int unsigned MLDSA_NAME_idx);
+    return 64'h10940000 + (MLDSA_NAME_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_NAME_NUM = 64'h2;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLDSA_VERSION_BASE_ADDR(input int unsigned MLDSA_VERSION_idx);
+    return 64'h10940008 + (MLDSA_VERSION_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_VERSION_NUM = 64'h2;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_CTRL_BASE_ADDR = 64'h10940010;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_STATUS_BASE_ADDR = 64'h10940014;
+function automatic longint unsigned OCH_SEP_TOP_ABR_ABR_ENTROPY_BASE_ADDR(input int unsigned ABR_ENTROPY_idx);
+    return 64'h10940018 + (ABR_ENTROPY_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_ABR_ENTROPY_NUM = 64'h10;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLDSA_SEED_BASE_ADDR(input int unsigned MLDSA_SEED_idx);
+    return 64'h10940058 + (MLDSA_SEED_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_SEED_NUM = 64'h8;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLDSA_SIGN_RND_BASE_ADDR(input int unsigned MLDSA_SIGN_RND_idx);
+    return 64'h10940078 + (MLDSA_SIGN_RND_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_SIGN_RND_NUM = 64'h8;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLDSA_MSG_BASE_ADDR(input int unsigned MLDSA_MSG_idx);
+    return 64'h10940098 + (MLDSA_MSG_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_MSG_NUM = 64'h10;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLDSA_VERIFY_RES_BASE_ADDR(input int unsigned MLDSA_VERIFY_RES_idx);
+    return 64'h109400D8 + (MLDSA_VERIFY_RES_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_VERIFY_RES_NUM = 64'h10;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLDSA_EXTERNAL_MU_BASE_ADDR(input int unsigned MLDSA_EXTERNAL_MU_idx);
+    return 64'h10940118 + (MLDSA_EXTERNAL_MU_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_EXTERNAL_MU_NUM = 64'h10;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_MSG_STROBE_BASE_ADDR = 64'h10940158;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_CTX_CONFIG_BASE_ADDR = 64'h1094015C;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLDSA_CTX_BASE_ADDR(input int unsigned MLDSA_CTX_idx);
+    return 64'h10940160 + (MLDSA_CTX_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLDSA_CTX_NUM = 64'h40;
+localparam longint unsigned OCH_SEP_TOP_ABR_KV_MLDSA_SEED_RD_CTRL_BASE_ADDR = 64'h10948000;
+localparam longint unsigned OCH_SEP_TOP_ABR_KV_MLDSA_SEED_RD_STATUS_BASE_ADDR = 64'h10948004;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_GLOBAL_INTR_EN_R_BASE_ADDR = 64'h10948100;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_ERROR_INTR_EN_R_BASE_ADDR = 64'h10948104;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_NOTIF_INTR_EN_R_BASE_ADDR = 64'h10948108;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_ERROR_GLOBAL_INTR_R_BASE_ADDR = 64'h1094810C;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_NOTIF_GLOBAL_INTR_R_BASE_ADDR = 64'h10948110;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_R_BASE_ADDR = 64'h10948114;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_NOTIF_INTERNAL_INTR_R_BASE_ADDR = 64'h10948118;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_ERROR_INTR_TRIG_R_BASE_ADDR = 64'h1094811C;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_NOTIF_INTR_TRIG_R_BASE_ADDR = 64'h10948120;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_COUNT_R_BASE_ADDR = 64'h10948200;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_NOTIF_CMD_DONE_INTR_COUNT_R_BASE_ADDR = 64'h10948280;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_COUNT_INCR_R_BASE_ADDR = 64'h10948300;
+localparam longint unsigned OCH_SEP_TOP_ABR_INTR_BLOCK_RF_NOTIF_CMD_DONE_INTR_COUNT_INCR_R_BASE_ADDR = 64'h10948304;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLKEM_NAME_BASE_ADDR(input int unsigned MLKEM_NAME_idx);
+    return 64'h10949000 + (MLKEM_NAME_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_NAME_NUM = 64'h2;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLKEM_VERSION_BASE_ADDR(input int unsigned MLKEM_VERSION_idx);
+    return 64'h10949008 + (MLKEM_VERSION_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_VERSION_NUM = 64'h2;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_CTRL_BASE_ADDR = 64'h10949010;
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_STATUS_BASE_ADDR = 64'h10949014;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLKEM_SEED_D_BASE_ADDR(input int unsigned MLKEM_SEED_D_idx);
+    return 64'h10949018 + (MLKEM_SEED_D_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_SEED_D_NUM = 64'h8;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLKEM_SEED_Z_BASE_ADDR(input int unsigned MLKEM_SEED_Z_idx);
+    return 64'h10949038 + (MLKEM_SEED_Z_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_SEED_Z_NUM = 64'h8;
+function automatic longint unsigned OCH_SEP_TOP_ABR_MLKEM_SHARED_KEY_BASE_ADDR(input int unsigned MLKEM_SHARED_KEY_idx);
+    return 64'h10949058 + (MLKEM_SHARED_KEY_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_ABR_MLKEM_SHARED_KEY_NUM = 64'h8;
+localparam longint unsigned OCH_SEP_TOP_ABR_KV_MLKEM_SEED_RD_CTRL_BASE_ADDR = 64'h1094C000;
+localparam longint unsigned OCH_SEP_TOP_ABR_KV_MLKEM_SEED_RD_STATUS_BASE_ADDR = 64'h1094C004;
+localparam longint unsigned OCH_SEP_TOP_ABR_KV_MLKEM_MSG_RD_CTRL_BASE_ADDR = 64'h1094C008;
+localparam longint unsigned OCH_SEP_TOP_ABR_KV_MLKEM_MSG_RD_STATUS_BASE_ADDR = 64'h1094C00C;
+localparam longint unsigned OCH_SEP_TOP_ABR_KV_MLKEM_SHAREDKEY_WR_CTRL_BASE_ADDR = 64'h1094C010;
+localparam longint unsigned OCH_SEP_TOP_ABR_KV_MLKEM_SHAREDKEY_WR_STATUS_BASE_ADDR = 64'h1094C014;
+localparam longint unsigned OCH_SEP_TOP_ENTROPY_POOL_STATUS_BASE_ADDR = 64'h10950000;
+localparam longint unsigned OCH_SEP_TOP_ENTROPY_POOL_IRQ_CAUSE_BASE_ADDR = 64'h10950008;
+localparam longint unsigned OCH_SEP_TOP_ENTROPY_POOL_DATA_BASE_ADDR = 64'h10950010;
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR = 64'h10A00000;
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR = 64'h10A00008;
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR = 64'h10A00010;
@@ -837,5 +962,11 @@ typedef enum logic [2:0] {
     MARKOV_HI = 3'd3,
     MARKOV_LO = 3'd4
 } WATERMARK_TEST_e;
+
+typedef enum logic [1:0] {
+    SUCCESS = 2'd0,
+    KV_READ_FAIL = 2'd1,
+    KV_WRITE_FAIL = 2'd2
+} kv_error_e_e;
 
 endpackage
