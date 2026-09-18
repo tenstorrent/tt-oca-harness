@@ -9,11 +9,11 @@ be a fixed constant:
   * the RMA_SIP / RMA_CHIPLET tokens and their OTP digests (delegated to
     ``SepRmaTokenCfg``, so this walk and the token RANDCFG cannot drift), and
   * the ``nuisance`` pattern written into LC_STATE bytes 1..3 alongside the
-    lifecycle nibble. Byte 0 is the differentially encoded lifecycle state and
-    bytes 1..3 are ordinary set-only shadow bytes
-    (``hw/ip/efuse/rtl/efuse_shadow_regs.sv``); driving them with seed data
-    proves the byte-0 special case does not leak into its neighbours and that
-    the neighbours do not disturb the lifecycle nibble.
+    lifecycle nibble. Byte 0 is the differentially encoded lifecycle state.
+    Bytes 1..3 are ``sep_efuse_map.rdl``'s ``rsvd`` field and take a plain
+    shadow write; seed data in those bytes proves the byte-0 special case
+    does not leak into its neighbours and that the neighbours do not disturb
+    the lifecycle nibble.
 
 ``dv_sim_prestage.py`` loads this module to stage the t=0 hex; the test builds
 the same ``SepLcTransitionCfg(seed)`` as its golden. Do not switch the stream to
@@ -45,8 +45,9 @@ class SepLcTransitionCfg:
         self.tokens = SepRmaTokenCfg(seed)
         rng = SepSeededRng(seed)
         # Bytes 1..3 of the LC_STATE shadow word. Two patterns, each with a
-        # unique bit, so OR-merge (a|b) differs from overwrite (b). Byte 0
-        # stays clear so it never collides with the lifecycle nibble.
+        # unique bit, so overwrite of the second differs from a stale first
+        # and from an OR of the two. Byte 0 stays clear so it never collides
+        # with the lifecycle nibble.
         raw1 = rng.getrandbits(24)
         raw2 = rng.getrandbits(24)
         self.nuisance = ((raw1 | 0x01) & ~0x02) << 8

@@ -159,8 +159,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._demote_1 = 0
         self._demote_2 = 0
         self._cur = lc_raw
-        # Bytes [31:8] of the sensed LC word; the walk OR-merges the seed
-        # nuisance pattern into them on its first write.
+        # Bytes [31:8] of the sensed LC word, before any shadow write.
         self._upper = image.shadow_word(LC_WORD_IDX) & 0xFFFF_FF00
         sec_dis = int(getattr(cocotb.top, "lcc_security_disable_probe_o").value) & 0x1
         assert sec_dis == 0, (
@@ -466,7 +465,8 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             f"token rules as the bus path; expected 0x{expected:x}, got 0x{got:x}"
         )
         # The transient cells never write the shadow. A later bus write of 0
-        # keeps INVALID and lets the two-pattern OR-merge run on this leaf too.
+        # keeps INVALID and lets the two-pattern upper-byte write run on this
+        # leaf too.
         await self._cell(0x0, "CHK-W1S-NO-CLEAR")
         await self._prove_upper_write()
 
