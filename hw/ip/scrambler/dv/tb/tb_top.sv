@@ -116,7 +116,7 @@ module scrambler_tb_top (
 );
 
   scrambler_512x32 #(
-    .BYTE_WISE (0)
+    .BYTE_WISE(0)
   ) u_w512 (
     .addr_i                 (w512_addr),
     .byte_mask_i            (w512_byte_mask),
@@ -129,7 +129,7 @@ module scrambler_tb_top (
   );
 
   scrambler_512x32 #(
-    .BYTE_WISE (1)
+    .BYTE_WISE(1)
   ) u_b512 (
     .addr_i                 (b512_addr),
     .byte_mask_i            (b512_byte_mask),
@@ -142,7 +142,7 @@ module scrambler_tb_top (
   );
 
   scrambler_1024x32 #(
-    .BYTE_WISE (0)
+    .BYTE_WISE(0)
   ) u_w1024 (
     .addr_i                 (w1024_addr),
     .byte_mask_i            (w1024_byte_mask),
@@ -155,7 +155,7 @@ module scrambler_tb_top (
   );
 
   scrambler_1024x32 #(
-    .BYTE_WISE (1)
+    .BYTE_WISE(1)
   ) u_b1024 (
     .addr_i                 (b1024_addr),
     .byte_mask_i            (b1024_byte_mask),
@@ -168,7 +168,7 @@ module scrambler_tb_top (
   );
 
   scrambler_2048x32 #(
-    .BYTE_WISE (0)
+    .BYTE_WISE(0)
   ) u_w2048 (
     .addr_i                 (w2048_addr),
     .byte_mask_i            (w2048_byte_mask),
@@ -181,7 +181,7 @@ module scrambler_tb_top (
   );
 
   scrambler_2048x32 #(
-    .BYTE_WISE (1)
+    .BYTE_WISE(1)
   ) u_b2048 (
     .addr_i                 (b2048_addr),
     .byte_mask_i            (b2048_byte_mask),
@@ -194,7 +194,7 @@ module scrambler_tb_top (
   );
 
   scrambler_4096x32 #(
-    .BYTE_WISE (0)
+    .BYTE_WISE(0)
   ) u_w4096 (
     .addr_i                 (w4096_addr),
     .byte_mask_i            (w4096_byte_mask),
@@ -207,7 +207,7 @@ module scrambler_tb_top (
   );
 
   scrambler_4096x32 #(
-    .BYTE_WISE (1)
+    .BYTE_WISE(1)
   ) u_b4096 (
     .addr_i                 (b4096_addr),
     .byte_mask_i            (b4096_byte_mask),
@@ -220,7 +220,7 @@ module scrambler_tb_top (
   );
 
   scrambler_8192x32 #(
-    .BYTE_WISE (0)
+    .BYTE_WISE(0)
   ) u_w8192 (
     .addr_i                 (w8192_addr),
     .byte_mask_i            (w8192_byte_mask),
@@ -233,7 +233,7 @@ module scrambler_tb_top (
   );
 
   scrambler_8192x32 #(
-    .BYTE_WISE (1)
+    .BYTE_WISE(1)
   ) u_b8192 (
     .addr_i                 (b8192_addr),
     .byte_mask_i            (b8192_byte_mask),

@@ -184,7 +184,7 @@ module log_engine_tb_top
   assign log_write_axil_resp.r.resp    = log_write_rresp;
 
   log_engine #(
-    .FIFO_DEPTH (FIFO_DEPTH)
+    .FIFO_DEPTH(FIFO_DEPTH)
   ) u_dut (
     .clk_i                 (clk),
     .rst_ni                (rst_n),

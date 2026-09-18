@@ -68,8 +68,8 @@ package log_engine_pkg;
 
   // Dependent Parameters
   // General parameters
-  localparam log_engine_reg_pkg::log_engine__LOG_REGION_SIZE__LOG_REGION_SIZE__out_t
-      LOG_REGION_SIZE_FIELD = '{default: '0};
+  typedef log_engine_reg_pkg::log_engine__LOG_REGION_SIZE__LOG_REGION_SIZE__out_t log_region_size_field_t;
+  localparam log_region_size_field_t LOG_REGION_SIZE_FIELD = '{default: '0};
   localparam int unsigned LOG_REGION_SIZE_W = $bits(LOG_REGION_SIZE_FIELD.value);
   typedef logic [LOG_REGION_SIZE_W-1:0] log_region_size_t;
 
