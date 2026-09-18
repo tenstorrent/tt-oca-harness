@@ -11,6 +11,16 @@ integrates the JTAG Interface Unit (JIU) and the Cross Trigger Network (CTN)
 into a single instantiable subsystem that exposes a standard external JTAG
 port, internal debug bridges, and a configurable cross-trigger fabric.
 
+ifdef::backend-html5[]
+++++
+<p class="dashboard-badges">
+  <a href="../dashboard-block.html?flow=dtp"><img class="dashboard-badge" src="../data/badge-dtp-status.svg" alt="DTP verification status"></a>
+  <a href="../dashboard-block.html?flow=dtp"><img class="dashboard-badge" src="../data/badge-dtp-tests.svg" alt="DTP test pass rate"></a>
+  <a href="../dashboard-block.html?flow=dtp"><img class="dashboard-badge" src="../data/badge-dtp-coverage.svg" alt="DTP coverage"></a>
+</p>
+++++
+endif::[]
+
 == Capabilities
 
 * *JTAG access* — IEEE 1149.1-2013 Primary TAP with configurable Secondary TAPs
