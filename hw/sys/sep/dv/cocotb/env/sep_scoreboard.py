@@ -26,6 +26,7 @@ class SepScoreboard(uvm_subscriber):
         self.errors: list[str] = []
         self.checks = 0  # transactions observed
         self.value_checks = 0  # reads whose expected value was verified
+        self.expected_reads = 0  # reads that carried an expected value
         self.error_checks = 0  # negative-path probes that returned a non-OKAY (as expected)
 
     def _fail(self, msg: str) -> None:
@@ -76,6 +77,7 @@ class SepScoreboard(uvm_subscriber):
             )
             return
         if item.op is SepAxiOp.READ and item.expected is not None:
+            self.expected_reads += 1
             mask = (1 << (item.length * 8)) - 1
             got = item.rdata & mask
             exp = item.expected & mask
@@ -95,6 +97,11 @@ class SepScoreboard(uvm_subscriber):
         # Positive evidence: a clean run must have actually observed
         # transactions, not passed vacuously on zero activity.
         assert self.checks > 0, "SEP scoreboard saw no AXI transactions (no positive evidence)"
+        if self.expected_reads:
+            assert self.value_checks > 0, (
+                "SEP scoreboard saw reads that carried an expected value but "
+                "verified none"
+            )
         self.logger.info(
             "SEP scoreboard: %d checks (%d value-verified, %d expected-error), 0 errors",
             self.checks,

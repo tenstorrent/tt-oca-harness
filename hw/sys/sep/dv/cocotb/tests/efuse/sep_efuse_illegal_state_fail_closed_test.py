@@ -495,6 +495,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         recovered = int(getattr(dut, f"efuse_{which}_state_o").value)
+        assert recovered in (_ST_IDLE, _ST_WAIT_RESP), (
+            f"CHK-{which.upper()}-FAILCLOSED FAIL: recovered {which} state "
+            f"{recovered:#04x} is not a legal encoding "
+            f"(idle={_ST_IDLE:#04x} wait={_ST_WAIT_RESP:#04x})"
+        )
         assert int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value) == 0, (
             f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
             f"command while recovering from {state:#04x}"

@@ -10,6 +10,7 @@ shadow array against that image after sense-done.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -699,6 +700,7 @@ class sep_base_test(uvm_test):
                 )
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
         self.logger.info("staged firmware TCM images into %s", os.getcwd())
+        self._log_firmware_identity(itcm_hex, dtcm_hex)
 
         # Feed the firmware's nm listing (built next to the hex images by
         # compile.mk) to the trace monitor so backtraces symbolize. Best-effort:
@@ -1268,6 +1270,21 @@ class sep_base_test(uvm_test):
         """Override with the per-test stimulus."""
         raise NotImplementedError
 
+    def _log_firmware_identity(self, itcm_hex: str, dtcm_hex: str) -> None:
+        """Record sha256 of the staged TCM images.
+
+        Firmware checkers live in the image. A log that names only the path
+        cannot prove which bytes were loaded.
+        """
+        parts = []
+        for label, path in (("itcm", itcm_hex), ("dtcm", dtcm_hex)):
+            digest = hashlib.sha256()
+            with open(path, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b""):
+                    digest.update(chunk)
+            parts.append(f"{label}={path} sha256={digest.hexdigest()} bytes={os.path.getsize(path)}")
+        self.logger.info("RUN-IDENTITY-FW: %s", " ".join(parts))
+
     def _log_run_identity(self) -> None:
         """Record the commit, tree state and run directory in the log.
 
@@ -1275,7 +1292,6 @@ class sep_base_test(uvm_test):
         offered as evidence for, and the identity cannot be recovered after
         the run.
         """
-        import hashlib
         import os
         import subprocess
 
@@ -1377,12 +1393,13 @@ class sep_base_test(uvm_test):
                 else:
                     exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
             self.logger.info(
-                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d",
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s",
                 exe,
                 exe_digest,
                 digest_src,
                 st.st_size,
                 int(st.st_mtime),
+                rev or "unknown",
             )
         except (OSError, ValueError) as exc:
             # Say so rather than omit the line: a missing build identity is a

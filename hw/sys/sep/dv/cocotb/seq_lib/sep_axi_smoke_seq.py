@@ -50,6 +50,12 @@ WRITE_READBACK = [
         0x0000_0007,
         SEP_CPU_CTRL.mask32("PKA_CTRL"),
     ),
+    (
+        "SEP_REGION_SIZE",
+        SEP_CPU_CTRL.addr("SEP_REGION_SIZE"),
+        0x0200_0000,
+        SEP_CPU_CTRL.mask32("SEP_REGION_SIZE"),
+    ),
 ]
 
 

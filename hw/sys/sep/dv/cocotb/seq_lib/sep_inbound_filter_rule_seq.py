@@ -8,7 +8,8 @@ SMN master (m_axi, the only path through u_inbound_filter) probes them:
   * allowed address (covered by the entry, read_allowed/write_allowed set, src_id
     match) -> the access traverses the filter + identity global->local remap
     (smc_global_base=0) and reaches the SEP-local CSR -> OKAY + exact value;
-  * any other address (block-by-default) -> the filter's err-slave -> DECERR;
+  * any other address (block-by-default) -> the filter's err-slave ->
+    DECERR + ERR_SLV_RDATA;
   * clearing read_allowed/write_allowed flips the matched read/write to DECERR.
 
 This stays sep_debug=0 and proves PER-ENTRY rule enforcement (vs the global
@@ -77,6 +78,10 @@ BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
 RESP_SLVERR = 2
 RESP_DECERR = 3
+# axi_filter_wrap instantiates axi_err_slv without overriding RespData, so a
+# denied beat returns the module default. The external master grades the low
+# 32 bits (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv).
+ERR_SLV_RDATA = 0xBADC_AB1E
 # Entry count from the generated export, not a literal: the bank is an RDL
 # array (`inbound_filter_ctrl[16]`), and a sequence that carries its own number
 # goes stale the moment the array changes. disable_all() must clear every entry

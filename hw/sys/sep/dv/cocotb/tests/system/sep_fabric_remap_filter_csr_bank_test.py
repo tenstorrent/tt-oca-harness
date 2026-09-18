@@ -204,7 +204,7 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
                 entry,
             )
             # CHK-RO: data_bus_width ignores a write (stays 3).
-            orig, after = await self.fab.ro_probe(cfg_lo, DBW_LSB, 3)
+            orig, after = await self.fab.ro_probe(cfg_lo, DBW_LSB, DBW_MASK.bit_count())
             assert orig == DBW_RO_VAL and after == DBW_RO_VAL, (
                 f"{name} e{entry} data_bus_width RO: orig={orig} after-write={after}, expected 3/3"
             )

@@ -99,7 +99,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
     async def _poll_agg(self, idx: int, expect: int, *, timeout: int = 200) -> tuple[bool, int]:
         sample = 0
         for _ in range(timeout):
-            sample = await self._sample_agg()
+            sample = await self._sample_agg_known(1 << idx)
             if ((sample >> idx) & 1) == expect:
                 return True, sample
         return False, sample
@@ -145,7 +145,10 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             # CHK-ISO: from a single fresh sample (injection still active), only this
             # source's bit is set among the mapped sources -- one-hot aggregation,
             # catching an OR-network smear.
-            iso = await self._sample_agg()
+            iso_mask = 0
+            for mapped in IRQ_TABLE:
+                iso_mask |= 1 << mapped.agg_idx
+            iso = await self._sample_agg_known(iso_mask)
             assert (iso >> src.agg_idx) & 1, (
                 f"{src.name}: aggregate bit[{src.agg_idx}] dropped before isolation check"
             )
@@ -186,7 +189,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         await self._check_bus_err_paths()
 
     async def _agg_bit(self, idx: int) -> int:
-        return (await self._sample_agg() >> idx) & 1
+        return (await self._sample_agg_known(1 << idx) >> idx) & 1
 
     async def _check_bus_err_paths(self) -> None:
         dma_hole = dma_reg_unmapped_addr()
@@ -305,7 +308,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 f"sep_internal_interrupts[{IRQ_PERIPH_OR}] stayed 0 after "
                 f"{hole.name} adapter SLVERR (vec=0x{per_vec:x})"
             )
-            assert ((per_vec >> IRQ_DMA_REG_PATH) & 1) == 0, (
+            excl = await self._sample_agg_known(1 << IRQ_DMA_REG_PATH)
+            assert ((excl >> IRQ_DMA_REG_PATH) & 1) == 0, (
                 f"DMA register-path [40] set on a {hole.name} bridge fault"
             )
             self.logger.info(

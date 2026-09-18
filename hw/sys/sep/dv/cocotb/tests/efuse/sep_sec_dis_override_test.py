@@ -131,7 +131,7 @@ class sep_sec_dis_override_test(sep_base_test):
             f"0x{zero_digest:064x} want 0x{_TB_SEC_DIS_DIGEST:064x}"
         )
         self.logger.info(
-            "CHK-DIGEST-BIND PASS: SHA-256(0)=0x%064x (tb_top SEP_SEC_DISABLE_TOKEN bind)",
+            "CHK-DIGEST-BIND PASS: SHA-256(0)=0x%064x equals the TB-bound digest constant",
             zero_digest,
         )
 

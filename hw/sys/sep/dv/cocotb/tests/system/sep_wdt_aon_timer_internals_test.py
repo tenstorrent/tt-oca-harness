@@ -34,6 +34,7 @@ from seq_lib.sep_wdt_aon_seq import (
     INTR_TEST,
     INTR_TEST_WKUP_EXPIRED,
     INTR_WKUP_EXPIRED,
+    INTR_WKUP_LSB,
     WDOG_BARK_THOLD,
     WDOG_BITE_THOLD,
     WDOG_COUNT,
@@ -41,6 +42,8 @@ from seq_lib.sep_wdt_aon_seq import (
     WDOG_ENABLE,
     WDOG_REGWEN,
     WKUP_CAUSE,
+    WKUP_CAUSE_BIT,
+    WKUP_CAUSE_LSB,
     WKUP_COUNT_HI,
     WKUP_COUNT_LO,
     WKUP_CTRL,
@@ -51,12 +54,6 @@ from seq_lib.sep_wdt_aon_seq import (
     SepWdtAon,
     SepWdtCfg,
 )
-
-# WKUP_CAUSE.cause bit (wakeup-request status). The RDL labels it onwrite=woclr,
-# but the cause is acknowledged/cleared by WRITING 0, AFTER the wakeup condition
-# (count>=thold) is removed -- it is level-held and AON-domain (the clear settles
-# over a few clk_wdt cycles).
-WKUP_CAUSE_BIT = 1 << 0
 
 # How much faster than the silicon 1000x ratio we run clk_wdt for this CSR test
 # (sim-timing knob): clk_wdt = WDT_CLK_RATIO x the core period -- still
@@ -328,7 +325,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )  # small: expires within poll budget
         await self.wdt.write(WKUP_CTRL, WKUP_ENABLE)
         ok, val = await self._poll_bit_set(
-            INTR_STATE, 0, timeout_cycles=300 * self._tick, step=4 * self._tick
+            INTR_STATE, INTR_WKUP_LSB, timeout_cycles=300 * self._tick, step=4 * self._tick
         )
         assert ok, f"WKUP_COUNT>=THOLD never set INTR_STATE.wkup_expired (INTR_STATE=0x{val:08x})"
         self.logger.info("CHK-WKUP-EXPIRE PASS (set): INTR_STATE.wkup_expired=1 (0x%08x)", val)
@@ -354,7 +351,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         # WKUP_CAUSE is AON-domain (clk_aon=clk_wdt): the clear settles over a few clk_wdt
         # cycles via the register CDC, so poll rather than read back immediately.
         ccleared, cpost = await self._poll_bit_clear(
-            WKUP_CAUSE, 0, timeout_cycles=100 * self._tick, step=4 * self._tick
+            WKUP_CAUSE, WKUP_CAUSE_LSB, timeout_cycles=100 * self._tick, step=4 * self._tick
         )
         assert ccleared, (
             f"WKUP_CAUSE.cause not cleared after condition removal + write 0 (0x{cpost:08x})"
@@ -392,7 +389,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
         await self.wdt.write(INTR_TEST, INTR_TEST_WKUP_EXPIRED)
         ok, val = await self._poll_bit_set(
-            INTR_STATE, 0, timeout_cycles=100 * self._tick, step=4 * self._tick
+            INTR_STATE, INTR_WKUP_LSB, timeout_cycles=100 * self._tick, step=4 * self._tick
         )
         assert ok, f"CHK-INTR-TEST: INTR_TEST did not set wkup_expired (INTR_STATE=0x{val:08x})"
         await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)  # W1C

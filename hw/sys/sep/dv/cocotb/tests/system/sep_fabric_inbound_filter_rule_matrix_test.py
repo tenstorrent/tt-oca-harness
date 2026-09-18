@@ -6,7 +6,7 @@ With the SEP inbound filter ACTIVE (feat_ctrl.sep_debug=0, real PROD fuse), the
 CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the EXTERNAL SMN
 master (m_axi, the only path through u_inbound_filter) proves per-entry rule
 enforcement: an allowed address -> OKAY + exact CSR value; any other address ->
-DECERR (block-by-default); read_allowed/write_allowed gate the matched
+DECERR + the error-slave sentinel (block-by-default); read_allowed/write_allowed gate the matched
 read/write. With smc_global_base=0 the inbound global->local remap is identity, so
 the external master drives the SEP-local address directly.
 
@@ -79,6 +79,7 @@ from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_BURST, FILTER_RW_MASK
 from seq_lib.sep_inbound_filter_rule_seq import (
+    ERR_SLV_RDATA,
     FILTER_LOCKED_HI_BIT,
     GRANULE_BYTES,
     PAGE_SHIFT,
@@ -110,6 +111,15 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         seq = ext_read_seq(addr, user=user)
         await self.start_ext_seq(seq)
         return seq.resp_code, (seq.rdata & 0xFFFF_FFFF)
+
+    async def _assert_ext_deny_read(self, addr: int, *, user: int = 0, tag: str = "deny") -> int:
+        resp, data = await self._ext_read(addr, user=user)
+        assert resp == RESP_DECERR, f"{tag}: ext read 0x{addr:08x} resp={resp}, expected DECERR"
+        assert data == ERR_SLV_RDATA, (
+            f"{tag}: ext read 0x{addr:08x} rdata=0x{data:08x}, "
+            f"expected err-slave sentinel 0x{ERR_SLV_RDATA:08x}"
+        )
+        return data
 
     async def _ext_write(self, addr: int, data: int, *, user: int = 0) -> int:
         seq = ext_write_seq(addr, data, user=user)
@@ -203,10 +213,14 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         assert data == burst_val, (
             f"CHK-BURST-DENY: single-beat rdata 0x{data:08x} != staged 0x{burst_val:08x}"
         )
-        resp, _, lite_ar = await self._ext_burst_read_watch(burst_addr, expect_error=True)
+        resp, data, lite_ar = await self._ext_burst_read_watch(burst_addr, expect_error=True)
         assert resp == RESP_DECERR, (
             f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of "
             f"0x{burst_addr:08x} resp={resp}, expected DECERR"
+        )
+        assert data == ERR_SLV_RDATA, (
+            f"CHK-BURST-DENY FAIL: denied burst rdata 0x{data:08x} != "
+            f"err-slave sentinel 0x{ERR_SLV_RDATA:08x}"
         )
         self._expect_lite_split(
             lite_ar, start=burst_addr, nbeats=0, tag="CHK-BURST-TO-SINGLE deny AR"
@@ -459,12 +473,12 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         assert (adj >> 12) + 1 == (wcfg.page_base >> 12), (
             f"CHK-PAGE-BOUND: 0x{adj:08x} is not the page below 0x{wcfg.page_base:08x}"
         )
-        resp, _ = await self._ext_read(adj)
-        assert resp == RESP_DECERR, (
-            f"CHK-PAGE-BOUND FAIL: 0x{adj:08x} is in the page below the granted "
-            f"0x{start_rb:08x}..0x{end_rb:08x} and returned resp={resp}, expected "
-            f"DECERR -- the 4 KB grant crossed a page boundary and reached a "
-            f"neighbouring block"
+        await self._assert_ext_deny_read(
+            adj,
+            tag=(
+                f"CHK-PAGE-BOUND FAIL: 0x{adj:08x} is in the page below the granted "
+                f"0x{start_rb:08x}..0x{end_rb:08x}"
+            ),
         )
         await self.filt.disable_all()
         adj_cell = SepInboundFilterCfg(entry=wcfg.entry, allow_addr=adj, allow_value=0)
@@ -481,12 +495,12 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"CHK-PAGE-BOUND: 0x{adj:08x} resp={resp} with its own page granted, "
             f"expected OKAY (so the DECERR above is the filter, not a decode hole)"
         )
-        resp, _ = await self._ext_read(rev)
-        assert resp == RESP_DECERR, (
-            f"CHK-PAGE-BOUND FAIL: 0x{rev:08x} is in the page above the granted "
-            f"WDT page 0x{adj & ~0xFFF:08x} and returned resp={resp}, expected "
-            f"DECERR -- the grant crossed the boundary upward (0x{rev:08x} was "
-            f"OKAY under the scratch-page grant, so it is reachable)"
+        await self._assert_ext_deny_read(
+            rev,
+            tag=(
+                f"CHK-PAGE-BOUND FAIL: 0x{rev:08x} is in the page above the granted "
+                f"WDT page 0x{adj & ~0xFFF:08x}"
+            ),
         )
         self.logger.info(
             "CHK-PAGE-BOUND PASS: grant 0x%08x..0x%08x denies 0x%08x one page "
@@ -588,6 +602,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             assert staged == val, f"staged target 0x{addr:08x}=0x{staged:08x} != 0x{val:08x}"
 
         first = True
+        deny_rule_logged = False
         src_match_logged = False
         src_mismatch_logged = False
         for (
@@ -609,10 +624,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             await self.filt.program_rule(cell, read_allowed=read_ok, write_allowed=write_ok)
 
             if not expect_hit:
-                resp, _ = await self._ext_read(addr, user=axi_user)
-                assert resp == RESP_DECERR, (
-                    f"cell entry={entry} w{widx} {mode} {src_class}: "
-                    f"src mismatch read resp={resp}, expected DECERR"
+                await self._assert_ext_deny_read(
+                    addr,
+                    user=axi_user,
+                    tag=f"cell entry={entry} w{widx} {mode} {src_class}: src mismatch read",
                 )
                 resp = await self._ext_write(addr, 0x5555_AAAA, user=axi_user)
                 assert resp == RESP_DECERR, (
@@ -643,11 +658,19 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                             "CHK-ALLOW-RULE PASS: ext read 0x%08x -> OKAY, rdata=0x%08x", addr, data
                         )
                 else:
-                    resp, _ = await self._ext_read(addr, user=axi_user)
-                    assert resp == RESP_DECERR, (
-                        f"cell entry={entry} w{widx} {mode} {src_class}: "
-                        f"read_allowed=0 got resp={resp}"
+                    data = await self._assert_ext_deny_read(
+                        addr,
+                        user=axi_user,
+                        tag=f"cell entry={entry} w{widx} {mode} {src_class}: read_allowed=0",
                     )
+                    if not deny_rule_logged:
+                        self.logger.info(
+                            "CHK-ALLOW-RULE PASS: denied ext read 0x%08x -> DECERR, "
+                            "rdata=0x%08x (err-slave sentinel)",
+                            addr,
+                            data,
+                        )
+                        deny_rule_logged = True
 
                 if write_ok:
                     poke = val ^ 0xFFFF_0000
@@ -677,15 +700,20 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                     )
                     src_match_logged = True
 
-            resp, _ = await self._ext_read(mcfg.blocked_addr, user=axi_user)
-            assert resp == RESP_DECERR, (
-                f"cell entry={entry} w{widx} {mode} {src_class}: "
-                f"blocked 0x{mcfg.blocked_addr:08x} resp={resp}, expected DECERR"
+            data = await self._assert_ext_deny_read(
+                mcfg.blocked_addr,
+                user=axi_user,
+                tag=(
+                    f"cell entry={entry} w{widx} {mode} {src_class}: "
+                    f"blocked 0x{mcfg.blocked_addr:08x}"
+                ),
             )
             if first:
                 self.logger.info(
-                    "CHK-BLOCK-DEFAULT PASS: ext read 0x%08x -> DECERR (block-by-default)",
+                    "CHK-BLOCK-DEFAULT PASS: ext read 0x%08x -> DECERR, "
+                    "rdata=0x%08x (err-slave sentinel, block-by-default)",
                     mcfg.blocked_addr,
+                    data,
                 )
             if expect_hit and mode == "r":
                 self.logger.info(
@@ -761,11 +789,12 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                     f"(rw 0x{before & FILTER_RW_MASK:08x} != "
                     f"0x{expected_cfg & FILTER_RW_MASK:08x})"
                 )
-            resp, _ = await self._ext_read(addr)
-            assert resp == RESP_DECERR, (
-                f"CHK-OWNERSHIP FAIL: external read of {name} 0x{addr:08x} "
-                f"resp={resp}, expected DECERR (outside allow "
-                f"0x{win_start:08x}..0x{win_end:08x})"
+            await self._assert_ext_deny_read(
+                addr,
+                tag=(
+                    f"CHK-OWNERSHIP FAIL: external read of {name} 0x{addr:08x} "
+                    f"(outside allow 0x{win_start:08x}..0x{win_end:08x})"
+                ),
             )
             resp = await self._ext_write(addr, 0xFFFF_FFFF)
             assert resp == RESP_DECERR, (

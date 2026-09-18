@@ -477,6 +477,12 @@ int main(void) {
             storm = 1;
         }
     }
+    if (g_unexpected_claims != 0) {
+        sep_mbx_puts("FAIL: unexpected PIC claim after the walk (storm)\n");
+        report_unexpected();
+        errors++;
+        storm = 1;
+    }
     if (!storm) {
         sep_mbx_puts("CHK-PIC-COMPLETE PASS: no source re-fired after its ISR cleared "
                      "it (claim completed, no storm)\n");

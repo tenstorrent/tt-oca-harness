@@ -3489,7 +3489,7 @@ recovery attempt.
 |===
 |Checker |Contract
 |CHK-ALLOW-RULE
-|An allowed external read returns OKAY *and* the exact staged value. A denied read returns the error-slave sentinel, so allow and deny are distinguished by data as well as by response code.
+|An allowed external read returns OKAY *and* the exact staged value. A denied read returns DECERR *and* the error-slave sentinel `0xBADCAB1E` (`axi_err_slv` default `RespData` low half; `axi_filter_wrap` does not override it), so allow and deny are distinguished by data as well as by response code.
 |CHK-BLOCK-DEFAULT
 |A non-allowed external read in the *same CSR page* returns DECERR — so region reachability is proven by the allow case and cannot explain the deny.
 |CHK-READ-ALLOWED
@@ -3732,7 +3732,7 @@ claimed for the same reason. Both need the external inbound master — see
 |CHK-FANIN-MAP
 |Several sources asserted together light exactly their own bits, compared as an exact equality against the driven mask, and each source's own IP interrupt-state register reads 1. The per-IP read is independent of the aggregate.
 |CHK-ANTI-ALIAS
-|Every bit of `sep_internal_interrupts[8:33]` is resolved — neither X nor Z — and the resolved region equals exactly the driven set. The X half is the part the other checkers cannot reach: the region polls read through a helper that maps unknown bits to zero per bit, so an undriven aggregator leg is indistinguishable from a quiet source there. This checker re-samples the probe without that mapping and names the offending bit indices on failure.
+|The `[8:33]` region equals exactly the driven set. That equality is the Verilator proof. X/Z resolution (neither X nor Z on any bit in the region) is claimed only on a four-state simulator — VCS default, or Verilator `--x-assign unique --x-initial unique`. The default Verilator regression is two-state and does not grade the X half. The region polls read through a helper that maps unknown bits to zero, so an undriven aggregator leg is indistinguishable from a quiet source there; the four-state path re-samples without that mapping.
 |CHK-CLEAR
 |All driven sources clear on write-one-to-clear and the region returns to zero.
 |===
@@ -3740,7 +3740,8 @@ claimed for the same reason. Both need the external inbound master — see
 
 *Resolution limit*: the region poll matches on *some* sample, so a transient
 smear that clears before a later sample would pass. The checker wording reads as
-an always-property; it is not one.
+an always-property; it is not one. A two-state Verilator log that prints
+`CHK-ANTI-ALIAS PASS` has proven the driven-set equality only.
 
 *Not claimed*: CPU-ISR delivery of the simultaneous set, and the full 32-source
 cross-product. One seed asserts one subset of at least two of the four
@@ -3788,7 +3789,7 @@ single run covers every combination.
 |CHK-IP-RW1C
 |Event-type sources and the mailbox clear by write-one-to-clear of `INTR_STATE` / IRQS. DMA is Status-type: `INTR_STATE` is read-only, and the ISR writes INTR_TEST=0 (and W1C `STATUS`). The witness is the IP state bit re-read as 0 inside the handler.
 |CHK-PIC-COMPLETE
-|No source re-fires after its handler cleared it — the claim completed, no storm. The quiet window runs with every selected source still interrupt-enabled.
+|No source re-fires after its handler cleared it — the claim completed, no storm. An unexpected PIC claim during that window also fails. The quiet window runs with every selected source still interrupt-enabled.
 |CHK-RANDCFG
 |Firmware consumed the patched MUST trio plus two seed-selected extras: the logged `SCENARIO` line must match the Python config exactly, which is what rules out an inert patch running only the compiled-in MUST trio. The firmware's own line here reports only that its parameters resolved — the compiled default satisfies that — so the host-side needle owns this contract.
 |CHK-FW-REPORTED
@@ -4744,9 +4745,9 @@ specification does not state which list is normative.
 |CHK-READ-SUPPRESS
 |The read interface presents no command to the fuse bank while `read_state_q` holds an illegal encoding. The encoding is injected while a real read is IN FLIGHT with its request asserted, so the request drops as a consequence of the injection: a design that carried an accepted command through a corrupted state fails here. Graded on that interface's own request, because the two interfaces drive separate requests.
 |CHK-READ-FAILCLOSED
-|One edge after the illegal encoding the read interface issues no bank command, reports done and not busy with the error set, and does not return the sensed control-word value. The state register's value is logged, not asserted, for the reason given below.
+|One edge after the illegal encoding the read interface issues no bank command, reports done and not busy with the error set, and does not return the sensed control-word value. The recovered state is a legal encoding (`2'b01` idle or `2'b10` wait).
 |CHK-PROGRAM-FAILCLOSED
-|The program interface reports the injected illegal encoding on `*_state_o` and recovers to a legal state afterwards, with no bank command issued. *Suppression is not graded on this leg.* The injection lands in an idle window -- a program command cannot be kicked mid-flight without burning a fuse -- and an idle interface has already retired its last command, so `error_o` and `done_o` are both 1 and `busy`/`req` both 0 before the injection. The data term compares the interface's fixed refusal sentinel against an image word, which are never equal. All four are logged and none is asserted as a result. The in-flight read leg (`CHK-READ-FAILCLOSED`) is where the 1/1/0 verdict is earned, and its terms are asserted low before the injection.
+|The program interface reports the injected illegal encoding on `*_state_o` and recovers to a legal encoding (`2'b01` idle or `2'b10` wait), with no bank command issued. *Suppression is not graded on this leg.* The injection lands in an idle window -- a program command cannot be kicked mid-flight without burning a fuse -- and an idle interface has already retired its last command, so `error_o` and `done_o` are both 1 and `busy`/`req` both 0 before the injection. The data term compares the interface's fixed refusal sentinel against an image word, which are never equal. Those four terms are logged and none is asserted as a result. The recovered-state legal-encoding check is asserted. The in-flight read leg (`CHK-READ-FAILCLOSED`) is where the 1/1/0 verdict is earned, and its terms are asserted low before the injection.
 |CHK-READ-ERR-CLEAR-SUCCESS
 |A read that completes normally reports done, not busy, and no error.
 |CHK-READ-ERR-TIMEOUT
@@ -5282,7 +5283,7 @@ reported as such rather than counted as a pass.
 |The ordering the port actually presented, read off `tbadp_chan_o` rather than taken from the offsets requested. A cell whose presentation does not match is a stimulus failure and is reported as one, never scored as coverage -- a cell that did not overlap says nothing about the arbitration in either direction.
 
 |CHK-PORT-PROGRESS
-|Both accesses retire: BVALID and RVALID are both seen within a bounded cycle count. The bound also records the longest run of held-valids-with-every-ready-low, so a hang that `ASSERT_KNOWN` would miss (a stable `1'b0` is not X) still fails the leaf.
+|Both accesses retire: BVALID and RVALID are both seen within a bounded cycle count, and both responses are OKAY. The bound also records the longest run of held-valids-with-every-ready-low, so a hang that `ASSERT_KNOWN` would miss (a stable `1'b0` is not X) still fails the leaf.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -5791,7 +5792,7 @@ error path works.
 |===
 |Checker |Contract
 |CHK-DIGEST-BIND
-|Independent SHA-256 of the all-zero token equals the TB-bound digest.
+|DV consistency: independent SHA-256 of the all-zero token equals the TB digest constant. This is not a DUT or bind-port read. `CHK-MATCH` is the bind proof.
 |CHK-SENSE-GATED-RESET
 |A match with `sep_fuse_sense_done_o=0` and `ext_boot_seq_done_i=1` leaves `sep_cpu_reset_n_o` and `dbg_sep_reset_n_o` at 0. `reset_n` carries no SEC_DIS term; the release is a separate DTP `sep_reset_n` TDR step.
 |CHK-MISMATCH
