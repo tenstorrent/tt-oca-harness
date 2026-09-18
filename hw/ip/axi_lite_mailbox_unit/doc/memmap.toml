@@ -19,7 +19,6 @@ title = "SMC Mailbox Aperture Layout"
 source = "smc"
 include_all = true
 base_mode = "relative"
-base_label = "BASE"
 columns = ["range", "size", "occupied_size", "label", "instances", "stride"]
 
 [[views]]
@@ -28,5 +27,4 @@ title = "SEP Mailbox Aperture Layout"
 source = "sep"
 include_all = true
 base_mode = "relative"
-base_label = "BASE"
 columns = ["range", "size", "occupied_size", "label", "instances", "stride"]

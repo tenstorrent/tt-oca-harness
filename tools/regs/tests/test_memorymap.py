@@ -12,7 +12,6 @@ from tools.regs.common.memorymap import (
     compile_root,
     load_config,
     render_adoc,
-    render_json,
 )
 from tools.regs.common.rdlview import collect
 from tools.regs.stamp_spdx import stamp_file
@@ -75,7 +74,7 @@ class MemoryMapTest(unittest.TestCase):
         }
         view = build_views(config, {"main": self.root})[0]
         self.assertEqual(view.rows[0].aperture_size, 0x100)
-        self.assertEqual(view.rows[1].kind, "reserved")
+        self.assertEqual(view.rows[1].label, "Reserved")
         self.assertEqual(view.rows[2].occupied_size, 0x104)
         self.assertEqual(view.rows[2].aperture_size, 0x200)
         adoc = render_adoc([view])
@@ -84,7 +83,6 @@ class MemoryMapTest(unittest.TestCase):
         self.assertIn("512 B", adoc)
         self.assertIn("// tag::map[]", adoc)
         self.assertIn("// end::map[]", adoc)
-        self.assertIn('"schema": "ocah-memory-map-v1"', render_json([view]))
 
     def test_rejects_stale_selector(self):
         config = {

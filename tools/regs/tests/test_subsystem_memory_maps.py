@@ -134,16 +134,10 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         smc = rows_by_key(
             next(
                 view
-                for view in build_views(
-                    load_config(ROOT / "hw/sys/smc/doc/memmap.toml"),
-                    {
-                        "main": compile_root(
-                            ROOT / "hw/sys/smc/regs/smc.rdl",
-                            UDP,
-                            catalog(),
-                            "smc_top",
-                        )
-                    },
+                for view in configured_views(
+                    "hw/sys/smc/doc/memmap.toml",
+                    "hw/sys/smc/regs/smc.rdl",
+                    "smc_top",
                 )
                 if view.name == "smc-components"
             )

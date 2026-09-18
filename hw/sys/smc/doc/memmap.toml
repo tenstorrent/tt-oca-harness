@@ -7,7 +7,6 @@ version = 1
 name = "smc-functional"
 title = "SMC Functional Address-Space Organization"
 base_mode = "relative"
-base_label = "BASE"
 columns = ["range", "size", "label", "description"]
 
 [[views.rows]]
@@ -86,5 +85,4 @@ name = "smc-components"
 title = "SMC Component Address Map"
 include_all = true
 base_mode = "relative"
-base_label = "BASE"
 columns = ["range", "size", "occupied_size", "label", "instances", "stride", "description"]

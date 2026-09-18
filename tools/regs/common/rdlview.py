@@ -66,11 +66,12 @@ def compile_root(
     incdirs: Iterable[str] | None,
     top: str | None = None,
     parameters: dict[str, int] | None = None,
+    defines: dict[str, str] | None = None,
 ):
     c = RDLCompiler()
     if udp:
         c.compile_file(udp)
-    c.compile_file(rdl, incl_search_paths=list(incdirs or []))
+    c.compile_file(rdl, incl_search_paths=list(incdirs or []), defines=defines or {})
     kwargs: dict = {}
     if parameters:
         kwargs["parameters"] = parameters

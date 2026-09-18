@@ -65,8 +65,7 @@ ocah_reg_adoc_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1))
 ocah_reg_doc_overrides = $(wildcard $(dir $(call ocah_reg_rdl,$(1)))regdoc.toml)
 ocah_reg_memory_map_config = $(abspath $(dir $(call ocah_reg_rdl,$(1)))/../doc/memmap.toml)
 ocah_reg_memory_map_output = $(call ocah_reg_gen,$(1))/adoc/memory_map.adoc
-ocah_reg_has_memory_map = $(filter $(1),$(OCAH_REG_MEMORY_MAP_BLOCKS))
-ocah_reg_memory_map_target = $(if $(call ocah_reg_has_memory_map,$(1)),$(call ocah_reg_memory_map_output,$(1)))
+ocah_reg_memory_map_target = $(if $(filter $(1),$(OCAH_REG_MEMORY_MAP_BLOCKS)),$(call ocah_reg_memory_map_output,$(1)))
 ocah_reg_memory_map_deps = $(OCAH_REG_MEMORY_MAP_DEPS_$(call ocah_reg_key,$(1)))
 
 # Per-sub-block output lists for a composite top (one file each, so make rebuilds

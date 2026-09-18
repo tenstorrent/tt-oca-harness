@@ -5,25 +5,19 @@
 
 from __future__ import annotations
 
-import json
 import tomllib
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable
 
-from systemrdl import RDLCompiler
 from systemrdl.node import AddrmapNode, MemNode, RegfileNode, RegNode, RootNode
+
+from .rdlview import compile_root as compile_rdl
 
 AddressableNode = AddrmapNode | MemNode | RegNode | RegfileNode
 
-_SELECT_KEYS = {
-    "kind",
-    "source",
-    "selector",
-    "label",
-    "description",
-}
-_GROUP_KEYS = {"kind", "key", "label", "description", "source", "members"}
+_SELECT_KEYS = {"kind", "source", "selector", "label"}
+_GROUP_KEYS = {"kind", "label", "description", "members"}
 
 
 @dataclass(frozen=True)
@@ -34,11 +28,8 @@ class MapRow:
     occupied_size: int
     aperture_size: int
     description: str
-    kind: str
     count: int = 1
     stride: int = 0
-    source: str = "main"
-    alias_of: str | None = None
 
     @property
     def end(self) -> int:
@@ -53,7 +44,6 @@ class MapView:
     rows: tuple[MapRow, ...]
     base_mode: str = "absolute"
     base: int = 0
-    base_label: str = "BASE"
 
 
 def compile_root(
@@ -63,17 +53,16 @@ def compile_root(
     top: str | None = None,
     parameters: dict[str, int] | None = None,
 ) -> RootNode:
-    compiler = RDLCompiler()
-    if udp:
-        compiler.compile_file(str(udp))
     # Dynamic instance properties create derived RDL types. Enable map annotations
     # only here so other exporters retain their established software and RTL names.
-    compiler.compile_file(
+    return compile_rdl(
         str(rdl),
-        incl_search_paths=[str(path) for path in incdirs],
+        str(udp) if udp else None,
+        [str(path) for path in incdirs],
+        top,
+        parameters,
         defines={"OCAH_MEMORY_MAP": ""},
     )
-    return compiler.elaborate(top, parameters=parameters)
 
 
 def _top(root: RootNode) -> AddressableNode:
@@ -126,10 +115,8 @@ def _node_row(source: str, key: str, node: AddressableNode) -> MapRow:
         occupied_size=occupied,
         aperture_size=aperture,
         description=node.get_property("desc", default="") or "",
-        kind=node.__class__.__name__.removesuffix("Node").lower(),
         count=count,
         stride=stride,
-        source=source,
     )
 
 
@@ -147,7 +134,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
         location = f"{path}:sources[{index}]"
         _reject_unknown(
             source,
-            {"name", "rdl", "top", "incdirs"},
+            {"name", "rdl", "top"},
             location,
         )
         name = source.get("name")
@@ -166,17 +153,13 @@ def load_config(path: str | Path) -> dict[str, Any]:
                 "title",
                 "columns",
                 "base_mode",
-                "base_label",
                 "base_source",
                 "source",
-                "exclude",
                 "include_all",
                 "rows",
                 "derive_gaps",
                 "bounds_source",
                 "bounds_selector",
-                "reserved_label",
-                "reserved_description",
             },
             location,
         )
@@ -220,18 +203,9 @@ def _reject_numeric_values(value: Any, location: str) -> None:
             _reject_numeric_values(child, f"{location}[{index}]")
 
 
-def _as_int(value: Any, field: str) -> int:
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str):
-        return int(value, 0)
-    raise ValueError(f"{field} must be an integer or base-prefixed string")
-
-
 def _select(
     spec: dict[str, Any],
     sources: dict[str, dict[str, MapRow]],
-    used: set[str],
 ) -> MapRow:
     source = spec.get("source", "main")
     selector = spec.get("selector")
@@ -241,40 +215,28 @@ def _select(
         row = sources[source][selector]
     except KeyError as exc:
         raise ValueError(f"selector {source}:{selector} matched no elaborated node") from exc
-    used.add(row.key)
-    if row.aperture_size < row.occupied_size:
-        raise ValueError(
-            f"{row.key}: aperture 0x{row.aperture_size:X} is smaller than occupied "
-            f"extent 0x{row.occupied_size:X}"
-        )
     return replace(
         row,
         label=spec.get("label", row.label),
-        description=spec.get("description", row.description),
     )
 
 
 def _group(
     spec: dict[str, Any],
     sources: dict[str, dict[str, MapRow]],
-    used: set[str],
 ) -> MapRow:
-    members = [
-        _select({"selector": item, "source": spec.get("source", "main")}, sources, used)
-        for item in spec.get("members", ())
-    ]
+    members = [_select({"selector": item}, sources) for item in spec.get("members", ())]
     if not members:
         raise ValueError(f"group {spec.get('label', '<unnamed>')} has no members")
     base = min(row.base for row in members)
     end = max(row.end for row in members)
     return MapRow(
-        key=spec.get("key", spec["label"]),
+        key=spec["label"],
         label=spec["label"],
         base=base,
         occupied_size=end - base + 1,
         aperture_size=end - base + 1,
         description=spec.get("description", members[0].description if len(members) == 1 else ""),
-        kind="group",
     )
 
 
@@ -283,23 +245,20 @@ def _validate(rows: list[MapRow], view_name: str) -> None:
     for row in rows:
         if row.aperture_size <= 0:
             raise ValueError(f"{view_name}:{row.key}: aperture must be positive")
+        if row.aperture_size < row.occupied_size:
+            raise ValueError(
+                f"{row.key}: aperture 0x{row.aperture_size:X} is smaller than occupied "
+                f"extent 0x{row.occupied_size:X}"
+            )
         if row.key in keys:
             raise ValueError(f"{view_name}: duplicate row key {row.key}")
         keys.add(row.key)
-    physical = sorted((row for row in rows if row.alias_of is None), key=lambda row: row.base)
-    for left, right in zip(physical, physical[1:]):
+    for left, right in zip(rows, rows[1:]):
         if right.base <= left.end:
             raise ValueError(
                 f"{view_name}: {left.key} ending 0x{left.end:X} overlaps "
                 f"{right.key} at 0x{right.base:X}"
             )
-    by_key = {row.key: row for row in rows}
-    for row in rows:
-        if row.alias_of:
-            if row.alias_of not in by_key:
-                raise ValueError(f"{view_name}:{row.key}: unknown alias target {row.alias_of}")
-            if row.aperture_size != by_key[row.alias_of].aperture_size:
-                raise ValueError(f"{view_name}:{row.key}: alias size differs from target")
 
 
 def build_views(
@@ -316,21 +275,9 @@ def build_views(
 
     views: list[MapView] = []
     for spec in config.get("views", ()):
-        used: set[str] = set()
         auto_source = spec.get("source", "main")
-        excluded = set(spec.get("exclude", ()))
-        unknown_excluded = excluded - set(sources.get(auto_source, {}))
-        if unknown_excluded:
-            raise ValueError(
-                f"{spec['name']}: excluded selectors matched no elaborated node: "
-                f"{', '.join(sorted(unknown_excluded))}"
-            )
         rows: list[MapRow] = (
-            [
-                row
-                for key, row in sources.get(auto_source, {}).items()
-                if "." not in key and key not in excluded
-            ]
+            [row for key, row in sources.get(auto_source, {}).items() if "." not in key]
             if spec.get("include_all", False)
             else []
         )
@@ -345,7 +292,7 @@ def build_views(
                     raise ValueError(
                         f"{spec['name']}:{row_spec.get('selector')}: redundant included row"
                     )
-                row = _select(row_spec, sources, used)
+                row = _select(row_spec, sources)
                 previous = next(
                     (index for index, old in enumerate(rows) if old.key == row.key), None
                 )
@@ -354,7 +301,7 @@ def build_views(
                 else:
                     rows[previous] = row
             elif kind == "group":
-                rows.append(_group(row_spec, sources, used))
+                rows.append(_group(row_spec, sources))
             else:
                 raise ValueError(f"unknown row kind {kind!r}")
         rows.sort(key=lambda row: row.base)
@@ -379,12 +326,11 @@ def build_views(
                     with_gaps.append(
                         MapRow(
                             key=f"reserved_{cursor:X}",
-                            label=spec.get("reserved_label", "Reserved"),
+                            label="Reserved",
                             base=cursor,
                             occupied_size=row.base - cursor,
                             aperture_size=row.base - cursor,
-                            description=spec.get("reserved_description", "Reserved"),
-                            kind="reserved",
+                            description="Reserved",
                         )
                     )
                 with_gaps.append(row)
@@ -393,12 +339,11 @@ def build_views(
                 with_gaps.append(
                     MapRow(
                         key=f"reserved_{cursor:X}",
-                        label=spec.get("reserved_label", "Reserved"),
+                        label="Reserved",
                         base=cursor,
                         occupied_size=bounds_end - cursor,
                         aperture_size=bounds_end - cursor,
-                        description=spec.get("reserved_description", "Reserved"),
-                        kind="reserved",
+                        description="Reserved",
                     )
                 )
             rows = with_gaps
@@ -420,7 +365,6 @@ def build_views(
                 rows=tuple(rows),
                 base_mode=spec.get("base_mode", "absolute"),
                 base=relative_base,
-                base_label=spec.get("base_label", "BASE"),
             )
         )
     if not views:
@@ -440,7 +384,7 @@ def _address(view: MapView, address: int) -> str:
         offset = address - view.base
         if offset < 0:
             raise ValueError(f"{view.name}: address 0x{address:X} is below relative base")
-        return f"{view.base_label} + 0x{offset:X}"
+        return f"BASE + 0x{offset:X}"
     return f"0x{address:08X}"
 
 
@@ -453,7 +397,6 @@ def _cell(view: MapView, row: MapRow, column: str) -> str:
         "occupied_size": format_size(row.occupied_size),
         "label": row.label,
         "description": row.description or "-",
-        "kind": row.kind,
         "instances": f"{row.count} instance{'s' if row.count != 1 else ''}",
         "stride": format_size(row.stride) if row.stride else "-",
     }
@@ -470,7 +413,6 @@ _HEADINGS = {
     "occupied_size": "Decoded Extent",
     "label": "Unit",
     "description": "Description",
-    "kind": "Kind",
     "instances": "Instances",
     "stride": "Stride",
 }
@@ -496,36 +438,3 @@ def render_adoc(views: Iterable[MapView]) -> str:
             lines.append("|" + " |".join(_cell(view, row, column) for column in view.columns))
         lines += ["|===", f"// end::{view.name}[]", ""]
     return "\n".join(lines)
-
-
-def render_json(views: Iterable[MapView]) -> str:
-    payload = {
-        "schema": "ocah-memory-map-v1",
-        "views": [
-            {
-                "name": view.name,
-                "title": view.title,
-                "base_mode": view.base_mode,
-                "base": view.base,
-                "rows": [
-                    {
-                        "key": row.key,
-                        "label": row.label,
-                        "base": row.base,
-                        "end": row.end,
-                        "occupied_size": row.occupied_size,
-                        "aperture_size": row.aperture_size,
-                        "description": row.description,
-                        "kind": row.kind,
-                        "count": row.count,
-                        "stride": row.stride,
-                        "source": row.source,
-                        "alias_of": row.alias_of,
-                    }
-                    for row in view.rows
-                ],
-            }
-            for view in views
-        ],
-    }
-    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
