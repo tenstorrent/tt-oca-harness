@@ -105,6 +105,7 @@ module smc_cpu_wrapper #(
   logic                            debug_reset_n;
   logic                            isolate_req;
   logic                            drained;
+  logic                            isolate_flush;
   logic [NUM_CPU_CORES-1:0][55:0]  core_reset_vector;
   logic [NUM_CPU_CORES-1:0]        wb_pc_valid;
   logic [NUM_CPU_CORES-1:0][57:0]  wb_reg_pc;
@@ -226,6 +227,7 @@ module smc_cpu_wrapper #(
     .cluster_uncore_reset_n_n0_scan_o   (cluster_uncore_reset_n),
     .isolate_req_o                      (isolate_req),
     .drained_i                          (drained),
+    .isolate_flush_o                    (isolate_flush),
     .debug_reset_n_o                    (debug_reset_n)
   );
 
@@ -247,6 +249,7 @@ module smc_cpu_wrapper #(
     .rst_debug_ni                 (debug_reset_n),
     .isolate_req_i                (isolate_req),
     .drained_o                    (drained),
+    .isolate_flush_i              (isolate_flush),
 
     .reset_vector_i               (core_reset_vector),
     .interrupts_i                 (interrupts_i),

@@ -447,7 +447,7 @@ module axi_mux #(
     assign slv_r_chans  = {NoSlvPorts{mst_r_chan}};
     // R channel handshake control
     assign switch_r_id  = mst_r_chan.id[SlvAxiIDWidth+:MstIdxBits];
-  
+
     assign slv_r_valids = (mst_r_valid) ? ({{NoSlvPorts_m_1{1'b0}},{1'b1}} << switch_r_id) : {NoSlvPorts{1'b0}};
 
     spill_register #(
