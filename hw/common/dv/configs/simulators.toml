@@ -9,6 +9,9 @@ binary = "verilator"
 # Verilator has no SV-UVM support, so it runs the cocotb framework only.
 frameworks = ["cocotb"]
 license_env = []
+# cocotb's documented Verilator floor, the `VLT_MIN` of its Makefile flow. cocotb's Python
+# runner enforces no floor, so the doctor compares the release the binary reports against this.
+min_version = "5.036"
 supports_waves = ["fst", "vcd"]
 supports_cov = ["line", "toggle", "branch", "expression", "user"]
 default_waves = "fst"

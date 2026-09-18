@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[gpio-peripheral]]
-==== GPIO Peripheral
+= GPIO Peripheral
 
-===== Overview
+== Overview
 
 The GPIO (General Purpose Input/Output) peripheral provides programmable
 digital I/O capabilities for the OCAH system. It serves as a flexible
@@ -14,7 +14,7 @@ supporting both register-driven control and LSIO (Low Speed
 Input/Output) interface control with comprehensive access filtering and
 interrupt generation capabilities.
 
-===== Description and Features
+== Description and Features
 
 * *Dual Control Modes*: Register-driven control or LSIO interface
 selection with programmable direction control
@@ -31,7 +31,27 @@ strength and pull resistors
 * *Standard Bus Interfaces*: Support for both APB4 and AXI4-Lite
 register interfaces
 
+ifdef::backend-html5[]
+include::partial$gpio/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$gpio/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$gpio/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$gpio/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::programming.adoc[]
+endif::backend-pdf[]

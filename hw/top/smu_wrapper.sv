@@ -43,9 +43,9 @@ module smu_wrapper
   parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
 
-  localparam int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,
-  localparam int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT - 2,
-  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - 1,
+  localparam int unsigned  XTRIG_NUM_CTP          = Cfg.XTRIG_NUM_CTP,
+  localparam int unsigned  XTRIG_NUM_INT_CT       = Cfg.XTRIG_NUM_INT_CT,
+  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = Cfg.XTRIG_NUM_CLK_STOP_REQ,
   localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS =
       (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1
 ) (

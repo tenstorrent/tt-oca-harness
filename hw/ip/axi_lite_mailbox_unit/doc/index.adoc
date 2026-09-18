@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[mailbox-unit]]
-==== Mailbox Unit
+= Mailbox Unit
 
-===== Overview
+== Overview
 
 This document specifies the Mailbox Unit hardware IP functionality. The
 Mailbox Unit provides FIFO-based bidirectional communication channels
@@ -13,7 +13,7 @@ interfaces. It enables efficient data exchange between processing
 elements through dedicated hardware channels with minimal software
 overhead.
 
-===== Description and Features
+== Description and Features
 
 The Mailbox Unit enables secure, FIFO-based, bidirectional communication
 between processing elements or chiplets in multicore systems. Each
@@ -29,6 +29,21 @@ FIFO flushing. Channel depth is adjustable per instance to suit system
 needs, while hardware minimizes software overhead for efficient,
 low-latency data exchange.
 
+ifdef::backend-html5[]
+include::partial$axi_lite_mailbox_unit/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$axi_lite_mailbox_unit/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$axi_lite_mailbox_unit/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]

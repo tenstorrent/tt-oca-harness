@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550]]
-==== UART 16550
+= UART 16550
 
-===== Overview
+== Overview
 
 This document specifies the UART 16550 hardware Component functionality.
 The UART 16550 implements the National Semiconductor UART 16550 standard
@@ -13,7 +13,7 @@ Transmitter and Receiver FIFO depths and FIFO data and pointer parity
 protection. It provides a full-featured serial communication interface
 compatible with industry-standard UART protocols.
 
-===== Description and Features
+== Description and Features
 
 * Full UART 16550 compatibility and functionality
 * 32-bit AXI4-Lite register interface
@@ -26,7 +26,27 @@ modes
 * Modem control interface (CTS, DSR, RI, DCD, RTS, DTR, OUT1, OUT2) with
 change detection and interrupt; flow control is performed by software
 
+ifdef::backend-html5[]
+include::partial$uart_16550/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$uart_16550/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$uart_16550/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$uart_16550/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::programming.adoc[]
+endif::backend-pdf[]

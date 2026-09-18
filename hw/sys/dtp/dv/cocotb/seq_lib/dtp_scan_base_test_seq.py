@@ -54,12 +54,16 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         active: tuple[str, ...] = (),
         context: str,
     ) -> tuple[int, dict[str, int]]:
-        """Close a window and prove quiet signals never pulsed and active ones did."""
+        """Close a window the DUT shifted through; quiet signals never pulsed, active ones did."""
         edges, counts = monitor.stop()
-        self.log.info("%s scan window edges=%d counts=%s", context, edges, counts)
-        self.family_check(
-            "CHK-SCAN-WIN", "window edges nonvacuous", int(edges > 0), 1, context=context
+        self.log.info(
+            "%s scan window edges=%d dut_shift_cycles=%d counts=%s",
+            context,
+            edges,
+            monitor.dut_shift_cycles,
+            counts,
         )
+        self.check_window_shifted("CHK-SCAN-WIN", monitor, context=f"{context} edges={edges}")
         for name in quiet:
             self.family_check(
                 "CHK-SCAN-WIN", f"{name} quiet", counts[name], 0, context=f"{context} edges={edges}"
@@ -212,13 +216,17 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
     def ijtag_window_signals(self, state: IjtagSibState) -> tuple[list[str], list[str]]:
         """(quiet, active) observables for a scan under ``state``: a
         requested-but-gated SIB's controls never pulse, an effective SIB's
-        select is seen high, a closed SIB's select stays quiet."""
+        select is seen high and its capture, shift, and update strobes pulse,
+        a closed SIB's select stays quiet."""
         quiet: list[str] = []
         active: list[str] = []
         for name in IJTAG_SIB_ORDER:
             prefix = self.IJTAG_SIGNAL_PREFIX[name]
             if state.effective[name]:
-                active.append(f"{prefix}_select")
+                active.extend(
+                    f"{prefix}_{suffix}"
+                    for suffix in ("select", "shift_en", "capture_en", "update_en")
+                )
             elif state.requested[name] and state.gated[name]:
                 quiet.extend(
                     f"{prefix}_{suffix}"

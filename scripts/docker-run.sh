@@ -387,10 +387,15 @@ doc_stage_dashboard_data() {
 }
 
 doc_html() {
-  local product="${1:-trm}" basedir playbook setup_target pdf_target
+  local product="${1:-trm}" basedir playbook setup_target pdf_target companion
   local release_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
   doc_setup "$product"
+  if [ "$product" = trm ]; then
+    for companion in home integrator programmer appnotes starting; do
+      doc_setup "$companion"
+    done
+  fi
   doc_release_enabled && release_args=(--attribute release)
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}" \
     --entrypoint sh \

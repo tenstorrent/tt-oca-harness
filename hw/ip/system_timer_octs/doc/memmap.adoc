@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs-memory-map]]
-===== Memory Map
+== Memory Map
 
 The System Timer OCTS IP provides a concise and efficient register
 interface through a 32-byte address space (0x00-0x1F) accessible via
 AXI4-Lite or APB4 protocols. All registers are 32-bit aligned and
 optimized for both PRIMARY and SECONDARY timer modes.
 
-====== Programming Sequences
+=== Programming Sequences
 
 Complete system initialization for multi-timer synchronization:
 
@@ -53,7 +53,7 @@ for (int i = 0; i < total_timers; i++) {
 }
 ----
 
-====== Primary Timer Operation
+=== Primary Timer Operation
 
 PRIMARY timer management and monitoring:
 
@@ -83,7 +83,7 @@ uint32_t count_lo = read32(primary_base + 0x14);
 uint64_t current_time = ((uint64_t)count_hi << 32) | count_lo;
 ----
 
-====== Secondary Timer Operation
+=== Secondary Timer Operation
 
 SECONDARY timer synchronization monitoring and maintenance:
 
@@ -120,7 +120,7 @@ void validate_synchronization() {
 }
 ----
 
-====== Error Handling and Recovery
+=== Error Handling and Recovery
 
 The OCTS timer provides comprehensive error detection and recovery
 procedures:
@@ -178,7 +178,7 @@ void monitor_timer_health() {
 }
 ----
 
-====== Address Alignment and Access Requirements
+=== Address Alignment and Access Requirements
 
 The System Timer OCTS uses a 36-byte (0x00–0x23) register space, with
 each register 32-bit aligned for easy mapping on AXI4-Lite or APB4
@@ -215,10 +215,16 @@ Following these guidelines ensures robust, predictable access to all
 timer registers—crucial for correct operation in high-reliability
 multi-chiplet systems.
 
-====== Reset Values and Power-On Behavior
+=== Reset Values and Power-On Behavior
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="OCTS register reset values" tabindex="0">
+++++
+endif::backend-html5[]
 
 .*Register Reset Values and Power-On Behavior*
-[width="100%",cols="20%,20%,60%",options="header",]
+[cols="32,20,48",options="header",role="port-reference"]
 |=======================================================================
 |Register |Reset Value |Notes
 |`TIMER_START` |0x00000000 |No automatic start, requires software
@@ -237,7 +243,13 @@ software before use
 |`CREDIT_EXPIRED` |0x00000000 |No credit expiration on startup
 |=======================================================================
 
-====== Detailed Register Map
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
