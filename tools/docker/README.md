@@ -1,13 +1,16 @@
 # OCAH containers
 
-`tools/docker/Dockerfile` builds **only** the RISC-V DV firmware image
-(`ocah-toolchain`). Docs and EDA use **pulled** public images.
-`scripts/docker-run.sh` is the shared front door: each subcommand picks an
-image.
+`tools/docker/Dockerfile` builds the one locally-built image, `ocah-toolchain`,
+which carries **both** the RISC-V DV firmware toolchain and everything the OCAH
+virtual platform needs to build and run all three of its executables — `sep-vp`,
+`smc-vp` and `smu-vp`. Docs and EDA use **pulled**
+public images. `scripts/docker-run.sh` is the shared front door: each
+subcommand picks an image.
 
 | Need | Image | How you get it | `docker-run.sh` |
 |------|--------|----------------|-----------------|
 | DV firmware (`riscv64-unknown-elf-gcc`, picolibc) | `ocah-toolchain` | **Build** from `tools/docker/Dockerfile` | `build`, `run`, `shell`, `verify` |
+| OCAH virtual platform (`g++`, cmake, Boost/OpenSSL, runner Python) | `ocah-toolchain` (same image) | **Build** from `tools/docker/Dockerfile` | `vp-build`, `vp-run`, `vp-shell`, `vp-verify` |
 | Docs HTML | `docker.io/antora/antora:3.1.10` | Pull | `doc-html` |
 | Docs PDF | digest-pinned `docker.io/asciidoctor/docker-asciidoctor` | Pull (see [Pinned image digests](#pinned-image-digests)) | `doc-pdf` |
 | EDA (yosys + PDKs; also slang/verible in-container) | [`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools) | Pull | `eda-run`, `eda-shell` |
@@ -61,17 +64,68 @@ Interactive shell for debugging:
 ./scripts/docker-run.sh shell
 ```
 
-Override the image tag with `OCAH_DOCKER_IMAGE=my-tag`.
+Override the image tag with `OCAH_DOCKER_IMAGE=my-tag`. On a host that has both
+podman and docker installed, pin the engine with `OCAH_ENGINE=docker` (or
+`podman`) instead of taking whichever is found first.
+
+## Virtual platform (`sep-vp`, `smc-vp`, `smu-vp`)
+
+The same image also builds and runs the OCAH virtual platform, for hosts with no
+usable native C++20 toolchain. On top of the firmware packages it carries `g++`,
+`cmake`, autotools, Boost (`iostreams`, `program_options`, `log`) and OpenSSL
+dev libraries, `zlib1g-dev`, and the runner's Python (`pexpect`, `pytest`,
+`yaml`, `toml`, `pyelftools`, plus the `tt-boot-manifest` packer's
+`cryptography`, `ruamel.yaml`, `tomlkit`, `bitarray`). Boost and OpenSSL from
+apt clear the VP's floors, so `virtual_platform/Makefile` resolves both to
+`/usr` and only builds SystemC and CCI from source.
+
+That set covers all three executables: `smc-vp` and `smu-vp` need **no extra
+packages** beyond it. Their one additional dependency, the Whisper ISS, is
+source that `virtual_platform/Makefile` clones and builds into `local-ctr/`
+like SystemC and CCI, rather than something baked into the image. They also
+reuse this image's `riscv64-unknown-elf-` for their firmware suites, so there
+is no second cross toolchain either.
+
+```bash
+./scripts/docker-run.sh vp-verify                  # g++ and cmake versions
+make -C virtual_platform vp      VP_CONTAINER=1    # deps (SystemC/CCI) + sep-vp
+make -C virtual_platform vp-test VP_CONTAINER=1    # pytest suites, in-container
+make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1   # + Whisper, then both
+make -C virtual_platform smc-test VP_CONTAINER=1   # the model's SMC suite
+make -C virtual_platform smu-test VP_CONTAINER=1   # the model's SMU suite
+./scripts/docker-run.sh vp-shell                   # interactive, repo bound 1:1
+```
+
+`vp-build` and `vp-run` are aliases for `build` and `run-here`, one image
+serving both toolchains. A container-built VP links the container's glibc and
+**must also run in the container**, which is why the VP path uses the 1:1
+host-path mount rather than `/work`: `VP_CONTAINER=1` forwards the run/test
+targets into the container too, and partitions artifacts into `local-ctr/`,
+`vp/build-ctr` and `vp/build_smc-ctr` so they never mix with a native build —
+the Whisper archives and `smu-vp`'s companion `libsmc_cluster_smu.so` included.
+See `virtual_platform/README.md`.
 
 ## Container user (UID/GID mapping)
 
-Every container the helper script runs is started with `--user "$(id -u):$(id -g)"`
-(`HOME` pointed at `/tmp`) instead of each image's baked-in default (root, or
-a fixed non-root UID), so files written back into the bind-mounted repo -
-build output, generated docs, etc. - are owned by the calling user, not some
-other UID, regardless of container engine. Override with
-`OCAH_DOCKER_UIDGID=<uid>:<gid>`, or set it to an empty string to run every
-container as its image's own default user instead:
+The goal is that files written back into the bind-mounted repo - build output,
+generated docs, etc. - are owned by the calling user rather than some other
+UID, whichever engine is in use. How that is achieved differs by engine:
+
+- **Rootless podman** already maps the container's root to the caller's UID, so
+  bind-mounted output comes out caller-owned with no flag at all. No `--user` is
+  passed (it trips a runc `setgroups: invalid argument` failure on some RHEL 8
+  hosts). `--userns=keep-id`, which additionally makes the container *see* the
+  caller's own UID, is passed only when the account's `/etc/subuid` allocation
+  is wide enough to map that UID: podman maps container UIDs `0..uid-1` onto
+  that range first, so a large LDAP/AD-assigned UID with the customary
+  65536-wide range does not fit, and podman fails before the container starts
+  (`chowning container workdir ...: invalid argument`). Force the decision
+  either way with `OCAH_PODMAN_KEEP_ID=1` / `=0`.
+- **Rootful docker** maps container root to real root, so `--user
+  "$(id -u):$(id -g)"` is passed (with `HOME` pointed at `/tmp`).
+
+Override the UID/GID with `OCAH_DOCKER_UIDGID=<uid>:<gid>`, or set it to an
+empty string to run every container as its image's own default user instead:
 
 ```bash
 OCAH_DOCKER_UIDGID= ./scripts/docker-run.sh shell
@@ -162,8 +216,13 @@ own default user instead.
 | SEP | **Pass** | `--specs=picolibc.specs` in `toolchain.mk` |
 | KM | **Pass** | Same specs on compile; `-nostdlib` at link (headers only) |
 | SMC | **Pass** | Same specs on compile |
+| `sep-vp` | **Pass** | `vp-verify` (g++/cmake), then `make -C virtual_platform vp VP_CONTAINER=1` |
+| `smc-vp` | **Pass** | `make -C virtual_platform smc-vp VP_CONTAINER=1`; `smc-test` runs 15/15 green with this image's `riscv64-unknown-elf-` |
+| `smu-vp` | **Pass** | `make -C virtual_platform smu-vp VP_CONTAINER=1`; `smu-test` runs 5/5 green, each requiring both the SMC and SEP halves to report PASS |
 
-All three subsystems use `--specs=picolibc.specs` for compile-time headers.
+All three firmware subsystems use `--specs=picolibc.specs` for compile-time
+headers. The `vp` workflow (`.github/workflows/vp.yml`) exercises the VP rows on
+every relevant PR and nightly.
 
 ## Pinned image digests
 
@@ -195,12 +254,21 @@ the change.
   but the `apt-get install` package versions inside it still float with
   whatever is current in Debian trixie at build time. Pin specific package
   versions too if that level of reproducibility becomes important.
+- Carrying both toolchains makes the image substantially larger than a
+  firmware-only one (roughly 2.4 GB installed versus 1.7 GB), which everyone
+  building DV firmware now pays. Adding `smc-vp`/`smu-vp` did **not** grow it
+  further: they need no new packages, and Whisper is built into
+  `virtual_platform/local-ctr/` rather than baked in. That is the accepted cost of a single image:
+  a separate VP image would have to duplicate the RISC-V toolchain anyway, and
+  two images meant two Dockerfile hashes, two tarball caches and two rootfs
+  extractions to keep in sync.
 
 ## Files
 
 | Path | Role |
 |------|------|
-| `tools/docker/Dockerfile` | Builds `ocah-toolchain` (firmware only) |
-| `scripts/docker-run.sh` | Multi-image helper (`build`/`run`/`doc-*`/`eda-*`) |
+| `tools/docker/Dockerfile` | Builds `ocah-toolchain` (firmware **and** virtual platform) |
+| `scripts/docker-run.sh` | Multi-image helper (`build`/`run`/`vp-*`/`doc-*`/`eda-*`) |
+| `.github/workflows/vp.yml` | CI: builds and tests all three VPs, each both natively and in this image |
 | `hw/common/dv/fw/compile.mk` | Firmware build engine (native or `run`) |
 | `flows/common.mk` | Lint/synth helpers (`eda-run` for synth; native-or-fail for slang/verible) |

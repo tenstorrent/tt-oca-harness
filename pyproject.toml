@@ -38,6 +38,17 @@ dependencies = [
 # Simulation environment for the native DV runner (tools/dv/run_dv.py). Kept out of
 # default-groups so `uv sync` for reggen/docs does not pull the simulation stack.
 dv = ["ocah-dv"]
+# SEP virtual-platform harness (virtual_platform/): pexpect drives sep-vp, pyelftools
+# backs the boot ROM's OTBN C-array generation. Sync with `uv sync --inexact --group vp`
+# (--inexact so a previously synced dv group is not stripped). Kept out of
+# default-groups like dv.
+vp = [
+    "pexpect>=4.8",
+    "pyyaml>=6.0",
+    "pytest>=7.0",
+    "toml>=0.10",
+    "pyelftools>=0.29",
+]
 
 [tool.uv]
 package = false
@@ -61,6 +72,11 @@ extend-exclude = [
   "**/build_ot_pio",
   "**/regs/gen/py",
   "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest",
+  # The VP simulator is a submodule, so it is not covered by a .gitignore the
+  # way virtual_platform/'s own downloads/ and local*/ trees are.
+  "virtual_platform/tt-oca-harness-model",
+  "virtual_platform/downloads",
+  "virtual_platform/local*",
 ]
 
 [tool.ruff.lint]

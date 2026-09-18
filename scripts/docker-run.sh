@@ -4,20 +4,30 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell|vp-build|vp-run CMD...|vp-shell|vp-verify>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
 #   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
-#   build     (re)build firmware image + publish to shared tarball cache
-#   ensure    make firmware image available (local -> cache -> build); auto-run
-#             by run/run-here/shell/verify, so bare `run` works on a fresh host
-#   verify    gcc version + multilibs      shell     interactive firmware shell
-#   run CMD   run in firmware image
-#   run-here CMD  firmware image, 1:1 host paths and caller's cwd (nonfree DV cgen)
+#   build     (re)build the toolchain image + publish to shared tarball cache
+#             (vp-build is an alias: one image serves firmware and the VP)
+#   ensure    make the toolchain image available (local -> cache -> build);
+#             auto-run by run/run-here/shell/verify, so bare `run` works on a
+#             fresh host
+#   verify    gcc version + multilibs      shell     interactive shell
+#   run CMD   run in the toolchain image
+#   run-here CMD  toolchain image, 1:1 host paths and caller's cwd (nonfree DV cgen)
 #   doc-html  build HTML with Antora image doc-pdf  build PDF with Asciidoctor image
 #   eda-run   run in the open EDA image    eda-shell interactive EDA shell
-# Env: OCAH_DOCKER_IMAGE       firmware image tag (default: ocah-toolchain)
+#   vp-run CMD  same image, 1:1 host paths -- an alias of run-here, spelled for
+#               the VP (build AND run sep-vp in here: a container-built sep-vp
+#               links the container glibc and cannot run on older hosts)
+#   vp-shell    interactive shell with 1:1 host paths
+#   vp-verify   native compiler + cmake versions (the VP side of `verify`)
+# Env: OCAH_DOCKER_IMAGE       toolchain image tag (default: ocah-toolchain)
 #      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the
-#                               firmware image; unset disables the cache
+#                               toolchain image; unset disables the cache
 #                               (site CI sets this, e.g. in its env setup)
+#      OCAH_ENGINE             force `podman` or `docker` instead of preferring
+#                               whichever is found first (CI pins this so a
+#                               runner image shipping both is deterministic)
 #      OCAH_DOC_HTML_IMAGE     prebuilt Antora image
 #      OCAH_DOC_PDF_IMAGE      prebuilt Asciidoctor image
 #      OCAH_EDA_IMAGE          prebuilt yosys/slang/verible image (see flows/)
@@ -29,9 +39,11 @@
 #                               /tmp/ocah-podman-<uid>); used by CI accounts
 #      OCAH_SKIP_GID_FIXUP     set to 1 to skip re-running under the passwd
 #                               primary group for rootless podman (see below)
-#      OCAH_TOOLCHAIN_ROOTFS   extracted firmware-image rootfs; when set (and
-#                               bwrap is present) `run`/`run-here` use
-#                               bubblewrap instead of podman/docker (see below)
+#      OCAH_TOOLCHAIN_ROOTFS   extracted toolchain-image rootfs; when set (and
+#                               bwrap is present) `run`/`run-here`/`vp-run` use
+#                               bubblewrap instead of podman/docker (see below).
+#                               Must come from the merged image: both the RISC-V
+#                               and the native compiler are probed for
 #      OCAH_BWRAP_EXTRA_BINDS  extra host paths to bind into the bwrap sandbox
 #                               (space-separated; each bound at its own path)
 set -euo pipefail
@@ -45,7 +57,7 @@ DOC_HTML_IMAGE="${OCAH_DOC_HTML_IMAGE:-docker.io/antora/antora:3.1.10}"
 DOC_PDF_IMAGE="${OCAH_DOC_PDF_IMAGE:-docker.io/asciidoctor/docker-asciidoctor:1.106.0@sha256:6266e05784c2d8ece9d9fe5e593b12c3beebebbc467135fd6f4a56269c93cea3}"
 EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 
-# Firmware image provisioning. The ocah-toolchain image is built locally and
+# Toolchain image provisioning. The ocah-toolchain image is built locally and
 # published to no registry, so bare `run` on a fresh host would try (and fail)
 # to pull it. To avoid every CI runner rebuilding it - and to avoid depending on
 # registry/internet access at job time - a built image can be cached as a
@@ -56,37 +68,111 @@ EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 DOCKER_CTX="${ROOT}/tools/docker"
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
 
+DOCKERFILE="${DOCKER_CTX}/Dockerfile"
+ROOTFS_ENV="${OCAH_TOOLCHAIN_ROOTFS:-}"
+
+# One image now carries both toolchains, so an extracted rootfs must too. Probe
+# for both: a rootfs extracted from an older firmware-only image would satisfy a
+# RISC-V-only check and then fail deep inside a VP build instead of here.
+ROOTFS_PROBES=(usr/bin/riscv64-unknown-elf-gcc usr/bin/g++)
+
+# rootfs_missing DIR : echo the first absent probe binary and return 0;
+#                      return 1 when every probe is present.
+rootfs_missing() {
+  local p
+  for p in "${ROOTFS_PROBES[@]}"; do
+    [[ -x "${1}/${p}" ]] || {
+      echo "$p"
+      return 0
+    }
+  done
+  return 1
+}
+
 # Will this invocation actually need a container engine? The toolchain
 # subcommands can be served by the bubblewrap backend (see below), in which case
 # no engine - and none of the rootless-podman preparation underneath - is needed.
 # The doc/EDA subcommands use pulled images and always need an engine.
 NEEDS_ENGINE=1
 case "${1:-}" in
-run | run-here | verify | shell)
-  if [[ -n "${OCAH_TOOLCHAIN_ROOTFS:-}" ]] &&
-    [[ -x "${OCAH_TOOLCHAIN_ROOTFS}/usr/bin/riscv64-unknown-elf-gcc" ]] &&
+run | run-here | verify | shell | vp-run | vp-shell | vp-verify)
+  if [[ -n "$ROOTFS_ENV" ]] &&
+    ! rootfs_missing "$ROOTFS_ENV" >/dev/null &&
     command -v bwrap >/dev/null 2>&1; then
     NEEDS_ENGINE=0
   fi
   ;;
 esac
 
-if command -v podman >/dev/null 2>&1; then
+# OCAH_ENGINE pins the engine; otherwise podman is preferred over docker.
+ENGINE="${OCAH_ENGINE:-}"
+if [[ -n "$ENGINE" ]]; then
+  case "$ENGINE" in
+  podman | docker) ;;
+  *)
+    echo "error: OCAH_ENGINE must be 'podman' or 'docker', not '$ENGINE'" >&2
+    exit 1
+    ;;
+  esac
+  if ! command -v "$ENGINE" >/dev/null 2>&1; then
+    # Only fatal when an engine is actually going to be used: a pinned
+    # engine that is absent must not break a request bwrap can serve.
+    [[ "$NEEDS_ENGINE" == 0 ]] ||
+      {
+        echo "error: OCAH_ENGINE=$ENGINE but $ENGINE is not on PATH" >&2
+        exit 1
+      }
+    ENGINE=none
+  fi
+elif command -v podman >/dev/null 2>&1; then
   ENGINE=podman
-  VOL=":Z"
-  PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true \
-        --storage-opt=mount_program=$(which fuse-overlayfs)"
-  PODMAN_RUN_FLAGS="--userns=keep-id"
 elif command -v docker >/dev/null 2>&1; then
   ENGINE=docker
-  VOL=""
-  PODMAN_STORAGE_FLAGS=""
-  PODMAN_RUN_FLAGS=""
 elif [[ "$NEEDS_ENGINE" == 0 ]]; then
-  ENGINE=none VOL=""
+  ENGINE=none
 else
   echo "error: podman or docker is required" >&2
   exit 1
+fi
+
+if [[ "$ENGINE" == podman ]]; then
+  VOL=":Z"
+  PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true"
+  # Only pass mount_program when fuse-overlayfs is actually installed: an
+  # empty value is not "unset", and podman rejects the malformed flag.
+  if _fuse_overlayfs="$(command -v fuse-overlayfs 2>/dev/null)"; then
+    PODMAN_STORAGE_FLAGS+=" --storage-opt=mount_program=${_fuse_overlayfs}"
+  fi
+  # --userns=keep-id makes the container see the caller's own uid rather than
+  # root. It needs the account's subuid allocation to be wide enough to map
+  # that uid inside the namespace: podman maps container uids 0..uid-1 onto
+  # the subuid range before pinning container uid == host uid. A large
+  # (LDAP/AD-assigned) uid with the customary 65536-wide range therefore does
+  # not fit, and podman fails before the container starts:
+  #   chowning container workdir to container root:
+  #   chown .../merged/work: invalid argument
+  # Rootless podman's DEFAULT mapping already maps container root to the
+  # caller's uid, so bind-mounted output comes out caller-owned either way
+  # (that is the same reason --user is not passed below) - so drop the flag
+  # instead of failing. Force it either way with OCAH_PODMAN_KEEP_ID=1/0.
+  PODMAN_RUN_FLAGS=""
+  if [[ -n "${OCAH_PODMAN_KEEP_ID:-}" ]]; then
+    [[ "$OCAH_PODMAN_KEEP_ID" == 1 ]] && PODMAN_RUN_FLAGS="--userns=keep-id"
+  else
+    _uid="$(id -u)"
+    # Sum every range granted to this account (by name or by uid); absent
+    # /etc/subuid or no entry yields 0, which correctly disables the flag.
+    _subuids="$(awk -F: -v u="$(id -un)" -v n="$_uid" \
+      '$1 == u || $1 == n { c += $3 } END { print c + 0 }' \
+      /etc/subuid 2>/dev/null)"
+    if [[ "${_subuids:-0}" -gt "$_uid" ]]; then
+      PODMAN_RUN_FLAGS="--userns=keep-id"
+    fi
+  fi
+else
+  VOL=""
+  PODMAN_STORAGE_FLAGS=""
+  PODMAN_RUN_FLAGS=""
 fi
 
 # Rootless podman's newuidmap/newgidmap helpers refuse to set up the user
@@ -152,7 +238,7 @@ USER_FLAGS=()
 [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
 # Short hash of the Dockerfile; a change forces a rebuild / new cache entry.
-image_hash() { sha256sum "${DOCKER_CTX}/Dockerfile" | cut -c1-16; }
+image_hash() { sha256sum "$DOCKERFILE" | cut -c1-16; }
 image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
 
 # Build the firmware image (labeled with the Dockerfile hash) and publish it to
@@ -162,7 +248,7 @@ build_image() {
   local hash
   hash="$(image_hash)"
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} build --label "ocah.dockerfile.sha=${hash}" \
-    -t "$IMAGE" "$DOCKER_CTX"
+    -f "$DOCKERFILE" -t "$IMAGE" "$DOCKER_CTX"
   [[ -n "$DOCKER_CACHE_DIR" ]] || return 0
   local tar
   tar="$(image_cache_tar)"
@@ -186,7 +272,7 @@ build_image() {
 ensure_image() {
   local hash tar
   hash="$(image_hash)"
-  if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image ${PODMAN_RUN_FLAGS} inspect \
+  if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect \
     --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
     return 0
   fi
@@ -235,13 +321,14 @@ run_image() {
 # Paths are 1:1 (the repo is bound at its own host path), which is what the
 # nonfree DV cgen stage needs, so this backend serves `run` and `run-here`
 # identically; `run` just starts in the repo root.
-TOOLCHAIN_ROOTFS="${OCAH_TOOLCHAIN_ROOTFS:-}"
+TOOLCHAIN_ROOTFS="$ROOTFS_ENV"
 
 use_bwrap() {
   [[ -n "$TOOLCHAIN_ROOTFS" ]] || return 1
-  if [[ ! -x "${TOOLCHAIN_ROOTFS}/usr/bin/riscv64-unknown-elf-gcc" ]]; then
-    echo "docker-run: warning: OCAH_TOOLCHAIN_ROOTFS='$TOOLCHAIN_ROOTFS' has no" \
-      "usr/bin/riscv64-unknown-elf-gcc; falling back to $ENGINE" >&2
+  local missing
+  if missing="$(rootfs_missing "$TOOLCHAIN_ROOTFS")"; then
+    echo "docker-run: warning: rootfs '$TOOLCHAIN_ROOTFS' has no" \
+      "${missing}; falling back to $ENGINE" >&2
     return 1
   fi
   if ! command -v bwrap >/dev/null 2>&1; then
@@ -291,11 +378,23 @@ bwrap_run() {
   # sandbox runs its own interpreter, and a caller's values point at host trees
   # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
   # can import 'encodings', which the firmware post-process steps run into.
+  # --die-with-parent: killing the outer bwrap (e.g. a test harness
+  # terminating a spawned simulator) must not orphan the sandboxed process,
+  # which may never exit on its own.
+  # RISCV_TOOLCHAIN is unset for the same reason PATH is replaced: it names a
+  # host toolchain path that is not bound here; the sandbox's own toolchain
+  # (on the reset PATH) is the one to use.
+  # OCAH_IN_CONTAINER lets sandboxed makes detect containment (bwrap creates
+  # neither /run/.containerenv nor /.dockerenv, the usual markers).
   bwrap "${binds[@]}" --chdir "$workdir" \
+    --die-with-parent \
     --setenv PATH /usr/local/bin:/usr/bin:/bin \
     --setenv HOME /tmp \
+    --setenv OCAH_IN_CONTAINER 1 \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
+    --unsetenv RISCV_TOOLCHAIN \
+    --unsetenv TMPDIR \
     "$@"
 }
 
@@ -542,7 +641,25 @@ eda-run)
   eda_run "$@"
   ;;
 eda-shell) eda_run -it bash ;;
-"" | -h | --help | help) sed -n '7,31p' "$0" ;;
+# One image serves both toolchains, so these are aliases spelled for the VP:
+# vp-build == build, vp-run == run-here. Kept so virtual_platform/ and its
+# README keep working, and because vp-verify checks the other compiler.
+vp-build) build_image ;;
+vp-run)
+  shift
+  [[ $# -gt 0 ]] || {
+    echo "error: vp-run requires a command" >&2
+    exit 1
+  }
+  run_here "$@"
+  ;;
+vp-shell) run_here -it bash ;;
+vp-verify)
+  run_here g++ --version
+  echo ---
+  run_here cmake --version
+  ;;
+"" | -h | --help | help) sed -n '7,48p' "$0" ;;
 *)
   echo "error: unknown command '$1'" >&2
   exit 1
