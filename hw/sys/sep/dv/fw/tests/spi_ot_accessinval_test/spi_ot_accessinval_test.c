@@ -30,10 +30,6 @@
  * Note: Actual ACCESSINVAL triggering requires UVM-level TB injection of
  * non-contiguous byte enables on the TXDATA register write — not testable
  * via CPU firmware.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_accessinval_test STACK=sim
- *
  */
 
 #include <stdint.h>

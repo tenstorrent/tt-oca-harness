@@ -61,7 +61,6 @@ COMPILE_ARGS += -debug_access+r+w+cbk -debug_access+thread+class+cbkd+dmpt+dmpf+
 COMPILE_ARGS += -l vcs.log
 COMPILE_ARGS += +define+VCS -assert svaext
 COMPILE_ARGS += +lint=TFIPC-L +lint=PCWM
-# TODO # COMPILE_ARGS += -f $(OCH_ROOT)/hw/ip/entropy_source/dv/tb_vcs/entropy_source.f
 
 SIM_ARGS += -assert nopostproc +vcs+dumparrays +vcs+lic+wait +embedded_skipper_debug +initRandMem=1
 
@@ -84,6 +83,3 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 
 clean:: # cocotb's own `clean` uses double colon
 	rm -rf __pycache__
-
-# TODO # filelist:
-# TODO # 	bender script flist-plus -t common_cells_rtl -t apb_rtl -t axi_rtl -t component > entropy_source.f

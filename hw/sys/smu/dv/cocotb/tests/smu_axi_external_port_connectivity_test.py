@@ -18,6 +18,8 @@ from smu_base_test import smu_base_test
 class smu_axi_external_port_connectivity_test(smu_base_test):
     """SMU_ALL_002: SEP=0 inbound SMN→SMC + direct IW converters."""
 
+    use_shared_env = True
+
     async def run_scenario(self) -> None:
         self.logger.info("DUT_TAG=BARE smu_axi_external_port_connectivity_test SMU_ALL_002 SEP=0")
         seq = smu_axi_external_port_connectivity_test_seq(self)

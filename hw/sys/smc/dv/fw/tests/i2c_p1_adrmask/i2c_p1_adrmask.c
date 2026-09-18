@@ -176,14 +176,12 @@ static int test_address_masking(void) {
 
     uint32_t base = i2c_get_base(TARGET_IDX);
 
-    // Simple approach: just verify the existing Target configuration works
-    // Skip reconfiguration which was causing Controller hang
+    // The target keeps its init-time configuration; reconfiguring it mid-test hangs the
+    // controller.
 
-    // Step 1: Aggressive ACQ FIFO clear - Reference i2c_p0_rdwr/src/main.c:377-391
+    // Step 1: hardware ACQ FIFO reset (ACQRST), then drain any residue
     simputs("  Clearing ACQ FIFO (hardware reset + drain)...\n");
 
-    // Use i2c_reset_fifos for reliable hardware reset (more reliable than software drain)
-    // Reference: i2c_opentitan.c:i2c_reset_fifos() - includes verification
     i2c_reset_fifos(TARGET_IDX, false, false, false, true); // Reset I2C_2 ACQ FIFO only
     simputs("    ACQ FIFO reset using ACQRST\n");
 
@@ -197,11 +195,9 @@ static int test_address_masking(void) {
     }
     simputs("  ACQ FIFO confirmed empty\n");
 
-    // Step 2: Clear TARGET_EVENTS multiple times (sticky bits issue)
-    // Reference: i2c_opentitan.c:810-833 (CRITICAL FIX for TARGET_EVENTS)
-    // Problem: TARGET_EVENTS bits are sticky and can be set again after clear
-    // if the underlying condition (e.g., START signal from bus) is still high
-    // Solution: Clear in loop until confirmed empty
+    // Step 2: TARGET_EVENTS bits are sticky and re-assert while the underlying condition
+    // (for example START on the bus) is still high, so clear in a bounded loop until the
+    // register reads zero.
     simputs("  Clearing TARGET_EVENTS (may require multiple clears)...\n");
     uint32_t max_clear_attempts = 5;
     while (max_clear_attempts > 0) {
@@ -222,17 +218,16 @@ static int test_address_masking(void) {
     simputs("  TARGET_EVENTS cleared\n");
 
     // Step 3: Wait for Target to be idle before sending next transaction
-    // Reference: i2c_p0_rdwr/src/main.c:395-419
     simputs("  Waiting for Target to become idle...\n");
     uint32_t idle_wait = 0;
-    const uint32_t IDLE_WAIT_TIMEOUT = 50000; // Increased timeout from 10000
+    const uint32_t IDLE_WAIT_TIMEOUT = 50000; // idle-wait bound, in poll iterations
     while (idle_wait < IDLE_WAIT_TIMEOUT) {
         i2c__STATUS_t status = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
                                                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         if (status.f.TARGETIDLE) {
             // Additional delay to ensure SCL is fully released
             for (volatile int i = 0; i < 1000; i++)
-                ; // Increased delay from 500
+                ; // SCL release settle
             break;
         }
         idle_wait++;
@@ -258,7 +253,7 @@ static int test_address_masking(void) {
     simputs("  Write queued\n");
 
     // Step 5: Wait for ACQ FIFO data (same as test_dual_address)
-    // Increased timeout from 1000 to 5000 cycles to handle recovery delay
+    // allows for recovery latency after the idle wait
     simputs("  Waiting for ACQ FIFO data (timeout=5000)...\n");
     ret = i2c_target_wait_acq_fifo_data(TARGET_IDX, 1, 5000);
     if (ret != I2C_OK) {
@@ -426,12 +421,8 @@ int main(void) {
     uint32_t ctrl_base_0 = i2c_get_base(CTRL_0_IDX);
     uint32_t ctrl_base_1 = i2c_get_base(CTRL_1_IDX);
     uint32_t ctrl_wait = 0;
-    /* Measured 2026-08-26: this loop costs ~1.7 us of sim time per iteration, so
-     * 100000 iterations is ~175 ms of sim -- hours of wall clock, and it made the
-     * test look hung. Controller 1 never reported idle in 75000 iterations across
-     * two runs, so the extra 80000 buy nothing: 20000 (~35 ms) reaches the same
-     * WARNING + force-recovery path in a fifth of the time, and is still 20x any
-     * plausible recovery latency. Expiry is a warning, not a failure. */
+    /* Bounded idle wait; expiry is a warning, not a failure, and falls through to the
+     * disable/enable force-recovery path below. */
     const uint32_t CTRL_IDLE_TIMEOUT = 20000;
     bool controller_0_idle = false;
     bool controller_1_idle = false;

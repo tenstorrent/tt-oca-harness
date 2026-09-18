@@ -81,8 +81,8 @@ SECTIONS {
      * picolibc keeps state such as the rand() seed in .tdata/.tbss when it is
      * built with thread-local-storage enabled, and reaches it via tp-relative
      * accesses. Placing the TLS block explicitly gives crt0 a base symbol to
-     * point tp at; without it tp stays 0 and the first access traps. Whether
-     * the toolchain emits TLS or not, this block is simply empty and harmless.
+     * point tp at; without it tp stays 0 and the first access traps. When the
+     * toolchain emits no TLS the block is empty.
      *
      * This firmware is single-threaded, so the linked .tdata doubles as the
      * initial thread's copy and needs no runtime relocation. .tbss is placed

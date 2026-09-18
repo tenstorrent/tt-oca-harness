@@ -4,15 +4,15 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_keygen_err.c
- * @brief T044 - Key generation error cases test
+ * @brief Key generation error cases test
  *
  * Boots the KM firmware and sends CMD_KEY_GENERATE with invalid payloads.
  * Verifies that the command handler rejects each case with ROM_KM_RC_INVALID_ARG:
  *
- *   1. key_size = 0           → INVALID_ARG
- *   2. dest_valid = 0         → INVALID_ARG
- *   3. dest_valid with bits above 8-bit mask (0x100) → INVALID_ARG
- *   4. key_size too large (> max slots × 16 = 512 words) → INVALID_ARG
+ *   1. dest_valid = 0 with REQ_SIZE = 0 → INVALID_ARG
+ *   2. dest_valid = 0 with REQ_SIZE = 7 → INVALID_ARG
+ *   3. dest_valid with bits above the 8-bit mask (0x100) → INVALID_ARG
+ *   4. No payload (payload_len = 0) → INVALID_LEN or INVALID_ARG
  *
  * Run with:
  *   make run_fw FW_TEST=test_km_keygen_err
@@ -164,12 +164,7 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * Test 4: key_size too large → INVALID_ARG
-     *
-     * A key_size of 255 (max in 8-bit field) might be acceptable
-     * depending on slot availability, but 0 is always invalid.
-     * Here we test with wrong payload_len=0 for KEY_GENERATE to
-     * trigger INVALID_LEN, proving the length check works too.
+     * Test 4: KEY_GENERATE with no payload → INVALID_LEN or INVALID_ARG
      *=================================================================*/
     TEST_SUBTEST_START("KEY_GENERATE with no payload → INVALID_LEN");
     {

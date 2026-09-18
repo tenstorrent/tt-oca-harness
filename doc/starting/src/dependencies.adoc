@@ -57,6 +57,7 @@ to compile firmware and bootcode - containerised alternative available
 ** *Boost*: Version 1.84.0
 ** *OPENSSL*: Version 3.3.2
 ** *SystemC CCI*: Version 1.0.2, built with the above SystemC and C++20
+** *Whisper*: RISC-V Simulator - Pinned Version Managed Automatically
 
 == License Requirements
 

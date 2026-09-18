@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs]]
-==== System Timer OCTS
+= System Timer OCTS
 
-===== Overview
+== Overview
 
 The System Timer OCTS (Open Chiplet Time Synchronization) IP is a
 sophisticated 64-bit timer designed specifically for multi-chiplet
@@ -17,7 +17,7 @@ operations between multiple timer instances, enabling accurate
 timestamping and synchronized operations in distributed chiplet
 architectures.
 
-===== Description and Features
+== Description and Features
 
 The System Timer OCTS offers both PRIMARY and SECONDARY modes to serve
 as either a timing master or follower within a synchronized network of
@@ -31,7 +31,27 @@ credit-based mechanism, while the width of synchronization pulses can be
 easily adjusted. Real-time status and timer values are always available
 through readable registers.
 
+ifdef::backend-html5[]
+include::partial$system_timer_octs/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$system_timer_octs/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$system_timer_octs/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$system_timer_octs/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::programming.adoc[]
+endif::backend-pdf[]

@@ -14,7 +14,7 @@
         <ipxact:name>smc_top</ipxact:name>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'hc8013030</ipxact:range>
-        <ipxact:width>16384</ipxact:width>
+        <ipxact:width>256</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core0_wdt</ipxact:name>
           <ipxact:description></ipxact:description>
@@ -206,7 +206,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -428,7 +428,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -650,7 +650,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -872,7 +872,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -5965,7 +5965,7 @@ a log entry. The log entries go through round robin arbitration.</ipxact:descrip
           <ipxact:displayName>Efuse address map of physical efuse macro</ipxact:displayName>
           <ipxact:description>Address map for efuse shadow registers providing access to various chip configuration and ID fields</ipxact:description>
           <ipxact:addressOffset>'hc0007000</ipxact:addressOffset>
-          <ipxact:range>'hc00</ipxact:range>
+          <ipxact:range>'h400</ipxact:range>
           <ipxact:register>
             <ipxact:name>LOCKS</ipxact:name>
             <ipxact:description>Lock controls for each fuse field. When write locked, the corresponding field is not
@@ -5973,8 +5973,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
-              <ipxact:name>chiplet_id_write_lock</ipxact:name>
-              <ipxact:description>Chiplet ID write lock. When set, chiplet ID field is not writable.</ipxact:description>
+              <ipxact:name>jtag_public_identity_write_lock</ipxact:name>
+              <ipxact:description>JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -5986,8 +5986,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>chiplet_id_read_lock</ipxact:name>
-              <ipxact:description>Chiplet ID read lock. When set, chiplet ID field is not readable.</ipxact:description>
+              <ipxact:name>jtag_public_identity_read_lock</ipxact:name>
+              <ipxact:description>JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -5999,8 +5999,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>package_id_write_lock</ipxact:name>
-              <ipxact:description>Package ID write lock. When set, package ID field is not writable.</ipxact:description>
+              <ipxact:name>i2c_i3c_id_write_lock</ipxact:name>
+              <ipxact:description>I2C/I3C ID write lock (slot 1). When set, no I2C_I3C_ID element is writable.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6012,8 +6012,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>package_id_read_lock</ipxact:name>
-              <ipxact:description>Package ID read lock. When set, package ID field is not readable.</ipxact:description>
+              <ipxact:name>i2c_i3c_id_read_lock</ipxact:name>
+              <ipxact:description>I2C/I3C ID read lock (slot 1). When set, no I2C_I3C_ID element is readable.</ipxact:description>
               <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6025,8 +6025,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>bira_dis_write_lock</ipxact:name>
-              <ipxact:description>BIRA disable write lock. When set, BIRA field is not writable.</ipxact:description>
+              <ipxact:name>smc_config_write_lock</ipxact:name>
+              <ipxact:description>SMC config write lock (slot 2). When set, SMC_CONFIG is not writable.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6038,8 +6038,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>bira_dis_read_lock</ipxact:name>
-              <ipxact:description>BIRA disable read lock. When set, BIRA field is not readable.</ipxact:description>
+              <ipxact:name>smc_config_read_lock</ipxact:name>
+              <ipxact:description>SMC config read lock (slot 2). When set, SMC_CONFIG is not readable.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6051,8 +6051,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>cluster_write_lock</ipxact:name>
-              <ipxact:description>Cluster write lock. When set, cluster field is not writable.</ipxact:description>
+              <ipxact:name>occp_transport_timeout_write_lock</ipxact:name>
+              <ipxact:description>OCCP transport timeout write lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not writable.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6064,8 +6064,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>cluster_read_lock</ipxact:name>
-              <ipxact:description>Cluster read lock. When set, cluster field is not readable.</ipxact:description>
+              <ipxact:name>occp_transport_timeout_read_lock</ipxact:name>
+              <ipxact:description>OCCP transport timeout read lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not readable.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6077,8 +6077,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>fabric_write_lock</ipxact:name>
-              <ipxact:description>Fabric write lock. When set, fabric field is not writable.</ipxact:description>
+              <ipxact:name>spare0_write_lock</ipxact:name>
+              <ipxact:description>Spare 0 write lock (slot 4). When set, SPARE[0] is not writable.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6090,8 +6090,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>fabric_read_lock</ipxact:name>
-              <ipxact:description>Fabric read lock. When set, fabric field is not readable.</ipxact:description>
+              <ipxact:name>spare0_read_lock</ipxact:name>
+              <ipxact:description>Spare 0 read lock (slot 4). When set, SPARE[0] is not readable.</ipxact:description>
               <ipxact:bitOffset>9</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6103,8 +6103,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>sop_topology_write_lock</ipxact:name>
-              <ipxact:description>SOP topology write lock. When set, SOP topology field is not writable.</ipxact:description>
+              <ipxact:name>spare1_write_lock</ipxact:name>
+              <ipxact:description>Spare 1 write lock (slot 5). When set, SPARE[1] is not writable.</ipxact:description>
               <ipxact:bitOffset>10</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6116,8 +6116,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>sop_topology_read_lock</ipxact:name>
-              <ipxact:description>SOP topology read lock. When set, SOP topology field is not readable.</ipxact:description>
+              <ipxact:name>spare1_read_lock</ipxact:name>
+              <ipxact:description>Spare 1 read lock (slot 5). When set, SPARE[1] is not readable.</ipxact:description>
               <ipxact:bitOffset>11</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6129,8 +6129,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>i2c_i3c_id_write_lock</ipxact:name>
-              <ipxact:description>I2C/I3C ID write lock. When set, I2C/I3C ID field is not writable.</ipxact:description>
+              <ipxact:name>spare2_write_lock</ipxact:name>
+              <ipxact:description>Spare 2 write lock (slot 6). When set, SPARE[2] is not writable.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6142,8 +6142,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>i2c_i3c_id_read_lock</ipxact:name>
-              <ipxact:description>I2C/I3C ID read lock. When set, I2C/I3C ID field is not readable.</ipxact:description>
+              <ipxact:name>spare2_read_lock</ipxact:name>
+              <ipxact:description>Spare 2 read lock (slot 6). When set, SPARE[2] is not readable.</ipxact:description>
               <ipxact:bitOffset>13</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6155,8 +6155,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>i2c_clock_gating_write_lock</ipxact:name>
-              <ipxact:description>I2C clock gating write lock. When set, I2C clock gating field is not writable.</ipxact:description>
+              <ipxact:name>spare3_write_lock</ipxact:name>
+              <ipxact:description>Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6168,8 +6168,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>i2c_clock_gating_read_lock</ipxact:name>
-              <ipxact:description>I2C clock gating read lock. When set, I2C clock gating field is not readable.</ipxact:description>
+              <ipxact:name>spare3_read_lock</ipxact:name>
+              <ipxact:description>Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.</ipxact:description>
               <ipxact:bitOffset>15</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6181,8 +6181,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>i3c_disable_write_lock</ipxact:name>
-              <ipxact:description>I3C disable write lock. When set, I3C disable field is not writable.</ipxact:description>
+              <ipxact:name>spare4_write_lock</ipxact:name>
+              <ipxact:description>Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6194,8 +6194,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>i3c_disable_read_lock</ipxact:name>
-              <ipxact:description>I3C disable read lock. When set, I3C disable field is not readable.</ipxact:description>
+              <ipxact:name>spare4_read_lock</ipxact:name>
+              <ipxact:description>Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.</ipxact:description>
               <ipxact:bitOffset>17</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6207,8 +6207,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>pll_and_sensor_write_lock</ipxact:name>
-              <ipxact:description>PLL and sensor write lock. When set, PLL and sensor field is not writable.</ipxact:description>
+              <ipxact:name>spare5_write_lock</ipxact:name>
+              <ipxact:description>Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.</ipxact:description>
               <ipxact:bitOffset>18</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6220,8 +6220,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>pll_and_sensor_read_lock</ipxact:name>
-              <ipxact:description>PLL and sensor read lock. When set, PLL and sensor field is not readable.</ipxact:description>
+              <ipxact:name>spare5_read_lock</ipxact:name>
+              <ipxact:description>Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.</ipxact:description>
               <ipxact:bitOffset>19</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6233,8 +6233,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>spi_ctrl_field_enable_write_lock</ipxact:name>
-              <ipxact:description>SPI control field enable write lock. When set, SPI control field is not writable.</ipxact:description>
+              <ipxact:name>spare6_write_lock</ipxact:name>
+              <ipxact:description>Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.</ipxact:description>
               <ipxact:bitOffset>20</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6246,8 +6246,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>spi_ctrl_field_enable_read_lock</ipxact:name>
-              <ipxact:description>SPI control field enable read lock. When set, SPI control field is not readable.</ipxact:description>
+              <ipxact:name>spare6_read_lock</ipxact:name>
+              <ipxact:description>Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.</ipxact:description>
               <ipxact:bitOffset>21</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6259,8 +6259,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>spi_config_write_lock</ipxact:name>
-              <ipxact:description>SPI config write lock. When set, SPI config field is not writable.</ipxact:description>
+              <ipxact:name>spare7_write_lock</ipxact:name>
+              <ipxact:description>Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6272,8 +6272,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>spi_config_read_lock</ipxact:name>
-              <ipxact:description>SPI config read lock. When set, SPI config field is not readable.</ipxact:description>
+              <ipxact:name>spare7_read_lock</ipxact:name>
+              <ipxact:description>Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.</ipxact:description>
               <ipxact:bitOffset>23</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6285,8 +6285,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>reserved_write_lock</ipxact:name>
-              <ipxact:description>Reserved write lock. When set, reserved field is not writable.</ipxact:description>
+              <ipxact:name>spare8_write_lock</ipxact:name>
+              <ipxact:description>Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.</ipxact:description>
               <ipxact:bitOffset>24</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6298,8 +6298,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>reserved_read_lock</ipxact:name>
-              <ipxact:description>Reserved read lock. When set, reserved field is not readable.</ipxact:description>
+              <ipxact:name>spare8_read_lock</ipxact:name>
+              <ipxact:description>Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.</ipxact:description>
               <ipxact:bitOffset>25</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6311,32 +6311,512 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>unused_lock_bits</ipxact:name>
-              <ipxact:description>Unused lock bits for future expansion.</ipxact:description>
+              <ipxact:name>spare9_write_lock</ipxact:name>
+              <ipxact:description>Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.</ipxact:description>
               <ipxact:bitOffset>26</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>38</ipxact:bitWidth>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare9_read_lock</ipxact:name>
+              <ipxact:description>Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.</ipxact:description>
+              <ipxact:bitOffset>27</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare10_write_lock</ipxact:name>
+              <ipxact:description>Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.</ipxact:description>
+              <ipxact:bitOffset>28</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare10_read_lock</ipxact:name>
+              <ipxact:description>Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.</ipxact:description>
+              <ipxact:bitOffset>29</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare11_write_lock</ipxact:name>
+              <ipxact:description>Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.</ipxact:description>
+              <ipxact:bitOffset>30</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare11_read_lock</ipxact:name>
+              <ipxact:description>Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.</ipxact:description>
+              <ipxact:bitOffset>31</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare12_write_lock</ipxact:name>
+              <ipxact:description>Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.</ipxact:description>
+              <ipxact:bitOffset>32</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare12_read_lock</ipxact:name>
+              <ipxact:description>Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.</ipxact:description>
+              <ipxact:bitOffset>33</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare13_write_lock</ipxact:name>
+              <ipxact:description>Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.</ipxact:description>
+              <ipxact:bitOffset>34</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare13_read_lock</ipxact:name>
+              <ipxact:description>Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.</ipxact:description>
+              <ipxact:bitOffset>35</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare14_write_lock</ipxact:name>
+              <ipxact:description>Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.</ipxact:description>
+              <ipxact:bitOffset>36</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare14_read_lock</ipxact:name>
+              <ipxact:description>Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.</ipxact:description>
+              <ipxact:bitOffset>37</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare15_write_lock</ipxact:name>
+              <ipxact:description>Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.</ipxact:description>
+              <ipxact:bitOffset>38</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare15_read_lock</ipxact:name>
+              <ipxact:description>Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.</ipxact:description>
+              <ipxact:bitOffset>39</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare16_write_lock</ipxact:name>
+              <ipxact:description>Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.</ipxact:description>
+              <ipxact:bitOffset>40</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare16_read_lock</ipxact:name>
+              <ipxact:description>Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.</ipxact:description>
+              <ipxact:bitOffset>41</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare17_write_lock</ipxact:name>
+              <ipxact:description>Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.</ipxact:description>
+              <ipxact:bitOffset>42</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare17_read_lock</ipxact:name>
+              <ipxact:description>Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.</ipxact:description>
+              <ipxact:bitOffset>43</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare18_write_lock</ipxact:name>
+              <ipxact:description>Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.</ipxact:description>
+              <ipxact:bitOffset>44</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare18_read_lock</ipxact:name>
+              <ipxact:description>Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.</ipxact:description>
+              <ipxact:bitOffset>45</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare19_write_lock</ipxact:name>
+              <ipxact:description>Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.</ipxact:description>
+              <ipxact:bitOffset>46</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare19_read_lock</ipxact:name>
+              <ipxact:description>Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.</ipxact:description>
+              <ipxact:bitOffset>47</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare20_write_lock</ipxact:name>
+              <ipxact:description>Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.</ipxact:description>
+              <ipxact:bitOffset>48</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare20_read_lock</ipxact:name>
+              <ipxact:description>Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.</ipxact:description>
+              <ipxact:bitOffset>49</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare21_write_lock</ipxact:name>
+              <ipxact:description>Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.</ipxact:description>
+              <ipxact:bitOffset>50</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare21_read_lock</ipxact:name>
+              <ipxact:description>Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.</ipxact:description>
+              <ipxact:bitOffset>51</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare22_write_lock</ipxact:name>
+              <ipxact:description>Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.</ipxact:description>
+              <ipxact:bitOffset>52</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare22_read_lock</ipxact:name>
+              <ipxact:description>Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.</ipxact:description>
+              <ipxact:bitOffset>53</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare23_write_lock</ipxact:name>
+              <ipxact:description>Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.</ipxact:description>
+              <ipxact:bitOffset>54</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare23_read_lock</ipxact:name>
+              <ipxact:description>Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.</ipxact:description>
+              <ipxact:bitOffset>55</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare24_write_lock</ipxact:name>
+              <ipxact:description>Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.</ipxact:description>
+              <ipxact:bitOffset>56</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare24_read_lock</ipxact:name>
+              <ipxact:description>Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.</ipxact:description>
+              <ipxact:bitOffset>57</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare25_write_lock</ipxact:name>
+              <ipxact:description>Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.</ipxact:description>
+              <ipxact:bitOffset>58</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare25_read_lock</ipxact:name>
+              <ipxact:description>Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.</ipxact:description>
+              <ipxact:bitOffset>59</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare26_write_lock</ipxact:name>
+              <ipxact:description>Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.</ipxact:description>
+              <ipxact:bitOffset>60</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare26_read_lock</ipxact:name>
+              <ipxact:description>Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.</ipxact:description>
+              <ipxact:bitOffset>61</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare27_write_lock</ipxact:name>
+              <ipxact:description>Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.</ipxact:description>
+              <ipxact:bitOffset>62</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>spare27_read_lock</ipxact:name>
+              <ipxact:description>Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.</ipxact:description>
+              <ipxact:bitOffset>63</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>CHIPLET_ID</ipxact:name>
-            <ipxact:description>Chiplet ID register</ipxact:description>
+            <ipxact:name>JTAG_PUBLIC_IDENTITY</ipxact:name>
+            <ipxact:description>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
+are admitted while JTAG access to every other fuse field is blocked. Encoding
+is adopter-defined; the harness does not interpret or consume the value. The
+slot-0 read lock still hides the bits when set.</ipxact:description>
             <ipxact:addressOffset>'h8</ipxact:addressOffset>
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
-              <ipxact:name>chiplet_id_value</ipxact:name>
-              <ipxact:description>Chiplet ID stored in fuse, divided into 8 words and defined as follows:
-[1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;
-[3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID;
-[4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);
-[5]: Chiplet User Group ID;
-[7:6]: Reserved for extension.</ipxact:description>
+              <ipxact:name>value</ipxact:name>
+              <ipxact:description>Opaque payload. Encoding is adopter-defined; the harness does not interpret
+it.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6344,102 +6824,6 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>256</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>PACKAGE_ID</ipxact:name>
-            <ipxact:description>Package ID register</ipxact:description>
-            <ipxact:addressOffset>'h28</ipxact:addressOffset>
-            <ipxact:size>256</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>package_id_value</ipxact:name>
-              <ipxact:description>Package ID stored in fuse, divided into 8 words. The same value gets provisioned into SMCs in all chiplets of the same package. Words are defined as follows:
-[1:0]: Serial number of the package;
-[2]: Package Design Version, e.g. A1Q1/…​;
-[3]: Package Design ID;
-[4]: Package User ID, e.g. if it’s TT who assembles the system, use TT’s GROUP_ID (32’b0);
-[5]: Package User Group ID;
-[7:6]: Reserved for extension</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>256</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>BIRA</ipxact:name>
-            <ipxact:description>Built-In Repair Analysis data</ipxact:description>
-            <ipxact:addressOffset>'h48</ipxact:addressOffset>
-            <ipxact:size>16384</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>repair_data</ipxact:name>
-              <ipxact:description>16KB memory repair data for SMC and SEP SRAMs</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>16384</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>CLUSTER</ipxact:name>
-            <ipxact:description>CPU cluster configuration</ipxact:description>
-            <ipxact:addressOffset>'h848</ipxact:addressOffset>
-            <ipxact:size>512</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>cluster_config</ipxact:name>
-              <ipxact:description>512-bit fuses reserved for CPU cluster configuration</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>512</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>FABRIC</ipxact:name>
-            <ipxact:description>Fabric configuration</ipxact:description>
-            <ipxact:addressOffset>'h888</ipxact:addressOffset>
-            <ipxact:size>256</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>fabric_config</ipxact:name>
-              <ipxact:description>256-bit fuses reserved for fabric configuration</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>256</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>SOP_TOPOLOGY</ipxact:name>
-            <ipxact:description>System on Package topology</ipxact:description>
-            <ipxact:addressOffset>'h8a8</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>topology_serial</ipxact:name>
-              <ipxact:description>Serial number of topology configuration</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -6447,7 +6831,7 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:name>I2C_I3C_ID</ipxact:name>
             <ipxact:description>I2C/I3C interface ID</ipxact:description>
             <ipxact:dim>9</ipxact:dim>
-            <ipxact:addressOffset>'h8ac</ipxact:addressOffset>
+            <ipxact:addressOffset>'h28</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>interface_id</ipxact:name>
@@ -6465,14 +6849,105 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>I2C_CLOCK_GATING</ipxact:name>
-            <ipxact:description>I2C clock gating control</ipxact:description>
-            <ipxact:addressOffset>'h8f4</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
+            <ipxact:name>SMC_CONFIG</ipxact:name>
+            <ipxact:description>SMC boot and configuration controls sourced from fuse. Only the low word carries
+assigned bits, so firmware reads it as a single 32-bit access.</ipxact:description>
+            <ipxact:addressOffset>'h70</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
             <ipxact:field>
-              <ipxact:name>clock_gating_config</ipxact:name>
-              <ipxact:description>I2C clock gating configuration</ipxact:description>
+              <ipxact:name>rom_flip_endianness</ipxact:name>
+              <ipxact:description>When set, the ROM interface swaps byte order on instruction fetch.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>config_rsvd_low</ipxact:name>
+              <ipxact:description>Reserved for future configuration bits.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>6</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>sram_auto_zero_disable</ipxact:name>
+              <ipxact:description>When set, boot skips the SRAM auto-zero initialisation pass.</ipxact:description>
+              <ipxact:bitOffset>7</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>config_rsvd_mid</ipxact:name>
+              <ipxact:description>Reserved for future configuration bits.</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>7</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>dft_ignore_error</ipxact:name>
+              <ipxact:description>When set, boot continues despite a reported memory repair or MBIST failure.</ipxact:description>
+              <ipxact:bitOffset>15</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>config_rsvd_high</ipxact:name>
+              <ipxact:description>Reserved for future configuration bits.</ipxact:description>
+              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>48</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>OCCP_TRANSPORT_TIMEOUT</ipxact:name>
+            <ipxact:description>OCCP transport timeout in the low word; upper word reserved.</ipxact:description>
+            <ipxact:addressOffset>'h78</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>timeout</ipxact:name>
+              <ipxact:description>Transport timeout value consumed by the boot ROM OCCP driver.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>timeout_rsvd</ipxact:name>
+              <ipxact:description>Reserved for extension of the timeout encoding.</ipxact:description>
+              <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -6483,57 +6958,22 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>I3C_DISABLE</ipxact:name>
-            <ipxact:description>I3C interface disable control</ipxact:description>
-            <ipxact:addressOffset>'h8f8</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
+            <ipxact:name>SPARE</ipxact:name>
+            <ipxact:description>Individually lockable 256-bit spare region, reserved for fields assigned after the
+RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:description>
+            <ipxact:dim>28</ipxact:dim>
+            <ipxact:addressOffset>'h80</ipxact:addressOffset>
+            <ipxact:size>256</ipxact:size>
             <ipxact:field>
-              <ipxact:name>disable_config</ipxact:name>
-              <ipxact:description>I3C interface disable configuration</ipxact:description>
+              <ipxact:name>rsvd</ipxact:name>
+              <ipxact:description>Spare fuse bits for future use.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>PLL_AND_SENSOR</ipxact:name>
-            <ipxact:description>PLL and sensor configuration</ipxact:description>
-            <ipxact:addressOffset>'h8fc</ipxact:addressOffset>
-            <ipxact:size>4096</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>pll_sensor_config</ipxact:name>
-              <ipxact:description>4KB fuses reserved for PLL and sensor configuration</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>4096</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>RESERVED</ipxact:name>
-            <ipxact:description>Reserved register</ipxact:description>
-            <ipxact:dim>65</ipxact:dim>
-            <ipxact:addressOffset>'hafc</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>reserved_data</ipxact:name>
-              <ipxact:description>Reserved for future use</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:bitWidth>256</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -6798,7 +7238,7 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>read_status</ipxact:name>
-              <ipxact:description>0: No Error.  1: Logic error, assert read_go when read is not enabled</ipxact:description>
+              <ipxact:description>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</ipxact:description>
               <ipxact:bitOffset>26</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7991,7 +8431,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_en</ipxact:name>
-              <ipxact:description>Interrupt enable. When 1, a timeout event propagates to irq_o.</ipxact:description>
+              <ipxact:description>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8003,7 +8443,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_test</ipxact:name>
-              <ipxact:description>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</ipxact:description>
+              <ipxact:description>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8021,7 +8461,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</ipxact:description>
+              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8051,7 +8491,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_en</ipxact:name>
-              <ipxact:description>Interrupt enable. When 1, a timeout event propagates to irq_o.</ipxact:description>
+              <ipxact:description>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8063,7 +8503,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_test</ipxact:name>
-              <ipxact:description>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</ipxact:description>
+              <ipxact:description>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8081,7 +8521,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</ipxact:description>
+              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8111,7 +8551,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_en</ipxact:name>
-              <ipxact:description>Interrupt enable. When 1, a timeout event propagates to irq_o.</ipxact:description>
+              <ipxact:description>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8123,7 +8563,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_test</ipxact:name>
-              <ipxact:description>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</ipxact:description>
+              <ipxact:description>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8141,7 +8581,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</ipxact:description>
+              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31789,7 +32229,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>oca_i3c_wrap</ipxact:name>
-          <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
+          <ipxact:description>OCA I3C Controller wrapper</ipxact:description>
           <ipxact:addressOffset>'hc003a000</ipxact:addressOffset>
           <ipxact:range>'h6000</ipxact:range>
           <ipxact:registerFile>
@@ -35461,7 +35901,7 @@ STBY_CR_CONTROL is not zero.</ipxact:description>
                   <ipxact:field>
                     <ipxact:name>PID_HI</ipxact:name>
                     <ipxact:displayName>PID_HI</ipxact:displayName>
-                    <ipxact:description>High part of the 48-bit Target Device Provisioned ID. 
+                    <ipxact:description>High part of the 48-bit Target Device Provisioned ID.
 
 This field is Read-Only while the STBY_CR_ENABLE_INIT field in register
 STBY_CR_CONTROL is not zero.</ipxact:description>

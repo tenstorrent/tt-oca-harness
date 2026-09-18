@@ -14,7 +14,9 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_no_sep_configuration_test(smu_base_test):
-    """SMU_005 rev3: SEP=0 lc_state 0xf0 ONLY (direct SMC path deferred)."""
+    """SMU_005: SEP=0 lc_state no-LCC word only; the direct SMN->SMC path is not covered."""
+
+    use_shared_env = True
 
     async def run_scenario(self) -> None:
         self.logger.info("DUT_TAG=BARE smu_no_sep_configuration_test SMU_005 SEP=0")

@@ -10,5 +10,3 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "depth_uart_log", "u2_spi_pad", "pyuvm"]
 run_modes = ["smoke"]
-
-# smc_sideband_avsbus_octs_bfm_test — not ported (fake_bfm)

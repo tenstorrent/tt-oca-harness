@@ -137,9 +137,9 @@ class SepRmaTokenMatchSeq(uvm_sequence):
                 )
                 return
         # Never settling is a DUT failure, not a mismatch. Recording it as
-        # matched=False made a token block that answers nothing indistinguishable
-        # from one that correctly rejected a wrong token, so every "mismatch"
-        # check in every caller passed on a dead comparator.
+        # matched=False would make a token block that answers nothing
+        # indistinguishable from one that correctly rejected a wrong token, so
+        # every "mismatch" check in every caller would pass on a dead comparator.
         raise AssertionError(
             f"{token_name} token match status never settled after {_POLL_CYCLES} "
             f"cycles (last code=0x{self.match_code:02x}; expected one of "

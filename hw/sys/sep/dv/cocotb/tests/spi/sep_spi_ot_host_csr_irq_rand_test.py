@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI host control-plane CSR / IRQ / error breadth (PyUVM, no_cpu).
 
-SPI-subsystem Phase-2 rep SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
+SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
 reference suite OT-SPI host-control directed family (fw spi_ot_reg / tx_fifo /
 cmd_queue / interrupt / error_handling / watermark / enable_disable) into ONE rep.
 Not folded, because nothing here checks them: clock_config (CFG.CLKDIV is
@@ -13,7 +13,7 @@ the OT SPI host is already the active bare-SEP path). Drives the SEP-integrated 
 firmware, no flash BFM) -- this is the host CONTROL plane, DISTINCT from SPI flash command breadth
 (flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
 
-Randomization (SINGLE source of randomness; AGENTS.md s9/s11): SepSpiHostCfg seeds
+Randomization (SINGLE source of randomness): SepSpiHostCfg seeds
 legal field values for the register R/W walk + the watermark threshold from the
 runner seed. The golden is the documented reset values + RW/W1C/RO field semantics
 (seq_lib/sep_spi_host_csr_seq.py, taken from the generated spi_controller reg
@@ -23,14 +23,19 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-RESET     : every control/status reg reads its documented reset value.
   CHK-REG-RW    : each RW reg write->readback exact; bits outside the writable
                   mask (RO/reserved) read 0.
-  CHK-INTR      : INTR_STATUS is a live mirror, (source | INTR_TEST) & INTR_ENABLE.
-                  INTR_TEST reaches INTR_STATUS only while INTR_ENABLE is set, and
-                  clearing the source deasserts it. There is no W1C on this register.
+  CHK-INTR      : INTR_TEST sets INTR_STATUS while INTR_ENABLE is set, and
+                  releasing INTR_TEST deasserts it -- there is no W1C on this
+                  register. Whether INTR_ENABLE masks INTR_STATUS itself is logged
+                  as an observation, not graded: no allowed source states it.
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (CMD
-                  SPEED=reserved), CSIDINVAL (CSID>=NUM_CS + CMD), OVERFLOW (write
-                  past the 72-deep TX FIFO with the core disabled), CMDBUSY
-                  (command FIFO full), ACCESSINVAL (3-byte TXDATA beat).
+                  SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
+                  range for any NumCS, + CMD), OVERFLOW (fill until the DUT reports
+                  STATUS.TXFULL with the core disabled, then one beat more),
+                  CMDBUSY (queue until STATUS.READY drops, then one command more).
+                  ACCESSINVAL is not claimed: the RDL defines it as a TXDATA write
+                  with no bytes enabled, and this AXI master cannot drive a
+                  zero-strobe beat.
   CHK-WATERMARK : STATUS.TXWM moves as the TX FIFO occupancy crosses TX_WATERMARK
                   (occupancy proven by STATUS.TXQD).
   CHK-ENABLE    : SPIEN=0 holds a queued TX command off (FIFO not drained);
@@ -52,7 +57,6 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_spi_host_csr_seq import (
     CMD,
     CMD_DIR_TX,
-    CMD_FIFO_DEPTH,
     CMD_SPEED_RESERVED,
     CSID,
     CTRL,
@@ -61,7 +65,6 @@ from seq_lib.sep_spi_host_csr_seq import (
     CTRL_SPIEN,
     CTRL_SW_RST,
     CTRL_TX_WM_LSB,
-    ERR_ACCESSINVAL,
     ERR_CMDBUSY,
     ERR_CMDINVAL,
     ERR_CSIDINVAL,
@@ -87,7 +90,6 @@ from seq_lib.sep_spi_host_csr_seq import (
     ST_TXQD,
     ST_TXWM,
     STATUS,
-    TX_FIFO_DEPTH,
     TXDATA,
     SepSpiHost,
     SepSpiHostCfg,
@@ -95,10 +97,18 @@ from seq_lib.sep_spi_host_csr_seq import (
 
 # Bounded-wait budgets. Every one of these fails its own checker on expiry.
 # CHK-ENABLE's negative window is not a constant: it is _NEG_WINDOW_MARGIN times
-# the drain latency the enabled leg measures on this build.
+# the drain latency the enabled leg measures on this build, floored at
+# _NEG_WINDOW_FLOOR so a 1-poll calibration cannot shrink it to a window a merely
+# slow device would survive.
 _DRAIN_POLLS = 200
 _ENABLED_POLLS = 2000
 _NEG_WINDOW_MARGIN = 4
+_NEG_WINDOW_FLOOR = 32
+# Runaway guards for the two error triggers that fill until the DUT reports its
+# own boundary (STATUS.TXFULL / STATUS.READY). They are loop bounds, not expected
+# depths: reaching either fails the checker rather than passing it.
+_FILL_LIMIT = 512
+_CMD_LIMIT = 64
 
 
 @pyuvm.test()
@@ -189,8 +199,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             )
             # Drive the bits the generated block does not implement and require
             # them to read back zero. The probe pattern is built from impl_mask,
-            # not from wmask: CTRL's SW_RST is implemented but deliberately outside
-            # the walk, and driving it here would soft-reset the core mid-walk.
+            # not from wmask: CTRL's SW_RST is implemented but outside the walk,
+            # since driving it here would soft-reset the core mid-walk.
             probe = ~impl_mask & 0xFFFF_FFFF
             if probe:
                 await self.spi.wr(addr, target | probe)
@@ -217,17 +227,22 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
     # ---- CHK-INTR ---------------------------------------------------------
     async def _chk_intr(self) -> None:
-        # This spi_controller drives INTR_STATUS as a LIVE mirror:
-        #   INTR_STATUS.X = (source_X | INTR_TEST.X) & INTR_ENABLE.X
-        # so INTR_ENABLE gates the state bit itself (not just the irq line), and
-        # clearing the source/test deasserts it (no W1C). Prove the INTR_TEST path
-        # AND the INTR_ENABLE mask for both bits. EVENT_ENABLE/ERROR_STATUS are
-        # clean here, so INTR_TEST is the only source.
+        # Graded contract, and only what an allowed source states:
+        # spi_controller.rdl INTR_TEST.{ERROR,SPI_EVENT} -- "writing 1 to this bit
+        # forces the ... Interrupt and writing 0 releases it" -- with INTR_STATUS
+        # sw=r and no woclr, so releasing the source must deassert the status bit
+        # rather than needing a W1C. INTR_ENABLE is held SET across the graded
+        # legs, so they hold whether or not the block masks INTR_STATUS with it.
+        # EVENT_ENABLE/ERROR_STATUS are clean here, so INTR_TEST is the only source.
+        #
+        # Whether INTR_ENABLE gates INTR_STATUS itself (rather than only the irq
+        # line) is NOT graded: the RDL calls INTR_ENABLE an "Interrupt Enable" and
+        # describes INTR_TEST as forcing the interrupt unconditionally, so an
+        # assert in either direction would encode a mirror equation that no
+        # allowed source states -- the device would be its origin. The masked read
+        # is still taken and logged, as an observation for the register owner.
         await self._clear_error_status()
         for label, bit in (("ERROR", INTR_ERROR), ("SPI_EVENT", INTR_SPI_EVENT)):
-            # Cleanliness is only observable with the enable SET: INTR_STATUS is
-            # ANDed with INTR_ENABLE, so a read taken with the enable clear reads
-            # zero whatever the source is doing.
             await self.spi.wr(INTR_TEST, 0)
             await self.spi.wr(INTR_ENABLE, bit)
             st = await self.spi.rd(INTR_STATUS)
@@ -235,12 +250,16 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 f"CHK-INTR {label}: INTR_STATUS set with the source and INTR_TEST "
                 f"both clear (0x{st:08x})"
             )
-            # test asserted but disabled -> masked off.
+            # Observation only (see above): INTR_TEST set while the enable is clear.
             await self.spi.wr(INTR_ENABLE, 0)
             await self.spi.wr(INTR_TEST, bit)
             st = await self.spi.rd(INTR_STATUS)
-            assert not (st & bit), (
-                f"CHK-INTR {label}: INTR_ENABLE=0 did not mask INTR_TEST (0x{st:08x})"
+            self.logger.info(
+                "CHK-INTR %s observation: INTR_STATUS=0x%08x with INTR_TEST set and "
+                "INTR_ENABLE clear -- not graded, no allowed source states whether "
+                "INTR_ENABLE masks INTR_STATUS",
+                label,
+                st,
             )
             # enable -> the test source now reaches INTR_STATUS.
             await self.spi.wr(INTR_ENABLE, bit)
@@ -256,8 +275,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             )
             await self.spi.wr(INTR_ENABLE, 0)
         self.logger.info(
-            "CHK-INTR PASS: INTR_TEST->INTR_STATUS gated by INTR_ENABLE "
-            "(mask proven), source-clear deasserts; ERROR+SPI_EVENT"
+            "CHK-INTR PASS: INTR_TEST sets INTR_STATUS and releasing INTR_TEST "
+            "deasserts it with no W1C, for ERROR+SPI_EVENT (the INTR_ENABLE mask "
+            "direction is logged as an observation, not graded)"
         )
 
     # ---- CHK-ERR-W1C ------------------------------------------------------
@@ -288,33 +308,48 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self.spi.wr(CMD, CMD_DIR_TX | CMD_SPEED_RESERVED)  # SPEED=reserved
 
         async def trig_csidinval():
-            await self.spi.wr(CSID, 1)  # >= NUM_CS(1)
+            # CSID is a full 32-bit field and the RDL fixes no NumCS, so the
+            # trigger uses the top of the field: out of range for any NumCS, and
+            # therefore not an assumption about this integration.
+            await self.spi.wr(CSID, 0xFFFF_FFFF)
             await self.spi.wr(CMD, CMD_DIR_TX)  # otherwise-legal command
             await self.spi.wr(CSID, 0)  # restore
 
         async def trig_overflow():
             # Disable the core here rather than inheriting SPIEN=0 from an earlier
-            # facet, so the TX FIFO never drains; write past its depth -> the
-            # over-writes assert ERROR_STATUS.OVERFLOW.
+            # facet, so the TX FIFO never drains. Fill until the DUT reports
+            # STATUS.TXFULL, then write ONE beat past it: the boundary comes from
+            # the DUT's own occupancy report, so no depth is imported from the
+            # design's source. The loop bound is a DV-owned runaway guard --
+            # exhausting it fails the test.
             await self.spi.wr(CTRL, CTRL_RESET)
-            for _ in range(TX_FIFO_DEPTH + 8):
+            for _ in range(_FILL_LIMIT):
+                if await self.spi.rd(STATUS) & ST_TXFULL:
+                    break
                 await self.spi.wr(TXDATA, 0x5A5A_5A5A)
+            else:
+                raise AssertionError(
+                    f"CHK-ERR-W1C OVERFLOW: STATUS.TXFULL never set after "
+                    f"{_FILL_LIMIT} TXDATA writes with the core disabled"
+                )
+            await self.spi.wr(TXDATA, 0x5A5A_5A5A)  # one beat past full
 
         async def trig_cmdbusy():
-            # Command FIFO is 4 deep. Enable the core with an empty TX FIFO so
-            # each TX command stalls in the queue; the write that finds it full
-            # sets ERROR_STATUS.CMDBUSY.
+            # Enable the core with an empty TX FIFO so each TX command stalls in
+            # the queue. Queue until the DUT drops STATUS.READY (queue full), then
+            # write one more command: that write sets ERROR_STATUS.CMDBUSY. Same
+            # shape as OVERFLOW -- the depth is observed, never imported.
             await self.spi.wr(CTRL, CTRL_RESET | CTRL_SPIEN | CTRL_OUTPUT_EN)
-            for _ in range(CMD_FIFO_DEPTH + 2):
+            for _ in range(_CMD_LIMIT):
+                if not (await self.spi.rd(STATUS) & ST_READY):
+                    break
                 await self.spi.wr(CMD, CMD_DIR_TX)
-
-        async def trig_accessinval():
-            # RTL access_valid accepts 1/2/4-byte contiguous strobes, not 3-byte
-            # 4'b0111. A 32-bit beat of length 3 is a real DUT write, not a
-            # non-contiguous strobe the AXI master cannot express.
-            await self.spi.wr(
-                TXDATA, 0x00A5A5A5, length=3, size=2, allow_unverified_write_resp=True
-            )
+            else:
+                raise AssertionError(
+                    f"CHK-ERR-W1C CMDBUSY: STATUS.READY never dropped after "
+                    f"{_CMD_LIMIT} queued TX commands"
+                )
+            await self.spi.wr(CMD, CMD_DIR_TX)  # one command past a full queue
 
         await self._trigger_err("UNDERFLOW", ERR_UNDERFLOW, trig_underflow)
         await self._trigger_err("CMDINVAL", ERR_CMDINVAL, trig_cmdinval)
@@ -323,11 +358,17 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._sw_rst_pulse()  # drain the full TX FIFO
         await self._trigger_err("CMDBUSY", ERR_CMDBUSY, trig_cmdbusy)
         await self._sw_rst_pulse()
-        await self._trigger_err("ACCESSINVAL", ERR_ACCESSINVAL, trig_accessinval)
-        await self._sw_rst_pulse()
+        # ACCESSINVAL is NOT graded here. The RDL defines it as a TXDATA write
+        # with no bytes enabled (spi_controller.rdl ERROR_STATUS.ACCESSINVAL), and
+        # the AXI master on this path cannot emit a zero-strobe beat
+        # (ocah_axi_master_driver.check_strb rejects any partial strobe). Any
+        # other byte count that happens to raise the bit would be an expectation
+        # taken from the device, so the condition stays unclaimed until a master
+        # that can drive the documented stimulus exists.
         self.logger.info(
-            "CHK-ERR-W1C PASS: UNDERFLOW/CMDINVAL/CSIDINVAL/OVERFLOW/"
-            "CMDBUSY/ACCESSINVAL each set by their trigger + W1C-clear"
+            "CHK-ERR-W1C PASS: UNDERFLOW/CMDINVAL/CSIDINVAL/OVERFLOW/CMDBUSY each "
+            "set by their own trigger + W1C-clear (ACCESSINVAL not claimed: its "
+            "documented zero-byte-write trigger is not drivable from AXI)"
         )
 
     # ---- CHK-WATERMARK ----------------------------------------------------
@@ -338,7 +379,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(CTRL, ctrl)
         st_empty = await self.spi.rd(STATUS)
         assert (st_empty & ST_TXQD) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
-        # RTL: tx_wm = tx_qd < tx_watermark (asserted while there is room below the mark).
+        # spi_controller.rdl EVENT_ENABLE.TXWM: asserted while the number of
+        # 32-bit words in the TX FIFO is LESS THAN CONTROL.TX_WATERMARK -- so an
+        # empty FIFO sets it. The polarity is the whole of this facet, so it is
+        # taken from the register description rather than from the design.
         assert st_empty & ST_TXWM, (
             f"CHK-WATERMARK STATUS.TXWM clear while TXQD=0 < wm (0x{st_empty:08x})"
         )
@@ -408,7 +452,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"CHK-ENABLE: the queued command did not execute with SPIEN=1 within "
             f"{_ENABLED_POLLS} polls -- cannot calibrate the negative window"
         )
-        window = _NEG_WINDOW_MARGIN * calib
+        # Floor the window: a 1-poll calibration would otherwise leave a 4-poll
+        # negative window, which a device that ignored SPIEN but merely took five
+        # polls to execute would pass.
+        window = max(_NEG_WINDOW_MARGIN * calib, _NEG_WINDOW_FLOOR)
 
         # Negative leg: same stimulus, SPIEN=0, held for the calibrated window.
         await self._queue_one_tx()  # _sw_rst_pulse leaves SPIEN=0

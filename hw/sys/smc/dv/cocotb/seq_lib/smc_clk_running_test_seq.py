@@ -346,7 +346,7 @@ class smc_clk_running_test_seq(SmcCsrSeq):
             f"window={ACTIVE_WINDOW} zeroer_axi_edges={zaxi_edges}",
         )
         # P1 token: an ALIAS of CHK-DMA-ACTIVITY-UNGATE, re-reporting the same
-        # dma_edges / zaxi_edges measurement under the name the P1 grade greps.
+        # dma_edges / zaxi_edges measurement under the name SMC_VPLAN.adoc lists.
         # It carries no additional compare and must not be counted as an
         # independent proof ([NO-DUMMY-DEAD-CODE]).
         cg.emit_chk(

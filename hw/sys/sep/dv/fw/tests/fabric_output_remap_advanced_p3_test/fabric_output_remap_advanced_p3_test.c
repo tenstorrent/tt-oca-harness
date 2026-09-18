@@ -232,8 +232,8 @@ static int test_cache_coherency_advanced_scenarios(void) {
             uint32_t test_addr = coherency_src + 0x40000;
 
             // Scenario 1: Write-Read coherency
-            test_axi_transaction(test_addr, 32, AXI_WRITE); // Write first
-            test_axi_transaction(test_addr, 32, AXI_READ);  // Then read
+            test_axi_transaction(test_addr, 32, AXI_WRITE);
+            test_axi_transaction(test_addr, 32, AXI_READ);
 
             // Scenario 2: Read-Modify-Write
             test_axi_transaction(test_addr + 0x1000, 16, AXI_READ);
@@ -486,7 +486,6 @@ int main(void) {
     printf("Output Remap Advanced Test\n");
     printf("Strategy: Advanced output-remap scenarios; complex configuration combinations\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_output_remap_advanced_p3_test");
         return TEST_FAIL;

@@ -17,11 +17,10 @@ WHY THIS SUBCLASSES ``sep_backup_manifest_fail_base`` BUT REPLACES ITS VERDICT.
 The run machinery -- flash BFM, console capture, the PROD/secure-boot eFuse
 assertions, the post-terminal quiescence window -- is exactly what is wanted and is
 inherited unchanged. The CHECKS are not: that base is written for defects the
-CRYPTO chain rejects, so it requires a ``CRYPTO_FAIL=`` line and forbids
-``CRYPTO_VALIDATE_OK``. These defects are the opposite. They sit in the payload,
-which ``try_manifest_slot`` validates AFTER the crypto chain has PASSED
-(``manifest_load.c:665-680`` then ``:683``), so a correct run here must show
-``CRYPTO_VALIDATE_OK`` -- twice, once per slot -- and then fail. Overriding
+CRYPTO chain rejects, so it requires a ``MANIFEST_ERR=`` line and forbids
+``MANIFEST_OK``. These defects are the opposite. They sit in the payload,
+which ``try_manifest_slot`` validates AFTER the crypto chain has PASSED, so a correct run here must show
+``MANIFEST_OK`` -- twice, once per slot -- and then fail. Overriding
 :meth:`_check` rather than adding hooks to the shared base keeps six passing
 testcases untouched.
 
@@ -37,25 +36,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 _EFUSE_LC_PROD = _EFUSE_DIR / "sep_efuse_lc_prod.toml"
 
-# manifest_load.c:764-765 -- the ROM labels the slot and then prints its offset.
+#  -- the ROM labels the slot and then prints its offset.
 _PRIMARY_SRC = "MANIFEST_SRC=0x00001000"
 _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
 
-# manifest_crypto.c:391 -- printed once per slot whose crypto chain passed.
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
-# manifest_load.c:808 -- both slots were tried and both failed.
+#  -- printed once per slot whose crypto chain passed.
+# the ROM -- both slots were tried and both failed.
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _SBOOT_OFF = "SBOOT_OFF"
 
 # rom_handoff.c -- anything from here on means BL1 was copied or entered. The
 # procedures' "BL0 does NOT attempt to copy BL1 into IRAM" / "does NOT jump to the
 # invalid entry address" is exactly the absence of these.
-# "LOAD=" and "LEN=" are deliberately NOT used: manifest_load.c:798 prints
+# "LOAD=" and "LEN=" are deliberately NOT used:  prints
 # "PAYLOAD=", which contains "LOAD=" as a substring, so a marker check would
 # false-positive on an ordinary payload report.
 _BL1_PROGRESS = (
@@ -74,21 +73,23 @@ _BL1_PROGRESS = (
 # signature that a re-seal went wrong (a stale image digest, a stale payload
 # hash, a payload length left inconsistent with the TOC).
 _OTHER_REJECTIONS = (
-    "PLD_HASH_MISMATCH",
     "PLD_HASH_TIMEOUT",
-    "RSA_VERIFY_FAIL",
     "RSA_PKCS1_FAIL",
-    "SIG_VALID_FAIL",
+    "RSA_PKCS1_FAIL",
+    "RSA_VERIFY_OK_FAIL",
     "TOC_PLEN_MISMATCH",
     "TOC_REGION_OOB",
     "IMAGE_ORDER_BAD",
     "IMAGE_HASH_MISMATCH",
     "IMAGE_HASH_TIMEOUT",
     "NO_BL1_IMAGE",
-    "LC_USAGE_CONSTRAINT_FAIL",
-    "ENC_WITHOUT_SBOOT",
     "FLASH_REINIT_FAIL",
 )
+
+# MANIFEST_OK, not PAYLOAD_OK: the claim is that the defect is caught downstream
+# of the crypto chain, and one member's defect is caught BY the payload validator
+# rather than after it, so PAYLOAD_OK does not appear for it at all.
+_CRYPTO_OK = "MANIFEST_OK"
 
 
 class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
@@ -97,7 +98,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
     efuse_preload = _EFUSE_LC_PROD
 
     # --- subclass contract ---------------------------------------------------
-    # ``backup_defect_marker`` is inherited: the console marker check_bl1_image /
+    # ``backup_defect_marker`` is inherited: the console marker the BL1 placement check /
     # validate_manifest_payload must print. Here it applies to both slots, so
     # check_defect_attribution() below requires it twice rather than once.
     # Rejections this scenario's own defect must NOT produce, on top of the
@@ -213,13 +214,13 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         n_crypto = count_of(_CRYPTO_OK)
         assert n_crypto >= 2, (
             f"{_CRYPTO_OK} appeared {n_crypto} time(s); both slots must clear the "
-            f"whole crypto chain (security version, RSA signature, payload hash) "
-            f"before their payload is validated, so a count below two means a slot "
-            f"was rejected earlier and the BL1 verdict below is not what stopped "
-            f"it. Console: {console}"
+            f"manifest crypto chain (security version, root key, RSA signature) "
+            f"before their payload is examined, so a count below two means a slot "
+            f"was rejected earlier and the verdict below is not what stopped it. "
+            f"Console: {console}"
         )
         log.info(
-            "CHK-CRYPTO-RAN: %s seen %d times; signature and payload hash verified on both slots",
+            "CHK-CRYPTO-RAN: %s seen %d times; the manifest chain cleared on both slots",
             _CRYPTO_OK,
             n_crypto,
         )
@@ -238,11 +239,15 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"ROM never printed {_ALL_FAILED}; the retry loop did not exhaust both "
             f"slots. Console: {console}"
         )
-        expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
+        # The ring carries STATUS_ENCODE(type, SEP_MSG_*), which is a different
+        # space from the console's OCA_BOOT_ERR_BASE | oca_result_t. Translated
+        # through the ROM's own status_for_result() rather than by masking the
+        # console code, whose low half is the result number and not a status.
+        status_msg = mm.rom_status_for_result(self.expected_error)
+        expected_status = 0x0F01_0000 | status_msg
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{self.expected_error & 0xFFFF:04x})); "
-            f"observed {status_hex}"
+            f"(STATUS_ENCODE(ERROR, 0x{status_msg:04x})); observed {status_hex}"
         )
         log.info(
             "CHK-REJECT-REASON: %s on both slots, %s, cold_scratch[1]=0x%08x",
@@ -268,7 +273,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"converge on a mailbox FAIL. cold_scratch[1]: {status_hex}"
         )
         assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
-        log.info("CHK-TERMINAL: mailbox FAIL (fw_pass=0)")
+        log.info("CHK-TERMINAL PASS: mailbox FAIL (fw_pass=0)")
 
         # CHK-NO-HANDOFF: the procedures' central claim -- BL0 rejected the image
         # BEFORE attempting to copy or enter BL1.

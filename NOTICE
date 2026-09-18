@@ -115,3 +115,25 @@ This project incorporates code from the following third-party sources:
     Project: https://github.com/dequelabs/axe-core
     Development-only dependencies declared under tools/a11y/.
 
+16. Apache ECharts
+    Copyright 2017-2026 The Apache Software Foundation
+    Licensed under the Apache License, Version 2.0
+    Project: https://github.com/apache/echarts
+    Vendored under doc/ui-supplemental/js/vendor/echarts/
+    The minified bundle also includes zrender (BSD-3-Clause),
+    d3.js excerpts (BSD-3-Clause, Copyright 2010-2016 Mike Bostock),
+    and tslib (0BSD, Copyright (c) Microsoft Corporation).
+
+17. Viewer.js 1.11.7
+   Copyright 2015-present Chen Fengyuan
+   Licensed under the MIT License
+   Project: https://github.com/fengyuanchen/viewerjs
+   Vendored under doc/ui-supplemental/js/vendor/ and
+   doc/ui-supplemental/css/vendor/
+
+18. MathJax 3.2.2
+    Copyright 2009-2023 The MathJax Consortium
+    Licensed under the Apache License, Version 2.0
+    Project: https://github.com/mathjax/MathJax
+    The unmodified es5/tex-svg.js bundle and LICENSE from mathjax@3.2.2
+    are vendored under doc/ui-supplemental/js/vendor/mathjax/.

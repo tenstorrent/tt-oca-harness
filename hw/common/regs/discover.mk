@@ -6,9 +6,9 @@
 # then fills in the per-block policy (which outputs each block gets).
 
 # First-party tops: dirs holding the dir-name RDL
-# (hw/{ip,sys,common/axi}/<name>/regs/<name>.rdl). System-level register sources
+# (hw/{ip,sys}/<name>/regs/<name>.rdl). System-level register sources
 # are normalized into hw/sys/<name>/regs (for example SMC and SEP); AXI network
-# and monitor elements live under hw/common/axi/<name>/regs; legacy per-RTL
+# and monitor elements live under hw/ip/<name>/regs; legacy per-RTL
 # data/registers trees are intentionally not discovered here. Role == location
 # (see doc/user_guide/regs.adoc), so discovery is a pure glob. IPs may also be
 # grouped one level deeper by family (hw/ip/<family>/<ip>/regs, e.g. jtag, uart,
@@ -21,7 +21,6 @@ ocah_reg_dirs := $(wildcard \
   $(OCAH_ROOT)/hw/ip/*/regs \
   $(OCAH_ROOT)/hw/ip/*/*/regs \
   $(OCAH_ROOT)/hw/sys/*/regs \
-  $(OCAH_ROOT)/hw/common/axi/*/regs \
   $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs)
 ocah_reg_root_if_rdl = $(if $(wildcard $(1)/$(notdir $(patsubst %/regs,%,$(1))).rdl),$(patsubst $(OCAH_ROOT)/%,%,$(patsubst %/regs,%,$(1))))
 OCAH_RDL_REG_BLOCKS := $(sort $(foreach d,$(ocah_reg_dirs),$(call ocah_reg_root_if_rdl,$(d))))
@@ -105,8 +104,6 @@ OCAH_REG_CATALOG_DIRS := \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs/blocks/*) \
-  $(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs) \
-  $(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/models/regs) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/models/regs) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs) \

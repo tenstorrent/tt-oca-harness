@@ -114,7 +114,7 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
             $sformatf(
                 "hop=%0d/%0d target=%s", h + 1, GotoHops, reached.name())
         ));
-      check_state(tap_state_e'(16'h1 << int'(reached)), "sanity_goto_state_chk", $sformatf(
+      check_state(dtp_tap_state_e'(16'h1 << int'(reached)), "sanity_goto_state_chk", $sformatf(
                   "after goto hop %0d/%0d", h + 1, GotoHops));
     end
   endtask
@@ -200,7 +200,7 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     // fail-closed vector (the bridge scenarios enable what they exercise).
     // The vector settles through the TCK-domain synchronizers during the
     // TAP reset and the deterministic walk, well before the stress walks.
-    tb_vif.dbg_disable <= '1;
+    tb_vif.drive_dbg_disable('1);
     tap_reset();
 
     // sanity_fsm_visit_chk: deterministic 32-edge closure walk.

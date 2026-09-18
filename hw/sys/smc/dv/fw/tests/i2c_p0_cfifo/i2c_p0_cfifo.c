@@ -9,8 +9,7 @@
  * 1. Configure FMT FIFO threshold to M bytes
  * 2. With FMT empty (level 0 < M), verify fmt_threshold interrupt is asserted
  *
- * RX FIFO threshold / VIP traffic is intentionally out of scope for this
- * testcase (covered by smc_i2c_p0_fifo_test).
+ * RX FIFO threshold and VIP traffic are covered by smc_i2c_p0_fifo_test.
  */
 
 #include <stdint.h>
@@ -108,6 +107,52 @@ static int test_fmt_fifo_empty_threshold(uint32_t idx, uint32_t threshold_m) {
         simputs("  ERROR: FMT threshold interrupt should be set when level < threshold\n");
         return I2C_ERROR;
     }
+
+    /* The other leg: fill past the threshold and require the interrupt to clear.
+     *
+     * Without this the test only ever asked the question the FIFO reset had
+     * already answered -- level 0 is always < threshold, so FMT_THRESHOLD was
+     * checked at exactly one operating point and an RTL that ties it to 1, or
+     * drops the comparator entirely, passes byte for byte. INTR_STATE.FMT_THRESHOLD
+     * is a level interrupt ("asserted while FMTLVL < FMT_THRESH", i2c.rdl), so
+     * pushing threshold_m entries must clear it.
+     *
+     * The controller is disabled first so the entries accumulate in FMT instead
+     * of being drained onto the bus.
+     */
+    i2c_controller_disable(idx);
+    for (uint32_t i = 0; i < threshold_m; i++) {
+        i2c__FDATA_t fdata = {.w = 0};
+        fdata.f.FBYTE = (uint8_t)(0xA0u + i);
+        write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
+    }
+
+    fifo_status.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                     SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    intr_state.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                                    SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    simputs("  FMT FIFO level after fill: ");
+    simputshex32("", fifo_status.f.FMTLVL);
+    simputs("\n");
+
+    if (fifo_status.f.FMTLVL < threshold_m) {
+        simputs("  ERROR: FMT FIFO did not reach the threshold after pushing\n");
+        i2c_reset_fifos(idx, false, true, false, false);
+        i2c_controller_enable(idx);
+        return I2C_ERROR;
+    }
+    if (intr_state.f.FMT_THRESHOLD) {
+        simputs("  ERROR: FMT threshold interrupt still set with level >= threshold\n");
+        i2c_reset_fifos(idx, false, true, false, false);
+        i2c_controller_enable(idx);
+        return I2C_ERROR;
+    }
+    simputs("  PASS: FMT threshold interrupt clears when level >= threshold\n");
+
+    i2c_reset_fifos(idx, false, true, false, false);
+    i2c_controller_enable(idx);
 
     simputs("  PASS: FMT threshold interrupt set when FIFO empty (level < threshold)\n");
     return I2C_OK;

@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_rom_msgbuf.c
- * @brief T021 - Circular message buffer unit test (single-frame)
+ * @brief Circular message buffer unit test (single-frame)
  *
  * Exercises rom_msgbuf: write/peek/pop, single-frame semantics, full/flush,
  * partial detection, wrap-around, frame_slots_available, and reject when

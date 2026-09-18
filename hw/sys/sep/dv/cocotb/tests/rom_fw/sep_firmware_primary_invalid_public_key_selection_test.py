@@ -1,47 +1,43 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary manifest names an unassigned public-key source; the backup boots.
+"""Primary manifest names two public keys at once; the backup boots.
 
-The PRIMARY's ``public_key_sel.selection`` is set to 3 -- one of the three
-encodings (3, 6, 7) that name no key source, ``manifest.h`` assigning only
-0, 1, 2, 4 and 5. All three fall through the same ``default:`` arm
-(``manifest_crypto.c``), which prints ``BAD_KEY_SEL`` and returns
-``MANIFEST_ERR_SIG_FAILED``; a fixed value makes the run reproducible and lets the
-test assert the exact ``PUBK_SEL=`` the ROM echoed.
+The PRIMARY's ``public_key_select_classic`` names ROM key slots 0 AND 1. Under OCA
+the field is a 128-bit BITMAP, not a packed selection value, and
+[SEP-ROM-SB-045] requires it to resolve to exactly one slot: a bitmap with more
+than one bit set is ambiguous about which anchor applies, so the ROM refuses it
+rather than resolving to either. Both named slots are individually valid and
+provisioned, which is what makes the ambiguity itself the sole possible cause.
 
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference
-between this testcase and its backup-side sibling. The reference modifies ONLY
-``primary.manifest.public_key_sel.selection``
-and deliberately does NOT corrupt the primary's ``manifest_identifier`` the way
-its backup-side scenarios do, because the primary has to REACH the check under
-test. So there is no BAD_MAGIC failover trigger here: the primary is structurally
-perfect and is rejected by key selection alone.
+``plat_is_key_authorized`` (``oca_platform.c``) prints ``PUBK_SEL_AMBIGUOUS`` and
+returns ``OCA_FAIL_ROOT_KEY_UNAUTHORIZED`` -- a key-AUTHORIZATION verdict, not a
+signature one. The refusal happens inside the resolution loop, before any slot
+number is echoed, so the primary contributes no ``PUBK_SEL=`` line and the single
+``PUBK_SEL=`` in the console is the backup's.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT, NOT A TERMINAL FAILURE. The reference's
-``expected_patterns`` (``sep_firmware_secure_boot_test.py``) end in
-``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and grade the primary's
-rejection ``WARNING:`` rather than ``ERROR:``. Copying the backup-side base class
-here would have inverted the requirement.
+THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference between
+this testcase and its backup-side sibling. So there is no BAD_MAGIC failover trigger
+here: the primary is structurally perfect and is rejected by key selection alone.
 
-PLATFORM ADAPTATION -- MARKER. The reference expects
-``WARNING: INVALID_KEY_INDEX`` because its ``default:`` arm returns
-``SEP_MSG_INVALID_KEY_INDEX``. This ROM *defines* that code
+The expected outcome is A Completed boot, NOT A Terminal failure. Copying the backup-
+side base class here would have inverted the requirement.
+
+Platform adaptation -- MARKER. This ROM *defines* that code
 (``bootrom/prod/include/status_values.h:12``) but never EMITS it: there is no
-``report_status`` call for it anywhere under ``bootrom/prod/src``, so the
-architected status ring carries only the generic terminal code and the debug
-console token is the only per-reason evidence available. Hence the
-unassigned-source arm's ``BAD_KEY_SEL`` is required here instead.
-``BAD_KEY_IDX`` -- a bad ROM key INDEX, a different arm -- is forbidden below so
-the two cannot be confused.
+``report_status`` call for it anywhere under ``bootrom/prod/src``, so the architected
+status ring carries only the generic terminal code and the debug console token is the
+only per-reason evidence available. Hence the ambiguity arm's
+``PUBK_SEL_AMBIGUOUS`` is required here instead. ``PUBK_SLOT_RESERVED`` -- a bad ROM key
+INDEX, a different arm -- is forbidden below so the two cannot be confused.
 
 ``public_key_sel`` is at offset 166, inside the TBS, so the helper re-hashes. No
 re-sign: the selection is rejected before ``rsa_3072_verify``, so the primary's
 now-stale signature is never examined, and the shared base forbids any
-``RSA_VERIFY_START`` before the backup read to check that rather than assume it.
+``RSA_EXEC`` before the backup read to check that rather than assume it.
 
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``SIG_VALID`` still means the signature verified.
+assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
 """
 
 from __future__ import annotations
@@ -51,7 +47,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
-    MANIFEST_ERR_SIG_FAILED,
+    MANIFEST_ERR_KEY_UNAUTHORIZED,
     sep_primary_fail_backup_boot_base,
 )
 
@@ -63,69 +59,76 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h assigns 0, 1, 2, 4, 5. 3, 6 and 7 name nothing; the reference
-# draws from exactly that set (sep_firmware_secure_boot_test.py).
-_BAD_SELECTION = 3
-# public_key_sel is {index:4, selection:3} -- index 0, selection 3 -> 0x0030.
-_BAD_PUBK_SEL_VALUE = (_BAD_SELECTION & 0x7) << 4
-_PRIMARY_SEL_ECHO = f"PUBK_SEL=0x{_BAD_PUBK_SEL_VALUE:08x}"
-# The backup keeps the shipped selector: ROM key slot 0
-# (configs/secure_boot_test.yaml:112-114).
+# Two provisioned ROM key slots named at once. Both are individually valid, so
+# the refusal can only be the ambiguity itself.
+_AMBIGUOUS_SLOTS = (0, 1)
+# The backup keeps the shipped selector: ROM key slot 0.
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 
 @pyuvm.test()
 class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_backup_boot_base):
-    """Primary names key source 3 -> rejected -> backup boots."""
+    """Primary names two key slots at once -> refused -> backup boots."""
 
-    primary_defect_marker = "BAD_KEY_SEL"
-    primary_expected_error = MANIFEST_ERR_SIG_FAILED
+    primary_defect_marker = "PUBK_SEL_AMBIGUOUS"
+    primary_expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
     efuse_preload = _EFUSE_PRELOAD
-    # Both selectors must be echoed: the primary's bad one and the backup's good
-    # one. Without the second, "the backup booted" would not be tied to a slot.
-    extra_required = (_PRIMARY_SEL_ECHO, _BACKUP_SEL_ECHO)
-    # BAD_KEY_IDX is the discriminator against the index arm, which shares this
+    # Only the backup's selector is echoed. The primary's is refused inside the
+    # resolution loop, before any slot number is printed, so exactly one
+    # PUBK_SEL= line in the whole run is itself the evidence -- asserted below.
+    extra_required = (_BACKUP_SEL_ECHO,)
+    # PUBK_SLOT_RESERVED is the discriminator against the index arm, which shares this
     # error code. The rest must not fire at all: the primary is rejected at the
     # selection and the backup is valid, so nothing else may complain.
     extra_forbidden = (
-        "BAD_KEY_IDX",
-        "BAD_SIG_TYPE=",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "KEY_REVOKED",
-        "VERSION_ROLLBACK",
-        "RSA_VERIFY_FAIL",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_ALGO_UNSUPPORTED",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
+        "PUBK_UNAUTHORIZED",
+        "RSA_PKCS1_FAIL",
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
+        # Anchor the modulus while the selection still resolves: verify_public_key
+        # picks its digest via get_public_key_sel, which the ambiguity below makes
+        # unresolvable by design. Proving the key is the one its selection claimed
+        # before the mutation is what keeps the rejection attributable to the
+        # bitmap rather than to a bad key.
+        signed_slot = mm.verify_public_key(buf, "primary")
         # No manifest_identifier corruption: the primary must reach key selection.
-        mm.set_public_key_sel(buf, "primary", selection=_BAD_SELECTION, index=0)
-        got = mm.get_public_key_sel(buf, "primary")
-        assert got == _BAD_PUBK_SEL_VALUE, (
-            f"primary public_key_sel encoded as 0x{got:04x}, expected "
-            f"0x{_BAD_PUBK_SEL_VALUE:04x} (index 0, selection {_BAD_SELECTION})"
-        )
-        # The re-hash must have restored a valid TBS hash, or the primary is
-        # thrown out in the manifest loop before key selection and this testcase
-        # would be asserting on the wrong rejection.
+        mm.set_public_key_slots(buf, "primary", _AMBIGUOUS_SLOTS)
+        # get_public_key_sel refuses to resolve a bitmap naming more than one
+        # slot, which is the property this stimulus is planting.
+        try:
+            got = mm.get_public_key_sel(buf, "primary")
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError(
+                f"primary public_key_sel resolved to a single slot {got}; the "
+                f"bitmap should name {_AMBIGUOUS_SLOTS}"
+            )
+        # The re-hash must have restored a valid manifest hash, or the primary is
+        # thrown out before key selection and this testcase would be asserting on
+        # the wrong rejection.
         mm.verify_layout(buf, "primary")
-        # Everything else about the primary is untouched, including the modulus.
-        mm.verify_public_key(buf, "primary")
+        # set_public_key_slots rewrites the selection field and re-hashes; the
+        # modulus is outside both, so the key anchored above is still in place.
         self.logger.info(
-            "CHK-STIMULUS-PUBKSEL: primary public_key_sel=0x%04x (selection=%d, "
-            "unassigned; index 0 unchanged), TBS re-hashed, magic intact so the "
-            "slot still reaches validate_signature",
-            got,
-            _BAD_SELECTION,
+            "CHK-STIMULUS-PUBKSEL: primary public_key_sel names slots %s, both "
+            "individually valid, modulus still the ROM key %d it was signed with, "
+            "re-hashed, magic intact so the slot still reaches key authorization",
+            _AMBIGUOUS_SLOTS,
+            signed_slot,
         )
 
     def check_efuse(self, image) -> None:
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection (manifest_crypto.c:364 then :369) and would "
-            f"reject the primary for a different reason"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert revoke == 0, (
@@ -142,18 +145,29 @@ class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_ba
                     return i
             return -1
 
-        i_psel = index_of(_PRIMARY_SEL_ECHO)
-        i_bad = index_of("BAD_KEY_SEL")
+        i_psrc = index_of(f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}")
+        i_bad = index_of("PUBK_SEL_AMBIGUOUS")
         i_bsrc = index_of(f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")
         i_bsel = index_of(_BACKUP_SEL_ECHO)
 
-        # CHK-PUBKSEL-ATTRIBUTION: the ROM read THIS testcase's selector out of the
-        # primary and complained about it immediately. Without the echo, BAD_KEY_SEL
-        # could belong to any malformed selection, including one not planted here.
-        assert 0 <= i_psel < i_bad < i_bsrc, (
-            f"the BAD_KEY_SEL verdict is not attributable to the primary's planted "
-            f"selector: {_PRIMARY_SEL_ECHO}@{i_psel} -> BAD_KEY_SEL@{i_bad} -> "
-            f"backup@{i_bsrc}. Console: {console}"
+        # CHK-PUBKSEL-ATTRIBUTION: the refusal happened on the PRIMARY, between
+        # its read and the failover. The ambiguity is caught inside the resolution
+        # loop, so there is no slot echo to tie it to -- the position between the
+        # two slot reads is what attributes it, and the count check below is what
+        # says no slot number was printed for it.
+        assert 0 <= i_psrc < i_bad < i_bsrc, (
+            f"the PUBK_SEL_AMBIGUOUS verdict is not attributable to the primary: "
+            f"primary@{i_psrc} -> PUBK_SEL_AMBIGUOUS@{i_bad} -> backup@{i_bsrc}. "
+            f"Console: {console}"
+        )
+        # CHK-PUBKSEL-UNRESOLVED: exactly one resolved slot in the run, the
+        # backup's. A second would mean the primary's ambiguous bitmap was
+        # resolved to something rather than refused.
+        sels = [i for i, line in enumerate(console) if "PUBK_SEL=" in line]
+        assert len(sels) == 1, (
+            f"PUBK_SEL= appeared at {sels}, expected exactly 1 (the backup's): an "
+            f"ambiguous bitmap must be refused before resolution completes. "
+            f"Console: {console}"
         )
         # CHK-BACKUP-SELECTOR: the recovering slot used the valid ROM-key selector,
         # so the boot is attributable to slot 0 rather than to an unread selection.
@@ -162,9 +176,9 @@ class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_ba
             f"the booting slot's key selection is unattributed. Console: {console}"
         )
         self.logger.info(
-            "CHK-PUBKSEL-FAILOVER: primary %s@%d -> BAD_KEY_SEL@%d -> backup@%d -> %s@%d",
-            _PRIMARY_SEL_ECHO,
-            i_psel,
+            "CHK-PUBKSEL-FAILOVER: primary@%d -> PUBK_SEL_AMBIGUOUS@%d (no slot "
+            "echoed) -> backup@%d -> %s@%d",
+            i_psrc,
             i_bad,
             i_bsrc,
             _BACKUP_SEL_ECHO,

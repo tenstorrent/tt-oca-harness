@@ -88,8 +88,8 @@ widths wherever the SV-UVM layer needs one `virtual ocah_axi_if` type; the
 real bus geometry lives in the configuration on both sides. In SV the
 `ocah_axi_config` widths mask what the monitor samples. In cocotb the
 engines size byte lanes from the signals they are handed, so `OcahAxiConfig`
-carries the same widths and `bus()` returns a cocotbext bus over a view of
-the scope: every geometry-bearing member (`awaddr`, `araddr`, `wdata`,
+carries the same widths and `bus()` returns an `OcahAxiBus`, the package's
+bus handle, over a view of the scope: every geometry-bearing member (`awaddr`, `araddr`, `wdata`,
 `rdata`, `wstrb`, and for AXI4 the ID and user sidebands when their width is
 non-zero) reports the configured width, reads return its low bits, and
 writes drive the low bits with the bits above held at zero. A member already
@@ -129,12 +129,12 @@ await master.write(0x0000_0000, 0x1)
 value = await master.read(0x0000_0000)
 ```
 
-Compatibility helpers:
+Plain-value helpers:
 
 | Method | Return | Use |
 |---|---|---|
-| `await write(addr, data, ...)` | `int` response code | Existing tests that only need BRESP |
-| `await read(addr, ...)` | `int` data | Existing tests that expect OKAY reads |
+| `await write(addr, data, ...)` | `int` response code | Tests that only need BRESP |
+| `await read(addr, ...)` | `int` data | Tests that expect OKAY reads |
 
 Result helpers:
 
@@ -155,11 +155,14 @@ Protocol-control operations (SV-UVM parity; see
 |---|---|---|
 | `await write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew — AXI permits either arrival order — plus a deferred BREADY assert after the request phase |
 | `await read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low for `hold_cycles` after RVALID; the result's `hold_stable` reports that RVALID stayed asserted with RDATA/RRESP unchanged across the window |
+| `await write_pair_skewed_result(addr_a, data_a, addr_b, data_b, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb_a, strb_b, ...)` | `OcahAxiWritePairResult` | Two single-beat writes queued back to back: the second write's AW and W follow the first on their channels, so under a W delay the second AW meets the responder while the first W is pending; BREADY is deferred `b_ready_delay` cycles after the first write's request phase and both B responses are accepted in order; `aw_stall_cycles` counts AWVALID-without-AWREADY cycles across the pair and `aw_stable` reports AWVALID and AWADDR held through every such stall |
+| `await read_pair_hold_result(addr_a, addr_b, hold_cycles, ...)` | `OcahAxiReadPairResult` | Two single-beat reads: AR(b) follows AR(a) while RREADY is held low for `hold_cycles` after the first RVALID, so a responder that admits one read at a time stalls AR(b); `first.hold_stable` reports the hold window, `ar_stall_cycles` / `ar_stable` the AR channel across the pair |
 
-Both operations require an idle engine on their direction (the skew is
+All four operations require an idle engine on their direction (the skew is
 applied by pausing the backend's channel sources/sinks) and bound every
 phase with `timeout_cycles`; `allow_timeout=True` converts an expiry into a
-`timed_out` result.
+`timed_out` result. The pair results expose the two per-transaction results
+as `first` and `second` in issue order.
 
 Event helpers:
 
@@ -189,7 +192,7 @@ data = await master.burst_read(0x2000, length=4, size=3)
 ```
 
 `size` is AXI `AxSIZE`, the log2 transfer size in bytes. For example, `size=2`
-is a 4-byte beat and `size=3` is an 8-byte beat. The compatibility API accepts
+is a 4-byte beat and `size=3` is an 8-byte beat. The sequence API accepts
 `id` as an alias for `awid`/`arid`.
 
 ## Result Object Semantics
@@ -256,9 +259,11 @@ result = await master.read_result(0xFFFF_0000, check_response=False)
 assert result.resp == RESP_DECERR
 ```
 
-Use `timeout_ns=<n>` and `allow_timeout=True` only when a scenario explicitly
-accepts a non-completing access. The returned result has `timed_out=True`,
-`ok=False`, and `resp=-1`.
+Every blocking operation is bounded by `timeout_ns`: the call's value, else
+the instance's, else the package default (`DEFAULT_TIMEOUT_NS`, 500 µs, or the
+`+OCAH_AXI_TIMEOUT_NS` plusarg). Use `timeout_ns=<n>` and `allow_timeout=True`
+only when a scenario explicitly accepts a non-completing access. The returned
+result has `timed_out=True`, `ok=False`, and `resp=-1`.
 
 ## Fault-Capable Responders
 
@@ -455,7 +460,7 @@ the monitors or DUT-side pulse counters. Multi-stream use: one scoreboard,
 `min_checks_per_stream` to reject silently-dead streams. Finalize exactly
 once after drain.
 
-A simulator-free self-test (positive flow + the A-R fail-closed negative suite)
+A simulator-free self-test (positive flow + the fail-closed negative suite)
 lives at `cocotb/examples/example_axi_scoreboard_selftest.py`:
 
 ```bash
@@ -494,12 +499,27 @@ modules simply do not elaborate. Its contents:
   FIXED<=16, WRAP length+alignment, 4KB), WLAST/RLAST position, strobe
   lane-window, B/R ordering and ID matching, EXOKAY-exclusive, and the Lite
   response-legality rules. `IS_LITE` selects the subset; `en_i` is the
-  runtime suppress knob. Rules are implemented from IHI 0022 rule
+  runtime suppress knob. The `dv/` harness binds it to every VIP-driven
+  bundle; the response-ID corruption bundles stay unbound because the
+  ID-ordering rules fire there by design. Rules are implemented from IHI 0022 rule
   descriptions only — no third-party checker source was consulted. Two
-  trees by simulator capability: the two-state rules use `OCAH_SVA_ASSERT`
+  trees by simulator capability: the two-state rules use `OCAH_SVA_RULE`
   (`hw/common/assert/ocah_sva_macros.svh`) and run on every simulator,
-  Verilator included under `--assert`; the X-hygiene rules and the covers
-  use `OCAH_ASSERT` / `OCAH_COVER` and run on four-state simulators only.
+  Verilator included under `--assert`, and on licensed formal backends under
+  `FORMAL`; the X-hygiene rules and the covers use `OCAH_RULE` /
+  `OCAH_COVER` and run on four-state simulators and licensed backends only.
+  Each rule belongs to the side that drives its signals, and
+  `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
+  assumptions, so a formal environment asserts the design's side and assumes
+  its own; both default to assertions.
+- `sva/ocah_axi_fv.sv` — the same protocol's handshake, reset,
+  burst-legality and response-ordering rules written in the boolean subset
+  the open-source formal frontend reads (`OCAH_FV_RULE`,
+  `hw/common/assert/ocah_fv_macros.svh`), with the flat port list of
+  `ocah_axi_sva` and the same two side parameters; the formal environments
+  of the DTP bind it (`hw/common/dv/docs/formal-property-style.adoc`,
+  Shared protocol checkers). Rules that need per-ID or per-beat history stay
+  in `sva/ocah_axi_sva.sv`.
 - `interface/ocah_axi_struct_bridge.sv` — places a DUT-mastered port that
   stays a pulp request/response struct inside `tb_top` on an `ocah_axi_if`
   instance for the slave agent (see "Struct-Port Boundaries").
@@ -516,11 +536,13 @@ modules simply do not elaborate. Its contents:
   one-shot error injection tables), `ocah_axi_slave_driver` (reactive
   memory-backed responder; samples via `mon_cb`, drives the responder-side vif signals
   procedurally), `ocah_axi_slave_sequence` (test-facing backdoor/inject
-  API), and `ocah_axi_slave_agent` (reactive bundle: no sequencer, by
-  design). Master side: `ocah_axi_master_config` (vif, geometry, handshake
+  API), and `ocah_axi_slave_agent` (reactive bundle without a
+  sequencer). Master side: `ocah_axi_master_config` (vif, geometry, handshake
   watchdog), `ocah_axi_master_driver` (active initiator: sequential AW/W/B
-  and AR/R engines, single transaction outstanding; samples via `mon_cb`,
-  drives the initiator-side vif signals procedurally), the standard
+  and AR/R engines, one transaction outstanding except for the pair
+  operations, whose second single-beat transaction launches before the
+  first completes; samples via `mon_cb`, drives the initiator-side vif
+  signals procedurally), the standard
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   stimulus API — see below), `ocah_axi_master_agent` (driver + sequencer;
@@ -582,8 +604,8 @@ scenario.
 
 ## UVM Env Surface Convention
 
-Both shipped OCAH VIPs (`ocah_jtag_vip`, `ocah_axi_vip`) follow one surface
-convention, with the JTAG master env as the reference template:
+The OCAH VIPs with an SV-UVM layer (`ocah_jtag_vip`, `ocah_axi_vip`) follow
+one surface convention, with the JTAG master env as the reference template:
 
 - **Side tokens.** Side-specific components — config, driver, sequencer,
   sequence, agent, env, and agent-attached monitors — carry the side token
@@ -618,32 +640,13 @@ Do not add this file to Verilator default filelists.
 
 ## DTP Usage
 
-DTP JTAG2AXI responders construct the shared agents directly —
-`OcahAxiSlaveAgent.from_prefix(...).sequence` for the debug AXI4 port and
-`OcahAxiLiteSlaveAgent.from_prefix(...).sequence` for the SMC/SEP OTP
-AXI-Lite ports — and program faults and backpressure through the
-`OcahAxi[Lite]SlaveSequence` API. There is no DTP-local adapter layer.
+The DTP env's `DtpAxiAgent` builds the shared agents from `tb_if` bus
+handles — `OcahAxiSlaveAgent(tb.axi_bus("smc_axi"), ...).sequence` for the
+debug AXI4 port and `OcahAxiLiteSlaveAgent(tb.axi_bus(...), ...).sequence`
+for the SMC/SEP OTP AXI-Lite ports — and programs faults and backpressure
+through the `OcahAxi[Lite]SlaveSequence` API.
 
-## SEP Compatibility Reference
-
-SEP cocotbext usage is the compatibility checklist for the wrapper:
-
-| SEP pattern | OCAH wrapper support |
-|---|---|
-| `init_read` / `init_write` | Provided by `OcahAxiMasterAgent` and `OcahAxiLiteMasterAgent` |
-| Explicit timeout around event wait | `timeout_ns` and event helpers |
-| `allow_timeout` negative checks | `read_result` / `write_result` support `allow_timeout=True` |
-| Exact response-code assertions | `resp`, `resp_list`, and `ok` fields |
-| Error-expected probes | Use `raise_on_error=False`, `check_response=False` |
-
-## Migration Notes
-
-| Legacy/backend pattern | OCAH wrapper pattern |
-|---|---|
-| `AxiLiteMaster(...).read(...)` | `OcahAxiLiteMasterAgent(...).read_result(...)` |
-| `AxiMaster(...).init_read(...)` | `OcahAxiMasterAgent(...).init_read(...)` |
-| Backend response enum imports | `RESP_OKAY`, `RESP_SLVERR`, `RESP_DECERR` |
-| DTP-local fault RAM subclasses | `OcahAxiSlaveAgent` / `OcahAxiLiteSlaveAgent` fault APIs |
+## Extending The Wrapper
 
 If a test needs an AXI sideband or non-contiguous strobe pattern that the wrapper
 does not expose, extend this package first so the public API stays stable.

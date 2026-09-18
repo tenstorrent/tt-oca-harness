@@ -50,18 +50,18 @@ They generate the built material in subfolders under each book.
 
 ```bash
 # Locally installed Packages
-make doc-html-all
-make doc-pdf-all
+make doc-all-html
+make doc-all-pdf
 
 # OR Container workflow
 scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
-scripts/docker-run.sh doc-pdf  all    # PDF       → doc/XXXX/dist/ocah-trm.pdf
+scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/dist/ocah-trm.pdf
 ```
 
 Once the documents are built they can be staged with the command below.
 This builds the whole site in the location shown.
 ```bash
-make doc-stage-all
+make doc-stage-ghpages
 
 # OR
 
@@ -70,7 +70,7 @@ scripts/docker-run.sh doc-stage       # site → doc/_build/html_antora
 
 The build can then be served locally for viewing with the commands below.
 ```bash
-make doc-serve-all
+make doc-all-serve
 
 # OR
 
@@ -79,6 +79,12 @@ python3 -m http.server 8000
 ```
 
 This will generate the documentation, and then serve it on `http://localhost:8000/`. You will then be able to access it in your web browser.
+
+For a preview that opens at the TRM, run `make doc-trm-serve`.
+The TRM HTML build includes the other guides so links to Home, integration
+details, and programming procedures resolve locally. The container command
+`scripts/docker-run.sh doc-html trm` builds the same set of guides.
+If port 8000 is occupied, use `make doc-trm-serve OCAH_TRM_SERVE_PORT=8001`.
 
 === Embedding Images
 
@@ -94,6 +100,12 @@ Any image can then be embedded in an Asciidoc document with:
 ```
 image::<my_image>.png[Alternative Text]
 ```
+
+On the HTML site, click an unlinked block image to open the image viewer.
+Use the mouse wheel to zoom and drag the image to pan. The toolbar provides
+zoom in, zoom out, actual size (`1:1`), and reset controls.
+Keyboard users can focus an image and press Enter or Space to open it,
+use the up/down arrow keys to zoom, and press Escape to close the viewer.
 
 === References
 

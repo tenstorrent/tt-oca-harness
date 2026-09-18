@@ -27,14 +27,21 @@ makes that decode a measured fact rather than an assumption, so the offsets are
 chosen to exercise each of its fields: the two stripe bits, the wrap of the
 four-bank cycle, and a jump to the next 128 KB group.
 
-``init_mem_done_o`` is reported but gates nothing.
+``init_mem_done_o`` must reach 1 on both instances before the probe starts
+(``CHK-AXI-INIT-MEM-DONE``); the watcher raises if either is still 0 at the bound.
 """
 
 from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from smc_dual_base_test import DualCsr, SmcDualHarness
+from smc_dual_base_test import DualCsr, SmcDualHarness, dual_test
+
+REQUIRED_EVIDENCE = (
+    "CHK-AXI-INIT-MEM-DONE",
+    "CHK-AXI-SCRATCH-REACHABLE",
+    "CHK-SCRATCH-BACKDOOR-DECODE",
+)
 
 # Start of the OCCP-writable SRAM window (SMC_ROM_STACK_END): the address the
 # real flow stages a payload at, so the probe asks about the address that
@@ -63,7 +70,7 @@ PROBE_PATTERNS = {
     PROBE_BASE + 0x2_0000: 0xFEDC_BA98_7654_3210,
 }
 
-# How long to watch init_mem_done_o before giving up on it (informational).
+# Bound on init_mem_done_o rising on both instances; expiry fails the test.
 INIT_MEM_WATCH_CYCLES = 100_000
 INIT_MEM_POLL_CYCLES = 500
 
@@ -78,36 +85,45 @@ async def _peek_bfm_scratch(dut, addr: int) -> tuple[int, int]:
     )
 
 
-async def _watch_init_mem_done(dut, log) -> bool:
-    """Report when the cluster's mem-init FSM leaves reset. Never fails."""
-    for _ in range(INIT_MEM_WATCH_CYCLES // INIT_MEM_POLL_CYCLES):
-        if int(dut.bfm_init_mem_done_o.value) == 1:
-            log.info("AXI-PROBE init_mem_done_o: asserted on the bfm instance")
-            return True
+async def _watch_init_mem_done(dut, log) -> None:
+    """Both clusters must report mem-init done once boot_stall is released.
+
+    With disable_sram_auto_init_i=1 the cluster's mem-init FSM passes straight
+    through MEM_ZERO_IDLE -> MEM_ZERO_DONE, so init_mem_done rises within a few
+    cycles of fuse_reset releasing. A flag that stays 0 means the reset never
+    released or the TB is not reading the DUT's port; either fails the run.
+    """
+    for waited in range(0, INIT_MEM_WATCH_CYCLES, INIT_MEM_POLL_CYCLES):
+        dut_done = int(dut.dut_init_mem_done_o.value)
+        bfm_done = int(dut.bfm_init_mem_done_o.value)
+        if dut_done == 1 and bfm_done == 1:
+            log.info(
+                "CHK-AXI-INIT-MEM-DONE: dut and bfm init_mem_done_o both 1 within "
+                "%d clk_smc_i cycles (bound=%d)",
+                waited,
+                INIT_MEM_WATCH_CYCLES,
+            )
+            return
         await ClockCycles(dut.clk_smc_i, INIT_MEM_POLL_CYCLES)
-    log.warning(
-        "AXI-PROBE init_mem_done_o: still 0 on bfm (dut=%d) after %d clk_smc_i "
-        "cycles. Reported, not fatal: with disable_sram_auto_init_i=1 there is "
-        "no zeroing to wait for, and this flag is not on the AXI path.",
-        int(dut.dut_init_mem_done_o.value),
-        INIT_MEM_WATCH_CYCLES,
+    raise AssertionError(
+        f"init_mem_done_o still dut={int(dut.dut_init_mem_done_o.value)} "
+        f"bfm={int(dut.bfm_init_mem_done_o.value)} after {INIT_MEM_WATCH_CYCLES} "
+        "clk_smc_i cycles: the cluster never left mem-init after boot_stall release"
     )
-    return False
 
 
-@cocotb.test()
-async def smc_dual_axi_sram_probe_test(_dut) -> None:
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_dual_axi_sram_probe_test(harness: SmcDualHarness) -> None:
     dut = cocotb.top
     log = cocotb.log
 
-    harness = SmcDualHarness()
     # boot_stall released on both: holding it keeps fuse_reset_n asserted and
     # the whole warm domain -- including the CPU cluster the scratch banks hang
     # off -- in reset. See the module docstring.
     await harness.bring_up(hold_dut_boot=False, hold_bfm_boot=False)
 
     bfm_csr = DualCsr("bfm_axi", dut.bfm_rst_primary_smc_clk_no)
-    init_done = await _watch_init_mem_done(dut, log)
+    await _watch_init_mem_done(dut, log)
 
     # check_response=False everywhere: a DECERR is a *result* here, not an
     # error to raise. If the window is unreachable this probe must say so
@@ -202,8 +218,7 @@ async def smc_dual_axi_sram_probe_test(_dut) -> None:
     if failures:
         raise AssertionError(
             "CHK-AXI-SCRATCH-REACHABLE: bfm_axi (SEP_IN) did NOT reach the CPU "
-            f"scratch window at {PROBE_BASE:#010x} "
-            f"(init_mem_done={int(init_done)}):\n  " + "\n  ".join(failures)
+            f"scratch window at {PROBE_BASE:#010x}:\n  " + "\n  ".join(failures)
         )
 
     log.info(
@@ -221,3 +236,7 @@ async def smc_dual_axi_sram_probe_test(_dut) -> None:
         "smc_scratch_map_pkg gives the +smc_scratch_ram_hex loader agrees with "
         "the cluster's own."
     )
+    # A front-door probe that raised a DED or tripped a watchdog on either
+    # instance would still have read its patterns back; the latches say it
+    # did neither.
+    harness.assert_no_fault_latched("AXI-PROBE fault-latches")

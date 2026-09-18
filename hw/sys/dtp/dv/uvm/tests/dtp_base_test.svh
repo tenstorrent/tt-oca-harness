@@ -123,10 +123,10 @@ class dtp_base_test extends ocah_test;
   // the newest-scan-length evidence on a stale item (the cocotb flow
   // likewise starts a fresh monitor per pass).
   virtual function void pre_scenario_pass(int unsigned idx);
-    m_env.m_scan_builder.clear_history();
+    m_env.m_scan_builder.clear_scan_history();
   endfunction
 
-  // Clock/reset bring-up (cocotb _bring_up parity): route the downstream
+  // Clock/reset bring-up (cocotb bring_up parity): route the downstream
   // STAP TAPs, then sequence POR and system reset through dtp_tb_if with
   // the startup dbg_disable vector cleared while POR is still asserted, so
   // scenario passes begin with full debug access and assert the disables
@@ -134,7 +134,7 @@ class dtp_base_test extends ocah_test;
   // in test code, derived from the randomized clock period.
   virtual task bring_up();
     attach_stap_ds();
-    m_env.tb_vif.dbg_disable <= '0;
+    m_env.tb_vif.drive_dbg_disable('0);
     m_env.tb_vif.por_rst_n   <= 1'b0;
     m_env.tb_vif.sys_rst_n   <= 1'b0;
     wait_clk_cycles(dtp_base_test_seq::PorHoldCycles);

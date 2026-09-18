@@ -26,7 +26,7 @@ COOL_RECOVER_BOUND_REF = 4000
 
 
 class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
-    """Use cool-reset recovery around safe CSRs until public JTAG VIP exists."""
+    """Cool-reset recovery around safe CSRs; the CPU JTAG TAP proof runs in the test module."""
 
     def __init__(self, name: str = "smc_jtag_reset_proxy_test_seq") -> None:
         super().__init__(name)
@@ -117,15 +117,11 @@ class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
         # pipe; wait on that handshake before touching CSRs again.
         await self.wait_fuse_sense_done()
 
-        # The scratch pattern written before the reset must be gone: a taken
-        # cool reset restores the generated reset value. This is what makes the
-        # reset load-bearing rather than incidental -- the pre-reset write and
-        # this read straddle it, so a reset that never happened leaves
-        # SCRATCH_PATTERN here and fails.
-        #
-        # Which way round this goes is not assumed: smc_multi_reset_csr
-        # _persistence_test_seq writes a pattern, cools, and expects the
-        # generated reset back, under CHK-COOL-RESET-CLEARS-WARM-SCRATCH.
+        # A taken cool reset restores the generated reset value, so the pattern
+        # written before the reset must be gone: the pre-reset write and this
+        # read straddle the reset, and a reset that never happened leaves
+        # SCRATCH_PATTERN here and fails. smc_multi_reset_csr_persistence_test_seq
+        # checks the same direction under CHK-COOL-RESET-CLEARS-WARM-SCRATCH.
         await self._read(
             "CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0
         )

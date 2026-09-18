@@ -10,10 +10,9 @@
  * -> efuse_req_o path and verifies that:
  *   1. Writes to the OTP window (KM-local 0x0001_1xxx) reach the testbench
  *      eFuse responder and read back correctly (positive / OKAY path).
- *   2. A deliberate out-of-window access returns SLVERR, proving the remap
- *      is active.  An un-remapped access would deliver 0x0001_1xxx to the
- *      responder, which only accepts 0x1093_0xxx and responds SLVERR anyway
- *      — so a broken remap is caught by the readback mismatch in subtest 1.
+ *   2. The remap is proven by the readback: an un-remapped access would
+ *      deliver 0x0001_1xxx to the responder, which decodes only 0x1093_0xxx
+ *      and answers SLVERR, so a broken remap fails subtest 1.
  *
  * Sub-regions exercised (using KM-local addresses from key_manager_addr.h):
  *   OTP_EFUSE_MAP  @ KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR  (0x0001_1000, 64-bit

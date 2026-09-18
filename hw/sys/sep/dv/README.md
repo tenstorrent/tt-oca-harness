@@ -13,20 +13,22 @@ its pads come out of the wrapper. There is no SPI pad mux in this build.
 **Stimulus** = a cocotbext-axi master on the CPU LSU splice (`s_axi_*`), a second
 master on the real SMN-inbound port (`m_axi_*`, inbound filter), and VeeR EL2
 firmware boot on the `cpu` / `rom_fw` paths.
-**Backend** = Verilator is the reference backend; VCS and Xcelium also run.
+**Backend** = Verilator is the acceptance backend; VCS and Xcelium are the
+commercial development backends (`sep_sim_cfg.toml` `tools`), and VCS is the
+one graded coverage and SV-UVM run on.
 Everything the environment needs lives under this tree.
 
 ## Prerequisites
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x | the acceptance backend | CI pin 5.050 (`v5.050`) |
-| g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
-| Python ≥ 3.11 | launcher | `run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
-| Bender | filelist (`--stage flist`) | must be on `PATH` |
-| ccache | Verilator object cache | SEP sets `[build.verilator] ccache = true`; without the binary the C++ compile dies |
-| RISC-V GCC with picolibc | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | `riscv64-unknown-elf-gcc` or `riscv-none-elf-gcc` (rv32imc / ilp32); not needed for `--items smoke`. Host installs without picolibc fall back to `scripts/docker-run.sh` |
-| VCS or Xcelium | optional commercial backends | Verilator is the acceptance backend; SV-UVM (`--framework uvm`) is VCS only |
+| Verilator 5.x (CI pin `v5.050`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
+| g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8 g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
+| Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python`. `run_dv.py` bootstraps the locked uv-managed DV env (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
+| Bender (CI: `pulp-actions/bender-install@v2.5.1`) | filelist (`--stage flist`) | must be on `PATH`. A missing binary fails filelist generation. No SEP-owned semver pin |
+| ccache (CI: Ubuntu apt) | Verilator object cache | `[build.verilator] ccache = true`. Absence fails the C++ compile (`ccache: No such file or directory` / make Error 127) |
+| RISC-V GCC + picolibc (`ocah-toolchain`) | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | `tools/docker/Dockerfile`: Debian trixie `gcc-riscv64-unknown-elf` + `picolibc-riscv64-unknown-elf` (packages float; the base image digest is pinned). Host without `--specs=picolibc.specs` fails unless `scripts/docker-run.sh` is available. Not needed for `--items smoke` |
+| VCS (commercial; no public pin) | develop, graded `--cov`, and SV-UVM | Missing `VCS_HOME` / `SNPSLMD_LICENSE_FILE` or the 32-bit `vcs` driver's python-3.9 lib on `LD_LIBRARY_PATH` fails the driver |
 
 ### Environment variables
 
@@ -49,6 +51,10 @@ PY=tools/dv/run_dv.py
 
 # What tests exist (testlists/ is the authoritative index).
 python3 $PY --dut sep --items all --list
+
+# Check every golden model against its own vectors. No simulator, no build --
+# run it before trusting a golden a checker compares against.
+python3 hw/sys/sep/dv/cocotb/env/run_golden_selftests.py
 ```
 
 ### CI `smoke` group
@@ -69,12 +75,22 @@ The nightly command for the `all` group (every test this VPLAN grades:
 `cpu_stub` + `cpu`), one fresh seed per leaf:
 
 ```bash
-python3 tools/dv/run_dv.py --dut sep --items all --stage sim --regress
+# No --stage: builds the filelist, the firmware and the model, then regresses.
+#
+# Pass both job counts. --sim-jobs defaults to 1 and --build-jobs inherits it:
+# the bare command takes about ten hours, against seventy minutes measured at
+# --sim-jobs 8. The values below suit a 32-core host -- check `nproc` and stay
+# under it (on four cores, --build-jobs 3).
+#
+# Fan-out is per runtime class: no_cpu wide, firmware and VCS at 8, because the
+# threaded VeeR EL2 model can stall near reset.
+python3 tools/dv/run_dv.py --dut sep --items all --regress \
+  --sim-jobs 8 --build-jobs 24
 ```
 
 `all` includes firmware-boot tests, so a picolibc-enabled RISC-V GCC (or
-`scripts/docker-run.sh`) must be available and `--stage c_compile` must have
-produced the images (see [Prerequisites](#prerequisites)). Hosted GitHub nightly
+`scripts/docker-run.sh`) must be available -- the `c_compile` stage above builds
+the images with it (see [Prerequisites](#prerequisites)). Hosted GitHub nightly
 (`.github/workflows/regress.yml`) runs `--items cpu_stub` instead, because those
 runners have no RISC-V toolchain.
 
@@ -83,11 +99,14 @@ owner and is not a member of `all`:
 
 ```bash
 python3 tools/dv/run_dv.py --dut sep --items cpu_stub --regress \
-  --tool verilator --stage flist --stage hdl_compile --stage sim
+  --tool verilator --stage flist --stage hdl_compile --stage sim \
+  --sim-jobs 24 --build-jobs 24
 python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
-  --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim
+  --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim \
+  --sim-jobs 8 --build-jobs 24
 python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress \
-  --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim
+  --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim \
+  --sim-jobs 8 --build-jobs 24
 ```
 
 Add `--stage c_compile` to `cpu_stub` when KM `rom_main` images are stale.
@@ -123,6 +142,30 @@ Per-run logs land in `build/runs/<run-id>/` (gitignored).
 exit alone is not enough.** A test passing is the entry condition for reading
 its checkers, never a substitute for them, and a checker row exists only if a run
 can prove it. A log tag is not the proof.
+
+### The evidence gate
+
+A test that exits cleanly without checking anything is not a pass, and
+`sep_base_test` is the mechanism that makes such a run fail. Every check logs
+`CHK-<ID> PASS`; the base class counts the distinct IDs a leaf emitted and
+prints one line per test:
+
+```
+EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
+```
+
+`own` excludes the records `sep_base_test` emits during bring-up, so a leaf
+cannot satisfy the gate on infrastructure alone. A leaf whose `own` count is
+zero **fails** — unless it is named in `_EvidenceFilter.NO_OWN_EVIDENCE`, which
+lists the leaves that grade through another channel (firmware console verdict,
+a sequence-level compare, a base-class golden compare) together with the reason
+for each. That list may only shrink; retire an entry by making the check that
+already runs log a `CHK-` ID where it happens.
+
+Leaves may also declare more: `min_evidence = N` sets a floor on `own`, and
+`required_evidence = ("CHK-A", ...)` names IDs that must appear.
+
+The gate proves a check ran. It does not prove the check was right.
 
 The contracts themselves:
 
@@ -166,17 +209,21 @@ one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
 
 What the resulting number is not:
 
-* **Not functional coverage.** These are code metrics only. No SV covergroups
-  exist in the cocotb env, so "did we exercise the interesting scenarios" stays
-  with [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
+* **Not functional coverage.** These are code metrics only. Phase 1 functional
+  coverage is a separate number: the URG **Group** report on
+  `sep_uvm_top.u_sep_fcov` (`cov/sv/sep_fcov.sv`, VCS only -- Verilator does not
+  compile `covergroup`), planned in
+  [`docs/SEP_FCOV.adoc`](docs/SEP_FCOV.adoc). A covergroup bin records that an
+  interface event happened, never that it was correct, so "did the DUT do the
+  right thing" stays with the checkers in
+  [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
 * **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
   excludes the testbench top, the outbound mailbox, the AXI SVA module and the
   CPU subtree at compile time, across both code and
-  assertion coverage (`-cm_hier` with `-cm_common_hier`). Measured on a merged
-  database: the excluded instances leave the hierarchy entirely and `sep_uvm_top`
-  matches `u_dut` in all six columns. So the percentage is the SEP DUT **with the
+  assertion coverage (`-cm_hier` with `-cm_common_hier`), so the excluded
+  instances never enter the database. The percentage is the SEP DUT **with the
   CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
-  `cov/config/vcs/README.md` records the scope and the measurements behind it.
+  `cov/config/vcs/README.md` records the scope.
 * **Not a read on assertions.** Assertion coverage counts elaborated assertions
   only, and SEP gates those through the `prim_assert` shim. Confirm assertions
   are live before reading that column.
@@ -218,7 +265,9 @@ The CPU is held off (`mpc_reset_run_req=0`). Two masters can drive the DUT:
 * `sep_address_map_test` — `sep_cpu_ctrl` sweep plus one CSR per LSU-reachable
   block (DMA, WDT, scratch, reset, OTBN/AES/HMAC/KMAC, CSRNG/EDN/ESRC, ABR,
   entropy pool, lifecycle, KM/AXI mailbox, eFuse shadow, inbound filter,
-  alias/outbound remap, SPI). Not CSR bit-bash and not dead-space refuse.
+  alias/outbound remap, SPI), and a complete-and-not-alias check of the
+  reserved span inside `sep_cpu_ctrl`. Not CSR bit-bash and not a full
+  dead-space walk.
 
 ### CPU firmware boot — `run_modes.cpu`
 
@@ -228,8 +277,8 @@ from the wrapper's real TCM macros, backdoor-loaded by `tb_backdoor_mem` in
 `fw/build/tests/<name>/{.itcm,.dtcm}.hex` images through `fw/fw.mk`.
 
 * `sep_hello_world_test` — loads the OSS `fw/tests/hello_world` image into
-  ICCM/DCCM and passes `rst_vec=0xC0000000` to `tb_top.sv`, which programs
-  the EL2 reset-vector TDR through JTAG before reset releases and sets
+  ICCM/DCCM and passes `rst_vec=0xC0000000` to `tb_top.sv`, which drives the
+  wrapper's direct reset-vector input before reset releases and sets
   `mpc_reset_run_req=1`. The test boots VeeR EL2 and checks PC advance
   (`sep_cpu_trace`) plus the firmware banner and PASS magic on the outbound
   mailbox (`tb/sep_outbound_mbx.sv`).
@@ -256,7 +305,7 @@ it. A testlist entry binds both implementations of one scenario
 selects the same VPLAN scenario in either framework; the UVM class name is
 the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
 errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-Today only `sep_axi_smoke_test` carries a `uvm` binding. VCS only: Verilator
+`sep_axi_smoke_test` is the scenario with a `uvm` binding. VCS only: Verilator
 has no SV-UVM support. The bench architecture is in `docs/SEP_TB_ARCH.adoc`
 ("SystemVerilog UVM Realization"); the framework conventions it follows are in
 `hw/common/dv/docs/uvm-framework.adoc`.
@@ -310,7 +359,7 @@ analog), `.gitignore` (SEP-local generated products), `sep_public_scope.vlt`
 hw/sys/sep/dv/
 ├── cocotb/              # PyUVM env, sequences, tests; dv_sim_prestage.py
 ├── uvm/                 # SV-UVM realization (`--framework uvm`, VCS)
-├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`); `cov/sv/` is empty this revision
+├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`) and the Phase 1 FCOV sampler (`cov/sv/sep_fcov.sv`, VCS only)
 ├── docs/                # TB architecture, VPLAN, FCOV
 ├── fw/                  # DV firmware (`fw.mk` / `c_compile`)
 ├── tb/                  # sep_uvm_top, mailbox, preload images

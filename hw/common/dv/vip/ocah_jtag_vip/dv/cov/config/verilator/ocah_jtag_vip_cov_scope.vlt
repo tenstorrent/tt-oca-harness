@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// Coverage scope of the shared JTAG VIP selftest harness, passed to the
+// compiler from [coverage.verilator].build_args in ocah_jtag_vip_sim_cfg.toml,
+// so what it drops never enters the database.
+//
+// `coverage_off` takes `-file` with globs only; the pattern is matched
+// against the path as the compiler opened the file, so it starts with `*` and
+// no `/` follows that `*` directly.
+//
+// Scored: sva/ocah_jtag_sva.sv.
+
+`verilator_config
+
+// The harness body is the test bench, not the collateral under test.
+coverage_off -file "*hw/common/dv/vip/ocah_jtag_vip/dv/tb/tb_top.sv"
+
+// Vendored pulp packages from the base package closure are not part of the
+// VIP.
+coverage_off -file "*vendor/pulp-platform/*"

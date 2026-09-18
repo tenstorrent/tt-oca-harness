@@ -16,8 +16,8 @@
 #include "smc_test.h"
 #include "virt_console.h"
 
-// 15 override channels x 4 = 60 bonded GPIOs (indices 0-59) after the
-// GPIO shrink 64->61 moved one xtrigger channel to a dedicated pad.
+// 15 override channels x 4 = 60 bonded GPIOs (indices 0-59); one xtrigger channel
+// sits on a dedicated pad.
 #define NUM_GPIOS 60
 
 /**
@@ -53,7 +53,7 @@ int main(void) {
 
     uint32_t enable_count = 0;
 
-    // First xtrigger interface (GPIOs 0-3)
+    // Enable the override on every bonded GPIO.
     for (int i = 0; i < NUM_GPIOS; i++) {
         enable_count = enable_count + enable_gpio_hw_override(i);
         write_scratch(6, i);
@@ -61,11 +61,11 @@ int main(void) {
 
     // Report test result via scratch registers
     if (enable_count == NUM_GPIOS) {
-        // Write success marker to scratch register for UVM testbench
+        // Success marker for the testbench
         write_scratch(5, 0xC0FFEE);
         test_pass(0);
     } else {
-        // Write failure marker to scratch register for UVM testbench
+        // Failure marker for the testbench
         write_scratch(6, 0x1000 + enable_count);
         test_fail(0);
     }

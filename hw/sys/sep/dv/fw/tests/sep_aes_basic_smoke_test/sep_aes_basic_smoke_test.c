@@ -10,7 +10,7 @@
  *  - Automatic flow control: INPUT_READY / OUTPUT_VALID handshaking
  *  - Alert status monitoring
  *
- * Register write ordering follows the proven aes_test.c flow:
+ * Register write ordering (same as aes_test.c):
  *   CTRL_SHADOWED -> wait_idle -> KEY -> wait_idle -> IV -> wait_input_ready
  */
 

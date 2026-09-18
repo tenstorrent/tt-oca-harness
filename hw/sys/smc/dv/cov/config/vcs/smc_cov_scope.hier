@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 -tree smc_uvm_top 1
--tree smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
+-tree smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 -tree smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper
 -tree smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap

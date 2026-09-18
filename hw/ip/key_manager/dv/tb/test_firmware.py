@@ -331,7 +331,7 @@ class TestbenchCommandHandler:
             current_cycles_ref: Mutable list ``[int]`` holding the current cycle count.
             vuart_monitor: Optional VuartMonitor for VUART verification commands.
             enable_unrecoverable_watch: If True, arm the unrecoverable watcher
-                at startup (legacy unrecoverable tests).
+                at startup.
         """
         self.dut = dut
         self.regs = kmcsr_regs
@@ -2262,7 +2262,7 @@ class TestbenchCommandHandler:
 
         arg selects the field by its OTP_READ_LOCK bit position, defaulting to
         chiplet_uid.  That field's value half is valid but its complement half
-        has bit 0 intentionally NOT inverted, which should trigger OTP_SIGINT in
+        has bit 0 NOT inverted, which should trigger OTP_SIGINT in
         hardware and an unrecoverable fault.  All other fields stay valid.
         """
         if not hasattr(self.dut, "otp_data"):
@@ -2566,12 +2566,9 @@ class TestbenchCommandHandler:
                             f"tstrb=0x{queued_tstrb:01X} "
                             f"(remaining={len(self._drbg_beat_queue)})"
                         )
-                        # Pre-stage the next beat's data immediately so it is stable
-                        # at the following rising edge.  Without this, the driver
-                        # would loop back to await RisingEdge before updating the
-                        # signals, and the RTL would sample the just-consumed beat's
-                        # data again on the very next cycle (causing byte-assembly
-                        # errors when partial-TSTRB beats are used back-to-back).
+                        # Pre-stage the next beat's data now: TVALID stays high, so the
+                        # RTL samples TDATA/TSTRB again at the very next rising edge and
+                        # must see the next beat there, not the consumed one.
                         if self._drbg_beat_queue:
                             nv, nt = self._drbg_beat_queue[0]
                             self.dut.drbg_tdata.value = nv

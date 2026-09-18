@@ -9,7 +9,6 @@
 This section is currently under development.
 
 - More details on Yosys/Synthesis once finalised - Port local PDK usage from `lowrisc/container-testing`
-- Register Generation User Guide Page?
 - DV FW sections reference source files frequently, how necessary is this?
 - Linters are still WIP - code is not clean yet
 ====
@@ -92,6 +91,9 @@ vendor_package:
 `exclude_from_upstream:` paths, and re-applies all patches from `patch_dir` in
 lexicographic order.
 
+CI runs `bender vendor diff --err_on_diff` on every hardware-CI push so a stale
+`upstream/` tree or a patch that no longer applies fails the gate.
+
 == Register generation
 
 Register collateral is generated from per-block SystemRDL under `hw/{ip,sys}/<name>/regs/`.
@@ -99,8 +101,6 @@ HJSON-backed OpenTitan blocks are first exported to RDL via
 `tools/regs/reggen_wrapper.py` using the vendored OpenTitan reggen modules. Run
 `make regen-regs` to regenerate; committed generated output always corresponds to the
 RDL sources. The flow lives in `hw/common/regs/` (discovery, classification, and rules).
-
-TODO - README implied the desire for a dedicated page on this?
 
 == DV Firmware
 
@@ -170,6 +170,71 @@ the shared `compile.mk` engine):
 # Prefix with `scripts/docker-run.sh run` to use the container toolchain
 make -C hw/sys/smc/bootrom/prod
 ```
+
+=== SEP boot ROM
+
+`hw/sys/sep/bootrom/prod/` is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
+It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via `NONFREE_BOOTCODE_SOURCES` (same pattern as the SMC prod ROM).
+
+The ROM supports two SPI transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
+The open-source driver uses the OpenTitan SPI host (`BOOT_SPI_CONTROLLER_OT=1`).
+A proprietary memory-mapped SPI controller is also supported, plugged via the SEP extension port (`BOOT_SPI_CONTROLLER_OT=0`), but is optional from the OCAH open tree's perspective.
+
+The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) and boots instead from the SMC-SRAM manifest path; `make pack-images` builds and packs the matching manifest+BL1 image (`build/smc_mem.hex`).
+
+The build is split into two halves so each can run in the correct environment:
+
+* `toolchain-images` — RISC-V/picolibc compilation; use the container toolchain when `RISCV_TOOLCHAIN` is unset.
+* `pack-images` — pure Python manifest packing via the `tt-boot-manifest` submodule (requires `uv`); runs on the host without the container.
+
+```bash
+# OpenTitan SPI-host build (outputs to build_ot/):
+# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+
+# Signed (secure boot) SPI flash image — requires the tt-boot-manifest submodule:
+# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+make -C hw/sys/sep/bootrom/prod secure_boot_spi
+
+# Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):
+make -C hw/sys/sep/bootrom/prod encrypted_boot_spi
+```
+
+Outputs land under `hw/sys/sep/bootrom/prod/build_ot/` (signed/encrypted images land in `build/`):
+
+* `boot_rom.vmem` — 64-bit VMEM for the Boot ROM responder.
+* `boot_rom.itcm.hex` — ROM `.text` as ICCM-relative byte hex.
+* `boot_rom.dtcm.hex` — `.data`/`.bss` initial image as DCCM-relative byte hex.
+* `smc_mem.hex` — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.
+* `secure_boot.spi_preload` / `encrypted_boot.spi_preload` — SPI flash preload images (built by the corresponding targets above).
+
+=== KM boot ROM
+
+The Key Manager (KM) subsystem (PicoRV32) has no dedicated `bootrom/` directory.
+Its ROM firmware lives in the DV firmware tree at `hw/ip/key_manager/dv/fw/` and is built by the same shared engine (`compile.mk`) used for DV tests.
+
+Two link modes are discovered from `hw/ip/key_manager/dv/fw/link/modes/`:
+
+* `vrom` (default for test images) — the ROM carries only the interrupt-vector sections (`.text.reset`, `.text.irq_vec`, `.text.irq_handler`); the rest of the code runs from a side-loaded Virtual ROM (VROM).
+* `rom` — the entire image runs from ROM with no VROM.
+  The production entry point (`production/rom_main`) and all `sep_images/` entries always use this mode.
+
+The production entry point is `production/rom_main/rom_main.c`.
+It runs forever serving the KM mailbox and is not enumerated by the test regression (only `tests/test_*` directories are).
+The SEP UVM testbench loads all KM ROM images via `+KM_ROM_HEX_FILE`.
+
+```bash
+# Build the production ROM entry (uses the standard DV firmware dispatcher):
+# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make dv-fw-tests TARGET=key_manager TEST=rom_main
+```
+
+Outputs land under `hw/ip/key_manager/dv/fw/build/tests/rom_main/`:
+
+* `rom_main.rom.elf` — linked ELF.
+* `rom_main.rom.hex` — address-zero-based Verilog hex for the ROM responder.
+* `rom_main.rom.parhex` — parity-annotated hex (used by the KM RTL's ROM model).
+* `rom_main.rom.sym` / `rom_main.sym` — symbol tables (the bare `rom_main.sym` lets the SEP UVM resolve firmware symbols from the `rom`-mode image).
 
 == Simulation and Testing
 
@@ -616,10 +681,11 @@ contributor enables the hook.
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`, and
-`regen-regs` on pull requests and pushes to `main` (`lint-sv-verible` is
-temporarily disabled). Setup jobs share `bender`, Verilator, and reviewdog
-artifacts; jobs report through `.github/actions/reviewdog-report`.
+`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`,
+`regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
+(`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
+Verilator, and reviewdog artifacts; jobs report through
+`.github/actions/reviewdog-report`.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
@@ -686,6 +752,10 @@ Scheduled and manually dispatched pipelines always run in full.
 | `regen-regs`
 | — (job fails on a dirty tree)
 | `make regen-regs regen-regs-adoc regen-regs-html`
+
+| `vendor-diff`
+| — (job fails when committed `upstream/` drifts)
+| `bender vendor diff --err_on_diff`
 |===
 
 The `regen-regs` gate regenerates every register block's collateral from the RDLs
@@ -698,6 +768,15 @@ result:
 ```
 make regen-regs regen-regs-adoc regen-regs-html
 git status --porcelain   # expect no output
+```
+
+The `vendor-diff` gate re-clones every `vendor_package` remote, applies
+`patches/`, and fails if the committed `upstream/` tree does not match. To
+fix a failure, refresh the tree and commit:
+
+```
+bender vendor init
+git status --porcelain   # expect only intended vendor/ changes
 ```
 
 ==== References

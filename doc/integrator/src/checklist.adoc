@@ -1,0 +1,104 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[soc-integration-checklist]]
+= SoC Integration Checklist
+
+Use this checklist as a quick route through the integration work; each item
+links to its detailed requirements elsewhere in this guide. Record minimum
+evidence against each gate before sign-off.
+
+== Integration gates
+
+ifdef::backend-html5[]
+[cols="<5%,<35%,<35%,<25%",options="header"]
+|===
+|Done |Integration gate |Minimum evidence |Reference
+
+|[ ]
+|Select the delivered hierarchy, enabled subsystems, and required configuration
+|Selected hierarchy and configuration record reviewed
+|xref:smu.adoc#smu-top-level-integration[SMU Top-Level Integration]
+
+|[ ]
+|Assign the chiplet address envelope and program the SEP and SMC apertures
+|Approved non-overlapping address map; aperture CSRs verified in simulation
+|xref:smu.adoc#address-map-integration[Address Map Integration]
+
+|[ ]
+|Connect clocks, resets, power-good, and configuration straps; follow the power-up sequence
+|Clock/reset/power review and sequencing test pass
+|xref:smu.adoc#smc-integration[SMC Integration],
+xref:smu.adoc#sep-integration[SEP Integration]
+
+|[ ]
+|Connect external pin, bus, memory, eFuse, peripheral, and debug interfaces
+|Interface connectivity and tie-off audit complete
+|xref:smu.adoc#smc-integration[SMC Integration],
+xref:smu.adoc#dtp-integration[DTP Integration],
+xref:smu.adoc#sep-integration[SEP Integration]
+
+|[ ]
+|Verify boot and reset progression, including fuse sensing, memory repair or bypass, ROM execution, and SEP release when enabled
+|Successful boot and reset log including failure paths
+|xref:smu.adoc#smc-integration[SMC Integration],
+xref:smu.adoc#sep-integration[SEP Integration]
+
+|[ ]
+|Apply technology-mapping and CDC constraints; run integration-level verification
+|Lint, CDC/RDC, constraint, and integration-test reports archived
+|xref:prim.adoc#prim-cell-replacement[Prim Cell Replacement],
+xref:cdc.adoc#cdc-timing-constraints[CDC Timing Constraints],
+xref:ocah-home::motivation.adoc[Why Open Chiplet Atlas Harness]
+
+|[ ]
+|For each adopter-owned IP, select its trust and attachment class and complete the User IP integration checklist
+|User IP integration checklist completed per IP block
+|User IP integration checklist (see the _User IP Integration_ chapter)
+
+|===
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+[cols="<5%,<35%,<35%,<25%",options="header"]
+|===
+|Done |Integration gate |Minimum evidence |Reference
+
+|[ ]
+|Select the delivered hierarchy, enabled subsystems, and required configuration
+|Selected hierarchy and configuration record reviewed
+|<<smu-top-level-integration,SMU Top-Level Integration>>
+
+|[ ]
+|Assign the chiplet address envelope and program the SEP and SMC apertures
+|Approved non-overlapping address map; aperture CSRs verified in simulation
+|<<address-map-integration,Address Map Integration>>
+
+|[ ]
+|Connect clocks, resets, power-good, and configuration straps; follow the power-up sequence
+|Clock/reset/power review and sequencing test pass
+|<<smc-integration,SMC Integration>>, <<sep-integration,SEP Integration>>
+
+|[ ]
+|Connect external pin, bus, memory, eFuse, peripheral, and debug interfaces
+|Interface connectivity and tie-off audit complete
+|<<smc-integration,SMC Integration>>, <<dtp-integration,DTP Integration>>, <<sep-integration,SEP Integration>>
+
+|[ ]
+|Verify boot and reset progression, including fuse sensing, memory repair or bypass, ROM execution, and SEP release when enabled
+|Successful boot and reset log including failure paths
+|<<smc-integration,SMC Integration>>, <<sep-integration,SEP Integration>>
+
+|[ ]
+|Apply technology-mapping and CDC constraints; run integration-level verification
+|Lint, CDC/RDC, constraint, and integration-test reports archived
+|<<prim-cell-replacement,Prim Cell Replacement>>, <<cdc-timing-constraints,CDC Timing Constraints>>,
+OCA Standard Compliance (see Home: Why Open Chiplet Atlas Harness)
+
+|[ ]
+|For each adopter-owned IP, select its trust and attachment class and complete the User IP integration checklist
+|User IP integration checklist completed per IP block
+|User IP integration checklist (see the _User IP Integration_ chapter)
+
+|===
+endif::backend-pdf[]

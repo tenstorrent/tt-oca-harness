@@ -31,17 +31,17 @@ def _status_cards(summary: dict) -> str:
     regression = summary.get("regression", {})
     junit = summary.get("junit_xml", {})
     warnings = summary.get("warnings", {})
+    incomplete_runs = int(tests.get("incomplete_runs") or 0)
+    test_rate_detail = f"{tests.get('passing')} / {tests.get('total')} passing"
+    if incomplete_runs:
+        test_rate_detail += f"; {incomplete_runs} incomplete run(s) excluded"
     cards = [
         _card(
             "Flow Pass Rate",
             flows.get("pass_rate"),
             f"{flows.get('passing')} / {flows.get('total')} passing",
         ),
-        _card(
-            "Test Pass Rate",
-            tests.get("pass_rate"),
-            f"{tests.get('passing')} / {tests.get('total')} passing",
-        ),
+        _card("Test Pass Rate", tests.get("pass_rate"), test_rate_detail),
         _card(
             "Fail / Skip / Unknown",
             f"{tests.get('failing')} / {tests.get('skipped')} / {tests.get('unknown')}",
@@ -67,6 +67,9 @@ def _dut_rows(summary: dict) -> str:
         flow = str(row.get("flow") or "")
         flow_cell = link(report_href, flow) if report_href else fmt(flow)
         categories = ", ".join(row.get("categories") or [])
+        pass_rate = (
+            "incomplete run" if row.get("tests_completed") is False else fmt(row.get("pass_rate"))
+        )
         rows.append(
             "<tr>"
             f"<td>{flow_cell}</td>"
@@ -77,7 +80,7 @@ def _dut_rows(summary: dict) -> str:
             f"<td>{fmt(row.get('tests_failing'))}</td>"
             f"<td>{fmt(row.get('tests_skipped'))}</td>"
             f"<td>{fmt(row.get('tests_unknown'))}</td>"
-            f"<td>{fmt(row.get('pass_rate'))}</td>"
+            f"<td>{pass_rate}</td>"
             f"<td>{fmt(row.get('failed_tests'))}</td>"
             f"<td>{fmt(row.get('flaky_tests'))}</td>"
             f"<td>{fmt(row.get('coverage_total_percent'))}</td>"
@@ -250,6 +253,9 @@ def render_dashboard(summary: dict, history: dict | None = None) -> str:
         regression = (
             result.get("regression", {}) if isinstance(result.get("regression"), dict) else {}
         )
+        pass_rate = (
+            "incomplete run" if tests.get("completed") is False else fmt(tests.get("pass_rate"))
+        )
         rows.append(
             "<tr>"
             f"<td>{flow_cell}</td>"
@@ -258,7 +264,7 @@ def render_dashboard(summary: dict, history: dict | None = None) -> str:
             f'<td class="{fmt(status)}">{fmt(status)}</td>'
             f"<td>{fmt(tests.get('passing'))}</td>"
             f"<td>{fmt(tests.get('total'))}</td>"
-            f"<td>{fmt(tests.get('pass_rate'))}</td>"
+            f"<td>{pass_rate}</td>"
             f"<td>{fmt(len(regression.get('failed_tests') or []))}</td>"
             f"<td>{fmt(len(regression.get('flaky_tests') or []))}</td>"
             f"{coverage_cells}"

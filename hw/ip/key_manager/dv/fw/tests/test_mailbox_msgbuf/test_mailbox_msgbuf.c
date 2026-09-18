@@ -19,10 +19,8 @@
  *   firmware must restore inbound IRQ delivery so the main loop cannot wedge
  *   permanently in waitirq
  *
- * The multi-word inbound subtest specifically guards against the bug where the
- * ISR misinterprets `rom_msgbuf_can_accept_frame()` as a word count and drains
- * only one word, preventing a payloaded frame from ever becoming available to
- * the main loop.
+ * The multi-word inbound subtest checks that the ISR drains a whole payloaded
+ * frame; `rom_msgbuf_can_accept_frame()` answers 0 or 1, not a word count.
  *
  * Run with:
  *   make run_fw FW_TEST=test_mailbox_msgbuf
@@ -348,7 +346,7 @@ int main(void) {
     TEST_SUBTEST_START("Partial RX state with residual FIFO data must re-arm inbound IRQ");
     {
         /*
-         * Model the Phase-2 race post-state directly: the unit harness cannot
+         * Model the race post-state directly: the unit harness cannot
          * interleave SEP writes while `rom_isr_mailbox()` is mid-drain, so seed
          * the resulting stuck condition instead.
          *

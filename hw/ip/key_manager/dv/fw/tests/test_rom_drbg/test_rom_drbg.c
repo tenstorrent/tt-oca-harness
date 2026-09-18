@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_rom_drbg.c
- * @brief T020 - DRBG driver unit test
+ * @brief DRBG driver unit test
  *
  * Exercises rom_drbg_init(), rom_drbg_get_word(), and rom_drbg_get_block()
  * through the rom_drbg.h firmware API.
@@ -54,9 +54,8 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /* 3. rom_drbg_get_block: read 8 words into a buffer, all non-zero and not all identical.
-     * The peek-register bug (reading PREFETCH_DATA instead of DATA) causes every word to be
-     * the same held sample.  A real consuming read advances the sampler so the block must
-     * contain at least two distinct values. */
+     * A consuming DATA read advances the sampler; a PREFETCH_DATA (peek) read returns the
+     * same held sample, so the block must contain at least two distinct values. */
     TEST_SUBTEST_START("rom_drbg_get_block (8 words)");
     {
         uint32_t buf[8];

@@ -25,12 +25,12 @@ module sep #(
 
   output logic wdt_timer_rst_req_o, // SEP WDT bite reset request (active-high) to SMC reset unit
 
-  input  logic jtag_tck,    // JTAG clk
-  input  logic jtag_tms,    // JTAG TMS
-  input  logic jtag_tdi,    // JTAG tdi
-  input  logic jtag_trst_n, // JTAG Reset
-  output logic jtag_tdo,    // JTAG TDO
-  output logic jtag_tdoEn,  // JTAG Test Data Output enable
+  input  logic jtag_tck_i,   // JTAG clk
+  input  logic jtag_tms_i,   // JTAG TMS
+  input  logic jtag_tdi_i,   // JTAG tdi
+  input  logic jtag_trst_ni, // JTAG Reset
+  output logic jtag_tdo_o,   // JTAG TDO
+  output logic jtag_tdoEn_o, // JTAG Test Data Output enable
 
   // JTAG SEP Reset Control
   input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
@@ -40,12 +40,12 @@ module sep #(
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
 
   // external MPC halt/run interface
-  input  logic mpc_debug_halt_req, // Async halt request
-  input  logic mpc_debug_run_req,  // Async run request
-  input  logic mpc_reset_run_req,  // Run/halt after reset
+  input  logic mpc_debug_halt_req_i, // Async halt request
+  input  logic mpc_debug_run_req_i,  // Async run request
+  input  logic mpc_reset_run_req_i,  // Run/halt after reset
 
-  input  logic i_cpu_halt_req,      // Async halt req to CPU
-  input  logic i_cpu_run_req, // Async restart req to CPU
+  input  logic cpu_halt_req_i,      // Async halt req to CPU
+  input  logic cpu_run_req_i, // Async restart req to CPU
 
   // DFT
   // Default tie-offs when unused: test_en_i=1'b0, scan_rst_ni=1'b1
@@ -127,9 +127,8 @@ module sep #(
   input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
   output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
 
-  // External TRNG irq (PIC); alarm reserved for RAS (wired in sep_wrapper → sep)
+  // External TRNG irq (PIC)
   input logic ext_trng_irq_i,
-  input logic ext_trng_alarm_i,
 
   // Key Manager ROM/SRAM memory interfaces (hard macros at integration level)
   output km_intf_pkg::km_rom_mem_req_t   km_rom_mem_req_o,
@@ -239,10 +238,10 @@ module sep #(
   logic mpc_debug_halt_ack;
   logic mpc_debug_run_ack;
   logic debug_brkpt_status;
-  logic o_cpu_halt_ack;
-  logic o_cpu_halt_status;
-  logic o_debug_mode_status;
-  logic o_cpu_run_ack;
+  logic cpu_halt_ack_o;
+  logic cpu_halt_status_o;
+  logic debug_mode_status_o;
+  logic cpu_run_ack_o;
   logic [9:0] sep_efuse_debug;
   logic [5:0] sep_efuse_token_match_sip_debug;
   logic [5:0] sep_efuse_token_match_chiplet_debug;
@@ -584,10 +583,6 @@ NUM_EXT_DEMUX_PORTS
   assign km_unrecoverable_err_o = km_unrecoverable_err;
   assign km_recoverable_err_o   = km_recoverable_err;
 
-  // TRNG alarm: route to SoC RAS when integrated (stub drives 0 today)
-  logic unused_ext_trng_alarm_sink;
-  assign unused_ext_trng_alarm_sink = ext_trng_alarm_i;
-
   /////////////
   // SEP CPU //
   /////////////
@@ -597,27 +592,27 @@ NUM_EXT_DEMUX_PORTS
     .rst_ni                         (sep_cpu_reset_n),
     .dbg_rstb_i                     (dbg_rstb_i),
 
-    .jtag_tck                       (jtag_tck),    // JTAG clk
-    .jtag_tms                       (jtag_tms),    // JTAG TMS
-    .jtag_tdi                       (jtag_tdi),    // JTAG tdi
-    .jtag_trst_n                    (jtag_trst_n), // JTAG Reset
-    .jtag_tdo                       (jtag_tdo),    // JTAG TDO
-    .jtag_tdoEn                     (jtag_tdoEn),  // JTAG Test Data Output enable
+    .jtag_tck_i                     (jtag_tck_i),   // JTAG clk
+    .jtag_tms_i                     (jtag_tms_i),   // JTAG TMS
+    .jtag_tdi_i                     (jtag_tdi_i),   // JTAG tdi
+    .jtag_trst_ni                   (jtag_trst_ni), // JTAG Reset
+    .jtag_tdo_o                     (jtag_tdo_o),   // JTAG TDO
+    .jtag_tdoEn_o                   (jtag_tdoEn_o), // JTAG Test Data Output enable
 
     // external MPC halt/run interface
-    .mpc_debug_halt_req             (mpc_debug_halt_req), // Async halt request
-    .mpc_debug_run_req              (mpc_debug_run_req),  // Async run request
-    .mpc_reset_run_req              (mpc_reset_run_req),  // Run/halt after reset
-    .mpc_debug_halt_ack             (mpc_debug_halt_ack), // Halt ack
-    .mpc_debug_run_ack              (mpc_debug_run_ack),  // Run ack
-    .debug_brkpt_status             (debug_brkpt_status), // debug breakpoint
+    .mpc_debug_halt_req_i           (mpc_debug_halt_req_i), // Async halt request
+    .mpc_debug_run_req_i            (mpc_debug_run_req_i),  // Async run request
+    .mpc_reset_run_req_i            (mpc_reset_run_req_i),  // Run/halt after reset
+    .mpc_debug_halt_ack_o           (mpc_debug_halt_ack),   // Halt ack
+    .mpc_debug_run_ack_o            (mpc_debug_run_ack),    // Run ack
+    .debug_brkpt_status_o           (debug_brkpt_status),   // debug breakpoint
 
-    .i_cpu_halt_req                 (i_cpu_halt_req),      // Async halt req to CPU
-    .o_cpu_halt_ack                 (o_cpu_halt_ack),      // core response to halt
-    .o_cpu_halt_status              (o_cpu_halt_status),   // 1'b1 indicates core is halted
-    .o_debug_mode_status            (o_debug_mode_status), // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-    .i_cpu_run_req                  (i_cpu_run_req),       // Async restart req to CPU
-    .o_cpu_run_ack                  (o_cpu_run_ack),       // Core response to run req
+    .cpu_halt_req_i                 (cpu_halt_req_i),      // Async halt req to CPU
+    .cpu_halt_ack_o                 (cpu_halt_ack_o),      // core response to halt
+    .cpu_halt_status_o              (cpu_halt_status_o),   // 1'b1 indicates core is halted
+    .debug_mode_status_o            (debug_mode_status_o), // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+    .cpu_run_req_i                  (cpu_run_req_i),       // Async restart req to CPU
+    .cpu_run_ack_o                  (cpu_run_ack_o),       // Core response to run req
 
     .test_en_i                      (test_en_i),
 
@@ -1149,7 +1144,7 @@ NUM_EXT_DEMUX_PORTS
       ({sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugControlLaneWidth_A, $bits
-      ({8'b0, o_cpu_run_ack, o_debug_mode_status, o_cpu_halt_status, o_cpu_halt_ack, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
+      ({8'b0, cpu_run_ack_o, debug_mode_status_o, cpu_halt_status_o, cpu_halt_ack_o, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
           ) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugSipTokenLaneWidth_A, $bits
@@ -1217,10 +1212,10 @@ NUM_EXT_DEMUX_PORTS
 
     // [271:256] Debug control signals
     8'b0,  // [271:264] Reserved padding
-    o_cpu_run_ack,  // [263]
-    o_debug_mode_status,  // [262]
-    o_cpu_halt_status,  // [261]
-    o_cpu_halt_ack,  // [260]
+    cpu_run_ack_o,  // [263]
+    debug_mode_status_o,  // [262]
+    cpu_halt_status_o,  // [261]
+    cpu_halt_ack_o,  // [260]
     1'b0,
     debug_brkpt_status,  // [258]
     mpc_debug_run_ack,  // [257]

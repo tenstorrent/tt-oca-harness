@@ -49,7 +49,7 @@ ZEROER_POISON = bytes.fromhex("b1b2b3b4b5b6b7b8")
 
 class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
     """LIVE Zeroer axi_clk + reg_clk activity-driven gate/ungate triggered by one
-    zero operation (SMCCGP0_004, Skill 1.5)."""
+    zero operation (SMCCGP0_004)."""
 
     def __init__(self, name: str = "smc_cg_zeroer_activity_bringup_test_seq") -> None:
         super().__init__(name)

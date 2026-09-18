@@ -1,8 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Leaves reach into the design hierarchically, and this scope decides how
+// far. The module list matches smu_public_scope.vlt plus smu_wrapper itself:
+// the same design, one level deeper here because u_dut is the wrapper rather
+// than smu.
+
 `verilator_config
 public_flat_rw -module "smu_wrapper_uvm_top" -var "*"
 // The shared AXI VIP interface on the outbound SMN boundary: cocotb binds the
 // slave agent to its members.
 public_flat_rw -module "ocah_axi_if" -var "*"
+public_flat_rw -module "smu_wrapper" -var "*"
+public_flat_rw -module "smu" -var "*"
+public_flat_rw -module "axi_iw_converter" -var "*"
+public_flat_rw -module "dtp" -var "*"
+public_flat_rw -module "jtag_intf_unit" -var "*"
+public_flat_rw -module "jtag_stap" -var "*"
+public_flat_rw -module "jtag_ptap" -var "*"
+public_flat_rw -module "smc" -var "*"
+public_flat_rw -module "smc_base" -var "*"
+public_flat_rw -module "smc_fabric" -var "*"
+public_flat_rw -module "smc_local_fabric" -var "*"
+public_flat_rw -module "smc_local_xbar" -var "*"
+public_flat_rw -module "smc_internal_axi_lite_xbar" -var "*"
+public_flat_rw -module "smc_peripherals" -var "*"
+public_flat_rw -module "smc_periph_axi_lite_xbar" -var "*"
+public_flat_rw -module "smc_efuse_wrapper" -var "*"
+public_flat_rw -module "efuse_interface_controller" -var "*"
+public_flat_rw -module "smc_cpu_wrapper" -var "*"
+public_flat_rw -module "smc_4core_cpu" -var "*"

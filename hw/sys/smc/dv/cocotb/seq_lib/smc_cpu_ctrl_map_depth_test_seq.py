@@ -13,17 +13,15 @@ symbol from ``hw/sys/smc/regs/gen/c/blocks/smc_base_config.h`` -- never a hand
 literal and never an address computed as ``BASE_ADDR + <offset>``. So every read
 verifies decode *and* spec-defined reset content.
 
-There is no row addressing ``0xC001_0050``. It is not
-"reserved/open-bus space within the block window":
-``SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR``
-is ``0xC0010000`` and ``SMC_TOP_SMC_BASE_CONFIG_SIZE`` is ``0x0000004C``
+``SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR`` is ``0xC0010000`` and
+``SMC_TOP_SMC_BASE_CONFIG_SIZE`` is ``0x0000004C``
 (``hw/sys/smc/regs/gen/c/smc_addr.h:108-109``), so the window ends at
-``0xC001004B`` and ``0xC0010050`` is outside it. Undecoded space reads back
-``0x00000000``, which is exactly what the row expected, so it could not fail on
-any RTL while logging a register-shaped name that names no register
-(``[ADDRESS-FROM-AUTHORITATIVE-MAP]``). ``REGION_SIZE`` is used instead: a
-real register of the same block with a non-zero generated reset, so the row
-fails if the fabric ever stops decoding it.
+``0xC001004B``. Undecoded space above it reads back ``0x00000000``, so a row
+that expected 0 there could not fail on any RTL while logging a register-shaped
+name that names no register (``[ADDRESS-FROM-AUTHORITATIVE-MAP]``); every row
+therefore addresses a register inside the window, and ``REGION_SIZE`` -- a real
+register of the same block with a non-zero generated reset -- fails if the
+fabric ever stops decoding it.
 """
 
 from __future__ import annotations
@@ -76,7 +74,7 @@ CPU_MAP_READS = [
 
 
 class smc_cpu_ctrl_map_depth_test_seq(SmcCsrSeq):
-    """Cover SMC_BASE_CONFIG map/hang-detector CSRs until firmware traffic is public."""
+    """Read the SMC_BASE_CONFIG map/hang-detector CSRs at their generated resets over SEP_IN."""
 
     def __init__(self, name: str = "smc_cpu_ctrl_map_depth_test_seq") -> None:
         super().__init__(name)

@@ -16,7 +16,7 @@ from cocotbext.axi.axil_ram import AxiLiteRamRead, AxiLiteRamWrite
 from cocotbext.axi.constants import AxiProt, AxiResp
 from cocotbext.axi.memory import Memory
 
-from .ocah_axi_slave_driver import OcahFaultMixin
+from .ocah_axi_slave_driver import OcahAxiResetGate, OcahFaultMixin
 
 __all__ = ["OcahAxiLiteSlaveDriver"]
 
@@ -125,6 +125,19 @@ class OcahAxiLiteSlaveDriver(Memory, OcahFaultMixin):
             fault_owner=self,
         )
         self.init_signals()
+        self.reset_gate = OcahAxiResetGate(
+            (
+                self.write_if.aw_channel,
+                self.write_if.w_channel,
+                self.write_if.b_channel,
+                self.read_if.ar_channel,
+                self.read_if.r_channel,
+            ),
+            clock,
+            reset,
+            reset_active_level=reset_active_level,
+            log=self.log,
+        )
 
     def init_signals(self) -> None:
         """Drive the B/R payload signals to a deterministic 0 idle.

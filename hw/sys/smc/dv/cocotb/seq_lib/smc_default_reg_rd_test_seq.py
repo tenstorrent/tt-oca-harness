@@ -7,13 +7,12 @@ side-effect-free internal SMC CSRs through ``sep_axi_in_req_i`` and checks
 that every selected address returns an OKAY AXI response **and** — wherever the
 generated register map defines one — the exact reset value for that register.
 
-Access-port identity (do not restate this as "SYS AXI"): the test starts this
-sequence on ``env.sys_axi_agent``, whose driver declares ``bus_prefix =
-"s_axi"`` / ``bus_name = "SEP_IN AXI"`` (``env/smc_sys_axi_agent.py``), and
-``tb_top.sv`` wires the top-level ``s_axi_*`` pins into
-``smc.sep_axi_in_req_i``. The SYS_IN port (``sys_axi_*`` -> ``sys_axi_in_req_i``)
-is driven by the separate ``env.sys_in_axi_agent``, which this test never starts,
-so the historical ``sys_axi_agent`` handle name is misleading.
+Access-port identity: the test starts this sequence on ``env.sys_axi_agent``,
+whose driver declares ``bus_prefix = "s_axi"`` / ``bus_name = "SEP_IN AXI"``
+(``env/smc_sys_axi_agent.py``), and ``tb_top.sv`` wires the top-level
+``s_axi_*`` pins into ``smc.sep_axi_in_req_i``. The SYS_IN port (``sys_axi_*``
+-> ``sys_axi_in_req_i``) is driven by the separate ``env.sys_in_axi_agent``,
+which this test never starts.
 
 What that does and does not prove: every register read below lives inside
 ``smc_misc_wrap`` and is reached over the same internal register fabric from

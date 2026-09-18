@@ -16,6 +16,15 @@ from smc_base_test import smc_base_test
 class smc_smbus_alert_suspend_test(smc_base_test):
     """I2C0 target SMBALERT + I2C1 ARA/IRQ + SMBSUS sideband."""
 
+    required_evidence = (
+        "CHK-SMBUS-ALERT-SUS-ALERT",
+        "CHK-SMBUS-ALERT-SUS-ARA",
+        "CHK-SMBUS-ALERT-SUS-BASIC",
+        "CHK-SMBUS-ALERT-SUS-CLR",
+        "CHK-SMBUS-ALERT-SUS-SUSPEND",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -29,8 +38,8 @@ class smc_smbus_alert_suspend_test(smc_base_test):
             SmcProtocolVipKind.I2C,
             type(self).__name__,
             # Straight-line accesses plus one mandatory read from each status
-            # poll. Measured 43 on seeds 1-3; the remainder above this bound is
-            # poll iterations that vary with timing.
+            # poll; anything above this bound is poll iterations that vary with
+            # timing.
             #
             # No expected_bytes/observed_bytes: `_host_ara_read`'s result is
             # compared against `_ARA_REPLY` and raises in the sequence, so a

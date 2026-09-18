@@ -3,7 +3,7 @@
 """Sequence for smc_i2c_master_target_test / smc_i2c_p1_rdwr_protocol_test.
 
 U4-2: DUT OpenTitan I2C0 host writes a byte into a cocotb EEPROM slave on
-``tb_i2c0_*`` pads (not VIP↔VIP). Also keeps the OVRD pin-level gate.
+``tb_i2c0_*`` pads (not VIP↔VIP). Also proves the OVRD register -> pad gate.
 
 U4-2 SMBus (software framing on OT I2C; no HW PEC engine):
   * DUT host write-with-PEC to EEPROM
@@ -44,9 +44,8 @@ from .smc_addr_map import (
 
 # Generated PeakRDL C headers for the OpenTitan-derived I2C core and for the SMC
 # I2C wrapper's control block. Field masks and bit positions below are imported
-# by symbol from these, exactly as the register addresses already are, so a
-# regenerated map moves this sequence with it instead of leaving hand-copied bit
-# encodings behind ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+# by symbol from these, like the register addresses, so a regenerated map moves
+# this sequence with it ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _I2C_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
 _I2C_CTRL_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c_ctrl.h"
 
@@ -169,6 +168,9 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.clock_gate_value: int = 0
         self.dut_host_write_ok: bool = False
+        #: START/STOP counts the EEPROM VIP framed for the repeated-START pair.
+        self.dut_host_restart_starts: int = -1
+        self.dut_host_restart_stops: int = -1
         self.dut_smbus_pec_ok: bool = False
         self.dut_smbus_ara_ok: bool = False
         # Bytes MEASURED on the DUT side of the bus (EEPROM VIP memory and
@@ -246,7 +248,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
 
     async def _program_i2c0_timing(self) -> None:
         """Load OpenTitan host timing (FW standard-mode defaults)."""
-        # Conservative defaults from fw/smc/common/i2c_opentitan.c
+        # Conservative TIMING defaults.
         await self.csr_write("I2C0_TIMING0", I2C0_TIMING0, _pack_timing0(0x1A, 0x32))
         await self.csr_write("I2C0_TIMING1", I2C0_TIMING1, _pack_timing1(2, 2))
         await self.csr_write("I2C0_TIMING2", I2C0_TIMING2, _pack_timing2(5, 4))
@@ -270,7 +272,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 f"{label}: DUT I2C0 host never left hostidle after FMT push "
                 f"(STATUS=0x{status:08x} CONTROLLER_EVENTS=0x{cevents:08x})"
             )
-        # VCS completes a 3-byte host write in ~40 us; allow 2 ms of sim time.
+        # Completion bound: 200 polls x 10 us of sim time, well above a 3-byte host transfer.
         for _ in range(200):
             status = await self.csr_read(f"{label}_STATUS", I2C0_STATUS)
             if status & I2C_STATUS_HOSTIDLE:
@@ -298,18 +300,28 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         await self.csr_write("I2C0_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
 
         base_stops = self._i2c_slave.stops
+        base_starts = self._i2c_slave.starts
         addr_byte = (_I2C_EEPROM_ADDR << 1) | 0  # write
-        await self.csr_write(
-            "I2C0_FDATA_START_ADDR",
-            I2C0_FDATA,
-            _fdata(addr_byte, I2C_FDATA_START),
-        )
-        await self.csr_write("I2C0_FDATA_OFFSET", I2C0_FDATA, _fdata(_I2C_WRITE_OFFSET))
-        await self.csr_write(
-            "I2C0_FDATA_DATA_STOP",
-            I2C0_FDATA,
-            _fdata(_I2C_WRITE_BYTE, I2C_FDATA_STOP),
-        )
+        # Two write frames joined by a repeated START: the first frame's last
+        # entry carries no STOP, so the second frame's FDATA.START is issued
+        # with the transaction still open and the controller has to release SDA
+        # and re-drive the START condition rather than closing the bus. The
+        # OpenTitan controller has no separate restart control -- the same
+        # FDATA.START bit is a repeated START when a transaction is already in
+        # flight (i2c_controller_fsm.sv) -- so the only difference from the
+        # single-frame version is the dropped STOP.
+        #
+        # Both frames address the same EEPROM offset with the same byte, so the
+        # payload expectation below is unchanged and the new evidence is purely
+        # the framing: two STARTs against one STOP.
+        for label, flags in (
+            ("I2C0_FDATA_START_ADDR", I2C_FDATA_START),
+            ("I2C0_FDATA_RESTART_ADDR", I2C_FDATA_START),
+        ):
+            await self.csr_write(label, I2C0_FDATA, _fdata(addr_byte, flags))
+            await self.csr_write(f"{label}_OFFSET", I2C0_FDATA, _fdata(_I2C_WRITE_OFFSET))
+            stop = I2C_FDATA_STOP if label == "I2C0_FDATA_RESTART_ADDR" else 0
+            await self.csr_write(f"{label}_DATA", I2C0_FDATA, _fdata(_I2C_WRITE_BYTE, stop))
 
         await self._wait_hostidle("DUT_HOST_WRITE")
         cevents = await self.csr_read("DUT_HOST_WRITE_CEVENTS", I2C0_CONTROLLER_EVENTS)
@@ -332,6 +344,29 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             f"DUT I2C0 host write: slave mem 0x{got.hex()}, "
             f"expected 0x{_I2C_WRITE_BYTE:02X} "
             f"(CONTROLLER_EVENTS=0x{cevents:08x})"
+        )
+        # Framing check for the repeated START. Exact on both counters: two
+        # STARTs say the second frame opened, one STOP says the bus was never
+        # released between them. A controller that inserted a STOP -- the
+        # behaviour every other I2C frame in this package produces -- reports
+        # two STOPs here and fails, and a controller that dropped the second
+        # frame reports one START and fails.
+        new_starts = self._i2c_slave.starts - base_starts
+        new_stops = self._i2c_slave.stops - base_stops
+        assert new_starts == 2 and new_stops == 1, (
+            f"DUT I2C0 repeated START: the EEPROM VIP framed {new_starts} "
+            f"START(s) and {new_stops} STOP(s) on tb_i2c0_*, expected exactly "
+            f"2 STARTs against 1 STOP for two write frames joined by a "
+            f"repeated START"
+        )
+        self.dut_host_restart_starts = new_starts
+        self.dut_host_restart_stops = new_stops
+        cocotb.log.info(
+            "CHK-I2C0-HOST-REPEATED-START: %d STARTs against %d STOP framed on "
+            "tb_i2c0_* for the two write frames, so the second frame's "
+            "FDATA.START was issued with the transaction still open",
+            new_starts,
+            new_stops,
         )
         self.dut_host_write_ok = True
         cocotb.log.info(

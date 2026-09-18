@@ -15,9 +15,9 @@ from .smc_efuse_vip_utils import prove_efuse_bank_axil_activity
 # efuse model presents 0xF0 while VCS reads 0x0), so no single value assertion
 # holds on both.
 #
-# Each register is addressed by its own generated symbol rather than
-# base + 0x4/0x8/0xC. Three of the five expectations are 0, which is also what
-# unmapped space returns, so a rotted offset would pass rather than fail here.
+# Each register is addressed by its own generated symbol: several expectations
+# are 0, which is also what unmapped space returns, so a wrong offset would pass
+# rather than fail here.
 CHIP_CONFIG_EFUSE_READS = [
     ("VERSION_LO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR"), 0x0001_00A0),
     ("VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR"), 0),

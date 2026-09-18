@@ -24,8 +24,7 @@ class ocah_axi_slave_driver extends uvm_component;
 
   ocah_axi_slave_config cfg;
 
-  // Sparse backing memory: unwritten bytes read as zero (matching the
-  // zero-initialized SV RAM responder).
+  // Sparse backing memory: unwritten bytes read as zero.
   protected bit [7:0] m_mem[bit [63:0]];
 
   // Statistics (completed bursts).

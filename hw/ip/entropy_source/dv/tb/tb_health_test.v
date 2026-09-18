@@ -558,7 +558,7 @@ module tb_health_test ();
       $display("=== Phase 6: Status Bit Mapping Test ===");
       total_tests_run = total_tests_run + 1;
 
-      $display("Testing status bit assignments (corrected to match RTL):");
+      $display("Testing status bit assignments:");
       $display("  status_o[0] = Repetition Test");
       $display("  status_o[1] = Reserved");
       $display("  status_o[2] = Reserved");

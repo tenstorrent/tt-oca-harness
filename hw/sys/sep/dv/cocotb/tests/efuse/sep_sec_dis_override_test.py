@@ -14,8 +14,8 @@ force ``sec_dis``.
 
 A SEC_DIS match does not by itself boot SEP. ``reset_n = fuse_sense_done
 && rst_ni && ext_boot_seq_done_i`` (``efuse_interface_controller.sv``) has
-no SEC_DIS term, and the owner ruling on issue 1462 is that the release is
-a separate DTP ``sep_reset_n`` TDR step. So the first match is presented
+no SEC_DIS term; the release is a separate DTP ``sep_reset_n`` TDR step. So
+the first match is presented
 after ``release_no_cpu_reset`` and before ``sep_fuse_sense_done_o``, and
 with ``ext_boot_seq_done_i`` already 1 the reset probes must stay 0. The
 token is written over the CPU-LSU AXI MMR (xbar and eFuse sit on
@@ -88,8 +88,8 @@ class sep_sec_dis_override_test(sep_base_test):
 
         ``reset_n = fuse_sense_done && rst_ni && ext_boot_seq_done_i``
         (``hw/ip/efuse/rtl/efuse_interface_controller.sv``) carries no
-        SEC_DIS term. Issue 1462: the release is a DTP ``sep_reset_n`` TDR
-        step, not a side effect of the match. ``ext_boot_seq_done_i`` is
+        SEC_DIS term; the release is a DTP ``sep_reset_n`` TDR step, not a
+        side effect of the match. ``ext_boot_seq_done_i`` is
         already 1, so sense is the only term still holding the reset --
         this checker fails if SEC_DIS were ever to bypass it.
         """

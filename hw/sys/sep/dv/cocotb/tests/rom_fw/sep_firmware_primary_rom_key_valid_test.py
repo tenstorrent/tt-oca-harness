@@ -14,25 +14,23 @@ so "it booted" is not accepted as the result here. Four independent channels are
 required, and none of them is boot completion:
 
   * ``PUBK_SEL=0x00000000`` -- the selector the ROM read out of the primary
-    manifest (``manifest_crypto.c``), pinned to EXACTLY ONE occurrence. Be
+    manifest, pinned to EXACTLY ONE occurrence. Be
     honest about what that count is worth: with a single slot attempt and no retry
     it is structurally guaranteed by the ROM's control flow, so it is redundant
     insurance rather than the load-bearing check. The failure mode it names -- a
     second slot reaching key selection -- is already caught independently by the
     forbidden backup ``MANIFEST_SRC`` and by the device-side backup-span check
     below. The weight here sits on the ORDERING and on the device record;
-  * ``PUBK_REVOKE=0x00000000`` -- the fuse word ``check_pubkey_revoked`` read
-    (``manifest_crypto.c``), also exactly once, proving the revocation
+  * ``PUBK_REVOKE=0x00000000`` -- the fuse word the revocation check read, also exactly once, proving the revocation
     check ran and PERMITTED this slot rather than being skipped. This marker alone
-    does NOT prove the ROM-key arm was taken: ``check_pubkey_revoked`` is called
-    from the fuse-key arm too (``manifest_crypto.c``). What excludes that arm is
-    the ``PUBK_SEL=0x00000000`` value -- ``{index:4, selection:3}``
-    (``manifest.h``) makes 0x0000 uniquely "selection=PUBK_SEL_ROM_KEY,
-    index=0" -- together with ``BAD_KEY_SEL`` and ``FUSE_KEY_EMPTY`` being
+    does NOT prove the ROM-key arm was taken: the revocation check is called
+    from the fuse-key arm too. What excludes that arm is
+    the ``PUBK_SEL=0x00000000`` value -- slot 0 is ROM classical key 0,
+    index=0" -- together with ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` being
     forbidden;
-  * ``RSA_VERIFY_START`` then ``SIG_VALID`` then ``CRYPTO_VALIDATE_OK``, in that
+  * ``RSA_EXEC`` then ``RSA_VERIFY_OK`` then ``MANIFEST_OK``, in that
     order and after the selector echo -- the modulus reached the verifier and the
-    signature really verified (``manifest_crypto.c``,), which only
+    signature really verified (,), which only
     happens once the index bound, the revocation check and the digest bind have all
     passed;
   * the DEVICE side: not one read inside the backup slot's span. The console says
@@ -40,62 +38,55 @@ required, and none of them is boot completion:
     the ROM cannot fake, and it is the only channel that can say "the PRIMARY is
     what booted". A silent failover also reaches ``MANIFEST_OK``.
 
-MATCHED PAIR, AND IT IS BYTE-IDENTICAL BY CONSTRUCTION. This testcase and
-``sep_firmware_primary_pubkey_rom_0_revoked_key_test`` build their flash image from
-the SAME single call, ``select_primary_rom_slot(buf, 0)``, which is a no-op because
-the shipped primary already selects slot 0
-(``configs/secure_boot_test.yaml:43-45``). Both therefore run bytes identical to
-the shipped ``bootrom/prod/build/secure_boot.bin``, and the ONLY difference between
-them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear boots; bit 0 set refuses
-BOTH manifests with ``KEY_REVOKED idx=0x00000000`` and never reaches
-``RSA_VERIFY_START``. Nothing else about revocation needs arguing.
+Matched pair, And it is byte-Identical by construction. This testcase and
+``sep_firmware_primary_pubkey_rom_0_revoked_key_test`` build their flash image from the
+SAME single call, ``select_primary_rom_slot(buf, 0)``, which is a no-op because the
+shipped primary already selects slot 0 (``configs/secure_boot_test.yaml:43-45``). Both
+therefore run bytes identical to the shipped ``bootrom/prod/build/oca_secure_boot.bin``, and
+the ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear
+boots; bit 0 set refuses BOTH manifests with the revocation error code and never reaches
+``RSA_EXEC``. Nothing else about revocation needs arguing.
 
-WHAT THIS SHARES WITH ``sep_rom_ot_secure_boot_test``, AND WHAT IT ADDS. The flash
-image is the same golden ``secure_boot.bin``, so the overlap is stated rather than
-hidden. Three things differ. That test runs under the default zero OTP, i.e.
-lifecycle TEST_DEV, where secure boot is enforced only because the manifest asks
-(``sep_rom_ot_secure_boot_test.py``); this one runs under a committed PROD
-preload, where enforcement no longer DEPENDS on the manifest flag. It does not
-attribute enforcement to the lifecycle, and must not claim to: the shipped primary
-also sets ``FLAG_ARGS_BIT_SECURE_BOOT`` (visible as ``secure_boot_bit=1`` in the
-stimulus log line), so under PROD both conditions of ``secure_boot_enabled()``
-(``manifest_load.c``) hold at once and no observable separates them.
-Attributing enforcement to the lifecycle alone needs the manifest flag CLEARED,
-which is ``sep_firmware_enforced_secure_boot_flow_test``'s job, not this one's.
-Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto chain reached
-``SIG_VALID`` and nothing at all about key selection; this one adds the selector and
-revocation echoes with exact counts and their ordering against the verifier. Third,
-that test has no device-side assertion; this one requires the backup span to be
-untouched. The narrowing is real and is disclosed: slot 0 is the only
-index that is valid HERE, because the only RSA signing key that ships is
-``rsa_private_key.dev0.pem``
-(``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/``, which also holds an
-unusable ``ec_private_key.pem``) and only slot 0's
-digest is populated (``key_digests.c``). The reference draws a valid index at
-random from ``[0..5]`` and re-signs with that slot's own private key,
-though it narrows to ``[0]`` itself on a release build.
+WHAT THIS SHARES WITH ``sep_rom_ot_secure_boot_test``, And what it adds. The flash image
+is the same golden ``secure_boot.bin``, so the overlap is stated rather than hidden.
+Three things differ. That test runs under the default zero OTP, i.e. lifecycle TEST_DEV,
+where secure boot is enforced only because the manifest asks
+(``sep_rom_ot_secure_boot_test.py``); this one runs under a committed PROD preload,
+where enforcement no longer DEPENDS on the manifest flag. It does not attribute
+enforcement to the lifecycle, and must not claim to: the shipped primary also sets
+``FLAG_ARGS_BIT_SECURE_BOOT`` (visible as ``secure_boot_bit=1`` in the stimulus log
+line), so under PROD the lifecycle and the manifest both ask for secure boot at once and no
+observable separates them. Attributing enforcement to the lifecycle alone needs the
+manifest flag CLEARED, which is ``sep_firmware_enforced_secure_boot_flow_test``'s job,
+not this one's. Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto chain
+reached ``RSA_VERIFY_OK`` and nothing at all about key selection; this one adds the
+selector and revocation echoes with exact counts and their ordering against the
+verifier. Third, that test has no device-side assertion; this one requires the backup
+span to be untouched. The narrowing is real and is disclosed: slot 0 is the index this
+member covers because it is the one the shipped image is signed against, so it needs no
+graft. Slots 1-5 have their own keys
+(``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{1..5}.pem``) and their own
+digests, and the revoke family covers them by grafting; a positive counterpart for each
+would add a second image per slot and prove the same property six times.
 
-PLATFORM ADAPTATION -- MARKER. The reference asserts the ROM-key path POSITIVELY,
-with ``STATUS: USING_ROM_KEY`` (``sep_firmware_secure_boot_test.py``). This ROM
-*defines* ``SEP_MSG_USING_ROM_KEY`` (``bootrom/prod/include/status_values.h:97``,
+Markers. This ROM *defines* ``SEP_MSG_USING_ROM_KEY``
+(``bootrom/prod/include/status_values.h:97``,
 0x7f) and never emits it -- no ``report_status`` call for it exists anywhere under
 ``bootrom/prod/src`` -- so there is no UNIQUE architected code for the ROM-key path,
 which is exactly what a positive key-selection testcase needs. The precise
 statement, because "no architected evidence at all" would be too strong:
-``report_status(STATUS_TYPE_INFO, SEP_MSG_VALIDATE_CHECK)``
-(``manifest_crypto.c``) is emitted ONLY on the ROM-key arm, so an INFO 0x207
+``report_status(STATUS_TYPE_INFO, SEP_MSG_VALIDATE_CHECK)`` is emitted ONLY on the ROM-key arm, so an INFO 0x207
 count could distinguish the two arms indirectly -- but 0x207 is also reported
 unconditionally and again as DEBUG, so it is a count
 argument rather than a marker, and this testcase does not use it. The console
-echoes above are the substitution. The reference's other checkpoint tokens
-for this scenario are unavailable for the same reason:
-``SEP_MSG_START_MANIFEST_VALIDATION``, ``SEP_MSG_START_PAYLOAD_VALIDATION`` and
-``SEP_MSG_PAYLOAD_VALIDATED`` also have zero emitters here.
+echoes above carry it instead. ``SEP_MSG_START_MANIFEST_VALIDATION``,
+``SEP_MSG_START_PAYLOAD_VALIDATION`` and ``SEP_MSG_PAYLOAD_VALIDATED`` likewise
+have zero emitters here.
 
-Needs ``+sep_crypto_edn_force``: the primary is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the primary is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut
 grants OTBN's EDN handshakes only; the RSA assertions are untouched, so
-``SIG_VALID`` still means the signature really verified.
+``RSA_VERIFY_OK`` still means the signature really verified.
 """
 
 from __future__ import annotations
@@ -119,8 +110,8 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# The only populated entry in key_digests.c, and the slot the shipped image
-# is signed against (configs/secure_boot_test.yaml:43-45).
+# The slot the shipped image is signed against, so the positive case needs no graft
+# (configs/oca_secure_boot_test.yaml). All six slots carry a digest.
 _VALID_SLOT = 0
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_VALID_SLOT:08x}"
 _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"
@@ -128,9 +119,8 @@ _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"
 _LC_PROD = "LC=PROD"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_RSA_START = "RSA_VERIFY_START"  # manifest_crypto.c
-_SIG_VALID = "SIG_VALID"  # manifest_crypto.c
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"  # manifest_crypto.c
+_RSA_START = "RSA_EXEC"  #
+_RSA_VERIFY_OK = "RSA_VERIFY_OK"
 _BL1_COPIED = "BL1_COPIED"  # rom_handoff.c
 _BL1_JUMP = "BL1_JUMP="  # rom_handoff.c
 
@@ -141,6 +131,8 @@ _SBOOT_OFF = "SBOOT_OFF"
 _ANY_MANIFEST_ERR = "MANIFEST_ERR="
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"
+
+_CRYPTO_OK = "MANIFEST_OK"
 
 
 @pyuvm.test()
@@ -154,12 +146,12 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         _PUBK_SEL_ECHO,
         _REVOKE_ECHO,
         _RSA_START,
-        _SIG_VALID,
+        _RSA_VERIFY_OK,
         _CRYPTO_OK,
         _BL1_COPIED,
         _BL1_JUMP,
     )
-    # Every rejecting arm of validate_signature, plus the failover evidence. This is
+    # Every rejecting arm of the signature path, plus the failover evidence. This is
     # a positive test, so none of them may fire: seeing any one would mean the boot
     # completed in spite of a key-selection complaint, or from a slot this testcase
     # did not select.
@@ -169,16 +161,14 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         _BACKUP_SRC,
         _ANY_MANIFEST_ERR,
         _ALL_FAILED,
-        "BAD_SIG_TYPE=",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "KEY_REVOKED",
-        "VERSION_ROLLBACK",
-        "RSA_VERIFY_FAIL",
-        "CRYPTO_FAIL=",
+        "PUBK_ALGO_UNSUPPORTED",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
+        "PUBK_UNAUTHORIZED",
+        "RSA_PKCS1_FAIL",
+        "MANIFEST_ERR=",
     )
 
     # --- stimulus ----------------------------------------------------------
@@ -203,9 +193,9 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         )
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection (manifest_crypto.c:364 then :369) and would "
-            f"reject the primary before the key path is reached"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         self.logger.info(
             "CHK-STIMULUS-EFUSE: LC raw=0x%x (PROD), SBOOT_DIS=%d, BL1_VERSION=0x%x, "
@@ -255,7 +245,7 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         i_sel = index_of(_PUBK_SEL_ECHO)
         i_revoke = index_of(_REVOKE_ECHO)
         i_rsa = index_of(_RSA_START)
-        i_sig = index_of(_SIG_VALID)
+        i_sig = index_of(_RSA_VERIFY_OK)
         i_ok = index_of(_CRYPTO_OK)
 
         # CHK-KEYSEL-RAN: key selection is the feature under test, so it must have
@@ -265,13 +255,13 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         assert 0 <= i_psrc < i_sel < i_revoke < i_rsa < i_sig < i_ok, (
             f"key selection did not run on the primary in the architected order: "
             f"primary@{i_psrc} -> {_PUBK_SEL_ECHO}@{i_sel} -> {_REVOKE_ECHO}"
-            f"@{i_revoke} -> {_RSA_START}@{i_rsa} -> {_SIG_VALID}@{i_sig} -> "
+            f"@{i_revoke} -> {_RSA_START}@{i_rsa} -> {_RSA_VERIFY_OK}@{i_sig} -> "
             f"{_CRYPTO_OK}@{i_ok}. Console: {console}"
         )
         # Exactly once each. The backup is never read in this scenario, so a second
         # occurrence of any of these would mean a slot this testcase did not select
         # also reached key selection or the verifier.
-        for marker in (_PUBK_SEL_ECHO, _REVOKE_ECHO, _RSA_START, _SIG_VALID):
+        for marker in (_PUBK_SEL_ECHO, _REVOKE_ECHO, _RSA_START, _RSA_VERIFY_OK):
             n = sum(1 for line in console if marker in line)
             assert n == 1, (
                 f"{marker} appeared {n} times, expected exactly 1 (the primary's). "
@@ -288,7 +278,7 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
             i_revoke,
             _RSA_START,
             i_rsa,
-            _SIG_VALID,
+            _RSA_VERIFY_OK,
             i_sig,
             _CRYPTO_OK,
             i_ok,

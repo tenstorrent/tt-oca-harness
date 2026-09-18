@@ -41,6 +41,11 @@ partial read costs far more time than a full one.
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
+`make doc-trm-serve` builds a TRM-first preview with the other documentation
+products included, since the TRM links to their pages. Its Make dependencies
+and container equivalent are defined in `doc/trm/doc.mk` and
+`scripts/docker-run.sh`; `antora-trm-playbook.yml` selects the content.
+
 ## Environment Setup
 
 The `nonfree/` companion is not part of the open repository. If you have it, it sets the
@@ -286,14 +291,14 @@ Whatever the testbench, these hold:
 
 | Path | Contents |
 |---|---|
-| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
+| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (`cross_trigger/`, `jtag/`, `uart/` hold sub-blocks) |
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
 | `flows/` | Lint, format and synthesis flow makefiles |
-| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone |
+| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |
 | `nonfree/` | Proprietary companion repository, present only for those with access |
@@ -335,6 +340,11 @@ Three kinds of comment are not worth their space.
   edit.
 - **Justification.** Arguing that a change is correct addresses a reviewer who is gone once the
   pull request merges.
+
+Present tense does not save a breadcrumb. A comment that lists side effects the new
+control flow no longer has is still a breadcrumb. A plan that asks for that comment
+does not override this section. After adding a comment, re-read it against these bans
+and delete it if it fails.
 
 Where a test can carry the constraint instead, prefer the test: it fails when the constraint is
 broken, and a comment does not.
@@ -456,8 +466,10 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR.
-Ingest assigns the opener when Assignees is empty. The curator rewrites a
-PR title only when it is not already this form.
+Ingest assigns the opener when Assignees is empty. It requests a reviewer
+from GitHub suggestions, then a linked-issue assignee, then recent committers
+on the touched paths, then the reviewer pool in `.github/issue-taxonomy.yml`.
+The curator rewrites a PR title only when it is not already this form.
 
 ### Paired pull requests with the `nonfree` companion
 
@@ -518,8 +530,12 @@ Each of these is an auto-generated alias for the `ocah-`-prefixed target of the 
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
 plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
-Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
-`scripts/ci/diff_class.py` is the classifier.
+The internal GitLab mirror loads its parent pipeline from a separately access-controlled
+configuration project rather than from this repository, so a pull request cannot replace the
+bootstrap that obtains the optional companion. Change the trusted configuration through its own
+review path. That parent executes the `main` revision of `scripts/ci/diff_class.py`, rather than
+the revision under test, when deciding whether a documentation-only change can skip the nonfree
+child.
 
 Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
 They share the same base inventory but use separate exclusions, so a formatter limitation does

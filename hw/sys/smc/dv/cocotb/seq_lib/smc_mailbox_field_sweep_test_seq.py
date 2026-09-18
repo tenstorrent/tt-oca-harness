@@ -5,9 +5,8 @@
 Reads every readable register of mailboxes 0-3 on the outbound port and on the
 inbound port, to prove each mailbox's field decode is alive. A read that
 mis-decodes answers DECERR or hangs, and `csr_read` routes through the
-scoreboard's `item.resp_ok` assert, so it fails. `csr_read_bounded` is
-deliberately not used: it would tolerate a dead field and make the sweep
-vacuous.
+scoreboard's `item.resp_ok` assert, so it fails; `csr_read_bounded` would
+tolerate a dead field and make the sweep vacuous.
 
 **The swept set is derived from the generated register map, not listed here.**
 `_swept_fields` enumerates every `SMC_MAILBOX_<port>_MAILBOX_0_*_REG_OFFSET`
@@ -20,14 +19,9 @@ each named with its reason:
   CTRL        `sw = w` flush strobes, nothing to read. Covered by its effect in
               `smc_mailbox_flush_test`
 
-That derivation is the coverage claim, and it is what makes the claim hold. A
-hand-maintained offset list cannot be checked against itself: an access count
-computed from the same list the loop walks matches for any list content, so
-dropping a register shrinks the sweep and the count together and the testcase
-stays green. Deriving the set from the map instead means a register can only
-leave the sweep by leaving the map, and the omissions are asserted to still
-exist so that renaming one fails loudly rather than silently widening the
-sweep. If the block grows a register, the sweep grows with it.
+A register can leave the sweep only by leaving the map, the excluded names are
+asserted to exist so that renaming one fails instead of silently widening the
+sweep, and a register added to the block joins the sweep.
 """
 
 from __future__ import annotations
@@ -45,9 +39,7 @@ _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
     sys.path.insert(0, str(_SMC_REG_PY))
 
-_CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)  # base_config offset 0x18
+_CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 _MAILBOX_CG_EN = 1 << 1
 _MAILBOX_STRIDE = 0x1000
 _MAILBOX_COUNT = 4
@@ -78,9 +70,8 @@ def _swept_fields(port: str) -> list[tuple[str, int]]:
             "sweep is now reading a register it must not, or they were removed, in which "
             "case the exclusion is stale."
         )
-    # The exclusion table is pinned in both directions. Growing it is the one
-    # way left to shrink the sweep without the count noticing, so it costs an
-    # edit here and a reason in _UNREADABLE rather than a silent list change.
+    # The exclusion count is pinned: adding an exclusion shrinks the sweep, so
+    # it requires an edit here and a reason in _UNREADABLE.
     if len(_UNREADABLE) != 3:
         raise AssertionError(
             f"{len(_UNREADABLE)} registers are excluded from the sweep, not 3. Adding an "

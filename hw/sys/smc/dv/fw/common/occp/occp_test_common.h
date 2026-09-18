@@ -40,8 +40,6 @@
 #define SMC_SCRATCHPAD_SIM_PASS_CODE 0xacafaca1
 #define SMC_SCRATCHPAD_SIM_FAIL_CODE 0xffffffff
 #define MAX_WRITES 25 // Maximum number of write transactions to scoreboard
-// temporary - TODO remove and replace with write and read sizes
-//#define MAX_OCCP_TRANSFER_SIZE 128
 // write size is the max size minus the write header length
 #define MAX_OCCP_WRITE_SIZE 2035
 #define MAX_OCCP_READ_SIZE 2047
@@ -56,8 +54,6 @@
 typedef enum {
     OCCP_GET_VERSION = 0,
     OCCP_GET_VERSION_BOOT = 1,
-    // legacy API which calls all OCCP get status commands and concatenates results for backwards
-    // compatibility
     OCCP_GET_SEP_STATUS = 2,
     OCCP_GET_SMC_STATUS = 3,
     OCCP_GET_OCCP_BOOT_STATUS = 4,
@@ -292,10 +288,10 @@ typedef struct {
 } __attribute__((packed)) occp_exec_header_t;
 
 static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
-    // TODO: check if this is correct, initial value undefined
+    // CRC-8 per occp-protocol.adoc: initial value 0xFF, polynomial 0xD3, MSB first,
+    // no final XOR.
     uint8_t crc = 0xFF;
     const uint8_t poly = 0xD3u; /* x^8 + x^7 + x^6 + x^4 + x + 1 */
-    // byte and bit order should also be specified in OCCP spec
     for (int i = 0; i < length; i++) {
         // calculate in little endian order
         uint8_t data_byte = data[i];
@@ -315,12 +311,12 @@ static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
 }
 
 static inline uint32_t calculate_crc32(uint8_t *data, size_t length) {
-    // TODO: check if this is correct, initial value undefined
+    // CRC-32 per occp-protocol.adoc: initial value 0xFFFFFFFF, polynomial 0x992C1A4C,
+    // MSB first, final XOR 0xFFFFFFFF.
     uint32_t crc = 0xFFFFFFFF;
     const uint32_t poly = 0x992c1a4c; /* x^32 + x^26 + x^23 + x^22 + x^16 + x^12 + x^11 + x^10 + x^8
                                          + x^7 + x^5 + x^4 + x^2 + x + 1 */
 
-    // byte and bit order should also be specified in OCCP spec
     for (int i = 0; i < length; i++) {
         // calculate in little endian order
         uint32_t data_word = (uint32_t)data[i] << 24;
@@ -351,7 +347,6 @@ static inline occp_req_header_t occp_encode_header_word(occp_command_t command,
     occp_req_header_t header;
     occp_req_header_word_t header_word;
     uint16_t length = data_length;
-    // flags are unused for now
     switch (command) {
     case OCCP_GET_VERSION:
         header_word.app_id = OCCP_APP_BASE;
@@ -478,6 +473,14 @@ typedef struct {
     int cmd_count;
     occp_error_code_t exp_response_code;
     int exp_occp_last_error;
+    /* Opt in to having GET_OCCP_ERROR_CODE compare against
+     * exp_occp_last_error. Off by default, and deliberately so: the ROM's
+     * error code is latched by occp_status_set_error_code() and nothing
+     * clears it on a later success, so a test that provokes any error and
+     * then reads the code back sees the sticky value, not zero. Thirty-two
+     * tests set exp_occp_last_error = 0 without modelling that, so the
+     * comparison is only sound for a test that tracks the latch. */
+    bool check_occp_last_error;
     int timeout;
     bool exp_timeout;
     I3C_DeviceInfo discovered_devices[I3C_MAX_DEVICES];
@@ -544,7 +547,7 @@ void dump_ring_buffer_status(test_context_t *ctx, uint64_t slave_addr, const cha
 void check_occp_status_data(test_context_t *ctx, uint32_t status_data, int exp_interface_status,
                             int exp_boot_status);
 
-/* New API: Validate a 32-bit status against expected fields. Returns true on match.
+/* Validate a 32-bit status against expected fields. Returns true on match.
  * For SMC BL0 error messages, matching uses spec-defined masks per error code
  * (upper-nibble, lower-nibble, or full-code) automatically if match_full_status_data is false.
  */

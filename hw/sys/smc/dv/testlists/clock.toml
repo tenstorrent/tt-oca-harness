@@ -6,7 +6,7 @@ name = "smc_clk_running_test"
 module = "smc_clk_running_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "clock", "functional", "pyuvm"]
+tags = ["ci", "clock", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -14,7 +14,7 @@ name = "smc_clk_multi_window_test"
 module = "smc_clk_multi_window_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "clock", "pyuvm"]
+tags = ["ci", "clock", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -81,6 +81,14 @@ timeout_sec = 1800
 tags = ["clock", "pyuvm", "zeroer_cg", "functional"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_clock_domain_connectivity_test"
+module = "smc_clock_domain_connectivity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "clock", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "clock"
 tests = [
@@ -101,5 +109,5 @@ name = "smc_zeroer_dma_timeout_test"
 module = "smc_zeroer_dma_timeout_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]

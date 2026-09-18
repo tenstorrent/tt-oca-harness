@@ -33,11 +33,6 @@
  * [1] WEL  (Write Enable Latch): 1=write enabled
  *
  * Note: Requires flash model. Without flash model, status poll will timeout.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_flash_write_read_test STACK=sim \
- * EXTRA_SIM_ARGS=+spi_device_sel=winbond
- *
  */
 
 #include <stdint.h>

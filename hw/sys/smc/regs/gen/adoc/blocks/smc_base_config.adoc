@@ -69,9 +69,9 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved
-| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.
+| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When 1, a timeout event propagates to irq_o.
+| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
 |===
@@ -81,7 +81,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
-| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz).
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -89,9 +89,9 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved
-| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.
+| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When 1, a timeout event propagates to irq_o.
+| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
 |===
@@ -101,7 +101,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
-| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz).
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -109,9 +109,9 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved
-| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.
+| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When 1, a timeout event propagates to irq_o.
+| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
 |===
@@ -121,5 +121,5 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
-| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz).
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 |===

@@ -21,10 +21,12 @@ module efuse_guard #(
   parameter type efuse_addr_t = logic,
   parameter type efuse_data_t = logic [31:0],
 
-  localparam type efuse_byte_addr_t = logic [EFUSE_ADDR_WIDTH-1:0]
+  localparam type efuse_byte_addr_t = logic [EFUSE_ADDR_WIDTH-1:0],
+  localparam efuse_addr_t SIP_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 1),
+  localparam efuse_addr_t CHIPLET_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)
 ) (
   input logic clk_i,
-  input logic reset_n_i,
+  input logic rst_ni,
   input logic secure_tm_i,
 
   input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,
@@ -61,25 +63,25 @@ module efuse_guard #(
 
   // If read or write is from programming interface or read interface
   always_comb begin
-    pro_read_intf_rd_index = find_efuse_field_index(read_target_addr_i >> 3);     // need to shift since address is a bit address and the shadow registers are byte address
-    pro_read_intf_wr_index = find_efuse_field_index(program_target_addr_i >> 3);  // need to shift since address is a bit address and the shadow registers are byte address
+    pro_read_intf_rd_index = find_efuse_field_index(efuse_byte_addr_t'(read_target_addr_i >> 3));     // need to shift since address is a bit address and the shadow registers are byte address
+    pro_read_intf_wr_index = find_efuse_field_index(efuse_byte_addr_t'(program_target_addr_i >> 3));  // need to shift since address is a bit address and the shadow registers are byte address
 
     pro_read_intf_rm_lc_state_write_lock = 1'b0; // In SEP, LC_STATE has write/read lock but even if their lock is set, it should not block the pro_read_interface
     pro_read_intf_rm_lc_state_read_lock = 1'b0;
     pro_read_intf_lock_lc_state_write = 1'b0;
     // LC State write lock
     if (HAS_LC_STATE) begin
-      if ((program_target_addr_i == (LC_STATE_BIT_POSITION + 1)) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) begin
+      if ((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) begin
         pro_read_intf_lock_lc_state_write = 1'b1;
       end
-      else if ((program_target_addr_i == (LC_STATE_BIT_POSITION + 2)) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) begin
+      else if ((program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) begin
         pro_read_intf_lock_lc_state_write = 1'b1;
       end
     end
     if (HAS_LC_STATE) begin
       // SEP
-      pro_read_intf_rm_lc_state_write_lock = (pro_read_intf_wr_index == 8'd0 )? 1'b0 : entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
-      pro_read_intf_rm_lc_state_read_lock = (pro_read_intf_rd_index == 8'd0 )? 1'b0 : entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
+      pro_read_intf_rm_lc_state_write_lock = (pro_read_intf_wr_index == '0)? 1'b0 : entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
+      pro_read_intf_rm_lc_state_read_lock = (pro_read_intf_rd_index == '0)? 1'b0 : entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
     end else begin
       // SMC
       pro_read_intf_rm_lc_state_write_lock = entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
@@ -122,7 +124,7 @@ module efuse_guard #(
   end
 
   always_ff @(posedge clk_i) begin
-    if (!reset_n_i) begin
+    if (!rst_ni) begin
       err <= 1'b0;
     end else begin
       if (error_capture) begin

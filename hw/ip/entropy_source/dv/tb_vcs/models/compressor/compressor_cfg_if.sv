@@ -37,21 +37,6 @@ interface compressor_cfg_if;
                                  // Default: 0 (errors only)
 
   //--------------------------------------------------------------------------
-  // Debug Controls - REMOVED
-  //--------------------------------------------------------------------------
-  // Group selection debug removed - grouping is now fixed:
-  //   Group 0: lanes [0, 1, 2]
-  //   Group 1: lanes [3, 4, 5]
-  //   Group 2: lanes [6, 7, 8]
-  //   Group 3: lanes [9, 10, 11]
-
-  //--------------------------------------------------------------------------
-  // Statistics (Read-only from model) - REMOVED FOR COMBINATIONAL MODEL
-  //--------------------------------------------------------------------------
-  // NOTE: Statistics removed since model is now purely combinational (no clocking)
-  // If statistics are needed, implement them in the testbench with clocked logic
-
-  //--------------------------------------------------------------------------
   // Modports
   //--------------------------------------------------------------------------
 

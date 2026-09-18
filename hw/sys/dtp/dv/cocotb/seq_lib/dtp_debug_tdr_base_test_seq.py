@@ -6,17 +6,18 @@ from __future__ import annotations
 
 from env.dtp_tap_device import (
     DTP_DEBUG_CONTROL_LEN,
+    DTP_EXPECTED_JTAG2AXI_CAPS,
     DTP_EXPECTED_JTAG_CAPS,
-    DTP_EXPECTED_SEP_OTP_JTAG2AXI_CAPS,
-    DTP_EXPECTED_SMC_JTAG2AXI_CAPS,
-    DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS,
     DTP_IC_RESET_LEN,
     DTP_JTAG2AXI_CAPS_LEN,
+    DTP_JTAG2AXI_RD_PL_DEPTH,
+    DTP_JTAG2AXI_WR_PL_DEPTH,
     DTP_JTAG_CAPS_LEN,
     DTP_NUM_CLK_STOP_REQ,
     DTP_TMP_STATUS_LEN,
+    unpack_jtag2axi_caps,
 )
-from env.dtp_types import DtpJtagInstr
+from env.dtp_types import DtpJtag2AxiTargetCfg, DtpJtagInstr
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -32,16 +33,44 @@ IC_RESET_PORT_INDEX = {
     "smc": 2,
 }
 
-EXPECTED_CAPS_BY_REG = {
-    "JTAG_CAPS": DTP_EXPECTED_JTAG_CAPS,
-    "SMC_JTAG2AXI_CAPS": DTP_EXPECTED_SMC_JTAG2AXI_CAPS,
-    "SMC_OTP_JTAG2AXI_CAPS": DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS,
-    "SEP_OTP_JTAG2AXI_CAPS": DTP_EXPECTED_SEP_OTP_JTAG2AXI_CAPS,
+EXPECTED_CAPS_BY_REG = {"JTAG_CAPS": DTP_EXPECTED_JTAG_CAPS, **DTP_EXPECTED_JTAG2AXI_CAPS}
+
+# The debug-TDR pin observables and their values with DEBUG_CONTROL at 0x00
+# and IC_RESET at its all-ones default (every slice enable inactive drives
+# ovrd=0, ctrl_n=1).
+DEBUG_OUTPUT_DEFAULTS: dict[str, int] = {
+    "stop_clks": 0,
+    "cla_clock_stop_en": 0,
+    "jtag_boot_stall": 0,
+    "jtag_boot_stall_ovrd": 0,
+    "jtag_ic_reset_smc_ovrd": 0,
+    "jtag_ic_reset_smc_ctrl_n": 1,
+    "jtag_ic_reset_sep_ovrd": 0,
+    "jtag_ic_reset_sep_ctrl_n": 1,
+    "jtag_ic_reset_ext_ovrd": 0,
+    "jtag_ic_reset_ext_ctrl_n": 1,
 }
 
 
 class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     """Helpers for TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS TDRs."""
+
+    async def snapshot_debug_outputs(self) -> dict[str, int]:
+        """Sample every debug-TDR pin observable by name."""
+        item = await self.sample_observables()
+        return {name: item.signals[name] for name in DEBUG_OUTPUT_DEFAULTS}
+
+    def check_debug_outputs(
+        self,
+        check_id: str,
+        observed: dict[str, int],
+        expected: dict[str, int],
+        *,
+        context: str,
+    ) -> None:
+        """Record one comparison per debug-TDR pin observable."""
+        for name, value in expected.items():
+            self.family_check(check_id, name, observed[name], value, context=context)
 
     def decode_tmp_status(self, value: int) -> dict[str, int]:
         """Decode TMP_STATUS. Bit 1 reflects TMP persistence; bit 0 arms escape."""
@@ -54,9 +83,9 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     def log_tmp_status(self, label: str, value: int) -> dict[str, int]:
         decoded = self.decode_tmp_status(value)
         self.log.info(
-            "%s TMP_STATUS raw=0b%02b persistence=%d bypass_escape=%d",
+            "%s TMP_STATUS raw=0b%s persistence=%d bypass_escape=%d",
             label,
-            decoded["raw"],
+            format(decoded["raw"], "02b"),
             decoded["persistence"],
             decoded["bypass_escape"],
         )
@@ -139,9 +168,9 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     def log_ic_reset(self, label: str, value: int) -> dict[str, object]:
         decoded = self.decode_ic_reset(value)
         self.log.info(
-            "%s IC_RESET raw=0b%07b reset_hold=%d",
+            "%s IC_RESET raw=0b%s reset_hold=%d",
             label,
-            decoded["raw"],
+            format(decoded["raw"], "07b"),
             decoded["reset_hold"],
         )
         ports = decoded["ports"]
@@ -202,7 +231,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         self.assert_equal(reg, value, expected)
 
     def decode_jtag_caps(self, value: int) -> dict[str, int]:
-        """Decode JTAG_CAPS using the RTL bit layout."""
+        """Decode JTAG_CAPS by the "JTAG Capabilities" table of the PTAP document."""
         return {
             "num_xtrig_int_ct": self.field(value, 54, 6),
             "num_xtrig_ctp": self.field(value, 48, 6),
@@ -233,16 +262,12 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         return decoded
 
     def decode_jtag2axi_caps(self, value: int) -> dict[str, int]:
-        """Decode a 14-bit JTAG2AXI_CAPS value."""
-        data_size = self.field(value, 7, 3)
+        """Decode a *_JTAG2AXI_CAPS value; ``data_width_bits`` expands ``data_size``."""
+        fields = unpack_jtag2axi_caps(value)
         return {
             "raw": value & self.bit_mask(DTP_JTAG2AXI_CAPS_LEN),
-            "rd_pl_depth": self.field(value, 12, 2),
-            "wr_pl_depth": self.field(value, 10, 2),
-            "data_size": data_size,
-            "data_width_bits": (1 << data_size) * 8,
-            "addr_width": self.field(value, 1, 6),
-            "bus_type": self.bit(value, 0),
+            **fields,
+            "data_width_bits": 8 << fields["data_size"],
         }
 
     def log_jtag2axi_caps(self, reg: str, value: int) -> dict[str, int]:
@@ -252,7 +277,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         self.log.info("  wr_pl_depth    = %d", decoded["wr_pl_depth"])
         self.log.info("  data_size      = %d", decoded["data_size"])
         self.log.info("  data_width_bits= %d", decoded["data_width_bits"])
-        self.log.info("  addr_width     = %d", decoded["addr_width"])
+        self.log.info("  addr_size      = %d", decoded["addr_size"])
         self.log.info(
             "  bus_type       = %d (%s)",
             decoded["bus_type"],
@@ -305,26 +330,18 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             )
         return initial
 
-    async def check_jtag2axi_caps(
-        self,
-        reg: str,
-        *,
-        bus_type: int,
-        addr_width: int,
-        data_width_bits: int,
-        rd_pl_depth: int,
-        wr_pl_depth: int,
-    ) -> int:
-        """Run the common JTAG2AXI_CAPS field, stability, and RO checks."""
+    async def check_jtag2axi_caps(self, target: DtpJtag2AxiTargetCfg) -> int:
+        """Run the common JTAG2AXI_CAPS field, stability, and RO checks for one bridge."""
+        reg = target.caps_reg
         value = await self.read_caps_tdr(reg)
         decoded = self.log_jtag2axi_caps(reg, value)
         self.expect_caps_value(reg, value)
 
-        self.assert_equal(f"{reg}.bus_type", decoded["bus_type"], bus_type)
-        self.assert_equal(f"{reg}.addr_width", decoded["addr_width"], addr_width)
-        self.assert_equal(f"{reg}.data_width_bits", decoded["data_width_bits"], data_width_bits)
-        self.assert_equal(f"{reg}.rd_pl_depth", decoded["rd_pl_depth"], rd_pl_depth)
-        self.assert_equal(f"{reg}.wr_pl_depth", decoded["wr_pl_depth"], wr_pl_depth)
+        self.assert_equal(f"{reg}.bus_type", decoded["bus_type"], target.bus_type)
+        self.assert_equal(f"{reg}.addr_size", decoded["addr_size"], target.addr_width)
+        self.assert_equal(f"{reg}.data_width_bits", decoded["data_width_bits"], target.data_width)
+        self.assert_equal(f"{reg}.rd_pl_depth", decoded["rd_pl_depth"], DTP_JTAG2AXI_RD_PL_DEPTH)
+        self.assert_equal(f"{reg}.wr_pl_depth", decoded["wr_pl_depth"], DTP_JTAG2AXI_WR_PL_DEPTH)
 
         self.assert_equal(f"{reg} multi-read value", await self.check_caps_multi_read(reg), value)
         self.assert_equal(
@@ -338,7 +355,6 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             await self.load_ir(instr)
             reread = await self.read_caps_tdr(reg)
             self.assert_equal(f"{reg} after instruction switch", reread, value, instr.name)
-
         return value
 
     async def wait_for_signal_value(

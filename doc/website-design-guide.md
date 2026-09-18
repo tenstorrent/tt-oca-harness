@@ -41,7 +41,7 @@ This is the single most important architectural fact for anyone editing content 
 For **every** component — including Home and the Getting Started Guide, neither of which has any content directly about SEP, SMC, DTP, or the IP catalog — it stages five Antora modules: 
 - `ROOT` (that component's own pages) 
 - `smc`, `sep`, `dtp`
-- `ip` (a full, independent copy of the shared hardware documentation from `hw/sys/{smc,sep,dtp}/doc` and every `hw/ip/*/doc`, `hw/common/axi/*/doc`, plus vendor overlay register partials).
+- `ip` (a full, independent copy of the shared hardware documentation from `hw/sys/{smc,sep,dtp}/doc` and every `hw/ip/*/doc`, plus vendor overlay register partials).
 
 Practically, this means:
 - Editing a file under `hw/sys/smc/doc/` or `hw/ip/*/doc/` affects **every** component's build, not just whichever book you think of as "the SMC book" or "the peripherals book" — there isn't one; the same source is duplicated six times over.

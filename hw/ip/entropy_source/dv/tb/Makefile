@@ -174,7 +174,7 @@ TUNE_FSM_CORRECT_TESTBENCH = tb_rosc_tune_fsm_correct.v
 TUNE_FSM_CORRECT_SIM_OUT = tb_rosc_tune_fsm_correct
 TUNE_FSM_CORRECT_VCD_FILE = rosc_tune_fsm_correct.vcd
 
-# Tune FSM correct version verification test
+# Tune FSM rising-edge-only toggle test
 tune-fsm-correct: $(TUNE_FSM_CORRECT_SIM_OUT)
 	@echo "=== Running Tune FSM Correct Behavior Test ==="
 	$(VVP) $(TUNE_FSM_CORRECT_SIM_OUT)
@@ -343,7 +343,7 @@ markov-window-clean:
 # DECORRELATOR DISABLE TEST TARGETS
 #==============================================================================
 
-# Decorrelator disable bug fix test configuration
+# Decorrelator disable test configuration
 DECORR_DISABLE_SOURCES = $(RTL_DIR)/entropy_decorrelator.sv
 DECORR_DISABLE_TESTBENCH = tb_decorrelator_disable.v
 DECORR_DISABLE_SIM_OUT = tb_decorrelator_disable

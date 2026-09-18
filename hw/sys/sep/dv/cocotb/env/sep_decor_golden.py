@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP DRBG entropy-decorrelator golden model.
 
-The model mirrors ``hw/ip/entropy_source/rtl/entropy_decorrelator.sv``.
+Independent model of the 12-lane 29-stage XOR-feedback decorrelator
+in ``hw/ip/entropy_source/doc/architecture.adoc``.
 
 The decorrelator reduces serial correlation in ring-oscillator noise. Each of
 12 lanes owns a 29-bit shift register (a prime length) with MSB->LSB XOR
@@ -20,7 +21,7 @@ Transform per lane, per clock:
          new_bit  = noise_bit ^ feedback
          ff_stage = ((ff_stage << 1) | new_bit) & 0x1FFFFFFF
 
-Smoke config (documented per task): sample_clk_div=7 (i.e. /8 downsample,
+Smoke config: sample_clk_div=7 (i.e. /8 downsample,
 one byte every 8 cycles), byte_mask=0xFF, bypass=0.
 """
 
@@ -75,7 +76,6 @@ class SepDecorGolden:
         if lane < 0 or lane >= MAX_LANES:
             return
         L = self._lanes[lane]
-        # memset(0) then set fields
         L.ff_stage = 0
         L.output_byte = 0
         L.sample_clk_div = sample_clk_div & 0xFFFFFFFF
@@ -199,11 +199,10 @@ class SepDecorGolden:
 def _independent_oracle_step(
     ff_stage, clk_divider, sample_clk_div, byte_mask, bypass, noise_bit, sample_after_shift=False
 ):
-    """Independent re-implementation of the C step, returning the new state.
+    """Independent re-implementation of the per-clock step, returning the new state.
 
-    This is intentionally written from scratch (not calling the class) so it
-    serves as an oracle. ``sample_after_shift=True`` deliberately breaks the
-    non-blocking ordering to prove the ordering matters.
+    It does not call the class, so it serves as an oracle. ``sample_after_shift=True``
+    inverts the sample/shift order so the self-test can show the ordering matters.
     """
     output_valid = 0
     output_byte = 0
@@ -214,7 +213,7 @@ def _independent_oracle_step(
         # divider reload handled by caller
 
     if not sample_after_shift:
-        # ---- C-correct ordering: SAMPLE then SHIFT ----
+        # ---- RTL ordering: SAMPLE then SHIFT ----
         if clk_divider == 0:
             raw = (ff_stage >> SAMPLE_SHIFT) & 0xFF
             output_byte = raw & byte_mask
@@ -264,8 +263,6 @@ def _selftest():
 
     for ln in range(MAX_LANES):
         vc = valid_cycles[ln]
-        # First valid at cyc 0 (clk_divider starts at 0 since reload==7 but
-        # init sets clk_divider=sample_clk_div=7 -> first sample after 7 decrements).
         assert len(vc) >= 2, f"lane {ln}: too few valid pulses ({len(vc)})"
         deltas = [vc[k + 1] - vc[k] for k in range(len(vc) - 1)]
         assert all(d == 8 for d in deltas), f"lane {ln}: valid cadence not /8: deltas={deltas}"

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS PyUVM register sanity test (Batch B).
+"""SMC OSS PyUVM register sanity test.
 
 After base bring-up, drives real SYS AXI read/write/readback traffic to SMC
 scratch CSRs through the public tb_top ``s_axi_*`` bridge.
@@ -23,7 +23,6 @@ from smc_base_test import smc_base_test
 #   reset read + pattern write + pattern readback + restore write + restore
 #   readback
 #   => 3 x 5 = 15 SEP_IN AXI accesses
-# The composition is 3 CSRs x 5 accesses each, not 5 CSRs x 3.
 REGISTER_SANITY_MIN_CSR_ACCESSES = 15
 
 

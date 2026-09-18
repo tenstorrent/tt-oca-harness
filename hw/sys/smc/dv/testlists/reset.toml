@@ -15,7 +15,7 @@ name = "smc_powergood_glitch_test"
 module = "smc_powergood_glitch_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "reset", "pyuvm"]
+tags = ["ci", "reset", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -23,7 +23,7 @@ name = "smc_cold_reset_repeated_test"
 module = "smc_cold_reset_repeated_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "reset", "pyuvm"]
+tags = ["ci", "reset", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -31,7 +31,7 @@ name = "smc_reset_recovery_matrix_test"
 module = "smc_reset_recovery_matrix_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "reset", "canonical", "pyuvm"]
+tags = ["ci", "reset", "canonical", "pyuvm"]
 run_modes = ["smoke"]
 
 # BFM rebuild of GPIO boot-stall (pad 57 sticky). Needs hold from t=0.
@@ -129,7 +129,6 @@ tags = ["ci", "reset", "flr", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-# RESET_UNIT.SS_COLD_RESET_LOCK and SS_CONFIG_LOCK had no enrolled coverage.
 # reset_unit.rdl:87-95 and :18-26 declare both as sw=rw with onwrite=woset, so a
 # taken lock cannot be released, and smc_subsystem_resets.sv gates each target's
 # writes with the inverted lock. Both properties, on both pairs, are asserted
@@ -142,6 +141,30 @@ module = { cocotb = "smc_reset_unit_lock_test", uvm = "smc_reset_unit_lock_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_sync_edge_test"
+module = "smc_reset_sync_edge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_primary_reset_scope_test"
+module = "smc_primary_reset_scope_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cold_boot_chain_order_test"
+module = "smc_cold_boot_chain_order_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "boot", "pyuvm"]
 run_modes = ["smoke"]
 
 [[groups]]
@@ -177,7 +200,7 @@ name = "smc_flr_sanity_test"
 module = "smc_flr_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -186,5 +209,5 @@ name = "smc_multi_reset_csr_persistence_test"
 module = { cocotb = "smc_multi_reset_csr_persistence_test", uvm = "smc_multi_reset_csr_persistence_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]

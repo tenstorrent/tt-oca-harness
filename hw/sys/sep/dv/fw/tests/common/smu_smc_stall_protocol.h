@@ -88,12 +88,12 @@
 #define SMU_STALL_HALT_SETTLE_ITERS 2000
 
 /* CLA node0 EAP CSR values (verbatim literals matching smu_sep_cla_node0_eap_value):
- *   RELEASE = value(1,4,true)/value(4,4,false): fires actions [1] mpc_debug_run_req
- *             and [4] i_cpu_run_req (the standard run/resume pair).
- *   HALT    = value(0,0,false): fires action [0] mpc_debug_run_req's partner
+ *   RELEASE = value(1,4,true)/value(4,4,false): fires actions [1] mpc_debug_run_req_i
+ *             and [4] cpu_run_req_i (the standard run/resume pair).
+ *   HALT    = value(0,0,false): fires action [0] mpc_debug_run_req_i's partner
  *             mpc_debug_HALT_req -- the VeeR MPC debug halt that actually stalls a
- *             RUNNING core. NOTE: action [3] i_cpu_halt_req does NOT halt a live
- *             core (sim-proven: core kept retiring, o_cpu_halt_status stayed 0),
+ *             RUNNING core. NOTE: action [3] cpu_halt_req_i does NOT halt a live
+ *             core (the core keeps retiring and o_cpu_halt_status stays 0),
  *             so 004 halts via action [0] and resumes via the release actions [1]/[4]. */
 #define SMU_STALL_CLA_CTRLSTATUS_EXPECT 0x60
 #define SMU_STALL_CLA_EAP0_RELEASE 0x341FBFC000ULL

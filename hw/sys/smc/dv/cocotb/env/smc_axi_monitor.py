@@ -13,6 +13,13 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import RisingEdge
 from pyuvm import ConfigDB, uvm_component
+from seq_lib.smc_addr_map import (
+    check_rdl_windows,
+    smc_addr_is_deadspace,
+    smc_deadspace_ranges,
+    smc_map_extent,
+    smc_rdl_windows,
+)
 
 
 def _hi(sig) -> bool:
@@ -54,24 +61,28 @@ class SmcAxiMonitor(uvm_component):
         self.last_araddr: int | None = None
         self.last_awaddr: int | None = None
         self.resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
-        # DECERR is normally a hard protocol failure. Under smc_wrapper several
-        # SEP_IN windows still DECERR by design:
-        #   * GPIO_CTRL / POC-PBIAS (>= 0xC000_4440) → smc_ip_integration
-        #     u_gpio_ctrl_err_slv (DECERR + 0),
-        #   * DTP CSR (0xC000_F000..0xF7FF) → local xbar hole (periph_reg ends
-        #     0xC000_E800); default slave DECERR+0xBADCAB1E from SEP_IN.
-        #   * AXIL extension (0xC040_0000) → u_axil_extension_err_slv,
-        #   * stale catalog holes around 0xC003_A000.
-        # PLL/PVT are NOT listed: pll_wrap/pvt_wrap return OKAY + 0.
-        # I3C wraps (0xC000_5000) are a real core and answer OKAY.
-        self.expected_decerr_ranges: list[tuple[int, int]] = [
-            (0xC000_4440, 0xC000_5000),  # GPIO_CTRL / POC-PBIAS (integration err_slv)
-            (0xC000_F000, 0xC000_F800),  # DTP CSR TB terminator
-            (0xC003_A000, 0xC004_0000),  # stale I3C catalog hole
-            (0xC040_0000, 0xC080_0000),  # peripheral extension (integration err_slv)
-        ]
+        # DECERR is a hard protocol failure wherever the RDL declares a block.
+        # It is by design only in deadspace -- the gaps between the windows the
+        # generated map declares, and everything outside the map -- which is
+        # derived here from the neighbouring RDL windows, never listed, so a
+        # DECERR inside a live window is never excused by a hand-written range.
+        # A test that deliberately provokes DECERR inside a declared window
+        # (an unimplemented `external` region, an integration error slave)
+        # registers those addresses in `expected_decerr_addrs`.
+        check_rdl_windows()
+        self.rdl_windows = smc_rdl_windows()
+        self.deadspace_ranges = smc_deadspace_ranges()
         self.expected_decerr_addrs: set[int] = set()
         self.allow_decerr = False
+        lo, hi = smc_map_extent()
+        self.logger.info(
+            "SMC AXI monitor: %d RDL windows and %d deadspace gaps in 0x%08x-0x%08x; "
+            "DECERR is expected only in deadspace, outside the map, or at registered addresses",
+            len(self.rdl_windows),
+            len(self.deadspace_ranges),
+            lo,
+            hi,
+        )
 
     def _decerr_expected(self, addr: int | None) -> bool:
         if self.allow_decerr:
@@ -80,8 +91,7 @@ class SmcAxiMonitor(uvm_component):
             return False
         if addr in self.expected_decerr_addrs:
             return True
-        low = addr & 0xFFFF_FFFF
-        return any(base <= low < end for base, end in self.expected_decerr_ranges)
+        return smc_addr_is_deadspace(addr & 0xFFFF_FFFF)
 
     def _fail(self, msg: str) -> None:
         self.errors.append(msg)

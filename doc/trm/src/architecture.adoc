@@ -2,394 +2,80 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = OCAH Architecture & Design
-:doctype: book
-:sectanchors:
-:sectlinks:
-:sectnums:
-:source-highlighter: highlight.js
+:description: OCAH subsystem composition, memory map, power and clock domains, and reset hierarchy.
 
-// For PDF backend, we include inline every subsection of a subsystem's documentation through its index.adoc. For HTML backend (webpage), we let the user use the navigation sidebar. Navigation sidebar is defined in `doc/trm/modules/ROOT/nav.adoc`
+[[ocah-architecture]]
 
 This section provides an overview of the OCAH architecture including its
 subsystem composition, power and clock domains, reset hierarchy, and memory
-map. Subsequent chapters provide detailed microarchitectural documentation
-for each subsystem.
-
-[[ocah-architecture]]
-== OCAH Architecture
-
-This chapter describes the OCAH subsystem composition, power and clock
-domains, reset hierarchy, and memory map. Subsequent chapters provide
+map. It is organised into focused topic pages; subsequent chapters provide
 detailed microarchitectural documentation for each subsystem.
 
-[[ocah-high-level-features]]
-=== OCAH High-Level Features
+[[ocah-rtl-assertions]]
+== RTL Assertions
 
-* *Security Processor (SEP)* -- Root of Trust (RoT) with the highest
-  security privilege. Provides a physically isolated RISC-V execution
-  environment for secure boot, lifecycle control, device attestation, and
-  hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3,
-  TRNG, DRBG, Key Manager). A security hierarchy across chiplets enables
-  SiP-wide security management.
+First-party RTL uses the `OCAH_ASSERT*` macros; OpenTitan-derived blocks use
+`OCAH_OT_ASSERT*`; PULP-vendored cells (`common_cells`, AXI, iDMA) use
+`OCAH_PULP_ASSERT*`. The checks live in the module that owns the behavior and
+cover known-value hygiene, illegal parameter combinations, and local protocol
+or FSM invariants. They compile out of synthesis and fire on four-state
+simulators.
 
-* *System Management Controller (SMC)* -- Firmware-driven orchestration engine
-  responsible for clock, voltage, and reset management, platform
-  bootstrapping, system initialisation, and power/thermal management. Built
-  around a RISC-V micro-controller with hardware accelerators (DMA, memory
-  zeroer) where firmware alone cannot meet timing requirements. Inter-chiplet
-  management hierarchy via I2C/I3C and OCMI channels.
-
-* *Debug & Test Ports (DTP)* -- Standardised debug and test access across
-  heterogeneous, multi-vendor chiplet systems. Layered architecture separating
-  physical transport from logical access, with cross-chiplet event triggering,
-  synchronised clock control for trace, and coordinated resets.
-
-* *System Management Unit (SMU)* -- The composite module combining SEP, SMC,
-  and DTP into a single instantiable subsystem.
-
-* *System Management Network (SMN)* -- Internal communication fabric
-  (point-to-point or packetised) providing the management backbone for
-  configuration, status reporting, and firmware-driven coordination between
-  SMU, user logic, and D2D interfaces.
-
-* *AXI-over-UCIe Bridge (AoU)* -- Protocol bridge between the AXI-based
-  internal fabric and the UCIe die-to-die physical interface, enabling
-  inter-chiplet system management traffic and application-level transaction
-  forwarding.
-
-* *Application-Specific Logic* -- OCAH treats the application layer as a black
-  box: the harness services are agnostic to whether the application is a CPU
-  complex, NoC, DSA, memory controller, or high-speed IO. The application
-  logic is outside the scope of OCAH.
-
-* *Safety Monitor (SMO)* -- External entity that collects error signals and
-  diagnostic logging from OCAH subsystems to implement fault reaction
-  policies. The SMO is outside the scope of OCAH; its interface requirements
-  are specified separately as part of OCAH's functional safety
-  documentation.
-
-[[ocah-top-block-diagram]]
-=== Top Block Diagram
-
-The figure below presents the OCAH top-level block diagram showing the
-relationship between the subsystems described above.
-
-.OCAH Top-Level Block Diagram
-image::ocah_top.png[OCAH Top-Level Block Diagram,scaledwidth=100.0%]
-
-[[smu-axi-crossbar]]
-==== SMU AXI Crossbar
-
-Inside the SMU, the `smu_axi_xbar` module is the system-level
-arbitration fabric between SEP, SMC, and the rest of the chiplet
-(reached through the `smu_axi_in` / `smu_axi_out` boundary pair). It is
-a 3x3 AXI4 crossbar with non-reflexive connectivity: each master can
-reach the other two subordinates but never its own inbound port.
-
-.SMU AXI crossbar ports
-[cols="<22%,<22%,<56%",options="header"]
+.RTL assertion macro families
+[cols="<28%,<72%",options="header"]
 |===
-|Master (from) |Subordinate (to) |Purpose
+|Family |Header
 
-|`sep_out` |`smc_in`  |SEP-initiated transactions into SMC resources
-|`sep_out` |`ext_out` |SEP-initiated transactions leaving the SMU
-|`smc_out` |`sep_in`  |SMC-initiated transactions into SEP resources
-|`smc_out` |`ext_out` |SMC-initiated transactions leaving the SMU
-|`ext_in`  |`sep_in`  |External transactions targeting SEP
-|`ext_in`  |`smc_in`  |External transactions targeting SMC
+|`OCAH_ASSERT*`
+|`hw/common/assert/ocah_assert.svh`
+
+|`OCAH_OT_ASSERT*`
+|`vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv`
+
+|`OCAH_PULP_ASSERT*`
+|`vendor/pulp-platform/common_cells/upstream/include/common_cells/assertions.svh`
 |===
 
-Routing decisions use a runtime address map with two programmable
-rules (SEP and SMC apertures) and one static catch-all (`ext_out`).
-See <<ocah-memory-map,OCAH Memory Map>> for the fixed-vs-programmable
-split and the reference envelope convention, and see the SMU AXI Crossbar
-Address Map section in the Integrator Guide for firmware programming order.
-
-[[ocah-memory-map]]
-=== OCAH Memory Map
-
-OCAH separates the chiplet-visible SMU aperture from the internal address
-maps used by SEP and SMC firmware. The chiplet integrator decides which
-system address range reaches the SMU external AXI input. Firmware then
-programs the SEP and SMC global base/size CSRs so the SMU crossbar can
-route incoming traffic to the correct inbound port.
-
-[cols="<24%,<24%,<32%,<20%",options="header"]
-|===
-|Concept |Configured by |Purpose |Example
-
-|Chiplet NoC envelope
-|Integrator / chiplet address map
-|Controls which external-master addresses reach SMU `ext_in`
-|Example only: 64 MiB total SMU aperture
-
-|SEP global aperture
-|SEP firmware via `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`
-|Controls SMU `ext_in` to `sep_in` routing and SEP inbound global-to-local remap
-|Example only: 32 MiB SEP slot in a 32 MiB + 32 MiB SEP/SMC partition
-
-|SMC global aperture
-|SMC firmware via `GLOBAL_BASE` / `REGION_SIZE`
-|Controls SMU `ext_in` to `smc_in` routing and SEP-to-SMC decode
-|Example only: 32 MiB SMC slot in a 32 MiB + 32 MiB SEP/SMC partition
-|===
-
-External masters use chiplet-global addresses and are bounded first by the
-chiplet NoC decode. The SMU crossbar applies the firmware-programmed SEP and
-SMC global apertures to route those transactions to `sep_in` or `smc_in`.
-Subsystem-internal CPU maps and local aliases are described in the SEP and SMC
-chapters.
-
-The current reset defaults are conservative boot values:
-`SEP_REGION_SIZE` resets to `0x0100_0000` (16 MiB) and SMC `REGION_SIZE`
-resets to `0x0100_0000` (16 MiB). Firmware may reprogram these values during
-early boot to match the chiplet address assignment. If the reset values are
-changed to a 32 MiB SEP/SMC split, this section should be updated
-accordingly.
-
-[[ocah-power-domains]]
-=== Power Domains
-
-The SMU, SMN, and AXI-over-UCIe bridge (AoU) reside in the same always-on
-power domain. This domain remains powered whenever the chiplet has supply,
-ensuring that platform management, inter-chiplet communication, and security
-services are available even when application logic is powered down.
-
-Vendor-specific macros and subsystems that are outside the scope of OCAH --
-such as OTP/eFuse controllers, PLLs, die-to-die PHYs (e.g. UCIe PHY),
-analogue sensors, and application-specific tiles -- typically reside in their
-own dedicated power and voltage domains defined by the adopter's power
-architecture. OCAH provides the isolation and sequencing infrastructure
-(`isolate_req_o[31:0]`, `ss_reset_ctrl_o[31:0]`) that the SMC firmware uses
-to coordinate power transitions for these external domains, but their supply
-rail definitions, power gating decisions, and leakage budgets are
-adopter-specific.
-
-The SMC provides runtime power management services for the application logic,
-including dynamic voltage and frequency scaling (DVFS) through AVSBus-based
-voltage regulator control and firmware-driven Performance State (P-State)
-management. At the RTL level, the SMU accepts a `powergood_i` input that
-indicates supply stability and exposes `isolate_req_o[31:0]` to request
-isolation of individual subsystem domains before power transitions.
-
-NOTE: The figure below will be provided as an annotated version of the
-top-level block diagram highlighting the power domains.
-
-//.OCAH Power Domains
-//image::ocah_power_domains.png[OCAH Power Domains,scaledwidth=100.0%]
-
-[[ocah-clock-domains]]
-=== Clock Domains
-
-OCAH distinguishes low-level management timing from functional application
-clocks. The SMC receives an always-on reference clock (`clk_ref_i`) that is
-available from power-on, before any PLL is locked. Using this reference clock,
-the SMC controls the PLLs during early bring-up and generates the primary
-system clock (`clk_smu_i`) that is then distributed to the SMC itself, the
-SEP, and the DTP.
-
-The SMN lives in its own clock domain with respect to the SMU --- as highlighted
-by the clock domain crossing in the top level diagram --- and with respect
-to the application logic.
-
-The following table summarises the clock domains present in OCAH.
-
-[[ocah-clock-domain-table]]
-.OCAH Clock Domains
-[cols="<25%,<25%,<50%",options="header"]
-|===
-|Clock |Subsystem |Description
-
-|`clk_smu_i`
-|SMU (SMC, SEP, DTP)
-|Primary system clock, generated by the PLL under SMC control. Distributed
-internally to the SMC, SEP, and DTP subsystems. Drives the CPU cluster,
-fabric interconnect, peripheral controllers, and DTP cross-trigger / AXI
-bridges.
-
-|`clk_smn_i`
-|SMN
-|System Management Network clock. Independent of `clk_smu_i`; clock-domain
-crossings (CDCs) are used at the SMU-SMN boundary to isolate the management
-fabric timing from the SMU subsystem clock.
-
-|`clk_ref_i`
-|SMC
-|Always-on reference clock, available before PLL lock. Used by the SMC for
-early bring-up, PLL control, reset synchronisation, and peripherals requiring
-a stable, lower-frequency source.
-
-|`clk_periph_i`
-|SMC
-|Peripheral clock domain. Drives SMC peripheral subsystems. The reset unit
-generates a dedicated synchronised reset (`rst_primary_periph_clk`) in this
-domain.
-
-|`clk_telemetry_i`
-|SMC
-|ATB telemetry clock domain. Separate clock for Advanced Trace Bus data
-collection, with its own reset (`rst_telemetry_ni`).
-
-|`clk_sep_wdt_i`
-|SEP
-|Low-frequency watchdog timer clock. Must be independent of the system clock
-so the WDT can detect system clock failures.
-
-|`jtag_tck`
-|DTP / SEP
-|JTAG Test Clock. Drives PTAP, STAP state machines, and all JTAG-domain scan
-logic inside the DTP/SMC/SEP.
-
-|`entropy_rosc_sample_clk_i`
-|SEP
-|Ring-oscillator sample clock for the entropy source (TRNG). Must be
-asynchronous to `clk_i` and typically runs between 100 and 400 MHz.
-|===
-
-NOTE: The figure below will be provided as an annotated version of the
-top-level block diagram highlighting the clock domains.
-
-//.OCAH Clock Domains
-//image::ocah_clock_domains.png[OCAH Clock Domains,scaledwidth=100.0%]
-
-[[ocah-reference-counter]]
-==== Reference Counter
-
-Both the SMC and the SEP expose a free-running 64-bit reference counter in their
-CPU control register block (the `REFERENCE_COUNTER` CSR), clocked by the
-always-on reference clock (`clk_ref_i`). It advances continuously from reset,
-independent of the system clock (`clk_smu_i`) frequency or PLL state. Its value
-is synchronised into the CPU clock domain for software reads, and software may
-write the CSR to reload the counter, after which it resumes counting from the
-loaded value. Both subsystems share the same implementation
-(`prim_refclk_count_w_cdc`) and behave identically.
-
-[[ocah-reset]]
-=== Reset
-
-Reset is handled hierarchically so that the management infrastructure comes
-out of reset first and then releases dependent domains in a controlled order.
-A global power-on reset (`rst_cold_ni`) establishes a known state for the
-entire chiplet, but the always-on domain is intended to be released first so
-that early control logic is live immediately. From there, the SMC sequences
-reset deassertion for the SMN and for downstream managed blocks according to
-platform dependencies, boot policy, and fault conditions. This staged reset
-model also supports partial and warm-reset behaviours in which application
-domains can be reset or recovered without fully tearing down the always-on
-management infrastructure.
-
-The reset hierarchy within the SMU proceeds as follows:
-
-. *Power-on / cold reset.* The external `rst_cold_ni` is asserted during
-  power-up and deasserted synchronously after supply voltages stabilise. The
-  `powergood_i` input indicates that supplies are stable.
-
-. *SMC reset synchronisation.* The SMC reset unit (`smc_reset_unit`)
-  generates domain-specific synchronised resets from the single cold reset
-  input:
-  ** `rst_primary_smc_clk_no` -- synchronised to the primary SMC clock domain
-  ** `rst_primary_ref_clk_no` -- synchronised to the reference clock domain
-  ** `rst_primary_periph_clk_no` -- synchronised to the peripheral clock
-     domain
-  ** `rst_cold_stable_ref_clk_no` -- stable cold reset in the reference domain
-
-. *DTP reset.* The DTP is held in reset by the SMC's primary synchronised
-  reset (`rst_primary_smc_clk_no`). In addition, the JTAG state machine
-  requires a power-on reset that remains asserted until supplies are stable;
-  at the SMU level this is the `powergood_stable` signal generated by the
-  SMC.
-
-. *SEP reset.* The SEP is held in reset by the same SMC primary reset
-  (`rst_primary_smc_clk_no`). A separate watchdog reset path
-  (`rst_wdt_n` at the SMU level, generated by the SMC reset unit) allows
-  the SEP to be independently reset by its watchdog timer.
-
-. *Downstream subsystem sequencing.* The SMC sequences reset deassertion for
-  up to 32 managed subsystems through `ss_reset_ctrl_o[31:0]` and isolation
-  through `isolate_req_o[31:0]`. Subsystems report completion via
-  `ss_reset_complete_i[31:0]`.
-
-. *Function Level Reset (FLR).* Asserting `cfg_flr_pf_active_i` triggers a
-  warm reset sequence that isolates subsystems through `isolate_req_o` and
-  performs controlled reset propagation without tearing down the always-on
-  infrastructure.
-
-. *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can
-  override the fuse, cold, cool, warm, and per-subsystem reset domains
-  independently for debug scenarios. These are wired through the SMU into the
-  SMC reset unit and the SEP reset controller. The DTP JTAG chapter states the
-  programming order these overrides require.
-
-[[ocah-ic-reset]]
-==== IC_RESET TDR
-
-The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
-slices on the scan chain from TDI to TDO, followed by a single `reset_hold`
-bit nearest TDO:
-
-* *SMC slice* (nearest TDI). Fuse, cold, cool, and warm resets, plus cold and
-  warm resets for each of the 32 managed subsystems. The SMU consumes this
-  slice internally.
-* *SEP slice.* SEP main reset and the TRNG, KMAC, HMAC, AES, OTBN, and Key
-  Manager resets. Present when SEP is instantiated; omitted otherwise. The
-  SMU consumes this slice internally.
-* *External slice.* Reset overrides for logic outside the SMU. The ports in
-  this slice are adopter-defined: the integrator supplies the slice type and
-  routes the SMU output to that logic. OCAH does not name the external bits.
-  The default type is a single-override stub.
-
-Each port carries an override-enable bit and an active-low reset value. The
-Integrator Guide records the SMU port map, including how to size the external
-slice.
-
-For the detailed reset controller design, sequencing FSM, reset register
-interface, and clock-reset interaction, refer to the Clock and Reset Management
-chapter:
-
+// HTML-only compatibility anchors for sections that moved to the topic pages
+// below. PDF assembly includes the authoritative content from those pages, so
+// these blocks are ifdef-guarded to prevent duplicate PDF destinations.
 ifdef::backend-html5[]
-xref:smc:clk_rst.adoc#clock-and-reset-management[Clock and Reset Management]
+++++
+<span id="ocah-high-level-features"></span>
+<span id="ocah-top-block-diagram"></span>
+<span id="ocah-memory-map"></span>
+<span id="ocah-power-domains"></span>
+<span id="ocah-clock-domains"></span>
+<span id="ocah-clock-domain-table"></span>
+<span id="ocah-reference-counter"></span>
+<span id="ocah-reset"></span>
+<span id="ocah-ic-reset"></span>
+++++
+
+* xref:overview.adoc#ocah-high-level-features[Platform Overview] -- the
+  high-level features of each OCAH subsystem and the top-level block diagram.
+* xref:memory_map.adoc#ocah-memory-map[OCAH Memory Map] -- the chiplet-visible
+  SMU aperture and the SEP and SMC global apertures programmed by firmware.
+* xref:power_domains.adoc#ocah-power-domains[Power Domains] -- the always-on
+  management domain and the isolation and sequencing infrastructure provided
+  for adopter-defined domains.
+* xref:clock_domains.adoc#ocah-clock-domains[Clock Domains] -- management
+  versus functional timing, the clock domain table, and the reference counter.
+* xref:reset.adoc#ocah-reset[Reset] -- the hierarchical reset model and the
+  SMU reset sequence.
+++++
+<span id="smu-axi-crossbar"></span>
+<span id="security-processor-sep"></span>
+<span id="system-management-controller"></span>
+<span id="debug-test-ports"></span>
+<span id="system-management-network"></span>
+<span id="axi-over-ucie-bridge"></span>
+++++
+
+* xref:smu:index.adoc#smu-axi-crossbar[SMU AXI Crossbar]
+* xref:sep:index.adoc[Security Processor (SEP)]
+* xref:smc:index.adoc[System Management Controller (SMC)]
+* xref:dtp:index.adoc[Debug & Test Ports (DTP)]
+* xref:smn.placeholder.adoc[System Management Network (SMN)]
+* xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
 endif::backend-html5[]
-ifdef::backend-pdf[]
-<<clock-and-reset-management,Clock and Reset Management>>
-endif::backend-pdf[]
-
-For integration-level reset procedures, refer to the Integrator Guide.
-
-// ============================================================================
-// Per-subsystem deep dives
-// ============================================================================
-
-// SEP
-[[security-processor-sep]]
-ifdef::backend-pdf[]
-include::../../../hw/sys/sep/doc/index.adoc[leveloffset=0]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::sep:index.adoc[leveloffset=0]
-endif::backend-html5[]
-
-// SMC
-[[system-management-controller]]
-ifdef::backend-pdf[]
-include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::smc:index.adoc[leveloffset=0]
-endif::backend-html5[]
-
-// DTP
-[[debug-test-ports]]
-ifdef::backend-pdf[]
-include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=0]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::dtp:index.adoc[leveloffset=0]
-endif::backend-html5[]
-
-// SMN
-// TODO remove adoc below and follow SMC example
-include::smn.placeholder.adoc[]
-
-// AOU
-// TODO remove adoc below and follow SMC example
-include::aou.placeholder.adoc[]

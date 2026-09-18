@@ -55,7 +55,7 @@ CPU_PATTERN = 0xC511_0001
 
 
 class smc_cpu_to_sep_axi_test_seq(SmcCsrSeq):
-    """Precheck CPU-control CSR path until a CPU/firmware source is available."""
+    """Read the CPU_CTRL reset defaults and write/readback SCRATCH_0 over SEP_IN."""
 
     def __init__(self, name: str = "smc_cpu_to_sep_axi_test_seq") -> None:
         super().__init__(name)

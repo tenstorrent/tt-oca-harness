@@ -812,6 +812,6 @@ set_cdc_max_delay_prim_reg_cdc gen_sep.u_sep/u_sep_wdt_wrap/u_wdt_aon_timer/u_re
 set_cdc_max_delay_dmi_wrapper gen_sep.u_sep/sep_cpu/el2_veer_wrapper/dmi_wrapper SMUCLK
 
 # ---- Rocket AsyncQueue sinks (3) ----
-set_cdc_max_delay_rocket_async_queue u_smc/u_smc_cpu_wrapper/gen_4core_cpu.u_smc_cpu/u_digital_top/tlDM/dmInner/dmactive_synced_dmInner_io_innerCtrl_sink SMUCLK
-set_cdc_max_delay_rocket_async_queue u_smc/u_smc_cpu_wrapper/gen_4core_cpu.u_smc_cpu/u_digital_top/tlDM/dmInner/dmiXing/nodeOut_a_sink SMUCLK
-set_cdc_max_delay_rocket_async_queue u_smc/u_smc_cpu_wrapper/gen_4core_cpu.u_smc_cpu/u_digital_top/tlDM/dmOuter/asource/nodeIn_d_sink JTAG_TCK
+set_cdc_max_delay_rocket_async_queue u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/tlDM/dmInner/dmactive_synced_dmInner_io_innerCtrl_sink SMUCLK
+set_cdc_max_delay_rocket_async_queue u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/tlDM/dmInner/dmiXing/nodeOut_a_sink SMUCLK
+set_cdc_max_delay_rocket_async_queue u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/tlDM/dmOuter/asource/nodeIn_d_sink JTAG_TCK

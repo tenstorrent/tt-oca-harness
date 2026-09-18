@@ -1,3 +1,5 @@
+{{!-- SPDX-License-Identifier: Apache-2.0 --}}
+{{!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. --}}
 <footer class="footer">
   <div class="footer-inner">
     <img src="{{{uiRootPath}}}/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
@@ -15,3 +17,9 @@
 </footer>
 <script src="{{{uiRootPath}}}/js/keyboard-shortcuts.js"></script>
 <script src="{{{uiRootPath}}}/js/a11y-patches.js"></script>
+<script src="{{{uiRootPath}}}/js/vendor/viewer.min.js"></script>
+<script src="{{{uiRootPath}}}/js/image-zoom.js"></script>
+{{#if (has-math page.contents)}}
+<script src="{{{uiRootPath}}}/js/math.js"></script>
+<script defer src="{{{uiRootPath}}}/js/vendor/mathjax/tex-svg.js"></script>
+{{/if}}

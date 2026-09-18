@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS UART protocol VIP wrapper (P2 Phase A #4).
+"""SMC OSS UART protocol VIP wrapper.
 
 Thin DUT-local bind of ``ocah_uart_vip.OcahUartConsole`` onto SMC
 ``tb_top.sv`` UART0 pads:

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 name: ocah-docs
-title: Open Chiplet Atlas Harness (OCAH) Technical Reference Manual
+title: Open Chiplet Atlas (OCA) Harness Technical Reference Manual
 version: latest
 start_page: index.adoc
 nav:
@@ -10,6 +10,7 @@ nav:
 asciidoc:
   attributes:
     source-highlighter: highlight.js
+    page-toclevels: 4
     sectanchors: ''
     sectlinks: ''
     sectnums: ''
@@ -19,3 +20,5 @@ asciidoc:
     allow-uri-read: ''
     basedir: doc/trm
     verbose: ''
+    ocah-trm: ''
+    page-pagination: ''

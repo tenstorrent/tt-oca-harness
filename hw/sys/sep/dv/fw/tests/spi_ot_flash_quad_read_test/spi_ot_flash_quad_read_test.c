@@ -30,11 +30,6 @@
  * 2. WIP poll until page program complete
  * 3. QOFR 16 bytes from 0x003000 using 3-segment quad read
  * 4. Compare RX data against written pattern
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_flash_quad_read_test STACK=sim \
- * EXTRA_SIM_ARGS=+spi_device_sel=winbond
- *
  */
 
 #include <stdint.h>

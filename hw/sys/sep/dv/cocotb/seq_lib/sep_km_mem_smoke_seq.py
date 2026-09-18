@@ -21,7 +21,7 @@ SW_RESET_N_RELEASE_KM = SW_RESET_N_RESET_DEFAULT | (1 << SW_RESET_N_BIT["km"])
 # liveness counters.
 #
 # The image is built from cocotb/tests/km_fw/km_rom.S, which carries the same
-# literal; the compare fails loudly if the two diverge, which is intended.
+# literal; the compare fails if the two diverge.
 KM_SMOKE_SRAM_WORD0 = 0x0000_005A
 
 

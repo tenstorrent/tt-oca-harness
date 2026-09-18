@@ -131,7 +131,7 @@ module smc_reset_fcov #(
   // Python bin saturating at unique<=3 because the DUT releases the bits
   // synchronously. Splitting the tuple into all-held / partial / all-
   // released keeps the partially-released window (the mid-glitch state
-  // RAW_SAMPLE was added for) as its own point instead of hiding it in a
+  // RAW_SAMPLE observes) as its own point instead of hiding it in a
   // tuple whose unique count cannot distinguish the cases.
   // ------------------------------------------------------------------
   wire [3:0] reset_state_v = {powergood_stable_i, rst_cold_stable_ref_clk_ni,

@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Smallest SMC firmware image, booted end to end.
 
-The first test in this package to run a DV C image from
-hw/sys/smc/dv/fw/tests/. It proves the firmware path itself -- c_compile,
-output staging, the striped scratch load, the reset-vector handoff and the
-MMIO verdict -- rather than any DUT feature, which is why the image is
+Runs a DV C image from hw/sys/smc/dv/fw/tests/ and proves the firmware path
+itself -- c_compile, output staging, the striped scratch load, the reset-vector
+handoff and the MMIO verdict -- rather than any DUT feature, so the image is
 `test_pass(0)` and nothing else.
 
 Requires the staged image and a held boot:
@@ -24,6 +23,9 @@ from smc_base_test import smc_base_test
 @pyuvm.test()
 class smc_fw_hello_world_test(smc_base_test):
     """Firmware boots from the scratch image and posts its own PASS word."""
+
+    required_evidence = ("CHK-FW-HELLO-WORLD-BOOT",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 

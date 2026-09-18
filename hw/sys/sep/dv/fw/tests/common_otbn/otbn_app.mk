@@ -4,9 +4,8 @@
 # OTBN Application Build Infrastructure
 # Generic Makefile for building OTBN applications and generating C arrays
 #
-# This replaces custom Python build scripts with a reusable Makefile-based flow
-# that leverages the vendored OpenTitan OTBN infrastructure under
-# vendor/lowRISC/opentitan/upstream/hw/ip/otbn/.
+# Reusable Makefile flow built on the vendored OpenTitan OTBN infrastructure
+# under vendor/lowRISC/opentitan/upstream/hw/ip/otbn/.
 #
 # Usage in test Makefile:
 #   OTBN_APP_NAME = my_app

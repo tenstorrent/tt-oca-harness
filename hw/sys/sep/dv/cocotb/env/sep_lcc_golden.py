@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from sep_reg_meta import SEP_LIFECYCLE_CTRL, sym
 
-# -- lifecycle-state raw encodings (efuse_pkg::lc_state_raw_e) -----------------
+# -- lifecycle-state raw encodings (lifecycle_controller.adoc) -----------------
 LC_TEST_DEV = 0x0
 LC_PROD = 0x1
 LC_RMA_SIP_0 = 0x2
@@ -61,7 +61,7 @@ LCC_FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 LCC_DEMOTE_1 = SEP_LIFECYCLE_CTRL.addr("DEMOTE_1")
 LCC_DEMOTE_2 = SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")
 
-# -- feat_ctrl bit layout (sep_efuse_pkg, Disable Vector Format) --------------
+# -- feat_ctrl bit layout (lifecycle_controller.adoc Disable Vector Format) --
 # Feature control is per GROUP, and demotion acts on one debug group at a time --
 # which is why DBG_1 and DBG_2 need separate masks rather than one Debug mask.
 #   [23:0]  DBG_1    bit 0 sep_debug, bit 1 chiplet_dbg, bit 2 sep_fuse_dbg,
@@ -125,8 +125,8 @@ def lc_state_next(
     Everything else follows from those three, including the destinations the
     chapter never names: from PROD_END every reachable set lands outside the
     named set, which is exactly the chapter's "the only permitted transition is
-    to INVALID". Do not re-add a destination table -- it would be a second,
-    weaker statement of the same rule.
+    to INVALID". A destination table would be a second, weaker statement of the
+    same rule.
 
     ``sip_match`` / ``chiplet_match`` are the token-comparator verdicts
     (``TOKEN_MATCH_CODE`` presented, not merely a token written).
@@ -154,7 +154,7 @@ def is_valid_lc_transition(prev: int, cur: int) -> bool:
       * Nothing leaves INVALID.
 
     A same-state step is always allowed (a resense of an unchanged image, or a
-    bit-0 set inside RMA_SIP / RMA_CHIPLET). This deliberately does NOT freeze
+    bit-0 set inside RMA_SIP / RMA_CHIPLET). This does not freeze
     PROD_END or RMA_CHIPLET: the chapter permits PROD_END -> INVALID, and bit 0
     is a don't-care within an RMA state.
     """
@@ -341,6 +341,22 @@ def selftest() -> None:
     assert got["dft_secure"] == 0
     assert got["stap_sep"] == 0
 
+    # SECURE_TM is not a dbg_disable term. The same FEAT_CTRL must produce the
+    # same ladder at both strap polarities, and dft_secure is Case 3, not the
+    # inverse of the strap. TEST_DEV with both DIS vectors clear opens Case 3.
+    feat_tm0 = feat_ctrl_expected(LC_TEST_DEV, 0, 0, secure_tm=0)
+    feat_tm1 = feat_ctrl_expected(LC_TEST_DEV, 0, 0, secure_tm=1)
+    assert feat_tm0 == feat_tm1 == M64
+    assert dbg_disable_expected(feat_tm0) == dbg_disable_expected(feat_tm1)
+    assert dbg_disable_expected(feat_tm0)["dft_secure"] == 0
+    # RMA_CHIPLET is all-ones: Case 3 open, SIB enabled.
+    assert dbg_disable_expected(feat_ctrl_expected(LC_RMA_CHIP_1, 0, 0))["dft_secure"] == 0
+    # PROD, no demote: debug closed, SIB closed at both polarities.
+    prod0 = feat_ctrl_expected(LC_PROD, 0, 0, secure_tm=0)
+    prod1 = feat_ctrl_expected(LC_PROD, 0, 0, secure_tm=1)
+    assert dbg_disable_expected(prod0)["dft_secure"] == 1
+    assert dbg_disable_expected(prod1)["dft_secure"] == 1
+
     # Fuse-path disables: a granular bit is an extra AND, not a substitute.
     closed = sip_chip_sep  # cases open, bits 2/3 closed
     got = fuse_dft_disable_expected(closed)
@@ -365,9 +381,10 @@ def selftest() -> None:
 # ---------------------------------------------------------------------------
 # dbg_disable
 # ---------------------------------------------------------------------------
-# Field order of sep_lifecycle_ctrl_pkg::dbg_disable_t. A packed struct puts the
-# first-declared field in the most significant bit, so index 0 here is the MSB
-# of the flattened vector the testbench exports.
+# Packed dbg_disable names, MSB first, as the testbench exports the flattened
+# vector. The lifecycle chapter states the three DTP cases, not this field
+# order. dft_secure and stap_sep are both Case 3, so a swapped pair cannot
+# fail a checker today.
 DBG_DISABLE_FIELDS = (
     "stap_io",
     "stap_smc",
@@ -383,10 +400,10 @@ DBG_DISABLE_FIELDS = (
 )
 DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 
-# Every packed dbg_disable bit is claimed. The DTP path table and the RTL
-# agree on the three nested cases: Case 1 SIP_DBG, Case 2 plus CHIPLET_DBG,
-# Case 3 plus SEP_DBG. The DFT-inserted fuse-path disables are separate
-# DUT ports; ``fuse_dft_disable_expected`` owns those.
+# Every packed dbg_disable bit is claimed. The lifecycle chapter's DTP path
+# table states the three nested cases: Case 1 SIP_DBG, Case 2 plus
+# CHIPLET_DBG, Case 3 plus SEP_DBG. The DFT-inserted fuse-path disables are
+# separate DUT ports; ``fuse_dft_disable_expected`` owns those.
 DBG_DISABLE_UNCLAIMED: tuple[str, ...] = ()
 
 

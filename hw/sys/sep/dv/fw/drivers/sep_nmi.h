@@ -7,7 +7,7 @@
 //
 // VeeR EL2 NMI mechanism (bare `sep`): nmi_int = intr_wdog_timer_bark drives the
 // NMI; nmi_vec[31:1] (the jump address) is driven by the SEP_NMI_VEC CSR. The
-// trampoline `_nmi_handler` (start.S, 256-byte aligned) saves context, CALLs the
+// trampoline `_nmi_handler` (crt0.s, 256-byte aligned) saves context, CALLs the
 // registered C handler via `_nmi_handler_ptr`, and mret-returns. To use:
 //   1. nmi_register_handler(my_handler);   // set the C handler
 //   2. nmi_set_vector_reg();               // SEP_NMI_VEC = &_nmi_handler
@@ -30,7 +30,7 @@
 
 typedef void (*sep_nmi_handler_t)(void);
 
-// The trampoline + runtime handler pointer (start.S).
+// The trampoline + runtime handler pointer (crt0.s).
 extern void _nmi_handler(void);
 extern sep_nmi_handler_t _nmi_handler_ptr;
 

@@ -29,6 +29,14 @@ I3C_TO_FABRIC_MIN_CSR_ACCESSES = 11
 class smc_i3c_to_fabric_test(smc_base_test):
     """Run the I3C CSR decode smoke through the SMC SEP_IN AXI input."""
 
+    required_evidence = (
+        "CHK-I3C-CLOCK-GATE-RW",
+        "CHK-I3C0-HC-CONTROL-BUS-ENABLE",
+        "CHK-I3C0-HCI-VERSION",
+        "CHK-I3C0-PADS-RESOLVABLE",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -5,11 +5,11 @@ DV-CARD: SMC_DMA_CG_ACTIVITY_TEST ANCHOR: smc_dma_cg_activity_test
 
 DV-CARD: SMC_CG_P2_001 ANCHOR: smc_dma_cg_activity_test
 
-The P2 card extends this same anchor (additive): the P1 steps/checkers above are
-UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1
-grade); the P2 extension below (_p2_extension) adds the full-range hysteresis
-sweep {0,1,32,63,64} and the activity-reassert race, called once at the end of
-body(). CG_HYSTERESIS_W==6 (hw/sys/smc/doc/dma.adoc) -- gap=64 exercises the
+The P2 card extends this same anchor: the P1 steps and checkers in body() keep
+their evidence tokens verbatim, and the P2 extension (_p2_extension) adds the
+full-range hysteresis sweep {0,1,32,63,64} and the activity-reassert race,
+called once at the end of body(). CG_HYSTERESIS_W==6 (hw/sys/smc/doc/dma.adoc)
+-- gap=64 exercises the
 field's own truncation (64 & 0x3F == 0), not a TB special case, and its
 expectation is the truncated value 0, not a `<= 63` bound that no RTL can
 violate.
@@ -44,7 +44,7 @@ from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
 
 def _p2_coverage_report_dirs() -> list[Path]:
-    """Prefer run logs/coverage dirs so Skill 2 can find the artifact beside the kept log."""
+    """Prefer the run's log/coverage dirs so the artifact sits beside the kept log."""
     candidates: list[Path] = []
     env_dir = os.environ.get("SMC_DV_RUN_LOGDIR")
     if env_dir:
@@ -71,7 +71,7 @@ def _p2_coverage_report_dirs() -> list[Path]:
 def _emit_p2_hyst_sweep_coverage_report(
     cells_hit: list[str], cell_measurements: dict[str, dict[str, int]]
 ) -> Path:
-    """FL-required functional-coverage-report for SMC-CG-DMA-HYST.S1 required_cells.
+    """Functional-coverage-report for SMC-CG-DMA-HYST.S1 required_cells.
 
     ``cells_hit`` must be derived from the sweep results (a cell is hit only
     after its exact deassert-cycle compare PASSED), never restated from the
@@ -176,19 +176,19 @@ P2_REQUIRED_SWEEP_GAPS = (32, 63, 64)
 # construction must fail here instead of quietly renaming the fence term.
 P2_GRADED_CELL_NAMES = ("hyst-gap=32", "hyst-gap=63", "hyst-gap=64")
 
-# The 0..8 hysteresis band is SWEPT at 0 and 1 and exactly asserted below, but it is NOT
-# booked as covered by this testcase's coverage artifact: the DMA command never
-# completes at legal hysteresis 0 and 1 when dma_cg_en=1, so the within-1-cycle
-# hysteresis-scaling proof holds for 9..63 only. Booking `hyst-gap=0` /
-# `hyst-gap=1` as hit here
-# would claim coverage of a band whose DUT behaviour is under dispute, so the
-# two gaps stay as stimulus and as a fail-capable compare.
+# The 0..8 hysteresis band is SWEPT at 0 and 1 and exactly asserted below, but
+# it is NOT booked as covered by this testcase's coverage artifact: the DMA
+# command never completes at legal hysteresis 0 and 1 when dma_cg_en=1, so the
+# within-1-cycle hysteresis-scaling proof holds for 9..63 only. Booking
+# `hyst-gap=0` / `hyst-gap=1` as hit here would claim coverage of a band whose
+# DUT behaviour is not established, so the two gaps stay as stimulus and as a
+# fail-capable compare.
 P2_LOW_BAND_SWEEP_GAPS = (0, 1)
 P2_LOW_BAND_EXCLUSION_REASON = (
-    "tenstorrent/tt-oca-harness#1235 (DMA command never completes at legal "
-    "hysteresis 0 and 1 when dma_cg_en=1): the 0..8 "
-    "hysteresis band is UNPROVEN and must not be counted as covered by any "
-    "closure report. Swept and exactly asserted here, but not booked."
+    "DMA command never completes at legal hysteresis 0 and 1 when "
+    "dma_cg_en=1: the 0..8 hysteresis band is UNPROVEN and must not be counted "
+    "as covered by any closure report. Swept and exactly asserted here, but "
+    "not booked."
 )
 
 P2_NUM_RANDOM_GAPS = 3
@@ -537,7 +537,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
 
     async def _program_cg_field(self, *, enable: bool, hyst_value: int) -> int:
         """Program DMA_CG_EN / CG_HYSTERESIS via the generated field mask/shift
-        (never a hand literal -- guardrail CHK-NO-TAUTOLOGY / policy
+        (never a hand literal -- policy
         [ADDRESS-FROM-AUTHORITATIVE-MAP]). `hyst_value` may exceed the field's
         own width (e.g. 64 against the 6-bit CG_HYSTERESIS_W field); the write
         is masked through CG_HYST_MASK exactly as firmware computing the same
@@ -800,7 +800,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             sweep_results[gap] = (actual_hyst, observed)
         missing_required = [g for g in P2_REQUIRED_SWEEP_GAPS if g not in sweep_results]
         assert not missing_required, f"sweep required cells not observed: {missing_required}"
-        # Coverage artifact grades the FL required_cells, and books a cell only
+        # Coverage artifact books the required_cells, and books a cell only
         # from a measurement that passed its exact compare -- not from a
         # restatement of the required list. The 0..8 band is swept above but
         # excluded from the booking per P2_LOW_BAND_EXCLUSION_REASON.
@@ -894,7 +894,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             "SETUP",
             "ACTIVITY-BASELINE",
             # Literal-derived count, so the emitted fence term (built from
-            # len(cells_hit) at :853) is compared against a number this
+            # len(cells_hit) in `sweep_fence`) is compared against a number this
             # sequence states independently of what it booked.
             f"SWEEP-COMPLETE({len(P2_GRADED_CELL_NAMES)}-cells)",
             "RACE-REASSERT-EARLY",

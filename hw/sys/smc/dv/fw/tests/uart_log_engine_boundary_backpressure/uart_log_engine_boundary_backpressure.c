@@ -17,6 +17,10 @@
 //     rdata_fifo still holds fetched data. A 0x400-byte region gives each slot
 //     64 bytes, so a 64-byte request exceeds the 32-byte TX FIFO.
 //
+//   Scenario C — log_write completion with both interrupt enables set.
+//     Completion-only: no address the log_write master can reach answers
+//     with an error, so LOG_WRITE_ERR is not checked (see UART_ECR_OFF).
+//
 //   Scenarios D and E — both FSMs terminate at the same effective length.
 //     D clamps a request to an aligned slot capacity. E rounds a
 //     non-word-aligned slot down to complete 8-byte fetch beats. Both verify
@@ -77,10 +81,17 @@
 #define BIT_WRITE_ERR (1u << 4)
 
 #define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
-// Undefined offset inside the uart_16550 decode window (real regs 0x00-0x1C,
-// window 0x00-0x3F). A log_write to here → MAIN_REG decode-error → SLVERR →
-// log_write_err. UART_REG_MAP base 0xC000A100, size 0x28.
-#define UART_BAD_OFF 0x20u
+// Scenario C's log_write target. 0x20 is a DEFINED offset: the generated map
+// places ECR at 0x20 and ITR at 0x24
+// (hw/ip/uart/uart_16550/regs/gen/svh/uart_16550_main_reg.svh:48-51), so the
+// write is decoded and answered normally. Nor would an out-of-range offset
+// error: the generated UART register block ties its write-error output to 0, so
+// every write to this block returns OKAY. The address stays only so the scenario
+// is not silently re-armed with another guessed one.
+// Scenario C cannot reach LOG_WRITE_ERR through any address, so it runs as a completion
+// check. Re-arming it as an error-path proof needs a TB fault hook on the log_write
+// B-channel, not a different offset.
+#define UART_ECR_OFF 0x20u
 
 static void setup_uart_8n1_fifo(void) {
     write_reg(WRAP0_CTRL_REG, 1u);                    // padmux enable
@@ -89,7 +100,7 @@ static void setup_uart_8n1_fifo(void) {
     write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u); // DLM=0
     write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u); // DLAB=0, 8 bits, 1 stop, no parity
     write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u); // MCR.LOOP=1 (TX drains internally)
-    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u); // FCR.FIFO_ENABLE=1 (TX FIFO depth 32)
+    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u); // FCR.FIFO_ENABLE=1 (TX FIFO depth [S6])
 }
 
 // Poll LOG_CTRL[entry] until it hwclrs to 0 (engine finished writing the log).
@@ -158,24 +169,30 @@ int main(void) {
 
     //--------------------------------------------------------------------------
     // SCENARIO A — requested length terminates the fetch before slot capacity.
-    // region 0x100 → slot capacity=16; log_len=8 produces one fetch beat.
+    // region 0x100 → slot capacity=16; log_len=8 produces one fetch beat. The
+    // whole 16-byte slot carries a pattern so a transfer that ignored log_len
+    // and moved the slot shows up as a ninth byte.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario A: requested length terminates before slot capacity");
     {
         volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
-        for (int i = 0; i < 8; i++) buf[i] = (uint8_t)(0xA0u + i);
+        for (int i = 0; i < 16; i++) buf[i] = (uint8_t)(0xA0u + i);
 
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);  // clear stale
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u); // max_log_len=16
+        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u); // slot = 0x100/16 = 16 B
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
-        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 8u); // log_len=8 < 16
+        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 8u); // 1 log word, < 16 B slot
 
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
             info_msg_s(0, "FAIL: scenario A: log not done (LOG_CTRL hwclr timeout)");
+            test_fail(0);
+        }
+        if (verify_uart_transfer(0xA0u, 8u) != 0) {
+            info_msg_s(0, "FAIL: scenario A: expected exactly bytes 0xA0 through 0xA7");
             test_fail(0);
         }
         if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u) != 0u) {
@@ -197,15 +214,16 @@ int main(void) {
 
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x400u); // max_log_len=64
+        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x400u); // slot = 0x400/16 = 64 B
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
-        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 64u); // log_len=64 > TX FIFO 32
+        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 64u); // 8 log words, == 64 B slot
 
-        // The UART drains at baud while the engine refills; backpressure happens
-        // mid-transfer. Generous timeout: 64 bytes * ~160 clk/byte + margin.
+        // The UART drains at baud while the engine refills; the engine is held off
+        // for most of the transfer. Generous timeout: 64 bytes * ~160 clk/byte +
+        // margin. Expiry is a failure, never a pass.
         if (wait_log_done(LE_LOG_CTRL0_OFF, 2000000u) != 0) {
             info_msg_s(0, "FAIL: scenario B: log not done under backpressure");
             test_fail(0);
@@ -218,16 +236,15 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO C — real log_write_err while interrupt reporting is enabled.
+    // SCENARIO C — log_write completion with both interrupt enables set.
     // The log_write master feeds the LOCAL uart_16550 AXI-lite slave (via
-    // log_write_axi_lite_mux), NOT the SMC fabric. Writing to an UNDEFINED
-    // offset inside the uart_16550 decode window (real regs 0x00-0x1C, window
-    // 0x00-0x3F) → uart_16550_main_reg PeakRDL decode-error → SLVERR →
-    // log_write_err. The write FSM advances on mem_rsp_valid regardless of
-    // error, so the transfer COMPLETES (no hang) — poll normally.
-    // Good fetch from SRAM; bad write addr = UART_BASE + 0x20.
+    // log_write_axi_lite_mux), NOT the SMC fabric, and that register block
+    // answers every write OKAY (see the UART_ECR_OFF note above), so no
+    // log_write_err is raised and INTR_STATUS.LOG_WRITE_ERR is not checked.
+    // The write FSM advances on mem_rsp_valid, so the transfer COMPLETES —
+    // poll normally. Good fetch from SRAM; write addr = UART_BASE + 0x20.
     //--------------------------------------------------------------------------
-    info_msg_s(0, "scenario C: real log_write_err via undefined UART offset (bin 10)");
+    info_msg_s(0, "scenario C: log_write completion only (no reachable error path)");
     {
         volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
         for (int i = 0; i < 8; i++) buf[i] = (uint8_t)(0xC0u + i);
@@ -235,21 +252,15 @@ int main(void) {
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);          // max_log_len=16
+        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);          // slot = 16 B
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE); // good fetch
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
-        write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_BAD_OFF); // SLVERR
+        write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_ECR_OFF);
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
         write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 8u);
 
-        // Each of the 8 byte-writes to the undefined offset SLVERRs, pulsing
-        // log_write_err during the burst. INTR_STATUS.LOG_WRITE_ERR follows
-        // .next and is not sticky once the burst completes, so polling status
-        // races with the fast burst. Instead,
-        // poll LOG_CTRL hwclr, which reliably indicates the write completed —
-        // the SLVERR write FSM still advances on each resp and asserts
-        // log_write_done. (If status happens to still read set, fine; if not,
-        // the cond bin was covered anyway.)
+        // The 8 byte-writes are answered OKAY. Poll LOG_CTRL hwclr: the write
+        // FSM advances on each response and asserts log_write_done.
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
             info_msg_s(0, "FAIL: scenario C: write did not complete");
             test_fail(0);
@@ -275,12 +286,12 @@ int main(void) {
         }
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);          // max_log_len=16
+        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);          // slot = 16 B
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE); // good fetch
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
-        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 24u); // log_len=24 > max_log_len=16
+        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 24u); // 24 B > 16 B slot -> see [G1]
 
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
             info_msg_s(0, "FAIL: scenario D: clamped log did not complete");

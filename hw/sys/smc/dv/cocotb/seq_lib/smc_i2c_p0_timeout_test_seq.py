@@ -215,9 +215,8 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
 
         EXCLUDED -- `INTR_TEST`. It is declared `singlepulse` in
         i2c.rdl, so a written 1 does NOT stick and a write/readback expectation
-        is not derivable for it; on top of that its 20 fields force real
-        interrupt sources, which is not something to leave behind in a shared
-        regression for one register of coverage.
+        is not derivable for it, and its 20 fields force real interrupt sources
+        into the shared regression.
         """
         idx = 1
         # (symbol, writable mask, bits that MUST be exercised as 1).
@@ -314,9 +313,7 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
             await self.csr_read(f"I2C{idx}_{name}_RESTORE_RB", addr, expected=0)
 
         # TARGET_NACK_COUNT is `rclr` (i2c.rdl): the first read returns the
-        # value and CLEARS it. That makes a two-sided check of the read-clear
-        # semantic itself, which is stronger than a plain readback -- a register
-        # that merely stored the value would fail the second read.
+        # value and CLEARS it, so the second read must return 0.
         nack = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR", idx)
         nack_probe = 0x5A
         await self.csr_write(f"I2C{idx}_TARGET_NACK_COUNT_WR", nack, nack_probe)

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// PeakRDL-generated originally, now maintained manually: the EFUSE_BANK_REG storage process is plain
-// `always`, not `always_ff`, so efuse_bank_model's sim-only preload function can write to it at time 0.
-// This file is not a regen output; regen-regs never touches it.
+// Hand-maintained register block: regen-regs never touches this file. The EFUSE_BANK_REG storage
+// process is a plain `always` so that efuse_bank_model's sim-only preload initial block may also
+// write the storage array (a variable assigned in an `always_ff` admits no other writer).
 module efuse_bank_reg (
   input wire clk,
   input wire arst_n,
@@ -147,7 +147,7 @@ module efuse_bank_reg (
       field_combo.EFUSE_BANK_REG[i0].dout.next = next_c;
       field_combo.EFUSE_BANK_REG[i0].dout.load_next = load_next_c;
     end
-    // HAND-EDITED: `always`, not `always_ff` -- see header comment.
+    // Plain `always`: efuse_bank_model's preload initial block also writes this array (see header).
     always @(posedge clk) begin
       if (field_combo.EFUSE_BANK_REG[i0].dout.load_next) begin
         field_storage.EFUSE_BANK_REG[i0].dout.value <= field_combo.EFUSE_BANK_REG[i0].dout.next;

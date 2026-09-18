@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= SEP Production ROM
+:toc: left
+:toclevels: 3
+:sectnums:
+
+[WARNING]
+====
+The production ROM firmware and this documentation are works in progress and
+are not ready for production use.
+====
+
+[[sep-prod-rom-overview]]
+== Overview
+
+The SEP production ROM is the immutable BL0 Root-of-Trust firmware. It starts
+at the SEP CPU reset vector, establishes a usable machine-mode environment,
+selects a manifest source, validates that manifest and its payload, and
+transfers control to SEP BL1 in ICCM.
+
+The firmware has three cold-boot modes. A primary chiplet in normal mode reads
+the primary or backup manifest from SPI flash. A primary chiplet in recovery
+mode and every secondary chiplet wait for the SMC to stage a manifest in SMC
+SRAM. A warm reset takes a separate assembly path and may return directly to a
+BL1 handler in ICCM.
+
+The implementation is divided into:
+
+* reset, warm-dispatch, memory-health, PMP, and C-runtime setup in
+  `src/vector.S`;
+* boot orchestration in `src/rom_main.c`;
+* manifest and payload processing in `src/oca_boot.c`, which drives the OCA
+  validator library vendored at `tools/tt-oca-manifest/`, with this ROM's
+  platform callbacks (key authorization, revocation, anti-rollback, signature
+  verification, payload decryption) in `src/oca_platform.c`;
+* SPI, DMA, cryptographic, lifecycle, and SMC-interface support in `src/` and
+  `include/`; and
+* ROM and DCCM placement in `link/rom.ld`.
+
+These implementation files are the source of truth for firmware ordering and
+policy. SEP RTL, generated register collateral, the SEP memory-map chapter,
+and `link/rom.ld` define hardware addresses and image placement. The production
+Makefile and `configs/` define build and packaging behavior. DV tests provide
+observable execution evidence but do not define the architecture.
+
+Successful BL0 execution does not return and does not report a BL0 pass.
+`rom_handoff_bl1()` transfers control to BL1, which owns the eventual success
+verdict. A terminal BL0 error records its status and parks the hart in `wfi`
+until reset.
+
+include::boot-flow.adoc[]
+
+include::hardware-initialization.adoc[]
+
+include::memory-security.adoc[]
+
+include::spi-manifest.adoc[]
+
+include::smc-coordination.adoc[]
+
+include::status-errors.adoc[]
+
+include::bl1-handoff.adoc[]

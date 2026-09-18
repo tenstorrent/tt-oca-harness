@@ -3,9 +3,8 @@
 
 """Collect a DUT's native `run_dv.py` result.json into normalized dashboard result JSON.
 
-OSS dashboard collection consumes the normalized `result.json` that `run_dv.py` emits for every
-DUT. The older log/URG/JUnit scrapers were removed once every OSS flow emitted `result.json`; any
-private/historical importers live out-of-tree.
+Dashboard collection consumes only the normalized `result.json` that `run_dv.py` emits for every
+DUT.
 """
 
 from __future__ import annotations
@@ -394,11 +393,14 @@ _CATEGORY_PRIORITY = (
 
 _PATH_ARTIFACT_KEYS = {
     "coverage",
+    "coverage_coverage_details",
+    "coverage_coverage_details_raw",
     "coverage_design",
     "coverage_details",
     "coverage_details_raw",
     "coverage_inputs",
     "coverage_manifest",
+    "coverage_merged",
     "coverage_policy_application",
     "coverage_report",
     "coverage_summary",
@@ -818,7 +820,12 @@ def _collect_native_result(
     status = raw_status if raw_status in {STATUS_PASS, STATUS_UNKNOWN} else STATUS_FAIL
 
     tests = result.get("tests") or {}
-    coverage = result.get("coverage") or {}
+    coverage = _rebase_artifacts(
+        repo_root,
+        run_root,
+        result.get("coverage") if isinstance(result.get("coverage"), dict) else {},
+        recorded_run_root,
+    )
     timing = _native_timing(result.get("stages", []))
 
     artifacts: dict[str, Any] = {"result_json": _repo_rel(repo_root, path)}
@@ -872,13 +879,21 @@ def _collect_native_result(
         duration_sec=timing["duration_sec"],
         tests_total=int(tests.get("total") or 0),
         tests_passing=int(tests.get("passing") or 0),
+        tests_completed=tests.get("completed")
+        if isinstance(tests.get("completed"), bool)
+        else None,
         coverage_percent=coverage.get("total_percent"),
         coverage_breakdown={
             k.removesuffix("_percent"): v for k, v in (coverage.get("metrics") or {}).items()
         },
         coverage_details=coverage,
         artifacts=artifacts,
-        failure_buckets=_native_failure_buckets(result, regression),
+        failure_buckets=_rebase_failure_buckets(
+            repo_root,
+            run_root,
+            _native_failure_buckets(result, regression),
+            recorded_run_root,
+        ),
         source={
             "collector": "run_dv-result",
             "label": str(result.get("label", "")),
@@ -916,6 +931,15 @@ def collect_flow_result(repo_root: Path, flow: Flow, run_dir: Path | None) -> di
     )
 
 
+# The files of a coverage report that are staged beside the normalized result;
+# the details files, the annotated sources, and the merged database stay in the
+# run tree.
+_STAGED_REPORT_FILES = (
+    ("summary", "summary.json"),
+    ("policy_application", "policy-application.json"),
+)
+
+
 def stage_coverage_artifacts(
     repo_root_path: Path,
     result: dict[str, Any],
@@ -939,22 +963,20 @@ def stage_coverage_artifacts(
             report_destination = destination / "report"
             if report_destination.exists():
                 shutil.rmtree(report_destination)
-            shutil.copytree(source, report_destination)
+            report_destination.mkdir(parents=True)
             staged_report = str(report_destination.relative_to(output.parent))
             coverage["source_report"] = report_value
             coverage["report"] = staged_report
             artifacts["coverage_report"] = staged_report
-            for key, filename in (
-                ("summary", "summary.json"),
-                ("coverage_details", "coverage-details.json"),
-                ("coverage_details_raw", "coverage-details.raw.json"),
-                ("policy_application", "policy-application.json"),
-            ):
+            for key, filename in _STAGED_REPORT_FILES:
+                staged_source = source / filename
+                if not staged_source.is_file():
+                    continue
                 staged = report_destination / filename
-                if staged.is_file():
-                    coverage[f"source_{key}"] = coverage.get(key)
-                    coverage[key] = str(staged.relative_to(output.parent))
-                    artifacts[f"coverage_{key}"] = coverage[key]
+                shutil.copy2(staged_source, staged)
+                coverage[f"source_{key}"] = coverage.get(key)
+                coverage[key] = str(staged.relative_to(output.parent))
+                artifacts[f"coverage_{key}"] = coverage[key]
 
     manifest_value = coverage.get("manifest")
     if isinstance(manifest_value, str) and manifest_value:
@@ -992,8 +1014,7 @@ def main(argv: list[str] | None = None) -> int:
             and (result.get("source") or {}).get("collector") == "run_dv-result"
             and collected_framework != args.framework
         ):
-            # Fail loudly on a mispaired run dir instead of publishing a run under the
-            # wrong framework view.
+            # A result.json that records a different framework is a mispaired --run-dir.
             raise ConfigError(
                 f"--framework {args.framework} was requested but the collected result.json "
                 f"records framework `{collected_framework}` — wrong --run-dir pairing?"

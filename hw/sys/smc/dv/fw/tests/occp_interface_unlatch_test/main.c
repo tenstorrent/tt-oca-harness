@@ -11,9 +11,8 @@
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-/* smc_top_regs.h in the reference; SMC_STRAP_STATUS_RPT_DISABLE is the only
- * symbol needed and it lives here, while the dv_rom build force-includes vendor
- * I3C shims whose types collide with smc_top_regs.h. */
+/* smc_top_regs.h is not included: the dv_rom build force-includes I3C shims whose
+ * types collide with it. SMC_STRAP_STATUS_RPT_DISABLE comes from smc_strap.h. */
 #include "smc_strap.h"
 
 typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
@@ -104,7 +103,6 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
     uint64_t upper = OCCP_TEST_UPPER_ADDR;
     uint64_t range = (upper > base) ? (upper - base) : 0;
 
-    // TODO: send random command not predetermined
     switch (which) {
     case 0: /* Header CRC error (detectable) */
         simputs("Injecting Header CRC error (detectable)\n");
@@ -304,8 +302,7 @@ int main(void) {
     /* Wait for target up (GPIO) before transacting */
     simputs("Waiting for target to be ready...\n");
     {
-        /* Native generated type; the reference spells this GPIO_INTF_DATA_CTRL_reg_u
-         * with a .val raw word. Same layout, and DATA_CTRL is at offset 0. */
+        /* DATA_CTRL is at offset 0 of the GPIO interface register block. */
         gpio_intf__DATA_CTRL_t gpio_control;
         gpio_control.w = read_gpio(58, 0x0u);
         gpio_control.f.interface_enable = 1;

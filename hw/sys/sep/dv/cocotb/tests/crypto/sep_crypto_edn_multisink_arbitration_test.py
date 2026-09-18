@@ -4,14 +4,14 @@
 
 Top-down integration edge: AES (crypto_edn[0]) and KMAC (crypto_edn[1]) BOTH pull
 the shared crypto-EDN leg (drbg_axis_edn_adapter -> u_axis_edn_crypto_s3c_scan round-robin
-arbiter, sep_crypto.sv) concurrently off ONE verified DRBG stream. This is the
-first time TWO real crypto clients contend the crypto arbiter.
-`sep_drbg_real_sink_multi_km_aes_test` had AES as the SOLE crypto client (KMAC parked)
+arbiter, sep_crypto.sv) concurrently off ONE verified DRBG stream: TWO real
+crypto clients contend the crypto arbiter.
+`sep_drbg_real_sink_multi_km_aes_test` has AES as the SOLE crypto client (KMAC parked)
 and used KM (a different leg) as the second sink; the standalone AES/KMAC breadth
 tests are single-engine KATs. DISTINCT from all of those -- do NOT re-prove
 single-sink routing here.
 
-reference parity: COVERED_STRONGER re-expression of reference suite drbg/sep_drbg_real_sink_multi_
+Reference parity: re-expression of reference suite drbg/sep_drbg_real_sink_multi_
 rand_test at the crypto-endpoint arbiter (the reference suite's per-IP tb cannot reach the SEP
 integration where two crypto engines share one EDN adapter). No KM firmware / no
 rom_main / no real fuse-sense (+skip_fuse_sense), so it follows the standalone
@@ -159,8 +159,8 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
 
         # NB: do NOT park OTBN/HMAC via SW_RESET_N. Holding a crypto engine in
         # reset while the crypto-EDN adapter is live wedges the AES masking reseed
-        # (AES sits idle, no OUTPUT_VALID) -- observed on this DUT. OTBN/HMAC are
-        # left released (SW_RESET_N reset 0x3E): OTBN does a one-shot post-reset
+        # (AES sits idle, no OUTPUT_VALID). OTBN/HMAC are
+        # left released (SW_RESET_N reset 0x7E): OTBN does a one-shot post-reset
         # secure wipe then goes idle, and HMAC is not a crypto-EDN client, so AES +
         # KMAC are the sustained clients contending the arbiter (the standalone
         # AES recipe likewise leaves all crypto released and drives AES on entropy).
@@ -181,7 +181,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
             strict=True, score_km=False, score_sinks={"aes": "golden", "kmac": "golden"}
         )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        self.start_fifo_drain()  # frontdoor CHK2 (proven in sep_esrc_e2e_smoke)
+        self.start_fifo_drain()  # frontdoor CHK2 drain
 
         self.aes = SepAes(self)
         self.kmac = SepKmac(self)
@@ -237,13 +237,9 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
             for i in range(cfg.aes_blocks_fork):
                 await self.aes.load_key_iv(list(cfg.aes_key))
                 ct = await self.aes.run_ecb_block(aes_pt)
-                # Every fork block is compared bit-exact, not just block 0. ECB is
-                # stateless and the key/plaintext are identical per iteration, so the
-                # former `any(w != 0 for w in ct)` guard on later blocks reduced to
-                # `any(aes_golden)` -- a property of the Python model, true with the
-                # simulator switched off. The exact expected value is already known
-                # here, so asserting it turns each later block into a real second
-                # contended data point instead of a non-zero placeholder.
+                # Every fork block is compared bit-exact: ECB is stateless and the
+                # key/plaintext are identical per iteration, so the expected value is
+                # known for every block and each one is a contended data point.
                 assert ct == aes_golden, (
                     f"AES contended block-{i} ct != golden:\n"
                     f"  ct    ={[hex(w) for w in ct]}\n"
@@ -295,10 +291,9 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # KMAC's crypto-EDN beat TIME-SPANS overlap -- both were being granted words by
         # u_axis_edn_crypto_s3c_scan during an overlapping window, so neither sink
         # drained fully before the other started. Interval-span containment, not
-        # per-cycle interleaving. Scoping by
-        # the pre-fork beat count isolates the fork's beats. (A stricter same-cycle-req
-        # overlap does not occur here: each masking reseed is a brief req pulse
-        # separated by long AXI config, so the beat-window form is the honest proof.)
+        # per-cycle interleaving. Scoping by the pre-fork beat count isolates the
+        # fork's beats. Same-cycle dual req does not occur here: each masking reseed
+        # is a brief req pulse separated by long AXI configuration.
         aes_ft = self.drbg_sb.sink_beat_times("aes")[aes_before:]
         kmac_ft = self.drbg_sb.sink_beat_times("kmac")[kmac_before:]
         assert aes_ft and kmac_ft, (

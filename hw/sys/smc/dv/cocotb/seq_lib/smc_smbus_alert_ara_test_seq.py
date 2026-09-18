@@ -7,8 +7,8 @@ ADDRESS1=ARA(0x0C), preloads TXDATA with (addr<<1), sets SMBUS_CTRL.SMBALERT,
 observes pad39 low, then VIP master reads ARA and expects the alerting
 address byte. DUT hwclr clears SMBALERT# after address match.
 
-Honest scope: cocotb CSR stimulus stands in for FW alert assertion / ARA
-servicing; not a Rocket FW interrupt handler proof.
+Scope: cocotb CSR stimulus stands in for firmware alert assertion and ARA
+servicing; the CPU interrupt-handler path is outside this sequence.
 """
 
 from __future__ import annotations

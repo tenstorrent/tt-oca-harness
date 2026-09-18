@@ -10,15 +10,17 @@ from seq_lib.dtp_jtag2axi_robustness_test_seq import dtp_jtag2axi_robustness_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_decode_error_decerr_read_test(dtp_base_test):
-    # Directed one-pass scenario: the DECERR decode path is exercised on all
-    # three JTAG2AXI targets with recovery ops; randomized address/data/series
-    # coverage of the same bridge lives in the jtag2axi random/mixed sibling
-    # scenarios (e.g. dtp_jtag2axi_decode_error_mixed_test).
+    # The bridge's DECERR read handling is exercised on all three JTAG2AXI
+    # targets with the response injected by each target's responder (the DTP
+    # boundary has no address decoder), followed by recovery ops; randomized
+    # address/data/series coverage of the same bridge lives in the jtag2axi
+    # random/mixed sibling scenarios (e.g. dtp_jtag2axi_decode_error_mixed_test).
     #
     # Shared AXI checker: every injected DECERR must be classified as
-    # EXPECTED, recovery readbacks must match the reference model, completion
-    # must stay within the poll bound, all armed credits must be consumed,
-    # and each JTAG2AXI stream must contribute compared transactions.
+    # EXPECTED, the SINGLE_OP capture must return the errored beat's RDATA,
+    # recovery readbacks must match the reference model, completion must stay
+    # within the poll bound, all armed credits must be consumed, and each
+    # JTAG2AXI stream must contribute compared transactions.
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
@@ -28,6 +30,7 @@ class dtp_jtag2axi_decode_error_decerr_read_test(dtp_base_test):
         "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
+        "CHK-J2A-ERR-RDATA",
     )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 

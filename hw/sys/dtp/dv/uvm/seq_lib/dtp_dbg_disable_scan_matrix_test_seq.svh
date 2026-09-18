@@ -110,8 +110,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     start_scan_window(watch);
     stap_chain_maintain(d, {context_s, ".observe"}, captured);
     stop_scan_window(edges, counts);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {
-                 context_s, ".window"});
+    check_window_shifted("CHK-SCAN-WIN", {context_s, ".window"});
 
     // Gated ports stop forwarding with tms parked at the stored
     // tms_hold=1; ungated ports keep forwarding.
@@ -151,10 +150,9 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
 
   task body();
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN",
-                              "CHK-SCAN-OBS", "CHK-SCAN-CHAIN"};
+                              "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"};
     bit [ScanFieldCount-1:0] row_bits[$];
     string row_labels[$];
-    string quiet[$], none[$];
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
     seed_scenario_rng();
     // Scenario-owned Shift-x exits: skip the scan-count cross-check.
@@ -204,15 +202,11 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     // release without reset, and prove no select pulses (a gated open
     // attempt that stuck would assert here).
     enable_all_debug();
-    program_ijtag_sibs(3'b000, "release.close");
+    program_ijtag_sibs(3'b000, '0, "release.close");
     set_dbg_disable_full(scan_mask_from_bits('1));
-    program_ijtag_sibs(3'b111, "release.gated_open_attempt");
+    program_ijtag_sibs(3'b111, scan_mask_from_bits('1), "release.gated_open_attempt");
     enable_all_debug();
-    for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++)
-      quiet.push_back({ijtag_prefix(sib), "_select"});
-    start_scan_window(quiet);
-    program_ijtag_sibs(3'b000, "release.observe");
-    check_scan_window(quiet, none, "release.window");
+    check_ijtag_all_closed('0, "release.observe");
 
     check_ijtag_row('0, "recovery");
     check_stap_row('0, "recovery");

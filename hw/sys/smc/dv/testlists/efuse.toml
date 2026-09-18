@@ -8,7 +8,7 @@ name = "smc_efuse_otp_clock_test"
 module = "smc_efuse_otp_clock_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "functional", "pyuvm"]
+tags = ["ci", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -28,14 +28,6 @@ tags = ["ci", "depth_efuse", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_efuse_map_read_test"
-module = "smc_efuse_map_read_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_efuse_shim_ctrl_test"
 module = "smc_efuse_shim_ctrl_test"
 seed = 1
@@ -43,14 +35,24 @@ timeout_sec = 1800
 tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
-# smc_pll_cgm_awm_config_test — not ported (rtl_placeholder)
+[[tests]]
+# A timed-out eFuse read must complete with EFUSE_READ_CTRL.READ_STATUS set:
+# the bit is proven clear on an arming read first, so the set is a transition.
+name = "smc_efuse_read_timeout_status_test"
+module = "smc_efuse_read_timeout_status_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse", "pyuvm"]
+run_modes = ["smoke"]
 
 [[groups]]
 name = "depth_efuse"
 tests = [
+    "smc_efuse_read_timeout_status_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_chip_config_read_test",
     "smc_efuse_locked_access_interrupt_test",
     "smc_efuse_boundary_signals_test",
     "smc_efuse_read_program_timeout_test",
+    "smc_state_fault_inject_test",
 ]

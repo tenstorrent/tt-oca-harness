@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap: ALIAS_REMAP translation + MMODE/ALIAS sweep + CLA."""
+"""SMC OSS ALIAS_REMAP translation + MMODE/ALIAS sweep + CLA."""
 
 from __future__ import annotations
 
@@ -21,17 +21,27 @@ from smc_base_test import smc_base_test
 #
 # The 82 is the software-owned subset of the 137 registers in the generated
 # CLA map -- the remaining registers are hardware-driven and cannot be held
-# to an RDL reset (measured: `Timestamp`
-# @0x200 reads 0x2ad against a generated reset of 0x0, being a free-running
-# counter). The sequence additionally asserts `len(CLA_RESET_SWEEP) >= 82`, so a
-# generated map that lost rows fails there rather than quietly lowering this
-# floor.
+# to an RDL reset (`Timestamp` @0x200 is a free-running counter and never
+# reads its generated reset of 0x0). The sequence additionally asserts
+# `len(CLA_RESET_SWEEP) >= 82`, so a generated map that lost rows fails there
+# rather than quietly lowering this floor.
 REMAP_CLA_MIN_CSR_ACCESSES = 141
 
 
 @pyuvm.test()
 class smc_remap_cla_test(smc_base_test):
     """ALIAS_REMAP address translation, remap-table reset sweep, CLA window."""
+
+    required_evidence = (
+        "CHK-CLA-RESET-SWEEP",
+        "CHK-CLA-WINDOW-ALLOW",
+        "CHK-CLA-WINDOW-DENY",
+        "CHK-REMAP-ALIAS0-IDENTITY",
+        "CHK-REMAP-ALIAS0-LANDING",
+        "CHK-REMAP-ALIAS0-OFF",
+        "CHK-REMAP-TABLE-RESET",
+    )
+    min_evidence = 7
 
     auto_protocol_vip = False
 
@@ -61,6 +71,6 @@ class smc_remap_cla_test(smc_base_test):
             proxy=False,
             details=(
                 "ALIAS_REMAP_0 address translation proven at the SYS_OUT landing "
-                "site; MMODE/ALIAS reset sweep; CLA allow+deny window"
+                "site; MMODE/ALIAS reset sweep; CLA allow and in-window-hole window"
             ),
         )

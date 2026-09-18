@@ -2,38 +2,37 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Entropy-pool aperture driver (sep_entropy_pool_aperture_test).
 
-64-bit AXI-Lite drain of ``sep_entropy_fifo`` at the fabric Entropy Pool
-target (``0x1095_0000``). Live offsets from the pool module: status
-``0x00``, irq-cause ``0x08``, pop ``0x10``; every other in-window offset
-and every write is SLVERR.
+64-bit AXI-Lite drain of the fabric Entropy Pool target
+(``memory_map.adoc`` EPOOL). Live offsets: status ``0x00``, irq-cause
+``0x08``, pop ``0x10``; every other in-window offset and every write is
+SLVERR (``fabric.adoc``).
 """
 
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import agg_from_pic, window
 from sep_reg_meta import ENTROPY_SOURCE
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-# Independent goldens for the occupancy / stall checkers. Defaults match
-# sep_entropy_fifo (FifoDepth, LowWatermark, StallThresh). They are not
-# imported from RTL, so a DUT that changes those defaults fails.
-POOL_BASE = 0x1095_0000
+# Aperture from memory_map.adoc EPOOL. Occupancy and pool_low are graded
+# from the live status / aggregator flags, not from a FIFO watermark.
+POOL_BASE = window("EPOOL").base
 POOL_STATUS = POOL_BASE + 0x00
 POOL_IRQ_CAUSE = POOL_BASE + 0x08
 POOL_POP = POOL_BASE + 0x10
 FIFO_DEPTH = 32
-LOW_WATERMARK = 8
 STALL_THRESH = 4096
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
-IRQ_POOL_LOW = 36
-IRQ_FILL_STALL = 37
+IRQ_POOL_LOW = agg_from_pic("Entropy pool low")
+IRQ_FILL_STALL = agg_from_pic("Entropy pool fill stall")
 
 # Offsets that alias a live register if the decode drops high address bits
 # (the defect the 16-bit unique-case exists to catch). A seed that only
@@ -137,7 +136,6 @@ class SepEntropyPool(SepAxiRegDriver):
 def _selftest() -> None:
     assert POOL_BASE == 0x1095_0000
     assert FIFO_DEPTH == 32
-    assert LOW_WATERMARK == 8
     assert STALL_THRESH == 4096
     cfg = SepEntropyPoolCfg(1)
     assert cfg.alias_offs == _ALIAS_UNMAPPED

@@ -5,8 +5,9 @@
 //
 // The SEP reset controller holds the Key Manager (KM) PicoRV32 second core in
 // warm reset out of cold reset: SW_RESET_N resets with km_sw_rst_n (bit 0) = 0
-// while the crypto cores and internal TRNG come up released. The EL2 firmware
-// writes km_sw_rst_n = 1 to release the KM so it boots from its ROM responder.
+// while the crypto cores, Adams Bridge and the internal TRNG come up released.
+// The EL2 firmware writes km_sw_rst_n = 1 to release the KM so it boots from
+// its ROM responder.
 // Addresses and field masks come from generated sep_addr.h / sep_reset_ctrl.h
 // (via sep.h).
 
@@ -26,6 +27,7 @@
 #define SEP_SW_RESET_N_HMAC_BIT SEP_RESET_CTRL__SW_RESET_N__HMAC_SW_RST_N_bm
 #define SEP_SW_RESET_N_KMAC_BIT SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_bm
 #define SEP_SW_RESET_N_TRNG_BIT SEP_RESET_CTRL__SW_RESET_N__TRNG_SW_RST_N_bm
+#define SEP_SW_RESET_N_ABR_BIT SEP_RESET_CTRL__SW_RESET_N__ABR_SW_RST_N_bm
 
 static inline uint32_t sep_reset_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;
@@ -55,7 +57,7 @@ static inline void sep_reset_release_trng(void) {
 }
 
 // Begin alarm recovery by holding all native-EDN consumers in reset before the
-// TRNG request. HMAC is intentionally absent because it has no EDN input.
+// TRNG request. HMAC is absent: it has no EDN input.
 // Set reset_km when mux leg 0 selects the internal DRBG and KM is not known idle.
 // The returned value is restored only after ESRC/CSRNG/EDN reinitialization and
 // an observation of fresh endpoint/pool progress.

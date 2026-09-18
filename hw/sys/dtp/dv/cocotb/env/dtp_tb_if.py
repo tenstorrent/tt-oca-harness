@@ -7,8 +7,8 @@
 downstream-TAP ``ocah_jtag_if`` instances, and one active plus one passive
 ``ocah_axi_if`` per DTP bus. ``DtpTbIf`` holds those hierarchical handles,
 resolves DTP observables by their flat names across the three domain
-interfaces, packs the lifecycle ``dbg_disable_t`` struct from its field
-table, and binds the shared AXI VIP at each bus's real geometry through
+interfaces, drives and samples the lifecycle debug disables by field name,
+and binds the shared AXI VIP at each bus's real geometry through
 ``OcahAxiConfig``. The SV-UVM twin is the set of ``virtual`` interface
 handles ``dtp_env`` publishes; the member names are identical.
 """
@@ -18,16 +18,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from cocotbext.axi import AxiBus, AxiLiteBus
-from ocah_axi_vip import OcahAxiConfig, OcahAxiProtocol
+from ocah_axi_vip import OcahAxiBus, OcahAxiConfig, OcahAxiProtocol
 
-from .dtp_dbg_disable import (
-    DBG_DISABLE_FIELDS,
-    full_dbg_disable,
-    pack_dbg_disable,
-    unpack_dbg_disable,
-    validate_dbg_disable,
-)
+from .dtp_dbg_disable import DBG_DISABLE_FIELDS, full_dbg_disable, validate_dbg_disable
 from .dtp_scan_ref_model import STAP_ORDER
 
 __all__ = ["DtpTbIf"]
@@ -38,8 +31,8 @@ JTAG_SIGNAL_MAP: dict[str, str] = {"trst": "trst_n"}
 
 _DBG_DISABLE_PREFIX = "dbg_disable_"
 
-# Flat observable names of the former port list that map onto a member of a
-# different name (or of the primary-TAP interface).
+# Flat observable names that map onto a member of a different name (or of the
+# primary-TAP interface).
 _ALIASES: dict[str, tuple[str, str]] = {
     "clk_i": ("ctrl", "clk"),
     "rst_n_i": ("ctrl", "sys_rst_n"),
@@ -120,9 +113,7 @@ class DtpTbIf:
         raise AttributeError(f"{name} is not a member of the DTP TB interfaces")
 
     def has(self, name: str) -> bool:
-        """True when ``name`` resolves to a member or a dbg_disable field."""
-        if name.startswith(_DBG_DISABLE_PREFIX):
-            return name[len(_DBG_DISABLE_PREFIX) :] in DBG_DISABLE_FIELDS
+        """True when ``name`` resolves to a member of the DTP TB interfaces."""
         try:
             self.handle(name)
         except AttributeError:
@@ -130,35 +121,52 @@ class DtpTbIf:
         return True
 
     def sample(self, name: str) -> int:
-        """Integer value of a member or dbg_disable field by its flat name."""
-        if name.startswith(_DBG_DISABLE_PREFIX):
-            return self.dbg_field(name[len(_DBG_DISABLE_PREFIX) :])
+        """Integer value of a member by its flat name."""
         return int(self.handle(name).value)
 
     # --- lifecycle debug disables ---------------------------------------------
     def dbg_disable(self) -> dict[str, int]:
-        """Current dbg_disable fields (1 = interface disabled)."""
-        return unpack_dbg_disable(int(self.ctrl.dbg_disable.value))
+        """Current dbg_disable fields (1 = path disabled)."""
+        return {name: self.dbg_field(name) for name in DBG_DISABLE_FIELDS}
 
     def dbg_field(self, name: str) -> int:
-        fields = self.dbg_disable()
-        if name not in fields:
-            raise ValueError(f"unknown dbg_disable field {name!r}")
-        return fields[name]
+        """Driven value of one dbg_disable field by name."""
+        return int(self._dbg_handle(name).value)
 
     def set_dbg_disable(self, values: Mapping[str, int]) -> None:
         """Drive the named dbg_disable fields; the other fields keep their state."""
-        fields = self.dbg_disable()
-        fields.update(validate_dbg_disable(values))
-        self.ctrl.dbg_disable.value = pack_dbg_disable(fields)
+        for name, value in validate_dbg_disable(values).items():
+            self._dbg_handle(name).value = value
 
     def set_dbg_disable_vector(self, values: Mapping[str, int] | None) -> None:
         """Drive all eleven dbg_disable fields; unnamed fields are enabled (0)."""
-        self.ctrl.dbg_disable.value = pack_dbg_disable(full_dbg_disable(values))
+        self.set_dbg_disable(full_dbg_disable(values))
+
+    def _dbg_handle(self, name: str) -> Any:
+        if name not in DBG_DISABLE_FIELDS:
+            raise ValueError(f"unknown dbg_disable field {name!r}")
+        return getattr(self.ctrl, _DBG_DISABLE_PREFIX + name)
+
+    # --- JTAG2AXI bridge state --------------------------------------------------
+    def bridge_fsm_state(self, target: str) -> int:
+        """AXI FSM state of one bridge (``DtpJtag2AxiFsmState`` encoding)."""
+        return self.sample(f"{target}_fsm_state")
+
+    def bridge_op_pending(self, target: str) -> int:
+        """1 while the bridge holds a launched SINGLE_OP."""
+        return self.sample(f"{target}_op_pending")
+
+    def cdc_clear_seen(self, target: str) -> int:
+        """1 once the bridge's CDC has run its TCK-side isolate-and-clear since the last clear."""
+        return self.sample(f"{target}_cdc_clear_seen")
+
+    def set_cdc_clear_seen_clear(self, value: int) -> None:
+        """Hold ``cdc_clear_seen_clear``: 1 clears every bridge's sticky clear-seen flag."""
+        self.handle("cdc_clear_seen_clear").value = value
 
     # --- shared AXI VIP binding -----------------------------------------------
-    def axi_bus(self, target: str, *, passive: bool = False) -> AxiBus | AxiLiteBus:
-        """cocotbext bus over one DTP AXI interface at the bus's real geometry.
+    def axi_bus(self, target: str, *, passive: bool = False) -> OcahAxiBus:
+        """Shared-VIP bus handle over one DTP AXI interface at the bus's real geometry.
 
         ``target`` is ``smc_axi``, ``smc_otp``, ``sep_otp``, or ``xtrig``; the
         active instance carries the responder or initiator connection, the

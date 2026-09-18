@@ -14,18 +14,17 @@ here is imported by generated symbol from ``efuse_interface_ctrl.h``.
 
 *Model-backed (NOT silicon-path coverage).* ``tb_efuse_programmed_word0`` is a
 TB tap on ``u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg``
-(``tb/tb_top.sv:1324-1327``). SPEC declares that block a stand-in: "The eFuse
+(``tb/tb_top.sv:1274-1277``). SPEC declares that block a stand-in: "The eFuse
 bank model (`efuse_bank_model.sv`) is a reference, simulation-only stand-in for
 the real foundry OTP macro ... In a production integration it is replaced by the
 actual foundry macro driven by the SHIM"
 (``hw/ip/efuse/doc/architecture.adoc:163-170``), and its set-once semantics are
-``onwrite = woset`` in the DV RDL ``hw/ip/efuse/regs/efuse_bank.rdl:14``. The
+``onwrite = woset`` in the DV RDL ``hw/ip/efuse/dv/models/regs/efuse_bank.rdl:14``. The
 ``OTP=...`` observations below therefore show that the controller's command did
 or did not reach the bank model -- they are **not** proof that a fuse burns in
-silicon ([BEHAVIORAL-STUB-DECLARED], §2 real-path/no-HW-equivalent). Their log
-lines are prefixed ``MODEL-BACKED`` so the retained evidence says so too. The
-legs are kept, not deleted: they are the only end-to-end sequencing check
-available in this bench.
+silicon ([BEHAVIORAL-STUB-DECLARED]). Their log lines are prefixed
+``MODEL-BACKED``. These legs are the only end-to-end sequencing check available
+in this bench.
 """
 
 from __future__ import annotations
@@ -173,12 +172,11 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         stat_hold = await self.csr_read("STATUS_HOLD", STATUS)
         assert st_hold & PROG_ERR, f"timeout PROGRAM_STATUS not sticky: CTRL=0x{st_hold:x}"
         # PROGRAM_STATUS is live HW from the last op; writing 0 does not clear
-        # it. EFUSE_INTERFACE_CTRL_STATUS is now asserted per field from the
-        # generated header rather than printed next to no expectation
-        # ([EXACT-EXPECTATION]): fuse sense has completed, and a request that
-        # was aborted by the *timeout* counter is not an eFuse request error nor
-        # an address error, so all three error bits must read 0 and SENSE_DONE
-        # must read 1.
+        # it. EFUSE_INTERFACE_CTRL_STATUS is asserted per field from the
+        # generated header ([EXACT-EXPECTATION]): fuse sense has completed, and
+        # a request aborted by the *timeout* counter is neither an eFuse request
+        # error nor an address error, so all three error bits must read 0 and
+        # SENSE_DONE must read 1.
         assert (stat_hold & SENSE_DONE) == SENSE_DONE, (
             f"STATUS.EFUSE_SENSE_DONE not set after fuse sense: STATUS=0x{stat_hold:x}"
         )
@@ -230,18 +228,17 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("READ_TMO_SHORT", READ_TMO, TMO_EN_R)
         got = await self.csr_read("READ_TMO_RB", READ_TMO, expected=TMO_EN_R)
         st, data = await self._read("READ_TMO")
+        assert st & READ_ERR, f"short read timeout expected READ_STATUS=1 got CTRL=0x{st:x}"
         assert data == 0, f"timed-out read data=0x{data:x} want 0"
         self.read_tmo_ok = True
         self.read_tmo_data = data
 
         # SAME-CONFIGURATION POSITIVE CONTROL for the `data == 0` above
-        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). A recovery leg that re-read with
-        # READ_REQ_TIMOUT_ENABLE back at 0 would show no read with the timeout
-        # ENABLED returning data, and a dead or unmapped READ_DATA register
-        # would satisfy `data == 0` just as well. Here the
-        # enable bit stays 1 and only the cycle count changes to the RDL default
-        # (0x%x), so the difference between this read and the one above is
-        # exactly the quantity under test.
+        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]): a dead or unmapped READ_DATA
+        # register satisfies `data == 0` on its own. The enable bit stays 1 and
+        # only the cycle count changes to the RDL default, so the difference
+        # between this read and the one above is exactly the quantity under
+        # test.
         tmo_enabled_long = TMO_EN_R | TMO_CYC_RST_R
         await self.csr_write("READ_TMO_EN_LONG", READ_TMO, tmo_enabled_long)
         await self.csr_read("READ_TMO_EN_LONG_RB", READ_TMO, expected=tmo_enabled_long)
@@ -304,21 +301,19 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         )
         self.chk_seen.add("CHK-EFUSE-TMO-RD-REC")
 
-        # READ_STATUS positive control. Every other READ_STATUS assertion in
-        # this file is `== 0` (:234 and :275 above); on their own they cannot
-        # distinguish a working status bit from a dead one, so a failure of the
-        # bit to SET would go unreported ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+        # READ_STATUS positive control: the `== 0` READ_STATUS assertions on the
+        # enabled reads above cannot on their own distinguish a working status
+        # bit from a dead one ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
         #
-        # Armed by the recovery read immediately above: `:275` has just proven
-        # READ_STATUS == 0 on a *successful* read, which matters because
-        # `efuse_read_interface.sv:95` defaults `read_err_d = read_err_q` -- the
-        # field holds, so without that arming a stale 1 would satisfy this leg.
+        # Armed by the recovery read immediately above, which proves
+        # READ_STATUS == 0 on a *successful* read: `efuse_read_interface.sv:95`
+        # defaults `read_err_d = read_err_q`, so the field holds and a stale 1
+        # would otherwise satisfy this leg.
         #
-        # The alternative cause is excluded rather than assumed:
         # `efuse_interface_controller.sv:612` gates `read_enable` with
-        # `&& ~efuse_req_err`, so a sticky req-err reaches the very same
+        # `&& ~efuse_req_err`, so a sticky req-err reaches the same
         # `!read_enable_i` branch and would set READ_STATUS for the wrong
-        # reason. STATUS is therefore read and REQ_ERROR required clear first.
+        # reason: STATUS is read and REQ_ERROR required clear first.
         stat_pre = await self.csr_read("RD_NOEN_STATUS_PRE", STATUS)
         assert (stat_pre & REQ_ERR) == 0, (
             f"STATUS.EFUSE_REQ_ERROR already set (STATUS=0x{stat_pre:x}) before "
@@ -333,18 +328,13 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             f"efuse_interface_ctrl.rdl documents this as the field's cause and "
             f"efuse_read_interface.sv:109-113 implements it"
         )
-        # READ_DATA is deliberately NOT asserted here. Measured: the no-enable
-        # arm (`efuse_read_interface.sv:109-113`) leaves `read_back_data_d` at
-        # its `:98` hold, so the register keeps the previous successful read's
-        # word -- 0xa5a55a5b in this run, the value CHK-EFUSE-TMO-RD-REC just
-        # read. Its two sibling refusal arms both scrub it instead:
-        # `:114-123` (OOB) clears it with the comment "clear the data register
-        # so a stale value from a prior in-range read cannot leak via an OOB
-        # read" citing issue #2750, and `:137-142` (macro error / secure_tm /
-        # req-err) clears it too. That inconsistency is a separate finding and
-        # is tracked by its own reproducer; folding it in here would make this
-        # positive control fail for a reason that is not the property it exists
-        # to establish. The value is logged as an observation.
+        # READ_DATA is not asserted here: the no-enable arm
+        # (`efuse_read_interface.sv:109-113`) leaves `read_back_data_d` at its
+        # `:98` hold, so the register keeps the previous successful read's word,
+        # while the OOB arm (`:114-123`) and the macro-error / secure_tm /
+        # req-err arm (`:137-142`) both clear it. Asserting either behaviour
+        # here would fail this positive control for a reason other than the
+        # property it establishes. The value is logged as an observation.
         cocotb.log.info(
             "CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE: the SAME command word as "
             "the recovery read minus READ_ENABLE(0x%x) gives READ_CTRL=0x%x "
@@ -367,11 +357,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self.chk_seen.add("CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE")
         await self._clear_req_err()
 
-        # Summary token, carrying the measured words. Boolean leg flags would
-        # be literal `True` at this line -- each leg above raises on failure, so
-        # reaching here is all they could report, and a kept-log line whose
-        # entire content is constants is not evidence
-        # ([NO-ALWAYS-PASS-CHECKER]).
+        # Summary token carrying the measured words, so the line is falsifiable
+        # against the per-leg tokens above it ([NO-ALWAYS-PASS-CHECKER]).
         cocotb.log.info(
             "CHK-EFUSE-TMO-BASIC: prog(aborted CTRL=0x%x) prog_rec(CTRL=0x%x) "
             "rd(short-timeout READ_DATA=0x%x vs enabled-long READ_DATA=0x%x) "

@@ -27,6 +27,10 @@ inputs:
   tier:
     required: true
     description: 'Tier label (smoke, nightly, weekly). Names the artifact; callers also use it as the run-dir segment'
+  label:
+    required: false
+    default: ''
+    description: 'Names a second row of the same DUT and tier (an expected-fail group beside the regression group, say). Appended to the artifact name, which would otherwise collide; the dashboard reads only the unlabelled weekly artifact'
   items:
     required: true
     description: 'Test group or test, as run_dv.py --items'
@@ -47,7 +51,7 @@ inputs:
     description: 'Explicit run directory (--run-dir). Keep the build/ci/runs/<dut>/<tool>/<tier>/<run_id> shape: the dashboard hashes it into the trend-point identity'
   verilator-version:
     required: false
-    default: 'v5.050'
+    default: 'v5.052'
     description: 'Verilator tag built from source on a cache miss. cocotb 2.x (locked in uv.lock) needs a newer Verilator than the Ubuntu apt package'
   python-version:
     required: false
@@ -214,7 +218,7 @@ runs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: dv-run-${{ inputs.dut }}-${{ inputs.tool }}-${{ inputs.tier }}
+        name: dv-run-${{ inputs.dut }}-${{ inputs.tool }}-${{ inputs.tier }}${{ inputs.label != '' && format('-{0}', inputs.label) || '' }}
         path: |
           ${{ inputs.run-dir }}
           !${{ inputs.run-dir }}/**/coverage/coverage.dat

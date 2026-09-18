@@ -24,6 +24,13 @@ from smc_base_test import smc_base_test
 class smc_fw_plic_claim_test(smc_base_test):
     """Firmware claims ext_interrupts_i[0] through the cluster PLIC."""
 
+    required_evidence = (
+        "CHK-FW-PLIC-CLAIM",
+        "CHK-FW-PLIC-QUIET",
+        "CHK-FW-PLIC-STIMULUS",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

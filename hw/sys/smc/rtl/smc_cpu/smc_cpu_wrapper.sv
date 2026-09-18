@@ -5,31 +5,29 @@
 
 module smc_cpu_wrapper #(
   parameter bit                       NO_ADDR_REMAP  = 1'b1,
-  parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_1CORE,
 
-  // based on what the CPU config is, change internal defines
-  // - types cannot use ternary operators so this has to be a parameter
-  parameter type rom_req_t            = chipyard_1core_mem_pkg::rom_req_t,
-  parameter type rom_rsp_t            = chipyard_1core_mem_pkg::rom_rsp_t,
-  parameter type scratch_ram_req_t    = chipyard_1core_mem_pkg::scratch_ram_req_t,
-  parameter type scratch_ram_rsp_t    = chipyard_1core_mem_pkg::scratch_ram_rsp_t,
-  parameter type l1_icache_tag_req_t  = chipyard_1core_mem_pkg::l1_icache_tag_req_t,
-  parameter type l1_icache_tag_rsp_t  = chipyard_1core_mem_pkg::l1_icache_tag_rsp_t,
-  parameter type l1_icache_data_req_t = chipyard_1core_mem_pkg::l1_icache_data_req_t,
-  parameter type l1_icache_data_rsp_t = chipyard_1core_mem_pkg::l1_icache_data_rsp_t,
-  parameter type l1_dcache_tag_req_t  = chipyard_1core_mem_pkg::l1_dcache_tag_req_t,
-  parameter type l1_dcache_tag_rsp_t  = chipyard_1core_mem_pkg::l1_dcache_tag_rsp_t,
-  parameter type l1_dcache_data_req_t = chipyard_1core_mem_pkg::l1_dcache_data_req_t,
-  parameter type l1_dcache_data_rsp_t = chipyard_1core_mem_pkg::l1_dcache_data_rsp_t,
+  // Memory-interface types (cannot be localparams)
+  parameter type rom_req_t            = chipyard_4core_mem_pkg::rom_req_t,
+  parameter type rom_rsp_t            = chipyard_4core_mem_pkg::rom_rsp_t,
+  parameter type scratch_ram_req_t    = chipyard_4core_mem_pkg::scratch_ram_req_t,
+  parameter type scratch_ram_rsp_t    = chipyard_4core_mem_pkg::scratch_ram_rsp_t,
+  parameter type l1_icache_tag_req_t  = chipyard_4core_mem_pkg::l1_icache_tag_req_t,
+  parameter type l1_icache_tag_rsp_t  = chipyard_4core_mem_pkg::l1_icache_tag_rsp_t,
+  parameter type l1_icache_data_req_t = chipyard_4core_mem_pkg::l1_icache_data_req_t,
+  parameter type l1_icache_data_rsp_t = chipyard_4core_mem_pkg::l1_icache_data_rsp_t,
+  parameter type l1_dcache_tag_req_t  = chipyard_4core_mem_pkg::l1_dcache_tag_req_t,
+  parameter type l1_dcache_tag_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t,
+  parameter type l1_dcache_data_req_t = chipyard_4core_mem_pkg::l1_dcache_data_req_t,
+  parameter type l1_dcache_data_rsp_t = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,
 
-  localparam int unsigned NUM_CPU_CORES      = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES : smc_1core_cpu_pkg::NUM_CPU_CORES,
-  localparam int unsigned NUM_CPU_INTERRUPTS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
+  localparam int unsigned NUM_CPU_CORES      = smc_4core_cpu_pkg::NUM_CPU_CORES,
+  localparam int unsigned NUM_CPU_INTERRUPTS = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,
 
-  localparam int unsigned NUM_SRAM_BANKS        = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_SRAM_BANKS : chipyard_1core_mem_pkg::NUM_SRAM_BANKS,
-  localparam int unsigned NUM_ICACHE_TAG_BANKS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS : chipyard_1core_mem_pkg::NUM_ICACHE_TAG_BANKS,
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_ICACHE_DATA_BANKS,
-  localparam int unsigned NUM_DCACHE_TAG_BANKS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS : chipyard_1core_mem_pkg::NUM_DCACHE_TAG_BANKS,
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_DCACHE_DATA_BANKS
+  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,
+  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,
+  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,
+  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,
+  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS
 
 ) (
   // Clocks and resets
@@ -203,7 +201,6 @@ module smc_cpu_wrapper #(
 
   smc_cpu_ctrl_wrap #(
     .NO_ADDR_REMAP   (NO_ADDR_REMAP),
-    .SMC_CPU_CONFIG  (SMC_CPU_CONFIG),
     .NumCPUCores     (NUM_CPU_CORES)
   ) u_smc_cpu_ctrl_wrap (
     .clk_ref_i                          (clk_ref_i),
@@ -236,165 +233,96 @@ module smc_cpu_wrapper #(
   // SMC CPU //
   /////////////
 
-  generate
-    if (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) begin : gen_4core_cpu
+  chipyard_4core_mem_pkg::rom_tilelink_req_t rom_tilelink_intf_req;
+  chipyard_4core_mem_pkg::rom_tilelink_rsp_t rom_tilelink_intf_rsp;
 
-      chipyard_4core_mem_pkg::rom_tilelink_req_t rom_tilelink_intf_req;
-      chipyard_4core_mem_pkg::rom_tilelink_rsp_t rom_tilelink_intf_rsp;
+  smc_4core_cpu u_smc_cpu (
+    .clk_i                        (clk_i),
+    .rst_isolate_ni               (rst_isolate_ni),
 
-      smc_4core_cpu u_smc_cpu (
-        .clk_i                        (clk_i),
-        .rst_isolate_ni               (rst_isolate_ni),
+    .mem_init_reset_ni            (fuse_reset_ni),
 
-        .mem_init_reset_ni            (fuse_reset_ni),
+    .rst_uncore_ni                (cluster_uncore_reset_n),
+    .rst_core_ni                  (core_reset_n),
+    .rst_debug_ni                 (debug_reset_n),
+    .isolate_req_i                (isolate_req),
+    .drained_o                    (drained),
 
-        .rst_uncore_ni                (cluster_uncore_reset_n),
-        .rst_core_ni                  (core_reset_n),
-        .rst_debug_ni                 (debug_reset_n),
-        .isolate_req_i                (isolate_req),
-        .drained_o                    (drained),
+    .reset_vector_i               (core_reset_vector),
+    .interrupts_i                 (interrupts_i),
 
-        .reset_vector_i               (core_reset_vector),
-        .interrupts_i                 (interrupts_i),
+    .mmio_axi_req_o               (axi_mmio_port_req_o),
+    .mmio_axi_resp_i              (axi_mmio_port_resp_i),
 
-        .mmio_axi_req_o               (axi_mmio_port_req_o),
-        .mmio_axi_resp_i              (axi_mmio_port_resp_i),
+    .l2_frontend_axi_req_i        (front_port_demux_req[FrontPortCluster]),
+    .l2_frontend_axi_resp_o       (front_port_demux_resp[FrontPortCluster]),
 
-        .l2_frontend_axi_req_i        (front_port_demux_req[FrontPortCluster]),
-        .l2_frontend_axi_resp_o       (front_port_demux_resp[FrontPortCluster]),
+    .smc_cpu_jtag_TCK_i           (smc_cpu_jtag_TCK_i),
+    .smc_cpu_jtag_TMS_i           (smc_cpu_jtag_TMS_i),
+    .smc_cpu_jtag_TDI_i           (smc_cpu_jtag_TDI_i),
+    .smc_cpu_jtag_TDO_data_o      (smc_cpu_jtag_TDO_data_o),
+    .smc_cpu_jtag_reset_i         (smc_cpu_jtag_reset_i),
+    .smc_cpu_jtag_mfr_id_i        (smc_cpu_jtag_mfr_id_i),
+    .smc_cpu_jtag_part_number_i   (smc_cpu_jtag_part_number_i),
+    .smc_cpu_jtag_version_i       (smc_cpu_jtag_version_i),
 
-        .smc_cpu_jtag_TCK_i           (smc_cpu_jtag_TCK_i),
-        .smc_cpu_jtag_TMS_i           (smc_cpu_jtag_TMS_i),
-        .smc_cpu_jtag_TDI_i           (smc_cpu_jtag_TDI_i),
-        .smc_cpu_jtag_TDO_data_o      (smc_cpu_jtag_TDO_data_o),
-        .smc_cpu_jtag_reset_i         (smc_cpu_jtag_reset_i),
-        .smc_cpu_jtag_mfr_id_i        (smc_cpu_jtag_mfr_id_i),
-        .smc_cpu_jtag_part_number_i   (smc_cpu_jtag_part_number_i),
-        .smc_cpu_jtag_version_i       (smc_cpu_jtag_version_i),
+    .cluster_ded_o                (cluster_ded_o),
+    .wb_pc_valid_o                (wb_pc_valid),
+    .wb_reg_pc_o                  (wb_reg_pc),
+    .wdt_reset_o                  (wdt_timeout_cluster),
 
-        .cluster_ded_o                (cluster_ded_o),
-        .wb_pc_valid_o                (wb_pc_valid),
-        .wb_reg_pc_o                  (wb_reg_pc),
-        .wdt_reset_o                  (wdt_timeout_cluster),
+    .rom_intf_req_o               (rom_tilelink_intf_req),
+    .rom_intf_rsp_i               (rom_tilelink_intf_rsp),
+    .scratch_ram_intf_req_o       (scratch_ram_intf_req_o),
+    .scratch_ram_intf_rsp_i       (scratch_ram_intf_rsp_i),
+    .l1_icache_tag_intf_req_o     (l1_icache_tag_intf_req_o),
+    .l1_icache_tag_intf_rsp_i     (l1_icache_tag_intf_rsp_i),
+    .l1_icache_data_intf_req_o    (l1_icache_data_intf_req_o),
+    .l1_icache_data_intf_rsp_i    (l1_icache_data_intf_rsp_i),
+    .l1_dcache_tag_intf_req_o     (l1_dcache_tag_intf_req_o),
+    .l1_dcache_tag_intf_rsp_i     (l1_dcache_tag_intf_rsp_i),
+    .l1_dcache_data_intf_req_o    (l1_dcache_data_intf_req_o),
+    .l1_dcache_data_intf_rsp_i    (l1_dcache_data_intf_rsp_i),
 
-        .rom_intf_req_o               (rom_tilelink_intf_req),
-        .rom_intf_rsp_i               (rom_tilelink_intf_rsp),
-        .scratch_ram_intf_req_o       (scratch_ram_intf_req_o),
-        .scratch_ram_intf_rsp_i       (scratch_ram_intf_rsp_i),
-        .l1_icache_tag_intf_req_o     (l1_icache_tag_intf_req_o),
-        .l1_icache_tag_intf_rsp_i     (l1_icache_tag_intf_rsp_i),
-        .l1_icache_data_intf_req_o    (l1_icache_data_intf_req_o),
-        .l1_icache_data_intf_rsp_i    (l1_icache_data_intf_rsp_i),
-        .l1_dcache_tag_intf_req_o     (l1_dcache_tag_intf_req_o),
-        .l1_dcache_tag_intf_rsp_i     (l1_dcache_tag_intf_rsp_i),
-        .l1_dcache_data_intf_req_o    (l1_dcache_data_intf_req_o),
-        .l1_dcache_data_intf_rsp_i    (l1_dcache_data_intf_rsp_i),
+    .disable_sram_auto_init_i     (disable_sram_auto_init_i),
+    .init_mem_done_o              (init_mem_done_o),
 
-        .disable_sram_auto_init_i     (disable_sram_auto_init_i),
-        .init_mem_done_o              (init_mem_done_o),
+    .test_en_i                    (test_en_i)
+  );
 
-        .test_en_i                    (test_en_i)
-      );
+  // Convert ROM tilelink req to generic memory interface req
 
-      // Convert ROM tilelink req to generic memory interface req
+  tilelink_to_rom_mem #(
+    .ADDR_WIDTH(14),
+    .WORD_WIDTH(64)
+  ) u_tilelink_to_rom_memory_convert (
+    .clk_i(rom_tilelink_intf_req.clock),
+    .rst_i(rom_tilelink_intf_req.reset),
 
-      tilelink_to_rom_mem #(
-        .ADDR_WIDTH(14),
-        .WORD_WIDTH(64)
-      ) u_tilelink_to_rom_memory_convert (
-        .clk_i(rom_tilelink_intf_req.clock),
-        .rst_i(rom_tilelink_intf_req.reset),
+    .auto_in_a_ready(rom_tilelink_intf_rsp.a_ready),
 
-        .auto_in_a_ready(rom_tilelink_intf_rsp.a_ready),
+    .auto_in_a_valid(rom_tilelink_intf_req.a_valid),
+    .auto_in_a_bits_size(rom_tilelink_intf_req.a_bits_size),
+    .auto_in_a_bits_source(rom_tilelink_intf_req.a_bits_source),
+    .auto_in_a_bits_address(rom_tilelink_intf_req.a_bits_address),
+    .auto_in_d_ready(rom_tilelink_intf_req.d_ready),
 
-        .auto_in_a_valid(rom_tilelink_intf_req.a_valid),
-        .auto_in_a_bits_size(rom_tilelink_intf_req.a_bits_size),
-        .auto_in_a_bits_source(rom_tilelink_intf_req.a_bits_source),
-        .auto_in_a_bits_address(rom_tilelink_intf_req.a_bits_address),
-        .auto_in_d_ready(rom_tilelink_intf_req.d_ready),
+    .auto_in_d_valid(rom_tilelink_intf_rsp.d_valid),
+    .auto_in_d_bits_size(rom_tilelink_intf_rsp.d_bits_size),
+    .auto_in_d_bits_source(rom_tilelink_intf_rsp.d_bits_source),
+    .auto_in_d_bits_data(rom_tilelink_intf_rsp.d_bits_data),
 
-        .auto_in_d_valid(rom_tilelink_intf_rsp.d_valid),
-        .auto_in_d_bits_size(rom_tilelink_intf_rsp.d_bits_size),
-        .auto_in_d_bits_source(rom_tilelink_intf_rsp.d_bits_source),
-        .auto_in_d_bits_data(rom_tilelink_intf_rsp.d_bits_data),
+    .rom_flip_endianness_i(rom_flip_endianness_i),
 
-        .rom_flip_endianness_i(rom_flip_endianness_i),
+    .rom_address_o(rom_intf_req_o.addr),
+    .mem_chip_en_o(rom_intf_req_o.en),
+    .rom_bank_data_i(rom_intf_rsp_i.rdata)
+  );
 
-        .rom_address_o(rom_intf_req_o.addr),
-        .mem_chip_en_o(rom_intf_req_o.en),
-        .rom_bank_data_i(rom_intf_rsp_i.rdata)
-      );
-
-      // Connect ROM memory interface signals
-      assign rom_intf_req_o.clk = clk_i;
-      assign rom_intf_req_o.wdata = '0;          // ROM is read-only
-      assign rom_intf_req_o.wmode = 1'b0;        // Read mode
-      assign rom_intf_req_o.wmask = '0;          // No write mask
-
-    end else if (SMC_CPU_CONFIG == smc_pkg::SMC_1CORE) begin : gen_1core_cpu
-      smc_1core_cpu u_smc_cpu (
-        .clk_i                        (clk_i),
-        .rst_isolate_ni               (rst_isolate_ni),
-
-        .mem_init_reset_ni            (fuse_reset_ni),
-
-        .rst_uncore_ni                (cluster_uncore_reset_n),
-        .rst_core_ni                  (core_reset_n),
-        .rst_debug_ni                 (debug_reset_n),
-        .isolate_req_i                (isolate_req),
-        .drained_o                    (drained),
-
-        .reset_vector_i               (core_reset_vector),
-        .interrupts_i                 (interrupts_i),
-
-        .mmio_axi_req_o               (axi_mmio_port_req_o),
-        .mmio_axi_resp_i              (axi_mmio_port_resp_i),
-
-        .l2_frontend_axi_req_i        (front_port_demux_req[FrontPortCluster]),
-        .l2_frontend_axi_resp_o       (front_port_demux_resp[FrontPortCluster]),
-
-        .smc_cpu_jtag_TCK_i           (smc_cpu_jtag_TCK_i),
-        .smc_cpu_jtag_TMS_i           (smc_cpu_jtag_TMS_i),
-        .smc_cpu_jtag_TDI_i           (smc_cpu_jtag_TDI_i),
-        .smc_cpu_jtag_TDO_data_o      (smc_cpu_jtag_TDO_data_o),
-        .smc_cpu_jtag_reset_i         (smc_cpu_jtag_reset_i),
-        .smc_cpu_jtag_mfr_id_i        (smc_cpu_jtag_mfr_id_i),
-        .smc_cpu_jtag_part_number_i   (smc_cpu_jtag_part_number_i),
-        .smc_cpu_jtag_version_i       (smc_cpu_jtag_version_i),
-
-        .cluster_ded_o                (cluster_ded_o),
-        .wb_pc_valid_o                (wb_pc_valid),
-        .wb_reg_pc_o                  (wb_reg_pc),
-        .wdt_reset_o                  (wdt_timeout_cluster),
-
-        .scratch_ram_intf_req_o       (scratch_ram_intf_req_o),
-        .scratch_ram_intf_rsp_i       (scratch_ram_intf_rsp_i),
-
-        .disable_sram_auto_init_i     (disable_sram_auto_init_i),
-        .init_mem_done_o              (init_mem_done_o),
-
-        .test_en_i                    (test_en_i)
-      );
-
-      // tie off unused memory interfaces
-      assign rom_intf_req_o = rom_req_t'(0);
-
-      for (genvar i = 0; i < NUM_ICACHE_TAG_BANKS; i++) begin : gen_tie_off_icache_tag
-        assign l1_icache_tag_intf_req_o[i] = l1_icache_tag_req_t'(0);
-      end
-
-      for (genvar i = 0; i < NUM_ICACHE_DATA_BANKS; i++) begin : gen_tie_off_icache_data
-        assign l1_icache_data_intf_req_o[i] = l1_icache_data_req_t'(0);
-      end
-
-      for (genvar i = 0; i < NUM_DCACHE_TAG_BANKS; i++) begin : gen_tie_off_dcache_tag
-        assign l1_dcache_tag_intf_req_o[i] = l1_dcache_tag_req_t'(0);
-      end
-
-      for (genvar i = 0; i < NUM_DCACHE_DATA_BANKS; i++) begin : gen_tie_off_dcache_data
-        assign l1_dcache_data_intf_req_o[i] = l1_dcache_data_req_t'(0);
-      end
-    end
-  endgenerate
+  // Connect ROM memory interface signals
+  assign rom_intf_req_o.clk = clk_i;
+  assign rom_intf_req_o.wdata = '0;          // ROM is read-only
+  assign rom_intf_req_o.wmode = 1'b0;        // Read mode
+  assign rom_intf_req_o.wmask = '0;          // No write mask
 
 endmodule
