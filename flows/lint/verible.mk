@@ -131,8 +131,6 @@ ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv'
 	-not -path '*/chipyard_generated_files/*' \
 	-not -path '*/hw/common/ot_chip_cfg/*' \
 	-not -path '$(OCAH_ROOT)/vendor/pulp-platform/idma/overlay/target/rtl/*' \
-	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv' \
-	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg_pkg.sv' \
 	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg.sv' \
 	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv' \
 	$(foreach file,$(2),-not -path '$(OCAH_ROOT)/$(file)')
