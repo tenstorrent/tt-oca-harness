@@ -184,23 +184,16 @@ bwrap: Can't mkdir parents for <repository path>: Read-only file system
 
 `unset OCAH_TOOLCHAIN_ROOTFS` to fall back to the container engine.
 
-### The toolchain sandbox has a compiler, not a Python environment
+### The toolchain sandbox carries no Python packages
 
-Both the image and the extracted rootfs carry a bare `python3` with only the few
-distribution packages `tools/docker/Dockerfile` installs. A build step that imports
-anything else — `cryptography`, `ruamel.yaml`, the packer's dependencies — fails inside
-the sandbox with a bare `ModuleNotFoundError`, whichever backend is in use:
+The image and the extracted rootfs both provide a bare `python3` with only the packages
+`tools/docker/Dockerfile` installs. Any build step importing `cryptography`,
+`ruamel.yaml` or similar fails there with `ModuleNotFoundError`.
 
-```
-ModuleNotFoundError: No module named 'cryptography'
-```
-
-Run those steps on the host and the compile in the sandbox, and order the two so the
-host half produces what the compile consumes. The SEP boot ROM splits exactly this way:
-`key-digests` and `oca-images` on the host, `toolchain-images-build` in the sandbox —
-see `hw/sys/sep/bootrom/prod/README.md`. Adding a package to the Dockerfile does not
-fix the bwrap path, whose rootfs is extracted separately and is often not yours to
-rebuild.
+Keep such steps on the host, run the compile in the sandbox, and order the two so the
+host half produces what the compile consumes — as the SEP boot ROM does with
+`key-digests` and `oca-images` (`hw/sys/sep/bootrom/prod/README.md`). Adding a package
+to the Dockerfile does not reach the bwrap rootfs, which is extracted separately.
 
 ### Rebuilding the image invalidates existing firmware objects
 

@@ -3131,14 +3131,11 @@ field by field. |<<sec:manifest>>
 reads assume hardware ordering. |<<sec:fuses>>
 |Peripheral/bus reset |*stub* |`rom_peripheral_reset()` reports `PERIPH_RST_TODO` and
 performs no resets. |<<sec:cpu_init>>
-|ROM key digests |*gated* |`key_digests.c` is generated at build time rather than
-committed, always as SHA-256 over the public modulus. `BUILD_TYPE` selects which file form
-that modulus is read out of: the six private test keys in `tests/signing_keys/` for a debug
-build, public keys from `release_signing_keys/` for a release build. That directory ships
-empty and holds no key this repository controls — so a release ROM cannot be anchored on a
-test key, and a release build with no keys provisioned stops rather than producing an image.
-Provisioning the production digests is still an adopter step before mask finalization.
-|<<sec:secure_boot>>
+|ROM key digests |*gated* |`key_digests.c` is generated at build time, always as SHA-256
+over the public modulus. `BUILD_TYPE` picks the source: private test keys in
+`tests/signing_keys/` for debug, public keys in `release_signing_keys/` for release. That
+directory ships empty, so a release build stops until an adopter provisions production keys
+before mask finalization. |<<sec:secure_boot>>
 |ECDSA P-256 |*by design* |Defined by the format, rejected by this ROM generation.
 |<<sec:secure_boot>>
 |PQC signatures and key slots |*deferred* |Deferred to a later release, which adds combined

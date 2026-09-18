@@ -33,9 +33,8 @@ KEY_FORM_PUBLIC = "public"
 
 # Matches the PEM banner of every private key encoding openssl emits: "RSA PRIVATE
 # KEY" (PKCS#1), "EC PRIVATE KEY" (SEC1), "PRIVATE KEY" (PKCS#8) and "ENCRYPTED
-# PRIVATE KEY". Detection is on the banner rather than on a successful parse so that
-# a key this script cannot load -- wrong algorithm, or passphrase-protected -- is
-# still caught instead of being skipped as unreadable.
+# PRIVATE KEY". Matching the banner also catches keys this script cannot load --
+# wrong algorithm, or passphrase-protected.
 PEM_PRIVATE_BANNER = re.compile(rb"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----")
 
 PEM_BANNER = re.compile(rb"-----BEGIN ([A-Z0-9 ]+)-----")
@@ -57,11 +56,9 @@ def die(*lines):
 def reject_private_key_material(keys_dir):
     """Refuse to proceed if the directory holds any private key.
 
-    A release ROM is anchored on public moduli alone. A private key sitting in the
-    release key directory means either the wrong directory was passed or test keys
-    were staged into it, and both produce a mask nobody can trust. Every regular
-    file is checked, not just the six the slots name, because the dangerous case is
-    precisely a key under an unexpected name.
+    A release ROM is anchored on public moduli alone, so a private key here means
+    the wrong directory or staged test keys. Check every regular file, not just the
+    six the slots name: the dangerous case is a key under an unexpected name.
     """
     offenders = []
     for path in sorted(keys_dir.iterdir()):
@@ -180,8 +177,8 @@ def collect_pem_files(args):
             "       set SEP_ROM_RELEASE_SIGNING_KEYS_DIR to the directory holding them.",
         )
 
-    # Order matters: reject private material before reading anything, so a directory
-    # that should never have been used is refused rather than partially consumed.
+    # Reject private material before reading anything, so a directory that should
+    # never have been used is refused whole.
     if args.key_form == KEY_FORM_PUBLIC:
         reject_private_key_material(keys_dir)
 
@@ -227,9 +224,9 @@ def main():
             entries.append(f"    {{.digest = {var}}}, // slot {slot}: {name}")
             print(f"  slot {slot} ({name}): {pem_files[name]}", file=sys.stderr)
         else:
-            # An empty slot is left NULL rather than omitted. The ROM reads NULL as
-            # unprovisioned and refuses the slot (oca_platform.c), so a part built with
-            # fewer than six keys fails closed on the ones it does not hold.
+            # NULL marks the slot unprovisioned. The ROM refuses it
+            # (oca_platform.c), so a part built with fewer than six keys fails
+            # closed on the ones it does not hold.
             entries.append(f"    {{.digest = (void *)0}}, // slot {slot}: {name}")
 
     with open(args.output, "w") as f:

@@ -812,9 +812,9 @@ SIG_TYPE_NO_SIGNATURE = 0
 ENCODING_RAW = K.OcaClassicSignatureEncoding.RAW_BYTES.value
 
 _BOOTROM_PROD = _SEP_ROOT / "bootrom" / "prod"
-# key_digests.c is generated into the ROM's build directory, so it is read from
-# whichever variant this run built. The three share one key set -- BUILD_DIR selects
-# the SPI transport, not the anchors -- so the first one present answers for all.
+# key_digests.c is generated into the ROM's build directory, so read it from
+# whichever variant this run built. BUILD_DIR selects the SPI transport, not the
+# anchors, so all three carry the same key set and the first present one answers.
 _KEY_DIGESTS_BUILD_DIRS = ("build", "build_ot", "build_ot_pio")
 _OCA_PLATFORM_C = _BOOTROM_PROD / "src" / "oca_platform.c"
 

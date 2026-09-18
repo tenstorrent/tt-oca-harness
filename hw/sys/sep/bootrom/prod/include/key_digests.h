@@ -12,13 +12,13 @@
 // OTBN handles Montgomery precomputation internally, so we only store
 // the key digest.
 //
-// The table is generated at build time by tools/generate_key_digests.py, into the
-// build directory rather than the source tree, so the anchors cannot drift from the
-// keys they were taken from. Every entry is SHA-256 over the PUBLIC modulus; the
-// build type selects only which file form that modulus is read out of -- the private
-// test keys in tests/signing_keys/ for debug, public keys from a directory that ships
-// empty for release. No private key material reaches the digest either way. See the
-// Makefile's SEP_ROM_KEYS_DIR.
+// Generated into the build directory at build time by
+// tools/generate_key_digests.py, so the anchors track the keys they come from.
+//
+// Every entry is SHA-256 over the PUBLIC modulus. The build type selects only which
+// file form supplies it: private test keys in tests/signing_keys/ for debug, public
+// keys for release. No private key material reaches a digest. See the Makefile's
+// SEP_ROM_KEYS_DIR.
 
 #pragma once
 

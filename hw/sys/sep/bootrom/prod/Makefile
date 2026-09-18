@@ -114,14 +114,13 @@ SRC_DIR   := src
 TOOLS_DIR := tools
 INCLUDE_DIR := include
 
-# ROM key material. The ROM anchors on SHA-256 of each slot's RSA-3072 modulus;
-# key_digests.c is generated from these files at build time rather than committed,
-# so the anchors cannot drift from the keys and no test digest can reach a mask.
+# ROM key material. The ROM anchors on SHA-256 of each slot's RSA-3072 public modulus.
+# key_digests.c is generated from these files at build time, so the anchors track the
+# keys and no test digest can reach a mask.
 #
-# debug reads the private test keys already in the tree. release reads PUBLIC keys
-# only, from a directory that deliberately ships empty -- the production private
-# keys belong in a key store, never in source control -- and the generator refuses
-# a directory containing any private key.
+# debug reads the private test keys in the tree. release reads PUBLIC keys only, from a
+# directory that ships empty, and refuses one holding any private key. Production
+# private keys belong in a key store, never in source control.
 GENERATE_KEY_DIGESTS := $(TOOLS_DIR)/generate_key_digests.py
 SEP_ROM_RELEASE_SIGNING_KEYS_DIR ?= $(CURDIR)/release_signing_keys
 ifeq ($(BUILD_TYPE),release)
@@ -399,13 +398,11 @@ $(OBJS): $(FLAGS_STAMP)
 $(BUILD_DIR)/bl0_version.h: | $(BUILD_DIR)
 	echo '#define BL0_VERSION "oss-nonsecure"' > "$@"
 
-# ROM key digest table, generated from the key files rather than committed. The key
-# files are prerequisites, so rotating a key rebuilds the anchors instead of leaving
-# a table that silently disagrees with what signs the images.
+# ROM key digest table. The key files are prerequisites, so rotating a key rebuilds
+# the anchors and keeps them in step with what signs the images.
 #
-# The digests depend on the key directory and form, nothing else in BUILD_FLAGS, and
-# regenerating them needs the host (below). So they carry their own stamp: an
-# unrelated flag change must not reach for the generator.
+# The digests track the key directory and form, nothing else in BUILD_FLAGS, and only
+# the host can regenerate them (below), so they carry their own stamp.
 KEY_INPUTS_STAMP := $(BUILD_DIR)/.key_inputs
 $(KEY_INPUTS_STAMP): FORCE | $(BUILD_DIR)
 	@echo '$(SEP_ROM_KEYS_DIR) form=$(SEP_ROM_KEY_FORM)' > "$@.tmp"
@@ -552,15 +549,13 @@ ensure-pack-deps:
 	  echo "       (the ocah-toolchain container carries them as distro packages)."; \
 	  exit 1; }
 
-# ROM key 0's private key, named so the oca-images recipe can check it exists and
-# fail with a reason rather than a packer stack trace.
+# ROM key 0's private key, for the oca-images existence check only.
 #
-# This is an existence check and nothing more. Pointing it elsewhere does NOT change
-# which key signs: each configs/oca_*_test.yaml names its own signing_key_file, the
-# packer reads the key from there (tt-oca-manifest src/manifest_signing.py), and
-# pack_images has no key option on the command line. To sign with a different key,
-# edit the config. To change the ROM's trust anchors, use SEP_ROM_KEYS_DIR above --
-# that is the one the ROM image depends on.
+# Pointing it elsewhere does NOT change which key signs: each configs/oca_*_test.yaml
+# names its own signing_key_file, the packer reads the key from there
+# (tt-oca-manifest src/manifest_signing.py), and pack_images has no key option. To sign
+# with a different key, edit the config. For the ROM's trust anchors, see
+# SEP_ROM_KEYS_DIR above.
 SEP_SIGNING_KEY    ?= $(CURDIR)/tests/signing_keys/rsa_private_key.rom_key0.pem
 
 # --- OCA boot-manifest images (the format the ROM parses) ---------------------
@@ -617,11 +612,10 @@ OCA_SMC_MEM_HEX := $(BUILD_DIR)/oca_smc_mem.hex
 .PHONY: oca-images
 ifeq ($(BUILD_TYPE),release)
 # Every config under configs/ names a private key in tests/signing_keys/, so packing
-# here would emit flashable images carrying a test signature. Release signing reaches
-# a key store instead of a file: the packer abstracts that as signing_authority
-# (local | aws | hsm, src/manifest_signing.py) with signing_key_id alongside, but its
-# OCA config path rejects hsm as a deferred feature, so wiring it needs a
-# tt-oca-manifest change as well as one here.
+# here emits flashable images carrying a test signature. Release signing reaches a key
+# store: the packer exposes that as signing_authority (local | aws | hsm,
+# src/manifest_signing.py) with signing_key_id, but its OCA config path defers hsm, so
+# wiring it needs a tt-oca-manifest change too.
 oca-images:
 	@echo "ERROR: oca-images is not implemented for BUILD_TYPE=release."; \
 	echo "       The configs sign with the private test keys in tests/signing_keys/,"; \
@@ -642,8 +636,8 @@ $(OCA_BINS): $(BUILD_DIR)/oca_%.bin: $(CURDIR)/configs/oca_%_image.yaml \
 	@test -f "$(SEP_SIGNING_KEY)" || { \
 	  echo "ERROR: OCA images need the ROM key 0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
-	  echo "       It is committed in this directory as a DV asset, so a missing one"; \
-	  echo "       means a modified working tree rather than a stale submodule."; \
+	  echo "       It is committed in this directory as a DV asset; check the working"; \
+	  echo "       tree for local modifications."; \
 	  exit 1; }
 	$(PACK_RUN) --config "$<" --out "$@" -v
 
