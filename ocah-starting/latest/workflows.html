@@ -224,7 +224,7 @@
 <p>DV FW sections reference source files frequently, how necessary is this?</p>
 </li>
 <li>
-<p>Linters are still WIP - code is not clean yet</p>
+<p>Linters are still WIP on findings; the shared <code>flow.mk</code> path is the one to run</p>
 </li>
 </ul>
 </div>
@@ -755,16 +755,16 @@ different program, the program suggested may be overridden with <code>--wave-vie
 provide a synthesis flow using Yosys.</p>
 </div>
 <div class="paragraph">
-<p><code>make ocah-synth-all</code> requires <code>yosys</code> on <code>PATH</code>. If it is not installed, Make
+<p><code>make ocah-synth-yosys-all</code> requires <code>yosys</code> on <code>PATH</code>. If it is not installed, Make
 prints a hint to use the container instead:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Native (yosys must be on PATH)
-make ocah-synth-all
+make ocah-synth-yosys-all
 
 # Via the container
-./scripts/docker-run.sh run-here make ocah-synth-all</code></pre>
+./scripts/docker-run.sh run-here make ocah-synth-yosys-all</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -778,7 +778,9 @@ run. To pre-download all supported PDKs:</p>
 </div>
 <div class="paragraph">
 <p>This may be constrained with <code>BLOCK</code> to synthesise a single block only, and the PDK
-used for synthesis may be selected with <code>TECH</code>.</p>
+used for synthesis may be selected with <code>TECH</code>. <code>BLOCK</code> is a <code>flow.mk</code> top
+(<code>dtp</code>, <code>sep</code>, <code>smc</code>, <code>smu</code>, <code>aou</code>), not an IP name. Discovery and <code>TECH=</code> are
+in <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/README.md"><code>flows/synth/yosys/README.md</code></a>.</p>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -817,6 +819,17 @@ formatting. They also enforce a consistent code style.</p>
 </td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>Slang and Verilator use the same <code>flow.mk</code> tops as synthesis. Verible walks
+hand-authored files under <code>hw/</code>, including leaf IP. To restrict slang or
+Verilator output to one IP directory, lint the parent system:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make lint-slang-all BLOCK=smu SLANG_LINT_PATH=hw/ip/gpio
+make lint-verilator-all BLOCK=smu VERILATOR_LINT_PATH=hw/ip/gpio</code></pre>
+</div>
 </div>
 <div class="sect2">
 <h3 id="verilog"><a class="anchor" href="#verilog"></a><a class="link" href="#verilog">6.1. Verilog</a></h3>
@@ -888,7 +901,7 @@ names a <code>field_combo</code> or <code>field_storage</code> aggregate, while 
 <div class="sect3">
 <h4 id="style-and-lint-checking-with-slang"><a class="anchor" href="#style-and-lint-checking-with-slang"></a><a class="link" href="#style-and-lint-checking-with-slang">6.1.3. Style and Lint checking with Slang</a></h4>
 <div class="paragraph">
-<p>To run the slang linter on all SystemVerilog files, use the following command:</p>
+<p>To run the slang linter on each <code>flow.mk</code> top, use the following command:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1086,10 +1099,7 @@ inline diff annotations through reviewdog.</p>
 <p><code>lint-toml</code> (tomllint) checks TOML syntax only&#8201;&#8212;&#8201;it carries no style rules
 and no autofix, unlike yamllint/markdownlint. It mainly guards the DV
 testlists and sim configs under <code>hw/<strong>/dv/</strong>/*.toml</code>, catching a malformed
-file before the runner that reads it fails with a less legible error.
-<code>hw/ip/scrambler/dv/lint/scrambler.toml</code> is excluded: despite the extension,
-<code>slang-tidy</code> parses it with its own <code>Checks:</code>/<code>CheckConfigs:</code> grammar, not
-TOML.</p>
+file before the runner that reads it fails with a less legible error.</p>
 </div>
 </td>
 </tr>
