@@ -38,6 +38,7 @@ CONFIG := smc
 RISCV_TOOLCHAIN ?=
 OCAH_ROOT ?= $(abspath $(CURDIR)/../../../../..)
 OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
+PYTHON ?= python3
 
 ifneq ($(RISCV_TOOLCHAIN),)
   _TC_PREFIX := $(RISCV_TOOLCHAIN)/
