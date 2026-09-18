@@ -152,6 +152,12 @@ appears.
 
 === Scenario-Expanded Test Summary
 
+`Phase 1`, `Phase 2` and `Phase 3` below are scope tiers, not a schedule. Phase 1 is the
+bring-up and representative set; Phase 2 is the dense, breadth and fault set this plan also
+grades; Phase 3 is named but not claimed, and its rows live in <<phase-3,Known Limitations>>.
+`SEP_FCOV.adoc` splits coverage on the same tiers. A tier says what a test is asked to prove,
+never when it was written.
+
 ==== Phase 1 — Smoke
 
 [cols="2,2,2,4",options="header"]
