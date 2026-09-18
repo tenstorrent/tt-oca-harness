@@ -405,8 +405,18 @@ https://github.com/tenstorrent/tt-oca-harness/blob/main/scripts/docker.md[`scrip
 [[linting]]
 == Linting
 
-One shared flow. A `flow.mk` is a top. Today that is `dtp`, `sep`, `smc`,
-`smu`, and `aou`. Leaf IP under `hw/ip` has no `flow.mk`.
+We use linters within the development of OCAH to perform static analysis
+on the codebase. The below rules will check code for errors and poor
+formatting. They also enforce a consistent code style.
+
+[WARNING]
+====
+Some linting workflows are still WIP, the code has not yet been cleaned up.
+====
+
+SystemVerilog lint and synthesis share one `flow.mk` descriptor per
+elaborated top. The tops today are `dtp`, `sep`, `smc`, `smu`, and `aou`.
+Leaf IP under `hw/ip` has no `flow.mk` of its own.
 
 Three SystemVerilog jobs, three tools:
 
