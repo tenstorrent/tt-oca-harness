@@ -845,7 +845,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_spi_ot_host_csr_irq_rand_test`. Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the interrupt-test path setting and releasing interrupt status with no write-one-to-clear (whether the enable masks the status register itself is logged, not graded, because the register description does not state it), five of the six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others (ACCESSINVAL is not claimed: its documented trigger is a write with no bytes enabled, which this AXI master cannot drive), the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane.
 
 |SECURE_TM shadow-write lock
-|`sep_efuse_secure_tm_write_lock_test`. Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands and the readback is the OR-merge, and after the strap is raised and the image re-sensed the stored value does not move, `sep_internal_interrupts[33]` pulses and the response stays OKAY. A `SECURE_TM_UNLOCK` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`.
+|`sep_efuse_secure_tm_write_lock_test`. Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands (set-only rows OR-merge; `LC_STATE[31:8]` takes a plain shadow write), and after the strap is raised and the image re-sensed the stored value does not move, `sep_internal_interrupts[33]` pulses and the response stays OKAY. A `SECURE_TM_UNLOCK` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`.
 
 |eFuse locked-field access violation interrupt
 |`sep_locked_field_access_irq_path_test`. A write to a write-locked spare and a read of a read-locked spare each raise `sep_internal_interrupts[33]` (PIC source 34) for the duration of the access, answer OKAY rather than an error response, leave the stored value unchanged, and drop the line after the access retires, with an unlocked spare in the same OTP image as the negative control. Real fuse sense at `LC_PROD`.
@@ -1543,7 +1543,7 @@ starved it to a handful of writes fails.
 |CHK-B
 |`CMD_KEY_TRANSFER` succeeds with OTBN as destination.
 |CHK-ISO
-|Only the Key Manager and OTBN are out of reset during the transfer. AES, HMAC, KMAC and Adams Bridge are parked. The check is a mask over those bits, not an equality on the whole register.
+|Only the Key Manager and OTBN are out of reset during the transfer. AES, HMAC and KMAC are parked. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
 |CHK-C
 |The OTBN program loads, executes to idle, and reports no error bits.
 |CHK-F
@@ -1707,7 +1707,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-TRANSIENT-INVALID
 |The transient return-material-authorisation path applies the same write-one-to-set and token rules with no bus request at all, including when the result falls outside the named set.
 |CHK-UPPER-WRITE
-|The upper three bytes of the lifecycle word take a plain shadow write and do not disturb the lifecycle nibble. `LC_STATE[31:8]` is the `rsvd` field of `sep_efuse_map.rdl`, and `efuse_shadow_regs.sv` assigns those bytes from the write data rather than OR-ing them, so the second of two seed-derived patterns replaces the first. Each pattern carries a bit the other lacks, so a stale value or an OR of the two both fail.
+|The upper three bytes of the lifecycle word take a plain shadow write and do not disturb the lifecycle nibble. `LC_STATE[31:8]` is the `rsvd` field of `sep_efuse_map.rdl`, so the second of two seed-derived patterns replaces the first. Each pattern carries a bit the other lacks, so a stale value or an OR of the two both fail.
 |CHK-LEAF
 |Per-leaf closing line naming which walk ran, the sensed starting state, and the seed the tokens and upper-byte pattern came from.
 |===
@@ -1971,7 +1971,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 *Test Procedure*:
 
 [arabic]
-. Real-sense a production fuse image; park OTBN, KMAC, HMAC and Adams Bridge; leave AES released. The isolation check is a mask over those bits, not an equality on the whole register.
+. Real-sense a production fuse image; park OTBN, KMAC and HMAC; leave AES released. The isolation check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released so the Key Manager firmware can reach ready.
 . Bring up real entropy; release the Key Manager and wait for firmware ready.
 . Load the known 256-bit key for AES; require a non-zero handle.
 . Encrypt the plaintext with a decoy software key; check against golden.
@@ -1990,7 +1990,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |CHK-B
 |The transfer to AES succeeds.
 |CHK-ISO
-|Only the Key Manager and AES are released during the transfer. OTBN, HMAC, KMAC and Adams Bridge are parked. The check is a mask over those bits, not an equality on the whole register.
+|Only the Key Manager and AES are released during the transfer. OTBN, HMAC and KMAC are parked. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
 |CHK-NEG
 |The decoy-key ciphertext matches its own golden, so the comparison baseline is sound.
 |CHK-F
@@ -2048,7 +2048,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |CHK-B
 |The transfer to HMAC succeeds.
 |CHK-ISO
-|Only the Key Manager and HMAC are released during the transfer. AES, KMAC, OTBN and Adams Bridge are parked. The check is a mask over those bits, not an equality on the whole register.
+|Only the Key Manager and HMAC are released during the transfer. AES, KMAC and OTBN are parked. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
 |CHK-MAC
 |The digest equals the independent HMAC-SHA256 golden for the known key.
 |CHK-RW1C
@@ -2102,7 +2102,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |CHK-B
 |The transfer to KMAC succeeds.
 |CHK-ISO
-|Only the Key Manager and KMAC are released during the transfer. AES, HMAC, OTBN and Adams Bridge are parked. The check is a mask over those bits, not an equality on the whole register.
+|Only the Key Manager and KMAC are released during the transfer. AES, HMAC and OTBN are parked. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
 |CHK-SIDE
 |The sideload digest differs from the decoy-key digest.
 |CHK-MAC
@@ -4547,7 +4547,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 |===
 |Checker |Contract
 |CHK-SECTM-CONTROL
-|With the strap low, the readback is the OR-merge of the pre-write value and the payload, the value actually moves, and `[33]` stays low.
+|With the strap low, the write lands and the value moves — set-only rows read back the OR-merge of the pre-write value and the payload; `LC_STATE[31:8]` reads back the payload — and `[33]` stays low.
 |CHK-SECTM-BLOCK
 |With the strap high, the stored value is unchanged, `[33]` pulses during the beat and is low after it retires, and the response is OKAY rather than SLVERR.
 |CHK-SECTM-CONTRAST
