@@ -10,9 +10,10 @@
 // instantiate `spi_device`, and the full upstream package imports
 // `spi_device_reg_pkg` (SRAM layout, command-info tables, TPM constants), so
 // vendoring it would pull the whole `spi_device` register block along. This
-// overlay carries only the two structs and their defaults, copied verbatim
-// from upstream `hw/ip/spi_device/rtl/spi_device_pkg.sv`, so that `spi_host`
-// compiles unmodified with its passthrough interface tied off.
+// overlay carries only the two structs and their defaults, taken from upstream
+// `hw/ip/spi_device/rtl/spi_device_pkg.sv` and reformatted to this
+// repository's SystemVerilog style, so that `spi_host` compiles unmodified
+// with its passthrough interface tied off.
 //
 // If `spi_device` is ever vendored, delete this file and list the upstream
 // package instead; the definitions here are a strict subset of it.
@@ -47,17 +48,15 @@ package spi_device_pkg;
   } passthrough_rsp_t;
 
   parameter passthrough_req_t PASSTHROUGH_REQ_DEFAULT = '{
-    passthrough_en: 1'b 0,
-    sck:            1'b 0,
-    sck_en:         1'b 0,
-    csb:            1'b 1,
-    csb_en:         1'b 0,
-    s:              4'h 0,
-    s_en:           4'h 0
+      passthrough_en: 1'b0,
+      sck: 1'b0,
+      sck_en: 1'b0,
+      csb: 1'b1,
+      csb_en: 1'b0,
+      s: 4'h0,
+      s_en: 4'h0
   };
 
-  parameter passthrough_rsp_t PASSTHROUGH_RSP_DEFAULT = '{
-    s: 4'h 0
-  };
+  parameter passthrough_rsp_t PASSTHROUGH_RSP_DEFAULT = '{s: 4'h0};
 
 endpackage : spi_device_pkg
