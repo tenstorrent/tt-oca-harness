@@ -23,20 +23,7 @@ _SELECT_KEYS = {
     "label",
     "description",
 }
-_REGION_KEYS = {
-    "kind",
-    "key",
-    "label",
-    "description",
-    "source",
-    "base",
-    "size",
-    "occupied_size",
-    "count",
-    "stride",
-    "alias_of",
-}
-_GROUP_KEYS = {"kind", "key", "label", "description", "source", "members", "base", "size"}
+_GROUP_KEYS = {"kind", "key", "label", "description", "source", "members"}
 
 
 @dataclass(frozen=True)
@@ -151,13 +138,16 @@ def load_config(path: str | Path) -> dict[str, Any]:
         data = tomllib.load(stream)
     if data.get("version") != 1:
         raise ValueError(f"{path}: expected version = 1")
+    for key, value in data.items():
+        if key != "version":
+            _reject_numeric_values(value, f"{path}:{key}")
     _reject_unknown(data, {"version", "sources", "views"}, str(path))
     source_names: set[str] = set()
     for index, source in enumerate(data.get("sources", ())):
         location = f"{path}:sources[{index}]"
         _reject_unknown(
             source,
-            {"name", "rdl", "top", "incdirs", "parameters"},
+            {"name", "rdl", "top", "incdirs"},
             location,
         )
         name = source.get("name")
@@ -176,15 +166,15 @@ def load_config(path: str | Path) -> dict[str, Any]:
                 "title",
                 "columns",
                 "base_mode",
-                "base",
                 "base_label",
+                "base_source",
                 "source",
                 "exclude",
                 "include_all",
                 "rows",
                 "derive_gaps",
-                "bounds_start",
-                "bounds_end",
+                "bounds_source",
+                "bounds_selector",
                 "reserved_label",
                 "reserved_description",
             },
@@ -202,13 +192,11 @@ def load_config(path: str | Path) -> dict[str, Any]:
         unknown_columns = set(columns) - set(_HEADINGS)
         if unknown_columns:
             raise ValueError(f"{location}: unknown column(s): {', '.join(sorted(unknown_columns))}")
-        if view.get("derive_gaps", False) and not {"bounds_start", "bounds_end"} <= set(view):
-            raise ValueError(f"{location}: derive_gaps requires bounds_start and bounds_end")
         for row_index, row in enumerate(view.get("rows", ())):
             kind = row.get("kind", "node")
-            keys = (
-                _SELECT_KEYS if kind == "node" else _GROUP_KEYS if kind == "group" else _REGION_KEYS
-            )
+            keys = _SELECT_KEYS if kind == "node" else _GROUP_KEYS if kind == "group" else set()
+            if not keys:
+                raise ValueError(f"{location}.rows[{row_index}]: unknown row kind {kind!r}")
             _reject_unknown(row, keys, f"{location}.rows[{row_index}]")
     return data
 
@@ -217,6 +205,19 @@ def _reject_unknown(spec: dict[str, Any], allowed: set[str], location: str) -> N
     unknown = set(spec) - allowed
     if unknown:
         raise ValueError(f"{location}: unknown key(s): {', '.join(sorted(unknown))}")
+
+
+def _reject_numeric_values(value: Any, location: str) -> None:
+    if isinstance(value, bool):
+        return
+    if isinstance(value, (int, float)):
+        raise ValueError(f"{location}: numeric hardware data is not allowed")
+    if isinstance(value, dict):
+        for key, child in value.items():
+            _reject_numeric_values(child, f"{location}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_numeric_values(child, f"{location}[{index}]")
 
 
 def _as_int(value: Any, field: str) -> int:
@@ -253,24 +254,6 @@ def _select(
     )
 
 
-def _region(spec: dict[str, Any]) -> MapRow:
-    base = _as_int(spec["base"], "base")
-    size = _as_int(spec["size"], "size")
-    return MapRow(
-        key=spec.get("key", spec["label"]),
-        label=spec["label"],
-        base=base,
-        occupied_size=_as_int(spec.get("occupied_size", size), "occupied_size"),
-        aperture_size=size,
-        description=spec.get("description", ""),
-        kind=spec.get("kind", "region"),
-        count=int(spec.get("count", 1)),
-        stride=_as_int(spec.get("stride", 0), "stride"),
-        source=spec.get("source", "synthetic"),
-        alias_of=spec.get("alias_of"),
-    )
-
-
 def _group(
     spec: dict[str, Any],
     sources: dict[str, dict[str, MapRow]],
@@ -284,18 +267,13 @@ def _group(
         raise ValueError(f"group {spec.get('label', '<unnamed>')} has no members")
     base = min(row.base for row in members)
     end = max(row.end for row in members)
-    if "base" in spec and _as_int(spec["base"], "base") != base:
-        raise ValueError(f"group {spec['label']}: asserted base does not match members")
-    size = _as_int(spec.get("size", end - base + 1), "size")
-    if base + size - 1 < end:
-        raise ValueError(f"group {spec['label']}: size does not contain members")
     return MapRow(
         key=spec.get("key", spec["label"]),
         label=spec["label"],
         base=base,
         occupied_size=end - base + 1,
-        aperture_size=size,
-        description=spec.get("description", ""),
+        aperture_size=end - base + 1,
+        description=spec.get("description", members[0].description if len(members) == 1 else ""),
         kind="group",
     )
 
@@ -329,9 +307,12 @@ def build_views(
     roots: dict[str, RootNode],
 ) -> list[MapView]:
     sources: dict[str, dict[str, MapRow]] = {}
+    source_tops: dict[str, MapRow] = {}
     for source, root in roots.items():
-        nodes = _walk(_top(root))
+        top = _top(root)
+        nodes = _walk(top)
         sources[source] = {key: _node_row(source, key, node) for key, node in nodes.items()}
+        source_tops[source] = _node_row(source, top.inst_name, top)
 
     views: list[MapView] = []
     for spec in config.get("views", ()):
@@ -374,14 +355,23 @@ def build_views(
                     rows[previous] = row
             elif kind == "group":
                 rows.append(_group(row_spec, sources, used))
-            elif kind in {"region", "reserved", "alias"}:
-                rows.append(_region(row_spec))
             else:
                 raise ValueError(f"unknown row kind {kind!r}")
         rows.sort(key=lambda row: row.base)
         if spec.get("derive_gaps", False):
-            bounds_start = _as_int(spec["bounds_start"], "bounds_start")
-            bounds_end = _as_int(spec["bounds_end"], "bounds_end")
+            bounds_source = spec.get("bounds_source", auto_source)
+            bounds_selector = spec.get("bounds_selector")
+            try:
+                bounds = (
+                    sources[bounds_source][bounds_selector]
+                    if bounds_selector
+                    else source_tops[bounds_source]
+                )
+            except KeyError as exc:
+                target = f"{bounds_source}:{bounds_selector or '<top>'}"
+                raise ValueError(f"{spec['name']}: gap bounds {target} not found") from exc
+            bounds_start = bounds.base if bounds_selector else min(row.base for row in rows)
+            bounds_end = bounds.end + 1
             with_gaps: list[MapRow] = []
             cursor = bounds_start
             for row in rows:
@@ -413,6 +403,15 @@ def build_views(
                 )
             rows = with_gaps
         _validate(rows, spec["name"])
+        relative_base = 0
+        if spec.get("base_mode", "absolute") == "relative":
+            base_source = spec.get("base_source", auto_source)
+            try:
+                relative_base = min(
+                    row.base for key, row in sources[base_source].items() if "." not in key
+                )
+            except (KeyError, ValueError) as exc:
+                raise ValueError(f"{spec['name']}: base source {base_source!r} not found") from exc
         views.append(
             MapView(
                 name=spec["name"],
@@ -420,7 +419,7 @@ def build_views(
                 columns=tuple(spec.get("columns", ("base", "end", "size", "label", "description"))),
                 rows=tuple(rows),
                 base_mode=spec.get("base_mode", "absolute"),
-                base=_as_int(spec.get("base", 0), "base"),
+                base=relative_base,
                 base_label=spec.get("base_label", "BASE"),
             )
         )

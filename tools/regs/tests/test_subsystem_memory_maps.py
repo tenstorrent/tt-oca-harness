@@ -36,9 +36,27 @@ def catalog() -> list[Path]:
     return sorted({path for pattern in patterns for path in ROOT.glob(pattern)})
 
 
+def configured_views(config_path: str, rdl: str | None = None, top: str | None = None):
+    config = load_config(ROOT / config_path)
+    if config.get("sources"):
+        roots = {
+            source["name"]: compile_root(
+                ROOT / source["rdl"],
+                UDP,
+                catalog(),
+                source["top"],
+            )
+            for source in config["sources"]
+        }
+    else:
+        if rdl is None or top is None:
+            raise ValueError(f"{config_path}: rdl and top are required")
+        roots = {"main": compile_root(ROOT / rdl, UDP, catalog(), top)}
+    return build_views(config, roots)
+
+
 def one_view(rdl: str, config: str, top: str):
-    root = compile_root(ROOT / rdl, UDP, catalog(), top)
-    return build_views(load_config(ROOT / config), {"main": root})[0]
+    return configured_views(config, rdl, top)[0]
 
 
 def rows_by_key(view):
@@ -56,23 +74,18 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
     def test_configured_maps_build_from_rdl(self):
         specs = (
             (
-                "hw/sys/sep/regs/sep.rdl",
-                "hw/sys/sep/regs/memmap.toml",
-                "och_sep_top",
-            ),
-            (
                 "hw/sys/smc/regs/smc.rdl",
-                "hw/sys/smc/regs/memmap.toml",
+                "hw/sys/smc/doc/memmap.toml",
                 "smc_top",
             ),
             (
                 "hw/ip/key_manager/regs/key_manager.rdl",
-                "hw/ip/key_manager/regs/memmap.toml",
+                "hw/ip/key_manager/doc/memmap.toml",
                 "key_manager",
             ),
             (
                 "hw/ip/cross_trigger/cross_trigger_network/regs/cross_trigger_network.rdl",
-                "hw/ip/cross_trigger/cross_trigger_network/regs/memmap.toml",
+                "hw/ip/cross_trigger/cross_trigger_network/doc/memmap.toml",
                 "cross_trigger_network",
             ),
         )
@@ -83,21 +96,12 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
 
     def test_multi_source_maps_build_from_rdl(self):
         for config_path in (
-            "hw/ip/efuse/regs/memmap.toml",
-            "hw/ip/axi_lite_mailbox_unit/regs/memmap.toml",
+            "hw/sys/sep/doc/memmap.toml",
+            "hw/ip/efuse/doc/memmap.toml",
+            "hw/ip/axi_lite_mailbox_unit/doc/memmap.toml",
         ):
             with self.subTest(config=config_path):
-                config = load_config(ROOT / config_path)
-                roots = {
-                    source["name"]: compile_root(
-                        ROOT / source["rdl"],
-                        UDP,
-                        catalog(),
-                        source["top"],
-                    )
-                    for source in config["sources"]
-                }
-                views = build_views(config, roots)
+                views = configured_views(config_path)
                 self.assertTrue(views)
                 self.assertTrue(all(view.rows for view in views))
 
@@ -116,17 +120,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         sep = rows_by_key(
             next(
                 view
-                for view in build_views(
-                    load_config(ROOT / "hw/sys/sep/regs/memmap.toml"),
-                    {
-                        "main": compile_root(
-                            ROOT / "hw/sys/sep/regs/sep.rdl",
-                            UDP,
-                            catalog(),
-                            "och_sep_top",
-                        )
-                    },
-                )
+                for view in configured_views("hw/sys/sep/doc/memmap.toml")
                 if view.name == "sep-components"
             )
         )
@@ -141,7 +135,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
             next(
                 view
                 for view in build_views(
-                    load_config(ROOT / "hw/sys/smc/regs/memmap.toml"),
+                    load_config(ROOT / "hw/sys/smc/doc/memmap.toml"),
                     {
                         "main": compile_root(
                             ROOT / "hw/sys/smc/regs/smc.rdl",
@@ -190,7 +184,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         km = rows_by_key(
             one_view(
                 "hw/ip/key_manager/regs/key_manager.rdl",
-                "hw/ip/key_manager/regs/memmap.toml",
+                "hw/ip/key_manager/doc/memmap.toml",
                 "key_manager",
             )
         )

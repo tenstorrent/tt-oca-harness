@@ -96,8 +96,8 @@ OCAH_REG_JSON_BLOCKS ?= hw/sys/smc
 OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 
 # Top-level address-space documentation is opt-in. Leaf register tables remain
-# under their existing adoc targets; these entries own an additional validated
-# map view at regs/gen/adoc/memory_map.adoc.
+# under their existing adoc targets. Each entry reads presentation directives
+# from doc/memmap.toml and emits regs/gen/adoc/memory_map.adoc.
 OCAH_REG_MEMORY_MAP_BLOCKS ?= \
   hw/sys/sep \
   hw/sys/smc \
@@ -106,6 +106,8 @@ OCAH_REG_MEMORY_MAP_BLOCKS ?= \
   hw/ip/efuse/regs/efuse_interface_ctrl \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
 OCAH_REG_MEMORY_MAP_BLOCKS += $(OCAH_REG_MEMORY_MAP_BLOCKS_EXTRA)
+OCAH_REG_MEMORY_MAP_DEPS_hw_sys_sep := \
+  $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_cpu_logical.rdl
 OCAH_REG_MEMORY_MAP_DEPS_hw_ip_axi_lite_mailbox_unit_regs_axil_mailbox := \
   $(OCAH_ROOT)/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap.rdl \
   $(OCAH_ROOT)/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap.rdl

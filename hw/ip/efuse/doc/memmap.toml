@@ -42,7 +42,7 @@ label = "MMR Registers"
 name = "smc-efuse"
 title = "SMC eFuse Placement"
 base_mode = "relative"
-base = 0xC0000000
+base_source = "smc"
 base_label = "BASE"
 columns = ["range", "size", "occupied_size", "label", "description"]
 

@@ -7,7 +7,6 @@ version = 1
 name = "smc-functional"
 title = "SMC Functional Address-Space Organization"
 base_mode = "relative"
-base = 0xC0000000
 base_label = "BASE"
 columns = ["range", "size", "label", "description"]
 
@@ -33,7 +32,6 @@ description = "Base configuration, address remapping, and traffic filters."
 kind = "group"
 label = "Mailbox"
 members = ["smc_mailbox"]
-description = "Thirty-two bidirectional inter-processor mailbox pairs."
 
 [[views.rows]]
 kind = "group"
@@ -88,6 +86,5 @@ name = "smc-components"
 title = "SMC Component Address Map"
 include_all = true
 base_mode = "relative"
-base = 0xC0000000
 base_label = "BASE"
 columns = ["range", "size", "occupied_size", "label", "instances", "stride", "description"]

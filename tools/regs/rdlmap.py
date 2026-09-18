@@ -68,13 +68,7 @@ def main() -> int:
                 udp,
                 source_incdirs,
                 source.get("top"),
-                {
-                    **_parameters(args.parameter),
-                    **{
-                        name: int(value, 0) if isinstance(value, str) else value
-                        for name, value in source.get("parameters", {}).items()
-                    },
-                },
+                _parameters(args.parameter),
             )
     else:
         if not args.rdl:

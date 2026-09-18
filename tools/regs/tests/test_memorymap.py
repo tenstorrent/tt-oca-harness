@@ -65,8 +65,6 @@ class MemoryMapTest(unittest.TestCase):
                 {
                     "name": "map",
                     "title": "Map",
-                    "bounds_start": 0x1000,
-                    "bounds_end": 0x2200,
                     "derive_gaps": True,
                     "rows": [
                         {"selector": "first"},
@@ -117,42 +115,27 @@ class MemoryMapTest(unittest.TestCase):
                     "name": "map",
                     "rows": [
                         {"selector": "first"},
-                        {"kind": "region", "label": "Overlap", "base": 0x1080, "size": 0x100},
+                        {"source": "other", "selector": "first"},
                     ],
                 }
             ],
         }
         with self.assertRaisesRegex(ValueError, "overlaps"):
-            build_views(config, {"main": self.root})
+            build_views(config, {"main": self.root, "other": self.root})
 
-    def test_alias_must_match_target_size(self):
+    def test_relative_base_is_derived_from_rdl(self):
         config = {
             "version": 1,
             "views": [
                 {
                     "name": "map",
-                    "rows": [
-                        {
-                            "kind": "region",
-                            "key": "direct",
-                            "label": "Direct",
-                            "base": 0,
-                            "size": 0x100,
-                        },
-                        {
-                            "kind": "alias",
-                            "key": "alias",
-                            "label": "Alias",
-                            "base": 0x1000,
-                            "size": 0x80,
-                            "alias_of": "direct",
-                        },
-                    ],
+                    "include_all": True,
+                    "base_mode": "relative",
                 }
             ],
         }
-        with self.assertRaisesRegex(ValueError, "alias size differs"):
-            build_views(config, {"main": self.root})
+        view = build_views(config, {"main": self.root})[0]
+        self.assertEqual(view.base, view.rows[0].base)
 
     def test_doc_override_is_validated(self):
         data = collect(self.root, {"first.control": "Documented locally"})
@@ -177,16 +160,22 @@ class MemoryMapTest(unittest.TestCase):
 
     def test_config_rejects_hardware_facts(self):
         config = Path(self.temp.name) / "bad.toml"
-        for field in ("expected_address", "aperture_size"):
+        for field in ("expected_address", "aperture_size", "base", "bounds_start"):
             with self.subTest(field=field):
                 config.write_text(
                     f'version = 1\n[[views]]\nname = "bad"\n'
                     f'[[views.rows]]\nselector = "first"\n{field} = 1\n'
                 )
-                with self.assertRaisesRegex(ValueError, "unknown key"):
+                with self.assertRaisesRegex(ValueError, "numeric hardware data"):
                     load_config(config)
         config.write_text('version = 1\n[[nodes]]\nselector = "first"\n')
         with self.assertRaisesRegex(ValueError, "unknown key"):
+            load_config(config)
+        config.write_text(
+            'version = 1\n[[views]]\nname = "bad"\n'
+            '[[views.rows]]\nkind = "region"\nlabel = "Hidden map"\nbase = 1\nsize = 1\n'
+        )
+        with self.assertRaisesRegex(ValueError, "numeric hardware data"):
             load_config(config)
 
 

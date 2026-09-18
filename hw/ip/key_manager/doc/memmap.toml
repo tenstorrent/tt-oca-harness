@@ -8,6 +8,4 @@ name = "km-cpu"
 title = "Key Manager CPU Memory Map"
 include_all = true
 derive_gaps = true
-bounds_start = 0
-bounds_end = 0x0001D000
 columns = ["base", "end", "size", "occupied_size", "label", "description"]
