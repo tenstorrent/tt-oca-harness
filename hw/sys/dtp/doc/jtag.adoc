@@ -1,66 +1,90 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= JTAG Operation
+:description: DTP-level JTAG topology, scan chain ordering, clock domains, reset and lifecycle feature control.
+
 [[dtp-jtag-integration]]
-=== DTP JTAG Integration
 
-This section describes how JTAG components are integrated within the DTP
-subsystem. For detailed component documentation, see:
+This page describes how the DTP integrates its JTAG components at the
+subsystem level: topology, scan chain ordering, clock domains, reset hierarchy
+and lifecycle feature control. For the detailed implementation of each
+component, see the JTAG reference pages that follow this one.
 
-* <<jtag-interface-unit>> - Top-level JTAG control module
-* <<jtag-ptap>> - Primary TAP implementation
-* <<jtag-stap>> - Secondary TAP for 3DIC support
+== DTP JTAG Topology
 
-==== DTP JTAG Topology
+The DTP instantiates a single JTAG Interface Unit (JIU) as the primary debug
+entry point for the chiplet. The JIU connects to:
 
-The DTP instantiates a single JTAG Interface Unit that serves as the primary
-debug access point for the chiplet. The interface unit connects to:
+* The five external JTAG pins (TCK, TDI, TDO, TMS, TRST_n).
+* The Cross Trigger Network, for the `jtag_clock_stop` bit in the DEBUG_CONTROL
+  instruction and for the `cla_clock_stop` readback status.
+* The SMC AXI fabric via JTAG2AXI (instruction `J2A_SMC_FABRIC`).
+* The SMC and SEP OTP controllers via JTAG2AXIL.
+* The SMC and SEP CPU debug TAPs via STAPs.
 
-* External JTAG pins (TCK, TDI, TDO, TMS, TRST)
-* Cross Trigger Network for clock stop control
-* SMC AXI fabric via JTAG2AXI
-* SMC and SEP OTP controllers via JTAG2AXIL
-* SMC and SEP CPU debug TAPs via STAPs
+.DTP JTAG scan chain
+image::dtp_jtag_scan_chain.svg[DTP JTAG scan chain diagram showing PTAP connected to external JTAG pins and to the STAP chain and iJTAG SIB network,scaledwidth=90.0%]
 
-==== STAP Secondary Scan Path
+== STAP Secondary Scan Path
 
-The PTAP secondary scan path in the DTP is ordered as follows:
+The PTAP secondary scan path connects the STAPs in this fixed order:
 
-* PTAP
-* I/O STAP when `JTAG_STAP_IO_ENABLE=1`
-* SMC debug STAP when `JTAG_SMC_DBG_ENABLE=1`
-* SEP debug STAP when `JTAG_SEP_DBG_ENABLE=1`
-* extra STAP instances `[JTAG_NUM_EXTRA_STAPS-1:0]`
-* return to PTAP
+. PTAP
+. I/O STAP — when `JTAG_STAP_IO_ENABLE=1`
+. SMC debug STAP — when `JTAG_SMC_DBG_ENABLE=1`
+. SEP debug STAP — when `JTAG_SEP_DBG_ENABLE=1`
+. Extra STAP instances `[JTAG_NUM_EXTRA_STAPS-1:0]`
+. Return to PTAP
 
-When a STAP is disabled by parameter, the DTP bypasses it in the secondary scan
-chain and drives its internal host outputs low.
+When a STAP is disabled by parameter, the DTP bypasses it in the secondary
+scan chain and drives its internal host outputs low.
 
-==== Clock Domains
+== Clock Domains
 
 The DTP operates in two clock domains:
 
-[cols="<,<,<",options="header"]
+[cols="<25%,<25%,<50%",options="header"]
 |===
 |Domain |Signal |Description
-|System Clock |clk_i |Main system clock for cross trigger logic and AXI interfaces
-|JTAG Clock |TCK |JTAG test clock for all TAP controller and scan logic
+
+|System clock
+|`clk_i`
+|Main clock for cross-trigger logic and AXI interfaces. All CTN and CSR
+logic runs in this domain.
+
+|JTAG clock
+|TCK
+|JTAG test clock for all TAP controller and scan logic. Clocks the PTAP,
+STAP state machines, and scan registers. Asynchronous to `clk_i`.
 |===
 
-All cross-trigger signals are synchronized to the system clock domain within the
-CTPs.
+All cross-trigger signals crossing from TCK to `clk_i` are synchronised
+within the CTPs using two-flip-flop synchroniser chains.
 
-==== Reset Architecture
+== Reset Architecture
 
-* *rst_n_i*: Active-low asynchronous reset for cross trigger logic and AXI
-  interfaces
-* *pwr_on_rst_ni*: Asynchronous active-low power-on reset for JTAG logic,
-  combined internally with TRST_n
-* All registers reset to safe states
-* Clock stop output resets to 0 (clocks running)
-* JTAG TAP resets to Test-Logic-Reset state on TRST or power-on
+[cols="<30%,<70%",options="header"]
+|===
+|Signal |Description
 
-==== IC_RESET Overrides
+|`rst_n_i`
+|Active-low asynchronous reset for cross-trigger logic and AXI interfaces.
+Resets all CTN and CSR state; clock-stop output resets to 0 (clocks running).
+
+|`pwr_on_rst_ni`
+|Active-low asynchronous power-on reset for JTAG logic. Combined internally
+with TRST_n; resets the PTAP to Test-Logic-Reset state and clears all TDRs.
+
+|TRST_n (JTAG pin)
+|Optional external active-low TAP reset. When asserted, drives the PTAP
+to Test-Logic-Reset regardless of the TCK or TMS state.
+|===
+
+All registers reset to safe states. The JTAG TAP returns to Test-Logic-Reset
+on either TRST_n or power-on reset.
+
+== IC_RESET Overrides
 
 The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset
 port it holds `reset_control`, the active-low reset value to drive, and
@@ -88,7 +112,7 @@ OCAH-defined. The external slice is adopter-defined: its width and fields come
 from the SMU type parameter `ic_reset_ext_t`. The Integrator Guide records the
 SMU-composed port map.
 
-==== Debug Disable
+== Debug Disable
 
 `dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is a per-path
 debug/test disable vector. Each field is active-high (1 = path disabled). The
@@ -133,12 +157,11 @@ each field to the named path.
 |`dbg_disable_i.sep_otp_jtag2axi`
 |===
 
-A disabled path remains observable only where required for control and readback;
-its host-visible scan or debug access is clamped or bypassed so the disabled
-path cannot be used to reach downstream secure logic. For a JTAG2AXI bridge this
-means its TDR update registers are not latched, buffered requests are dropped,
-and the AXI state machine is held in idle, so no AXI traffic can be generated at
-all.
+A disabled path remains observable only where required for control and
+readback. For a JTAG2AXI bridge, disabling means TDR update registers are not
+latched, buffered requests are dropped and the AXI state machine is held in
+idle — no AXI traffic can be generated. For a STAP, the host-visible scan
+access is clamped so the disabled path cannot reach downstream secure logic.
 
 The STAP and iJTAG fields are applied in `jtag_intf_unit`; the three JTAG2AXI
 fields are applied in `jtag_ptap`.

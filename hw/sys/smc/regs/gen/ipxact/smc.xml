@@ -206,7 +206,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -428,7 +428,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -650,7 +650,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -872,7 +872,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -35901,7 +35901,7 @@ STBY_CR_CONTROL is not zero.</ipxact:description>
                   <ipxact:field>
                     <ipxact:name>PID_HI</ipxact:name>
                     <ipxact:displayName>PID_HI</ipxact:displayName>
-                    <ipxact:description>High part of the 48-bit Target Device Provisioned ID. 
+                    <ipxact:description>High part of the 48-bit Target Device Provisioned ID.
 
 This field is Read-Only while the STBY_CR_ENABLE_INIT field in register
 STBY_CR_CONTROL is not zero.</ipxact:description>

@@ -155,27 +155,36 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                 ), UVM_MEDIUM)
   endfunction
 
-  // Backpressured checked single write: SUCCESS status, memory matches
-  // the stimulus intent, and the request reached the bus.
+  // Backpressured checked single write. The READY stall outlasts the first
+  // status poll, so the bridge is observed on the stalled path before the
+  // write settles at SUCCESS with the memory matching the stimulus intent
+  // and the request on the bus.
   protected task write_with_backpressure(dtp_j2a_target_t t, string channels[$],
                                          int unsigned stall_cycles, string context_s);
     dtp_j2a_status_e op_status;
+    bit [63:0] rdata;
     int unsigned aw0, w0, ar0;
     int unsigned size = t.default_size;
     bit [63:0]   addr = robust_addr(t, operation_count + 1);
     bit [63:0]   data = (64'h1020_3040_5060_7080 ^ addr) & data_mask(size);
     configure_target_backpressure(t, channels, stall_cycles);
     sample_activity(t, aw0, w0, ar0);
-    write_target_single_and_check(t, addr, data, op_status, size, full_wstrb(size), context_s);
+    issue_single(t, DTP_J2A_OP_WRITE, addr, data, full_wstrb(size), size, 1'b0);
+    observe_stall(t, 1'b0, context_s);
+    poll_single(t, op_status, rdata, context_s);
+    check_status({context_s, ".status"}, op_status, DTP_J2A_SUCCESS);
+    check_target_memory(t, addr, data, size, context_s);
     expect_activity(t, aw0, ar0, 1'b0, context_s);
     clear_target_backpressure(t);
     operation_count++;
   endtask
 
-  // Backpressured checked single read of a backdoor-preloaded value.
+  // Backpressured checked single read of a backdoor-preloaded value, the
+  // bridge observed on the stalled read path first.
   protected task read_with_backpressure(dtp_j2a_target_t t, string channels[$],
                                         int unsigned stall_cycles, string context_s);
     dtp_j2a_status_e op_status;
+    bit [63:0] rdata;
     int unsigned aw0, w0, ar0;
     int unsigned size = t.default_size;
     bit [63:0]   addr = robust_addr(t, operation_count + 1);
@@ -183,7 +192,20 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     write_target_mem_int(t, addr, data, size);
     configure_target_backpressure(t, channels, stall_cycles);
     sample_activity(t, aw0, w0, ar0);
-    read_target_single_and_check(t, addr, data, op_status, size, context_s);
+    issue_single(t, DTP_J2A_OP_READ, addr, '0, '0, size, 1'b0);
+    observe_stall(t, 1'b1, context_s);
+    poll_single(t, op_status, rdata, context_s);
+    check_status({context_s, ".status"}, op_status, DTP_J2A_SUCCESS);
+    if ((rdata & data_mask(size)) !== data)
+      `uvm_error("jtag2axi_data_chk", $sformatf(
+                 "%s: rdata 0x%0h != expected 0x%0h (addr=0x%0h)",
+                 context_s,
+                 rdata & data_mask(
+                     size
+                 ),
+                 data,
+                 addr
+                 ))
     expect_activity(t, aw0, ar0, 1'b1, context_s);
     clear_target_backpressure(t);
     operation_count++;
@@ -196,8 +218,9 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   protected task run_backpressure_aw_before_w();
     for (int unsigned i = 0; i < NumTargets; i++) begin
       dtp_j2a_target_t t = select_target(i);
-      // Seeded per-pass stall width: each loop delays WREADY differently.
-      int unsigned stall = $urandom_range(6, 2);
+      // WREADY held past the first status poll (seeded margin): the bridge
+      // is observed waiting on the write path while AW is already accepted.
+      int unsigned stall = stall_beyond_polls(t, 2);
       `uvm_info(get_type_name(), $sformatf(
                 "[%0d/%0d] target=%s WREADY stall=%0d", i + 1, NumTargets, t.name, stall), UVM_LOW)
       write_with_backpressure(t, '{"w"}, stall, $sformatf("aw_before_w.%s", t.name));
@@ -230,7 +253,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                 "[%0d/%0d] target=%s scans=%0d stall=%0d", i + 1, NumTargets, t.name, scans, stall),
                 UVM_LOW)
       write_with_backpressure(t, '{"aw", "w"}, stall, $sformatf("long_stall.write.%s", t.name));
-      read_with_backpressure(t, '{"ar"}, $urandom_range(10, 4), $sformatf(
+      read_with_backpressure(t, '{"ar"}, stall_beyond_polls(t, 2), $sformatf(
                              "long_stall.read.%s", t.name));
       // Zero-strobe and window-boundary singles: legal corner
       // operands exercised once the stalls are cleared.
@@ -253,6 +276,9 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // Update-DR, and to return to IDLE after the reset.
   localparam int unsigned AbortMidFlightTck = 64;
   localparam int unsigned AbortSettleTck = 128;
+  // TCK cycles after a reset pulse for the CDC controller to run its
+  // TCK-side isolate-and-clear on an idle bridge.
+  localparam int unsigned AbortCdcClearTck = 32;
 
   // Record one judgement on the target's evidence recorder and report it
   // without stopping the pass, so every bridge leaves evidence.
@@ -269,6 +295,40 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                 "%s: 0x%0h as expected (%s)", name, observed, context_s), UVM_MEDIUM)
     return ok;
   endfunction
+
+  // The READY stall seen from the DUT: the bridge FSM has left IDLE onto the
+  // stalled path (CHK-J2A-STALL-FSM) and the first status poll reads
+  // BUSY_OR_FULL (CHK-J2A-STALL-BUSY). Both need the stall to outlast the
+  // poll, so callers size it with stall_beyond_polls().
+  protected task observe_stall(dtp_j2a_target_t t, bit is_read, string context_s);
+    dtp_j2a_fsm_state_e state;
+    dtp_j2a_status_e first;
+    bit [63:0] rdata;
+    bit on_path;
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, state);
+    on_path = is_read ? (state inside {DTP_J2A_FSM_SEND_ADDR_R, DTP_J2A_FSM_WAIT_RDATA}) :
+        (state inside {DTP_J2A_FSM_SEND_ADDR_W, DTP_J2A_FSM_SEND_DATA_W, DTP_J2A_FSM_WAIT_BRESP});
+    void'(record_abort_check(
+        DtpJ2aStallFsmCheckId,
+        {
+          context_s, ".stall_fsm"
+        },
+        64'(on_path),
+        64'd1,
+        $sformatf(
+            "fsm=%s under the %s READY stall", state.name(), is_read ? "read" : "write")
+    ));
+    single_status_once(t, first, rdata);
+    void'(record_abort_check(
+        DtpJ2aStallBusyCheckId,
+        {
+          context_s, ".stall_busy"
+        },
+        64'(first),
+        64'(DTP_J2A_BUSY_OR_FULL),
+        "first status poll under the READY stall"
+    ));
+  endtask
 
   // System reset while the bridge is observed mid-flight on a held write;
   // `recovered` is 1 when the bridge's status settled to SUCCESS afterwards
@@ -375,8 +435,22 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       bit [63:0] data = rand_data(t);
       `uvm_info(get_type_name(), $sformatf(
                 "[%0d/%0d] target=%s back-to-back reset", i + 1, NumTargets, t.name), UVM_LOW)
+      clear_cdc_clear_seen();
       pulse_system_reset($urandom_range(2, 1));
       pulse_system_reset($urandom_range(3, 1));
+      // The CDC's TCK-side isolate-and-clear runs only while TCK runs.
+      repeat (AbortCdcClearTck) step(1'b0);
+      void'(record_abort_check(
+          DtpJ2aCdcClearCheckId,
+          $sformatf(
+              "back_to_back_reset.%s.cdc_clear", t.name
+          ),
+          64'(cdc_clear_seen(
+              t
+          )),
+          64'd1,
+          "tck-side isolate-and-clear after two resets"
+      ));
       verify_target_recovery(t, addr, data, 1'b0, $sformatf("back_to_back_reset.%s", t.name));
       verify_target_recovery(t, addr, data, 1'b1, $sformatf("back_to_back_reset_read.%s", t.name));
       operation_count++;
@@ -508,12 +582,14 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     end
   endtask
 
-  // CHK-AXI-NONVAC on every bridge: real operations ran on all three and
-  // no armed expectation was left unconsumed on any port recorder (a
-  // tied-off, idle, or always-OKAY bridge cannot satisfy this).
+  // CHK-AXI-NONVAC on every bridge: that bridge's responder completed at
+  // least one burst this pass and no armed expectation was left unconsumed
+  // on its recorder (a tied-off, idle, or always-OKAY bridge cannot satisfy
+  // this).
   protected function void emit_robustness_nonvacuity(string label);
     for (int unsigned i = 0; i < NumTargets; i++) begin
       int unsigned unconsumed = 0;
+      int unsigned bursts = bursts_since_baseline(targets[i]);
       if (target_cfgs[i] != null)
         unconsumed = target_cfgs[i].pending_expected_resp()
                            + target_cfgs[i].pending_expected_writes()
@@ -521,11 +597,12 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       if (target_evidence[i] != null)
         void'(target_evidence[i].expect_true(
             "CHK-AXI-NONVAC",
-            (operation_count >= NumTargets) && (unconsumed == 0),
+            (bursts > 0) && (unconsumed == 0),
             $sformatf(
-                "scenario=%s target=%s operations=%0d credits_unconsumed=%0d",
+                "scenario=%s target=%s responder_bursts=%0d operations=%0d credits_unconsumed=%0d",
                 label,
                 targets[i].name,
+                bursts,
                 operation_count,
                 unconsumed)
         ));

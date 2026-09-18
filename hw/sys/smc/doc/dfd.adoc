@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Design-for-Debug (DFD) and Core Logic Analyzer (CLA)
+:description: SMC debug observation, event triggering, actions, and trace capture.
+
 [[smc-dfd-cla]]
-=== Design-for-Debug (DFD) and Core Logic Analyzer (CLA)
 
 The SMC integrates a Design-for-Debug (DFD) subsystem that observes
 internal activity, triggers on programmable conditions, and captures
@@ -25,7 +27,7 @@ Key features include:
 * Cross-trigger exchange with the rest of the debug infrastructure
 * Timestamped trace streamed to memory over the fabric
 
-==== Debug Bus
+== Debug Bus
 
 The analyzer operates on a debug bus: a fixed-width vector of internal
 signals sampled every cycle. A selection fabric chooses which internal
@@ -34,7 +36,7 @@ different parts of the design without RTL changes. Software selects the
 observed signal set, then programs the event engine against the resulting
 bus value.
 
-==== Core Logic Analyzer
+== Core Logic Analyzer
 
 The CLA is organized as a set of nodes, each holding several event-action
 pairs (EAPs). An EAP binds one or more events, computed from the debug
@@ -66,7 +68,7 @@ register latches the debug-bus value at the moment of the trigger for
 post-mortem inspection. EAPs are enabled together once programming is
 complete, so a partially programmed pairing never triggers.
 
-==== Actions and Cross-Triggering
+== Actions and Cross-Triggering
 
 An EAP can drive one or more actions:
 
@@ -83,7 +85,7 @@ actions, and cross-trigger outputs propagate local events outward, so
 debug conditions can be correlated across blocks rather than observed in
 isolation.
 
-==== Trace
+== Trace
 
 The trace subsystem captures, timestamps, and streams debug activity for
 offline analysis. Samples and events are encoded and packetized, merged
@@ -92,18 +94,29 @@ master. A global timestamp with a synchronization mechanism places trace
 from different sources on a common time base, so captures can be aligned
 after the fact.
 
-==== Interrupts
+== Interrupts
 
-The SMC interrupt table in <<interrupts>> lists the two CLA-driven
-sources:
+The SMC interrupt table lists the two CLA-driven sources. See
+ifdef::backend-html5[]
+xref:smc:interrupts.adoc#interrupts[Interrupts].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<interrupts>>.
+endif::backend-pdf[]
 
 * *CLA clock stop* — asserted while the CLA has stopped clocks.
 * *CLA debug interrupt* — the debug interrupt raised by a CLA action.
 
-==== Register Map
+== Register Map
 
 The generated `smc_cla` map is the programmer view of this aperture (see
-<<smc-memory-map>>).
+ifdef::backend-html5[]
+xref:smc:memmap.adoc#smc-memory-map[Memory Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-memory-map>>
+endif::backend-pdf[]
+).
 
 ifdef::backend-html5[]
 ++++
