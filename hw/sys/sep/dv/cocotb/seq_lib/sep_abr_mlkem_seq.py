@@ -21,7 +21,14 @@ Two properties of this block shape the driver, and both are false-pass hazards:
 
 from __future__ import annotations
 
-from env.sep_spec_tables import abr_ctrl_cmd, abr_field_mask, abr_off, mldsa_name_words, window
+from env.sep_spec_tables import (
+    abr_ctrl_cmd,
+    abr_field_mask,
+    abr_id_words,
+    abr_off,
+    mldsa_name_words,
+    window,
+)
 
 from seq_lib.sep_abr_keygen_seq import SepAbr
 
@@ -29,6 +36,8 @@ ABR_BASE = window("ABR").base
 
 MLKEM_NAME0 = ABR_BASE + abr_off("MLKEM_NAME")
 MLKEM_NAME1 = MLKEM_NAME0 + 4
+MLKEM_VERSION0 = ABR_BASE + abr_off("MLKEM_VERSION")
+MLKEM_VERSION1 = MLKEM_VERSION0 + 4
 MLKEM_CTRL = ABR_BASE + abr_off("MLKEM_CTRL")
 MLKEM_STATUS = ABR_BASE + abr_off("MLKEM_STATUS")
 MLKEM_SEED_D = ABR_BASE + abr_off("MLKEM_SEED_D")
@@ -78,6 +87,8 @@ KEM_CT_WORDS = 392
 # Identity words. crypto.adoc names ML-KEM-1024; the Caliptra NAME field is the
 # 8-char label KEM-1024, packed the same way as the ML-DSA-87 pair.
 KEM_NAME0_EXP, KEM_NAME1_EXP = mldsa_name_words("KEM-1024")
+# `sw = r` with no RDL reset; abr_params_pkg.sv states the expected word.
+KEM_VER0_EXP, KEM_VER1_EXP = abr_id_words("MLKEM_CORE_VERSION")
 
 
 class SepAbrMlkem(SepAbr):
@@ -115,6 +126,10 @@ def _selftest() -> None:
     # Encoding of the crypto.adoc label through the shared NAME packer.
     assert KEM_NAME0_EXP == 0x4D2D4B45
     assert KEM_NAME1_EXP == 0x32343130
+    # The label encoding and the RTL parameter must state the same NAME.
+    assert (KEM_NAME0_EXP, KEM_NAME1_EXP) == abr_id_words("MLKEM_CORE_NAME")
+    assert (KEM_VER0_EXP, KEM_VER1_EXP) == (0x302E322E, 0x00003100)  # "2.0.1"
+    assert MLKEM_VERSION0 - MLKEM_NAME0 == 0x8
 
 
 _selftest()

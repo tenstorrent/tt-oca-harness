@@ -15,6 +15,7 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import (
     abr_ctrl_cmd,
     abr_field_mask,
+    abr_id_words,
     abr_off,
     agg_from_pic,
     mldsa_name_words,
@@ -26,6 +27,8 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 ABR_BASE = window("ABR").base
 ABR_NAME0 = ABR_BASE + abr_off("MLDSA_NAME")
 ABR_NAME1 = ABR_NAME0 + 4
+ABR_VERSION0 = ABR_BASE + abr_off("MLDSA_VERSION")
+ABR_VERSION1 = ABR_VERSION0 + 4
 ABR_CTRL = ABR_BASE + abr_off("MLDSA_CTRL")
 ABR_STATUS = ABR_BASE + abr_off("MLDSA_STATUS")
 ABR_ENTROPY = ABR_BASE + abr_off("ABR_ENTROPY")
@@ -42,6 +45,11 @@ ABR_ERROR_TRIG = ABR_INTR + abr_off("error_intr_trig_r")
 ABR_NOTIF_INTR = ABR_INTR + abr_off("notif_internal_intr_r")
 
 NAME0_EXP, NAME1_EXP = mldsa_name_words()
+# NAME and VERSION are `sw = r` with no RDL reset, so abr_params_pkg.sv is the
+# only place the expected word is stated. NAME is derived twice -- from the
+# crypto.adoc label and from the parameter -- and the self-test requires the
+# two to agree.
+VER0_EXP, VER1_EXP = abr_id_words("MLDSA_CORE_VERSION")
 
 CMD_KEYGEN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN")
 CMD_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "SIGN")
@@ -172,6 +180,10 @@ def _selftest() -> None:
     assert ABR_NOTIF_INTR - ABR_INTR == 0x18
     assert NAME0_EXP == 0x44534D4C
     assert NAME1_EXP == 0x3837412D
+    # The label encoding and the RTL parameter must state the same NAME.
+    assert (NAME0_EXP, NAME1_EXP) == abr_id_words("MLDSA_CORE_NAME")
+    assert (VER0_EXP, VER1_EXP) == (0x302E322E, 0x00003100)  # "2.0.1"
+    assert ABR_VERSION0 - ABR_NAME0 == 0x8
     cfg = SepAbrKeygenCfg(1)
     assert len(cfg.entropy) == ENTROPY_WORDS
     flipped = cfg.flipped_seed([0] * SEED_WORDS)

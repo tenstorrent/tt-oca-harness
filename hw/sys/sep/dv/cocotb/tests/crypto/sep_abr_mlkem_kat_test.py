@@ -69,6 +69,8 @@ from seq_lib.sep_abr_mlkem_seq import (
     KEM_ST_ERROR,
     KEM_ST_READY,
     KEM_ST_VALID,
+    KEM_VER0_EXP,
+    KEM_VER1_EXP,
     MLKEM_CIPHERTEXT,
     MLKEM_CTRL,
     MLKEM_DECAPS_KEY,
@@ -80,6 +82,8 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_SEED_Z,
     MLKEM_SHARED_KEY,
     MLKEM_STATUS,
+    MLKEM_VERSION0,
+    MLKEM_VERSION1,
     SepAbrMlkem,
 )
 from seq_lib.sep_crypto_reset_iso_seq import (
@@ -174,6 +178,14 @@ class sep_abr_mlkem_kat_test(sep_base_test):
             f"expected 0x{KEM_NAME0_EXP:08x}_0x{KEM_NAME1_EXP:08x} (KEM-1024)"
         )
         self.logger.info("CHK-KEM-NAME PASS: NAME0=0x%08x NAME1=0x%08x (KEM-1024)", name0, name1)
+
+        ver0 = await kem.rd32(MLKEM_VERSION0)
+        ver1 = await kem.rd32(MLKEM_VERSION1)
+        assert ver0 == KEM_VER0_EXP and ver1 == KEM_VER1_EXP, (
+            f"MLKEM VERSION 0x{ver0:08x}_0x{ver1:08x}, "
+            f"expected 0x{KEM_VER0_EXP:08x}_0x{KEM_VER1_EXP:08x} (2.0.1)"
+        )
+        self.logger.info("CHK-KEM-VERSION PASS: VER0=0x%08x VER1=0x%08x (2.0.1)", ver0, ver1)
 
         # --- CHK-KEM-KEYGEN ---------------------------------------------------
         await kem.write_words(MLKEM_SEED_D, list(NIST_KEM_KG_D))

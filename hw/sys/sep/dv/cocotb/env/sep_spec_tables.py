@@ -168,6 +168,56 @@ def mldsa_name_words(label: str = "MLDSA-87") -> tuple[int, int]:
     return word(raw[:4]), word(raw[4:])
 
 
+_ABR_PARAMS = _ABR_RDL.parent / "abr_params_pkg.sv"
+_ABR_CORE_ID = re.compile(
+    r"^\s*parameter\s*\[\s*63\s*:\s*0\s*\]\s*"
+    r"(ML(?:DSA|KEM)_CORE_(?:NAME|VERSION))\s*=\s*64'h([0-9A-Fa-f_]+)\s*;",
+    re.M,
+)
+
+
+@lru_cache(maxsize=1)
+def abr_core_ids() -> dict[str, int]:
+    """The four ABR identity constants, from ``abr_params_pkg.sv``.
+
+    NAME and VERSION are read-only registers the RDL declares with no reset
+    value: ``abr_ctrl.sv`` wires them straight from these parameters, so the
+    parameter package is where the expected word is stated. The RDL cannot
+    supply it, and a value copied out of a simulation would be the DUT
+    grading itself.
+
+    What a compare against these catches is integration, which is what an ID
+    register is for: the ABR aperture decoding somewhere else, a half-word
+    swap lost in the AXI path, or a different core version wired in than the
+    vendor drop this tree carries.
+    """
+    text = _ABR_PARAMS.read_text(encoding="utf-8")
+    out = {m.group(1): int(m.group(2).replace("_", ""), 16) for m in _ABR_CORE_ID.finditer(text)}
+    expected = {
+        "MLDSA_CORE_NAME",
+        "MLDSA_CORE_VERSION",
+        "MLKEM_CORE_NAME",
+        "MLKEM_CORE_VERSION",
+    }
+    if set(out) != expected:
+        raise RuntimeError(
+            f"{_ABR_PARAMS} declares {sorted(out)}, expected {sorted(expected)}; "
+            "the vendor drop renamed the identity parameters and a compare "
+            "against them would be built on a partial table"
+        )
+    return out
+
+
+def abr_id_words(param: str) -> tuple[int, int]:
+    """One 64-bit ABR identity parameter as the two 32-bit register reads.
+
+    ``MLDSA_VERSION[0]`` takes bits [31:0] and ``[1]`` bits [63:32]
+    (abr_ctrl.sv), so the low word is the first register.
+    """
+    value = abr_core_ids()[param]
+    return value & 0xFFFF_FFFF, (value >> 32) & 0xFFFF_FFFF
+
+
 @lru_cache(maxsize=1)
 def abr_offsets() -> dict[str, int]:
     """CSR offsets from ``abr_reg.rdl``."""
