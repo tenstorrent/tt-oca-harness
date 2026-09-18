@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import pyuvm
 from sep_base_test import sep_base_test
-from seq_lib.sep_reg_bit_bash_seq import SepRegBitBash, SepRegBitBashCfg
+from seq_lib.sep_reg_bit_bash_seq import SepRegBitBash, SepRegBitBashCfg, write_mask
 
 
 @pyuvm.test()
@@ -117,7 +117,7 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
                     info.name,
                     info.addr,
                     x,
-                    info.mask,
+                    write_mask(info),
                 )
             except AssertionError as exc:
                 touch_fails.append(str(exc))

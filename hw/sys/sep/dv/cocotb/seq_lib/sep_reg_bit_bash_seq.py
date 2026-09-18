@@ -37,6 +37,7 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import AXI_BUS_BYTES
 from sep_reg_meta import (
     INBOUND_FILTER_CTRL_0,
+    KM_MAILBOX_SEP,
     RegInfo,
     iter_register_walk,
     reg_hw_updating,
@@ -283,8 +284,19 @@ _INBOUND_PEER_RESET = {
 
 
 def write_mask(info: RegInfo) -> int:
-    """Software-usable bits a complement write must move."""
-    return info.mask
+    """Software-usable bits a complement write must move.
+
+    ``KM_MAILBOX_SEP.SEP_CTRL`` carries FLUSH inside the software-usable mask:
+    the field is write-1 and hardware clears it when the flush completes, so it
+    never reads back what a random ``x`` wrote. The two response bits beside it
+    are plain storage, so the register stays on the touch with the pulse masked
+    out rather than being denied whole -- the same treatment NOISE_OBS_CTRL's
+    write-only field would need if its peers were storage.
+    """
+    mask = info.mask
+    if info.block == "KM_MAILBOX_SEP" and info.name == "SEP_CTRL":
+        mask &= ~KM_MAILBOX_SEP.field_mask("SEP_CTRL", "flush")
+    return mask & 0xFFFF_FFFF
 
 
 def inbound_addr_expected(name: str, written: int) -> int:

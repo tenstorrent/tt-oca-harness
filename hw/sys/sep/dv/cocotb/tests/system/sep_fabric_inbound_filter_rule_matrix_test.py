@@ -79,7 +79,6 @@ from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_BURST, FILTER_RW_MASK
 from seq_lib.sep_inbound_filter_rule_seq import (
-    ERR_SLV_RDATA,
     FILTER_LOCKED_HI_BIT,
     GRANULE_BYTES,
     PAGE_SHIFT,
@@ -90,6 +89,7 @@ from seq_lib.sep_inbound_filter_rule_seq import (
     SepInboundFilter,
     SepInboundFilterCfg,
     SepInboundFilterMatrixCfg,
+    err_slv_rdata,
     ext_burst_read_seq,
     ext_burst_write_seq,
     ext_read_seq,
@@ -115,9 +115,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     async def _assert_ext_deny_read(self, addr: int, *, user: int = 0, tag: str = "deny") -> int:
         resp, data = await self._ext_read(addr, user=user)
         assert resp == RESP_DECERR, f"{tag}: ext read 0x{addr:08x} resp={resp}, expected DECERR"
-        assert data == ERR_SLV_RDATA, (
+        want = err_slv_rdata(addr)
+        assert data == want, (
             f"{tag}: ext read 0x{addr:08x} rdata=0x{data:08x}, "
-            f"expected err-slave sentinel 0x{ERR_SLV_RDATA:08x}"
+            f"expected err-slave sentinel 0x{want:08x} (addr[2]={(addr >> 2) & 1} lane)"
         )
         return data
 
@@ -218,9 +219,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of "
             f"0x{burst_addr:08x} resp={resp}, expected DECERR"
         )
-        assert data == ERR_SLV_RDATA, (
+        want_burst = err_slv_rdata(burst_addr)
+        assert data == want_burst, (
             f"CHK-BURST-DENY FAIL: denied burst rdata 0x{data:08x} != "
-            f"err-slave sentinel 0x{ERR_SLV_RDATA:08x}"
+            f"err-slave sentinel 0x{want_burst:08x} (addr[2]={(burst_addr >> 2) & 1} lane)"
         )
         self._expect_lite_split(
             lite_ar, start=burst_addr, nbeats=0, tag="CHK-BURST-TO-SINGLE deny AR"
