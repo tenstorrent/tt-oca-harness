@@ -58,6 +58,9 @@ class smu_dtp_jtag_smoke_test_seq:
 
     def _sample(self, signal, name: str) -> int:
         val = signal.value
+        if isinstance(val, int):
+            # An enum-typed handle (jtag_ptap_state) reads back as a plain int on VCS.
+            return val
         if not val.is_resolvable:
             raise AssertionError(f"X/Z sample on {name}: {val}")
         return int(val)

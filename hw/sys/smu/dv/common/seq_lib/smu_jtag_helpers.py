@@ -177,8 +177,9 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # 2n+2}, every bit resetting to 1 (reset_enable=1 is "override disabled"),
 # length 2 * ports + 1. doc/integrator/src/smu.adoc "IC_RESET TDR
 # Structure" gives the SMU composition: TDI -> SMC slice (68 ports) -> SEP
-# slice (0 ports at SEP=0, 7 at SEP=1) -> external slice -> reset_hold -> TDO, so with
-# LSB-first shifting port 0 is the external port and the SMC slice follows.
+# slice (0 ports at SEP=0, SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 at SEP=1) ->
+# external slice -> reset_hold -> TDO, so with LSB-first shifting port 0 is
+# the external port and the SMC slice follows.
 # "SMC slice (TDI to TDO)" lists ss_warm_reset_n[31:0], ss_cold_reset_n[31:0],
 # cold, cool, warm, fuse (nearest the SEP slice), [31] nearer TDI than [0]:
 # counted from the TDO end that is fuse, warm, cool, cold, ss_cold[0..31],
@@ -186,24 +187,28 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # elaborates one port.
 SMU_IC_RESET_NUM_SMC_PORTS = 68
 
+# The SEP slice is one port per field of sep_pkg::jtag_sep_reset_ctrl_val_t
+# (hw/sys/sep/rtl/sep_pkg.sv): abr, trng, sep_reset_n, kmac, hmac, aes, otbn,
+# km. jtag_ptap sizes it as $bits(ic_reset_sep_t)/2, so a field added to that
+# struct moves every SMC port index up by one and this count with it.
+SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = 8
+
 
 def _smu_ic_reset_sep_ports() -> int:
     """SEP IC_RESET slice width for the DUT this run elaborated.
 
-    jtag_ptap sizes the slice as $bits(ic_reset_sep_t)/2 when IC_RESET_SEP_ENABLE,
-    which smu.sv ties to its SEP parameter. The production wrapper
-    (tb_wrapper_top.sv, top module smu_wrapper_uvm_top) elaborates SEP=1, so its
-    slice is the seven ports of sep_pkg::jtag_sep_reset_ctrl_t and every SMC
-    port index moves up by seven. The bare block bench (tb_top.sv, smu_uvm_top)
-    instantiates smu #(.SEP(0)) and has no SEP slice. Resolved from the cocotb
-    top handle so one helper serves both DUTs; outside a simulation it falls
-    back to the SEP=0 shape.
+    smu.sv ties IC_RESET_SEP_ENABLE to its SEP parameter. The production
+    wrapper (tb_wrapper_top.sv, top module smu_wrapper_uvm_top) elaborates
+    SEP=1 and carries the full SEP slice; the bare block bench (tb_top.sv,
+    smu_uvm_top) instantiates smu #(.SEP(0)) and has no SEP slice. Resolved
+    from the cocotb top handle so one helper serves both DUTs; outside a
+    simulation it falls back to the SEP=0 shape.
     """
     try:
         name = str(getattr(cocotb.top, "_name", "") or "")
     except Exception:  # noqa: BLE001 - no simulator, e.g. tooling imports
         return 0
-    return 7 if name == "smu_wrapper_uvm_top" else 0
+    return SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 if name == "smu_wrapper_uvm_top" else 0
 
 
 SMU_IC_RESET_NUM_SEP_PORTS = _smu_ic_reset_sep_ports()
