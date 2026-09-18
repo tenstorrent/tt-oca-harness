@@ -146,14 +146,14 @@ ocah_verible_check_files = @$(call ocah_verible_find,$(1),$(2)) -print -quit 2>/
 
 ## Lint SystemVerilog style with verible-verilog-lint (no autofix; hand-fix
 ## reported violations). Requires `verible-verilog-lint` on PATH; otherwise
-## install it or run via `./scripts/docker-run.sh eda-run make lint-sv-verible`.
+## install it or run via `./scripts/docker-run.sh run-here make lint-sv-verible`.
 ## parameter-name-style is deferred to issue #1051; line-length is disabled
 ## outright (see OCAH_LINT_VERIBLE_RULES above).
 ## @param LINT_PATH=hw/sys/smu Optional path(s) to scope the lint; default hw vendor
 ## @param BLOCK=smu Shorthand for the above (LINT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-lint-sv-verible
 ocah-lint-sv-verible:
-	$(call ocah_require_host_tool,verible-verilog-lint,./scripts/docker-run.sh eda-run make lint-sv-verible)
+	$(call ocah_require_host_tool,verible-verilog-lint,./scripts/docker-run.sh run-here make lint-sv-verible)
 	$(call ocah_verible_check_files,$(LINT_PATH),$(OCAH_VERIBLE_LINT_EXCLUDES))
 	@$(call ocah_verible_find,$(LINT_PATH),$(OCAH_VERIBLE_LINT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 verible-verilog-lint \
@@ -177,12 +177,12 @@ ocah-check-sv-declaration-spacing:
 
 ## Format SystemVerilog sources in place with verible-verilog-format.
 ## Requires `verible-verilog-format` on PATH; otherwise install it or run via
-## `./scripts/docker-run.sh eda-run make format-sv`.
+## `./scripts/docker-run.sh run-here make format-sv`.
 ## @param FORMAT_PATH=hw/sys/smu Optional path(s) to scope formatting; default hw vendor
 ## @param BLOCK=smu Shorthand for the above (FORMAT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-sv
 ocah-format-sv:
-	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv)
+	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh run-here make format-sv)
 	$(call ocah_verible_check_files,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES))
 	@$(call ocah_verible_find,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 verible-verilog-format \
@@ -195,7 +195,7 @@ ocah-format-sv:
 ## @param BLOCK=smu Shorthand for the above (FORMAT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-sv-check
 ocah-format-sv-check: ocah-check-sv-declaration-spacing
-	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv-check)
+	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh run-here make format-sv-check)
 	$(call ocah_verible_check_files,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES))
 	@$(call ocah_verible_find,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 sh -c '\

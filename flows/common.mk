@@ -5,8 +5,8 @@ ifndef ocah_flow_common_mk
 ocah_flow_common_mk := 1
 
 # Shared plumbing for the lint/synth/format flows. Included by ocah.mk
-# (top-level ocah-lint-slang-all/ocah-synth-all/... dispatch) and by each
-# hw/sys/<block>/flow.mk (per-block ocah-lint-slang/ocah-synth worker).
+# (top-level ocah-lint-slang-all/ocah-synth-yosys-all/... dispatch) and by each
+# hw/sys/<block>/flow.mk (per-block ocah-lint-slang/ocah-synth-yosys worker).
 include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/preamble.mk
 
 OCAH_BENDER ?= bender
@@ -36,10 +36,6 @@ OCAH_FLOW_TARGETS := $(sort $(foreach m,$(OCAH_FLOW_MKS),$(call ocah_flow_name,$
 
 # Block dir for a block name.
 ocah_flow_dir_for = $(call ocah_flow_mkdir,$(strip $(foreach m,$(OCAH_FLOW_MKS),$(if $(filter $(1),$(call ocah_flow_name,$(m))),$(m)))))
-
-# Run a command inside the EDA image via the shared docker helper.
-# $(1) = command to run inside the EDA image.
-ocah_eda_docker_run = $(OCAH_ROOT)/scripts/docker-run.sh eda-run $(1)
 
 # Require a host tool for native-or-fail Make targets. $(1) = binary name.
 # $(2) = docker-run.sh example command printed on failure.

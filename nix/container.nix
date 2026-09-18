@@ -1,0 +1,70 @@
+{
+  self,
+  inputs,
+  pkgs,
+  bundle_uv ? false,
+  ocah ? import ../ocah_deps.nix {inherit inputs pkgs bundle_uv;},
+  name ? "ocah-container",
+  systemForHash ? "x86_64-linux",
+  PS1 ? "\\[\\e[1;36m\\]OCAH-Container >\\[\\e[0m\\] ",
+  workDir ? "/work",
+  extraDeps ? [],
+}: rec {
+  inherit name;
+
+  # self.containerHashes is an alias of this output, not the other way around - don't cause infinite recursion
+  # Reads the image tag from the canonical x86_64-linux build so all platforms share one stable hash.
+  hash =
+    self.dockerContainers.${
+      systemForHash
+    }.${
+      if bundle_uv
+      then "with_uv_deps"
+      else "without_uv_deps"
+    }.passthru.imageTag;
+
+  config =
+    {
+      inherit name;
+
+      # Ensure Container has /tmp and /usr/bin
+      extraCommands = ''
+        mkdir -m 1777 tmp
+        mkdir -p usr
+        ln -sr bin usr/bin
+      '';
+      # Base system tools plus project packages; extraDeps allows callsites to extend the image.
+      contents = with pkgs;
+        [
+          bash
+          stdenv
+          busybox
+          git
+          gnused
+          findutils
+          curl
+          cacert
+        ]
+        ++ ocah.ocah_pkgs
+        ++ extraDeps;
+      config = {
+        # Convert ocah_env attrset to Docker ENV strings, then append container-specific vars.
+        Env =
+          builtins.attrValues (builtins.mapAttrs (e: v: "${e}=${v}") ocah.ocah_env)
+          ++ [
+            "PS1=${PS1}"
+            "TMPDIR=/tmp"
+            "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          ];
+        WorkingDir = workDir;
+      };
+    }
+    // (
+      # Pin tag to hash of x86_64-linux Docker Image - easier reproducibility
+      if (pkgs.stdenv.system != systemForHash)
+      then {
+        tag = hash;
+      }
+      else {}
+    );
+}

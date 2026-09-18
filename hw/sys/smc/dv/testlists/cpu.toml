@@ -81,6 +81,47 @@ timeout_sec = 1800
 tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
+# Timeout-reset recovery tests remain available by name for DV review, but
+# are intentionally excluded from every regression group.
+
+[[tests]]
+name = "smc_cpu_l2_read_wedge_test"
+module = "smc_cpu_l2_read_wedge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cpu", "isolate_flush", "pyuvm"]
+
+[[tests]]
+name = "smc_cpu_l2_write_wedge_test"
+module = "smc_cpu_l2_write_wedge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cpu", "isolate_flush", "pyuvm"]
+
+[[tests]]
+name = "smc_cpu_mmio_read_wedge_test"
+module = "smc_cpu_mmio_read_wedge_test"
+seed = 1
+timeout_sec = 3600
+tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
+firmware = "mmio_wedge"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=mmio_wedge.ecc.hex",
+]
+
+[[tests]]
+name = "smc_cpu_mmio_write_wedge_test"
+module = "smc_cpu_mmio_write_wedge_test"
+seed = 1
+timeout_sec = 3600
+tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
+firmware = "mmio_wedge"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=mmio_wedge.ecc.hex",
+]
+
 [[groups]]
 name = "cpu_depth"
 tests = [

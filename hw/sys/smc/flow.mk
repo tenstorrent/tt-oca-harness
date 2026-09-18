@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # SMC lint/synth flow descriptor, shared by `make lint-slang-all BLOCK=smc`
-# and `make synth-all BLOCK=smc TECH=...`.
+# and `make synth-yosys-all BLOCK=smc TECH=...`.
 FLOW_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FLOW_DIR)/../../../flows/preamble.mk
 
