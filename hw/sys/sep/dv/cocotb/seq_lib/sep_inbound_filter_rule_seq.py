@@ -46,6 +46,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
     ALIAS_BASE,
     AP_BASE,
+    DBW_RO_VAL,
     F_ALLOW_BURST,
     F_ALLOW_NS,
     F_ENTRY_ENABLED,
@@ -59,7 +60,6 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     INFILT_BASE,
     OUTFILT_BASE,
     STEE_BASE,
-    DBW_RO_VAL,
 )
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 

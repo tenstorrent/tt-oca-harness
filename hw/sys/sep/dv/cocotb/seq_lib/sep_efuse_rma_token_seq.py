@@ -21,8 +21,8 @@ from env.sep_lcc_golden import LC_RMA_CHIP_1, LC_RMA_SIP_1
 # Re-exported for sep_efuse_rma_token_rand_test, which builds its golden via
 # seq_lib rather than reaching into env directly.
 from env.sep_rma_token import SepRmaTokenCfg as SepRmaTokenCfg
-from pyuvm import uvm_sequence
 from env.sep_spec_tables import agg_from_pic
+from pyuvm import uvm_sequence
 from sep_reg_meta import EFUSE_MMR, sym
 
 _RMA_SIP_TOKEN_I = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR")
