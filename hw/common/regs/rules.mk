@@ -65,7 +65,17 @@ ocah_reg_run_ipxact   = "$(OCAH_REG_PEAKRDL)" ip-xact $(call ocah_reg_incdirs,$(
 # regen-regs prerequisite (otherwise a clean checkout with a newer vendored hjson
 # would silently regenerate it). It is invoked only by the on-demand
 # regen-vendor-rdl phony target (see phony.mk), which calls it per entry.
-ocah_vendor_hjson_rdl_regen = cd "$(OCAH_ROOT)" && "$(OCAH_REG_PYTHON)" tools/regs/reggen_wrapper.py --systemrdl $(call ocah_vhr_nameopt,$(1)) -o "$(call ocah_vhr_rdl,$(1))" "$(call ocah_vhr_hjson,$(1))"
+ocah_vhr_opt = $(if $(filter $(call ocah_vhr_name,$(1)),$($(2))),$(3))
+ocah_vhr_compat_opts = \
+  $(call ocah_vhr_opt,$(1),OCAH_VHR_UPPERCASE_FIELDS,--uppercase-fields) \
+  $(call ocah_vhr_opt,$(1),OCAH_VHR_FIRST_REPLICA_MULTIREGS,--first-replica-multiregs) \
+  $(call ocah_vhr_opt,$(1),OCAH_VHR_ARRAYED_WINDOWS,--arrayed-windows) \
+  $(call ocah_vhr_opt,$(1),OCAH_VHR_NO_METADATA,--no-metadata) \
+  $(call ocah_vhr_opt,$(1),OCAH_VHR_NO_GUARD,--no-guard) \
+  $(call ocah_vhr_opt,$(1),OCAH_VHR_NO_UDP_INCLUDE,--no-udp-include)
+
+ocah_vendor_hjson_rdl_regen_to = cd "$(OCAH_ROOT)" && "$(OCAH_REG_PYTHON)" tools/regs/reggen_wrapper.py --systemrdl $(call ocah_vhr_nameopt,$(1)) $(call ocah_vhr_compat_opts,$(1)) -o "$(2)" "$(call ocah_vhr_hjson,$(1))"$(call ocah_reg_stamp_after,"$(2)")
+ocah_vendor_hjson_rdl_regen = $(call ocah_vendor_hjson_rdl_regen_to,$(1),$(call ocah_vhr_rdl,$(1)))
 
 define ocah_reg_block_rules
 $(call ocah_reg_raw_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | $(OCAH_REG_UV_PREREQ)

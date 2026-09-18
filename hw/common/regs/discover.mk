@@ -70,19 +70,32 @@ ocah_reg_key = $(subst /,_,$(1))
 # their upstream name but renamed in tt-oca (dma -> secure_dma, spi_host ->
 # spi_controller); reggen reproduces the same registers, only the top name differs.
 OCAH_VENDOR_HJSON_RDLS ?= \
-  vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl:opentitan:upstream/hw/ip/aes/data/aes.hjson \
   vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:opentitan:upstream/hw/ip/hmac/data/hmac.hjson \
   vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:opentitan:upstream/hw/ip/kmac/data/kmac.hjson \
   vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:opentitan:upstream/hw/ip/otbn/data/otbn.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl:opentitan:upstream/hw/ip/aon_timer/data/aon_timer.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/csrng/regs/csrng.rdl:opentitan:upstream/hw/ip/csrng/data/csrng.hjson \
   vendor/lowRISC/opentitan/overlay/regs/edn/regs/edn.rdl:opentitan:upstream/hw/ip/edn/data/edn.hjson \
   vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:opentitan:upstream/hw/ip/dma/data/dma.hjson:secure_dma \
   vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:opentitan:upstream/hw/ip/spi_host/data/spi_host.hjson:spi_controller
 
+# These sources contain broad semantic drift from the checked register APIs and
+# remain deferred until their RTL and consumer impact is validated independently.
+OCAH_VENDOR_HJSON_RDLS_DEFERRED := \
+  vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl:opentitan:upstream/hw/ip/aes/data/aes.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl:opentitan:upstream/hw/ip/aon_timer/data/aon_timer.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/csrng/regs/csrng.rdl:opentitan:upstream/hw/ip/csrng/data/csrng.hjson
+
 ocah_vhr_rdl     = $(word 1,$(subst :, ,$(1)))
 ocah_vhr_hjson   = $(call ocah_bender_path,$(word 2,$(subst :, ,$(1))))/$(word 3,$(subst :, ,$(1)))
 ocah_vhr_nameopt = $(if $(word 4,$(subst :, ,$(1))),--name $(word 4,$(subst :, ,$(1))))
+ocah_vhr_name    = $(basename $(notdir $(call ocah_vhr_rdl,$(1))))
+
+# Preserve each checked-in RDL's compatibility-sensitive serializer dialect.
+OCAH_VHR_UPPERCASE_FIELDS := secure_dma spi_controller
+OCAH_VHR_FIRST_REPLICA_MULTIREGS := secure_dma
+OCAH_VHR_ARRAYED_WINDOWS := spi_controller
+OCAH_VHR_NO_METADATA := secure_dma spi_controller
+OCAH_VHR_NO_GUARD := secure_dma spi_controller
+OCAH_VHR_NO_UDP_INCLUDE := secure_dma spi_controller
 
 # Overlay hook: extra block ids, usually variants reusing a top RDL.
 OCAH_EXTRA_REG_BLOCKS ?=
