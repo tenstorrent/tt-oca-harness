@@ -360,12 +360,18 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         )
         self.check_observable(enabled, "jtag_stap_host_select", 1, context="ext.enabled")
 
+        # With the PTAP select clear the host scan strobes still follow every
+        # PTAP scan (they are the TAP's; the select routes the scan data), so
+        # the deselected scan is judged for pulsing strobes, not for silence.
         await self.write_ptap_3dcr(config_hold=0, select=0, context="ext.disable")
-        _, disabled = await self.shift_dr_observe(0x0, 2, context="ext.disabled_shift")
+        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
+        _, deselected = await self.shift_dr_observe(0x0, 2, context="ext.deselected_shift")
+        self.check_scan_window(
+            window, active=("jtag_stap_host_shift_en",), context="ext.deselected_window"
+        )
         self.log.info(
-            "ext.disabled sampled jtag_stap_host_select=%d; RTL keeps scan control active "
-            "during PTAP scan activity and uses PTAP_3DCR select for data routing",
-            disabled["jtag_stap_host_select"],
+            "ext.deselected sampled jtag_stap_host_select=%d",
+            deselected["jtag_stap_host_select"],
         )
 
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.gate_enable")
@@ -395,7 +401,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         self.check_observable(recovered, "jtag_stap_host_select", 1, context="ext.recover")
         self.log_summary(
             "extended STAP scan",
-            checked=("enable", "disable", "stap_host gate window", "recover without reset"),
+            checked=("enable", "deselect", "stap_host gate window", "recover without reset"),
         )
 
     # --- CONFIG_HOLD across Test-Logic-Reset and TRST --------------------------
@@ -464,10 +470,11 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
 
     # --- TMS_HOLD parked polarity ------------------------------------------------
     async def _tms_hold_case(self, stap: str, hold: int) -> None:
-        """Select the STAP with tms_hold=hold, deselect it, then prove the
-        deselected port drives its host TMS at that polarity for the whole
-        maintain scan while tdo_oen stays quiet, and that the 3DCR reads
-        back as written."""
+        """Select the STAP with tms_hold=hold and prove the selected port
+        forwards under the window the parked leg reuses (the positive control
+        of the deny that follows), deselect it, then prove the deselected port
+        drives its host TMS at that polarity for the whole maintain scan while
+        tdo_oen stays quiet, and that the 3DCR reads back as written."""
         ctx = f"tms_hold.{stap}.hold{hold}"
         prefix = self.stap_signal_prefix(stap)
         await self.stap_chain_flush(context=f"{ctx}.flush")
@@ -475,6 +482,13 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         await self.stap_chain_write(
             payloads={stap: {"stap_sel": 1, "tms_hold": hold}}, context=f"{ctx}.select"
         )
+        window = self.start_scan_window((f"{prefix}_tdo_oen", f"{prefix}_tms"))
+        captured = await self.stap_chain_maintain(context=f"{ctx}.selected_observe")
+        edges, counts = self.check_scan_window(window, context=f"{ctx}.selected_window")
+        self.check_stap_forwarding(
+            edges, counts, stap=stap, forwarding=True, context=f"{ctx}.selected"
+        )
+        self.check_stap_chain_readback(captured, context=f"{ctx}.selected_readback")
         await self.stap_chain_write(
             payloads={stap: {"stap_sel": 0, "tms_hold": hold}}, context=f"{ctx}.deselect"
         )
@@ -498,6 +512,8 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             rng.shuffle(polarities)
             self.log_iteration(idx, len(staps), "STAP %s tms_hold order=%s", stap, polarities)
             for step, hold in enumerate(polarities, start=1):
-                self.log_step(step, "STAP %s: select, deselect with TMS_HOLD=%d", stap, hold)
+                self.log_step(
+                    step, "STAP %s: select (forwarding), deselect with TMS_HOLD=%d", stap, hold
+                )
                 await self._tms_hold_case(stap, hold)
         self.log_summary("TMS_HOLD", staps=staps, polarities=(1, 0))

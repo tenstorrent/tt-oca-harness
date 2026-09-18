@@ -56,9 +56,8 @@ class dtp_bypass_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
     if (!m_model.ir_known() || t.bit_count == 0 || t.bit_count > 64) return;
     if (is_bypass_instruction(ir))
       expected = ocah_jtag_checker::predict_bypass_tdo(t.tdi_value(), t.bit_count);
-    else if (ir == jtag_inst_reg_pkg::INV_BYPASS_INSTR)
-      expected = inverted_bypass_tdo(t.tdi_value(), t.bit_count);
-    else if (ir == jtag_inst_reg_pkg::ZERO_LENGTH_BYPASS_INSTR) expected = t.tdi_value();
+    else if (ir == INV_BYPASS_INSTR) expected = inverted_bypass_tdo(t.tdi_value(), t.bit_count);
+    else if (ir == ZERO_LENGTH_BYPASS_INSTR) expected = t.tdi_value();
     else return;
     exp.compare   = 1'b1;
     exp.mask      = ocah_rng::bit_mask(t.bit_count);
@@ -67,13 +66,13 @@ class dtp_bypass_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
   endfunction
 
   // The one-bit bypass register: both IEEE encodings and every undefined
-  // opcode (jtag_inst_reg_pkg UNDEFINED_BYPASS_*).
+  // opcode (dtp_jtag_instr_e UNDEFINED_BYPASS_*).
   protected function bit is_bypass_instruction(bit [DtpIrWidth-1:0] ir);
-    return (ir == jtag_inst_reg_pkg::BYPASS_ALT_INSTR) ||
-               (ir == jtag_inst_reg_pkg::BYPASS_INSTR) ||
-               (ir == jtag_inst_reg_pkg::UNDEFINED_BYPASS_0F_INSTR) ||
-               (ir >= jtag_inst_reg_pkg::UNDEFINED_BYPASS_2D_INSTR &&
-                ir <= jtag_inst_reg_pkg::UNDEFINED_BYPASS_3C_INSTR);
+    return (ir == BYPASS_ALT_INSTR) ||
+               (ir == BYPASS_INSTR) ||
+               (ir == UNDEFINED_BYPASS_0F_INSTR) ||
+               (ir >= UNDEFINED_BYPASS_2D_INSTR &&
+                ir <= UNDEFINED_BYPASS_3C_INSTR);
   endfunction
 
   // Inverted one-bit bypass: capture bit 1, then the inverted pattern

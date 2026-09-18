@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AoU PPA and Appendices
+:description: AoU performance, power, area, revision history, and referenced documents.
+
+:sectnums!:
+
+include::aou:partial$ppa-appendices.adoc[]

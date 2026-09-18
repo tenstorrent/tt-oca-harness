@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[avsbus-controller-architecture]]
-===== Architecture
+== Architecture
 
 The AVSBus Controller implements an Adaptive Voltage Scaling Bus
 (AVSBus) 1.3.1 controller for dynamic voltage and frequency scaling (DVFS)
@@ -15,7 +15,7 @@ handling, clock generation, and CRC verification subsystems. FIFO-based
 command queuing enables autonomous operation with monitoring and error
 handling capabilities.
 
-====== AVS Protocol Engine
+=== AVS Protocol Engine
 
 The protocol engine serves as the heart of AVSBus communication,
 orchestrating all state machine transitions and transaction management.
@@ -43,9 +43,9 @@ Throughout, the protocol engine offers detailed status monitoring and
 debug access to facilitate robust system integration and
 troubleshooting.
 
-====== Clock Generation and Management
+=== Clock Generation and Management
 
-====== Multi-Source Clock Selection
+=== Multi-Source Clock Selection
 
 [width="100%",cols="30%,70%",options="header",]
 |=====================================================================================
@@ -71,7 +71,7 @@ automatically gated during bus idle conditions, and all unused input
 clocks are selectively disabled to further reduce dynamic power
 consumption.
 
-====== CRC Verification Engine
+=== CRC Verification Engine
 
 The controller features a hardware-accelerated CRC-3 engine, implemented
 as the dedicated avsbus_crc3 module. This logic works in real time,
@@ -85,7 +85,7 @@ result—good or bad—on a per-transaction basis. Any CRC errors are
 tracked in dedicated statistics registers, and the CRC system is tightly
 integrated with the retry mechanism to ensure robust error recovery.
 
-====== Command and Response FIFO System
+=== Command and Response FIFO System
 
 [width="100%",cols="20%,40%,40%",options="header",]
 |=====================================================================================
@@ -100,7 +100,7 @@ overflow protection |Acknowledgment tracking, CRC
 verification, underflow protection
 |=====================================================================================
 
-====== Reset and Initialization
+=== Reset and Initialization
 
 The AVSBus Controller employs a dual reset scheme to ensure robust,
 phased hardware bring-up. The primary reset signal (rst_ni) governs
@@ -133,9 +133,9 @@ the main reset to ensure proper clock generation initialization.
 * Enable protocol engine and FIFO operations
 * Begin normal command processing operations
 
-====== Data Flow and Control Path
+=== Data Flow and Control Path
 
-====== Command Processing Data Flow
+=== Command Processing Data Flow
 
 1.  *Command Initiation*: Software writes transaction parameters to
 AVS_CMD register
@@ -169,7 +169,7 @@ while (cmd_fifo_not_empty) {
 }
 ----
 
-====== Response Processing Data Flow
+=== Response Processing Data Flow
 
 1.  *Target Response Reception*: Serial collection from target
 via avs_sdata_i
@@ -188,7 +188,7 @@ availability
 access to target responses - Bypasses FIFO for real-time monitoring
 applications - Useful for debugging and system commissioning
 
-====== Clock Domain Architecture
+=== Clock Domain Architecture
 
 The AVSBus Controller is designed around a multi-clock domain
 architecture to balance performance, flexibility, and safe communication
@@ -246,7 +246,7 @@ This strategy minimizes unnecessary clock activity, reducing overall
 power consumption and ensuring that the clock tree is only as active as
 required by ongoing operations.
 
-====== Protocol State Machine
+=== Protocol State Machine
 
 The protocol engine implements a state machine for AVSBus communication:
 
@@ -276,7 +276,7 @@ counter management - Abort condition evaluation
 *RESYNC State*: - Slave resynchronization operation (34 clock cycles) -
 Automatic periodic resync with configurable intervals
 
-====== Performance Characteristics
+=== Performance Characteristics
 
 [width="100%",cols="35%,65%",options="header",]
 |=====================================================================================
@@ -314,7 +314,7 @@ cells
 |Max transaction latency |(retry_count + 1) × base_latency
 |=====================================================================================
 
-====== Error Handling and Diagnostics
+=== Error Handling and Diagnostics
 
 Robust error handling in the AVSBus Controller is achieved through a
 combination of proactive detection, on-the-fly diagnostics, and

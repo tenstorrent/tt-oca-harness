@@ -166,6 +166,9 @@ FORMAL_EVIDENCE_PLACEHOLDERS = {"run_dir", "item", "cwd"}
 # (runlib.site) supplies them and the checked-in registry rejects them.
 SITE_ONLY_TOOL_KEYS = {"launcher", "extra_env", "setup_hook"}
 TOOL_KINDS = {"simulation", "formal"}
+# A tool table's `min_version`: a dotted release number, compared by the doctor against the
+# first such number in the release line the tool's binary prints.
+MIN_VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
 
 TOP_LEVEL_KEYS = {
     "schema_version",
@@ -1563,6 +1566,13 @@ def validate_simulator_registry(simulators: dict[str, Any], where: str) -> None:
                 f"{where}: [{tool}] must declare `license_env` ([] for a license-free tool)"
             )
         as_str_list(table.get("license_env"), f"{where} [{tool}].license_env")
+        min_version = table.get("min_version")
+        if min_version is not None and not (
+            isinstance(min_version, str) and MIN_VERSION_RE.fullmatch(min_version)
+        ):
+            raise ConfigError(
+                f'{where}: [{tool}].min_version must be a dotted release number such as "5.036"'
+            )
         if kind == "formal":
             if "argv" not in table:
                 raise ConfigError(

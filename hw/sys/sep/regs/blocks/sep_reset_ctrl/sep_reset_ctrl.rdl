@@ -4,7 +4,7 @@
 `ifndef SEP_RESET_CTRL_RDL_DEFINED
 `define SEP_RESET_CTRL_RDL_DEFINED
 addrmap sep_reset_ctrl {
-    desc = "SEP software reset controller registers";
+    desc = "Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.";
 
     reg SW_RESET_N {
         regwidth = 64;

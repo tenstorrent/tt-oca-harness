@@ -19,20 +19,20 @@
 .Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | HCI_VERSION | R a| -
-| 0x4 | HC_CONTROL | RW a| -
-| 0x8 | CONTROLLER_DEVICE_ADDR | RW a| -
-| 0xC | HC_CAPABILITIES | R a| -
-| 0x10 | RESET_CONTROL | RW a| -
-| 0x14 | PRESENT_STATE | R a| -
-| 0x20 | INTR_STATUS | RW a| -
-| 0x24 | INTR_STATUS_ENABLE | RW a| -
-| 0x28 | INTR_SIGNAL_ENABLE | RW a| -
-| 0x2C | INTR_FORCE | W a| -
-| 0x30 | DAT_SECTION_OFFSET | R a| -
-| 0x34 | DCT_SECTION_OFFSET | RW a| -
+| 0x0 | HCI_VERSION | R a| Identifies the implemented MIPI I3C HCI version.
+| 0x4 | HC_CONTROL | RW a| Controls host-controller bus operation, mode selection, transaction abort, and Hot-Join handling.
+| 0x8 | CONTROLLER_DEVICE_ADDR | RW a| Configures the controller dynamic address and indicates whether that address is valid.
+| 0xC | HC_CAPABILITIES | R a| Reports the host-controller capabilities implemented by this instance.
+| 0x10 | RESET_CONTROL | RW a| Requests a controller soft reset or selective PIO queue and FIFO resets. Reset requests are self-clearing.
+| 0x14 | PRESENT_STATE | R a| Reports current controller state, including active-controller bus ownership.
+| 0x20 | INTR_STATUS | RW a| Reports host-controller error and exceptional-condition status. Implemented status fields are write-one-to-clear.
+| 0x24 | INTR_STATUS_ENABLE | RW a| Enables individual host-controller interrupt status sources.
+| 0x28 | INTR_SIGNAL_ENABLE | RW a| Routes enabled host-controller interrupt sources to the interrupt output.
+| 0x2C | INTR_FORCE | W a| Forces host-controller interrupts for software testing.
+| 0x30 | DAT_SECTION_OFFSET | R a| Reports the Device Address Table section offset and size.
+| 0x34 | DCT_SECTION_OFFSET | RW a| Configures the Device Characteristic Table section offset, size, and ENTDAA index.
 | 0x38 | RING_HEADERS_SECTION_OFFSET | R a| -
-| 0x3C | PIO_SECTION_OFFSET | R a| -
+| 0x3C | PIO_SECTION_OFFSET | R a| Reports the PIO section offset.
 | 0x40 | EXT_CAPS_SECTION_OFFSET | R a| -
 | 0x4C | INT_CTRL_CMDS_EN | R a| -
 | 0x58 | IBI_NOTIFY_CTRL | RW a| -
@@ -40,18 +40,18 @@
 | 0x60 | DEV_CTX_BASE_LO | RW a| -
 | 0x64 | DEV_CTX_BASE_HI | RW a| -
 | 0x68 | DEV_CTX_SG | R a| -
-| 0x80 | COMMAND_PORT | W a| -
-| 0x84 | RESPONSE_PORT | R a| -
-| 0x88 | TX_DATA_PORT | W a| -
-| 0x88 | RX_DATA_PORT | R a| -
-| 0x8C | IBI_PORT | R a| -
-| 0x90 | QUEUE_THLD_CTRL | RW a| -
-| 0x94 | DATA_BUFFER_THLD_CTRL | RW a| -
-| 0x98 | QUEUE_SIZE | R a| -
-| 0x9C | ALT_QUEUE_SIZE | R a| -
-| 0xA0 | PIO_INTR_STATUS | RW a| -
-| 0xA4 | PIO_INTR_STATUS_ENABLE | RW a| -
-| 0xA8 | PIO_INTR_SIGNAL_ENABLE | RW a| -
+| 0x80 | COMMAND_PORT | W a| Accepts a 64-bit command descriptor as two consecutive 32-bit writes. The second write enqueues the descriptor.
+| 0x84 | RESPONSE_PORT | R a| Returns one 32-bit response descriptor from the response queue.
+| 0x88 | TX_DATA_PORT | W a| Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.
+| 0x88 | RX_DATA_PORT | R a| Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.
+| 0x8C | IBI_PORT | R a| Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.
+| 0x90 | QUEUE_THLD_CTRL | RW a| Configures command, response, and IBI queue thresholds.
+| 0x94 | DATA_BUFFER_THLD_CTRL | RW a| Configures TX and RX start and ready thresholds, encoded as powers of two.
+| 0x98 | QUEUE_SIZE | R a| Reports command, response, IBI, TX, and RX queue depths.
+| 0x9C | ALT_QUEUE_SIZE | R a| Reports extended IBI and alternate response queue sizes.
+| 0xA0 | PIO_INTR_STATUS | RW a| Reports PIO queue-threshold and transfer-event interrupt status.
+| 0xA4 | PIO_INTR_STATUS_ENABLE | RW a| Enables individual PIO interrupt status sources.
+| 0xA8 | PIO_INTR_SIGNAL_ENABLE | RW a| Routes enabled PIO interrupt sources to the interrupt output.
 | 0xAC | PIO_INTR_FORCE | W a| -
 | 0xB0 | PIO_CONTROL | RW a| -
 | 0x100 | EXTCAP_HEADER | R a| -
@@ -81,9 +81,9 @@
 | 0x160 | INDIRECT_FIFO_STATUS_4 | R a| -
 | 0x164 | INDIRECT_FIFO_RESERVED | R a| -
 | 0x168 | INDIRECT_FIFO_DATA | R a| Indirect memory access to address space configured in INDIRECT_FIFO_CTRL at the Head Pointer offset.
-| 0x184 | STBY_CR_CONTROL | RW a| -
-| 0x188 | STBY_CR_DEVICE_ADDR | RW a| -
-| 0x18C | STBY_CR_CAPABILITIES | R a| -
+| 0x184 | STBY_CR_CONTROL | RW a| Configures standby-controller operation, dynamic-address-assignment methods, target transactions, and controller-role handoff.
+| 0x188 | STBY_CR_DEVICE_ADDR | RW a| Configures standby-controller dynamic and static addresses.
+| 0x18C | STBY_CR_CAPABILITIES | R a| Reports standby-controller capabilities.
 | 0x190 | STBY_CR_VIRTUAL_DEVICE_CHAR | RW a| -
 | 0x194 | STBY_CR_STATUS | RW a| -
 | 0x198 | STBY_CR_DEVICE_CHAR | RW a| -
