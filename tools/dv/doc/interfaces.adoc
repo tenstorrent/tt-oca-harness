@@ -323,6 +323,12 @@ engine. Both are unset in a bare clone.
 
 == Operations
 
+Each row names the mechanism behind a routine task. The procedures for a
+red gate, a cancelled or missed tier, a failed publication, and the other
+failure modes of the hosted service are on
+xref:runbook.adoc[DV Infrastructure Runbook], together with the service
+targets, retention, ownership by component, and escalation.
+
 [cols="<2,<3,<3",options="header"]
 |===
 |Task |Mechanism |Detail

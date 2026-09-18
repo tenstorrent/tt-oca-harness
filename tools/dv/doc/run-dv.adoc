@@ -2578,6 +2578,7 @@ failure stays visible to a JUnit consumer; a run in which a leaf executed,
 or that passes, removes a marked run-level file left by an earlier
 invocation into the same directory.
 
+[[runner-ci]]
 == Continuous integration
 
 Two GitHub workflows run simulator jobs on GitHub-hosted runners. Both run

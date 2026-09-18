@@ -1179,6 +1179,7 @@ Recommended CI assertions include:
 The `dashboard` workflow enforces the schema and count assertions before it
 publishes (see <<Continuous integration>>).
 
+[[dashboard-ci]]
 == Continuous integration
 
 The `dashboard` GitHub workflow (`.github/workflows/dashboard.yml`) publishes
