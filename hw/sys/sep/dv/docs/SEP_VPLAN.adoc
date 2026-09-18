@@ -136,7 +136,7 @@ appears.
 |Evidence gate |A clean exit is not a pass: every graded contract logs `CHK-<ID> PASS`, and `sep_base_test` fails a leaf that graded nothing of its own. The mechanism, its `EVIDENCE_SUMMARY` line, the `min_evidence` / `required_evidence` knobs and the exemption list are described in the evidence gate section of `README.md`, which owns them
 |===
 
-=== Open-Source BFM Policy
+=== BFM Policy
 
 [cols=",",options="header"]
 |===
@@ -907,6 +907,8 @@ The checker table is the fail-able contract.
 |The scoreboard performed a non-zero number of value comparisons.
 |===
 
+*Evidence*: one aggregate record, `CHK-AXI-SMOKE` (`cocotb/seq_lib/sep_axi_smoke_seq.py`), covers CHK-DECODE and CHK-WR-RB. CHK-RESP and CHK-NONVAC are enforced in `check_phase` of the shared scoreboard (`cocotb/env/sep_scoreboard.py`).
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 The same scenario is bound in the SV-UVM realization (`--framework uvm`). That
@@ -1116,6 +1118,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
 |===
 
+*Evidence*: one aggregate record, `CHK-SRAM-SMOKE` (`cocotb/seq_lib/sep_sram_smoke_seq.py`), covers CHK-RESET-READ (the `expected=0` read), CHK-STORE (64-bit write and readback) and CHK-LANE (the 4-byte beat at `size=2`). CHK-RESP is enforced by the shared scoreboard.
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 '''''
@@ -1153,6 +1157,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |CHK-SRAM-WRITE
 |The processor writes to its SRAM, and the stored first word is the value the ROM program was built to write.
 |===
+
+*Evidence*: one aggregate record, `CHK-KM-MEM` (`cocotb/tests/km/sep_km_mem_smoke_test.py`), covers CHK-ROM-FETCH (`rom_count > 0`) and CHK-SRAM-WRITE (`sram_writes > 0` and the exact `word0` compare).
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -1198,6 +1204,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |CHK-PRECOND
 |OTBN is neither `LOCKED` nor executing when the memories are accessed, so a bus access to them is legal. This is an exclusion, not an exact-state check: any other `STATUS` value is acceptable. Bus access is diverted and flagged illegal only while OTBN executes.
 |===
+*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`), covers CHK-IMEM and CHK-DMEM as exact request/write counts. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`; CHK-ARRIVED and CHK-WRESP are that sequence's readback expectations, enforced by the shared scoreboard.
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Scope limit*: OTBN sits in `StatusBusySecWipeInt` (`0x04`) for the whole of this
@@ -1248,6 +1256,8 @@ covers that rejection.
 |CHK-IMAGE-MATCH
 |Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
 |===
+
+*Evidence*: one aggregate record, `CHK-SENSE` (`cocotb/tests/efuse/sep_efuse_sense_test.py`), covers CHK-SENSE-DONE and CHK-IMAGE-MATCH. The record refuses to pass under `+skip_fuse_sense`, which would skip the shadow compare.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -1350,6 +1360,8 @@ guard is proven.
 |The scoreboard performed a non-zero number of checks.
 |===
 
+*Evidence*: one aggregate record, `CHK-JEDEC` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`), covers CHK-JEDEC-ID. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard.
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 '''''
@@ -1392,6 +1404,8 @@ guard is proven.
 |CHK-PROGRESS
 |The Key Manager's register payload advances and never moves backwards, so the contention window was real rather than an idle loop.
 |===
+*Evidence*: one aggregate record, `CHK-COEXIST` (`cocotb/tests/km/sep_efuse_km_axil_cpu_mux_coexist_test.py`), covers CHK-HANDSHAKE (the READY marker), CHK-PROGRESS (payload changes under contention), CHK-UID-STABLE (`bad_uid == 0`) and CHK-TAG-INTACT (`bad_tag == 0`).
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Anti-vacuity*: this entry is double-gated and the two gates are independent. The
@@ -1673,46 +1687,63 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 
 *Checkers*:
 
-[cols="2,5",options="header"]
+[cols="2,2,5",options="header"]
 |===
-|Checker |Contract
+|Checker |Leaves |Contract
 |CHK-W1S-NO-CLEAR
+|prod, transient
 |A write of zero to the lifecycle word clears nothing. Write-one-to-set means a bit never returns to 0, so a controller that treated the write as an assignment fails here.
 |CHK-GATE-SIP
+|prod
 |The system-in-package bit does not set without a matching token. The write is otherwise identical to the one that succeeds later in the same leaf, so the gate is the only difference between the two outcomes.
 |CHK-GATE-SIP-FAULT
+|prod
 |A valid SIP token presented with the comparator collapsed must not set the bit. The status is the fault code `6'b111111`, which a gate written as "not a mismatch" would accept. The cell that follows presents the same token with the fault removed and does advance.
 |CHK-GATE-CHIP-ORD
+|prod
 |The chiplet bit does not set from the production state even with the chiplet token *already matched*, because the system-in-package state is not yet established. This isolates the ordering requirement from the token requirement — with the token gate open, only the ordering gate can hold.
 |CHK-GATE-CHIP-TOK
+|rma_sip
 |The complementary half: from the system-in-package state, the chiplet bit does not set without a chiplet token match.
 |CHK-SIP-ADVANCE
+|prod
 |With a matching token the production part advances to the system-in-package state, and feature control decodes the new state. Together with CHK-GATE-SIP this is an allow and a block observed under one image.
 |CHK-DEMOTE-OPEN
+|prod_demote
 |Both demotion registers read back asserted AND the decoded feature-control word matches the golden *with demotion applied*. This is what stops CHK-DEMOTE-NO-BLOCK from passing vacuously: a leaf that silently failed to demote would fail this check first.
 |CHK-DEMOTE-NO-BLOCK
+|prod_demote
 |The same authorized advance succeeds while both demotion groups are asserted. Demotion is volatile debug state and not a lifecycle term, so a demoted part must transition exactly as a non-demoted one does.
 |CHK-RMA-BIT0
+|rma_sip, rma_chiplet
 |The low bit sets inside the system-in-package state and, on its own leaf, inside the chiplet state. The specification writes these encodings with a don't-care low bit, so this is a move within one state rather than a transition out of it.
 |CHK-CHIP-ADVANCE
+|rma_sip
 |With the chiplet token matched and the system-in-package state established, the chiplet bit sets and feature control decodes the chiplet profile.
 |CHK-INVALID-REACH
+|rma_sip
 |A write whose result falls outside the named encodings lands there, reached from a state the same leaf advanced into legitimately. Feature control must then read exactly 0 — the fail-closed default. Under the pinned disable vectors no named state decodes to 0, so this discriminates rather than coinciding.
 |CHK-INVALID-TERM
+|rma_sip, prod_end
 |From outside the named set, a write of every lifecycle bit with BOTH tokens matched changes nothing. This is the strongest available form of the end-of-life property: every gate that could open is open, and the state still does not move.
 |CHK-PROD-END-INVALID
+|prod_end
 |From the terminal product state, the reachable destination is outside the named set — the specification's "the only permitted transition is to INVALID", proven rather than assumed.
 |CHK-TRANSIENT-NO-TOKEN
+|transient
 |With the transient enable armed and no token presented, the sensed terminal product state holds. The transient path applies the token gates; it does not move on the enable bit alone.
 |CHK-TRANSIENT-INVALID
+|transient
 |The transient return-material-authorisation path applies the same write-one-to-set and token rules with no bus request at all, including when the result falls outside the named set.
 |CHK-UPPER-WRITE
+|all six
 |The upper three bytes of the lifecycle word take a plain shadow write and do not disturb the lifecycle nibble. `LC_STATE[31:8]` is the `rsvd` field of `sep_efuse_map.rdl`, so the second of two seed-derived patterns replaces the first. Each pattern carries a bit the other lacks, so a stale value or an OR of the two both fail.
 |CHK-LEAF
+|all six
 |Per-leaf closing line naming which walk ran, the sensed starting state, and the seed the tokens and upper-byte pattern came from.
 |===
 
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+*Pass Criteria*: Every checker named for the leaf under test PASSes; the Leaves column is that per-leaf set. UVM_ERROR == 0.
 
 [NOTE]
 ====
@@ -2559,7 +2590,7 @@ entry requires exactly two.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-ALERTS
+|CHK-ALERTS-ZERO
 |Generator and distribution error and alert status are clear.The four status registers read are the generator's `0x10915054` / `0x10915050` and the distribution block's `0x1091583c` / `0x10915838`, each required to be zero.
 |CHK1
 |Decorrelated output matches the golden model.
