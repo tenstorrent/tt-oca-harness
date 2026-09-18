@@ -97,8 +97,11 @@ _STATUS_WRITE_ABOVE = _field_mask(
 )
 _STATUS_FULL = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__FULL_bm")
 _CTRL_WFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__WFLUSH_bm")
-# CPU_CTRL.SMC_ATTRIBUTES publishes the integration's MailboxDepth to software;
-# the STATUS expectation after one push is built from it at run time.
+# `periphs.adoc` ("Peripheral parameter overrides") gives MAILBOX_DEPTH = 2 at
+# the SMC level; the STATUS expectation after one push is built from that
+# value, and CPU_CTRL.SMC_ATTRIBUTES, which publishes the integration's depth
+# to software, is read back and required to agree with it.
+_SPEC_MAILBOX_DEPTH = 2
 _CPU_CTRL_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
 _SMC_ATTRIBUTES = smc_addr("SMC_TOP_SMC_CPU_CTRL_SMC_ATTRIBUTES_BASE_ADDR")
 _MAILBOX_DEPTH_BM = _field_mask(_CPU_CTRL_H, "CPU_CTRL__SMC_ATTRIBUTES__MAILBOX_DEPTH_bm")
@@ -149,18 +152,19 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         # STATUS with one word in this port's write FIFO: EMPTY still 1 (nothing
         # was pushed the other way, so this port's READ FIFO is empty),
         # WRITE_LEVEL_ABOVE_THRESH 1 (WIRQT at its reset 0 is exceeded by one
-        # word), READ_LEVEL_ABOVE_THRESH 0, and FULL 1 only if the published
-        # depth is a single entry. Every bit is accounted for from the RDL field
-        # descriptions and the depth the DUT publishes in SMC_ATTRIBUTES.
+        # word), READ_LEVEL_ABOVE_THRESH 0, and FULL 1 only if the depth is a
+        # single entry. Every bit is accounted for from the RDL field
+        # descriptions and the periphs.adoc depth; the depth the DUT publishes
+        # in SMC_ATTRIBUTES is a compare against that value, not its source.
         attrs = await self.csr_read("SMC_ATTRIBUTES", _SMC_ATTRIBUTES, length=8)
         depth = (attrs & _MAILBOX_DEPTH_BM) >> _MAILBOX_DEPTH_BP
-        assert depth >= 1, (
+        assert depth == _SPEC_MAILBOX_DEPTH, (
             f"CPU_CTRL.SMC_ATTRIBUTES.MAILBOX_DEPTH reads {depth} "
-            f"(SMC_ATTRIBUTES=0x{attrs:x}); a mailbox has at least one entry, so "
-            f"the STATUS expectation after one push cannot be derived"
+            f"(SMC_ATTRIBUTES=0x{attrs:x}); periphs.adoc gives MAILBOX_DEPTH = "
+            f"{_SPEC_MAILBOX_DEPTH} for the SMC integration"
         )
         status_one_pushed = MAILBOX_STATUS_IDLE | _STATUS_WRITE_ABOVE
-        if depth == 1:
+        if _SPEC_MAILBOX_DEPTH == 1:
             status_one_pushed |= _STATUS_FULL
         idle = self._interrupt_vector()
         assert idle == 0, (

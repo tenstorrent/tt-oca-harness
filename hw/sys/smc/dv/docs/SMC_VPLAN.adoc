@@ -2111,7 +2111,7 @@ For each of the two (target, lock) pairs:
 * assert half: a bounded `WAIT_STATE` on the asserted levels. It doubles as the stimulus hold -- `smc_reset_ctrl` de-glitches `rst_cold_ni` / `rst_cool_ni` over 32 `clk_ref_i` samples, so a fixed hold shorter than that window is silently rejected and resets nothing. Holding until the reset is *observed* cannot be short.
 * hold half: after the wait matched, the pin stays low across a further `MID_ASSERT_HOLD_REF_CYCLES` `clk_ref_i` edges and EVERY one of those samples must still read the asserted levels. This is a separate observation in time from the wait (the wait's match and a RAW_SAMPLE dispatched straight after it land in the same delta region, so such a snapshot could not fail unless the wait already had -- [NO-ALWAYS-PASS-CHECKER]). A DUT that releases the cold/cool path early, anywhere inside the window, fails here.
 * release half: a bounded `WAIT_STATE` on the released levels followed by the post-release `SAMPLE` (the checked_cleared leg). No fixed `ClockCycles` wait stands in for completion on the reassert / between / recover path ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]).
-* `skip_mem_repair_o` against the isolate-request pin: the pad is the one the DV-owned pad table (`doc/integrator/meta/ocah_gpio_table.csv`) names "Isolate Request", and `clk_rst.adoc` ("Function Level Reset", "Memory Test Bypass") makes pin-based isolation an isolation source that activates the bypass. With no FLR signalled and `ISOLATE_REQ_SMC_REG` at its reset 0 the output must read 0 with the pin driven low and 1 with it driven high, each within a bounded poll (`CHK-SKIP-MEM-REPAIR-PIN`), and 0 again when fuse sense completes after the last reset with the pin held low (`CHK-SENSE-DONE-REPAIR-ENABLED`). Observation for the pad-table owner: the table recommends a pull-down for this pad, while the bench pad model reads it as 1 when undriven; the sequence drives the pin and does not rely on the undriven level.
+* `skip_mem_repair_o` against the isolate-request pin: the pad is the one the DV-owned pad table (`doc/integrator/meta/ocah_gpio_table.csv`) names "Isolate Request", and `clk_rst.adoc` ("Function Level Reset", "Memory Test Bypass") defines pin-based isolation as that pin gated by `ISOLATE_REQ_PINEN_REG` and makes it an isolation source that activates the bypass. The testcase module first programs `ISOLATE_REQ_PINEN_REG` to all ones over SEP_IN and reads it back (`smc_isolate_req_pinen_seq`); then, with no FLR signalled and `ISOLATE_REQ_SMC_REG` at its reset 0, the output must read 0 with the pin driven low and 1 with it driven high, each within a bounded poll (`CHK-SKIP-MEM-REPAIR-PIN`), and 0 again when fuse sense completes after the last reset with the pin held low (`CHK-SENSE-DONE-REPAIR-ENABLED`; the resets have returned the enable to 0, and a low pin is no isolation source under either enable value). The level the output shows with the pad undriven is reported, not asserted. Observation for the pad-table owner: the table recommends a pull-down for this pad, while the bench pad model reads it as 1 when undriven; the sequence drives the pin and does not rely on the undriven level.
 
 *Test Procedure*:
 
@@ -3174,10 +3174,10 @@ Drive `smc_zeroer_axiclk_cg_test_seq`. Each checker below is a named compare the
 |`CHK-NONVAC` |Non-vacuity count in `smc_zeroer_axiclk_cg_test_seq.py`
 |`CHK-NONVAC-P2` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |`CHK-TIMEOUT-PATHS` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
-|`CHK-ZAXI-BUSY-ENABLE` |f
-|`CHK-ZAXI-DISABLE-CG` |f
-|`CHK-ZAXI-GATE-OFF-IDLE` |f
-|`CHK-ZAXI-RESET-OVERRIDE` |f
+|`CHK-ZAXI-BUSY-ENABLE` |Zeroer busy re-enables the gated AXI clock within one cycle and the clock toggles on every cycle of the post-resume window; a late resume or a missing edge fails
+|`CHK-ZAXI-DISABLE-CG` |With the Zeroer AXI clock gate disabled the clock toggles on every cycle of the observation window
+|`CHK-ZAXI-GATE-OFF-IDLE` |With the gate enabled and the zeroer idle the AXI clock gates off within one cycle and shows zero toggles across the idle observation window
+|`CHK-ZAXI-RESET-OVERRIDE` |With the zeroer held in reset the gated AXI clock toggles on every cycle of the observation window; the reset override defeats the gate
 |`CHK-ZEROER-AXICLK-COMPLETION` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |`CHK-ZEROER-AXICLK-NOGLITCH` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |===
@@ -3245,10 +3245,10 @@ Drive `smc_zeroer_regclk_cg_test_seq`. Each checker below is a named compare the
 |`CHK-TIMEOUT-PATHS` |Named compare in `smc_zeroer_regclk_cg_test_seq.py`; the run fails if it mismatches
 |`CHK-ZEROER-REGCLK-ACCESS-COMPLETE` |Named compare in `smc_zeroer_regclk_cg_test_seq.py`; the run fails if it mismatches
 |`CHK-ZEROER-REGCLK-UNGATE` |Named compare in `smc_zeroer_regclk_cg_test_seq.py`; the run fails if it mismatches
-|`CHK-ZREG-ACTIVITY-ENABLE` |f
-|`CHK-ZREG-DISABLE-CG` |f
-|`CHK-ZREG-GATE-OFF-IDLE` |f
-|`CHK-ZREG-RESET-OVERRIDE` |f
+|`CHK-ZREG-ACTIVITY-ENABLE` |A register access re-enables the gated register clock within one cycle and the clock toggles on every cycle of the post-resume window; a late resume or a missing edge fails
+|`CHK-ZREG-DISABLE-CG` |With the Zeroer register clock gate disabled the clock toggles on every cycle of the observation window
+|`CHK-ZREG-GATE-OFF-IDLE` |With the gate enabled and no register access the register clock gates off within one cycle and shows zero toggles across the idle observation window
+|`CHK-ZREG-RESET-OVERRIDE` |With the zeroer held in reset the register clock's enabled edges fill the whole observation window, against the gated idle count measured earlier in the same run
 |===
 
 
@@ -6299,7 +6299,7 @@ Drive `smc_mailbox_irq_test_seq`. Each checker below is a named compare the DUT 
 * The instance count is derived from the `SMC_TOP_SMC_MAILBOX_{OUTBOUND,INBOUND}_MAILBOX_<n>_BASE_ADDR` symbols in `smc_addr.h` and required to equal the `periphs.adoc` value for both directions; a map that gained or lost an instance fails at import.
 * Every instance's STATUS is read against the RDL idle word (EMPTY set, nothing else), so a mis-decoded or dead instance fails a scoreboard value compare rather than an OKAY-only read.
 * IRQEN is the one register in the block the RDL declares as plain software-owned storage (`sw = rw; hw = r` with no acknowledge semantics), so it is the write/read-back leg; the RDL attributes of the other registers are the reason they are not swept here.
-* The last inbound instance is armed for the write-threshold interrupt and one word is pushed; `mailbox_interrupts` must go from 0 to exactly that instance's bit and back to 0 when IRQEN is dropped. The STATUS word expected after the push is built from the RDL field descriptions and the depth the DUT publishes in `CPU_CTRL.SMC_ATTRIBUTES`, and the threshold rule (a write-threshold IRQ once the usage pointer exceeds WIRQT, which resets to 0) comes from the WIRQT description in `axil_mailbox.rdl`.
+* The last inbound instance is armed for the write-threshold interrupt and one word is pushed; `mailbox_interrupts` must go from 0 to exactly that instance's bit and back to 0 when IRQEN is dropped. The STATUS word expected after the push is built from the RDL field descriptions and the `periphs.adoc` depth (2); the depth the DUT publishes in `CPU_CTRL.SMC_ATTRIBUTES` is compared against that value rather than used as its source, and the threshold rule (a write-threshold IRQ once the usage pointer exceeds WIRQT, which resets to 0) comes from the WIRQT description in `axil_mailbox.rdl`.
 
 *Test Procedure*:
 
@@ -8885,7 +8885,7 @@ the first image that consumes it, not ahead of it.
 |Per-entry slot address math. Closes with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "uart_log_engine_region_size"`, `+smc_scratch_ram_hex=uart_log_engine_region_size.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml` after the tier-1 `uart_log_engine_single_entry` leaf proves the pattern.
 |uart_log_engine_intr
 |deferred
-|Log-engine `INTR_ENABLE` / `INTR_TEST` / `INTR_STATUS` truth table and W1C clear from the CPU. Its cocotb counterpart `smc_log_engine_intr_mask_test` (`testlists/uart.toml`, enrolled in `all`) proves from SEP_IN that `INTR_ENABLE` masks the output while `INTR_STATUS` latches and clears only on W1C, and passes; this image's expected table was written against the set-path gating RTL issue #1635 describes and is re-derived against that leaf's expectation before it is enrolled. Closes when #1635 is fixed and `smc_log_engine_intr_mask_test` is enrolled in `all`, or with a `smc_fw_hello_world_test`-pattern leaf `smc_fw_uart_log_engine_intr_test` (`firmware = "uart_log_engine_intr"`, `+smc_scratch_ram_hex=uart_log_engine_intr.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
+|Log-engine `INTR_ENABLE` / `INTR_TEST` / `INTR_STATUS` truth table and W1C clear from the CPU. Its cocotb counterpart `smc_log_engine_intr_mask_test` (`testlists/uart.toml`, enrolled in `all`) proves from SEP_IN that `INTR_ENABLE` masks the output while `INTR_STATUS` latches and clears only on W1C, and passes; this image's expected table was written against the set-path gating RTL issue #1635 describes and is re-derived against that leaf's expectation before it is enrolled. Closes with a `smc_fw_hello_world_test`-pattern leaf `smc_fw_uart_log_engine_intr_test` (`firmware = "uart_log_engine_intr"`, `+smc_scratch_ram_hex=uart_log_engine_intr.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`, or by retiring this image in favour of the cocotb leaf that already proves the property.
 |===
 
 ===== Superseded images

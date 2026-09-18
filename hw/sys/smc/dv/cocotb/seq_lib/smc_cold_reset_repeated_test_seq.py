@@ -39,15 +39,20 @@ from .smc_reset_seq_base import SmcResetSeqBase
 # The isolate-request pin is the pad the DV-owned pad table
 # (`doc/integrator/meta/ocah_gpio_table.csv`) names "Isolate Request";
 # `smc_isolate_pin_utils` reads the index from that table. `clk_rst.adoc`
-# ("Function Level Reset") makes pin-based isolation one of the three isolation
-# sources and, under "Memory Test Bypass", activates `skip_mem_repair_o`
+# ("Function Level Reset") defines pin-based isolation as `isolate_req_pin_i`
+# gated by `ISOLATE_REQ_PINEN_REG` and makes it one of the three isolation
+# sources; under "Memory Test Bypass" it activates `skip_mem_repair_o`
 # automatically when either FLR-triggered or pin-based isolation is asserted.
-# With no FLR signalled and ISOLATE_REQ_SMC_REG at its reset 0, the pin is the
-# only isolation source that can be asserted, so `skip_mem_repair_o` must
-# follow it: 0 with the pin low, 1 with the pin high. The bench leaves the pad
-# undriven by default and it then reads 1, so with nothing driving the pin every
-# fuse-sense edge in this package is a bypassed one; a board idles the pin low,
-# which is what the two legs below drive and observe.
+# The testcase module programs `ISOLATE_REQ_PINEN_REG` to all ones over SEP_IN
+# before this sequence starts, so the pin is an enabled isolation source; with
+# no FLR signalled and ISOLATE_REQ_SMC_REG at its reset 0 it is the only one,
+# and `skip_mem_repair_o` must follow it: 0 with the pin low, 1 with the pin
+# high. The bench leaves the pad undriven by default and it then reads 1; that
+# undriven sample, and what the output does before the enable is written, are
+# reported and not asserted. A board idles the pin low, which is what the two
+# legs below drive and observe. The cold resets that follow return
+# `ISOLATE_REQ_PINEN_REG` to 0, so the post-reset leg holds the pin low, where
+# the spec predicts no pin isolation whatever the enable.
 # Ceiling on the fuse-sense re-run after the last reset release, matching the
 # package-wide `wait_fuse_sense_done` bound. Expiry is a FAILURE.
 _SENSE_BOUND = 200_000
@@ -92,9 +97,10 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
     async def _prove_skip_mem_repair_tracks_isolate_pin(self, dut) -> None:
         """Both polarities of the isolate pin on one `skip_mem_repair_o` probe.
 
-        No FLR has been signalled and ISOLATE_REQ_SMC_REG resets to 0, so of the
-        isolation sources `clk_rst.adoc` names the pin is the only one that
-        moves between the three samples below. Driving the pin low
+        ISOLATE_REQ_PINEN_REG has been programmed to all ones by the testcase
+        module, no FLR has been signalled and ISOLATE_REQ_SMC_REG resets to 0,
+        so of the isolation sources `clk_rst.adoc` names the enabled pin is the
+        only one that moves between the three samples below. Driving the pin low
         is also what lets the fuse-sense edges of the reset cycles that follow
         happen with the repair path enabled at all -- with the pin floating,
         every sense edge in this package is a bypassed one.
@@ -118,7 +124,8 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
             "CHK-SKIP-MEM-REPAIR-PIN: tb_skip_mem_repair_o read %d with the "
             "isolate-request pad undriven, %d within %d clk_smc_i cycles of "
             "driving it low, and %d within %d cycles of driving it high, with "
-            "no FLR signalled and ISOLATE_REQ_SMC_REG at its reset 0",
+            "ISOLATE_REQ_PINEN_REG at all ones, no FLR signalled and "
+            "ISOLATE_REQ_SMC_REG at its reset 0",
             self.skip_pin_floating,
             self.skip_pin_low,
             low_cycles,
