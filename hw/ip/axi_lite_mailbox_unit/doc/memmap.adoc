@@ -8,20 +8,16 @@
 
 Each mailbox aperture occupies a dedicated 2KB (0x800) address space.
 The total address space is 0x20000 bytes supporting up to 64 mailbox
-apertures (32 pairs):
+apertures (32 pairs). The SMC and SEP wrapper layouts are generated from
+their SystemRDL compositions:
 
-[source,sourceCode,text]
-----
-Base + 0x00000 - 0x007FF: Outbound Mailbox 0
-Base + 0x00800 - 0x00FFF: Inbound Mailbox 0
-Base + 0x01000 - 0x017FF: Outbound Mailbox 1
-Base + 0x01800 - 0x01FFF: Inbound Mailbox 1
-Base + 0x02000 - 0x027FF: Outbound Mailbox 2
-Base + 0x02800 - 0x02FFF: Inbound Mailbox 2
-...
-Base + 0x1F000 - 0x1F7FF: Outbound Mailbox 31
-Base + 0x1F800 - 0x1FFFF: Inbound Mailbox 31
-----
+ifdef::backend-html5[]
+include::partial$axi_lite_mailbox_unit/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
 
 *Address Space Characteristics:*::
   * *Per-Aperture Size*: `MAILBOX_SIZE`, 2KB (0x800)
@@ -39,59 +35,20 @@ same AXI4-Lite slave port.
 
 Within each 2KB mailbox aperture, registers are organized as follows.
 Offsets are spaced by `DATA_WIDTH`/8, so they are 8 bytes apart in the
-64-bit configurations used today:
-
-.Register Address Map
-[width="100%",cols="15%,20%,10%,15%,40%",options="header",]
-|==============================================================
-|Offset |Register Name |Width |Access |Description
-|0x00 |WRITE_DATA |64-bit |W |Write data to mailbox FIFO
-|0x08 |READ_DATA |64-bit |R |Read data from mailbox FIFO
-|0x10 |STATUS |64-bit |R |FIFO status (empty, full, threshold)
-|0x18 |ERROR_FLAGS |64-bit |R |Error flags (write/read errors), clear on read
-|0x20 |WIRQT |64-bit |RW |Write interrupt threshold
-|0x28 |RIRQT |64-bit |RW |Read interrupt threshold
-|0x30 |IRQS |64-bit |RW |Interrupt status (write-1-to-clear)
-|0x38 |IRQEN |64-bit |RW |Interrupt enable control
-|0x40 |IRQP |64-bit |R |Interrupt pending status
-|0x48 |CTRL |64-bit |W |Control register (FIFO flush); the flush bits are
-not registered, so reads return 0 with OKAY
-|==============================================================
+64-bit configurations used today. The generated detailed register map below is
+authoritative for offsets, widths, access, and field descriptions. The `CTRL`
+flush bits are pulses rather than stored state, so reads return zero with an
+OKAY response.
 
 Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.
 
 === Address Examples
 
-For a system with 2 mailbox pairs (NUM_MAILBOXES = 2) at base address
-0x10000000:
-
-.Address Map Example (2 Mailbox Pairs)
-[width="100%",cols="20%,30%,50%",options="header"]
-|===============================================================
-|Mailbox Pair |Address Range                |Description
-|0            |0x10000000 - 0x100007FF     |Outbound Mailbox 0
-|0            |0x10000800 - 0x10000FFF     |Inbound Mailbox 0
-|1            |0x10001000 - 0x100017FF     |Outbound Mailbox 1
-|1            |0x10001800 - 0x10001FFF     |Inbound Mailbox 1
-|===============================================================
-
-=== Specific Register Examples:
-
-.Register Address Example (Mailbox Pair 0)
-[width="60%",cols="20%,40%,40%",options="header"]
-|=================================================
-|Address      |Register Name   |Mailbox Direction
-|0x10000000   |WRITE_DATA      |Outbound
-|0x10000008   |READ_DATA       |Outbound
-|0x10000010   |STATUS          |Outbound
-|0x10000018   |ERROR_FLAGS     |Outbound
-|...          |...             |Outbound
-|0x10000800   |WRITE_DATA      |Inbound
-|0x10000808   |READ_DATA       |Inbound
-|0x10000810   |STATUS          |Inbound
-|0x10000818   |ERROR_FLAGS     |Inbound
-|...          |...             |Inbound
-|=================================================
+For mailbox pair `N`, the outbound aperture begins at
+`BASE + N * 0x1000`; the inbound aperture begins 0x800 bytes later. A
+register address is the aperture base plus the generated register offset. For
+example, in pair zero, `READ_DATA` is at `BASE + 0x8` outbound and
+`BASE + 0x808` inbound.
 
 === Detailed Register Map
 
