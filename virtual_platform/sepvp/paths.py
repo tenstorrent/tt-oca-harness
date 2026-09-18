@@ -39,6 +39,8 @@ BOOTCODE_DIR = OCAH_ROOT / "hw" / "sys" / "sep" / "bootrom" / "prod"
 # default build/ (Cadence).
 BOOTCODE_OT_BUILD_DIR = "build_ot"
 BOOTCODE_ELF = BOOTCODE_DIR / BOOTCODE_OT_BUILD_DIR / "boot_rom.elf"
+# Generated into the build dir, not tracked: the digests follow BUILD_TYPE.
+KEY_DIGESTS_C = BOOTCODE_DIR / BOOTCODE_OT_BUILD_DIR / "key_digests.c"
 # OCA boot-manifest images (the format the ROM parses). Raw .bin rather than
 # .spi_preload: these are oca-combined SPI images placing the bundle at the slot
 # offsets the ROM reads, and SimConfig(flash_image=...) wants the raw form.

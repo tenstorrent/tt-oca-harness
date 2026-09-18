@@ -48,6 +48,10 @@ vp = [
     "pytest>=7.0",
     "toml>=0.10",
     "pyelftools>=0.29",
+    # The boot ROM's key_digests.c is generated on the host from PEM files; the
+    # bootrom Makefile refuses to build without it, and the RISC-V toolchain
+    # sandbox carries a bare python3.
+    "cryptography>=41.0",
 ]
 
 [tool.uv]

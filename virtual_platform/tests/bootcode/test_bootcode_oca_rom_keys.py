@@ -160,7 +160,7 @@ def test_revoking_the_other_rom_key_slots_leaves_this_one_usable(
     t.close()
 
 
-def test_digest_table_pins_six_slots():
+def test_digest_table_pins_six_slots(bootcode_elf):
     """Guard the premise: six slots, six distinct digests, none NULL.
 
     Every test above is parametrised over range(6) on the assumption that
@@ -170,7 +170,7 @@ def test_digest_table_pins_six_slots():
     built, and duplicate digests defeat the whole point of per-slot keys without
     failing anything. Cheap to state here rather than infer from six boots.
     """
-    src = (paths.BOOTCODE_DIR / "src" / "key_digests.c").read_text()
+    src = paths.KEY_DIGESTS_C.read_text()
     slots = [ln for ln in src.splitlines() if ".digest =" in ln]
     assert len(slots) == 6, f"expected 6 ROM key slots, found {len(slots)}:\n" + "\n".join(slots)
     empty = [ln.strip() for ln in slots if "(void *)0" in ln]
