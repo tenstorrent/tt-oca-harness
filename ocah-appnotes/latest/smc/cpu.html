@@ -493,7 +493,50 @@ released.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="reset-domain-crossing"><a class="anchor" href="#reset-domain-crossing"></a><a class="link" href="#reset-domain-crossing">6.2. Reset-Domain Crossing</a></h3>
+<h3 id="timeout-recovery"><a class="anchor" href="#timeout-recovery"></a><a class="link" href="#timeout-recovery">6.2. Timeout Recovery</a></h3>
+<div class="paragraph">
+<p><code>CPU_CTRL.RESET_TIMEOUT</code> limits how long a software-requested reset waits for
+the drain handshake. A <code>timeout_value</code> of zero disables the timer. When the
+timer expires, <code>timeout_mode=0</code> reports the timeout and continues to withhold
+the reset. <code>timeout_mode=1</code> forces the reset and flushes both AXI isolation
+blocks.</p>
+</div>
+<div class="paragraph">
+<p><code>reset_timeout</code> remains high until the software reset request is removed,
+including after a recovery flush completes. <code>reset_applied</code> is high once the
+reset is applied by a completed drain or a force-mode timeout.</p>
+</div>
+<div class="paragraph">
+<p>The flush clears outstanding-transaction records at the cluster boundary and
+discards late responses and write data until isolation is released. This lets
+the reset complete when the CPU cluster is unresponsive but the surrounding
+fabric remains operational.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The flush cannot cancel an address request or write-data beat while <code>VALID</code> is
+high and <code>READY</code> is low. It waits for that transfer before flushing the channel.
+If <code>READY</code> never goes high, isolation cannot complete.</p>
+</div>
+<div class="paragraph">
+<p>The flush clears only the CPU isolation blocks. It does not clear state
+elsewhere in the SMC fabric. The cluster reset may complete while another block
+remains unresponsive or holds a response, leaving that route or AXI ID blocked,
+so that block must be recovered separately or through the eventual cold reset.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="reset-domain-crossing"><a class="anchor" href="#reset-domain-crossing"></a><a class="link" href="#reset-domain-crossing">6.3. Reset-Domain Crossing</a></h3>
 <div class="paragraph">
 <p>The flops driving the isolate-control logic are held by the cluster&#8217;s
 uncore/core reset, while the flops inside <code>axi_isolate</code> are held by the Primary
@@ -678,9 +721,9 @@ firmware development and diagnostics.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:37</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Live status: high while a pending software reset has exceeded<br>timeout_value (timeout/error flag; set in both modes).</td></tr>
+<tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Status for the active software reset request: high after the request exceeds<br>timeout_value and remains high until the request is deasserted. Set in both modes.</td></tr>
 <tr><td>35:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software reset is actually applied<br>at the cluster (drain complete and reset asserted).</td></tr>
+<tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software reset is applied at the cluster,<br>either after drain completes or after a force-mode timeout.</td></tr>
 <tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = give up and report error (stay withheld, do not apply);<br>1 = force the reset on timeout.</td></tr>
 <tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely.</td></tr>
