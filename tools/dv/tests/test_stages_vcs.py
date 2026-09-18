@@ -20,6 +20,7 @@ from runlib.stages import (  # noqa: E402
     _last_plusarg_wins,
     _uvm_testname_override,
     _vcs_uvm_precompile_cmd,
+    expand_ocah_vendor_define_aliases,
 )
 
 
@@ -173,3 +174,60 @@ class CocotbVcsRunnerBuildArgs(unittest.TestCase):
         self.assertIn("+define+X=1", argv)
         self.assertIn("-j8", argv)
         self.assertIn("-partcomp", argv)
+
+
+class OcahVendorDefineAliases(unittest.TestCase):
+    def _args(self, **overrides) -> Namespace:
+        base = {"define": [], "comp_arg": [], "build_jobs": None, "sim_jobs": 1}
+        base.update(overrides)
+        return Namespace(**base)
+
+    def test_bare_simulation_gains_abr_alias(self):
+        self.assertEqual(
+            expand_ocah_vendor_define_aliases(["SIMULATION", "RANDOM=0"]),
+            ["SIMULATION", "RANDOM=0", "ABR_SIMULATION"],
+        )
+
+    def test_plusdefine_verilator_gains_target_alias(self):
+        self.assertEqual(
+            expand_ocah_vendor_define_aliases(["+define+VERILATOR", "-Wno-fatal"]),
+            ["+define+VERILATOR", "-Wno-fatal", "+define+TARGET_VERILATOR"],
+        )
+
+    def test_unrelated_defines_are_unchanged(self):
+        self.assertEqual(expand_ocah_vendor_define_aliases(["A=1", "B"]), ["A=1", "B"])
+
+    def test_cocotb_vcs_expands_simulation(self):
+        argv = _cocotb_build_args(
+            "vcs",
+            None,
+            Path("/repo"),
+            {},
+            {"defines": ["SIMULATION"]},
+            {},
+            {},
+            Path("/repo/f.f"),
+            self._args(),
+        )
+        self.assertIn("+define+SIMULATION", argv)
+        self.assertIn("+define+ABR_SIMULATION", argv)
+
+    def test_cocotb_verilator_force_includes_and_expands(self):
+        argv = _cocotb_build_args(
+            "verilator",
+            None,
+            Path("/repo"),
+            {},
+            {
+                "defines": ["SIMULATION"],
+                "tools": {"verilator": {"flags": ["+define+VERILATOR"]}},
+            },
+            {},
+            {},
+            Path("/repo/f.f"),
+            self._args(),
+        )
+        self.assertIn("+define+ABR_SIMULATION", argv)
+        self.assertIn("+define+TARGET_VERILATOR", argv)
+        fi = argv.index("-FI")
+        self.assertEqual(argv[fi + 1], "/repo/hw/common/defs/ocah_vendor_defines.svh")

@@ -5,6 +5,16 @@
 = Project Defines
 
 Compile-time defines that apply across OCAH rather than to a single block.
+Set the OCAH names in this chapter. Do not set vendor preprocessor names;
+`hw/common/defs/ocah_vendor_defines.svh` derives the aliases those names
+imply. OCAH DV, lint, and synthesis force-include that header (or expand the
+same aliases onto the command line). An adopter compile must force-include it
+as well, for example Verilator `-FI hw/common/defs/ocah_vendor_defines.svh`.
+
+A `` `define `` in a header is visible only in compilation units that include
+it. Command-line `+define+` / `-D` is global. Force-include (or the flow's
+alias expansion) is what makes the mapping apply to vendored files that never
+include an OCAH header.
 
 [[simulation-define]]
 == `SIMULATION`
@@ -19,6 +29,9 @@ simulation compile and on no other kind of build:
 ----
 
 OCAH's own DV flows set it; a compile driven by an adopter's testbench does not.
+The vendor header defines `ABR_SIMULATION` from it, which Adams Bridge CDC
+delay instrumentation tests. OpenTitan `prim_cdc_rand_delay` tests
+`SIMULATION` directly.
 
 [WARNING]
 ====
@@ -61,3 +74,162 @@ Two model families it enables make simulation deliberately non-deterministic:
 other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the
 seed with any failure you intend to reproduce.
+
+[[synthesis-define]]
+== `SYNTHESIS`
+
+`SYNTHESIS` selects the implementation view: simulation-only SVA, `$readmemh`
+preload, procedural delays, and similar non-synthesizable paths are omitted.
+Lint and Yosys set it via `OCAH_FLOW_COMMON_DEFINES`. Native DV does not, except
+the SMC `dual` target, which lists it next to `SMC_DUAL`.
+
+The vendor header defines `TARGET_SYNTHESIS` from it (iDMA `IDMA_NONSYNTH_BLOCK`).
+Vendored OpenTitan, PULP, I3C, and Adams Bridge sources test `SYNTHESIS`
+itself.
+
+[[emulation-define]]
+== `EMULATION`
+
+`EMULATION` is the reserved OCAH name for a synthesizable emulator view
+(Palladium, Zebu, and similar): assertions, cover, assume, and `$display` /
+`$error` / `$fatal` stay compiled, while procedural delays, random-init
+`initial` blocks, `force`/`release`, dump/`$fopen` tasks, and non-synthesizable
+real-time constructs do not.
+
+The tree has no `EMULATION` gating. Setting the name does not select that view.
+Do not set `SYNTHESIS` in order to keep emulator debug hooks; `SYNTHESIS`
+strips assertions as well. Do not set `PULP_FPGA_EMUL` as a substitute:
+that name is an FPGA clock-mux path.
+
+[[tool-predefines]]
+== Tool predefined names
+
+Simulators and frontends define these themselves. Restate them only on that
+tool's compile line. Do not put them in a Bender filelist shared with other
+tools, and do not add a Bender target named `verilator` (flist-plus would emit
+`+define+TARGET_VERILATOR` into that shared `.f`).
+
+[cols="<20%,<80%",options="header"]
+|===
+|Define |Role
+
+|`VERILATOR`
+|Verilator's predefine. First-party and OpenTitan SVA leave their include-assert
+macros undefined. The vendor header defines `TARGET_VERILATOR` from it.
+
+|`VCS`
+|VCS predefine. Some PULP AXI files branch on it.
+
+|`XSIM`
+|Vivado simulator. The vendor header defines `TARGET_XSIM` from it. PULP
+assertion macros also treat it as off.
+
+|`YOSYS`
+|Auto-defined by yosys-slang. The Yosys `prim_assert.sv` shim undefines it
+around the vendored header when `SYNTHESIS` is also set.
+|===
+
+[[native-dv-defines]]
+== Native DV extras
+
+An adopter that copies the native profile sees these in addition to
+`SIMULATION`. They are not required to elaborate OCAH RTL for silicon.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Role
+
+|`RANDOM=0`, `RANDOMIZE_MEM_INIT`, `RANDOMIZE_REG_INIT`, `RANDOMIZE_DELAY=0.02`
+|Chisel/FIRRTL random-init hooks on the generated SMC cluster. Native DV
+zero-fills rather than randomizing.
+
+|`UVM`
+|SV-UVM framework overlay. Assertion headers report through `uvm_report_error`.
+Adds the UVM harness block to shared testbench tops. Do not set it on a cocotb
+compile.
+
+|`COMMON_CELLS_ASSERTS_OFF`
+|Strips inline assertion blocks inside PULP `common_cells` modules. Native DV
+sets it on every tool (Verilator, VCS, Xcelium) from
+`hw/common/dv/configs/profiles/native.toml`. This spelling is the OCAH name.
+
+|`ASSERTS_OFF`
+|Turns off PULP `OCAH_PULP_INC_ASSERT` macros. Verilator DUT flags and
+Verilator lint set it; VCS and Xcelium native compiles do not.
+|===
+
+[[derived-assert-defines]]
+== Derived assertion gates
+
+Do not set these. Headers define them from the view and tool names above.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Defined when
+
+|`OCAH_INC_ASSERT`
+|First-party concurrent SVA. `ocah_assert.svh` defines it only when
+`SYNTHESIS`, `VERILATOR`, and `NO_OCAH_ASSERT` are all absent.
+
+|`OCAH_OT_INC_ASSERT`
+|OpenTitan-derived SVA, from `SYNTHESIS` and `VERILATOR` (YOSYS forces it on).
+
+|`OCAH_PULP_INC_ASSERT`
+|PULP `OCAH_PULP_ASSERT*` macros, unless `ASSERTS_OFF`, `SYNTHESIS`, or
+`XSIM` is set.
+
+|`NO_OCAH_ASSERT`
+|Optional escape: drops first-party SVA only. No OCAH flow sets it.
+|===
+
+[[vendor-define-map]]
+== Vendor aliases
+
+`ocah_vendor_defines.svh` defines these from the OCAH names. Do not set the
+vendor column.
+
+[cols="<25%,<25%,<50%",options="header"]
+|===
+|OCAH name |Vendor alias |Read by
+
+|`SYNTHESIS`
+|`TARGET_SYNTHESIS`
+|iDMA `IDMA_NONSYNTH_BLOCK`
+
+|`SIMULATION`
+|`ABR_SIMULATION`
+|Adams Bridge `abr_prim_cdc_rand_delay`
+
+|`VERILATOR`
+|`TARGET_VERILATOR`
+|iDMA `IDMA_NONSYNTH_BLOCK`
+
+|`XSIM`
+|`TARGET_XSIM`
+|iDMA `IDMA_NONSYNTH_BLOCK`
+
+|`EMULATION`
+|(none)
+|No vendor alias. Not `PULP_FPGA_EMUL`.
+|===
+
+I3C AXI vs AHB, VeeR `RV_BUILD_AXI4`, and Adams Bridge `CALIPTRA` are selected
+by headers or Bender targets, not by adopter `+define+`. Do not pass
+`I3C_USE_AXI_LITE`.
+
+[[adopter-overlay-defines]]
+== Adopter overlay hooks
+
+No checked-in config sets these. An adopter overlay
+(`run_dv.py --overlay`) may append them.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Role
+
+|`OCAH_JTAG_VENDOR_IF`
+|Nests a commercial JTAG verification interface.
+
+|`OCAH_AXI_VENDOR_IF`
+|Nests a commercial AXI verification interface.
+|===

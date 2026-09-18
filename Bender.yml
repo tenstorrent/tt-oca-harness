@@ -370,6 +370,7 @@ sources:
   - target: any(dtp, sep, smc, key_manager)
     include_dirs:
       - hw/common/assert
+      - hw/common/defs
       - hw/ip/efuse/rtl/svh
     files:
       - hw/common/och_prim/rtl/prim_jtag_pkg.sv
