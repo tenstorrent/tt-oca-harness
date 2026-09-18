@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP outbound AXI-lite mailbox (axil_mailbox) firmware driver.
+// SEP AXI-lite mailbox (axil_mailbox) firmware driver.
 //
 // The SEP system-peripheral mailbox block (hw/ip/axi_lite_mailbox_unit) exposes
-// eight outbound mailboxes. Addresses and IRQ field masks come from generated
+// eight mailbox pairs. Addresses and IRQ field masks come from generated
 // sep_addr.h / axil_mailbox_sep_wrap.h (via sep.h).
 //
-// In hw/sys/sep/rtl/sep.sv outbound_interrupt_o feeds sep_internal_interrupts[7:0]
-// (one slot per mailbox), so mailbox m -> sep_internal_interrupts[m] -> VeeR EL2
-// PIC source (m + 1). CLOCK_GATE_CTRL in this map implements only
+// These defines target the inbound aperture, because in hw/sys/sep/rtl/sep.sv
+// only inbound_interrupt_o reaches sep_internal_interrupts[7:0] (mailbox m ->
+// VeeR EL2 PIC source m + 1); outbound_interrupt_o leaves the block on
+// smc_mailbox_interrupt_o. A write to inbound WRITE_DATA is therefore what
+// notifies the SEP CPU, and the entry it queues is popped at the paired
+// outbound READ_DATA. CLOCK_GATE_CTRL in this map implements only
 // pka_cg_enable (bit 0). Bit 2 is written for sequence parity; it is not a
 // defined mailbox-clock field and is not on the proof path.
 //
@@ -25,14 +28,14 @@
 
 #include "sep.h"
 
-#define SEP_AXIL_MBOX0_BASE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
-#define SEP_AXIL_MBOX0_WRITE_DATA OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR
-#define SEP_AXIL_MBOX0_STATUS OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
-#define SEP_AXIL_MBOX0_WIRQT OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_BASE_ADDR
-#define SEP_AXIL_MBOX0_RIRQT OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR
-#define SEP_AXIL_MBOX0_IRQS OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR
-#define SEP_AXIL_MBOX0_IRQEN OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR
-#define SEP_AXIL_MBOX0_IRQP OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR
+#define SEP_AXIL_MBOX0_BASE OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR
+#define SEP_AXIL_MBOX0_WRITE_DATA OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR
+#define SEP_AXIL_MBOX0_STATUS OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_STATUS_BASE_ADDR
+#define SEP_AXIL_MBOX0_WIRQT OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WIRQT_BASE_ADDR
+#define SEP_AXIL_MBOX0_RIRQT OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_RIRQT_BASE_ADDR
+#define SEP_AXIL_MBOX0_IRQS OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQS_BASE_ADDR
+#define SEP_AXIL_MBOX0_IRQEN OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQEN_BASE_ADDR
+#define SEP_AXIL_MBOX0_IRQP OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQP_BASE_ADDR
 
 #define SEP_AXIL_MBOX_IRQ_WRITE AXIL_MAILBOX__IRQS__WTIRQ_bm
 #define SEP_AXIL_MBOX_IRQ_READ AXIL_MAILBOX__IRQS__RTIRQ_bm
@@ -40,7 +43,7 @@
 #define SEP_AXIL_MBOX_IRQ_ALL \
     (SEP_AXIL_MBOX_IRQ_WRITE | SEP_AXIL_MBOX_IRQ_READ | SEP_AXIL_MBOX_IRQ_ERROR)
 
-// Mailbox 0 outbound interrupt -> sep_internal_interrupts[0] -> PIC source 1.
+// Mailbox 0 inbound interrupt -> sep_internal_interrupts[0] -> PIC source 1.
 #define SEP_AXIL_MBOX0_PIC_SRC 1u
 
 #ifndef SEP_CLOCK_GATE_CTRL
