@@ -8,12 +8,11 @@ ocah_synth_yosys_mk := 1
 OCAH_YOSYS_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 include $(OCAH_YOSYS_DIR)/../../common.mk
 
+# Include PDK local installer
+include $(OCAH_YOSYS_DIR)/pdks.mk
+
 # Synthesis via yosys + yosys-slang, PDK-parametrized by TECH. Included by
 # ocah.mk (ocah-synth-all dispatcher) and each flow.mk (ocah-synth worker).
-
-# Default PDK, forwarded into the container as PDK=$(TECH) (see
-# flows/synth/yosys/tech/ and scripts/init_tech.tcl).
-TECH ?= ihp-sg13g2
 
 OCAH_YOSYS_SYNTH_TCL := $(OCAH_YOSYS_DIR)/scripts/synth.tcl
 
@@ -45,11 +44,12 @@ OCAH_YOSYS_ASSERT_INCDIR := $(OCAH_ROOT)/hw/common/assert/yosys
 
 ## Synthesize this one block with yosys + yosys-slang.
 .PHONY: ocah-synth
-ocah-synth:
+ocah-synth: ${PDK_SENTINEL}
 	@mkdir -p $(OCAH_SYNTH_DIR)
 	$(call ocah_eda_flist,$(FLOW_BENDER_TARGETS),$(OCAH_SYNTH_FLIST))
 	@sed -i '1i +incdir+$(OCAH_YOSYS_ASSERT_INCDIR)' $(OCAH_SYNTH_FLIST)
-	$(call ocah_eda_docker_run, env PDK=$(TECH) PROJ_NAME=$(FLOW_DESIGN) TOP_DESIGN=$(FLOW_DESIGN) SV_FLIST=$(OCAH_SYNTH_FLIST) OUT_DIR=$(OCAH_SYNTH_DIR) TIMESCALE=$(OCAH_FLOW_TIMESCALE) yosys -c $(OCAH_YOSYS_SYNTH_TCL))
+	$(call ocah_require_host_tool,yosys,./scripts/docker-run.sh run-here make ocah-synth)
+	PDK=$(TECH) PDK_ROOT=$(PDK_ROOT) PROJ_NAME=$(FLOW_DESIGN) TOP_DESIGN=$(FLOW_DESIGN) SV_FLIST=$(OCAH_SYNTH_FLIST) OUT_DIR=$(OCAH_SYNTH_DIR) TIMESCALE=$(OCAH_FLOW_TIMESCALE) yosys -c $(OCAH_YOSYS_SYNTH_TCL)
 
 endif
 

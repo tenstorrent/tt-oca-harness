@@ -539,7 +539,7 @@ open files to compensate.
 
 Each of these is an auto-generated alias for the `ocah-`-prefixed target of the same name, so
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
-plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
+plus the matching `./scripts/docker-run.sh run-here make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 The internal GitLab mirror loads its parent pipeline from a separately access-controlled
 configuration project rather than from this repository, so a pull request cannot replace the

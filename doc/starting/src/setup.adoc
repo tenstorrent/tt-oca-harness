@@ -7,12 +7,112 @@
 [WARNING]
 ====
 This document is currently under development.
-
-- Can we add an installation script to the repo?
-- Need to add requirements for tt-oca-manifest and tt-oca-harness-model
 ====
 
-== Python
+== Repository
+
+To clone the repository, ensure that you have `git` installed (`sudo apt install git`), and then run the following commands:
+
+```bash
+git clone https://github.com/tenstorrent/tt-oca-harness.git
+
+cd tt-oca-harness
+```
+
+The repository's open RTL, documentation, register generation, lint, and
+containerized firmware flows do not require submodules. The production SEP boot
+manifest tooling is an optional submodule that requires separate access; do not
+use `--recursive` for the public setup path.
+
+== Toolchain access
+
+Most OCAH workflows require a RISC-V cross-compiler, EDA tools (Yosys, Verilator,
+Slang, Verible), and documentation tools (Antora, Asciidoctor). There are three
+ways to get these:
+
+[cols="1,3",options="header"]
+|===
+| Method | Summary
+
+| <<container,*Container (recommended)*>>
+| A Nix-built container image bundles all EDA and firmware tools. No individual
+  tool installs needed beyond a container engine (Podman or Docker). This is the
+  primary supported method for the initial release.
+
+| <<native,*Native*>>
+| Install each tool individually on the host. Gives the most control but requires
+  the most setup. The remainder of this page documents the native path; see
+  xref:dependencies.adoc[Dependencies] for version requirements.
+
+| <<nix-shell,*Nix dev shell*>>
+| `nix develop` provides the same tool set as the container, directly on the host,
+  via the Nix package manager. Available but not first-class supported — useful on
+  NixOS or hosts that already have Nix installed.
+|===
+
+[[container]]
+== Container (recommended)
+
+The container is the primary toolchain access method for the initial release. It
+is built from the Nix flake in this repository — there is no pre-built image to
+pull from a registry; `docker-run.sh` builds it locally on first use.
+
+The container bundles:
+
+* RISC-V cross-compiler (`riscv64-unknown-elf-gcc` + picolibc) — making a native
+  RISC-V toolchain install optional for firmware workflows
+* `yosys` + `yosys-slang` for synthesis
+* `slang`, `verilator`, `verible` for lint
+* `antora` for documentation
+
+Tools that must be installed natively even when using the container: Python /
+`uv` (for register generation and DV Python tooling), `bender` (IP dependency
+management), and `git`.
+
+=== Container engine setup
+
+Install a container engine (Podman or Docker):
+
+- https://podman.io/docs/installation#ubuntu[*Podman*] (recommended)
+- https://docs.docker.com/engine/install/ubuntu/[*Docker*]
+
+If you installed Podman, also install `fuse-overlayfs` and register the Docker
+Hub registry:
+
+```bash
+sudo apt install -y fuse-overlayfs
+
+sudo mkdir -p /etc/containers/registries.conf.d
+cat <<'EOF' | sudo tee /etc/containers/registries.conf.d/docker.conf
+unqualified-search-registries = ["docker.io"]
+EOF
+```
+
+=== Using the container
+
+All container interaction goes through `scripts/docker-run.sh`. The image is
+built automatically on first use:
+
+```bash
+# Open an interactive shell (builds the image if needed)
+./scripts/docker-run.sh shell
+
+# Run a command inside the container
+./scripts/docker-run.sh run make dv-fw-tests TARGET=smc
+
+# Run with 1:1 host paths (needed for workflows using absolute paths)
+./scripts/docker-run.sh run-here make ocah-synth-all
+```
+
+To pre-build the image explicitly (e.g. before going offline):
+
+```bash
+./scripts/docker-run.sh build
+```
+
+[[native]]
+== Native Installation
+=== Python
 
 We recommend the use of pyenv to ensure the correct version of python is in use.
 To install pyenv, visit https://github.com/pyenv/pyenv[their GitHub page],
@@ -48,22 +148,7 @@ pyenv shell 3.11
 pip install uv
 ```
 
-== Repository
-
-To clone the repository, ensure that you have `git` installed (`sudo apt install git`), and then run the following commands:
-
-```bash
-git clone https://github.com/tenstorrent/tt-oca-harness.git
-
-cd tt-oca-harness
-```
-
-The repository's open RTL, documentation, register generation, lint, and
-containerized firmware flows do not require submodules. The production SEP boot
-manifest tooling is an optional submodule that requires separate access; do not
-use `--recursive` for the public setup path.
-
-== Package Dependencies
+=== Package Dependencies
 
 Once the repository is cloned, install the required open source tools:
 
@@ -78,6 +163,8 @@ Follow the instructions on the following pages for tools not packaged within Ubu
 - https://github.com/pulp-platform/bender[*Bender*]
 - https://github.com/chipsalliance/verible[*Verible*]
 - https://github.com/MikePopoloski/slang[*Slang*]
+- https://github.com/YosysHQ/yosys[Yosys] (Also packaged via `apt`, but newer version recommend)
+-- https://github.com/povik/sv-elab[SV-Elab] (Formerly Yosys-Slang) Required to allow Yosys to synthesise SystemVerilog
 - https://surfer-project.org/[*Surfer*] (optional, alternatives available, used for wave trace debugging)
 - https://www.drawio.com/[*Drawio*] (optional, used for creating new diagrams for documentation)
 - https://github.com/wavedrom/wavedrom.github.io/releases[*Wavedrom*] (optional, used for creating new diagrams for documentation)
@@ -88,20 +175,23 @@ Enter the repository and use the following command to set up the Python environm
 uv sync # or `make uv-sync`
 ```
 
-== Containers
+[[nix-shell]]
+== Nix dev shell (available, not first-class supported)
 
-Certain workflows within the repository currently use a container, so a docker-compatible containerisation system is also required. We support docker and podman at this time, follow the installation guides to install either docker or podman below:
-
-- https://podman.io/docs/installation#ubuntu[*Podman*] (recommended)
-- https://docs.docker.com/engine/install/ubuntu/[*Docker*]
-
-If you installed podman, you'll need to add the docker hub as a container registry to be able to pull the container, and have `fuse-overlayfs` installed:
+If you have https://nixos.org/download/[Nix] installed, the dev shell provides
+the same tool set as the container directly on the host — no container engine
+needed:
 
 ```bash
-sudo apt install -y fuse-overlayfs
-
-sudo mkdir -p /etc/containers/registries.conf.d
-cat <<'EOF' | sudo tee /etc/containers/registries.conf.d/docker.conf
-unqualified-search-registries = ["docker.io"]
-EOF
+nix develop    # activates the dev shell; tools are then available on PATH
 ```
+
+With https://github.com/direnv/direnv[direnv] configured, the shell activates
+automatically on `cd` into the repo.
+
+[NOTE]
+====
+The Nix dev shell is not first-class supported for the initial release. It works
+well on NixOS and Linux hosts with Nix installed, but may have edge cases on
+other platforms. The container is the recommended path.
+====

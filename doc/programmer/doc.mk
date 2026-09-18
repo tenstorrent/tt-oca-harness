@@ -33,7 +33,7 @@ ocah-doc-programmer-setup: ocah-doc-programmer-meta ocah-doc-reg-setup
 
 .PHONY: ocah-doc-programmer-html
 ocah-doc-programmer-html: ocah-doc-programmer-setup
-	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html programmer"; exit 1; }
+	@command -v $(OCAH_ANTORA) >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html programmer"; exit 1; }
 	@echo "Building Programmer's Guide HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \

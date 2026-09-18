@@ -47,8 +47,8 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 	fi
 
 .PHONY: ocah-doc-trm-html
-ocah-doc-trm-html: ocah-doc-all-setup
-	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html trm"; exit 1; }
+ocah-doc-trm-html: ocah-doc-trm-setup
+	@command -v $(OCAH_ANTORA) >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html trm"; exit 1; }
 	@echo "Building TRM HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
