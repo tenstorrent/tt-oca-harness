@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[log-engine-programming]]
-===== Programming
+== Programming
 
-====== Simple Log Transfer
+=== Simple Log Transfer
 
 [source,sourceCode,c]
 ----
@@ -32,7 +32,7 @@ write32(LOG_ENGINE_BASE + 0x40, 100);
 while (read32(LOG_ENGINE_BASE + 0x40) != 0);
 ----
 
-====== Multiple Entry Management
+=== Multiple Entry Management
 
 [source,sourceCode,c]
 ----

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// JTAG_CAPS scenario: the 60-bit capability TDR must match the standalone
-// OSS DTP elaboration constants (whole value plus every decoded field),
+// JTAG_CAPS scenario: the 60-bit capability TDR must match the bench's
+// declared DTP configuration (whole value plus every decoded field),
 // stay stable across repeated reads, ignore directed and seeded random
 // write attempts (read-only), and survive instruction switches. Mirrors
 // the cocotb dtp_dbg_jtag_caps_test_seq.

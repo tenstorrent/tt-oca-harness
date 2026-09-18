@@ -475,7 +475,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
     // CHK-AXI-NONVAC: the counters that stayed flat while gated
     // demonstrably move for real traffic (baseline + both restores).
     sample_activity(t, after_aw, after_w, after_ar);
-    emit_nonvacuity_evidence((operation_count >= 2) && (after_aw >= 3), $sformatf(
+    emit_nonvacuity_evidence(t, (operation_count >= 2) && (after_aw >= 3), $sformatf(
                              "gated_attempts=%0d aw_pulses=%0d expected_aw>=3 (baseline+2 restores)",
                              operation_count,
                              after_aw
@@ -507,7 +507,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
     endcase
     enable_all_debug();
     // Scenario-level stream minimum (cocotb CHK-AXI-STREAM-MIN parity).
-    emit_nonvacuity_evidence(operation_count >= 2, $sformatf(
+    emit_nonvacuity_evidence(t, operation_count >= 2, $sformatf(
                              "scenario=%s operations=%0d min_ops=2", scenario, operation_count));
     `uvm_info(get_type_name(),
               $sformatf(

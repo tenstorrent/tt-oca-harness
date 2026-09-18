@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[axi-traffic-filter]]
-=== AXI Traffic Filter
+= AXI Traffic Filter
+:description: Common AXI address and attribute filter (`axi_filter_wrap`) used on the inbound and outbound paths of SEP and SMC — instances, decode algorithm, address granule and blocked-transaction behaviour.
+
+[[axi-traffic-filter,AXI Traffic Filter]]
 
 The AXI traffic filter (`axi_filter_wrap`) is the common address and
 attribute filter used on the inbound and outbound AXI paths of both SEP
@@ -15,7 +17,7 @@ is one `filter_ctrl` register triple -- `FILTER_CONFIG`, `START_ADDR`,
 `END_ADDR` -- and every entry is evaluated against every transaction.
 
 [[axi-traffic-filter-instances]]
-==== Instances
+== Instances
 
 .Traffic filter instances
 [width="100%",cols="20%,12%,12%,14%,20%,22%",options="header",]
@@ -37,7 +39,7 @@ matching is disabled at build time on all four, so the `group_id` field
 has no effect.
 
 [[axi-traffic-filter-decode]]
-==== Match, Then Permit
+== Match, Then Permit
 
 Decode is two distinct steps, and the difference between them governs
 what happens when entries overlap.
@@ -83,7 +85,7 @@ length, `prot[1]` and source ID, so a write and a read to the same
 address may select different entries.
 
 [[axi-traffic-filter-granule]]
-==== Address Range Granule
+== Address Range Granule
 
 Address comparison ignores the low address bits, so a filter range
 always covers a whole number of granules. `allow_burst` selects the
@@ -126,7 +128,7 @@ suggest. Size protected regions in whole granules, and prefer
 4 KB.
 
 [[axi-traffic-filter-blocked]]
-==== Blocked Transactions
+== Blocked Transactions
 
 A blocked transaction is not dropped. It is steered to an AXI error
 subordinate that terminates it with a `DECERR` response on `BRESP` or

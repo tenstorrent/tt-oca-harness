@@ -430,10 +430,15 @@ doc_stage_dashboard_data() {
 }
 
 doc_html() {
-  local product="${1:-trm}" basedir playbook setup_target pdf_target
+  local product="${1:-trm}" basedir playbook setup_target pdf_target companion
   local release_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
   doc_setup "$product"
+  if [ "$product" = trm ]; then
+    for companion in home integrator programmer appnotes starting; do
+      doc_setup "$companion"
+    done
+  fi
   doc_release_enabled && release_args=(--attribute release)
   run antora --cache-dir /tmp/antora "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
   # Only the TRM carries the dashboard page; staging elsewhere would leave a
