@@ -11,6 +11,7 @@ endif::release[]
 ** xref:power_domains.adoc[Power Domains]
 ** xref:clock_domains.adoc[Clock Domains]
 ** xref:reset.adoc[Reset]
+** xref:architecture.adoc#ocah-rtl-assertions[RTL Assertions]
 * OCAH Platform Components
 ** xref:smu:index.adoc[System Management Unit (SMU)]
 *** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
