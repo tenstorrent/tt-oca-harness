@@ -8,7 +8,7 @@ name = "smc_efuse_otp_clock_test"
 module = "smc_efuse_otp_clock_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "functional", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -16,7 +16,7 @@ name = "smc_efuse_otp_clock_config_depth_test"
 module = "smc_efuse_otp_clock_config_depth_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "depth_efuse", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -24,7 +24,7 @@ name = "smc_efuse_chip_config_read_test"
 module = "smc_efuse_chip_config_read_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "depth_efuse", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -32,7 +32,7 @@ name = "smc_efuse_shim_ctrl_test"
 module = "smc_efuse_shim_ctrl_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -42,17 +42,54 @@ name = "smc_efuse_read_timeout_status_test"
 module = "smc_efuse_read_timeout_status_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "efuse", "pyuvm"]
+tags = ["ci", "efuse"]
 run_modes = ["smoke"]
 
-[[groups]]
-name = "depth_efuse"
-tests = [
-    "smc_efuse_read_timeout_status_test",
-    "smc_efuse_otp_clock_config_depth_test",
-    "smc_efuse_chip_config_read_test",
-    "smc_efuse_locked_access_interrupt_test",
-    "smc_efuse_boundary_signals_test",
-    "smc_efuse_read_program_timeout_test",
-    "smc_state_fault_inject_test",
-]
+[[tests]]
+name = "smc_efuse_jtag_lc_negative_test"
+module = "smc_efuse_jtag_lc_negative_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_jtag_lc_access_matrix_test"
+module = "smc_efuse_jtag_lc_access_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_permission_boundary_test"
+module = "smc_efuse_permission_boundary_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+# BFM: PROGRAM/READ timeout CSR (enable|0) vs recovery burn.
+[[tests]]
+name = "smc_efuse_read_program_timeout_test"
+module = "smc_efuse_read_program_timeout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+# State-flop fault injection: eFuse fail-closed recovery and absorbing Zeroer error.
+[[tests]]
+name = "smc_state_fault_inject_test"
+module = "smc_state_fault_inject_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+# No GPIO-strap or external-interrupt testcase is enrolled here. smc_wrapper
+# declares no captured_straps_i, so the strap feature has no testcase
+# (docs/SMC_VPLAN.adoc, Known Limitations); external interrupts are
+# covered by smc_ext_interrupts_pin_test (irq.toml). ext_interrupts_i[255:1] is
+# tied to 0 in tb/tb_top.sv, so an external-interrupt testcase beyond bit 0
+# needs TB work before it can exist.
