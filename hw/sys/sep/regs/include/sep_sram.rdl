@@ -10,7 +10,7 @@ mem sep_sram #(
     longint unsigned NUM_ENTRIES = 0x8000,  // 256 KiB / 8 bytes = 0x8000 entries
     longint unsigned WIDTH       = 64
 ) {
-    desc = "SEP SRAM Memory";
+    desc = "SEP scratch SRAM.";
 
     mementries = NUM_ENTRIES;
     memwidth   = WIDTH;

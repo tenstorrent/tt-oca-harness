@@ -19,7 +19,8 @@ into static reports:
 
 The guide documents the behavior of the tools in this source tree. The
 interfaces page maps how the tools, the shared configuration, the hosted
-workflows, and the contributor environment connect.
+workflows, and the contributor environment connect; the runbook is the
+operating manual for the hosted service they form.
 
 ifdef::backend-html5[]
 == Building This Guide
@@ -36,7 +37,8 @@ asciidoctor -a data-uri -D "$out" \
   tools/dv/doc/index.adoc \
   tools/dv/doc/run-dv.adoc \
   tools/dv/doc/run-dashboard.adoc \
-  tools/dv/doc/interfaces.adoc
+  tools/dv/doc/interfaces.adoc \
+  tools/dv/doc/runbook.adoc
 
 asciidoctor-pdf \
   -o "$out/ocah-dv-tooling-guide.pdf" \
@@ -55,10 +57,15 @@ ifdef::backend-html5[]
   command lines where the runner, the dashboard, the configuration, the
   coverage policies, the workflows, and the environment meet, and the check
   behind each contract.
+* xref:runbook.adoc[DV Infrastructure Runbook] -- operate the hosted
+  service: schedules and budgets, retention, what a cancellation leaves
+  behind, recovery procedures, ownership by component, escalation, and
+  known limitations.
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 include::run-dv.adoc[leveloffset=+1]
 include::run-dashboard.adoc[leveloffset=+1]
 include::interfaces.adoc[leveloffset=+1]
+include::runbook.adoc[leveloffset=+1]
 endif::backend-pdf[]

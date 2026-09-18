@@ -3685,7 +3685,7 @@ STBY_CR_CONTROL is not zero.</ipxact:description>
                 <ipxact:field>
                   <ipxact:name>PID_HI</ipxact:name>
                   <ipxact:displayName>PID_HI</ipxact:displayName>
-                  <ipxact:description>High part of the 48-bit Target Device Provisioned ID. 
+                  <ipxact:description>High part of the 48-bit Target Device Provisioned ID.
 
 This field is Read-Only while the STBY_CR_ENABLE_INIT field in register
 STBY_CR_CONTROL is not zero.</ipxact:description>

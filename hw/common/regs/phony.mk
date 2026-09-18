@@ -60,7 +60,7 @@ ocah-regen-regs-ral: $(OCAH_REGEN_REG_RAL)
 ## Regenerate AsciiDoc register documentation for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-adoc
-ocah-regen-regs-adoc: $(OCAH_REGEN_REG_ADOC)
+ocah-regen-regs-adoc: $(OCAH_REGEN_REG_ADOC) $(OCAH_REGEN_REG_MEMORY_MAP)
 
 ## Regenerate HTML register documentation for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate

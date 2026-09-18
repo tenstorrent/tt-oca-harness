@@ -11,44 +11,11 @@ address alignment.
 
 === Address Space Overview
 
-The component uses a 128-byte address space (7-bit address width) with
+The component uses a 256-byte address space (8-bit address width) with
 the following organization:
 
 * *Control and Status*: 0x00 - 0x1F (Configuration, status, probe ID, and counter validity registers)
 * *Counter Array*: 0x80 - 0xFF (32 × 32-bit counter value registers)
-
-=== Register Map
-
-ifdef::backend-html5[]
-++++
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver register map" tabindex="0">
-++++
-endif::backend-html5[]
-
-.Complete Register Map
-[width="100%",cols="14%,38%,12%,36%",options="header",role="telemetry-table"]
-|====================================================================================
-|Address |Register Name |Access |Description
-|0x00 |CTRL |RW |Control Register
-|0x04 |STATUS |R |Status Register
-|0x08 |INTR_STATUS |RW |Interrupt Status Register
-|0x0C |INTR_ENABLE |RW |Interrupt Enable Register
-|0x10 |INTR_TEST |RW |Interrupt Test Register
-|0x14 |TELEMETRY_PROBE_ID |R |Telemetry Probe ID Register
-|0x18 |TELEMETRY_COUNTER_VLDS |R |Telemetry Counter Valid Bits Register
-|0x80 |TELEMETRY_COUNTER[0] |R |Telemetry Counter Register 0
-|0x84 |TELEMETRY_COUNTER[1] |R |Telemetry Counter Register 1
-|0x88 |TELEMETRY_COUNTER[2] |R |Telemetry Counter Register 2
-|0x8C |TELEMETRY_COUNTER[3] |R |Telemetry Counter Register 3
-|... |... |... |...
-|0xFC |TELEMETRY_COUNTER[31] |R |Telemetry Counter Register 31
-|====================================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
 
 === Reset Behavior
 

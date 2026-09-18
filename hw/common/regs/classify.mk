@@ -42,7 +42,7 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic aon_timer dfd smc_cla dma_ctrl \
-  pll_wrap pvt_wrap oca_i3c_wrap
+  pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
@@ -95,6 +95,31 @@ OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
 OCAH_REG_JSON_BLOCKS ?= hw/sys/smc
 OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 
+# Address-space tables (rdlmap) are opt-in and distinct from the per-block
+# register tables that rdladoc already emits for every RDL. List a block here
+# only when it needs a composed window or aperture view. Leaf IPs keep
+# including their existing regs/gen/adoc/<block>.adoc tables and do not belong
+# here. Each entry reads presentation directives from doc/memmap.toml and
+# emits regs/gen/adoc/memory_map.adoc.
+OCAH_REG_MEMORY_MAP_BLOCKS ?= \
+  hw/sys/sep \
+  hw/sys/smc \
+  hw/ip/key_manager \
+  hw/ip/cross_trigger/cross_trigger_network \
+  hw/ip/efuse/regs/efuse_interface_ctrl \
+  hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+OCAH_REG_MEMORY_MAP_BLOCKS += $(OCAH_REG_MEMORY_MAP_BLOCKS_EXTRA)
+OCAH_REG_MEMORY_MAP_DEPS_hw_sys_sep := \
+  $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_cpu_logical.rdl
+OCAH_REG_MEMORY_MAP_DEPS_hw_ip_axi_lite_mailbox_unit_regs_axil_mailbox := \
+  $(OCAH_ROOT)/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap.rdl \
+  $(OCAH_ROOT)/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap.rdl
+# The eFuse view composes three subsystem roots. Keep all catalogued RDL sources
+# as prerequisites so a change in any included leaf cannot leave this cross-root
+# documentation stale.
+OCAH_REG_MEMORY_MAP_DEPS_hw_ip_efuse_regs_efuse_interface_ctrl := \
+  $(foreach dir,$(OCAH_REG_CATALOG_DIRS),$(wildcard $(dir)/*.rdl))
+
 # Blocks whose regblock RTL answers a bad address or a write to a read-only
 # register with an error response, rather than silently accepting it. Listed by
 # name; the overlay appends its own.
@@ -142,6 +167,7 @@ OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(O
 # the tt-hw-debug overlay include dir the catalog already globs.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   edn \
+  efuse_interface_ctrl \
   hmac \
   i2c_wrap \
   key_manager \
