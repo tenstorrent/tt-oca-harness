@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctn-memory-map]]
-==== Memory Map
 
 The Cross Trigger Network combines the Cross Trigger Matrix (CTM) and Cross
 Trigger Port (CTP) registers into a unified address space. Its generated map
@@ -20,7 +19,7 @@ The CTN decodes the AXI-Lite CSR interface onto the CTM and CTP blocks it
 instantiates. The composite SystemRDL top is the common source for these
 addresses and for the generated RTL constants.
 
-===== Cross Trigger Matrix Registers
+=== Cross Trigger Matrix Registers
 
 ifdef::backend-html5[]
 ++++
@@ -32,7 +31,7 @@ ifdef::backend-pdf[]
 include::../../cross_trigger_matrix/regs/gen/adoc/cross_trigger_matrix.adoc[]
 endif::backend-pdf[]
 
-===== Cross Trigger Port Registers
+=== Cross Trigger Port Registers
 
 Each CTP window repeats the following register layout.
 

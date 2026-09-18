@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i3ccore-wrap-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 The I3C Core Controller provides a comprehensive register interface organized
 into five major sections accessible through an AXI4-Lite slave interface. The
@@ -16,7 +16,7 @@ The register map follows the MIPI I3C HCI v1.2 specification with OCA-specific
 extensions for recovery and enhanced IBI handling. All registers are 32-bit
 aligned and support only 32-bit access widths.
 
-====== Register Organization
+=== Register Organization
 
 * *I3CBase Section* (0x00-0x68): Core controller configuration and status
 registers including bus control, capabilities, interrupts, and reset management
@@ -32,7 +32,7 @@ includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
 * *DCT Section* (0x800-0xFFF): Device Characteristic Table, 128-entry address window
 (4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=16 (usable index 0-15)
 
-====== Address Alignment and Access
+=== Address Alignment and Access
 
 *Address Alignment:*
 * All registers are aligned to 32-bit boundaries (addresses are multiples of 4)
@@ -49,7 +49,7 @@ includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
 * Bit numbering: Bit 0 is LSB, bit 31 is MSB
 * Multi-byte fields follow little-endian byte ordering
 
-====== Programming Guidance
+=== Programming Guidance
 
 Configure queue thresholds and the DAT and DCT entries before setting
 `HC_CONTROL.BUS_ENABLE`. In a multi-controller system, check
@@ -80,7 +80,7 @@ For standby-controller operation, configure `STBY_CR_ENABLE_INIT` and the
 required dynamic-address-assignment methods before enabling the bus. Send a
 controller-role request only while in standby mode and while the bus is idle.
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

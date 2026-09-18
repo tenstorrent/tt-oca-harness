@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver-memory-map]]
-===== Memory Map
+== Memory Map
 
 The Telemetry Receiver provides a comprehensive register interface for
 configuration, status monitoring, and telemetry data access. All
 registers are accessed through a 32-bit AXI4-Lite interface with 4-byte
 address alignment.
 
-====== Address Space Overview
+=== Address Space Overview
 
 The component uses a 256-byte address space (8-bit address width) with
 the following organization:
@@ -17,7 +17,7 @@ the following organization:
 * *Control and Status*: 0x00 - 0x1F (Configuration, status, probe ID, and counter validity registers)
 * *Counter Array*: 0x80 - 0xFF (32 × 32-bit counter value registers)
 
-====== Reset Behavior
+=== Reset Behavior
 
 Upon system reset (rst_ni assertion):
 
@@ -31,7 +31,7 @@ The reset operation is asynchronous for assertion and synchronous for
 deassertion, ensuring clean startup behavior and proper synchronization
 with the system clock domain.
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[stap-architecture]]
-==== Architecture
 
 IEEE 1838-2019 enables hierarchical interconnection of TAP controllers across
 multiple chiplets. Each STAP interface provides an extension of a SiP's primary
@@ -11,12 +10,12 @@ of the JTAG scan chain, otherwise the STAP interface is bypassed. In addition,
 STAPs can also support connection of other TAP interfaces included on the same
 chiplet as the PTAP.
 
-===== Module Hierarchy
+=== Module Hierarchy
 
 The STAP implementation consists of three main components integrated within a
 single module:
 
-[width="100%",cols="<35%,<50%,<15%",options="header"]
+[width="100%",cols="<30%,<52%,<18%",options="header"]
 |===
 |Module |Purpose |Conditional
 
@@ -33,7 +32,7 @@ single module:
 |Per parameter
 |===
 
-===== STAP Module
+=== STAP Module
 
 Each STAP has a 3-bit 3DCR TDR that defines the control interface for the STAP.
 Note that the STAP 3DCRs take a distributed segment approach to improve timing,
@@ -47,20 +46,25 @@ specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
 signal.
 
 The following diagram illustrates the STAP architecture and the details of the
-3DCR register. The green colored flops are optional, each configured via
-parameters. The red AND gate and nets implement debug disable when
-`security_disable_i` is asserted.
+3DCR register. Optional input pipeline stages are not shown: SCAN_IN_PIPE on
+`client_scan_in_i` defaults to disabled for all DTP instances; TDI_LOCKUP on
+`host_tdi_i` defaults to disabled but is enabled for the I/O STAP
+(`gen_stap_io`) to provide timing margin for the die boundary crossing. The
+security gate masks `stap_sel`, `host_tdo_o`, and `update_en` when
+`security_disable_i` is asserted. `host_tdo_oen_o` and `host_tap_ctrl_o` are
+independent combinational outputs derived from `stap_sel` and TAP control
+signals, not outputs of the security gate.
 
-image::stap_module_diagram.drawio.svg[STAP Module Diagram,scaledwidth=90.0%]
+image::stap_module_diagram.svg[STAP Module Diagram showing SIB mux, 3DCR register and lifecycle enable gating,scaledwidth=90.0%]
 
-===== 3DCR Register
+=== 3DCR Register
 
 The 3-bit 3DCR control register is implemented using `prim_jtag_scan_reg` with a
 loopback configuration. The register outputs feed back to the data inputs,
 allowing the register to retain its configuration across scan operations while
 still being scannable for updates.
 
-[width="100%",cols="2,2,1,7",options="header"]
+[width="100%",cols="6,20,9,65",options="header"]
 |===
 |Bit |Field |Reset |Description
 
@@ -80,7 +84,7 @@ still being scannable for updates.
 |Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by `trst_n AND (config_hold OR scan_reset)`, protecting configuration when `config_hold=1`. TRST assertion always resets the register regardless of this bit.
 |===
 
-===== STAP Types
+=== STAP Types
 
 The following table lists the STAPs allocated for the DTP JTAG interface. The
 STAPs are serially chained TDI -> TDO according to their order in this table
@@ -88,7 +92,7 @@ from top to bottom. In addition to the STAPs integrated into the DTP, the STAP
 scan chain is ported out of the DTP so that the chiplet integrator may add
 additional STAPs closer to their point of use.
 
-[width="100%",cols="<50%,<50%",options="header"]
+[width="100%",cols="<30%,<70%",options="header"]
 |===
 |Purpose |Description
 |STAP to Next Chiplet |This STAP forwards JTAG to the next chiplet in the SiP.
@@ -98,12 +102,12 @@ additional STAPs closer to their point of use.
 |Extended STAP Scan Interface |Provides the ability to add STAPs external to the DTP closer to their point of use.
 |===
 
-===== Debug Disable
+=== Debug Disable
 
 The `security_disable_i` input is active-high (1 = STAP disabled). When it is
 asserted, three aspects of STAP operation are blocked:
 
-[width="100%",cols="<30%,<70%",options="header"]
+[width="100%",cols="<40%,<60%",options="header"]
 |===
 |Signal |Behavior when asserted
 
@@ -120,21 +124,21 @@ asserted, three aspects of STAP operation are blocked:
 STAP selection, host TDO, and 3DCR updates are all blocked combinationally at
 the module output, so there is no timing-dependent bypass of the disable.
 
-===== Lockup Latches
+=== Lockup Latches
 
 The STAP implements three types of lockup latches to manage timing across die
 boundaries and long scan chains. These latches are clocked on the falling edge
 of TCK to capture data during the second half of the clock cycle, providing
 setup time margin for the next rising edge.
 
-====== TDO Lockup Latch
+==== TDO Lockup Latch
 
 The TDO lockup latch is always present and cannot be disabled. This latch
 captures the scan data propagating from client to host on the falling edge of
 TCK. The latch ensures that data from the downstream TAP's TDO has sufficient
 setup time before being sampled by the upstream TAP on the rising edge of TCK.
 
-====== TDI Lockup Latch
+==== TDI Lockup Latch
 
 The TDI lockup latch is optional and controlled by the `TDI_LOCKUP` parameter
 (default = 0). When enabled, this latch captures the host TDI input on the
@@ -143,7 +147,7 @@ additional cycle of latency but provides timing margin for die boundary
 crossings where signal delays may be significant. In the DTP integration, TDI
 lockup is enabled only for the I/O STAP that crosses between chiplets.
 
-====== Scan Output Lockup Latch
+==== Scan Output Lockup Latch
 
 The scan output lockup latch is optional and controlled by the `SCAN_OUT_LOCKUP`
 parameter (default = 0). This latch is implemented within the

@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 The UART 16550 register map follows the industry-standard 16550 UART
 layout with additional extended registers. The register space spans 64
@@ -17,7 +17,7 @@ addresses map to different registers based on the DLAB bit setting,
 maintaining compatibility with the original 16550 UART while providing
 access to baud rate configuration registers.
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 The first two register views apply when `LCR.DLAB=0`; read-only and write-only
 aliases at the same offset are shown separately. The divisor-latch view applies

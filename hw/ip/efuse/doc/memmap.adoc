@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[efuse-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 eFuse is not one universally placed address space. SEP, SMC, and the Key
 Manager pass-through expose different subsets and placements. The generated
@@ -22,7 +22,7 @@ endif::backend-pdf[]
 The shadow-map size is integration-specific. The MMR region exists only when
 the eFuse instance includes lifecycle state (`HAS_LC_STATE=1`).
 
-====== Shadow Registers
+=== Shadow Registers
 
 The shadow registers provide cached read access to eFuse contents, loaded
 automatically from the physical eFuse array during boot. The field layout is
@@ -40,7 +40,7 @@ ifdef::backend-pdf[]
 include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc[]
 endif::backend-pdf[]
 
-====== MMR Registers
+=== MMR Registers
 
 The MMR (Memory Mapped Register) space provides access to security tokens for
 authentication, including RMA tokens and security disable tokens.
@@ -55,7 +55,7 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/efuse_mmr.adoc[]
 endif::backend-pdf[]
 
-====== eFuse Control Registers
+=== eFuse Control Registers
 
 The eFuse Control CSR provides command and status registers for read, write,
 and verification operations on the eFuse array.
@@ -70,7 +70,7 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/efuse_interface_ctrl.adoc[]
 endif::backend-pdf[]
 
-====== SHIM Control Registers
+=== SHIM Control Registers
 
 The SHIM Control CSR provides foundry-specific configuration registers for
 timing adaptation and eFuse bank initialization. Its placement is

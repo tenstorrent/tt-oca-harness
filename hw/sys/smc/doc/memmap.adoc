@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Memory Map
+:description: SMC address-space organization, access control, and register reference.
+
 [[smc-memory-map]]
-=== Memory Map
 
 This section provides a comprehensive overview of the SMC memory map.
 The SMC address space is organized to provide access to various
@@ -17,6 +19,7 @@ resources identically regardless of which base is used, as long as the
 access falls inside the relevant local or global aperture. Both
 apertures are sized by the SMC `REGION_SIZE` CSR, which resets to
 16 MiB and may be reprogrammed by firmware.
+Address ranges include both endpoints.
 Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
 conventions. For details on how `LOCAL_BASE` and `GLOBAL_BASE` relate
 and how an adopter maps this aperture into the system address space,
@@ -29,7 +32,7 @@ SMC Address Map Integration
 endif::backend-pdf[]
 section of the Integration Guide.
 
-==== Address Space Organization
+== Address Space Organization
 
 The generated component map reports each allocated aperture separately from
 the extent occupied by registers.
@@ -42,12 +45,12 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
-==== Detailed Address Map
+== Detailed Address Map
 
 The component-level assignments are generated in the preceding table. This
 avoids a second list of addresses drifting from the implemented decode.
 
-==== AXI-Lite External Window
+== AXI-Lite External Window
 
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
 window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
@@ -74,13 +77,19 @@ firmware.
 The unallocated remainder of the window is passed through to the chip-level
 adopter external port.
 
-==== Register Interface Standards
+== Register Interface Standards
 
 All SMC components use standard AMBA interfaces. We summarize the
 interfaces in the following table:
 
+ifdef::backend-html5[]
+++++
+<div class="smc-memory-table-scroll" role="region" aria-label="Register Interface Standards" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Register Interface Standards
-[width="100%",cols="25%,25%,20%,30%",options="header",]
+[width="100%",cols="20%,18%,18%,44%",options="header",role="smc-memory-table"]
 |=======================================================================
 |Interface |Address Width |Data Width |Description
 |AXI4-Lite |32-bit |64-bit |High-performance components
@@ -90,12 +99,18 @@ interfaces in the following table:
 4+|*Protection:* AXI protection bits used for secure/non-secure access control
 |=======================================================================
 
-==== Access Control and Security
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+== Access Control and Security
 
 The SMC implements the following access control mechanisms:
 
 .Access Control Mechanisms
-[width="100%",cols="25%,75%",options="header",]
+[width="100%",cols="30%,70%",options="header"]
 |=======================================================================
 |Mechanism |Description
 |Address Filtering |Configurable inbound and outbound address filters
@@ -109,16 +124,21 @@ privileges
 reporting
 |=======================================================================
 
-==== Spare SMC Register Blocks
+== Spare SMC Register Blocks
 
 The following shows the detailed register map of a set of
 programmer-visible spare SMC blocks. They are spare but essential: for
 example, the scratch block provides general-purpose registers, and the
 chip-config and NDM-reset blocks hold system-level configuration and
-reset control. `oca_i3c_wrap` is omitted; I3C remains deferred with the
-wording in <<peripherals>>.
+reset control. `oca_i3c_wrap` is omitted; I3C remains deferred as described in
+ifdef::backend-html5[]
+xref:smc:periphs.adoc#peripherals[Peripherals].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<peripherals>>.
+endif::backend-pdf[]
 
-===== Chip Config, Scratch, NDM Reset, and Misc Wrap
+=== Chip Config, Scratch, NDM Reset, and Misc Wrap
 
 ifdef::backend-html5[]
 ++++
@@ -136,7 +156,7 @@ include::../regs/gen/adoc/blocks/ndm_reset.adoc[]
 include::../regs/gen/adoc/blocks/misc_wrap.adoc[]
 endif::backend-pdf[]
 
-===== Base Config, DFX Status, and GPIO POC/PBias
+=== Base Config, DFX Status, and GPIO POC/PBias
 
 ifdef::backend-html5[]
 ++++
@@ -152,7 +172,7 @@ include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[]
 include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[]
 endif::backend-pdf[]
 
-==== Component-Specific Register Documentation
+== Component-Specific Register Documentation
 
 For detailed register-level documentation of each SMC component, refer
 to the individual component documentation:

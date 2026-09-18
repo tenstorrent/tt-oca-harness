@@ -1,52 +1,93 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Cross-Trigger Matrix
+:description: CTM — AND-OR crossbar for cross-trigger pulse routing. Dimensions come from the generated register map.
+
 [[cross-trigger-matrix]]
-=== Cross Trigger Matrix
 
-==== Overview
+The Cross Trigger Matrix (CTM) is an AND-OR crossbar that aggregates and
+statically routes cross-trigger pulses between all sources (CTPs, CLAs,
+internal devices) and sinks under AXI-Lite CSR control.
+The default DTP configuration uses 26 input ports and 26 output ports.
 
-The Cross Trigger Matrix (CTM) is a crossbar that aggregates and statically
-routes cross trigger pulses between various sources and sinks. Typical
-connections to the CTM include Core Logic Analyzers (CLAs) and Cross Trigger
-Ports (CTPs), including other miscellaneous devices.
+== Overview
 
-The CTM is compatible with CTPs operating in either of the two signaling modes,
-point-to-point or wire-OR. Typically, each device or logic module connected to
-the CTM will act as both a source and a sink for cross trigger pulses.
+The CTM is compatible with both wire-OR and point-to-point CTPs. Typical
+connections include Core Logic Analyzers (CLAs) and Cross Trigger Ports (CTPs).
+Each device connected to the CTM acts as both a source and a sink.
 
-==== Configuration
+The `NUM_CT_SRC` and `NUM_CT_DST` parameters in
+`regs/cross_trigger_matrix.rdl` define the matrix dimensions and default to
+26 each. The RTL derives the following localparams from the generated
+register map:
 
-The port counts are localparams read from the generated register collateral, not
-module parameters, so they cannot be overridden at instantiation:
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTM configuration constants" tabindex="0">
+++++
+endif::backend-html5[]
 
-[cols="<,<,<",options="header"]
+[cols="<24,<10,<66",options="header",role="port-reference"]
 |===
 |Constant |Value |Description
-|NUM_CT_SRC |`CT_SRC` array size in the register map (26) |Number of CT_Src output ports
-|NUM_CT_DST |`CT_DST_SELECT` field width in the register map (26) |Number of CT_Dst input ports
+
+|`NUM_CT_SRC`
+|26
+|Number of CT_Src output ports (sized by the `CT_SRC` array in the register map).
+
+|`NUM_CT_DST`
+|26
+|Number of CT_Dst input ports (sized by the `CT_DST_SELECT` field width in the
+register map).
 |===
 
-The register map carries both dimensions as parameters of its own: it declares
-one configuration register per CT_Src port as an array sized by `NUM_CT_SRC`,
-each holding one select bit per CT_Dst port over a field sized by `NUM_CT_DST`,
-where that field may be 1 to 64 bits wide. Resizing the matrix therefore means
-regenerating the register map rather than editing the RTL or overriding a
-parameter. See <<ctm-architecture>> for how the select fields drive the
-crossbar.
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
-The two parameters the module does take are the AXI-Lite request and response
-types, which the cross trigger network overrides to match its crossbar.
+These values cannot be overridden at instantiation. Resizing the matrix
+requires regenerating the register map with PeakRDL addrmap overrides
+(`OCAH_REG_RDL_PARAMS_cross_trigger_matrix`) that match the elaborated
+Cross-Trigger Network total (`NUM_CTP + NUM_INT_CT`). The CTN fails
+elaboration if that total disagrees with the generated `NUM_CT_SRC` and
+`NUM_CT_DST`. The CTM takes the AXI-Lite request and response types as
+module parameters, which the CTN overrides to match its own crossbar.
 
-Every port occupies 8 bytes regardless of the port count. Above 32 destinations
-the select mask fills both words of that space and its writes become buffered,
-committing when the upper word is written so that a mask spanning the word
-boundary never takes effect half-programmed. At or below 32 destinations,
-including the DTP's 26, the register is a single word with immediate writes.
+Every CT_Src port occupies 8 bytes regardless of the port count. At or below
+32 destinations, each register is a single 32-bit word with immediate write
+semantics. Above 32 destinations both words must be written before the mask
+takes effect, preventing half-programmed states.
+
+The register map for the CTM and for each CTP is included once in the
+ifdef::backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[CTN Memory Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ctn-memory-map,CTN Memory Map>>
+endif::backend-pdf[]
+section. This page covers the crossbar architecture and signal interface only.
 
 ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]
 
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$cross_trigger_matrix/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+
+== Interface
+
+ifdef::backend-html5[]
+include::partial$cross_trigger_matrix/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]

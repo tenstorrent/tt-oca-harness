@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[avsbus-controller]]
-==== AVSBus Controller
+= AVSBus Controller
 
-===== Overview
+== Overview
 
 The AVSBus Controller is a hardware IP that implements the AVSBus 1.3.1
 specification for adaptive voltage scaling communication. It acts as a
@@ -14,7 +14,7 @@ voltage adjustments for optimal performance and energy efficiency. This
 version supports 32-bit frame-based communication without multi-target
 addressing.
 
-===== Description and Features
+== Description and Features
 
 * *Single-Target Support*: Communicates with a single AVS target device
 through a two-wire protocol interface
@@ -31,6 +31,21 @@ interrupt sources for system-level event handling
 * *Slave Resync Operation*: Automatic periodic resynchronization with
 configurable intervals
 
+ifdef::backend-html5[]
+include::partial$avsbus_controller/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$avsbus_controller/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$avsbus_controller/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]
