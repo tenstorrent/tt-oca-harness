@@ -34,6 +34,8 @@ _ABR_NAMED = re.compile(
     r"^    (\w+)\s+(\w+)(?:\s*@(0x[0-9A-Fa-f]+))?;",
     re.M,
 )
+# Sequential `type_t name_r;` instances in `regfile intr_block_t`.
+_ABR_INTR_INST = re.compile(r"^\s+\w+_t\s+(\w+_r)\s*;", re.M)
 
 
 @dataclass(frozen=True)
@@ -168,54 +170,26 @@ def mldsa_name_words(label: str = "MLDSA-87") -> tuple[int, int]:
     return word(raw[:4]), word(raw[4:])
 
 
-_ABR_PARAMS = _ABR_RDL.parent / "abr_params_pkg.sv"
-_ABR_CORE_ID = re.compile(
-    r"^\s*parameter\s*\[\s*63\s*:\s*0\s*\]\s*"
-    r"(ML(?:DSA|KEM)_CORE_(?:NAME|VERSION))\s*=\s*64'h([0-9A-Fa-f_]+)\s*;",
-    re.M,
-)
+# DV-owned ABR identity goldens. crypto.adoc names ML-DSA-87 and ML-KEM-1024;
+# the Caliptra NAME field stores each 8-char label as two 16-bit-swapped words.
+# Version is the Adams Bridge 2.0.1 identity this package grades — the RDL
+# declares NAME/VERSION ``sw = r`` with no reset, so the register sweep cannot
+# supply them. A compare against a design parameter package would ask the DUT
+# to agree with itself.
+ABR_ID_WORDS: dict[str, tuple[int, int]] = {
+    "MLDSA_CORE_NAME": mldsa_name_words("MLDSA-87"),
+    "MLDSA_CORE_VERSION": mldsa_name_words("2.0.1\0\0\0"),
+    "MLKEM_CORE_NAME": mldsa_name_words("KEM-1024"),
+    "MLKEM_CORE_VERSION": mldsa_name_words("2.0.1\0\0\0"),
+}
 
 
-@lru_cache(maxsize=1)
-def abr_core_ids() -> dict[str, int]:
-    """The four ABR identity constants, from ``abr_params_pkg.sv``.
-
-    NAME and VERSION are read-only registers the RDL declares with no reset
-    value: ``abr_ctrl.sv`` wires them straight from these parameters, so the
-    parameter package is where the expected word is stated. The RDL cannot
-    supply it, and a value copied out of a simulation would be the DUT
-    grading itself.
-
-    What a compare against these catches is integration, which is what an ID
-    register is for: the ABR aperture decoding somewhere else, a half-word
-    swap lost in the AXI path, or a different core version wired in than the
-    vendor drop this tree carries.
-    """
-    text = _ABR_PARAMS.read_text(encoding="utf-8")
-    out = {m.group(1): int(m.group(2).replace("_", ""), 16) for m in _ABR_CORE_ID.finditer(text)}
-    expected = {
-        "MLDSA_CORE_NAME",
-        "MLDSA_CORE_VERSION",
-        "MLKEM_CORE_NAME",
-        "MLKEM_CORE_VERSION",
-    }
-    if set(out) != expected:
-        raise RuntimeError(
-            f"{_ABR_PARAMS} declares {sorted(out)}, expected {sorted(expected)}; "
-            "the vendor drop renamed the identity parameters and a compare "
-            "against them would be built on a partial table"
-        )
-    return out
-
-
-def abr_id_words(param: str) -> tuple[int, int]:
-    """One 64-bit ABR identity parameter as the two 32-bit register reads.
-
-    ``MLDSA_VERSION[0]`` takes bits [31:0] and ``[1]`` bits [63:32]
-    (abr_ctrl.sv), so the low word is the first register.
-    """
-    value = abr_core_ids()[param]
-    return value & 0xFFFF_FFFF, (value >> 32) & 0xFFFF_FFFF
+def abr_id_golden(param: str) -> tuple[int, int]:
+    """The DV-owned expected words for one ABR identity register pair."""
+    try:
+        return ABR_ID_WORDS[param]
+    except KeyError as exc:
+        raise KeyError(f"unknown ABR identity {param!r}") from exc
 
 
 @lru_cache(maxsize=1)
@@ -255,12 +229,17 @@ def abr_offsets() -> dict[str, int]:
             out[name] = int(at, 16)
     if "intr_block_rf" not in out:
         raise RuntimeError("intr_block_rf missing from abr_reg.rdl")
-    out["global_intr_en_r"] = 0x0
-    out["error_intr_en_r"] = 0x4
-    out["notif_intr_en_r"] = 0x8
-    out["error_internal_intr_r"] = 0x14
-    out["notif_internal_intr_r"] = 0x18
-    out["error_intr_trig_r"] = 0x1C
+    # First nine packed 32-bit instances in `regfile intr_block_t`, relative
+    # to `intr_block_rf`. Later counters carry explicit @ offsets.
+    rf_start = text.find("regfile intr_block_t")
+    rf_end = text.find("intr_block_t intr_block_rf", rf_start)
+    if rf_start < 0 or rf_end < 0:
+        raise RuntimeError("abr_reg.rdl is missing the interrupt register file")
+    insts = _ABR_INTR_INST.findall(text[rf_start:rf_end])[:9]
+    if len(insts) < 9:
+        raise RuntimeError(f"abr_reg.rdl intr_block_t packed {len(insts)} instances, need 9")
+    for i, name in enumerate(insts):
+        out.setdefault(name, i * 4)
     return out
 
 
@@ -283,6 +262,20 @@ _ABR_FIELD = re.compile(
     re.S,
 )
 _ABR_CMD = re.compile(r"\[br\]\s*([01]{3})\s+for\s+([A-Za-z+]+)")
+_ABR_TYPED_REG = re.compile(
+    r"reg (\w+_t) \{\n(?P<body>.*?)\n        \};",
+    re.S,
+)
+# Interrupt-block type -> the instance this package reads.
+_ABR_TYPE_TO_INST = {
+    "global_intr_en_t": "global_intr_en_r",
+    "error_intr_en_t": "error_intr_en_r",
+    "notif_intr_en_t": "notif_intr_en_r",
+    "error_intr_t": "error_internal_intr_r",
+    "notif_intr_t": "notif_internal_intr_r",
+    "error_intr_trig_t": "error_intr_trig_r",
+    "notif_intr_trig_t": "notif_intr_trig_r",
+}
 
 # Packed crypto-EDN probe word order. Consuming tests bind each name with a
 # single-client beat delta before any concurrent fork.
@@ -311,6 +304,27 @@ def abr_reg_fields() -> dict[str, dict[str, tuple[int, int]]]:
             fields[f.group("name")] = (flsb, width)
             lsb = flsb + width
         out[m.group("name")] = fields
+    for m in _ABR_TYPED_REG.finditer(text):
+        lsb = 0
+        fields = {}
+        for f in _ABR_FIELD.finditer(m.group("body")):
+            if f.group("hi") and f.group("lo"):
+                hi, lo = int(f.group("hi")), int(f.group("lo"))
+                width = hi - lo + 1
+                flsb = lo
+            elif f.group("hi"):
+                width = int(f.group("hi"))
+                flsb = lsb
+            else:
+                width = 1
+                flsb = lsb
+            fields[f.group("name")] = (flsb, width)
+            lsb = flsb + width
+        if fields:
+            out[m.group(1)] = fields
+            inst = _ABR_TYPE_TO_INST.get(m.group(1))
+            if inst:
+                out[inst] = fields
     return out
 
 
@@ -517,6 +531,17 @@ def aon_timer_wkup_ticks_per_count(prescaler: int) -> int:
 # means.
 AXI_BUS_BYTES = 8
 
+# Deny-path read payload this package grades. AMBA IHI 0022 names DECERR
+# (RRESP=2'b11) but not the data. The marker is a DV-owned convention so an
+# allow (staged CSR value) and a deny cannot collide on the data conjunct.
+# A 32-bit beat returns the half that addr[2] selects.
+DENY_READ_SENTINEL = 0xCA11_AB1E_BADC_AB1E
+
+
+def deny_read_rdata(addr: int) -> int:
+    """The deny-path half-word a 32-bit beat at ``addr`` must return."""
+    return ((DENY_READ_SENTINEL >> 32) if addr & 0x4 else DENY_READ_SENTINEL) & 0xFFFF_FFFF
+
 
 def axi_lane_strobe(addr: int, access_bytes: int = 4, bus_bytes: int = AXI_BUS_BYTES) -> int:
     """WSTRB for an aligned ``access_bytes`` transfer at ``addr`` on the bus."""
@@ -543,6 +568,11 @@ def _selftest() -> None:
     assert abr_off("MLDSA_CTRL") == 0x10
     assert abr_off("MLDSA_PUBKEY") == 0x1000
     assert abr_off("kv_mldsa_seed_rd_ctrl") == 0x8000
+    assert abr_off("global_intr_en_r") == 0x0
+    assert abr_off("error_intr_trig_r") == 0x1C
+    assert abr_field_mask("global_intr_en_r", "error_en") == 1
+    assert abr_field_mask("global_intr_en_r", "notif_en") == 2
+    assert abr_field_mask("error_intr_en_r", "error_internal_en") == 1
     assert abr_field_lsb("MLDSA_CTRL", "CTRL") == 0
     assert abr_field_mask("MLDSA_CTRL", "ZEROIZE") == 1 << 3
     assert abr_field_mask("MLDSA_CTRL", "EXTERNAL_MU") == 1 << 5
@@ -564,6 +594,12 @@ def _selftest() -> None:
     name0, name1 = mldsa_name_words()
     assert name0 == 0x44534D4C
     assert name1 == 0x3837412D
+    assert abr_id_golden("MLDSA_CORE_NAME") == (name0, name1)
+    assert abr_id_golden("MLKEM_CORE_NAME") == mldsa_name_words("KEM-1024")
+    assert abr_id_golden("MLDSA_CORE_VERSION") == (0x302E322E, 0x00003100)
+    assert abr_id_golden("MLKEM_CORE_VERSION") == (0x302E322E, 0x00003100)
+    assert deny_read_rdata(0x0) == 0xBADC_AB1E
+    assert deny_read_rdata(0x4) == 0xCA11_AB1E
     locked = esrc_fips_locked_fields()
     # A parse that silently matched nothing would empty the post-lock walk.
     assert len(locked) >= 10, locked

@@ -24,7 +24,7 @@ from __future__ import annotations
 from env.sep_spec_tables import (
     abr_ctrl_cmd,
     abr_field_mask,
-    abr_id_words,
+    abr_id_golden,
     abr_off,
     mldsa_name_words,
     window,
@@ -87,8 +87,8 @@ KEM_CT_WORDS = 392
 # Identity words. crypto.adoc names ML-KEM-1024; the Caliptra NAME field is the
 # 8-char label KEM-1024, packed the same way as the ML-DSA-87 pair.
 KEM_NAME0_EXP, KEM_NAME1_EXP = mldsa_name_words("KEM-1024")
-# `sw = r` with no RDL reset; abr_params_pkg.sv states the expected word.
-KEM_VER0_EXP, KEM_VER1_EXP = abr_id_words("MLKEM_CORE_VERSION")
+# `sw = r` with no RDL reset. DV-owned golden from sep_spec_tables.
+KEM_VER0_EXP, KEM_VER1_EXP = abr_id_golden("MLKEM_CORE_VERSION")
 
 
 class SepAbrMlkem(SepAbr):
@@ -126,8 +126,8 @@ def _selftest() -> None:
     # Encoding of the crypto.adoc label through the shared NAME packer.
     assert KEM_NAME0_EXP == 0x4D2D4B45
     assert KEM_NAME1_EXP == 0x32343130
-    # The label encoding and the RTL parameter must state the same NAME.
-    assert (KEM_NAME0_EXP, KEM_NAME1_EXP) == abr_id_words("MLKEM_CORE_NAME")
+    # The crypto.adoc label encoding and the DV golden table must agree.
+    assert (KEM_NAME0_EXP, KEM_NAME1_EXP) == abr_id_golden("MLKEM_CORE_NAME")
     assert (KEM_VER0_EXP, KEM_VER1_EXP) == (0x302E322E, 0x00003100)  # "2.0.1"
     assert MLKEM_VERSION0 - MLKEM_NAME0 == 0x8
 

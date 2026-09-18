@@ -328,7 +328,7 @@ appears.
 |`sep_drbg_gen_segmentation_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|Phase 2 DRBG iconic feature: a CSRNG Generate command completes at the commanded length, `gen_last` asserts, and the trailing CTR_DRBG Update runs.
+|Phase 2 DRBG iconic feature: a CSRNG Generate command completes at the commanded length and `gen_last` asserts. The trailing CTR_DRBG Update is not observed on this vehicle.
 |`sep_crypto_per_ip_reset_isolation_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -2361,7 +2361,7 @@ remapped routes to the error slave and never executes.
 |CHK-JTAG-TOKEN-BLOCK
 |In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the `hw/sys/sep/doc/periphs.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`.
 |CHK-JTAG-IFACE-DENY
-|In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes DECERR with `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
+|In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes DECERR with the DV-owned deny-path sentinel `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
 |CHK-OTP-JTAG2AXI-UNGATED
 |After sense-done, `dbg_disable_o.smc_otp_jtag2axi` and `sep_otp_jtag2axi` both read 0. The common post-sense helper emits this on every leaf that waits for fuse-sense-done. Fuse-interface allow/deny stays on the checkers above.
 |===
@@ -2865,9 +2865,9 @@ scored (`rom_main` KM). This test uses golden routing.
 
 *BFM / Model*: ocah_axi_vip, entropy golden
 
-*Objective*: Phase 2 DRBG iconic feature: a CSRNG Generate command completes at the commanded length, `gen_last` asserts, and the trailing CTR_DRBG Update runs.
+*Objective*: Phase 2 DRBG iconic feature: a CSRNG Generate command completes at the commanded length and `gen_last` asserts. The trailing CTR_DRBG Update is not observed: this vehicle completes exactly one Generate, so no golden-compared block lands after that Update.
 
-*Test Coverage*: CSRNG Generate at the commanded length, `gen_last`, and the trailing Update.
+*Test Coverage*: CSRNG Generate at the commanded length and `gen_last`. The trailing Update is out of scope for this vehicle.
 
 *Test Procedure*:
 
@@ -3151,8 +3151,9 @@ is why they are asserted from Python probes rather than left to the SVA.
 |CHK-VERSION
 |The MLDSA version registers read `2.0.1`. The RDL declares NAME and VERSION
 `sw = r` with no reset, so the register sweep cannot grade them; the expected
-words come from `abr_params_pkg.sv`, which is what `abr_ctrl.sv` wires into
-both pairs. NAME alone passes on a core of the wrong version.
+words are the DV-owned `ABR_ID_WORDS` table (`crypto.adoc` labels packed in
+the Caliptra NAME endian, plus the Adams Bridge 2.0.1 identity). NAME alone
+passes on a core of the wrong version.
 |CHK-RESET-STATUS
 |Reset STATUS is READY, not VALID, not ERROR.
 |CHK-NIST-PK
@@ -3323,9 +3324,9 @@ ABR bit itself. The pulse uses `SW_RESET_N.abr_sw_rst_n`.
 back over this aperture, so a dead decode would turn all of them into compares
 against zero.
 |CHK-KEM-VERSION
-|The ML-KEM version registers read `2.0.1`, from the same `abr_params_pkg.sv`
-constants that drive them. `sw = r` with no RDL reset, so the register sweep
-cannot grade them.
+|The ML-KEM version registers read `2.0.1`, from the same DV-owned
+`ABR_ID_WORDS` table as the ML-DSA pair. `sw = r` with no RDL reset, so the
+register sweep cannot grade them.
 |CHK-KEM-KEYGEN
 |For the ACVP seeds, the 392-word encapsulation key and the 792-word
 decapsulation key both match the published vector word-for-word.
@@ -3500,7 +3501,7 @@ recovery attempt.
 |===
 |Checker |Contract
 |CHK-ALLOW-RULE
-|An allowed external read returns OKAY *and* the exact staged value. A denied read returns DECERR *and* the error-slave sentinel `0xBADCAB1E` (`axi_err_slv` default `RespData` low half; `axi_filter_wrap` does not override it), so allow and deny are distinguished by data as well as by response code.
+|An allowed external read returns OKAY *and* the exact staged value. A denied read returns DECERR *and* the DV-owned deny-path sentinel `0xBADCAB1E` (`env/sep_spec_tables.py` `DENY_READ_SENTINEL` low half), so allow and deny are distinguished by data as well as by response code.
 |CHK-BLOCK-DEFAULT
 |A non-allowed external read in the *same CSR page* returns DECERR — so region reachability is proven by the allow case and cannot explain the deny.
 |CHK-READ-ALLOWED
@@ -6696,13 +6697,11 @@ known-zero. The zero fill is *setup*, not a wipe security checker.
 |CHK-RT
 |With the scrambler re-enabled, the logical index reads back the exact plaintext.
 |CHK-KEYRD
-|Before the lock, the key register reads back the key that was written. This is the control for CHK-LOCK: without it a write-only or permanently-zero register would satisfy the zero-after-lock check for free.
-|CHK-LOCK
-|After the sticky lock the same register reads zero.
+|Before the lock, the key register reads back the key that was written. This is the control for CHK-SWWEL: without it a write-only register would make a later refused write look like a lock.
 |CHK-LOCKRT
 |The round-trip still recovers the plaintext after the lock, so the hardware kept the key it was using.
 |CHK-SWWEL
-|The lock's DOCUMENTED contract: after it, a write of a different key and a write clearing ENABLE are both refused -- the round-trip still returns the plaintext and ENABLE still reads set. CHK-LOCK grades behaviour the specification does not state; this grades the behaviour it does.
+|The lock's documented contract: after it, a write of a different key and a write clearing ENABLE are both refused -- the round-trip still returns the plaintext and ENABLE still reads set.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -6722,16 +6721,12 @@ address transform is a bijection on the 1024 indices, and a bijection may have
 fixed points, so a single index mapping to itself is legal; an identity mapping
 across three seeded indices is not.
 
-CHK-LOCK asserts RTL behaviour the architecture document does not state. The
-document requires only that a locked key cannot be modified; the hardware
-additionally drives the key register to zero once the lock commits, while the
-scrambler keeps using a shadow copy. CHK-LOCKRT is what makes the pair
-meaningful: the key is unreadable and still in use. Recorded here because a
-checker that outruns its specification should say so rather than read as
-contracted behaviour.
+The architecture document requires only that a locked key cannot be modified.
+CHK-SWWEL grades that contract. The register readback after lock is not claimed.
 
-*Not claimed*: the eraser's use of the shared scrambler, the seal and retire
-contracts owned by the vault test, and the wipe security contract.
+*Not claimed*: the post-lock key-register data value, the eraser's use of the
+shared scrambler, the seal and retire contracts owned by the vault test, and
+the wipe security contract.
 
 '''''
 

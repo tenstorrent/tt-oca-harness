@@ -39,6 +39,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import DENY_READ_SENTINEL, deny_read_rdata
 from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -78,20 +79,16 @@ WINDOW_B_VALUE = 0xA11C_BEEF
 BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
 RESP_SLVERR = 2
-# AMBA AXI4-Lite decode error (IHI 0022). Denied-access data sentinel graded
-# by every deny checker that shares this table.
+# AMBA AXI4-Lite encodings (IHI 0022): OKAY=0, SLVERR=2, DECERR=3.
 RESP_DECERR = 3
-ERR_SLV_RDATA = 0xBADC_AB1E
-# The error slave answers with one 64-bit word
-# (`hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv` RESP_DATA), so a 32-bit
-# beat returns the half that addr[2] selects. ERR_SLV_RDATA above is the low
-# half; a denied access at an addr[2]=1 offset returns the high half instead.
-ERR_SLV_WORD = 0xCA11_AB1E_BADC_AB1E
+# DV-owned deny-path marker (env.sep_spec_tables.DENY_READ_SENTINEL).
+ERR_SLV_RDATA = deny_read_rdata(0)
+ERR_SLV_WORD = DENY_READ_SENTINEL
 
 
 def err_slv_rdata(addr: int) -> int:
-    """The err-slave half a 32-bit beat at ``addr`` returns."""
-    return ((ERR_SLV_WORD >> 32) if addr & 0x4 else ERR_SLV_WORD) & 0xFFFF_FFFF
+    """The deny-path half a 32-bit beat at ``addr`` must return."""
+    return deny_read_rdata(addr)
 
 
 # Entry count from the generated export, not a literal: the bank is an RDL

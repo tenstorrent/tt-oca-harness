@@ -15,7 +15,7 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import (
     abr_ctrl_cmd,
     abr_field_mask,
-    abr_id_words,
+    abr_id_golden,
     abr_off,
     agg_from_pic,
     mldsa_name_words,
@@ -45,11 +45,9 @@ ABR_ERROR_TRIG = ABR_INTR + abr_off("error_intr_trig_r")
 ABR_NOTIF_INTR = ABR_INTR + abr_off("notif_internal_intr_r")
 
 NAME0_EXP, NAME1_EXP = mldsa_name_words()
-# NAME and VERSION are `sw = r` with no RDL reset, so abr_params_pkg.sv is the
-# only place the expected word is stated. NAME is derived twice -- from the
-# crypto.adoc label and from the parameter -- and the self-test requires the
-# two to agree.
-VER0_EXP, VER1_EXP = abr_id_words("MLDSA_CORE_VERSION")
+# NAME and VERSION are `sw = r` with no RDL reset. The expected words are the
+# DV-owned goldens in sep_spec_tables (crypto.adoc labels + Adams Bridge 2.0.1).
+VER0_EXP, VER1_EXP = abr_id_golden("MLDSA_CORE_VERSION")
 
 CMD_KEYGEN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN")
 CMD_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "SIGN")
@@ -81,13 +79,10 @@ ABR_PRIVKEY_IN = ABR_BASE + abr_off("MLDSA_PRIVKEY_IN")
 IRQ_ABR_ERROR = agg_from_pic("Adams Bridge error")
 IRQ_ABR_NOTIF = agg_from_pic("Adams Bridge notification")
 
-# Caliptra interrupt-block field positions (abr_reg.rdl `intr_block_rf`):
-# global_intr_en_r.error_en[0], .notif_en[1]; each event-enable register's
-# first source is bit 0. The offset parser does not emit these field masks.
-INTR_ERROR_EN = 1 << 0
-INTR_NOTIF_EN = 1 << 1
+INTR_ERROR_EN = abr_field_mask("global_intr_en_r", "error_en")
+INTR_NOTIF_EN = abr_field_mask("global_intr_en_r", "notif_en")
 INTR_GLOBAL_BOTH = INTR_ERROR_EN | INTR_NOTIF_EN
-INTR_EVENT_EN = 1 << 0
+INTR_EVENT_EN = abr_field_mask("error_intr_en_r", "error_internal_en")
 
 
 class SepAbrKeygenCfg:
@@ -180,8 +175,8 @@ def _selftest() -> None:
     assert ABR_NOTIF_INTR - ABR_INTR == 0x18
     assert NAME0_EXP == 0x44534D4C
     assert NAME1_EXP == 0x3837412D
-    # The label encoding and the RTL parameter must state the same NAME.
-    assert (NAME0_EXP, NAME1_EXP) == abr_id_words("MLDSA_CORE_NAME")
+    # The crypto.adoc label encoding and the DV golden table must agree.
+    assert (NAME0_EXP, NAME1_EXP) == abr_id_golden("MLDSA_CORE_NAME")
     assert (VER0_EXP, VER1_EXP) == (0x302E322E, 0x00003100)  # "2.0.1"
     assert ABR_VERSION0 - ABR_NAME0 == 0x8
     cfg = SepAbrKeygenCfg(1)
