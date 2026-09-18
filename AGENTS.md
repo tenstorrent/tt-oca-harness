@@ -37,6 +37,7 @@ partial read costs far more time than a full one.
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
 | `.github/ISSUE_CURATION.md` | Project curator; catalog weekly-issue-activity and discussion-task-miner (`automation.enabled`) and compile |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
+| `virtual_platform/README.md` | Virtual platform: the three VP executables and which need Whisper, dependency resolution, the `sepvp` runner and pytest harness, container vs ambient build |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
@@ -164,10 +165,39 @@ All subsystems compile with `--specs=picolibc.specs`, and a stock or site RISC-V
 often lacks picolibc, so a native build fails with a message pointing you back at the
 container. A host toolchain that does provide it works too — point `RISCV_TOOLCHAIN` at it.
 
+That one image also carries the OCAH virtual platform's toolchain (g++, cmake, Boost,
+OpenSSL, the runner's Python), so `make -C virtual_platform vp VP_CONTAINER=1` builds and
+runs `sep-vp` in it. The `vp-*` subcommands are aliases onto the same image.
+
+The model builds three VP executables and the harness builds all three. `sep-vp` is the
+default; `smc-vp` and `smu-vp` (the SMC+SEP integration, which runs both subsystems in
+one process) are **opt-in**, because asking for either first builds the Whisper ISS into
+`local/` — `make vp` never does, and needs no Whisper. They share a second build tree,
+`vp/build_smc`, since `WHISPER_HOME` is read at configure time and decides whether those
+platforms are generated at all. Their tests delegate to the model's own
+`sw/{smc,smu}-vp-tests` runners rather than the SEP-specific `sepvp` package. The image
+needs no extra packages for them.
+
+```bash
+make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1
+make -C virtual_platform smc-test VP_CONTAINER=1   # SMC_ARGS=<one-test>
+make -C virtual_platform smu-test VP_CONTAINER=1   # SMU_ARGS=<one-test>
+```
+
+`smu-vp` has a companion artifact, `libsmc_cluster_smu.so`, built beside the target
+rather than into `bin/`. `smu-vp` bakes that build-tree path into its RUNPATH, so it runs
+in place — but a copy made without the `.so` binds silently to the build tree and then
+fails once that tree is gone. Carry both, or source the generated
+`setup_environment*.sh`, which puts its directory on `LD_LIBRARY_PATH`.
+
 ```bash
 ./scripts/docker-run.sh build     # build the image once
 ./scripts/docker-run.sh verify    # prints the compiler version and multilib list
+./scripts/docker-run.sh vp-verify # the VP side: g++ and cmake versions
 ```
+
+On a host with both podman and docker installed, `OCAH_ENGINE=docker` (or `podman`) pins
+which one `docker-run.sh` uses instead of taking whichever it finds first.
 
 With the companion's `OCAH_DOCKER_CACHE_DIR` set, `docker-run.sh` loads the image from that
 shared cache instead of building it; otherwise it builds locally from the Dockerfile.
@@ -178,8 +208,11 @@ runs natively on the host. Not every testbench does this — check its Makefile 
 assuming.
 
 When `OCAH_TOOLCHAIN_ROOTFS` points at an extracted toolchain rootfs and `bwrap` is
-installed, `docker-run.sh` uses bubblewrap instead of a container engine. It is an opt-in
-either way: the companion sets it for you, and anyone can set it by hand. That path fails
+installed, `docker-run.sh` uses bubblewrap instead of a container engine. The rootfs must
+come from the merged image: both `usr/bin/riscv64-unknown-elf-gcc` and `usr/bin/g++` are
+probed, and a rootfs missing either is rejected up front with a warning and an automatic
+fall back to the container engine. It is an opt-in either way: the companion sets it for
+you, and anyone can set it by hand. That path fails
 when the checkout sits on a filesystem whose mountpoint bwrap cannot create inside its
 read-only rootfs, typically a networked or site-specific mount:
 
@@ -298,6 +331,7 @@ Whatever the testbench, these hold:
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
 | `flows/` | Lint, format and synthesis flow makefiles |
+| `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |
