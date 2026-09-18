@@ -64,6 +64,23 @@ class sep_axi_id_routing_test(sep_base_test):
             f"CHK-ID-ROUTE FAIL: {len(results)} of {SCRATCH_WORDS} reads returned a result at all"
         )
 
+        # The routing compare above is only meaningful while the responses are
+        # in flight together: an ID truncated to N bits aliases k onto k+2**N,
+        # and a bus that retires each read before accepting the next answers
+        # every access correctly whatever it does to the ID. ids are issued in
+        # order, so a depth of d proves ids 0..d-1 were live at once; the whole
+        # set overlapping is what puts every aliasing pair under the compare.
+        assert idr.max_outstanding == SCRATCH_WORDS, (
+            f"CHK-ID-OVERLAP FAIL: the bus reached {idr.max_outstanding} outstanding "
+            f"read(s), not {SCRATCH_WORDS}; with the reads serialized the ID compare "
+            "below passes on a truncated ID field and proves nothing"
+        )
+        self.logger.info(
+            "CHK-ID-OVERLAP PASS: %d reads outstanding at once, so every "
+            "aliasing ID pair (k, k+4) was in flight together",
+            idr.max_outstanding,
+        )
+
         problems: list[str] = []
         for axi_id, idx, resp, data in results:
             want = idr.value_for(idx)

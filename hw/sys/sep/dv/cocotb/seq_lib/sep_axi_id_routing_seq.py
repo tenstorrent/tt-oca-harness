@@ -30,6 +30,7 @@ completion, so nothing overlaps through it.
 from __future__ import annotations
 
 import cocotb
+from cocotb.triggers import RisingEdge
 from sep_reg_meta import sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -43,6 +44,19 @@ SCRATCH_ADDRS = tuple(sym(f"SEP_SCRATCH_COLD_SCRATCH_{i}__REG_ADDR") for i in ra
 SCRATCH_WORDS = len(SCRATCH_ADDRS)
 
 RESP_OKAY = 0
+
+
+def _bit(sig) -> bool:
+    """One signal bit, with X/Z read as 0 (two-state Verilator drives 0/1)."""
+    try:
+        return bool(int(sig.value))
+    except ValueError:
+        return False
+
+
+def _hs(valid, ready) -> bool:
+    """A handshake completed on this edge."""
+    return _bit(valid) and _bit(ready)
 
 # The TB drives the SEP slave port, whose AXI ID is 3 bits wide
 # (tb_top.sv ocah_axi_sva ID_WIDTH for s_axi), so 0..7 is the whole field and
@@ -69,6 +83,10 @@ class SepAxiIdRouting(SepAxiRegDriver):
     """Primes one scratch word per ID, then reads them all at once."""
 
     _DRIVER_TAG = "AXI-ID"
+
+    # Deepest AR-accepted-minus-R-returned depth concurrent_reads() observed.
+    # Zero until it has run, so a caller grading it cannot read a stale pass.
+    max_outstanding = 0
 
     @staticmethod
     def addr_for(idx: int) -> int:
@@ -126,6 +144,12 @@ class SepAxiIdRouting(SepAxiRegDriver):
         (axi_id, word index, resp, data); resp is -1 when nothing returned.
         """
         master = self._master()
+        # The overlap is the contract, not a side effect: an ID field carried
+        # in too few bits still answers every access, and only a response that
+        # is in flight beside its aliasing partner can expose the truncation.
+        # The LSU demux bounds outstanding transactions, so the depth this bus
+        # actually reaches is measured rather than assumed.
+        watch = cocotb.start_soon(self._watch_outstanding())
         tasks = [
             cocotb.start_soon(
                 master.read_bytes_result(
@@ -148,4 +172,18 @@ class SepAxiIdRouting(SepAxiRegDriver):
                 continue
             data = int.from_bytes(res.data_bytes, "little") if res.data_bytes else res.data
             out.append((axi_id, idx, res.resp, data))
+        watch.kill()
         return out
+
+    async def _watch_outstanding(self) -> None:
+        """Track the deepest AR-accepted-minus-R-returned the bus reaches."""
+        dut = cocotb.top
+        self.max_outstanding = 0
+        live = 0
+        while True:
+            await RisingEdge(dut.clk_i)
+            if _hs(dut.s_axi_arvalid, dut.s_axi_arready):
+                live += 1
+                self.max_outstanding = max(self.max_outstanding, live)
+            if _hs(dut.s_axi_rvalid, dut.s_axi_rready) and _bit(dut.s_axi_rlast):
+                live -= 1
