@@ -195,6 +195,22 @@ localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SIZE = 64'h1008;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR = 64'h10B00000;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_SIZE = 64'h38;
 
+function automatic longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(input int unsigned RXDATA_idx);
+    return 64'h10B00024 + (RXDATA_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_NUM = 64'h1;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_SIZE = 64'h4;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_STRIDE = 64'h4;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_TOTAL_SIZE = 64'h4;
+
+function automatic longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(input int unsigned TXDATA_idx);
+    return 64'h10B00028 + (TXDATA_idx * 64'h4);
+endfunction
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_NUM = 64'h1;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_SIZE = 64'h4;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_STRIDE = 64'h4;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_TOTAL_SIZE = 64'h4;
+
 localparam longint unsigned OCH_SEP_TOP_AP_REGION_BASE_ADDR = 64'h11000000;
 localparam longint unsigned OCH_SEP_TOP_AP_REGION_SIZE = 64'h800000;
 
@@ -788,16 +804,15 @@ localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_BASE_ADDR = 64'h10A301B8;
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_BASE_ADDR = 64'h10A301C0;
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SEP_VERSION_ID_BASE_ADDR = 64'h10A31000;
-localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR = 64'h10B00000;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR = 64'h10B00000;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR = 64'h10B00004;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR = 64'h10B00008;
-localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR = 64'h10B00010;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_ALERT_TEST_BASE_ADDR = 64'h10B0000C;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR = 64'h10B00010;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR = 64'h10B00014;
-localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR = 64'h10B00018;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR = 64'h10B00018;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR = 64'h10B0001C;
-localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR = 64'h10B00020;
-localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR = 64'h10B00024;
-localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR = 64'h10B00028;
+localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR = 64'h10B00020;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR = 64'h10B0002C;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR = 64'h10B00030;
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR = 64'h10B00034;

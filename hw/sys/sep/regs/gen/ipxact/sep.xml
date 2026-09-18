@@ -17690,17 +17690,16 @@ latches.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>spi_controller</ipxact:name>
-          <ipxact:displayName>SPI Controller</ipxact:displayName>
           <ipxact:addressOffset>'h10b00000</ipxact:addressOffset>
           <ipxact:range>'h38</ipxact:range>
           <ipxact:register>
-            <ipxact:name>INTR_STATUS</ipxact:name>
-            <ipxact:description>Interrupt Status Register</ipxact:description>
+            <ipxact:name>INTR_STATE</ipxact:name>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>ERROR</ipxact:name>
-              <ipxact:description>Error Interrupt. Asserted when any bit in the ERROR_STATUS register is set.</ipxact:description>
+              <ipxact:description>Error-related interrupts, see !!ERROR_ENABLE register for more
+information.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -17709,13 +17708,14 @@ latches.</ipxact:description>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SPI_EVENT</ipxact:name>
-              <ipxact:description>SPI Event Interrupt. Asserted when any event associated with a bit in the
-EVENT_ENABLE register occurs.</ipxact:description>
-              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:description>Event-related interrupts, see !!EVENT_ENABLE register for more
+information.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -17728,12 +17728,11 @@ EVENT_ENABLE register occurs.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>INTR_ENABLE</ipxact:name>
-            <ipxact:description>Interrupt Enable Register</ipxact:description>
             <ipxact:addressOffset>'h4</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>ERROR</ipxact:name>
-              <ipxact:description>Error Interrupt Enable.</ipxact:description>
+              <ipxact:description>Enable interrupt when !!INTR_STATE.error is set.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -17745,8 +17744,8 @@ EVENT_ENABLE register occurs.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SPI_EVENT</ipxact:name>
-              <ipxact:description>SPI Event Interrupt Enable.</ipxact:description>
-              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:description>Enable interrupt when !!INTR_STATE.spi_event is set.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -17758,13 +17757,11 @@ EVENT_ENABLE register occurs.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>INTR_TEST</ipxact:name>
-            <ipxact:description>Interrupt Test Register</ipxact:description>
             <ipxact:addressOffset>'h8</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>ERROR</ipxact:name>
-              <ipxact:description>Error Interrupt Test. Writing `1` to this bit forces the Error Interrupt and
-writing `0` releases it.</ipxact:description>
+              <ipxact:description>Write 1 to force !!INTR_STATE.error to 1.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -17772,25 +17769,40 @@ writing `0` releases it.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
+              <ipxact:access>write-only</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SPI_EVENT</ipxact:name>
-              <ipxact:description>SPI Event Interrupt Test. Writing `1` to this bit forces the SPI Event
-Interrupt and writing `0` releases it.</ipxact:description>
-              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:description>Write 1 to force !!INTR_STATE.spi_event to 1.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
+              <ipxact:access>write-only</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>CTRL</ipxact:name>
-            <ipxact:description>Control Register</ipxact:description>
+            <ipxact:name>ALERT_TEST</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>FATAL_FAULT</ipxact:name>
+              <ipxact:description>Write 1 to trigger one alert event of this kind.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>CONTROL</ipxact:name>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -17837,8 +17849,8 @@ interference.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SW_RST</ipxact:name>
-              <ipxact:description>Clears the entire IP to the reset state when set to 1, including
-the FIFOs, the CDC's, the core state machine and the shift register.
+              <ipxact:description>Clears the internal state (not registers) to the reset state when set to 1,
+including the FIFOs, the CDC's, the core state machine and the shift register.
 In the current implementation, the CDC FIFOs are drained not reset.
 Therefore software must confirm that both FIFO's empty before releasing
 the IP from reset.</ipxact:description>
@@ -17849,12 +17861,11 @@ the IP from reset.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>write-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SPIEN</ipxact:name>
-              <ipxact:description>Enables the SPI Controller. On reset, this field is 0, meaning
+              <ipxact:description>Enables the SPI host.  On reset, this field is 0, meaning
 that no transactions can proceed.</ipxact:description>
               <ipxact:bitOffset>31</ipxact:bitOffset>
               <ipxact:resets>
@@ -17868,14 +17879,13 @@ that no transactions can proceed.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Status Register</ipxact:description>
             <ipxact:addressOffset>'h14</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>TXQD</ipxact:name>
-              <ipxact:description>Transmit queue depth. Indicates how many unsent 32-bit words
-are currently in the TX FIFO.  When active, this result may
-be an overestimate due to synchronization delays.</ipxact:description>
+              <ipxact:description>Transmit queue depth.
+Indicates how many unsent 32-bit words are currently in the TX FIFO.
+When active, this result may be an overestimate due to synchronization delays.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -18030,7 +18040,7 @@ due to lack of data in the TX FIFO</ipxact:description>
             <ipxact:field>
               <ipxact:name>TXFULL</ipxact:name>
               <ipxact:description>When high, indicates that the transmit data fifo is full.
-Any further writes to !!RXDATA will create an error interrupt.</ipxact:description>
+Any further writes to !!TXDATA will create an error interrupt.</ipxact:description>
               <ipxact:bitOffset>29</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -18072,8 +18082,7 @@ an error, and will trigger an interrupt.</ipxact:description>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>CFG</ipxact:name>
-            <ipxact:description>Configuration Register</ipxact:description>
+            <ipxact:name>CONFIGOPTS</ipxact:name>
             <ipxact:addressOffset>'h18</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -18177,7 +18186,7 @@ device.  The sampling behavior is modified by the
               <ipxact:name>CPOL</ipxact:name>
               <ipxact:description>The polarity of the sck clock signal.  When CPOL is 0,
 sck is low when idle, and emits high pulses.   When CPOL
-is low, sck is high when idle, and emits a series of low
+is 1, sck is high when idle, and emits a series of low
 pulses.</ipxact:description>
               <ipxact:bitOffset>31</ipxact:bitOffset>
               <ipxact:resets>
@@ -18191,7 +18200,6 @@ pulses.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CSID</ipxact:name>
-            <ipxact:description>Chip Select ID Register</ipxact:description>
             <ipxact:addressOffset>'h1c</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -18208,43 +18216,21 @@ pulses.</ipxact:description>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>CMD</ipxact:name>
-            <ipxact:description>Command Register</ipxact:description>
+            <ipxact:name>COMMAND</ipxact:name>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>LEN</ipxact:name>
-              <ipxact:description>Segment Length.
-
-For read or write segments, this field controls the
-number of 1-byte bursts to transmit and or receive in
-this command segment.  The number of cycles required
-to send or received a byte will depend on !!COMMAND.SPEED.
-For dummy segments, (!!COMMAND.DIRECTION == 0), this register
-controls the number of dummy cycles to issue.
-The number of bytes (or dummy cycles) in the segment will be
-equal to !!COMMAND.LEN + 1.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>9</ipxact:bitWidth>
-              <ipxact:access>write-only</ipxact:access>
-              <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
               <ipxact:name>CSAAT</ipxact:name>
-              <ipxact:description>Chip select active after transaction.  If CSAAT = 0, the
-chip select line is raised immediately at the end of the
-command segment.   If !!COMMAND.CSAAT = 1, the chip select
-line is left low at the end of the current transaction
-segment.  This allows the creation longer, more
-complete SPI transactions, consisting of several separate
-segments for issuing instructions, pausing for dummy cycles,
-and transmitting or receiving data from the device.</ipxact:description>
-              <ipxact:bitOffset>9</ipxact:bitOffset>
+              <ipxact:description>**C**hip **S**elect **A**ctive **A**fter **T**ransaction.
+If !!COMMAND.CSAAT = 0, the chip select line is raised immediately
+at the end of the command segment.
+If !!COMMAND.CSAAT = 1, the chip select line is left low at the
+end of the current transaction segment.
+This allows the creation of longer, more complete SPI transactions,
+consisting of several separate segments for issuing instructions,
+pausing for dummy cycles, and transmitting or receiving data from
+the device.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18257,7 +18243,7 @@ and transmitting or receiving data from the device.</ipxact:description>
               <ipxact:name>SPEED</ipxact:name>
               <ipxact:description>The speed for this command segment: &quot;0&quot; = Standard SPI. &quot;1&quot; = Dual SPI.
 &quot;2&quot;=Quad SPI,  &quot;3&quot;: RESERVED.</ipxact:description>
-              <ipxact:bitOffset>10</ipxact:bitOffset>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18271,7 +18257,7 @@ and transmitting or receiving data from the device.</ipxact:description>
               <ipxact:description>The direction for the following command: &quot;0&quot; = Dummy cycles
 (no TX/RX). &quot;1&quot; = Rx only, &quot;2&quot; = Tx only, &quot;3&quot; = Bidirectional
 Tx/Rx (Standard SPI mode only).</ipxact:description>
-              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18280,44 +18266,26 @@ Tx/Rx (Standard SPI mode only).</ipxact:description>
               <ipxact:bitWidth>2</ipxact:bitWidth>
               <ipxact:access>write-only</ipxact:access>
             </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>RXDATA</ipxact:name>
-            <ipxact:description>Received Data Register</ipxact:description>
-            <ipxact:addressOffset>'h24</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>RXDATA</ipxact:name>
-              <ipxact:description>SPI Received Data.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:name>LEN</ipxact:name>
+              <ipxact:description>Segment Length.
+
+For read or write segments, this field controls the
+number of 1-byte bursts to transmit and or receive in
+this command segment.  The number of cycles required
+to send or received a byte will depend on !!COMMAND.SPEED.
+For dummy segments, (!!COMMAND.DIRECTION == 0), this register
+controls the number of dummy cycles to issue.
+The number of bytes (or dummy cycles) in the segment will be
+equal to !!COMMAND.LEN + 1.</ipxact:description>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-              <ipxact:readAction>modify</ipxact:readAction>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>TXDATA</ipxact:name>
-            <ipxact:description>Transmit Data Register</ipxact:description>
-            <ipxact:addressOffset>'h28</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>TXDATA</ipxact:name>
-              <ipxact:description>SPI Transmit Data.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:bitWidth>20</ipxact:bitWidth>
               <ipxact:access>write-only</ipxact:access>
-              <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -18342,7 +18310,7 @@ when !!STATUS.READY is not asserted.)</ipxact:description>
               <ipxact:name>OVERFLOW</ipxact:name>
               <ipxact:description>Overflow Errors: If this bit is set, the block sends an
 error interrupt whenever the TX FIFO overflows.</ipxact:description>
-              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h1</ipxact:value>
@@ -18356,7 +18324,7 @@ error interrupt whenever the TX FIFO overflows.</ipxact:description>
               <ipxact:description>Underflow Errors: If this bit is set, the block sends an
 error interrupt whenever there is a read from !!RXDATA
 but the RX FIFO is empty.</ipxact:description>
-              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h1</ipxact:value>
@@ -18370,7 +18338,7 @@ but the RX FIFO is empty.</ipxact:description>
               <ipxact:description>Invalid Command Errors: If this bit is set, the block sends an
 error interrupt whenever a command is sent with invalid values for
 !!COMMAND.SPEED or !!COMMAND.DIRECTION.</ipxact:description>
-              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h1</ipxact:value>
@@ -18383,7 +18351,7 @@ error interrupt whenever a command is sent with invalid values for
               <ipxact:name>CSIDINVAL</ipxact:name>
               <ipxact:description>Invalid CSID: If this bit is set, the block sends an error interrupt whenever
 a command is submitted, but CSID exceeds NumCS.</ipxact:description>
-              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h1</ipxact:value>
@@ -18414,7 +18382,7 @@ a command is submitted, but CSID exceeds NumCS.</ipxact:description>
             <ipxact:field>
               <ipxact:name>OVERFLOW</ipxact:name>
               <ipxact:description>Indicates that firmware has overflowed the TX FIFO</ipxact:description>
-              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18429,7 +18397,7 @@ a command is submitted, but CSID exceeds NumCS.</ipxact:description>
               <ipxact:name>UNDERFLOW</ipxact:name>
               <ipxact:description>Indicates that firmware has attempted to read from
 !!RXDATA when the RX FIFO is empty.</ipxact:description>
-              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18445,7 +18413,7 @@ a command is submitted, but CSID exceeds NumCS.</ipxact:description>
               <ipxact:description>Indicates an invalid command segment, meaning either an invalid value of
 !!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad
 speed</ipxact:description>
-              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18459,7 +18427,7 @@ speed</ipxact:description>
             <ipxact:field>
               <ipxact:name>CSIDINVAL</ipxact:name>
               <ipxact:description>Indicates a command was attempted with an invalid value for !!CSID.</ipxact:description>
-              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18474,7 +18442,7 @@ speed</ipxact:description>
               <ipxact:name>ACCESSINVAL</ipxact:name>
               <ipxact:description>Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such
 'zero byte' writes are not supported.</ipxact:description>
-              <ipxact:bitOffset>20</ipxact:bitOffset>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18507,7 +18475,7 @@ goes high</ipxact:description>
               <ipxact:name>TXEMPTY</ipxact:name>
               <ipxact:description>Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY
 goes high</ipxact:description>
-              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18522,7 +18490,7 @@ goes high</ipxact:description>
 the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
 reassertion of this interrupt, read more data from the RX FIFO, or
 increase !!CONTROL.RX_WATERMARK.</ipxact:description>
-              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18537,7 +18505,7 @@ increase !!CONTROL.RX_WATERMARK.</ipxact:description>
 the TX FIFO is less than !!CONTROL.TX_WATERMARK.  To prevent the
 reassertion of this interrupt add more data to the TX FIFO, or
 reduce !!CONTROL.TX_WATERMARK.</ipxact:description>
-              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18550,7 +18518,7 @@ reduce !!CONTROL.TX_WATERMARK.</ipxact:description>
               <ipxact:name>READY</ipxact:name>
               <ipxact:description>Assert to send a spi_event interrupt whenever !!STATUS.READY
 goes high</ipxact:description>
-              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -18563,7 +18531,7 @@ goes high</ipxact:description>
               <ipxact:name>IDLE</ipxact:name>
               <ipxact:description>Assert to send a spi_event interrupt whenever !!STATUS.ACTIVE
 goes low</ipxact:description>
-              <ipxact:bitOffset>20</ipxact:bitOffset>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>

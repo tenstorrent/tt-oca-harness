@@ -3724,26 +3724,42 @@ localparam int unsigned SPI_CONTROLLER_REG_MAP_BASE_ADDR                        
 localparam int unsigned SPI_CONTROLLER_REG_MAP_SIZE                                                               = 32'h00000038;
 
 
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_REG_OFFSET                                                     = 32'h00000000;
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_REG_ADDR                                                       = 32'h10B00000;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_REG_ADDR                                                        = 32'h10B00000;
 localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_REG_OFFSET                                                     = 32'h00000004;
 localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_REG_ADDR                                                       = 32'h10B00004;
 localparam int unsigned SPI_CONTROLLER_INTR_TEST_REG_OFFSET                                                       = 32'h00000008;
 localparam int unsigned SPI_CONTROLLER_INTR_TEST_REG_ADDR                                                         = 32'h10B00008;
-localparam int unsigned SPI_CONTROLLER_CTRL_REG_OFFSET                                                            = 32'h00000010;
-localparam int unsigned SPI_CONTROLLER_CTRL_REG_ADDR                                                              = 32'h10B00010;
+localparam int unsigned SPI_CONTROLLER_ALERT_TEST_REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned SPI_CONTROLLER_ALERT_TEST_REG_ADDR                                                        = 32'h10B0000C;
+localparam int unsigned SPI_CONTROLLER_CONTROL_REG_OFFSET                                                         = 32'h00000010;
+localparam int unsigned SPI_CONTROLLER_CONTROL_REG_ADDR                                                           = 32'h10B00010;
 localparam int unsigned SPI_CONTROLLER_STATUS_REG_OFFSET                                                          = 32'h00000014;
 localparam int unsigned SPI_CONTROLLER_STATUS_REG_ADDR                                                            = 32'h10B00014;
-localparam int unsigned SPI_CONTROLLER_CFG_REG_OFFSET                                                             = 32'h00000018;
-localparam int unsigned SPI_CONTROLLER_CFG_REG_ADDR                                                               = 32'h10B00018;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_REG_ADDR                                                        = 32'h10B00018;
 localparam int unsigned SPI_CONTROLLER_CSID_REG_OFFSET                                                            = 32'h0000001C;
 localparam int unsigned SPI_CONTROLLER_CSID_REG_ADDR                                                              = 32'h10B0001C;
-localparam int unsigned SPI_CONTROLLER_CMD_REG_OFFSET                                                             = 32'h00000020;
-localparam int unsigned SPI_CONTROLLER_CMD_REG_ADDR                                                               = 32'h10B00020;
-localparam int unsigned SPI_CONTROLLER_RXDATA_REG_OFFSET                                                          = 32'h00000024;
-localparam int unsigned SPI_CONTROLLER_RXDATA_REG_ADDR                                                            = 32'h10B00024;
-localparam int unsigned SPI_CONTROLLER_TXDATA_REG_OFFSET                                                          = 32'h00000028;
-localparam int unsigned SPI_CONTROLLER_TXDATA_REG_ADDR                                                            = 32'h10B00028;
+localparam int unsigned SPI_CONTROLLER_COMMAND_REG_OFFSET                                                         = 32'h00000020;
+localparam int unsigned SPI_CONTROLLER_COMMAND_REG_ADDR                                                           = 32'h10B00020;
+
+
+//==============================================================================
+// Memory: RXDATA[0]
+//==============================================================================
+
+localparam int unsigned SPI_CONTROLLER_RXDATA_0__MEM_BASE_ADDR                                                    = 32'h10B00024;
+localparam int unsigned SPI_CONTROLLER_RXDATA_0__MEM_SIZE                                                         = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: TXDATA[0]
+//==============================================================================
+
+localparam int unsigned SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR                                                    = 32'h10B00028;
+localparam int unsigned SPI_CONTROLLER_TXDATA_0__MEM_SIZE                                                         = 32'h00000004;
+
 localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_OFFSET                                                    = 32'h0000002C;
 localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_ADDR                                                      = 32'h10B0002C;
 localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_REG_OFFSET                                                    = 32'h00000030;
@@ -6189,17 +6205,16 @@ localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_DEFAULT          
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_DEFAULT                                        = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT                                         = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_REG_DEFAULT                                               = 64'h00000000DEADBEEF;
-localparam longint unsigned SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned SPI_CONTROLLER_INTR_STATE_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_INTR_ENABLE_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_INTR_TEST_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_CTRL_REG_DEFAULT                                                       = 32'h0000007F;
+localparam longint unsigned SPI_CONTROLLER_ALERT_TEST_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned SPI_CONTROLLER_CONTROL_REG_DEFAULT                                                    = 32'h0000007F;
 localparam longint unsigned SPI_CONTROLLER_STATUS_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_CFG_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned SPI_CONTROLLER_CONFIGOPTS_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_CSID_REG_DEFAULT                                                       = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_CMD_REG_DEFAULT                                                        = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_RXDATA_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_TXDATA_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT                                               = 32'h00011111;
+localparam longint unsigned SPI_CONTROLLER_COMMAND_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT                                               = 32'h0000001F;
 localparam longint unsigned SPI_CONTROLLER_ERROR_STATUS_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_EVENT_ENABLE_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_REG_DEFAULT                                                  = 64'h0000000000000000;
@@ -8427,38 +8442,41 @@ localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_SHIFT         
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK                                           = 64'hFFFFFFFF;
 localparam     int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_SHIFT                                          = 0;
 
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_ERROR_MASK                                                     = 32'h1;
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_ERROR_SHIFT                                                    = 0;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_ERROR_MASK                                                      = 32'h1;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_ERROR_SHIFT                                                     = 0;
 
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_SPI_EVENT_MASK                                                 = 32'h10;
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_SPI_EVENT_SHIFT                                                = 4;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_SPI_EVENT_MASK                                                  = 32'h2;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_SPI_EVENT_SHIFT                                                 = 1;
 
 localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_ERROR_MASK                                                     = 32'h1;
 localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_ERROR_SHIFT                                                    = 0;
 
-localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_MASK                                                 = 32'h10;
-localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_SHIFT                                                = 4;
+localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_MASK                                                 = 32'h2;
+localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_SHIFT                                                = 1;
 
 localparam int unsigned SPI_CONTROLLER_INTR_TEST_ERROR_MASK                                                       = 32'h1;
 localparam int unsigned SPI_CONTROLLER_INTR_TEST_ERROR_SHIFT                                                      = 0;
 
-localparam int unsigned SPI_CONTROLLER_INTR_TEST_SPI_EVENT_MASK                                                   = 32'h10;
-localparam int unsigned SPI_CONTROLLER_INTR_TEST_SPI_EVENT_SHIFT                                                  = 4;
+localparam int unsigned SPI_CONTROLLER_INTR_TEST_SPI_EVENT_MASK                                                   = 32'h2;
+localparam int unsigned SPI_CONTROLLER_INTR_TEST_SPI_EVENT_SHIFT                                                  = 1;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_RX_WATERMARK_MASK                                                     = 32'hFF;
-localparam int unsigned SPI_CONTROLLER_CTRL_RX_WATERMARK_SHIFT                                                    = 0;
+localparam int unsigned SPI_CONTROLLER_ALERT_TEST_FATAL_FAULT_MASK                                                = 32'h1;
+localparam int unsigned SPI_CONTROLLER_ALERT_TEST_FATAL_FAULT_SHIFT                                               = 0;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_TX_WATERMARK_MASK                                                     = 32'hFF00;
-localparam int unsigned SPI_CONTROLLER_CTRL_TX_WATERMARK_SHIFT                                                    = 8;
+localparam int unsigned SPI_CONTROLLER_CONTROL_RX_WATERMARK_MASK                                                  = 32'hFF;
+localparam int unsigned SPI_CONTROLLER_CONTROL_RX_WATERMARK_SHIFT                                                 = 0;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_OUTPUT_EN_MASK                                                        = 32'h20000000;
-localparam int unsigned SPI_CONTROLLER_CTRL_OUTPUT_EN_SHIFT                                                       = 29;
+localparam int unsigned SPI_CONTROLLER_CONTROL_TX_WATERMARK_MASK                                                  = 32'hFF00;
+localparam int unsigned SPI_CONTROLLER_CONTROL_TX_WATERMARK_SHIFT                                                 = 8;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_SW_RST_MASK                                                           = 32'h40000000;
-localparam int unsigned SPI_CONTROLLER_CTRL_SW_RST_SHIFT                                                          = 30;
+localparam int unsigned SPI_CONTROLLER_CONTROL_OUTPUT_EN_MASK                                                     = 32'h20000000;
+localparam int unsigned SPI_CONTROLLER_CONTROL_OUTPUT_EN_SHIFT                                                    = 29;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_SPIEN_MASK                                                            = 32'h80000000;
-localparam int unsigned SPI_CONTROLLER_CTRL_SPIEN_SHIFT                                                           = 31;
+localparam int unsigned SPI_CONTROLLER_CONTROL_SW_RST_MASK                                                        = 32'h40000000;
+localparam int unsigned SPI_CONTROLLER_CONTROL_SW_RST_SHIFT                                                       = 30;
+
+localparam int unsigned SPI_CONTROLLER_CONTROL_SPIEN_MASK                                                         = 32'h80000000;
+localparam int unsigned SPI_CONTROLLER_CONTROL_SPIEN_SHIFT                                                        = 31;
 
 localparam int unsigned SPI_CONTROLLER_STATUS_TXQD_MASK                                                           = 32'hFF;
 localparam int unsigned SPI_CONTROLLER_STATUS_TXQD_SHIFT                                                          = 0;
@@ -8502,98 +8520,92 @@ localparam int unsigned SPI_CONTROLLER_STATUS_ACTIVE_SHIFT                      
 localparam int unsigned SPI_CONTROLLER_STATUS_READY_MASK                                                          = 32'h80000000;
 localparam int unsigned SPI_CONTROLLER_STATUS_READY_SHIFT                                                         = 31;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CLKDIV_MASK                                                            = 32'hFFFF;
-localparam int unsigned SPI_CONTROLLER_CFG_CLKDIV_SHIFT                                                           = 0;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CLKDIV_MASK                                                     = 32'hFFFF;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CLKDIV_SHIFT                                                    = 0;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CSNIDLE_MASK                                                           = 32'hF0000;
-localparam int unsigned SPI_CONTROLLER_CFG_CSNIDLE_SHIFT                                                          = 16;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNIDLE_MASK                                                    = 32'hF0000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNIDLE_SHIFT                                                   = 16;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CSNTRAIL_MASK                                                          = 32'hF00000;
-localparam int unsigned SPI_CONTROLLER_CFG_CSNTRAIL_SHIFT                                                         = 20;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNTRAIL_MASK                                                   = 32'hF00000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNTRAIL_SHIFT                                                  = 20;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CSNLEAD_MASK                                                           = 32'hF000000;
-localparam int unsigned SPI_CONTROLLER_CFG_CSNLEAD_SHIFT                                                          = 24;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNLEAD_MASK                                                    = 32'hF000000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNLEAD_SHIFT                                                   = 24;
 
-localparam int unsigned SPI_CONTROLLER_CFG_FULLCYC_MASK                                                           = 32'h20000000;
-localparam int unsigned SPI_CONTROLLER_CFG_FULLCYC_SHIFT                                                          = 29;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_FULLCYC_MASK                                                    = 32'h20000000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_FULLCYC_SHIFT                                                   = 29;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CPHA_MASK                                                              = 32'h40000000;
-localparam int unsigned SPI_CONTROLLER_CFG_CPHA_SHIFT                                                             = 30;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CPHA_MASK                                                       = 32'h40000000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CPHA_SHIFT                                                      = 30;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CPOL_MASK                                                              = 32'h80000000;
-localparam int unsigned SPI_CONTROLLER_CFG_CPOL_SHIFT                                                             = 31;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CPOL_MASK                                                       = 32'h80000000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CPOL_SHIFT                                                      = 31;
 
 localparam int unsigned SPI_CONTROLLER_CSID_CSID_MASK                                                             = 32'hFFFFFFFF;
 localparam int unsigned SPI_CONTROLLER_CSID_CSID_SHIFT                                                            = 0;
 
-localparam int unsigned SPI_CONTROLLER_CMD_LEN_MASK                                                               = 32'h1FF;
-localparam int unsigned SPI_CONTROLLER_CMD_LEN_SHIFT                                                              = 0;
+localparam int unsigned SPI_CONTROLLER_COMMAND_CSAAT_MASK                                                         = 32'h1;
+localparam int unsigned SPI_CONTROLLER_COMMAND_CSAAT_SHIFT                                                        = 0;
 
-localparam int unsigned SPI_CONTROLLER_CMD_CSAAT_MASK                                                             = 32'h200;
-localparam int unsigned SPI_CONTROLLER_CMD_CSAAT_SHIFT                                                            = 9;
+localparam int unsigned SPI_CONTROLLER_COMMAND_SPEED_MASK                                                         = 32'h6;
+localparam int unsigned SPI_CONTROLLER_COMMAND_SPEED_SHIFT                                                        = 1;
 
-localparam int unsigned SPI_CONTROLLER_CMD_SPEED_MASK                                                             = 32'hC00;
-localparam int unsigned SPI_CONTROLLER_CMD_SPEED_SHIFT                                                            = 10;
+localparam int unsigned SPI_CONTROLLER_COMMAND_DIRECTION_MASK                                                     = 32'h18;
+localparam int unsigned SPI_CONTROLLER_COMMAND_DIRECTION_SHIFT                                                    = 3;
 
-localparam int unsigned SPI_CONTROLLER_CMD_DIRECTION_MASK                                                         = 32'h3000;
-localparam int unsigned SPI_CONTROLLER_CMD_DIRECTION_SHIFT                                                        = 12;
-
-localparam int unsigned SPI_CONTROLLER_RXDATA_RXDATA_MASK                                                         = 32'hFFFFFFFF;
-localparam int unsigned SPI_CONTROLLER_RXDATA_RXDATA_SHIFT                                                        = 0;
-
-localparam int unsigned SPI_CONTROLLER_TXDATA_TXDATA_MASK                                                         = 32'hFFFFFFFF;
-localparam int unsigned SPI_CONTROLLER_TXDATA_TXDATA_SHIFT                                                        = 0;
+localparam int unsigned SPI_CONTROLLER_COMMAND_LEN_MASK                                                           = 32'h1FFFFE0;
+localparam int unsigned SPI_CONTROLLER_COMMAND_LEN_SHIFT                                                          = 5;
 
 localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDBUSY_MASK                                                  = 32'h1;
 localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDBUSY_SHIFT                                                 = 0;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_MASK                                                 = 32'h10;
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_SHIFT                                                = 4;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_MASK                                                 = 32'h2;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_SHIFT                                                = 1;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_MASK                                                = 32'h100;
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_SHIFT                                               = 8;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_MASK                                                = 32'h4;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_SHIFT                                               = 2;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_MASK                                                 = 32'h1000;
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_SHIFT                                                = 12;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_MASK                                                 = 32'h8;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_SHIFT                                                = 3;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_MASK                                                = 32'h10000;
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_SHIFT                                               = 16;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_MASK                                                = 32'h10;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_SHIFT                                               = 4;
 
 localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDBUSY_MASK                                                  = 32'h1;
 localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDBUSY_SHIFT                                                 = 0;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_MASK                                                 = 32'h10;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_SHIFT                                                = 4;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_MASK                                                 = 32'h2;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_SHIFT                                                = 1;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_MASK                                                = 32'h100;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_SHIFT                                               = 8;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_MASK                                                = 32'h4;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_SHIFT                                               = 2;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_MASK                                                 = 32'h1000;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_SHIFT                                                = 12;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_MASK                                                 = 32'h8;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_SHIFT                                                = 3;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_MASK                                                = 32'h10000;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_SHIFT                                               = 16;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_MASK                                                = 32'h10;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_SHIFT                                               = 4;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_MASK                                              = 32'h100000;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_SHIFT                                             = 20;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_MASK                                              = 32'h20;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_SHIFT                                             = 5;
 
 localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXFULL_MASK                                                   = 32'h1;
 localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXFULL_SHIFT                                                  = 0;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_MASK                                                  = 32'h10;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_SHIFT                                                 = 4;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_MASK                                                  = 32'h2;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_SHIFT                                                 = 1;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXWM_MASK                                                     = 32'h100;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXWM_SHIFT                                                    = 8;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXWM_MASK                                                     = 32'h4;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXWM_SHIFT                                                    = 2;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXWM_MASK                                                     = 32'h1000;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXWM_SHIFT                                                    = 12;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXWM_MASK                                                     = 32'h8;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXWM_SHIFT                                                    = 3;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_READY_MASK                                                    = 32'h10000;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_READY_SHIFT                                                   = 16;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_READY_MASK                                                    = 32'h10;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_READY_SHIFT                                                   = 4;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_MASK                                                     = 32'h100000;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_SHIFT                                                    = 20;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_MASK                                                     = 32'h20;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_SHIFT                                                    = 5;
 
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_DATA_MASK                                                    = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned REMAPPED_REGION_MEM_WORD_DATA_SHIFT                                                   = 0;
@@ -11368,15 +11380,13 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   spi_event ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   error ;
-} spi_controller_intr_status_reg_t;
+} spi_controller_intr_state_reg_t;
 
 
 
 typedef struct packed {
     logic [0:0]   spi_event ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   error ;
 } spi_controller_intr_enable_reg_t;
 
@@ -11384,9 +11394,14 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   spi_event ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   error ;
 } spi_controller_intr_test_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   fatal_fault ;
+} spi_controller_alert_test_reg_t;
 
 
 
@@ -11397,7 +11412,7 @@ typedef struct packed {
     logic [12:0]   rsvd_0 ;
     logic [7:0]   tx_watermark ;
     logic [7:0]   rx_watermark ;
-} spi_controller_ctrl_reg_t;
+} spi_controller_control_reg_t;
 
 
 
@@ -11430,7 +11445,7 @@ typedef struct packed {
     logic [3:0]   csntrail ;
     logic [3:0]   csnidle ;
     logic [15:0]   clkdiv ;
-} spi_controller_cfg_reg_t;
+} spi_controller_configopts_reg_t;
 
 
 
@@ -11441,35 +11456,19 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [19:0]   len ;
     logic [1:0]   direction ;
     logic [1:0]   speed ;
     logic [0:0]   csaat ;
-    logic [8:0]   len ;
-} spi_controller_cmd_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   rxdata ;
-} spi_controller_rxdata_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   txdata ;
-} spi_controller_txdata_reg_t;
+} spi_controller_command_reg_t;
 
 
 
 typedef struct packed {
     logic [0:0]   csidinval ;
-    logic [2:0]   rsvd_3 ;
     logic [0:0]   cmdinval ;
-    logic [2:0]   rsvd_2 ;
     logic [0:0]   underflow ;
-    logic [2:0]   rsvd_1 ;
     logic [0:0]   overflow ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   cmdbusy ;
 } spi_controller_error_enable_reg_t;
 
@@ -11477,15 +11476,10 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   accessinval ;
-    logic [2:0]   rsvd_4 ;
     logic [0:0]   csidinval ;
-    logic [2:0]   rsvd_3 ;
     logic [0:0]   cmdinval ;
-    logic [2:0]   rsvd_2 ;
     logic [0:0]   underflow ;
-    logic [2:0]   rsvd_1 ;
     logic [0:0]   overflow ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   cmdbusy ;
 } spi_controller_error_status_reg_t;
 
@@ -11493,15 +11487,10 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   idle ;
-    logic [2:0]   rsvd_4 ;
     logic [0:0]   ready ;
-    logic [2:0]   rsvd_3 ;
     logic [0:0]   txwm ;
-    logic [2:0]   rsvd_2 ;
     logic [0:0]   rxwm ;
-    logic [2:0]   rsvd_1 ;
     logic [0:0]   txempty ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   rxfull ;
 } spi_controller_event_enable_reg_t;
 

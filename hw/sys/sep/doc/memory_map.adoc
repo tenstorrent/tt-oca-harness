@@ -279,10 +279,10 @@ register map follows.
 
 ifdef::backend-html5[]
 ++++
-include::partial$sep/regs/gen/html/blocks/spi_controller.html[]
+include::ip:partial$spi_controller/regs/gen/html/spi_controller.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/spi_controller.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc[]
 endif::backend-pdf[]
