@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
+      run_nix_ci: ${{ steps.diff-class.outputs.run_nix_ci }}
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request' || github.event_name == 'push'
@@ -38,6 +39,7 @@ jobs:
               ;;
             *)
               echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
+              echo "run_nix_ci=true" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -447,6 +449,42 @@ jobs:
             %-G%.%#
           level: error
           name: format-c
+
+  format-nix:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_nix_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+           fetch-depth: 0
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          sed -i 's|git@github.com:tenstorrent/|https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/|g' $GITHUB_WORKSPACE/.gitmodules
+          git submodule update --init
+          git config --global --add safe.directory $GITHUB_WORKSPACE/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+      - name: Run nix-fmt
+        run: |
+          set +e
+          NIX_FMT_CHECK_NO_COLOUR=1 nix fmt -- -f check > "$GITHUB_WORKSPACE/format_nix_raw.log" 2>&1
+          nix_exit=$?
+          echo "nix fmt exit: $nix_exit" >&2
+          cat "$GITHUB_WORKSPACE/format_nix_raw.log" >&2
+          awk '/^diff --git/{found=1} found && /^(traversed |emitted |formatted [0-9]|Error: )/{exit} found{print}' \
+            "$GITHUB_WORKSPACE/format_nix_raw.log" > "$GITHUB_WORKSPACE/format_nix.log"
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: ${{ github.workspace }}/format_nix.log
+          format: diff
+          name: format-nix
 
   lint-tcl:
     needs: [diff-class, setup-tools]

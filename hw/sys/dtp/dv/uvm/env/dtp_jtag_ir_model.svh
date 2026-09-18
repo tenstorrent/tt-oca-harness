@@ -18,7 +18,7 @@ class dtp_jtag_ir_model;
 
   protected ocah_jtag_tap_state_e m_tap = OCAH_JTAG_TEST_LOGIC_RESET;
   protected bit                   m_ir_known = 1'b1;
-  protected bit [DtpIrWidth-1:0]  m_ir = jtag_inst_reg_pkg::IDCODE_INSTR;
+  protected bit [DtpIrWidth-1:0]  m_ir = IDCODE_INSTR;
   protected bit                   m_pending_ir_valid;
   protected bit [DtpIrWidth-1:0]  m_pending_ir;
   protected int unsigned          m_pending_ir_scans;
@@ -90,7 +90,7 @@ class dtp_jtag_ir_model;
 
   function void reset_tap();
     m_tap              = OCAH_JTAG_TEST_LOGIC_RESET;
-    m_ir               = jtag_inst_reg_pkg::IDCODE_INSTR;
+    m_ir               = IDCODE_INSTR;
     m_ir_known         = 1'b1;
     m_pending_ir_valid = 1'b0;
     m_pending_ir_scans = 0;

@@ -7,8 +7,7 @@
   runCommand,
   writeShellScript,
   ...
-}:
-let
+}: let
   pkgList = [
     (antora-lunr-extension.overrideAttrs (old: {
       postInstall = "";

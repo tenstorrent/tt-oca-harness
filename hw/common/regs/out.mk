@@ -20,6 +20,8 @@ ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_
 # expects the block itself to answer a bad access with an error.
 ocah_reg_err_checks  = $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_ERR_CHECK_BLOCKS))
 ocah_reg_regblock_opts = $(if $(call ocah_reg_err_checks,$(1)),--err-if-bad-addr --err-if-bad-rw)
+# PeakRDL addrmap parameter overrides (`-P NAME=VALUE`). Keyed by the RDL stem.
+ocah_reg_rdl_params = $(foreach p,$(OCAH_REG_RDL_PARAMS_$(call ocah_reg_name,$(1))),-P $(p))
 # Non-empty when the block's register RTL is sourced outside regblock.
 ocah_reg_sv_skipped  = $(filter skip,$(OCAH_REG_SVMODE_$(call ocah_reg_key,$(1))))
 # Composite sub-blocks by output class.
@@ -60,6 +62,11 @@ ocah_reg_ral_rename = $(OCAH_REG_RAL_RENAME_$(call ocah_reg_key,$(1)))
 ocah_reg_ral_output = $(call ocah_reg_ral_dir,$(1))/$(call ocah_reg_ral_model,$(1))_ral_pkg.sv
 ocah_reg_md_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1)).md
 ocah_reg_adoc_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1)).adoc
+ocah_reg_doc_overrides = $(wildcard $(dir $(call ocah_reg_rdl,$(1)))regdoc.toml)
+ocah_reg_memory_map_config = $(abspath $(dir $(call ocah_reg_rdl,$(1)))/../doc/memmap.toml)
+ocah_reg_memory_map_output = $(call ocah_reg_gen,$(1))/adoc/memory_map.adoc
+ocah_reg_memory_map_target = $(if $(filter $(1),$(OCAH_REG_MEMORY_MAP_BLOCKS)),$(call ocah_reg_memory_map_output,$(1)))
+ocah_reg_memory_map_deps = $(OCAH_REG_MEMORY_MAP_DEPS_$(call ocah_reg_key,$(1)))
 
 # Per-sub-block output lists for a composite top (one file each, so make rebuilds
 # only the changed RDL).
@@ -95,6 +102,7 @@ ocah_reg_file_clean_outputs = \
   $(call ocah_reg_ipxact_output,$(1)) \
   $(call ocah_reg_md_output,$(1)) \
   $(call ocah_reg_adoc_output,$(1)) \
+  $(call ocah_reg_memory_map_target,$(1)) \
   $(call ocah_reg_html_dir,$(1))
 ocah_reg_clean_paths = $(if $(call ocah_reg_is_file_backed,$(1)),$(call ocah_reg_file_clean_outputs,$(1)) $(call ocah_reg_build,$(1)),$(call ocah_reg_gen,$(1)) $(call ocah_reg_build,$(1)))
 
@@ -118,6 +126,7 @@ ocah_reg_dep_targets = \
   $(call ocah_reg_ral_target,$(1)) \
   $(call ocah_reg_ipxact_output,$(1)) \
   $(call ocah_reg_adoc_target,$(1)) \
+  $(call ocah_reg_memory_map_target,$(1)) \
   $(call ocah_reg_html_target,$(1)) \
   $(call ocah_reg_json_target,$(1))
 
@@ -130,6 +139,7 @@ OCAH_REGEN_REG_RAL    := $(call ocah_reg_collect,ocah_reg_ral_target)
 OCAH_REGEN_REG_JSON   := $(call ocah_reg_collect,ocah_reg_json_target)
 OCAH_REGEN_REG_IPXACT := $(call ocah_reg_collect,ocah_reg_ipxact_output)
 OCAH_REGEN_REG_ADOC   := $(call ocah_reg_collect,ocah_reg_adoc_target)
+OCAH_REGEN_REG_MEMORY_MAP := $(call ocah_reg_collect,ocah_reg_memory_map_target)
 OCAH_REGEN_REG_HTML   := $(call ocah_reg_collect,ocah_reg_html_target)
 OCAH_REGEN_REG_STAMPS := $(call ocah_reg_collect,ocah_reg_stamp)
 # Per-block depfiles, pulled in via -include at the tail of rules.mk. Not part of

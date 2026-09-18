@@ -42,6 +42,8 @@
 #                               (space-separated; each bound at its own path)
 set -euo pipefail
 
+[[ -n ${OCAH_DOCKER_RUN_CI:-} ]] && set -x
+
 # -P: the physical path, so symlinked checkout parents don't produce a path
 # that fails to resolve inside the container's bind mount.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -68,6 +70,11 @@ run | run-here | verify | shell)
   if [[ -n "${OCAH_TOOLCHAIN_ROOTFS:-}" ]] &&
     [[ -x "${OCAH_TOOLCHAIN_ROOTFS}/bin/riscv64-unknown-elf-gcc" ]] &&
     command -v bwrap >/dev/null 2>&1; then
+    NEEDS_ENGINE=0
+  fi
+  ;;
+nix-fmt | nix-fmt-check | nixos-shell)
+  if command -v nix >/dev/null 2>&1; then
     NEEDS_ENGINE=0
   fi
   ;;
@@ -189,36 +196,41 @@ run_image() {
 # hosts without nix installed, it will use NIXOS_IMAGE, which defaults to
 # docker.io/nixos/nix
 nixos_run() {
-    # Nix Flakes and Nix-Command are required for this - enable them
-    local NIX_CONFIG="experimental-features = nix-command flakes"
-    if command -v nix >/dev/null 2>&1; then
-        NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
-    else
-        # The repo in the container is owned by root, so nix/git will by default give untrusted errors when interacting with it.
-        local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
+  # Nix Flakes and Nix-Command are required for this - enable them
+  local NIX_CONFIG="experimental-features = nix-command flakes"
+  if command -v nix >/dev/null 2>&1; then
+    NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
+  else
+    # The repo in the container is owned by root, so nix/git will by default give untrusted errors when interacting with it.
+    local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
             git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-boot-manifest &&"
-        run_image $NIXOS_IMAGE -it sh -c "
+    run_image $NIXOS_IMAGE -it sh -c "
             export NIX_CONFIG=\"$NIX_CONFIG\"
             export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
             $GIT_ALLOW_CMD
-            $@
+            $*
         "
-    fi
+  fi
 }
 
 image_hash() {
-    local flake_output
-    flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
-    nixos_run "nix eval \$(pwd)#containerHashes.$flake_output 2> /dev/null" | tr -d '"'
+  local flake_output
+  flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
+  nixos_run "nix eval \$(pwd)#containerHashes.$flake_output 2> /dev/null" | tr -d '"'
 }
-IMAGE=$NIX_IMAGE_NAME:$(image_hash)
+# Don't need to get image hash for Formatter/NixOS Shell
+case "${1:-}" in
+nixos-shell | nix-fmt | nix-fmt-check)
+  IMAGE=$NIX_IMAGE_NAME:$(image_hash)
+  ;;
+esac
 
 # Open a shell in the Nix Container - even on a nix-enabled host
 nixos_shell() {
-    local NIX_CONFIG="experimental-features = nix-command flakes"
-    local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
-        git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-boot-manifest &&"
-    run_image $NIXOS_IMAGE -it sh -c "
+  local NIX_CONFIG="experimental-features = nix-command flakes"
+  local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
+        git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest &&"
+  run_image $NIXOS_IMAGE -it sh -c "
         export NIX_CONFIG=\"$NIX_CONFIG\"
         export HISTFILE=/dev/null
         export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
@@ -228,20 +240,20 @@ nixos_shell() {
 }
 
 image_cache_tar() {
-    echo "${DOCKER_CACHE_DIR}/${NIX_IMAGE_NAME##*/}-$(image_hash).tar.gz"
+  echo "${DOCKER_CACHE_DIR}/${NIX_IMAGE_NAME##*/}-$(image_hash).tar.gz"
 }
 
 # Build the nix container image and publish it to the shared tarball cache when
 # one is configured.
 build_image() {
-    local flake_output image_location
-    flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
-    if [[ -n "$DOCKER_CACHE_DIR" ]]; then
-        image_location="$(image_cache_tar)"
-    else
-        image_location="local/nix-container-image.tar.gz"
-    fi
-    nixos_run "nix build \$(pwd)#dockerContainers.x86_64-linux.$flake_output &&
+  local flake_output image_location
+  flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
+  if [[ -n "$DOCKER_CACHE_DIR" ]]; then
+    image_location="$(image_cache_tar)"
+  else
+    image_location="local/nix-container-image.tar.gz"
+  fi
+  nixos_run "nix build \$(pwd)#dockerContainers.x86_64-linux.$flake_output &&
         cp -f --update=all \$(readlink result) $image_location &&
         echo \"Built Container Image\" &&
         rm -f result ||
@@ -251,41 +263,41 @@ build_image() {
             exit 1;
         }
     "
-    "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$image_location"
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$image_location"
 }
 
 # Ensure $IMAGE is available locally: reuse a matching local image (verified by
 # the flake hash), else load the shared tarball cache, else build. Use `build`
 # to force a rebuild regardless of what is already present.
 ensure_image() {
-    local flake_hash
-    flake_hash=$(image_hash)
-    # Test for loaded image in podman
-    if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then
+  local flake_hash
+  flake_hash=$(image_hash)
+  # Test for loaded image in podman
+  if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then
+    return 0
+  fi
+  # Check Cache or local image file
+  if [[ -n "$DOCKER_CACHE_DIR" ]]; then
+    local tar
+    tar="$(image_cache_tar)"
+    if [ -r "$tar" ]; then
+      echo "docker-run: loading $IMAGE from cache $tar" >&2
+      "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$tar"
+      return 0
+    fi
+  else
+    local_tar="local/nix-container-image.tar.gz"
+    if [[ -f "$local_tar" ]]; then
+      tar_repotag=$(nixos_run "tar -xOf $local_tar manifest.json | nix run nixpkgs#jq -- -r '.[0].RepoTags[0]'")
+      if [[ "$tar_repotag" == "$IMAGE" ]]; then
+        echo "docker-run: loading $IMAGE from $local_tar" >&2
+        "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$local_tar"
         return 0
+      fi
     fi
-    # Check Cache or local image file
-    if [[ -n "$DOCKER_CACHE_DIR" ]]; then
-        local tar
-        tar="$(image_cache_tar)"
-        if [ -r "$tar" ]; then
-            echo "docker-run: loading $IMAGE from cache $tar" >&2
-            "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$tar"
-            return 0
-        fi
-    else
-        local_tar="local/nix-container-image.tar.gz"
-        if [[ -f "$local_tar" ]]; then
-            tar_repotag=$(nixos_run "tar -xOf $local_tar manifest.json | nix run nixpkgs#jq -- -r '.[0].RepoTags[0]'")
-            if [[ "$tar_repotag" == "$IMAGE" ]]; then
-                echo "docker-run: loading $IMAGE from $local_tar" >&2
-                "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$local_tar"
-                return 0
-            fi
-        fi
-    fi
-    echo "docker-run: $IMAGE (hash $flake_hash) absent locally and in cache; building" >&2
-    build_image
+  fi
+  echo "docker-run: $IMAGE (hash $flake_hash) absent locally and in cache; building" >&2
+  build_image
 }
 
 # --- bubblewrap backend -----------------------------------------------------
@@ -415,7 +427,6 @@ run_image_1to1() {
     "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
-
 doc_product_paths() {
   case "${1:-trm}" in
   trm) echo "doc/trm antora-trm-playbook.yml ocah-doc-trm-setup ocah-doc-trm-pdf" ;;
@@ -455,10 +466,15 @@ doc_stage_dashboard_data() {
 }
 
 doc_html() {
-  local product="${1:-trm}" basedir playbook setup_target pdf_target
+  local product="${1:-trm}" basedir playbook setup_target pdf_target companion
   local release_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
   doc_setup "$product"
+  if [ "$product" = trm ]; then
+    for companion in home integrator programmer appnotes starting; do
+      doc_setup "$companion"
+    done
+  fi
   doc_release_enabled && release_args=(--attribute release)
   run --net "$NETWORK" antora --cache-dir /tmp/antora "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
   # Only the TRM carries the dashboard page; staging elsewhere would leave a
@@ -469,18 +485,18 @@ doc_html() {
 }
 
 doc_html_all() {
-    local release_args=()
-    doc_release_enabled && release_args=(--attribute release)
-    # This is the combined-architecture build.
-    doc_setup trm
-    doc_setup integrator
-    doc_setup programmer
-    doc_setup appnotes
-    doc_setup home
-    doc_setup starting
-    run --net "$NETWORK" env \
-        SITE_SEARCH_PROVIDER=lunr \
-        antora --cache-dir /tmp/antora "${release_args[@]}" antora-playbook.yml
+  local release_args=()
+  doc_release_enabled && release_args=(--attribute release)
+  # This is the combined-architecture build.
+  doc_setup trm
+  doc_setup integrator
+  doc_setup programmer
+  doc_setup appnotes
+  doc_setup home
+  doc_setup starting
+  run env \
+    SITE_SEARCH_PROVIDER=lunr \
+    antora --cache-dir /tmp/antora "${release_args[@]}" antora-playbook.yml
 }
 
 doc_pdf() {
@@ -560,7 +576,12 @@ doc_kroki() {
 case "${1:-}" in
 build) build_image ;;
 nixos-shell) nixos_shell ;;
-nix-fmt) nixos_run "nix fmt" ;;
+nix-fmt)
+  nixos_run "nix fmt"
+  ;;
+nix-fmt-check)
+  nixos_run "nix fmt -- -f check"
+  ;;
 ensure) ensure_image ;;
 verify)
   run riscv64-unknown-elf-gcc --version

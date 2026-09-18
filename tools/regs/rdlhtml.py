@@ -6,7 +6,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common.rdlview import compile_root, first_addrmap_name, write_html  # noqa: E402
+from common.rdlview import (  # noqa: E402
+    compile_root,
+    first_addrmap_name,
+    load_doc_overrides,
+    parse_rdl_params,
+    write_html,
+)
 
 
 def main():
@@ -16,9 +22,21 @@ def main():
     p.add_argument("-u", "--udp-rdl-file", required=True)
     p.add_argument("-i", "-I", "--incdir", action="append", default=[])
     p.add_argument("-t", "--top")
+    p.add_argument("-P", dest="rdl_params", action="append", default=[], metavar="NAME=VALUE")
     args = p.parse_args()
-    root = compile_root(args.rdl, args.udp_rdl_file, args.incdir, args.top)
-    write_html(root, args.out, args.top or first_addrmap_name(root))
+    root = compile_root(
+        args.rdl,
+        args.udp_rdl_file,
+        args.incdir,
+        args.top,
+        parse_rdl_params(args.rdl_params),
+    )
+    write_html(
+        root,
+        args.out,
+        args.top or first_addrmap_name(root),
+        load_doc_overrides(args.rdl),
+    )
 
 
 if __name__ == "__main__":

@@ -273,36 +273,43 @@ firmware toolchain is needed:
 python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 ```
 
-### Nightly `hosted` group
+### Nightly `all` group
 
-The scheduled nightly and weekly (`.github/workflows/regress.yml`) run the
-`hosted` group on Verilator with three seeds per leaf. `hosted` is `all`
-without the seventeen leaves that need a RISC-V toolchain, which the hosted
-GitHub runners do not have: the fourteen `fw` leaves and the three dual-target
-leaves, which run a ROM or firmware image on top of the `SMC_DUAL`
-elaboration; `testlists/all.toml` defines the set. The `fw`, `occp_boot`, `dual_smoke`,
-`dual_all` and `occp_dual` groups need the RISC-V toolchain and no tier
-schedules them; `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` records each
-held-out leaf with the reason, its owner and its closing condition.
+The nightly command for the `all` group (every enrolled leaf the VPLAN grades
+except the documented hold-outs; `testlists/all.toml` defines the set), one
+fresh seed per leaf:
+
+```bash
+# No --stage: builds the filelist, the firmware images and the model, then
+# regresses. Check `nproc` before raising --sim-jobs.
+python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress --sim-jobs 6
+```
+
+`all` includes the fourteen `fw` leaves and the three dual-target leaves, so a
+picolibc-enabled RISC-V GCC (or `scripts/docker-run.sh`) must be available: the
+`c_compile` stage builds the images with it (see
+[Prerequisites](#prerequisites)), in the toolchain container when
+`RISCV_TOOLCHAIN` is unset. To build the images ahead of the run:
+
+```bash
+./scripts/docker-run.sh run-here make -f ocah.mk ocah-dv-fw-tests TARGET=smc
+```
+
+Hosted GitHub nightly and weekly (`.github/workflows/regress.yml`) run
+`--items hosted` with three seeds per leaf instead, because those runners have
+no RISC-V toolchain. `hosted` is `all` without those seventeen leaves;
+`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` records each held-out leaf
+with the reason, its owner and its closing condition. The `fw`, `occp_boot`,
+`dual_smoke`, `dual_all` and `occp_dual` groups need the RISC-V toolchain and
+no tier schedules them.
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
 ```
 
-One seed per leaf (`--reseed 1`) is the quick local form of the same run.
+One seed per leaf (`--reseed 1`) is the quick local form of the hosted run.
 
-### Package `all` group
-
-`all` is the package regression. It includes the firmware-boot leaves, so the
-firmware images must exist before the run. With no site RISC-V toolchain,
-build them once in the toolchain container (`docker` or `podman` on `PATH`):
-
-```bash
-./scripts/docker-run.sh run-here make -f ocah.mk ocah-dv-fw-tests TARGET=smc
-python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
-```
-
-Not every test the package defines is in `all` — `testlists/all.toml` names
+Not every test the package defines is in `all`: `testlists/all.toml` names
 the held-out testcases and why, and `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`
 records the leaves no scheduled tier runs.
 

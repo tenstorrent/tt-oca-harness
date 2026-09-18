@@ -25,9 +25,27 @@
 //==============================================================================
 
 
-localparam int unsigned KEY_MANAGER_REG_MAP_BASE_ADDR                                                             = 32'h00010000;
-localparam int unsigned KEY_MANAGER_REG_MAP_SIZE                                                                  = 32'h0000C42C;
+localparam int unsigned KEY_MANAGER_REG_MAP_BASE_ADDR                                                             = 32'h00000000;
+localparam int unsigned KEY_MANAGER_REG_MAP_SIZE                                                                  = 32'h0001C42C;
 
+
+
+
+//==============================================================================
+// Memory: rom
+//==============================================================================
+
+localparam int unsigned ROM_MEM_BASE_ADDR                                                                         = 32'h00000000;
+localparam int unsigned ROM_MEM_SIZE                                                                              = 32'h00004000;
+
+
+
+//==============================================================================
+// Memory: sram
+//==============================================================================
+
+localparam int unsigned SRAM_MEM_BASE_ADDR                                                                        = 32'h00008000;
+localparam int unsigned SRAM_MEM_SIZE                                                                             = 32'h00008000;
 
 
 

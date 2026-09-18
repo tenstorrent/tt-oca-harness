@@ -5,7 +5,8 @@
   stdenv,
   jre,
   ...
-}:stdenv.mkDerivation (finalAttrs: {
+}:
+stdenv.mkDerivation (finalAttrs: {
   pname = "ditaa";
   version = "mini-1.0.3";
 
@@ -16,14 +17,17 @@
     hash = "sha256-VTB4A4v4ZzMIiQU2S7y7WaX/UsCZ7BxnBOGxL+Et2qs=";
   };
 
-  nativeBuildInputs = [ gradle jdk ];
+  nativeBuildInputs = [
+    gradle
+    jdk
+  ];
 
   patchPhase = ''
-      sed -i '/net.researchgate.release/d' build.gradle
-      sed -i '/^release {/,/^}/d' build.gradle
-      sed -i '/^dependencies {/,/^}/d' build.gradle
-    '';
-  
+    sed -i '/net.researchgate.release/d' build.gradle
+    sed -i '/^release {/,/^}/d' build.gradle
+    sed -i '/^dependencies {/,/^}/d' build.gradle
+  '';
+
   buildPhase = ''
     export GRADLE_USER_HOME=$(mktemp -d)
     gradle --no-daemon jar

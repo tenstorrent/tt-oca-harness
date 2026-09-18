@@ -36,6 +36,19 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
     expect_slice("ext", 1'b0, 1'b1, context_s);
   endfunction
 
+  // Every slice output follows the TDR fields of its port: ovrd is the
+  // inverted active-low enable and ctrl_n is the control bit ("IC_RESET
+  // Support" table), whatever the other ports hold.
+  protected function void expect_slices(bit [IcResetPorts-1:0] reset_enable,
+                                        bit [IcResetPorts-1:0] reset_control, string context_s);
+    string       port_names[3]   = '{"smc", "sep", "ext"};
+    int unsigned port_indices[3] = '{int'(ICR_SMC), int'(ICR_SEP), int'(ICR_EXT)};
+    foreach (port_names[p])
+    expect_slice(port_names[p], !reset_enable[port_indices[p]], reset_control[port_indices[p]],
+                 $sformatf("%s enable=0b%03b control=0b%03b", context_s, reset_enable, reset_control
+                 ));
+  endfunction
+
   task body();
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"};
     string       port_names[3]   = '{"smc", "sep", "ext"};
@@ -71,6 +84,8 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
     reset_enable  = 3'b001;  // ext=1, sep=0, smc=0
     reset_control = 3'b010;  // ext=0, sep=1, smc=0
     write_ic_reset(1'b0, reset_enable, reset_control, held_pattern);
+    wait_sys_cycles();
+    expect_slices(reset_enable, reset_control, "reset_hold=0 directed pattern");
     tlr_via_tms_to_rti();
     read_ic_reset(observed, held_pattern);
     family_check("CHK-DBG-TDR", "IC_RESET reset_hold=0 TLR preserve", observed, held_pattern);
@@ -87,6 +102,8 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
                 reset_control
                 ), UVM_LOW)
       write_ic_reset(1'b0, reset_enable, reset_control, held_pattern);
+      wait_sys_cycles();
+      expect_slices(reset_enable, reset_control, $sformatf("reset_hold=0 iteration=%0d", idx));
       tlr_via_tms_to_rti();
       read_ic_reset(observed, held_pattern);
       family_check("CHK-DBG-TDR", "IC_RESET random reset_hold=0 preserve", observed, held_pattern,

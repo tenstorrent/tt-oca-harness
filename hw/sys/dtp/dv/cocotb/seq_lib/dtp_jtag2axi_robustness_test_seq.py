@@ -10,9 +10,12 @@ from env.dtp_types import (
     ABORT_MIDFLIGHT_CHECK_ID,
     ABORT_RECOVERY_CHECK_ID,
     CDC_CLEAR_CHECK_ID,
+    STALL_BUSY_CHECK_ID,
+    STALL_FSM_CHECK_ID,
     DtpJtag2AxiFsmState,
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
+    unpack_single_op,
 )
 
 from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
@@ -29,6 +32,15 @@ ABORT_HOLD_CYCLES = 100_000
 ABORT_MIDFLIGHT_TCK = 64
 ABORT_SETTLE_TCK = 128
 ABORT_RECOVERY_POLLS = 8
+# TCK cycles after a reset pulse for the CDC controller to run its TCK-side
+# isolate-and-clear on an idle bridge.
+ABORT_CDC_CLEAR_TCK = 32
+WRITE_FSM_PATH = (
+    DtpJtag2AxiFsmState.SEND_ADDR_W,
+    DtpJtag2AxiFsmState.SEND_DATA_W,
+    DtpJtag2AxiFsmState.WAIT_BRESP,
+)
+READ_FSM_PATH = (DtpJtag2AxiFsmState.SEND_ADDR_R, DtpJtag2AxiFsmState.WAIT_RDATA)
 
 
 class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
@@ -66,6 +78,34 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         cycles = (tail_tck * self.cfg.jtag_period_ns) // self.cfg.sys_clk_period_ns
         return cycles + rng.randint(16, 64)
 
+    async def _observe_stall(self, target: str, *, read: bool, context: str) -> None:
+        """The READY stall seen from the DUT.
+
+        The bridge FSM has left IDLE onto the stalled path (CHK-J2A-STALL-FSM)
+        and the first status poll reads BUSY_OR_FULL (CHK-J2A-STALL-BUSY).
+        Both need the stall to outlast the poll, so callers size it with
+        ``_stall_beyond_scan_tail``.
+        """
+        cfg = self.target_cfg(target)
+        state = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
+        path = READ_FSM_PATH if read else WRITE_FSM_PATH
+        self._record_abort_check(
+            STALL_FSM_CHECK_ID,
+            f"{context}.stall_fsm",
+            int(state in path),
+            1,
+            f"fsm={DtpJtag2AxiFsmState(state).name} under the "
+            f"{'read' if read else 'write'} READY stall",
+        )
+        first, _ = unpack_single_op(await self.read_tdr(cfg.single_op_reg), target=cfg)
+        self._record_abort_check(
+            STALL_BUSY_CHECK_ID,
+            f"{context}.stall_busy",
+            int(first),
+            int(DtpJtag2AxiStatus.BUSY_OR_FULL),
+            "first status poll under the READY stall",
+        )
+
     async def _write_with_backpressure(
         self,
         target: str,
@@ -74,22 +114,31 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         stall_cycles: int,
         context: str,
     ) -> None:
+        """Backpressured checked single write.
+
+        The READY stall outlasts the first status poll, so the bridge is
+        observed on the stalled path before the write settles at SUCCESS with
+        the memory matching the stimulus intent and the request on the bus.
+        """
         cfg = self.target_cfg(target)
         size = cfg.default_size
+        wstrb = self.target_full_wstrb(target, size)
         addr = self._target_addr(target, self.operation_count + 1)
         data = (0x1020_3040_5060_7080 ^ addr) & self.data_mask(size)
         self.configure_target_backpressure(target, channels=channels, stall_cycles=stall_cycles)
         try:
             before = await self.target_activity_counts(target)
-            status, _ = await self.write_target_single_and_check(
-                target,
-                addr,
-                data,
-                size=size,
-                context=context,
+            self.log_target_jtag2axi_op(
+                target, context, addr=addr, data=data, size=size, wstrb=wstrb
+            )
+            await self.write_target_single_raw(
+                target, DtpJtag2AxiOp.WRITE, addr, data=data, wstrb=wstrb, size=size
+            )
+            await self._observe_stall(target, read=False, context=context)
+            await self.finish_target_single_write(
+                target, addr, data, size=size, wstrb=wstrb, context=context
             )
             await self.expect_target_activity(target, before=before, read=False, context=context)
-            self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
         finally:
             self.clear_target_backpressure(target)
         self.operation_count += 1
@@ -110,15 +159,11 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         self.configure_target_backpressure(target, channels=channels, stall_cycles=stall_cycles)
         try:
             before = await self.target_activity_counts(target)
-            status, _ = await self.read_target_single_and_check(
-                target,
-                addr,
-                data,
-                size=size,
-                context=context,
-            )
+            self.log_target_jtag2axi_op(target, context, addr=addr, size=size)
+            await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
+            await self._observe_stall(target, read=True, context=context)
+            await self.finish_target_single_read(target, addr, data, size=size, context=context)
             await self.expect_target_activity(target, before=before, read=True, context=context)
-            self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
         finally:
             self.clear_target_backpressure(target)
         self.operation_count += 1
@@ -128,8 +173,10 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         await self.reset_tap()
         rng = self.rng("backpressure_aw_before_w")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
-            # Seeded per-pass stall width: each loop delays WREADY differently.
-            stall = rng.randint(2, 6)
+            # WREADY held past the first status poll (seeded margin): the
+            # bridge is observed waiting on the write path while AW is
+            # already accepted.
+            stall = self._stall_beyond_scan_tail(rng, target, scans=2)
             self.log_iteration(idx, len(ROBUST_TARGETS), "target=%s WREADY stall=%d", target, stall)
             await self._write_with_backpressure(
                 target,
@@ -160,7 +207,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             await self._read_with_backpressure(
                 target,
                 channels=("ar",),
-                stall_cycles=rng.randint(4, 10),
+                stall_cycles=self._stall_beyond_scan_tail(rng, target, scans=2),
                 context=f"long_stall.read.{target}",
             )
             # Zero-strobe and window-boundary singles: legal corner operands
@@ -354,14 +401,28 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner("JTAG2AXI back-to-back reset recovery")
         await self.reset_tap()
         rng = self.rng("cdc_back_to_back_reset")
+        tb_if = self.cfg.tb_if
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             addr = self._target_addr(target, idx + 16)
             # Seeded per-pass payload and pulse widths: each loop stresses a
             # different back-to-back reset spacing.
             data = rng.getrandbits(64) & self.target_data_mask(target)
             self.log_iteration(idx, len(ROBUST_TARGETS), "target=%s back-to-back reset", target)
+            tb_if.set_cdc_clear_seen_clear(1)
+            await self.wait_sys_cycles(1)
+            tb_if.set_cdc_clear_seen_clear(0)
             await self.pulse_system_reset(cycles=rng.randint(1, 2))
             await self.pulse_system_reset(cycles=rng.randint(1, 3))
+            # The CDC's TCK-side isolate-and-clear runs only while TCK runs.
+            for _ in range(ABORT_CDC_CLEAR_TCK):
+                await self.tms_step(0)
+            self._record_abort_check(
+                CDC_CLEAR_CHECK_ID,
+                f"back_to_back_reset.{target}.cdc_clear",
+                tb_if.cdc_clear_seen(target),
+                1,
+                "tck-side isolate-and-clear after two resets",
+            )
             await self.verify_target_recovery(
                 target,
                 addr=addr,

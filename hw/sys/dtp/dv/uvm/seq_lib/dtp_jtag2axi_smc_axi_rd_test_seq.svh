@@ -62,8 +62,8 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
 
   // Capture shift for the read-series pipeline: returns the payload of the
   // PREVIOUS (priming) SERIES_DATA_INCR/NO_INCR shift.
-  protected task series_capture(dtp_j2a_target_t t, jtag_inst_reg_pkg::jtag_instruction_e instr,
-                                input int unsigned size, output bit [63:0] observed);
+  protected task series_capture(dtp_j2a_target_t t, dtp_jtag_instr_e instr, input int unsigned size,
+                                output bit [63:0] observed);
     bit [63:0] raw;
     series_data_shift(t, instr, '0, size, -1, raw);
     observed = raw & data_mask(size);
@@ -141,10 +141,12 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
       operation_count++;
     end
 
-    read_series_ctrl(t, size, series_reset, addr_after, pl_depth, size_rd, status);
+    // The last primed incrementing read advanced the series address by one
+    // stride past the last beat.
+    check_series_addr(t, addr + stride, size, "series_wr_rd_incr.final", status);
     check_status("series_wr_rd_incr.final", status, DTP_J2A_SUCCESS);
     emit_nonvacuity_evidence(
-        operation_count >= 2, $sformatf(
+        t, operation_count >= 2, $sformatf(
         "scenario=series_write_read_incr beats=%0d read_ops=%0d", beats, operation_count));
   endtask
 
@@ -224,10 +226,10 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
       operation_count++;
     end
 
-    read_series_ctrl(t, size, series_reset, addr_after, pl_depth, size_rd, status);
+    check_series_addr(t, addr + stride, size, "series_wr_rd_incr_narrow.final", status);
     check_status("series_wr_rd_incr_narrow.final", status, DTP_J2A_SUCCESS);
     emit_nonvacuity_evidence(
-        operation_count >= 2, $sformatf(
+        t, operation_count >= 2, $sformatf(
         "scenario=series_write_read_incr_narrow beats=%0d read_ops=%0d", beats, operation_count));
   endtask
 
@@ -293,7 +295,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
                  "series_wr_rd_no_incr.addr_after: 0x%0h != fixed addr 0x%0h", addr_after, addr))
     check_status("series_wr_rd_no_incr.final", status, DTP_J2A_SUCCESS);
     emit_nonvacuity_evidence(
-        operation_count >= 2, $sformatf(
+        t, operation_count >= 2, $sformatf(
         "scenario=series_write_read_no_incr beats=%0d read_ops=%0d", beats, operation_count));
   endtask
 
@@ -352,7 +354,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
       read_target_single_and_check(t, addr, data, status, size, $sformatf("random_read#%0d", idx));
       operation_count++;
     end
-    emit_nonvacuity_evidence(operation_count >= 2, $sformatf(
+    emit_nonvacuity_evidence(t, operation_count >= 2, $sformatf(
                              "scenario=read_random_ops reads=%0d", operation_count));
   endtask
 
@@ -457,7 +459,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
     // CHK-AXI-NONVAC: the counters that stayed flat while gated
     // demonstrably move for real traffic (baseline + both restores).
     sample_activity(t, now_aw, now_w, now_ar);
-    emit_nonvacuity_evidence(operation_count >= 2 && now_ar >= 3, $sformatf(
+    emit_nonvacuity_evidence(t, operation_count >= 2 && now_ar >= 3, $sformatf(
                              "gated_attempts=%0d ar_pulses=%0d expected_ar>=3 (baseline+2 restores)",
                              operation_count,
                              now_ar

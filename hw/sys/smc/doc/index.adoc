@@ -1,20 +1,60 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= System Management Controller (SMC)
+:description: SMC architecture, management functions, processing, peripherals, debug, and register reference.
+
 [[system-management-controller]]
-== System Management Controller (SMC)
 
-:imagesdir: assets
+The System Management Controller (SMC) performs firmware-driven platform
+management for each chiplet. Its documentation is organized into focused topic
+pages covering the subsystem architecture, hardware services, and programming
+interfaces.
 
-include::overview.adoc[leveloffset=0]
-include::clk_rst.adoc[leveloffset=0]
-include::periphs.adoc[leveloffset=0]
-include::cpu.adoc[leveloffset=0]
-include::interrupts.adoc[leveloffset=0]
-include::rom.adoc[leveloffset=0]
-include::fabric.adoc[leveloffset=0]
-include::dma.adoc[leveloffset=0]
-include::dfd.adoc[leveloffset=0]
-include::zeroer.adoc[leveloffset=0]
-include::scan_protection.adoc[leveloffset=0]
-include::memmap.adoc[leveloffset=0]
+ifdef::backend-html5[]
+++++
+<span id="overview"></span>
+<span id="clock-and-reset-management"></span>
+<span id="cpu-memory-system"></span>
+<span id="fabric"></span>
+<span id="peripherals"></span>
+<span id="interrupts"></span>
+<span id="rom"></span>
+<span id="direct-memory-access-dma-engine"></span>
+<span id="memory-zeroer"></span>
+<span id="smc-dfd-cla"></span>
+<span id="smc-scan-protection"></span>
+<span id="smc-memory-map"></span>
+++++
+
+== Architecture and Processing
+
+* xref:overview.adoc#overview[Overview] -- responsibilities, structure, and the
+  top-level block diagram.
+* xref:clk_rst.adoc#clock-and-reset-management[Clock and Reset Management] --
+  clock domains, reset sequencing, and power-management integration.
+* xref:cpu.adoc#cpu-memory-system[CPU and Memory System] -- processor cluster,
+  caches, local memory, isolation, and debug.
+* xref:fabric.adoc#fabric[Fabric] -- internal networks, remapping, filtering,
+  protection, and routing.
+
+== Services and Peripherals
+
+* xref:periphs.adoc#peripherals[Peripherals] -- communication, telemetry, timer,
+  fuse, and GPIO blocks.
+* xref:interrupts.adoc#interrupts[Interrupts] -- interrupt routing, PLIC, CLINT,
+  and error delivery.
+* xref:rom.adoc#rom[Boot ROM] -- ROM architecture, firmware, and operation.
+* xref:dma.adoc#direct-memory-access-dma-engine[Direct Memory Access Engine] --
+  data-movement architecture, control, and integration.
+* xref:zeroer.adoc#memory-zeroer[Zeroer] -- hardware-assisted memory clearing.
+
+== Debug, Protection, and Reference
+
+* xref:dfd.adoc#smc-dfd-cla[Design-for-Debug and Core Logic Analyzer] -- event
+  observation, triggering, and trace capture.
+* xref:scan_protection.adoc#smc-scan-protection[eFuse Shadow Register Scan
+  Protection] -- scan policy for access-control assets.
+* xref:memmap.adoc#smc-memory-map[Memory Map] -- address-space organization,
+  access controls, and register documentation.
+endif::backend-html5[]

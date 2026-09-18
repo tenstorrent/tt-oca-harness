@@ -12,7 +12,7 @@
 
 class dtp_xtrig_ctm_model;
 
-  localparam int unsigned NumPorts = dtp_pkg::DEFAULT_NUM_CTP + dtp_pkg::DEFAULT_NUM_INT_CT;
+  localparam int unsigned NumPorts = DtpXtrigNumCtmPorts;
   localparam bit [31:0] SelectMask = (32'd1 << NumPorts) - 1;
 
   bit [31:0] select[NumPorts];

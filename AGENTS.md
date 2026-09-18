@@ -41,6 +41,11 @@ partial read costs far more time than a full one.
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
+`make doc-trm-serve` builds a TRM-first preview with the other documentation
+products included, since the TRM links to their pages. Its Make dependencies
+and container equivalent are defined in `doc/trm/doc.mk` and
+`scripts/docker-run.sh`; `antora-trm-playbook.yml` selects the content.
+
 ## Environment Setup
 
 The `nonfree/` companion is not part of the open repository. If you have it, it sets the
@@ -525,8 +530,12 @@ Each of these is an auto-generated alias for the `ocah-`-prefixed target of the 
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
 plus the matching `./scripts/docker-run.sh run-here make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
-Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
-`scripts/ci/diff_class.py` is the classifier.
+The internal GitLab mirror loads its parent pipeline from a separately access-controlled
+configuration project rather than from this repository, so a pull request cannot replace the
+bootstrap that obtains the optional companion. Change the trusted configuration through its own
+review path. That parent executes the `main` revision of `scripts/ci/diff_class.py`, rather than
+the revision under test, when deciding whether a documentation-only change can skip the nonfree
+child.
 
 Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
 They share the same base inventory but use separate exclusions, so a formatter limitation does

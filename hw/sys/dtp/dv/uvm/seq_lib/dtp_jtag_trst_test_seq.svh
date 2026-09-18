@@ -42,7 +42,7 @@ class dtp_jtag_trst_test_seq extends dtp_jtag_base_test_seq;
     reset_to_tlr();
     load_ir(instr);
     goto_state(state);
-    check_state(tap_state_e'(16'h1 << int'(state)), "jtag_trst_chk", $sformatf(
+    check_state(dtp_tap_state_e'(16'h1 << int'(state)), "jtag_trst_chk", $sformatf(
                 "start state %s before TRST", state.name()));
 
     set_trst(1'b0, assert_cycles);

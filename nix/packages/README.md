@@ -20,6 +20,10 @@ This bundles the nixpkgs antora binary with the ASCIIDoctor-Kroki (above) and An
 
 Aliases ASCIIDoctor-with-extensions, to include ASCIIDoctor-Diagram
 
+#### OCAH Ditaa
+
+Original Java version of ditaa, to be compatible with ASCIIDoctor-Diagram
+
 ### RISCV-Toolchain
 
 OCAH Previously used a Debian linux container, with the debian `riscv64-unknown-elf-*` toolchain. These derivations construct the same toolchain, meaning that builds should work in the same way.
@@ -40,7 +44,7 @@ Builds Picolibc to match the above, which is statically linked into the firmware
 
 This Links the above binaries into a single derivation. Nix packages by default are sandboxed from each other, which can cause problems with C compilers. This bundles all the above into a single derivation and patches the compiler binaries to find picolibc.
 
-### Sythesis
+### Synthesis
 
 #### Yosys-Slang
 

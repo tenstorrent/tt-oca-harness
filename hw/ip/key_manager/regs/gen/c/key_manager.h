@@ -13,6 +13,16 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
+// mem - km_rom
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t mem[4096];
+} km_rom_t;
+
+// mem - km_sram
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t mem[8192];
+} km_sram_t;
+
 // reg - km_mailbox_km::write_data_reg
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bm 0xffffffff
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bp 0
@@ -1933,7 +1943,9 @@ typedef struct __attribute__ ((__packed__)) {
 
 // addrmap - key_manager
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t RESERVED_0_ffff[0x10000];
+    km_rom_t rom;
+    uint8_t RESERVED_4000_7fff[0x4000];
+    km_sram_t sram;
     km_mailbox_km_t mailbox_km;
     uint8_t RESERVED_1001c_10fff[0xfe4];
     sep_efuse_map_t otp_efuse_map;

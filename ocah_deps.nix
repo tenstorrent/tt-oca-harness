@@ -3,38 +3,37 @@
   pkgs,
   bundle_uv ? true,
   ...
-}:
-let
+}: let
   # load-uv-env.nix returns a function; apply it to pkgs to get the pythonSet and venv.
-  uv_loader = import ./nix/load-uv-env.nix { inherit inputs; };
+  uv_loader = import ./nix/load-uv-env.nix {inherit inputs;};
   uv_loaded = uv_loader pkgs;
-in
-{
-  ocah_env = rec {
-    # Bypass NPX for MDlint
-    OCAH_MARKDOWNLINT = "${pkgs.markdownlint-cli}/bin/markdownlint";
-    # Documentation Variables - bypass NPX
-    OCAH_ANTORA = "${pkgs.ocah-antora}/bin/antora";
-    # Diagram generator paths
-    DIAGRAM_DITAA_CLASSPATH = "${pkgs.ocah-ditaa}/lib/ditaa.jar";
-    DIAGRAM_PLANTUML_CLASSPATH = "${pkgs.plantuml}/lib/plantuml.jar";
-    OCAH_NO_INSTALL_NPM_DEPS = "1";
-    # Run Synth Natively, rather than (nesting) container
-    OCAH_EDA_SKIP_CONTAINERS = "1";
-    # VP Env Variables
-    SYSTEMC_HOME = "${pkgs.systemc20}";
-    CCI_HOME = "${pkgs.systemc-cci}";
-    BOOST_DIR = "${pkgs.boost-merged}";
-    BOOST_ROOT = BOOST_DIR;
-    OPENSSL_ROOT = "${pkgs.openssl-merged}";
-    WHISPER_HOME = "${pkgs.whisper}";
-    CMAKE_CXX_STANDARD = "20";
-  }
-  // (
-    # When bundling, point UV at the Nix-provided Python/venv and disable all network sync so it
-    # never tries to download packages or manage its own environment at runtime.
-    if (bundle_uv) then
-      rec {
+in {
+  ocah_env =
+    rec {
+      # Bypass NPX for MDlint
+      OCAH_MARKDOWNLINT = "${pkgs.markdownlint-cli}/bin/markdownlint";
+      # Documentation Variables - bypass NPX
+      OCAH_ANTORA = "${pkgs.ocah-antora}/bin/antora";
+      # Diagram generator paths
+      DIAGRAM_DITAA_CLASSPATH = "${pkgs.ocah-ditaa}/lib/ditaa.jar";
+      DIAGRAM_PLANTUML_CLASSPATH = "${pkgs.plantuml}/lib/plantuml.jar";
+      OCAH_NO_INSTALL_NPM_DEPS = "1";
+      # Run Synth Natively, rather than (nesting) container
+      OCAH_EDA_SKIP_CONTAINERS = "1";
+      # VP Env Variables
+      SYSTEMC_HOME = "${pkgs.systemc20}";
+      CCI_HOME = "${pkgs.systemc-cci}";
+      BOOST_DIR = "${pkgs.boost-merged}";
+      BOOST_ROOT = BOOST_DIR;
+      OPENSSL_ROOT = "${pkgs.openssl-merged}";
+      WHISPER_HOME = "${pkgs.whisper}";
+      CMAKE_CXX_STANDARD = "20";
+    }
+    // (
+      # When bundling, point UV at the Nix-provided Python/venv and disable all network sync so it
+      # never tries to download packages or manage its own environment at runtime.
+      if bundle_uv
+      then rec {
         # UV Bypass Rules
         UV_NO_SYNC = "1";
         UV_PYTHON = uv_loaded.pythonSet.python.interpreter;
@@ -58,12 +57,11 @@ in
         # OTBN
         OTBN_PYTHON = PYTHON;
       }
-    else { }
-  );
+      else {}
+    );
   # Full list of packages to include in the container image and dev shell.
   # Package names may be checked at https://search.nixos.org/
-  ocah_pkgs =
-    with pkgs;
+  ocah_pkgs = with pkgs;
     [
       uv
       # Documentation Tools
@@ -107,14 +105,13 @@ in
       whisper
     ]
     ++ (
-      if (bundle_uv) then
-        [
-          # Load the UV Environment Defined in uv.lock
-          uv_loaded.venv
-        ]
-      else
-        [
-          python311
-        ]
+      if bundle_uv
+      then [
+        # Load the UV Environment Defined in uv.lock
+        uv_loaded.venv
+      ]
+      else [
+        python311
+      ]
     );
 }
