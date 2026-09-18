@@ -81,26 +81,30 @@ jobs:
       # The runner image ships both podman and docker; pin one so the engine does
       # not change under us when the image is updated.
       OCAH_ENGINE: docker
-      # Feeds docker-run.sh's tarball cache, which actions/cache then persists.
-      OCAH_DOCKER_CACHE_DIR: ${{ runner.temp }}/ocah-image-cache
       # Fork PRs never receive secrets, and tt-oca-harness-model is private. Gate
       # on this rather than failing every fork PR at checkout.
-      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCAH_SUBMODULE_TOKEN != '' && 'true' || 'false' }}
+      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
+      # Feeds docker-run.sh's tarball cache, which actions/cache then persists.
+      # The runner context is not available in a job's env: block, so the value
+      # is set here instead.
+      - name: Point the image cache at the runner temp dir
+        run: echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
+
       - name: Skip when the submodule token is unavailable
         if: env.HAVE_SUBMODULE_TOKEN != 'true'
         run: |
           {
             echo "### sep-vp (${{ matrix.mode }}): skipped"
             echo
-            echo 'The `OCAH_SUBMODULE_TOKEN` secret is not available to this run'
+            echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
             echo '(fork PR, or the secret is not configured yet). The VP needs the'
-            echo 'private `tt-oca-harness-model` and `tt-boot-manifest` submodules,'
+            echo 'private `tt-oca-harness-model` and `tt-oca-manifest` submodules,'
             echo 'which the default `GITHUB_TOKEN` cannot reach.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       # submodules: recursive pulls tt-oca-harness-model (private), its own
-      # sep/utils/csml (public), and tt-boot-manifest (private, needed by the
+      # sep/utils/csml (public), and tt-oca-manifest (private, needed by the
       # bootcode tests). checkout rewrites the .gitmodules git@github.com: URLs to
       # HTTPS and reuses this token for them, so no .gitmodules change is needed.
       - name: Checkout
@@ -108,7 +112,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.OCAH_SUBMODULE_TOKEN }}
+          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
       - name: Install VP build dependencies
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'native'
@@ -314,16 +318,19 @@ jobs:
             build_dir: virtual_platform/tt-oca-harness-model/vp/build_smc
     env:
       OCAH_ENGINE: docker
-      OCAH_DOCKER_CACHE_DIR: ${{ runner.temp }}/ocah-image-cache
-      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCAH_SUBMODULE_TOKEN != '' && 'true' || 'false' }}
+      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
+      # See the sep-vp job: the runner context is not available in env:.
+      - name: Point the image cache at the runner temp dir
+        run: echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
+
       - name: Skip when the submodule token is unavailable
         if: env.HAVE_SUBMODULE_TOKEN != 'true'
         run: |
           {
             echo "### smc-vp + smu-vp (${{ matrix.mode }}): skipped"
             echo
-            echo 'The `OCAH_SUBMODULE_TOKEN` secret is not available to this run'
+            echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
             echo '(fork PR, or the secret is not configured yet).'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -332,7 +339,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.OCAH_SUBMODULE_TOKEN }}
+          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
       # Identical to the sep-vp native leg's set: smc-vp and smu-vp need no
       # extra packages. gcc-riscv64-unknown-elf is what the two firmware suites
