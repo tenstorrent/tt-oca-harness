@@ -36,8 +36,7 @@ module sep_outbound_mbx
   localparam logic [31:0] MAGIC0 = 32'hA5A5_5A5A;
   localparam logic [31:0] MAGIC_PASS = 32'hCAFE_BABE;
   localparam logic [31:0] MAGIC_FAIL = 32'hDEAD_BEEF;
-  localparam logic [31:0] STDOUT_LO =
-      SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT[31:0];
+  localparam logic [31:0] STDOUT_LO = SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT[31:0];
 
   localparam int unsigned AW = $bits(req_i.aw.addr);
   localparam int unsigned IDW = $bits(req_i.aw.id);

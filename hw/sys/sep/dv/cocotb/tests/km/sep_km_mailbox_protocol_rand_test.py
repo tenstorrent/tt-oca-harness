@@ -318,9 +318,7 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
         assert (st & KM_STATUS_LOW_MASK) == (
             (1 << KM_STATUS_INBOUND_EMPTY) | (1 << KM_STATUS_OUTBOUND_EMPTY)
-        ), (
-            f"CHK-FLUSH FAIL: FIFOs not empty after flush (STATUS=0x{st:08x})"
-        )
+        ), f"CHK-FLUSH FAIL: FIFOs not empty after flush (STATUS=0x{st:08x})"
         assert ((st >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK) == 0, (
             f"CHK-FLUSH FAIL: inbound_depth not 0 after flush (STATUS=0x{st:08x})"
         )

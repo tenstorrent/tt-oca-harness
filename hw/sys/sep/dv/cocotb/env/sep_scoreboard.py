@@ -99,8 +99,7 @@ class SepScoreboard(uvm_subscriber):
         assert self.checks > 0, "SEP scoreboard saw no AXI transactions (no positive evidence)"
         if self.expected_reads:
             assert self.value_checks > 0, (
-                "SEP scoreboard saw reads that carried an expected value but "
-                "verified none"
+                "SEP scoreboard saw reads that carried an expected value but verified none"
             )
         self.logger.info(
             "SEP scoreboard: %d checks (%d value-verified, %d expected-error), 0 errors",

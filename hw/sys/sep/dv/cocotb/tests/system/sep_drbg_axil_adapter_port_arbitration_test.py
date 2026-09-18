@@ -205,8 +205,7 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
             f"{len(ORDER_NAMES)} ordering(s): {covered}"
         )
         self.logger.info(
-            "CHK-PORT-PROGRESS PASS: %d/%d ordering(s) retired both accesses "
-            "with OKAY (%s)",
+            "CHK-PORT-PROGRESS PASS: %d/%d ordering(s) retired both accesses with OKAY (%s)",
             len(covered),
             len(ORDER_NAMES),
             ", ".join(covered),

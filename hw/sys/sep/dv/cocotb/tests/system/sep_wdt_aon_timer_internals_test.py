@@ -246,8 +246,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self.wdt.write(INTR_TEST, INTR_TEST_WKUP_EXPIRED)
         forced = await self.wdt.read(INTR_STATE)
         assert forced & INTR_WKUP_EXPIRED, (
-            f"CHK-WKUP-COUNT: INTR_STATE.wkup_expired stayed 0 after INTR_TEST "
-            f"(0x{forced:08x})"
+            f"CHK-WKUP-COUNT: INTR_STATE.wkup_expired stayed 0 after INTR_TEST (0x{forced:08x})"
         )
         await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)
         self.logger.info(

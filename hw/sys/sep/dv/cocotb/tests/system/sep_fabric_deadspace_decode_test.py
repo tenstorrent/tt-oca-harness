@@ -52,8 +52,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         assert not cfg.short_windows, (
             "CHK-DEADSPACE-RAND FAIL: window(s) short of the random-probe quota: "
             + ", ".join(
-                f"{name}={got}/{want}"
-                for name, (got, want) in sorted(cfg.short_windows.items())
+                f"{name}={got}/{want}" for name, (got, want) in sorted(cfg.short_windows.items())
             )
         )
         await self.bring_up_no_cpu()

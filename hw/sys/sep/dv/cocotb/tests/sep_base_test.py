@@ -782,9 +782,7 @@ class sep_base_test(uvm_test):
         if sb.console:
             self.logger.info("firmware console: %r", sb.console_text())
         if sb.fw_done and sb.fw_pass:
-            self.logger.info(
-                "CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic"
-            )
+            self.logger.info("CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic")
         if not (sb.fw_done and sb.fw_pass):
             # Hang, no-boot, run-cycle exhaustion, or firmware FAIL: put the
             # symbolized backtrace in the log before the scoreboard's
@@ -1281,7 +1279,9 @@ class sep_base_test(uvm_test):
             with open(path, "rb") as fh:
                 for chunk in iter(lambda: fh.read(1 << 20), b""):
                     digest.update(chunk)
-            parts.append(f"{label}={path} sha256={digest.hexdigest()} bytes={os.path.getsize(path)}")
+            parts.append(
+                f"{label}={path} sha256={digest.hexdigest()} bytes={os.path.getsize(path)}"
+            )
         self.logger.info("RUN-IDENTITY-FW: %s", " ".join(parts))
 
     def _log_run_identity(self) -> None:

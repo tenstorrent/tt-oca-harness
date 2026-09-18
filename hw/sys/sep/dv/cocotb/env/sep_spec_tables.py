@@ -289,7 +289,9 @@ def abr_ctrl_cmds(reg: str) -> dict[str, int]:
     block = next((m for m in _ABR_REG.finditer(text) if m.group("name") == reg), None)
     if block is None:
         raise KeyError(f"{reg} missing from abr_reg.rdl")
-    ctrl = next((f for f in _ABR_FIELD.finditer(block.group("body")) if f.group("name") == "CTRL"), None)
+    ctrl = next(
+        (f for f in _ABR_FIELD.finditer(block.group("body")) if f.group("name") == "CTRL"), None
+    )
     if ctrl is None:
         raise KeyError(f"{reg}.CTRL field body missing from abr_reg.rdl")
     alias = {"SIGNING": "SIGN", "VERIFYING": "VERIFY"}
@@ -334,6 +336,7 @@ def kpv_scrambler_ctrl_mask(name: str) -> int:
     except KeyError as exc:
         raise KeyError(f"KPV_SCRAMBLER_CTRL.{name} missing from km_kpv.rdl") from exc
     return ((1 << width) - 1) << lsb
+
 
 _RDL_REG = re.compile(r"^\s*reg\s+([A-Za-z_]\w*)\s*\{", re.M)
 _RDL_FIELD = re.compile(r"field\s*\{(?P<body>[^{}]*)\}\s*(?P<name>[A-Za-z_]\w*)\s*\[", re.S)

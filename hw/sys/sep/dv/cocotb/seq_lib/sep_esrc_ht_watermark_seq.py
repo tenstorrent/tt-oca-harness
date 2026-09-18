@@ -142,8 +142,7 @@ class SepHtWatermark(SepAxiRegDriver):
             await ClockCycles(self._clk, 1)
         got = await self.read_num()
         raise AssertionError(
-            f"HT_WATERMARK_NUM wrote 0x{want:x} (resolves 0x{resolved:x}), "
-            f"read back 0x{got:x}"
+            f"HT_WATERMARK_NUM wrote 0x{want:x} (resolves 0x{resolved:x}), read back 0x{got:x}"
         )
 
     async def read_num(self) -> int:

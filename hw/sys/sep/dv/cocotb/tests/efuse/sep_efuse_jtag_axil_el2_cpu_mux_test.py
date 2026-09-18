@@ -281,8 +281,7 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             f"in PROD must DECERR; got resp={code} rdata=0x{rdata:08x}"
         )
         assert rdata == ERR_SLV_RDATA, (
-            f"CHK-JTAG-IFACE-DENY FAIL: denied-read data 0x{rdata:08x} != "
-            f"0x{ERR_SLV_RDATA:08x}"
+            f"CHK-JTAG-IFACE-DENY FAIL: denied-read data 0x{rdata:08x} != 0x{ERR_SLV_RDATA:08x}"
         )
         self.logger.info(
             "CHK-JTAG-IFACE-DENY PASS: JTAG program-interface read @0x%08x denied "

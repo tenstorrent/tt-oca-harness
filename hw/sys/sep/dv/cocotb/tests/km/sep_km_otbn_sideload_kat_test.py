@@ -151,8 +151,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
             | (1 << SW_RESET_N_BIT["kmac"])
         )
         assert (rst & parked) == 0, (
-            f"key-bus isolation: AES/KMAC/HMAC not parked before transfer "
-            f"(SW_RESET_N=0x{rst:08x})"
+            f"key-bus isolation: AES/KMAC/HMAC not parked before transfer (SW_RESET_N=0x{rst:08x})"
         )
         assert rst & (1 << SW_RESET_N_BIT["otbn"]), (
             f"OTBN not released before transfer (SW_RESET_N=0x{rst:08x})"

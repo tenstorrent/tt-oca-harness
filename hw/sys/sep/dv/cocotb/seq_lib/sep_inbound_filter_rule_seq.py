@@ -92,6 +92,8 @@ ERR_SLV_WORD = 0xCA11_AB1E_BADC_AB1E
 def err_slv_rdata(addr: int) -> int:
     """The err-slave half a 32-bit beat at ``addr`` returns."""
     return ((ERR_SLV_WORD >> 32) if addr & 0x4 else ERR_SLV_WORD) & 0xFFFF_FFFF
+
+
 # Entry count from the generated export, not a literal: the bank is an RDL
 # array (`inbound_filter_ctrl[16]`), and a sequence that carries its own number
 # goes stale the moment the array changes. disable_all() must clear every entry

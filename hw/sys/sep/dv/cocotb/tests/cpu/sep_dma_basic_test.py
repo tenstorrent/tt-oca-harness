@@ -222,9 +222,7 @@ class sep_dma_basic_test(sep_base_test):
         for _ in range(_MAX_RUN_CYCLES):
             if "CHK-HOSTFABRIC-ARM" in self.sb.console_text():
                 pin = self.rd_known(dut.dma_host_intg_inject_i)
-                assert pin == 0, (
-                    f"CHK-HOSTFABRIC-ARM: dma_host_intg_inject_i={pin}, expected 0"
-                )
+                assert pin == 0, f"CHK-HOSTFABRIC-ARM: dma_host_intg_inject_i={pin}, expected 0"
                 self.logger.info("CHK-HOSTFABRIC-ARM PASS: dma_host_intg_inject_i=0")
                 return
             if self.sb.fw_done:
