@@ -61,7 +61,7 @@ def compile_root(
         [str(path) for path in incdirs],
         top,
         parameters,
-        defines={"OCAH_MEMORY_MAP": ""},
+        defines={"OCAH_DOC_MEMORY_MAP": ""},
     )
 
 
@@ -319,9 +319,15 @@ def build_views(
                 raise ValueError(f"{spec['name']}: gap bounds {target} not found") from exc
             bounds_start = bounds.base if bounds_selector else min(row.base for row in rows)
             bounds_end = bounds.end + 1
+            bounded_rows = [
+                row for row in rows if row.base >= bounds_start and row.end < bounds_end
+            ]
+            outside_rows = [row for row in rows if row.end < bounds_start or row.base >= bounds_end]
+            if len(bounded_rows) + len(outside_rows) != len(rows):
+                raise ValueError(f"{spec['name']}: row crosses gap bounds")
             with_gaps: list[MapRow] = []
             cursor = bounds_start
-            for row in rows:
+            for row in bounded_rows:
                 if row.base > cursor:
                     with_gaps.append(
                         MapRow(
@@ -346,7 +352,7 @@ def build_views(
                         description="Reserved",
                     )
                 )
-            rows = with_gaps
+            rows = sorted([*outside_rows, *with_gaps], key=lambda row: row.base)
         _validate(rows, spec["name"])
         relative_base = 0
         if spec.get("base_mode", "absolute") == "relative":

@@ -33,11 +33,11 @@ addrmap child {
 };
 addrmap top {
     child first @0x1000;
-`ifdef OCAH_MEMORY_MAP
+`ifdef OCAH_DOC_MEMORY_MAP
     first->ocah_aperture_size = 0x100;
 `endif
     child repeated[2] @0x2000 += 0x100;
-`ifdef OCAH_MEMORY_MAP
+`ifdef OCAH_DOC_MEMORY_MAP
     repeated->ocah_aperture_size = 0x200;
 `endif
 };
@@ -83,6 +83,40 @@ class MemoryMapTest(unittest.TestCase):
         self.assertIn("512 B", adoc)
         self.assertIn("// tag::map[]", adoc)
         self.assertIn("// end::map[]", adoc)
+
+    def test_gap_bounds_preserve_outside_rows(self):
+        bounds_rdl = Path(self.temp.name) / "bounds.rdl"
+        bounds_rdl.write_text(
+            """
+mem region {
+    mementries = 0x800;
+    memwidth = 8;
+};
+addrmap bounds_top {
+    external region bounds @0x1000;
+};
+"""
+        )
+        bounds_root = compile_root(bounds_rdl, None, top="bounds_top")
+        config = {
+            "version": 1,
+            "views": [
+                {
+                    "name": "map",
+                    "derive_gaps": True,
+                    "bounds_source": "bounds",
+                    "bounds_selector": "bounds",
+                    "rows": [
+                        {"selector": "first"},
+                        {"selector": "repeated"},
+                    ],
+                }
+            ],
+        }
+        view = build_views(config, {"main": self.root, "bounds": bounds_root})[0]
+        self.assertEqual([row.label for row in view.rows], ["Child", "Reserved", "Child"])
+        self.assertEqual(view.rows[1].base, 0x1100)
+        self.assertEqual(view.rows[1].end, 0x17FF)
 
     def test_rejects_stale_selector(self):
         config = {

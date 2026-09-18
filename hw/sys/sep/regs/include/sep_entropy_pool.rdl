@@ -6,7 +6,7 @@
 
 addrmap sep_entropy_pool {
     name = "SEP Entropy Pool";
-    desc = "Read-only entropy pool implemented by sep_entropy_fifo";
+    desc = "Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR.";
 
     external reg {
         regwidth = 64;

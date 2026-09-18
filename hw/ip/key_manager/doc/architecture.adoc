@@ -86,6 +86,10 @@ The KM CPU addresses its internal peripherals through a flat 32-bit address spac
 
 Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.
 
+The OTP/eFuse window is the exception: hardware preserves its lower 12 address
+bits and replaces the upper bits with the integration parameter
+`OTP_EFUSE_REMAP_BASE` before forwarding the transaction to SEP.
+
 ifdef::backend-html5[]
 include::partial$key_manager/regs/gen/adoc/memory_map.adoc[]
 endif::backend-html5[]

@@ -1288,7 +1288,7 @@ Cleared automatically by the hardware when starting the transfer of a new chunk.
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>sep_reset_ctrl</ipxact:name>
-          <ipxact:description>SEP software reset controller registers</ipxact:description>
+          <ipxact:description>Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.</ipxact:description>
           <ipxact:addressOffset>'h10803000</ipxact:addressOffset>
           <ipxact:range>'h8</ipxact:range>
           <ipxact:register>
@@ -12432,7 +12432,7 @@ Setting this bit to 1 will copy the result to the keyvault when it is ready.</ip
         <ipxact:registerFile>
           <ipxact:name>entropy_pool</ipxact:name>
           <ipxact:displayName>SEP Entropy Pool</ipxact:displayName>
-          <ipxact:description>Read-only entropy pool implemented by sep_entropy_fifo</ipxact:description>
+          <ipxact:description>Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR.</ipxact:description>
           <ipxact:addressOffset>'h10950000</ipxact:addressOffset>
           <ipxact:range>'h18</ipxact:range>
           <ipxact:register>

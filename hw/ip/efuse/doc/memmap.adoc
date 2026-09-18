@@ -19,8 +19,10 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
-The shadow-map size is integration-specific. The MMR region exists only when
-the eFuse instance includes lifecycle state (`HAS_LC_STATE=1`).
+At the IP boundary, each region's base address and aperture size are
+integration parameters; the generated tables show the selected integration
+values. The MMR region exists only when the eFuse instance includes lifecycle
+state (`HAS_LC_STATE=1`).
 
 === Shadow Registers
 

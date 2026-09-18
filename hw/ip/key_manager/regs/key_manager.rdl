@@ -172,7 +172,7 @@ addrmap key_manager {
     external efuse_interface_ctrl otp_efuse_ctrl @ 0x0001_1400;
     external efuse_mmr            otp_efuse_mmr  @ 0x0001_1500;
 
-`ifdef OCAH_MEMORY_MAP
+`ifdef OCAH_DOC_MEMORY_MAP
     ocah_aperture_size = 0x1D000;
     mailbox_km->ocah_aperture_size = 0x20;
     otp_efuse_map->desc = "SEP eFuse shadow-register pass-through.";

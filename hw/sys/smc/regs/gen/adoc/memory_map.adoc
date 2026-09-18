@@ -42,7 +42,7 @@
 |BASE + 0x8000 – BASE + 0x8FFF |4 KiB |28 B |efuse_interface_ctrl |1 instance |- |eFuse command and status registers.
 |BASE + 0x9000 – BASE + 0x9FFF |4 KiB |768 B |smc_telemetry_receiver_wrap |1 instance |- |Telemetry data receiver.
 |BASE + 0xA000 – BASE + 0xAFFF |4 KiB |36 B |smc_system_timer_octs |1 instance |- |Open Chiplet Time Synchronization (OCTS) System Timer Registers
-|BASE + 0xB000 – BASE + 0xB7FF |2 KiB |2 KiB |dtp_ctrl_reg |1 instance |- |External Memory
+|BASE + 0xB000 – BASE + 0xB7FF |2 KiB |2 KiB |dtp_ctrl_reg |1 instance |- |512-entry DTP control block.
 |BASE + 0xB800 – BASE + 0xBFFF |2 KiB |24 B |dfx_ctrl |1 instance |- |DFT status exposed to boot firmware.
 |BASE + 0x10000 – BASE + 0x11FFF |8 KiB |76 B |smc_base_config |1 instance |- |SMC base-address and aperture configuration.
 |BASE + 0x12000 – BASE + 0x12FFF |4 KiB |248 B |smc_alias_remap |8 instances |32 B |TLB Registers for address remapping and attribute tagging
@@ -55,7 +55,7 @@
 |BASE + 0x38200 – BASE + 0x382FF |256 B |24 B |zeroer_ctrl |1 instance |- |AXI zeroer control register
 |BASE + 0x39000 – BASE + 0x39FFF |4 KiB |704 B |smc_cpu_ctrl |1 instance |- |SMC CPU-cluster control.
 |BASE + 0x3A000 – BASE + 0x3FFFF |24 KiB |24 KiB |oca_i3c_wrap |1 instance |- |OCA I3C Controller wrapper
-|BASE + 0x40000 – BASE + 0x5FFFF |128 KiB |128 KiB |spm_rom_memory |1 instance |- |Scratch RAM Memory - only present for non-CPL configurations
+|BASE + 0x40000 – BASE + 0x5FFFF |128 KiB |128 KiB |spm_rom_memory |1 instance |- |Scratchpad ROM memory, present only in non-CPL configurations.
 |BASE + 0x60000 – BASE + 0x15FFFF |1 MiB |1 MiB |spm_memory |1 instance |- |Scratch RAM Memory - only present for non-CPL configurations
 |BASE + 0x160000 – BASE + 0x163FFF |16 KiB |16 KiB |smc_cla |1 instance |- |Core Logic Analyzer debug and trace aperture.
 |BASE + 0x400000 – BASE + 0x7FFFFF |4 MiB |4 MiB |smc_external |1 instance |- |Adopter-owned external peripheral aperture.

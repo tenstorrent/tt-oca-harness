@@ -35,6 +35,9 @@ are inherently atomic - Status registers provide consistent snapshots of
 hardware state - No special atomic access patterns required for normal
 operation
 
+Offsets `0x5C` through `0xFF` are unallocated and reserved for future
+extensions.
+
 === Detailed Register Map
 
 ifdef::backend-html5[]

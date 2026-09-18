@@ -46,4 +46,7 @@ name = "sep-components"
 title = "SEP Component Address Map"
 source = "main"
 include_all = true
+derive_gaps = true
+bounds_source = "logical"
+bounds_selector = "sep_local"
 columns = ["base", "end", "size", "occupied_size", "label", "description"]

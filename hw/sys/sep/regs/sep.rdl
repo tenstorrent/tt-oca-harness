@@ -218,7 +218,7 @@ addrmap och_sep_top #(
     // Base: 0xC008_0000, Size: 32 KB (0x8000)
     el2_pic                    pic                       @BASE_ADDR + 0xC008_0000;
 
-`ifdef OCAH_MEMORY_MAP
+`ifdef OCAH_DOC_MEMORY_MAP
     sep_boot_rom->desc = "BL0 immutable instruction memory.";
     secure_dma->ocah_aperture_size = 0x1000;
     secure_dma->desc = "Secure DMA control and status registers.";
@@ -241,6 +241,7 @@ addrmap och_sep_top #(
     efuse_mmr->ocah_aperture_size = 0x100;
     efuse_mmr->desc = "eFuse security-token registers.";
     abr->ocah_aperture_size = 0x10000;
+    abr->desc = "Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM.";
     entropy_pool->ocah_aperture_size = 0x10000;
     axil_mailbox->ocah_aperture_size = 0x8000;
     axil_mailbox->desc = "Eight bidirectional mailbox pairs.";
