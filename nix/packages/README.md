@@ -24,6 +24,10 @@ Aliases ASCIIDoctor-with-extensions, to include ASCIIDoctor-Diagram
 
 Original Java version of ditaa, to be compatible with ASCIIDoctor-Diagram
 
+#### Kroki, Kroki-Src and Kroki-Mermaid
+
+These packages produce a script able to run an offline kroki server, able to be used by OCAH Antora as a local alternative to Kroki.io
+
 ### RISCV-Toolchain
 
 OCAH Previously used a Debian linux container, with the debian `riscv64-unknown-elf-*` toolchain. These derivations construct the same toolchain, meaning that builds should work in the same way.

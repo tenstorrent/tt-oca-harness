@@ -467,7 +467,7 @@ doc_stage_dashboard_data() {
 
 doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target companion
-  local release_args=()
+  local release_args=() kroki_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
   doc_setup "$product"
   if [ "$product" = trm ]; then
@@ -476,7 +476,8 @@ doc_html() {
     done
   fi
   doc_release_enabled && release_args=(--attribute release)
-  run --net "$NETWORK" antora --cache-dir /tmp/antora "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
+  [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]] && kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
+  run --net "$NETWORK" antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" --attribute "basedir=${basedir}" "$playbook"
   # Only the TRM carries the dashboard page; staging elsewhere would leave a
   # stray ocah-docs/ tree inside another book's site.
   if [ "$product" = trm ]; then
@@ -485,8 +486,12 @@ doc_html() {
 }
 
 doc_html_all() {
-  local release_args=()
+  local release_args=() kroki_args=() net_args=()
   doc_release_enabled && release_args=(--attribute release)
+  if [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]]; then
+    kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
+    net_args=(--net "$NETWORK")
+  fi
   # This is the combined-architecture build.
   doc_setup trm
   doc_setup integrator
@@ -494,9 +499,9 @@ doc_html_all() {
   doc_setup appnotes
   doc_setup home
   doc_setup starting
-  run env \
+  run "${net_args[@]}" env \
     SITE_SEARCH_PROVIDER=lunr \
-    antora --cache-dir /tmp/antora "${release_args[@]}" antora-playbook.yml
+    antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" antora-playbook.yml
 }
 
 doc_pdf() {
@@ -567,10 +572,10 @@ doc_stage() {
 }
 
 doc_kroki() {
-    ensure_network "$NETWORK"
-    KROKI_PORT="${OCAH_KROKI_PORT:-8000}"
-    echo "docker-run: Kroki listening on http://localhost:${KROKI_PORT}; antora containers reach it at http://kroki:8000" >&2
-    PODMAN_RUN_FLAGS="$PODMAN_RUN_FLAGS -p ${KROKI_PORT}:8000" NETWORK_NAME=kroki run --net "$NETWORK" -it kroki
+  ensure_network "$NETWORK"
+  KROKI_PORT="${OCAH_KROKI_PORT:-8001}"
+  echo "docker-run: Kroki listening on http://localhost:${KROKI_PORT}; antora containers reach it at http://kroki:8001" >&2
+  PODMAN_RUN_FLAGS="$PODMAN_RUN_FLAGS -p ${KROKI_PORT}:8001" NETWORK_NAME=kroki run --net "$NETWORK" -it kroki
 }
 
 case "${1:-}" in

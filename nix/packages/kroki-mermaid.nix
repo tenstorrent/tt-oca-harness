@@ -7,8 +7,7 @@
   lib,
   port ? "8002",
   ...
-}:
-let
+}: let
   script = writeText "kroki-mermaid.py" ''
     import http.server
     import json
@@ -68,22 +67,22 @@ let
     http.server.ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
   '';
 in
-stdenv.mkDerivation {
-  pname = "kroki-mermaid";
-  version = "1";
+  stdenv.mkDerivation {
+    pname = "kroki-mermaid";
+    version = "1";
 
-  dontUnpack = true;
-  dontBuild = true;
+    dontUnpack = true;
+    dontBuild = true;
 
-  nativeBuildInputs = [ makeWrapper ];
+    nativeBuildInputs = [makeWrapper];
 
-  installPhase = ''
-    runHook preInstall
-    mkdir -p $out/bin $out/libexec
-    cp ${script} $out/libexec/kroki-mermaid.py
-    makeWrapper ${python311}/bin/python3 $out/bin/kroki-mermaid \
-      --add-flags "$out/libexec/kroki-mermaid.py" \
-      --prefix PATH : ${lib.makeBinPath [ mermaid-cli ]}
-    runHook postInstall
-  '';
-}
+    installPhase = ''
+      runHook preInstall
+      mkdir -p $out/bin $out/libexec
+      cp ${script} $out/libexec/kroki-mermaid.py
+      makeWrapper ${python311}/bin/python3 $out/bin/kroki-mermaid \
+        --add-flags "$out/libexec/kroki-mermaid.py" \
+        --prefix PATH : ${lib.makeBinPath [mermaid-cli]}
+      runHook postInstall
+    '';
+  }

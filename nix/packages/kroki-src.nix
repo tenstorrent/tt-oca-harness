@@ -3,7 +3,7 @@
   version ? "0.32.1",
   fetchFromGitHub,
   ...
-}:{
+}: {
   inherit version;
 
   jar = fetchurl {

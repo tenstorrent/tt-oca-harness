@@ -22,8 +22,8 @@
     exec ${antora}/bin/antora "''${extra[@]}" "$@"
   '';
 in
-runCommand "ocah-antora" {} ''
-  mkdir -p $out/bin
-  cp ${wrapper} $out/bin/antora
-  chmod +x $out/bin/antora
-''
+  runCommand "ocah-antora" {} ''
+    mkdir -p $out/bin
+    cp ${wrapper} $out/bin/antora
+    chmod +x $out/bin/antora
+  ''

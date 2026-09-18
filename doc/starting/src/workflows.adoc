@@ -565,6 +565,28 @@ make format-shell-check
 
 In all cases, `SHELL_PATH` may be used to constrain the above.
 
+==== Format Nix with `nix fmt`
+
+Nix files (`*.nix`) are formatted with https://github.com/kamadorueda/alejandra[alejandra].
+To check formatting without modifying files:
+
+```bash
+make format-nix-check
+```
+
+To apply formatting in place:
+
+```bash
+make format-nix
+```
+
+Both commands invoke `nix fmt` under the hood via `scripts/docker-run.sh nix-fmt[-check]`,
+which runs in the nix environment rather than the firmware toolchain container.
+On hosts without nix installed, a NixOS container provides it automatically.
+
+CI runs `format-nix-check` on every pull request and push to `main`, reporting
+inline diff annotations through reviewdog.
+
 === Configuration Files
 
 ==== TOML file Lint with `tomllint`
