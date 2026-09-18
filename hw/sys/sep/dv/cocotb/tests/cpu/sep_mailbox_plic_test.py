@@ -47,7 +47,7 @@ _BANNER = "SEP mailbox PLIC test"
 
 @pyuvm.test()
 class sep_mailbox_plic_test(sep_base_test):
-    """Boot VeeR EL2 and run the outbound-mailbox PIC-delivery firmware."""
+    """Boot VeeR EL2 and run the inbound-mailbox PIC-delivery firmware."""
 
     build_env = False
 
