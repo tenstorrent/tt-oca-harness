@@ -8,9 +8,9 @@ module OCAH4CORECluster_NonSyncResetSynchronizerPrimitiveShiftReg_d3 (
 );
 
   prim_flop_3sync prim_flop_3sync (
-    .i_CK(clock),
-    .i_D(io_d),
-    .o_Q(io_q)
+    .clk_i(clock),
+    .d_i(io_d),
+    .q_o(io_q)
   );
 
 endmodule

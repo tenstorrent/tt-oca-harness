@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs-programming]]
-===== Programming
+== Programming
 
-====== Multi-Chiplet Deployment Example
+=== Multi-Chiplet Deployment Example
 
 [source,sourceCode,c]
 ----
@@ -40,7 +40,7 @@ void initialize_multi_chiplet_timing() {
 }
 ----
 
-====== High-Precision Timestamping
+=== High-Precision Timestamping
 
 [source,sourceCode,c]
 ----
@@ -72,7 +72,7 @@ void performance_measurement() {
 }
 ----
 
-====== Synchronization Health Monitoring
+=== Synchronization Health Monitoring
 
 [source,sourceCode,c]
 ----
@@ -105,7 +105,7 @@ void monitor_synchronization_health() {
 }
 ----
 
-====== Dynamic Reconfiguration
+=== Dynamic Reconfiguration
 
 [source,sourceCode,c]
 ----

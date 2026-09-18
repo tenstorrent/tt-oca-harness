@@ -454,9 +454,10 @@ build_dir = "hw/sys/smc/dv/build/cocotb"
 # `ifndef SYNTHESIS` block (OpenTitan ASSERT macros, PeakRDL register
 # checks, Chipyard sim-only `$error` / plusargs). Verilator still compiles
 # those macros out because prim_assert.sv / ocah_assert.svh gate on
-# VERILATOR; VCS and Xcelium run them. The shared native profile keeps
-# COMMON_CELLS_ASSERTS_OFF, so PULP common_cells inline asserts stay off
-# on every backend. Verilator also keeps +define+ASSERTS_OFF below.
+# VERILATOR; VCS and Xcelium run them. The shared native profile sets
+# COMMON_CELLS_ASSERTS_OFF in its Verilator flags only, so the PULP
+# common_cells inline asserts are compiled out on Verilator and run on VCS
+# and Xcelium. Verilator also keeps +define+ASSERTS_OFF below.
 
 [targets.default.tools.verilator]
 flags = [

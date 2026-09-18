@@ -948,24 +948,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_periph_fcov.c_i3c0_scl_driven_by_dut"
 
 [[holes]]
-id = "fcov-smc-c_i3c0_scl_falling"
-title = "c i3c0 scl falling"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_periph_fcov.c_i3c0_scl_falling"
-
-[[holes]]
 id = "fcov-smc-c_i3c0_sda_driven_by_dut"
 title = "c i3c0 sda driven by dut"
 category = "missing_stimulus"

@@ -114,7 +114,7 @@ human. Other members may fill a group in passing.
 |`sep_km_host_cmd_cg` |`sep_km_command_set_rand_test` (`CMD_HW_VER` / `CMD_ROM_VER` / `CMD_SRAM_VER` / `CMD_RECOV_ACK` / `CMD_OTP_READ_LOCK_COLD`); `sep_km_handover_test` (`CMD_EXEC_ROM` / `CMD_SRAM_LOAD_EXEC` / `CMD_SRAM_EXEC`)
 |`sep_km_wipe_cg` |`sep_km_wipe_reset_test`
 |`sep_km_sw_reset_cg` |`sep_km_wipe_reset_test`, `sep_km_handover_test`
-|`sep_crypto_isolate_cg` |`sep_km_isolate_termination_test` (all three bins: it is the only leaf that isolates a KM path, presents a KM master transaction to it, and then reopens it). `sep_crypto_per_ip_reset_isolation_test` fills `cp_km_iso` and `cp_rst_ordered` from the host side.
+|`sep_crypto_isolate_cg` |`sep_km_isolate_termination_test` (the three HMAC/KM bins: it is the only leaf that isolates a KM path, presents a KM master transaction to it, and then reopens it). `sep_crypto_per_ip_reset_isolation_test` fills `cp_km_iso`, `cp_rst_ordered` and `cp_abr_rst_ordered` from the host side.
 |`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash; both `cp_hash_opcode` bins -- it is the only leaf that commands an inline hash, and it walks SHA-256 then SHA-384)
 |`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_host_csr_irq_rand_test`; DMA handshake `sep_spi_ot_dma_rx_test` / `sep_spi_ot_dma_tx_test`
 |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
@@ -447,7 +447,7 @@ strobe that carries bit 0.
 
 ==== `sep_crypto_isolate_cg`
 
-*Description*: The per-IP isolate-then-reset sequencing for the HMAC domain.
+*Description*: The per-IP isolate-then-reset sequencing for the HMAC and Adams Bridge domains.
 An accelerator reset waits on both the SEP host path and the Key Manager path,
 so the ordering bin reads both completion bits.
 
@@ -461,6 +461,7 @@ ordering bin exists to catch.
 |Coverpoint |Bins
 |`cp_km_iso` |The cycle the `km_hmac` path reports isolated. The host-side isolation entries never present a transaction on this path; that a KM master path reaches isolation at all is what this bin records.
 |`cp_rst_ordered` |The cycle the HMAC gated reset falls, with both the host and Key Manager isolate bits already high. A reset that fell before either bit does not fill this bin.
+|`cp_abr_rst_ordered` |The same for the Adams Bridge domain, whose host path is a full-AXI isolate rather than AXI-Lite. The Key Manager bit carries an ABR term; without it the sequencer never releases and this bin cannot fill.
 |`cp_reopen` |The cycle `km_hmac` reports un-isolated again, so the path was released rather than left isolated for the rest of the run.
 |===
 

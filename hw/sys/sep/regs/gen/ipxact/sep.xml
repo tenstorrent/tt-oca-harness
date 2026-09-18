@@ -1288,7 +1288,7 @@ Cleared automatically by the hardware when starting the transfer of a new chunk.
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>sep_reset_ctrl</ipxact:name>
-          <ipxact:description>SEP software reset controller registers</ipxact:description>
+          <ipxact:description>Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.</ipxact:description>
           <ipxact:addressOffset>'h10803000</ipxact:addressOffset>
           <ipxact:range>'h8</ipxact:range>
           <ipxact:register>
@@ -1359,6 +1359,18 @@ Cleared automatically by the hardware when starting the transfer of a new chunk.
               <ipxact:name>trng_sw_rst_n</ipxact:name>
               <ipxact:description>Internal TRNG reset request (0=assert, 1=release). Hardware drains and isolates the entropy-source, CSRNG, and EDN AXI ports before asserting the shared TRNG reset.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>abr_sw_rst_n</ipxact:name>
+              <ipxact:description>Adams Bridge reset (0=assert, 1=release)</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h1</ipxact:value>
@@ -7552,6 +7564,13 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
           </ipxact:register>
         </ipxact:registerFile>
         <ipxact:registerFile>
+          <ipxact:name>trng</ipxact:name>
+          <ipxact:displayName>External TRNG</ipxact:displayName>
+          <ipxact:description>External TRNG register passthrough; the register layout is adopter-defined</ipxact:description>
+          <ipxact:addressOffset>'h10917000</ipxact:addressOffset>
+          <ipxact:range>'h1000</ipxact:range>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
           <ipxact:name>sep_lifecycle_ctrl</ipxact:name>
           <ipxact:addressOffset>'h10918000</ipxact:addressOffset>
           <ipxact:range>'h18</ipxact:range>
@@ -10921,6 +10940,1573 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
+          <ipxact:name>abr</ipxact:name>
+          <ipxact:description>address maps for adams bridge register space</ipxact:description>
+          <ipxact:addressOffset>'h10940000</ipxact:addressOffset>
+          <ipxact:range>'hc018</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>MLDSA_NAME</ipxact:name>
+            <ipxact:displayName>MLDSA component name register type definition</ipxact:displayName>
+            <ipxact:description>Two 32-bit read-only registers representing of the name
+of MLDSA component.</ipxact:description>
+            <ipxact:dim>2</ipxact:dim>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>NAME</ipxact:name>
+              <ipxact:description>Name field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_VERSION</ipxact:name>
+            <ipxact:displayName>MLDSA component version register type definition</ipxact:displayName>
+            <ipxact:description>Two 32-bit read-only registers representing of the version
+of MLDSA component.</ipxact:description>
+            <ipxact:dim>2</ipxact:dim>
+            <ipxact:addressOffset>'h8</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>VERSION</ipxact:name>
+              <ipxact:description>Version field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_CTRL</ipxact:name>
+            <ipxact:displayName>MLDSA component control register type definition</ipxact:displayName>
+            <ipxact:description>Control register to set the type of MLDSA operations.</ipxact:description>
+            <ipxact:addressOffset>'h10</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>CTRL</ipxact:name>
+              <ipxact:description>Control command field. This can be:
+[br]            000 for NONE
+[br]            001 for KEYGEN
+[br]            010 for SIGNING
+[br]            011 for VERIFYING
+[br]            100 for KEYGEN+SIGN
+
+[br] After each software write, hardware will erase the register</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>3</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ZEROIZE</ipxact:name>
+              <ipxact:description>Zeroize all internal registers: Zeroize all internal registers and memories to avoid SCA leakage.
+[br] Software write generates only a single-cycle pulse on the
+hardware interface and then will be erased</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>PCR_SIGN</ipxact:name>
+              <ipxact:description>Run PCR Signing flow: Run MLDSA KeyGen+Signing flow to sign PCRs.</ipxact:description>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>EXTERNAL_MU</ipxact:name>
+              <ipxact:description>ExternalMu Mode</ipxact:description>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>STREAM_MSG</ipxact:name>
+              <ipxact:description>Enable streaming mode to get message for signing/verifying operation</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_STATUS</ipxact:name>
+            <ipxact:displayName>MLDSA component status register type definition</ipxact:displayName>
+            <ipxact:description>One 3-bit register including the following flags:
+[br]bit #0: READY : ​Indicates if the core is ready to take
+[br]                a control command and process the inputs.
+[br]bit #1: VALID : ​Indicates if the process is done and the
+[br]                result is valid.
+[br]bit #2: MSG_STREAM_READY: Indicates if the core is ready
+[br]                          to recieve the message in streaming mode.
+[br]bit #3: ERROR: Indicates the process ended with an error</ipxact:description>
+            <ipxact:addressOffset>'h14</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>READY</ipxact:name>
+              <ipxact:description>Status ready bit</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>VALID</ipxact:name>
+              <ipxact:description>Status valid bit</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>MSG_STREAM_READY</ipxact:name>
+              <ipxact:description>The core is ready to recieve the message in streaming mode</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ERROR</ipxact:name>
+              <ipxact:description>Status error bit</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>ABR_ENTROPY</ipxact:name>
+            <ipxact:displayName>ABR component entropy register type definition, used for MLDSA and MLKEM</ipxact:displayName>
+            <ipxact:description>16 32-bit registers storing the 512-bit entropy
+required for SCA countermeasures with no change on the outputs.
+The entropy can be any 512-bit value in [0 : 2^512-1].</ipxact:description>
+            <ipxact:dim>16</ipxact:dim>
+            <ipxact:addressOffset>'h18</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>ENTROPY</ipxact:name>
+              <ipxact:description>Input entropy field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_SEED</ipxact:name>
+            <ipxact:displayName>MLDSA component seed register type definition</ipxact:displayName>
+            <ipxact:description>8 32-bit registers storing the 256-bit seed for keygen.
+The seed can be any 256-bit value in [0 : 2^256-1].</ipxact:description>
+            <ipxact:dim>8</ipxact:dim>
+            <ipxact:addressOffset>'h58</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>SEED</ipxact:name>
+              <ipxact:description>Input seed field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_SIGN_RND</ipxact:name>
+            <ipxact:displayName>MLDSA component sign_rnd register type definition</ipxact:displayName>
+            <ipxact:description>8 32-bit registers storing the 256-bit sign_rnd for signing.
+The sign_rnd can be any 256-bit value in [0 : 2^256-1].
+sign_rnd should be all zero for deterministic variant.</ipxact:description>
+            <ipxact:dim>8</ipxact:dim>
+            <ipxact:addressOffset>'h78</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>SIGN_RND</ipxact:name>
+              <ipxact:description>Input sign_rnd field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_MSG</ipxact:name>
+            <ipxact:displayName>MLDSA component message register type definition</ipxact:displayName>
+            <ipxact:description>16 32-bit registers storing the message.
+The message can be a fixed size of 512-bit value in [0 : 2^512-1].</ipxact:description>
+            <ipxact:dim>16</ipxact:dim>
+            <ipxact:addressOffset>'h98</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>MSG</ipxact:name>
+              <ipxact:description>Input message field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_VERIFY_RES</ipxact:name>
+            <ipxact:displayName>MLDSA component verify result register type definition</ipxact:displayName>
+            <ipxact:description>16 32-bit registers storing the result of verifying operation.
+If this register is equal to the first part of the given signature, i.e. c~,
+the signature is verified.</ipxact:description>
+            <ipxact:dim>16</ipxact:dim>
+            <ipxact:addressOffset>'hd8</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>VERIFY_RES</ipxact:name>
+              <ipxact:description>Output verify result field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_EXTERNAL_MU</ipxact:name>
+            <ipxact:displayName>MLDSA component external_mu register type definition</ipxact:displayName>
+            <ipxact:description>16 32-bit registers storing the external_mu.
+The external_mu can be any 512-bit value in [0 : 2^512-1].</ipxact:description>
+            <ipxact:dim>16</ipxact:dim>
+            <ipxact:addressOffset>'h118</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>EXTERNAL_MU</ipxact:name>
+              <ipxact:description>Input message field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_MSG_STROBE</ipxact:name>
+            <ipxact:displayName>MLDSA component msg strobe register type definition</ipxact:displayName>
+            <ipxact:description>Byte enable strobe for each 32 bits of message.
+[br] Must be set to 4'b1111 before streaming message, after observing stream_msg_rdy.
+[br] Set to 1 for each valid byte in the last msg data, starting from LSB.
+[br] Valid values are 4'b0000, 4'b0001, 4'b0011, 4'b0111, and 4'b1111
+[br] A 32 bit aligned msg must write this to 4'h0 and write to msg input once.</ipxact:description>
+            <ipxact:addressOffset>'h158</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>STROBE</ipxact:name>
+              <ipxact:description>Input message strobe</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'hf</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>4</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_CTX_CONFIG</ipxact:name>
+            <ipxact:displayName>MLDSA component Input Context Config register type definition</ipxact:displayName>
+            <ipxact:description>Registers defining the size of the context.
+The context is an optional byte-string.</ipxact:description>
+            <ipxact:addressOffset>'h15c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>CTX_SIZE</ipxact:name>
+              <ipxact:description>Context Byte size field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLDSA_CTX</ipxact:name>
+            <ipxact:displayName>MLDSA component context register type definition</ipxact:displayName>
+            <ipxact:description>up tp 255 bytes registers storing the context.</ipxact:description>
+            <ipxact:dim>64</ipxact:dim>
+            <ipxact:addressOffset>'h160</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>CTX</ipxact:name>
+              <ipxact:description>Input context field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>kv_mldsa_seed_rd_ctrl</ipxact:name>
+            <ipxact:displayName>Key Vault Read Control Register</ipxact:displayName>
+            <ipxact:description>Controls the Key Vault read access for this engine</ipxact:description>
+            <ipxact:addressOffset>'h8000</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>read_en</ipxact:name>
+              <ipxact:description>Indicates that the read data is to come from the key vault.
+Setting this bit to 1 initiates copying of data from the key vault.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>read_entry</ipxact:name>
+              <ipxact:description>Key Vault entry to retrieve the read data from for the engine</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>5</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>pcr_hash_extend</ipxact:name>
+              <ipxact:description>Requested entry is a PCR. This is used only for SHA to hash extend, it's NOP in all other engines</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>rsvd</ipxact:name>
+              <ipxact:description>Reserved field</ipxact:description>
+              <ipxact:bitOffset>7</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>25</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>kv_mldsa_seed_rd_status</ipxact:name>
+            <ipxact:displayName>Key Vault Status Register</ipxact:displayName>
+            <ipxact:description>Reports the Key Vault flow status for this engine</ipxact:description>
+            <ipxact:addressOffset>'h8004</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>READY</ipxact:name>
+              <ipxact:description>Key Vault control is ready for use</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>VALID</ipxact:name>
+              <ipxact:description>Key Vault flow is done</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ERROR</ipxact:name>
+              <ipxact:displayName>Key Vault Error</ipxact:displayName>
+              <ipxact:description>Indicates the error status of a key vault flow</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+              <ipxact:enumeratedValues>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>SUCCESS</ipxact:name>
+                  <ipxact:description>Key Vault flow was successful</ipxact:description>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>KV_READ_FAIL</ipxact:name>
+                  <ipxact:description>Key Vault Read flow failed</ipxact:description>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>KV_WRITE_FAIL</ipxact:name>
+                  <ipxact:description>Key Vault Write flow failed</ipxact:description>
+                  <ipxact:value>'h2</ipxact:value>
+                </ipxact:enumeratedValue>
+              </ipxact:enumeratedValues>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:registerFile>
+            <ipxact:name>intr_block_rf</ipxact:name>
+            <ipxact:displayName>Interrupt Register Block</ipxact:displayName>
+            <ipxact:description>Set of registers to implement interrupt functionality for ABR</ipxact:description>
+            <ipxact:addressOffset>'h8100</ipxact:addressOffset>
+            <ipxact:range>'h208</ipxact:range>
+            <ipxact:register>
+              <ipxact:name>global_intr_en_r</ipxact:name>
+              <ipxact:displayName>Per-Type Interrupt Enable Register</ipxact:displayName>
+              <ipxact:description>Dedicated register with one bit for each event type that may produce an interrupt.</ipxact:description>
+              <ipxact:addressOffset>'h0</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>error_en</ipxact:name>
+                <ipxact:description>Global enable bit for all events of type 'Error'</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
+              <ipxact:field>
+                <ipxact:name>notif_en</ipxact:name>
+                <ipxact:description>Global enable bit for all events of type 'Notification'</ipxact:description>
+                <ipxact:bitOffset>1</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>error_intr_en_r</ipxact:name>
+              <ipxact:displayName>Per-Event Interrupt Enable Register</ipxact:displayName>
+              <ipxact:description>Dedicated register with one bit for each event that may produce an interrupt.</ipxact:description>
+              <ipxact:addressOffset>'h4</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>error_internal_en</ipxact:name>
+                <ipxact:description>Enable bit for Internal Errors</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>notif_intr_en_r</ipxact:name>
+              <ipxact:displayName>Per-Event Interrupt Enable Register</ipxact:displayName>
+              <ipxact:description>Dedicated register with one bit for each event that may produce an interrupt.</ipxact:description>
+              <ipxact:addressOffset>'h8</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>notif_cmd_done_en</ipxact:name>
+                <ipxact:description>Enable bit for Command Done</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>error_global_intr_r</ipxact:name>
+              <ipxact:displayName>Interrupt Status Aggregation Register type definition</ipxact:displayName>
+              <ipxact:description>Single bit indicating occurrence of any interrupt event
+of a given type. E.g. Notifications and Errors may drive
+to two separate interrupt registers. There may be
+multiple sources of Notifications or Errors that are
+aggregated into a single interrupt pin for that
+respective type. That pin feeds through this register
+in order to apply a global enablement of that interrupt
+event type.
+Nonsticky assertion.</ipxact:description>
+              <ipxact:addressOffset>'hc</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>agg_sts</ipxact:name>
+                <ipxact:description>Interrupt Event Aggregation status bit</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-only</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>notif_global_intr_r</ipxact:name>
+              <ipxact:displayName>Interrupt Status Aggregation Register type definition</ipxact:displayName>
+              <ipxact:description>Single bit indicating occurrence of any interrupt event
+of a given type. E.g. Notifications and Errors may drive
+to two separate interrupt registers. There may be
+multiple sources of Notifications or Errors that are
+aggregated into a single interrupt pin for that
+respective type. That pin feeds through this register
+in order to apply a global enablement of that interrupt
+event type.
+Nonsticky assertion.</ipxact:description>
+              <ipxact:addressOffset>'h10</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>agg_sts</ipxact:name>
+                <ipxact:description>Interrupt Event Aggregation status bit</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-only</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>error_internal_intr_r</ipxact:name>
+              <ipxact:displayName>Interrupt Status Register type definition</ipxact:displayName>
+              <ipxact:description>Single bit indicating occurrence of each interrupt event.
+Sticky, level assertion, write-1-to-clear.</ipxact:description>
+              <ipxact:addressOffset>'h14</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>error_internal_sts</ipxact:name>
+                <ipxact:description>Internal Errors status bit</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-write</ipxact:access>
+                <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>notif_internal_intr_r</ipxact:name>
+              <ipxact:displayName>Interrupt Status Register type definition</ipxact:displayName>
+              <ipxact:description>Single bit indicating occurrence of each interrupt event.
+Sticky, level assertion, write-1-to-clear.</ipxact:description>
+              <ipxact:addressOffset>'h18</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>notif_cmd_done_sts</ipxact:name>
+                <ipxact:description>Command Done status bit</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-write</ipxact:access>
+                <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>error_intr_trig_r</ipxact:name>
+              <ipxact:displayName>Interrupt Trigger Register type definition</ipxact:displayName>
+              <ipxact:description>Single bit for each interrupt event allows SW to manually
+trigger occurrence of that event. Upon SW write, the trigger bit
+will pulse for 1 cycle then clear to 0. The pulse on the
+trigger register bit results in the corresponding interrupt
+status bit being set to 1.</ipxact:description>
+              <ipxact:addressOffset>'h1c</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>error_internal_trig</ipxact:name>
+                <ipxact:description>Internal Errors trigger bit</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-write</ipxact:access>
+                <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>notif_intr_trig_r</ipxact:name>
+              <ipxact:displayName>Interrupt Trigger Register type definition</ipxact:displayName>
+              <ipxact:description>Single bit for each interrupt event allows SW to manually
+trigger occurrence of that event. Upon SW write, the trigger bit
+will pulse for 1 cycle then clear to 0. The pulse on the
+trigger register bit results in the corresponding interrupt
+status bit being set to 1.</ipxact:description>
+              <ipxact:addressOffset>'h20</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>notif_cmd_done_trig</ipxact:name>
+                <ipxact:description>Command Done trigger bit</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-write</ipxact:access>
+                <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>error_internal_intr_count_r</ipxact:name>
+              <ipxact:displayName>Interrupt Event Counter</ipxact:displayName>
+              <ipxact:description>Provides statistics about the number of events that have
+occurred.
+Will not overflow ('incrsaturate').</ipxact:description>
+              <ipxact:addressOffset>'h100</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>cnt</ipxact:name>
+                <ipxact:description>Count field</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>32</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>notif_cmd_done_intr_count_r</ipxact:name>
+              <ipxact:displayName>Interrupt Event Counter</ipxact:displayName>
+              <ipxact:description>Provides statistics about the number of events that have
+occurred.
+Will not overflow ('incrsaturate').</ipxact:description>
+              <ipxact:addressOffset>'h180</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>cnt</ipxact:name>
+                <ipxact:description>Count field</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>32</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>error_internal_intr_count_incr_r</ipxact:name>
+              <ipxact:displayName>Interrupt Event Count Incrementor</ipxact:displayName>
+              <ipxact:description>Trigger the event counter to increment based on observing
+the rising edge of an interrupt event input from the
+Hardware. The same input signal that causes an interrupt
+event to be set (sticky) also causes this signal to pulse
+for 1 clock cycle, resulting in the event counter
+incrementing by 1 for every interrupt event.
+This is implemented as a down-counter (1-bit) that will
+decrement immediately on being set - resulting in a pulse</ipxact:description>
+              <ipxact:addressOffset>'h200</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>pulse</ipxact:name>
+                <ipxact:description>Pulse mirrors interrupt event occurrence</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-only</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+            <ipxact:register>
+              <ipxact:name>notif_cmd_done_intr_count_incr_r</ipxact:name>
+              <ipxact:displayName>Interrupt Event Count Incrementor</ipxact:displayName>
+              <ipxact:description>Trigger the event counter to increment based on observing
+the rising edge of an interrupt event input from the
+Hardware. The same input signal that causes an interrupt
+event to be set (sticky) also causes this signal to pulse
+for 1 clock cycle, resulting in the event counter
+incrementing by 1 for every interrupt event.
+This is implemented as a down-counter (1-bit) that will
+decrement immediately on being set - resulting in a pulse</ipxact:description>
+              <ipxact:addressOffset>'h204</ipxact:addressOffset>
+              <ipxact:size>32</ipxact:size>
+              <ipxact:field>
+                <ipxact:name>pulse</ipxact:name>
+                <ipxact:description>Pulse mirrors interrupt event occurrence</ipxact:description>
+                <ipxact:bitOffset>0</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:volatile>true</ipxact:volatile>
+                <ipxact:access>read-only</ipxact:access>
+              </ipxact:field>
+            </ipxact:register>
+          </ipxact:registerFile>
+          <ipxact:register>
+            <ipxact:name>MLKEM_NAME</ipxact:name>
+            <ipxact:displayName>MLKEM component name register type definition</ipxact:displayName>
+            <ipxact:description>Two 32-bit read-only registers representing of the name
+of MLKEM component.</ipxact:description>
+            <ipxact:dim>2</ipxact:dim>
+            <ipxact:addressOffset>'h9000</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>NAME</ipxact:name>
+              <ipxact:description>Name field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLKEM_VERSION</ipxact:name>
+            <ipxact:displayName>MLKEM component version register type definition</ipxact:displayName>
+            <ipxact:description>Two 32-bit read-only registers representing of the version
+of MLKEM component.</ipxact:description>
+            <ipxact:dim>2</ipxact:dim>
+            <ipxact:addressOffset>'h9008</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>VERSION</ipxact:name>
+              <ipxact:description>Version field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLKEM_CTRL</ipxact:name>
+            <ipxact:displayName>MLKEM component control register type definition</ipxact:displayName>
+            <ipxact:description>Control register to set the type of MLKEM operations.</ipxact:description>
+            <ipxact:addressOffset>'h9010</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>CTRL</ipxact:name>
+              <ipxact:description>Control command field. This can be:
+[br]            000 for NONE
+[br]            001 for KEYGEN
+[br]            010 for ENCAPS
+[br]            011 for DECAPS
+[br]            100 for KEYGEN+DECAPS
+
+[br] After each software write, hardware will erase the register</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>3</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ZEROIZE</ipxact:name>
+              <ipxact:description>Zeroize all internal registers: Zeroize all internal registers and memories to avoid SCA leakage.
+[br] Software write generates only a single-cycle pulse on the
+[br] hardware interface and then will be erased</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLKEM_STATUS</ipxact:name>
+            <ipxact:displayName>MLKEM component status register type definition</ipxact:displayName>
+            <ipxact:description>One 3-bit register including the following flags:
+[br]bit #0: READY : ​Indicates if the core is ready to take
+[br]                a control command and process the inputs.
+[br]bit #1: VALID : ​Indicates if the process is done and the
+[br]                result is valid.
+[br]bit #2: ERROR : ​Indicates the process ended in an error.</ipxact:description>
+            <ipxact:addressOffset>'h9014</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>READY</ipxact:name>
+              <ipxact:description>Status ready bit</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>VALID</ipxact:name>
+              <ipxact:description>Status valid bit</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ERROR</ipxact:name>
+              <ipxact:description>Status error bit</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLKEM_SEED_D</ipxact:name>
+            <ipxact:displayName>MLKEM component seed register type definition</ipxact:displayName>
+            <ipxact:description>8 32-bit registers storing the 256-bit seed for keygen.
+The seed can be any 256-bit value in [0 : 2^256-1].</ipxact:description>
+            <ipxact:dim>8</ipxact:dim>
+            <ipxact:addressOffset>'h9018</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>SEED</ipxact:name>
+              <ipxact:description>Input seed d field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLKEM_SEED_Z</ipxact:name>
+            <ipxact:displayName>MLKEM component seed register type definition</ipxact:displayName>
+            <ipxact:description>8 32-bit registers storing the 256-bit seed for keygen.
+The seed can be any 256-bit value in [0 : 2^256-1].</ipxact:description>
+            <ipxact:dim>8</ipxact:dim>
+            <ipxact:addressOffset>'h9038</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>SEED</ipxact:name>
+              <ipxact:description>Input seed z field</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>MLKEM_SHARED_KEY</ipxact:name>
+            <ipxact:displayName>MLKEM component shared key register type definition</ipxact:displayName>
+            <ipxact:description>8 32-bit registers storing the shared key.</ipxact:description>
+            <ipxact:dim>8</ipxact:dim>
+            <ipxact:addressOffset>'h9058</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>KEY</ipxact:name>
+              <ipxact:description>Output shared key</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>kv_mlkem_seed_rd_ctrl</ipxact:name>
+            <ipxact:displayName>Key Vault Read Control Register</ipxact:displayName>
+            <ipxact:description>Controls the Key Vault read access for this engine</ipxact:description>
+            <ipxact:addressOffset>'hc000</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>read_en</ipxact:name>
+              <ipxact:description>Indicates that the read data is to come from the key vault.
+Setting this bit to 1 initiates copying of data from the key vault.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>read_entry</ipxact:name>
+              <ipxact:description>Key Vault entry to retrieve the read data from for the engine</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>5</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>pcr_hash_extend</ipxact:name>
+              <ipxact:description>Requested entry is a PCR. This is used only for SHA to hash extend, it's NOP in all other engines</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>rsvd</ipxact:name>
+              <ipxact:description>Reserved field</ipxact:description>
+              <ipxact:bitOffset>7</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>25</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>kv_mlkem_seed_rd_status</ipxact:name>
+            <ipxact:displayName>Key Vault Status Register</ipxact:displayName>
+            <ipxact:description>Reports the Key Vault flow status for this engine</ipxact:description>
+            <ipxact:addressOffset>'hc004</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>READY</ipxact:name>
+              <ipxact:description>Key Vault control is ready for use</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>VALID</ipxact:name>
+              <ipxact:description>Key Vault flow is done</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ERROR</ipxact:name>
+              <ipxact:displayName>Key Vault Error</ipxact:displayName>
+              <ipxact:description>Indicates the error status of a key vault flow</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+              <ipxact:enumeratedValues>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>SUCCESS</ipxact:name>
+                  <ipxact:description>Key Vault flow was successful</ipxact:description>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>KV_READ_FAIL</ipxact:name>
+                  <ipxact:description>Key Vault Read flow failed</ipxact:description>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>KV_WRITE_FAIL</ipxact:name>
+                  <ipxact:description>Key Vault Write flow failed</ipxact:description>
+                  <ipxact:value>'h2</ipxact:value>
+                </ipxact:enumeratedValue>
+              </ipxact:enumeratedValues>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>kv_mlkem_msg_rd_ctrl</ipxact:name>
+            <ipxact:displayName>Key Vault Read Control Register</ipxact:displayName>
+            <ipxact:description>Controls the Key Vault read access for this engine</ipxact:description>
+            <ipxact:addressOffset>'hc008</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>read_en</ipxact:name>
+              <ipxact:description>Indicates that the read data is to come from the key vault.
+Setting this bit to 1 initiates copying of data from the key vault.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>read_entry</ipxact:name>
+              <ipxact:description>Key Vault entry to retrieve the read data from for the engine</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>5</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>pcr_hash_extend</ipxact:name>
+              <ipxact:description>Requested entry is a PCR. This is used only for SHA to hash extend, it's NOP in all other engines</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>rsvd</ipxact:name>
+              <ipxact:description>Reserved field</ipxact:description>
+              <ipxact:bitOffset>7</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>25</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>kv_mlkem_msg_rd_status</ipxact:name>
+            <ipxact:displayName>Key Vault Status Register</ipxact:displayName>
+            <ipxact:description>Reports the Key Vault flow status for this engine</ipxact:description>
+            <ipxact:addressOffset>'hc00c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>READY</ipxact:name>
+              <ipxact:description>Key Vault control is ready for use</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>VALID</ipxact:name>
+              <ipxact:description>Key Vault flow is done</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ERROR</ipxact:name>
+              <ipxact:displayName>Key Vault Error</ipxact:displayName>
+              <ipxact:description>Indicates the error status of a key vault flow</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+              <ipxact:enumeratedValues>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>SUCCESS</ipxact:name>
+                  <ipxact:description>Key Vault flow was successful</ipxact:description>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>KV_READ_FAIL</ipxact:name>
+                  <ipxact:description>Key Vault Read flow failed</ipxact:description>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>KV_WRITE_FAIL</ipxact:name>
+                  <ipxact:description>Key Vault Write flow failed</ipxact:description>
+                  <ipxact:value>'h2</ipxact:value>
+                </ipxact:enumeratedValue>
+              </ipxact:enumeratedValues>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>kv_mlkem_sharedkey_wr_ctrl</ipxact:name>
+            <ipxact:displayName>Key Vault Write Control Register</ipxact:displayName>
+            <ipxact:description>Controls the Key Vault write access for this engine</ipxact:description>
+            <ipxact:addressOffset>'hc010</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>write_en</ipxact:name>
+              <ipxact:description>Indicates that the result is to be stored in the key vault.
+Setting this bit to 1 will copy the result to the keyvault when it is ready.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>write_entry</ipxact:name>
+              <ipxact:description>Key Vault entry to store the result</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>5</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>hmac_key_dest_valid</ipxact:name>
+              <ipxact:description>HMAC KEY is a valid destination</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>hmac_block_dest_valid</ipxact:name>
+              <ipxact:description>HMAC BLOCK is a valid destination</ipxact:description>
+              <ipxact:bitOffset>7</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>mldsa_seed_dest_valid</ipxact:name>
+              <ipxact:description>MLDSA_SEED is a valid destination</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ecc_pkey_dest_valid</ipxact:name>
+              <ipxact:description>ECC PKEY is a valid destination</ipxact:description>
+              <ipxact:bitOffset>9</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ecc_seed_dest_valid</ipxact:name>
+              <ipxact:description>ECC SEED is a valid destination</ipxact:description>
+              <ipxact:bitOffset>10</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>aes_key_dest_valid</ipxact:name>
+              <ipxact:description>AES KEY is a valid destination</ipxact:description>
+              <ipxact:bitOffset>11</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>mlkem_seed_dest_valid</ipxact:name>
+              <ipxact:description>MLKEM SEED is a valid destination</ipxact:description>
+              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>mlkem_msg_dest_valid</ipxact:name>
+              <ipxact:description>MLKEM MSG is a valid destination</ipxact:description>
+              <ipxact:bitOffset>13</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>dma_data_dest_valid</ipxact:name>
+              <ipxact:description>AXI DMA data is a valid destination</ipxact:description>
+              <ipxact:bitOffset>14</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>rsvd</ipxact:name>
+              <ipxact:description>Reserved field</ipxact:description>
+              <ipxact:bitOffset>15</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>17</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>kv_mlkem_sharedkey_wr_status</ipxact:name>
+            <ipxact:displayName>Key Vault Status Register</ipxact:displayName>
+            <ipxact:description>Reports the Key Vault flow status for this engine</ipxact:description>
+            <ipxact:addressOffset>'hc014</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>READY</ipxact:name>
+              <ipxact:description>Key Vault control is ready for use</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>VALID</ipxact:name>
+              <ipxact:description>Key Vault flow is done</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>ERROR</ipxact:name>
+              <ipxact:displayName>Key Vault Error</ipxact:displayName>
+              <ipxact:description>Indicates the error status of a key vault flow</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+              <ipxact:enumeratedValues>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>SUCCESS</ipxact:name>
+                  <ipxact:description>Key Vault flow was successful</ipxact:description>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>KV_READ_FAIL</ipxact:name>
+                  <ipxact:description>Key Vault Read flow failed</ipxact:description>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>KV_WRITE_FAIL</ipxact:name>
+                  <ipxact:description>Key Vault Write flow failed</ipxact:description>
+                  <ipxact:value>'h2</ipxact:value>
+                </ipxact:enumeratedValue>
+              </ipxact:enumeratedValues>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
+          <ipxact:name>entropy_pool</ipxact:name>
+          <ipxact:displayName>SEP Entropy Pool</ipxact:displayName>
+          <ipxact:description>Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR.</ipxact:description>
+          <ipxact:addressOffset>'h10950000</ipxact:addressOffset>
+          <ipxact:range>'h18</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>STATUS</ipxact:name>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>fifo_level</ipxact:name>
+              <ipxact:description>Current number of available 64-bit entropy words</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>6</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>pool_low</ipxact:name>
+              <ipxact:description>The pool occupancy is below the configured low watermark</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>fill_stall</ipxact:name>
+              <ipxact:description>The EDN fill request exceeded the configured stall threshold</ipxact:description>
+              <ipxact:bitOffset>7</ipxact:bitOffset>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>pool_error</ipxact:name>
+              <ipxact:description>The pool detected a FIFO integrity error</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>IRQ_CAUSE</ipxact:name>
+            <ipxact:addressOffset>'h8</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>pool_low</ipxact:name>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>fill_stall</ipxact:name>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>pool_error</ipxact:name>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>DATA</ipxact:name>
+            <ipxact:addressOffset>'h10</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>entropy</ipxact:name>
+              <ipxact:description>Pops one conditioned entropy word; an empty pool returns SLVERR</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>64</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-only</ipxact:access>
             </ipxact:field>

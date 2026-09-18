@@ -3,23 +3,21 @@
 
 // KBKDF-HMAC-SHA256 key derivation for OROM.
 //
-// Derives AES encryption keys from class_key + manifest KDF inputs.
-// Implements the ROM KBKDF-HMAC-SHA256 helper.
+// OCA payload-decryption key derivation (SP 800-108r1 CTR-HMAC-SHA-256).
 
 #pragma once
 
 #include <stdint.h>
 
-// Derive a key using KBKDF in counter mode with HMAC-SHA256 as PRF.
+// Derive the AES key for an encrypted OCA payload.
 //
-// Parameters:
-//   key      - input key material (e.g., class_key from fuse)
-//   key_len  - length of key in bytes
-//   info     - context/info string (16 bytes from manifest KDF input)
-//   salt     - salt (16 bytes from manifest KDF input)
-//   out      - output buffer for derived key
-//   out_len  - desired output length in bytes (max 32)
+// secret     - the provisioned class secret (32 bytes for the CLASS_KEY bank)
+// secret_len - its length in bytes
+// kdf_input  - the manifest's 64-byte encryption_kdf_input, verbatim
+// key_bits   - 128 for AES-128-CBC, 256 for AES-256-CBC; nothing else
+// out_key    - receives key_bits/8 bytes
 //
-// Returns 0 on success, non-zero on failure.
-int kbkdf_hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *info,
-                      const uint8_t *salt, uint8_t *out, uint32_t out_len);
+// Returns 0 on success. On failure out_key is wiped rather than left holding a
+// partially derived key.
+int oca_derive_payload_key(const uint8_t *secret, uint32_t secret_len, const uint8_t *kdf_input,
+                           uint32_t key_bits, uint8_t *out_key);

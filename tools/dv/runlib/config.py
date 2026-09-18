@@ -166,6 +166,9 @@ FORMAL_EVIDENCE_PLACEHOLDERS = {"run_dir", "item", "cwd"}
 # (runlib.site) supplies them and the checked-in registry rejects them.
 SITE_ONLY_TOOL_KEYS = {"launcher", "extra_env", "setup_hook"}
 TOOL_KINDS = {"simulation", "formal"}
+# A tool table's `min_version`: a dotted release number, compared by the doctor against the
+# first such number in the release line the tool's binary prints.
+MIN_VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
 
 TOP_LEVEL_KEYS = {
     "schema_version",
@@ -314,6 +317,7 @@ TEST_KEYS = {
     "timeout_sec",
     "tags",
     "run_modes",
+    "tools",
     "firmware",
     "expect_fail",
     "expect_fail_match",
@@ -1562,6 +1566,13 @@ def validate_simulator_registry(simulators: dict[str, Any], where: str) -> None:
                 f"{where}: [{tool}] must declare `license_env` ([] for a license-free tool)"
             )
         as_str_list(table.get("license_env"), f"{where} [{tool}].license_env")
+        min_version = table.get("min_version")
+        if min_version is not None and not (
+            isinstance(min_version, str) and MIN_VERSION_RE.fullmatch(min_version)
+        ):
+            raise ConfigError(
+                f'{where}: [{tool}].min_version must be a dotted release number such as "5.036"'
+            )
         if kind == "formal":
             if "argv" not in table:
                 raise ConfigError(
@@ -1982,6 +1993,15 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
     else:
         raise ConfigError(f"{where}{name}.module must be a non-empty string or a binding table")
 
+    # `tools = []` names no simulator that could ever run the scenario, which is a way
+    # of deleting a test without saying so. Caught here, where an absent key is still
+    # distinguishable from an explicitly empty one -- as_str_list flattens both to [].
+    if "tools" in entry and not entry["tools"]:
+        raise ConfigError(
+            f"{where}{name}.tools is empty, so no tool could ever run this scenario; "
+            f"drop the key to allow every tool, or name the ones that work"
+        )
+
     overrides_raw = entry.get("overrides", {})
     overrides: dict[str, dict[str, Any]] = {}
     if not isinstance(overrides_raw, dict):
@@ -2011,6 +2031,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         timeout_sec=as_int(entry.get("timeout_sec"), f"{name}.timeout_sec"),
         tags=as_str_list(entry.get("tags"), f"{name}.tags"),
         run_modes=as_str_list(entry.get("run_modes"), f"{name}.run_modes"),
+        tools=as_str_list(entry.get("tools"), f"{name}.tools"),
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
         expect_fail=expect_fail,
@@ -2091,6 +2112,31 @@ def _validate_run_mode_references(flow: Flow, tests: dict[str, TestEntry]) -> No
         validate_run_mode_request(flow.raw, str(default), f"{flow.path}: [defaults].run_mode")
 
 
+def _validate_tool_references(flow: Flow, tests: dict[str, TestEntry]) -> None:
+    """Every per-test ``tools`` entry must name a simulator the DUT declares.
+
+    Runs after include expansion, like the run-mode check beside it. A name the DUT does
+    not declare could never match the selected tool, so the scenario would be skipped on
+    every run -- silently, and for a typo. An empty list means unrestricted, the same way
+    an absent ``tags`` or ``run_modes`` does; an explicitly empty one is rejected at
+    parse time, where it is still distinguishable from an absent key.
+    """
+    for test in tests.values():
+        if not test.tools or not test.module:
+            # No binding for the selected framework means this view never runs the
+            # scenario at all (see _resolve_catalog_frameworks), so which simulators it
+            # would need is not this view's business -- and a framework overlay may
+            # legitimately declare a narrower `tools` list than the tool the scenario names.
+            continue
+        where = f"{test.source or flow.path}: test `{test.name}`"
+        unknown = [name for name in test.tools if name not in flow.tools]
+        if unknown:
+            raise ConfigError(
+                f"{where}: `tools` names {', '.join(f'`{n}`' for n in unknown)}, which "
+                f"dut `{flow.name}` does not declare (declares: {', '.join(flow.tools)})"
+            )
+
+
 def _validate_group_members(
     tests: dict[str, TestEntry], groups: dict[str, list[str]], group_sources: dict[str, Path]
 ) -> None:
@@ -2122,6 +2168,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
         )
         _resolve_catalog_frameworks(flow, tests, path)
         _validate_run_mode_references(flow, tests)
+        _validate_tool_references(flow, tests)
         _validate_group_members(tests, groups, group_sources)
         return TestCatalog(path=path, tests=tests, groups=groups)
     # No separate testlist file: read inline [[tests]]/[[groups]] from the flow TOML.
@@ -2135,6 +2182,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
     )
     _resolve_catalog_frameworks(flow, tests, flow.path)
     _validate_run_mode_references(flow, tests)
+    _validate_tool_references(flow, tests)
     _validate_group_members(tests, groups, group_sources)
     return TestCatalog(path=None, tests=tests, groups=groups)
 

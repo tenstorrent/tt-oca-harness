@@ -74,7 +74,8 @@ def slot_read_indices(rds: Sequence[Txn], slot: str, image_len: int) -> List[int
 
     Uses the whole slot span, not just the manifest header, because a slot's
     payload is fetched at a manifest-relative offset inside the same span
-    (``manifest_load.c:484``) -- so payload traffic is still evidence that this
+    (``oca_locate_payload()`` in ``oca_boot.c``) -- so payload traffic is still
+    evidence that this
     address was the one being booted from.
     """
     lo, hi = mm.slot_span(image_len, slot)

@@ -29,6 +29,9 @@ from seq_lib.smu_compose_helpers import (
     NUM_INT_TO_SMC,
     SEP_OTP_PL_DEPTH,
     SEP_SEC_DISABLE_TOKEN_WIDTH,
+    XTRIG_NUM_INT_CT,
+    XTRIG_SMC_CLK_STOP_LANES,
+    XTRIG_SMC_INT_CT_LANES,
     bit_width,
     decode_cfg,
     hier,
@@ -121,9 +124,27 @@ class smu_composition_parameter_seq:
         )
         sb.expect_eq("Cfg.NUM_INT_TO_SMC drift", fields["NUM_INT_TO_SMC"], NUM_INT_TO_SMC)
         sb.expect_eq(
+            "u_dtp.XTRIG_NUM_CTP follows Cfg.XTRIG_NUM_CTP",
+            sample(hier(smu, "u_dtp.XTRIG_NUM_CTP"), "u_dtp.XTRIG_NUM_CTP"),
+            fields["XTRIG_NUM_CTP"],
+            evidence="CHK-SMU-NOSEP-S4",
+        )
+        sb.expect_eq(
+            "u_dtp.XTRIG_NUM_INT_CT is Cfg.XTRIG_NUM_INT_CT plus the SMC-reserved lanes",
+            sample(hier(smu, "u_dtp.XTRIG_NUM_INT_CT"), "u_dtp.XTRIG_NUM_INT_CT"),
+            fields["XTRIG_NUM_INT_CT"] + XTRIG_SMC_INT_CT_LANES,
+            evidence="CHK-SMU-NOSEP-S4",
+        )
+        sb.expect_eq(
+            "u_dtp.XTRIG_NUM_CLK_STOP_REQ is Cfg.XTRIG_NUM_CLK_STOP_REQ plus the SMC-reserved lanes",
+            sample(hier(smu, "u_dtp.XTRIG_NUM_CLK_STOP_REQ"), "u_dtp.XTRIG_NUM_CLK_STOP_REQ"),
+            fields["XTRIG_NUM_CLK_STOP_REQ"] + XTRIG_SMC_CLK_STOP_LANES,
+            evidence="CHK-SMU-NOSEP-S4",
+        )
+        sb.expect_eq(
             "u_dtp.XTRIG_INT_CT_MODE follows Cfg.XTRIG_INT_CT_MODE",
             sample(hier(smu, "u_dtp.XTRIG_INT_CT_MODE"), "u_dtp.XTRIG_INT_CT_MODE"),
-            fields["XTRIG_INT_CT_MODE"] << 2,
+            (fields["XTRIG_INT_CT_MODE"] & ((1 << XTRIG_NUM_INT_CT) - 1)) << XTRIG_SMC_INT_CT_LANES,
             evidence="CHK-SMU-NOSEP-S4",
         )
         sb.expect_eq(

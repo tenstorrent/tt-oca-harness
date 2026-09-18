@@ -513,7 +513,7 @@ submodule; without it the pack half dies with `No module named tt_boot_manifest`
 
 [source,bash]
 ----
-git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 ----
 
 Build the ROM by hand only when iterating on the ROM sources themselves. The two
@@ -522,7 +522,7 @@ halves are split by tool dependency, so each runs where its tools are:
 `toolchain-images`:: Needs the RISC-V toolchain *with* picolibc — the generated
   register headers close their packing checks with `static_assert`, i.e.
   `<assert.h>`, which is not a freestanding header. Use the toolchain container.
-`pack-images`:: Pure Python; its deps come from the submodule's own
+`oca-images`:: Pure Python; its deps come from the submodule's own
   `pyproject.toml`, installed on demand by `uv` (no `pip3 install` needed).
 
 `[c_build.boot_rom]` performs exactly these two steps. An explicit
@@ -537,8 +537,8 @@ make -C hw/sys/sep/bootrom/prod toolchain-images \
 # otherwise, in the OCAH toolchain container:
 ./scripts/docker-run.sh run-here make -C hw/sys/sep/bootrom/prod toolchain-images
 
-# pack-images is pure Python and always runs on the host:
-make -C hw/sys/sep/bootrom/prod pack-images
+# oca-images is pure Python and always runs on the host:
+make -C hw/sys/sep/bootrom/prod oca-images
 ----
 
 [[_km_rom_main_firmware_builds]]

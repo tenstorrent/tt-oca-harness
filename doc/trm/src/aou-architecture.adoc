@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AoU Architecture
+:description: AoU data paths, transaction handling, credit control, and UCIe flow control.
+:aou-integration-xref: ocah-integrator-guide:ROOT:aou.adoc
+
+:sectnums!:
+
+include::aou:partial$architecture.adoc[]

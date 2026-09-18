@@ -206,7 +206,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -428,7 +428,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -650,7 +650,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -872,7 +872,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogkey</ipxact:name>
-              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+              <ipxact:description>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -8431,7 +8431,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_en</ipxact:name>
-              <ipxact:description>Interrupt enable. When 1, a timeout event propagates to irq_o.</ipxact:description>
+              <ipxact:description>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8443,7 +8443,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_test</ipxact:name>
-              <ipxact:description>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</ipxact:description>
+              <ipxact:description>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8461,7 +8461,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</ipxact:description>
+              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8491,7 +8491,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_en</ipxact:name>
-              <ipxact:description>Interrupt enable. When 1, a timeout event propagates to irq_o.</ipxact:description>
+              <ipxact:description>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8503,7 +8503,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_test</ipxact:name>
-              <ipxact:description>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</ipxact:description>
+              <ipxact:description>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8521,7 +8521,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</ipxact:description>
+              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8551,7 +8551,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_en</ipxact:name>
-              <ipxact:description>Interrupt enable. When 1, a timeout event propagates to irq_o.</ipxact:description>
+              <ipxact:description>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8563,7 +8563,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>irq_test</ipxact:name>
-              <ipxact:description>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</ipxact:description>
+              <ipxact:description>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8581,7 +8581,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</ipxact:description>
+              <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -35901,7 +35901,7 @@ STBY_CR_CONTROL is not zero.</ipxact:description>
                   <ipxact:field>
                     <ipxact:name>PID_HI</ipxact:name>
                     <ipxact:displayName>PID_HI</ipxact:displayName>
-                    <ipxact:description>High part of the 48-bit Target Device Provisioned ID. 
+                    <ipxact:description>High part of the 48-bit Target Device Provisioned ID.
 
 This field is Read-Only while the STBY_CR_ENABLE_INIT field in register
 STBY_CR_CONTROL is not zero.</ipxact:description>
