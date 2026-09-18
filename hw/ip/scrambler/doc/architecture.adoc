@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[sram-scrambling]]
-===== SRAM Scrambling
+= SRAM Scrambling
 
 Both the address as well as data can optionally be scrambled. The goal
 of the scrambler is not secure data encryption but rather basic
@@ -27,7 +27,7 @@ register contents into the local key register.
 
 The scrambler IP consists of a generic top-level module (`scrambler`) and a set of pre-configured size-specific wrappers that fix the address width to match a particular SRAM depth. The generic module selects the correct address scrambling function at elaboration time through generate blocks keyed on `ADDR_WIDTH`. The `scrambler_addr_tweak` submodule expands and mixes the memory address into a 32-bit round key. All cryptographic primitives (S-boxes, permutations, and address scramble functions) are declared as `automatic` functions in `scrambler_pkg`.
 
-====== Parameters
+== Parameters
 
 The scrambler module accepts three parameters. Only 32-bit data widths are supported in the current implementation.
 
@@ -39,7 +39,7 @@ The scrambler module accepts three parameters. Only 32-bit data widths are suppo
 |`BYTE_WISE` |`int unsigned` |0 |Selects the permutation mode. When 0, a single 32-bit permutation (`perm32`) is applied to the full word. When 1, four independent 8-bit permutations (`perm8`) are applied to each byte lane.
 |===
 
-====== Port Interface
+== Port Interface
 
 The scrambler is purely combinational. It has no clock or reset ports.
 
@@ -56,7 +56,7 @@ The scrambler is purely combinational. It has no clock or reset ports.
 |`read_data_o` |out |`DATA_WIDTH` |Descrambled read data returned to the CPU.
 |===
 
-====== Data Scrambling Algorithm
+== Data Scrambling Algorithm
 
 The scrambling algorithm is an extremely rudimentary, round reduced,
 block cipher inspired by the PRESENT cipher. PRESENT works on 64 bit
@@ -139,7 +139,7 @@ xor'ed with the tweaked key to recover the unscrambled read data.
      ibox(Read_data_sbi[3:0])}
  Read_data = Read_data_sbo ^ Rkey
 
-====== Address Tweaking
+== Address Tweaking
 
 As previously mentioned, address tweaking is necessary so that the same
 data at different addresses scrambles to unique values. Tweaking is
@@ -165,7 +165,7 @@ The `scrambler_addr_tweak` submodule implements this expansion. For power-of-two
 
 The expanded address is XORed with `scrambler_key_i` to produce the 32-bit `round_key_o`.
 
-====== Address Scrambling
+== Address Scrambling
 
 Address scrambling is done in a similar fashion as data scrambling with
 an arbitrary permutation function. The address bits are first xor'ed
@@ -190,13 +190,13 @@ Each supported address width has a dedicated `addr_scrambleN` function in `scram
 |13 |`[12:9], [8:6], [5:3], [2:0]` |`sbox4`, `sbox3` x3 |`perm13`
 |===
 
-====== Byte-Wise Scrambling Mode
+== Byte-Wise Scrambling Mode
 
 When the `BYTE_WISE` parameter is set to 1, the permutation layer operates on each byte independently rather than across the full 32-bit word. On the write path, the eight S-box outputs are grouped into four byte lanes and each lane is permuted with `perm8`. On the read path, `iperm8` is applied per byte lane before the inverse S-box stage. The S-box and round-key XOR stages are identical regardless of the `BYTE_WISE` setting.
 
 This mode is used in the Key Manager SRAM interface where byte-level write strobes require that scrambling of one byte lane does not depend on data in other lanes.
 
-====== Instantiation Variants
+== Instantiation Variants
 
 Five pre-configured modules are provided, each fixing the `ADDR_WIDTH` parameter for a specific SRAM depth. All variants default to `DATA_WIDTH` = 32 and `BYTE_WISE` = 0, though the `BYTE_WISE` parameter can be overridden at instantiation.
 
@@ -210,7 +210,7 @@ Five pre-configured modules are provided, each fixing the `ADDR_WIDTH` parameter
 |`scrambler_8192x32` |13 |8192 words |`addr_scramble13`
 |===
 
-====== Integration in the Key Manager
+== Integration in the Key Manager
 
 The Key Manager SRAM interface (`km_sram_interface`) instantiates two `scrambler_4096x32` instances with `BYTE_WISE` = 1. The first instance (`u_req_scrambler`) scrambles the write data and address on the request path. The second instance (`u_rsp_descrambler`) descrambles read data on the response path using the address that was captured when the read was issued.
 

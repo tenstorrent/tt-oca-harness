@@ -127,17 +127,17 @@ set_dont_touch [get_cells -hierarchical -filter "ref_name =~ entropy_ripple_divi
 
 # Break timing paths on ripple divider feedback loops
 # Each toggle flip-flop has D connected to QB (feedback path)
-# Pattern: ripple_divider instance -> stage generate block -> flip-flop -> i_D pin
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/i_D"]
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/i_D"]
+# Pattern: ripple_divider instance -> stage generate block -> flip-flop -> d_i pin
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/d_i"]
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/d_i"]
 
 # Break timing paths on ripple chain connections
 # Each stage's Q output clocks the next stage (asynchronous ripple)
-# Pattern: stage[N]/o_Q -> stage[N+1]/i_CK
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/o_Q"]
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/o_Q"]
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/i_CK"]
-set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/i_CK"]
+# Pattern: stage[N]/q_o -> stage[N+1]/clk_i
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/q_o"]
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/q_o"]
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/clk_i"]
+set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/clk_i"]
 
 # Break timing on divided clock outputs
 # These outputs are used as clock sources (not data) and should not have timing checks
@@ -156,11 +156,11 @@ set_false_path -from [get_pins -hierarchical -filter "name =~ *u_sample_clk_divi
 # The sampling flip-flop (u_smpl) captures metastable events from the
 # asynchronous ring oscillator; those events are the entropy source
 # Disable timing checks on the data input to the sampling flip-flop
-set_false_path -to [get_pins -hierarchical -filter "name =~ *u_noise_source*/u_smpl/i_D"]
+set_false_path -to [get_pins -hierarchical -filter "name =~ *u_noise_source*/u_smpl/d_i"]
 
 # First stage of synchronizer (u_sync0) receives potentially metastable data
 # Break input timing path to allow metastability to settle
-set_false_path -to [get_pins -hierarchical -filter "name =~ *u_noise_source*/u_sync0/i_D"]
+set_false_path -to [get_pins -hierarchical -filter "name =~ *u_noise_source*/u_sync0/d_i"]
 
 # Note: sync1 (second synchronizer stage) has normal timing constraints
 # This allows checking that the synchronized output meets timing

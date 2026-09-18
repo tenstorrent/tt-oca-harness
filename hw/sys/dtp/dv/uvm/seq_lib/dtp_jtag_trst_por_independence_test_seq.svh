@@ -35,6 +35,7 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_base_test_seq;
     ocah_jtag_tap_state_e state_choices[5];
     ocah_jtag_tap_state_e target;
     int unsigned por_cycles;
+    logic [31:0] por_before;
     bit [63:0] idcode;
     bit [IrWidth-1:0] instr;
     string ctx;
@@ -63,12 +64,13 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_base_test_seq;
     reset_to_tlr();
     load_ir(instr);
     goto_state(target);
-    check_state(tap_state_e'(16'h1 << int'(target)), "jtag_por_chk", $sformatf(
+    check_state(dtp_tap_state_e'(16'h1 << int'(target)), "jtag_por_chk", $sformatf(
                 "start state %s before POR", target.name()));
 
     `uvm_info(get_type_name(), $sformatf(
                                    "Step 2: Hold power-on reset for %0d TCK periods with TCK idle",
                                    por_cycles), UVM_LOW)
+    por_before = tb_vif.por_assert_count;
     tb_vif.por_rst_n <= 1'b0;
     wait_tck_periods(por_cycles);
     family_check(PorCheckId, "TAP state during POR", 64'(tb_vif.tap_state), 64'(TEST_LOGIC_RESET),
@@ -78,6 +80,7 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_base_test_seq;
                 "during POR from %s, TRST deasserted", target.name()));
     tb_vif.por_rst_n <= 1'b1;
     wait_tck_periods(1);
+    check_reset_counted("por_assert_count", por_before, tb_vif.por_assert_count, ctx);
     check_state(TEST_LOGIC_RESET, "jtag_por_chk", "after POR release, before any TCK edge");
     // Re-align sequence-side TAP tracking with the asynchronous reset.
     sync_model(OCAH_JTAG_TEST_LOGIC_RESET);

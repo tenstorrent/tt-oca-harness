@@ -3,7 +3,7 @@
 // SMC firmware that marks SEP bring-up ready for the OSS wrapper smoke.
 //
 // Aligns with OCCP smu_sep_smoke (SEP_SMU_001): SEP default-runs when
-// cla_ext_action_custom[2]==0 -> mpc_reset_run_req==1. Do NOT assert CLA
+// cla_ext_action_custom[2]==0 -> mpc_reset_run_req_i==1. Do NOT assert CLA
 // custom actions {1,4} here — holding those as levels across SEP reset
 // release leaves EL2 with halt_status=X and zero boot-ROM fetches.
 

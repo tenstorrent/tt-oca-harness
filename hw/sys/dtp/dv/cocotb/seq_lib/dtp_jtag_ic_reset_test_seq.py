@@ -32,6 +32,24 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         await self.expect_signal(f"jtag_ic_reset_{name}_ovrd", ovrd)
         await self.expect_signal(f"jtag_ic_reset_{name}_ctrl_n", ctrl_n)
 
+    async def expect_slices(
+        self, reset_enable: dict[str, int], reset_control: dict[str, int], *, context: str
+    ) -> None:
+        """Every slice output follows the TDR fields of its port.
+
+        ovrd is the inverted active-low enable and ctrl_n is the control bit
+        ("IC_RESET Support" table), whatever the other ports hold.
+        """
+        self.log.info(
+            "Expect every IC_RESET slice (%s): enable=%s control=%s",
+            context,
+            reset_enable,
+            reset_control,
+        )
+        await self.wait_sys_cycles()
+        for name in self.PORTS:
+            await self.expect_slice(name, ovrd=1 - reset_enable[name], ctrl_n=reset_control[name])
+
     async def expect_default_outputs(self) -> None:
         """Check all one-port OSS slices are deasserted after reset."""
         for name in self.PORTS:
@@ -69,12 +87,15 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
             await self.expect_slice(name, ovrd=0, ctrl_n=1)
 
         self.log_step(3, "Verify reset_hold=0 preserves enable/control bits through TLR")
+        held_enable = {"smc": 0, "sep": 0, "ext": 1}
+        held_control = {"smc": 0, "sep": 1, "ext": 0}
         held_pattern = await self.write_ic_reset(
             reset_hold=0,
-            reset_enable={"smc": 0, "sep": 0, "ext": 1},
-            reset_control={"smc": 0, "sep": 1, "ext": 0},
+            reset_enable=held_enable,
+            reset_control=held_control,
         )
         self.log_ic_reset("Held pattern before TLR", held_pattern)
+        await self.expect_slices(held_enable, held_control, context="reset_hold=0 directed pattern")
         await self.drive_tlr_without_trst()
         held_observed = await self.read_ic_reset(shift_value=held_pattern)
         self.log_ic_reset("Held pattern after TLR", held_observed)
@@ -105,6 +126,9 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 reset_control=reset_control,
             )
             self.log_ic_reset("Random held pattern before TLR", pattern)
+            await self.expect_slices(
+                reset_enable, reset_control, context=f"reset_hold=0 iteration={idx}"
+            )
             await self.drive_tlr_without_trst()
             observed_random = await self.read_ic_reset(shift_value=pattern)
             self.log_ic_reset("Random held pattern after TLR", observed_random)

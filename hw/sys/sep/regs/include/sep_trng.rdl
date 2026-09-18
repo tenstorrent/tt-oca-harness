@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_TRNG_RDL
+`define SEP_TRNG_RDL
+
+addrmap sep_trng {
+    name = "External TRNG";
+    desc = "External TRNG register passthrough; the register layout is adopter-defined";
+
+    external mem {
+        memwidth = 32;
+        mementries = 1024;
+        sw = rw;
+    } aperture @0x0;
+};
+
+`endif

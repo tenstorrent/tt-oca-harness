@@ -659,13 +659,27 @@ maintain coherent timestamps across the system.
 
 === Configuration
 
-The cross-trigger topology is fixed at elaboration by `dtp_pkg`, a committed
-source file at `hw/sys/dtp/rtl/dtp_pkg.sv`. `DEFAULT_NUM_CTP`,
-`DEFAULT_NUM_INT_CT`, and `DEFAULT_NUM_CLK_STOP_REQ` there set the
-`XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, and `XTRIG_NUM_CLK_STOP_REQ` localparams of
-`dtp`, so a different port count is applied by editing that package rather than
-by overriding parameters at the instantiation. The remaining DTP parameters,
-including `XTRIG_INT_CT_MODE` and every `JTAG_*` enable, are set at the
+The SMU `smu_cfg_t` fields `XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, and
+`XTRIG_NUM_CLK_STOP_REQ` size the SMU-exposed cross-trigger ports and are
+passed through to the DTP (with the SMC-reserved lanes added to the internal-CT
+and clock-stop counts). The generated Cross Trigger Matrix register map must
+have one `CT_Src` and one `CT_Dst` for every DTP port
+(`XTRIG_NUM_CTP + XTRIG_NUM_INT_CT` at the DTP, which is the SMU-exposed
+internal-CT count plus `smu_pkg::XTRIG_SMC_INT_CT_LANES`). Resizing is two
+steps: set the `Cfg` counts, and regenerate the CTM with matching PeakRDL
+overrides:
+
+[source,make]
+----
+make ocah-regen-regs TARGET=cross_trigger_matrix \
+    OCAH_REG_RDL_PARAMS_cross_trigger_matrix="NUM_CT_SRC=<n> NUM_CT_DST=<n>"
+----
+
+`<n>` is the DTP total (`Cfg.XTRIG_NUM_CTP + Cfg.XTRIG_NUM_INT_CT +
+smu_pkg::XTRIG_SMC_INT_CT_LANES`). `cross_trigger_network` fails elaboration if
+the parameterized total disagrees with the generated map. Defaults remain 16
+external CTPs, 10 internal CTs (8 exposed), and 9 clock-stop requests (8
+exposed). `XTRIG_INT_CT_MODE` and every `JTAG_*` enable are set at the
 instantiation as shown below.
 
 Include the DTP in your build using Bender target `dtp`, which pulls in the DTP
@@ -687,6 +701,9 @@ dtp #(
     .JTAG_IDCODE_PART_NUM     (16'h1234),
     .JTAG_IDCODE_SI_REV       (4'h1),
     // Cross Trigger Configuration
+    .XTRIG_NUM_CTP            (16),
+    .XTRIG_NUM_INT_CT         (10),
+    .XTRIG_NUM_CLK_STOP_REQ   (9),
     .XTRIG_INT_CT_MODE        (10'b0000000000)
 ) u_dtp (
     .clk_i                    (clk),
@@ -981,8 +998,8 @@ gap between OCAH core interfaces and adopter-specific IP:
   useful when integrating the SMC without the DTP/SEP subsystems.
 
 Neither the wrappers nor the IP integration modules are part of the OCAH
-deliverable; they exist as integration guides and for Tenstorrent internal
-usage. Adopters must develop their own equivalents following the interface
+deliverable; they exist as integration guides. Adopters must develop their
+own equivalents following the interface
 patterns demonstrated in these modules. The interface contracts at the module
 boundaries ensure technology substitution without modifying the verified OCAH
 logic.
@@ -1121,7 +1138,10 @@ parameter with its default value.
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Silicon revision
 |`JTAG_OCH_VER` |`8'h00` |OCAH IP version
-|`XTRIG_INT_CT_MODE` |`8'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack)
+|`XTRIG_NUM_CTP` |16 |External cross-trigger ports
+|`XTRIG_NUM_INT_CT` |8 |SMU-exposed internal CT lanes (DTP count adds the SMC reservation)
+|`XTRIG_NUM_CLK_STOP_REQ` |8 |SMU-exposed clock-stop requests (DTP count adds the SMC reservation)
+|`XTRIG_INT_CT_MODE` |`32'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack); low `XTRIG_NUM_INT_CT` bits are consumed
 |`SMC_OTP_RD_PL_DEPTH` |`2'h3` |SMC OTP read pipeline depth
 |`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
 |`SMC_RD_PL_DEPTH` |`2'h3` |SMC fabric read pipeline depth
@@ -1260,13 +1280,15 @@ Type parameters are set internally based on SMC package types.
 |===
 |Parameter |SMU Default |DTP Internal |Pass-through |Notes
 
-|`XTRIG_INT_CT_MODE` |[7:0] |[9:0] |Yes |8-bit on SMU; DTP bits [1:0]=0 for SMC
+|`XTRIG_NUM_CTP` |16 |16 |Yes |External CTP count
+|`XTRIG_NUM_INT_CT` |8 |Cfg + `XTRIG_SMC_INT_CT_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lanes
+|`XTRIG_NUM_CLK_STOP_REQ` |8 |Cfg + `XTRIG_SMC_CLK_STOP_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lane
+|`XTRIG_INT_CT_MODE` |32 bits, low 8 consumed |DTP width |Yes |SMC-reserved DTP mode bits are 0 (pulse-sync)
 |===
 
-The SMU parameter width is two less than DTP's for cross trigger (8 vs 10)
-because internal cross trigger ports [1:0] and clock stop request #0 are
-connected to the SMC internally. The SMU remaps DTP ports [9:2] to SMU external
-ports [7:0].
+The SMU remaps DTP internal-CT lanes above the SMC reservation onto the
+SMU-exposed ports. Clock-stop request lane 0 is reserved for SMC; the SMU
+exposes the remaining DTP lanes.
 
 ==== Pipeline Depth Parameters
 
@@ -1374,9 +1396,9 @@ wired internally within the SMU.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck,tms,trst_n}` when `SEP=1`, else unused
-|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo` when `SEP=1`, else `1'b0`
-|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck_i,tms_i,trst_ni}` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo_o` when `SEP=1`, else `1'b0`
+|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi_i` when `SEP=1`, else unused
 |`jtag_stap_sep_host_tdo_oen_o` |output |1 |Internal only; not consumed by SEP at SMU level
 |===
 
@@ -1515,21 +1537,21 @@ with DECERR to all transactions.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`xtrig_ctm_src_req_o` |output |[XTRIG_NUM_INT_CT-1:0] |[1:0]: SMU internal (SMC), [9:2]: SMU external `xtrig_ctm_src_req_o[7:0]`
-|`xtrig_ctm_src_ack_i` |input |[XTRIG_NUM_INT_CT-1:0] |[1:0]: Tie-off (SMC), [9:2]: SMU external `xtrig_ctm_src_ack_i[7:0]`
-|`xtrig_ctm_dst_req_i` |input |[XTRIG_NUM_INT_CT-1:0] |[1:0]: SMC `xtrigger_ss_o[1:0]`, [9:2]: SMU external `xtrig_ctm_dst_req_i[7:0]`
-|`xtrig_ctm_dst_ack_o` |output |[XTRIG_NUM_INT_CT-1:0] |[1:0]: Unused (SMC connection), [9:2]: SMU external `xtrig_ctm_dst_ack_o[7:0]`
+|`xtrig_ctm_src_req_o` |output |[XTRIG_NUM_INT_CT-1:0] |SMC-reserved DTP lanes stay inside the SMU; remaining lanes are the SMU external port
+|`xtrig_ctm_src_ack_i` |input |[XTRIG_NUM_INT_CT-1:0] |SMC-reserved DTP lanes tied off; remaining lanes are the SMU external port
+|`xtrig_ctm_dst_req_i` |input |[XTRIG_NUM_INT_CT-1:0] |SMC-reserved DTP lanes from SMC `xtrigger_ss_o`; remaining lanes are the SMU external port
+|`xtrig_ctm_dst_ack_o` |output |[XTRIG_NUM_INT_CT-1:0] |SMC-reserved DTP lanes unused; remaining lanes are the SMU external port
 |===
 
-Internal cross trigger ports [1:0] are reserved for SMC (both bits of
-`xtrigger_ss_o`). The SMU exposes ports [9:2] as external ports [7:0], so the
-SMU `XTRIG_NUM_INT_CT` parameter is two less than DTP's (8 vs 10). The SMC uses
-pulse-synchronization mode, so ack signals for ports [1:0] are unused:
-`xtrig_ctm_src_ack_i[1:0]` should be tied to `2'b00` and
-`xtrig_ctm_dst_ack_o[1:0]` are left unconnected. The usage of ack signals
-depends on the `XTRIG_INT_CT_MODE` parameter: when a mode bit is 0 (pulse
-synchronization), the corresponding ack is unused; when 1 (req/ack handshaking),
-the ack must be connected to the cross trigger endpoint.
+The low `smu_pkg::XTRIG_SMC_INT_CT_LANES` DTP internal-CT lanes are reserved for
+SMC (both bits of `xtrigger_ss_o`). The SMU exposes the remaining DTP lanes, so
+the SMU `XTRIG_NUM_INT_CT` field is that many less than DTP's. The SMC uses
+pulse-synchronization mode, so ack signals for the reserved lanes are unused:
+the DTP `xtrig_ctm_src_ack_i` reserved slice is tied to `'0` and
+`xtrig_ctm_dst_ack_o` reserved bits are left unconnected. The usage of ack
+signals depends on the `XTRIG_INT_CT_MODE` parameter: when a mode bit is 0
+(pulse synchronization), the corresponding ack is unused; when 1 (req/ack
+handshaking), the ack must be connected to the cross trigger endpoint.
 
 ==== Clock Stop Request Interface
 
@@ -1537,40 +1559,40 @@ the ack must be connected to the cross trigger endpoint.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`xtrig_clk_stop_req_i` |input |[XTRIG_NUM_CLK_STOP_REQ-1:0] |[0]: SMC `tdr_dbg_ctrl_clocks_stopped_by_cla_o`, [8:1]: SMU external `xtrig_clk_stop_req_i[7:0]`
+|`xtrig_clk_stop_req_i` |input |[XTRIG_NUM_CLK_STOP_REQ-1:0] |DTP lane 0: SMC `tdr_dbg_ctrl_clocks_stopped_by_cla_o`; remaining DTP lanes are the SMU external port
 |===
 
-Clock stop request port #0 is reserved for SMC. The SMU exposes ports [8:1] as
-external ports [7:0], so the SMU `XTRIG_NUM_CLK_STOP_REQ` parameter should be
-one less than DTP's (8 vs 9).
+Clock-stop request lane 0 is reserved for SMC. The SMU exposes the remaining
+DTP lanes, so the SMU `XTRIG_NUM_CLK_STOP_REQ` field is
+`smu_pkg::XTRIG_SMC_CLK_STOP_LANES` less than DTP's.
 
 ==== Cross Trigger Port GPIO Interface
 
-The 16 CTP signals from DTP are ported through the SMU and are direct
+CTP signals from DTP are ported through the SMU and are direct
 `smu_wrapper` external ports (connected through the `.*` SMU instantiation).
 The adopter must connect them to GPIO pad logic; no tie-off or dangling is
-present in the wrapper itself.
+present in the wrapper itself. Widths follow `Cfg.XTRIG_NUM_CTP` (default 16).
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===
 |Port |Direction |Width |SMU Connection
 
-|`xtrig_ctp_req_out_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_req_out_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_req_out_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_req_out_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_req_in_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_req_in_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_req_in_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_req_in_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_ack_in_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_ack_in_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_ack_in_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_ack_in_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_ack_out_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_ack_out_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_ack_out_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
-|`xtrig_ctp_ack_out_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_dout_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_dout_en_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_din_i` |input |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_din_en_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_dout_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_dout_en_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_din_i` |input |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_din_en_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_dout_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_dout_en_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_din_i` |input |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_din_en_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_dout_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_dout_en_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_din_i` |input |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_din_en_o` |output |[XTRIG_NUM_CTP-1:0] |SMU external port; connect to GPIO pad logic
 |===
 
 === SMC Port Mapping
@@ -1926,8 +1948,8 @@ SMC within the SMU. These connections are not visible on the SMU boundary.
 | |`axil_xtrig_resp_o` |`axil_dtp_csr_resp_i` |DTP -> SMC |
 |JTAG SMC Reset Overrides |`jtag_ic_reset_smc_o` |`jtag_reset_ctrl_i` |DTP -> SMC |Packed `smc_pkg::jtag_smc_reset_ctrl_t` struct carrying all SMC reset override enables and active-low values
 |DTP Reset |`rst_n_i` |`rst_primary_smc_clk_no` |SMC -> DTP |
-|Cross Trigger [1:0] |`xtrig_ctm_dst_req_i[1:0]` |`xtrigger_ss_o[1:0]` |SMC -> DTP |Both bits
-|Clock Stop #0 |`xtrig_clk_stop_req_i[0]` |`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |SMC -> DTP |
+|Cross Trigger reserved lanes |`xtrig_ctm_dst_req_i[XTRIG_SMC_INT_CT_LANES-1:0]` |`xtrigger_ss_o` |SMC -> DTP |`smu_pkg::XTRIG_SMC_INT_CT_LANES` DTP lanes
+|Clock Stop reserved lane |`xtrig_clk_stop_req_i[0]` |`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |SMC -> DTP |`smu_pkg::XTRIG_SMC_CLK_STOP_LANES` DTP lane
 |Boot Stall |`jtag_boot_stall_ovrd_o` |`boot_stall_jtag_ovrd_i` |DTP -> SMC |
 | |`jtag_boot_stall_o` |`boot_stall_jtag_val_i` |DTP -> SMC |
 |===
@@ -1944,7 +1966,7 @@ depends on the module parameter `SEP`.
 
 |SMC SEP AXI Input |`sep_axi_in_req_i` = SEP traffic when `SEP=1`, else `'0` |Dedicated SEP-to-SMC subordinate path
 |DTP SEP OTP JTAG |SEP `axil_sep_otp_jtag_*` when `SEP=1`, else `u_sep_otp_axil_err_slv` |SEP OTP debug AXI-Lite path
-|DTP SEP STAP return |SEP `jtag_tdo` when `SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
+|DTP SEP STAP return |SEP `jtag_tdo_o` when `SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
 |SMU |`sep_mailbox_interrupts` |Internal SEP-to-SMC mailbox interrupts when `SEP=1`, else `'0`
 |SMC |`sep_wdt_reset_n_i = ~sep_wdt_timer_rst_req` when `SEP=1`, else `1'b1` |SEP watchdog reset input to SMC
 |===
@@ -1955,13 +1977,14 @@ depends on the module parameter `SEP`.
 |===
 |Module |Port |Tie-off Value |Reason
 
-|DTP |`xtrig_ctm_src_ack_i[1:0]` |`2'b00` |SMC uses pulse-sync mode
+|DTP |`xtrig_ctm_src_ack_i[XTRIG_SMC_INT_CT_LANES-1:0]` |`'0` |SMC uses pulse-sync mode
 |===
 
-`xtrig_ctm_src_ack_i[9:2]` (exposed as SMU `xtrig_ctm_src_ack_i[7:0]`) is
-ported out through the SMU. The integrator should tie off to `'0` when using
-pulse-sync mode (`XTRIG_INT_CT_MODE` bit = 0), or connect to actual ack signals
-when using req/ack mode (bit = 1).
+The remaining DTP `xtrig_ctm_src_ack_i` lanes (exposed as SMU
+`xtrig_ctm_src_ack_i[XTRIG_NUM_INT_CT-1:0]`) are ported out through the SMU.
+The integrator should tie off to `'0` when using pulse-sync mode
+(`XTRIG_INT_CT_MODE` bit = 0), or connect to actual ack signals when using
+req/ack mode (bit = 1).
 
 === SMU Port Interface
 

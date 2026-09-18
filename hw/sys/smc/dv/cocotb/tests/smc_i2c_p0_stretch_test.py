@@ -12,7 +12,9 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_i2c_p0_stretch_test(smc_base_test):
-    """TX stretch recover + RSTART read/write on shared I2C pads."""
+    """I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1
+    host READ stalls on the target's TX_PENDING until TXDATA is supplied, then
+    completes with that byte and returns to host idle."""
 
     required_evidence = (
         "CHK-I2C-P0-HOST-SETTLED",

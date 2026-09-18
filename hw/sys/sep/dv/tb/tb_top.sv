@@ -52,6 +52,7 @@
 // Boot/reset invariants:
 //   * ext_boot_seq_done_i = 1   (DUT port, driven by cocotb)
 //   * +skip_fuse_sense          (RTL plusarg, set by tests that bypass real sense)
+//   * smc_fuse_sense_done_i     (TB-modelled; +sep_smc_fuse_sense_hold holds it low)
 //   * mpc_reset_run_req         (0 = hold the CPU off [no_cpu]; 1 = run [cpu])
 //
 // The CPU LSU req/resp struct (deps/axi AXI_TYPEDEF_ALL) is bridged to flat
@@ -400,6 +401,42 @@ module sep_uvm_top
     // force security_disable.
     localparam bit [255:0] SEC_DIS_TB_DIGEST =
         256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+    // SMC fuse-sense completion. No SMC RTL is instantiated in this top, so the TB
+    // stands in for what the SoC provides: the SMC finishes sensing its eFuse array
+    // after reset and holds the indication high afterwards. Cold reset re-senses;
+    // wdt_rst_ni does not, which is why this tracks rst_n_int and not the warm reset.
+    //
+    // The ROM polls this to completion in [S08] before reading any fuse shadow, so a
+    // top that never asserts it hangs every boot. The same invariant is checked from
+    // the firmware side as CHK-SEP-HOLD-RELEASE
+    // (dv/fw/tests/common/smc_sep_xbar_protocol.h). +sep_smc_fuse_sense_hold keeps it
+    // low, which is the stimulus for proving the ROM refuses to advance without it.
+    // No declaration initializers: VCS rejects a variable that has both an
+    // initializer and a procedural driver (ICPD_INIT). Each of these has exactly
+    // one driver, the block that follows it.
+    localparam int SmcFuseSenseCycles = 64;
+    logic smc_fuse_sense_hold;
+    logic smc_fuse_sense_done_model;
+    int   smc_fuse_sense_count;
+    initial begin
+        smc_fuse_sense_hold = $test$plusargs("sep_smc_fuse_sense_hold");
+        if (smc_fuse_sense_hold) begin
+            $display("[tb] smc_fuse_sense_done held low (+sep_smc_fuse_sense_hold)");
+        end
+    end
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            smc_fuse_sense_count      <= 0;
+            smc_fuse_sense_done_model <= 1'b0;
+        end else if (smc_fuse_sense_hold) begin
+            smc_fuse_sense_done_model <= 1'b0;
+        end else if (smc_fuse_sense_count < SmcFuseSenseCycles) begin
+            smc_fuse_sense_count <= smc_fuse_sense_count + 1;
+        end else begin
+            smc_fuse_sense_done_model <= 1'b1;
+        end
+    end
+
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
         .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
@@ -414,12 +451,12 @@ module sep_uvm_top
         .wdt_timer_rst_req_o          (wdt_timer_rst_req_o),
 
         // JTAG (TB-driven only during +cpu_boot reset-vector TDR setup)
-        .jtag_tck                     (jtag_tck),
-        .jtag_tms                     (jtag_tms),
-        .jtag_tdi                     (jtag_tdi),
-        .jtag_trst_n                  (jtag_trst_n),
-        .jtag_tdo                     (),
-        .jtag_tdoEn                   (),
+        .jtag_tck_i                   (jtag_tck),
+        .jtag_tms_i                   (jtag_tms),
+        .jtag_tdi_i                   (jtag_tdi),
+        .jtag_trst_ni                 (jtag_trst_n),
+        .jtag_tdo_o                   (),
+        .jtag_tdoEn_o                 (),
         .jtag_sep_reset_ctrl_i        (jtag_sep_reset_ctrl_drive),
 
 `ifdef SEP_JTAG_AXIL_LIVE
@@ -430,11 +467,11 @@ module sep_uvm_top
         .axil_sep_otp_jtag_resp_o     (j_axil_resp_w),
 
         // MPC halt/run + CPU run (CPU held off; LSU master driven by the stub)
-        .mpc_debug_halt_req           (1'b0),
-        .mpc_debug_run_req            (1'b0),
-        .mpc_reset_run_req            (mpc_reset_run_req),
-        .i_cpu_halt_req               (1'b0),
-        .i_cpu_run_req                (i_cpu_run_req_i),
+        .mpc_debug_halt_req_i         (1'b0),
+        .mpc_debug_run_req_i          (1'b0),
+        .mpc_reset_run_req_i          (mpc_reset_run_req),
+        .cpu_halt_req_i               (1'b0),
+        .cpu_run_req_i                (i_cpu_run_req_i),
 
         // DFT: functional mode (see the bare-sep note below on test_en_i).
         .test_en_i                    (1'b0),
@@ -502,7 +539,7 @@ module sep_uvm_top
         .smc_mailbox_interrupt_o      (),
 
         // eFuse status
-        .smc_fuse_sense_done_i        (1'b0),
+        .smc_fuse_sense_done_i        (smc_fuse_sense_done_model),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
         .secure_tm_req_i              (test_en_strap_i),
@@ -983,7 +1020,7 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // CPU firmware-boot responders + observables.
     // ------------------------------------------------------------------
-    // PC advance: surface the EL2 retired-instruction trace. o_cpu_run_ack is not
+    // PC advance: surface the EL2 retired-instruction trace. cpu_run_ack_o is not
     // a port on bare `sep` (and ext_debug_bus_o is only [383:0]), so tap it by XMR
     // from the CPU wrapper — the same hierarchical-read style used for the LSU
     // response above.
@@ -996,7 +1033,7 @@ module sep_uvm_top
     assign cpu_trace_ecause_o    = cpu_trace_w.trace_rv_i_ecause_ip;
     assign cpu_trace_interrupt_o = cpu_trace_w.trace_rv_i_interrupt_ip;
     assign cpu_trace_tval_o      = cpu_trace_w.trace_rv_i_tval_ip;
-    assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.o_cpu_run_ack;
+    assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.cpu_run_ack_o;
 
     // SEP resets (internal nets): the reset-independence and wdt-reset-path
     // tests read them. Same XMR-probe style as above.
@@ -1389,19 +1426,27 @@ module sep_uvm_top
     end
 `undef ESRC_NOISE_FORCE
 
-    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants the crypto
-    // blocks' EDN handshakes directly so they can leave their reseed states and
-    // run; the real entropy_source -> CSRNG -> EDN path is bypassed and NOT
-    // exercised. Covers OTBN (RND/URND) and AES; AES is a separate EDN client
-    // and stalls in its masking-PRNG reseed without a client-0 grant.
-    localparam logic [31:0] AesEdnWord = 32'hA5A5_5A5A;
+    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
+    // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
+    // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
+    //
+    // Prefer +esrc_noise_force. The SEP boot ROM brings the real entropy chain up
+    // itself (src/sep_entropy.c), so a crypto test needs only raw noise injected
+    // -- the ring oscillators do not self-oscillate in simulation -- and the
+    // DRBG/CSRNG/EDN handshakes stay real. This force cannot do that: forcing
+    // edn_ack violates the EDN req/ack data-hold protocol and trips
+    // prim_sync_reqack_data's SyncReqAckDataHold* assertions. Testlist entries
+    // still passing it are being migrated.
+    //
+    // Kept for now as a debug lever only. It is a candidate for deletion once
+    // the real-entropy path has some mileage.
     logic edn_force_on;
-    logic otbn_rnd_ack_q, otbn_urnd_ack_q, aes_ack_q;
+    logic otbn_rnd_ack_q, otbn_urnd_ack_q;
     initial begin
         edn_force_on = $test$plusargs("sep_crypto_edn_force");
         if (edn_force_on) begin
-            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN and AES EDN grants");
-            $display("[tb] *** are forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
+            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN EDN grants are");
+            $display("[tb] *** forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
         end
     end
 
@@ -1413,24 +1458,18 @@ module sep_uvm_top
 `define OTBN_URND_RSP `SEP_CORE.sep_crypto.crypto_edn_rsp[3]
 `define OTBN_RND_REQ  `SEP_CORE.sep_crypto.crypto_edn_req[2]
 `define OTBN_URND_REQ `SEP_CORE.sep_crypto.crypto_edn_req[3]
-`define AES_RSP       `SEP_CORE.sep_crypto.crypto_edn_rsp[0]
-`define AES_REQ       `SEP_CORE.sep_crypto.crypto_edn_req[0]
     // ack pulses for one cycle per request rather than sitting high, so a
     // multi-word reseed is delivered as a sequence of beats like the real EDN.
     always @(posedge clk_i) begin
         if (edn_force_on) begin
             otbn_rnd_ack_q  <= `OTBN_RND_REQ.edn_req  & ~otbn_rnd_ack_q;
             otbn_urnd_ack_q <= `OTBN_URND_REQ.edn_req & ~otbn_urnd_ack_q;
-            aes_ack_q       <= `AES_REQ.edn_req       & ~aes_ack_q;
             force `OTBN_RND_RSP.edn_ack   = otbn_rnd_ack_q;
             force `OTBN_RND_RSP.edn_fips  = 1'b1;
             force `OTBN_RND_RSP.edn_bus   = $urandom();
             force `OTBN_URND_RSP.edn_ack  = otbn_urnd_ack_q;
             force `OTBN_URND_RSP.edn_fips = 1'b1;
             force `OTBN_URND_RSP.edn_bus  = $urandom();
-            force `AES_RSP.edn_ack        = aes_ack_q;
-            force `AES_RSP.edn_fips       = 1'b1;
-            force `AES_RSP.edn_bus        = AesEdnWord;
         end
     end
 `undef AES_RSP

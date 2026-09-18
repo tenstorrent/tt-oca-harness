@@ -352,10 +352,10 @@ module entropy_source
     assign health_test_valid_gated = entropy_stream_valid & health_test_enable;
 
     prim_clkgater u_health_test_clk_gate (
-        .i_clk  (clk_i),
-        .i_en   (health_test_enable),
-        .i_te   (1'b0),
-        .o_clk  (health_test_clk)
+        .clk_i  (clk_i),
+        .en_i   (health_test_enable),
+        .te_i   (1'b0),
+        .clk_o  (health_test_clk)
     );
 
     entropy_health_test #(

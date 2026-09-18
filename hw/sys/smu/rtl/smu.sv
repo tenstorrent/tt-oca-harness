@@ -49,15 +49,18 @@ module smu #(
   // Type parameter for the external IC_RESET TDR slice exposed to the SMU caller.
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
 
-  // Cross trigger configuration localparams
-  // SMU exposes fewer ports than DTP: SMU [7:0] maps to DTP [9:2], with DTP [1:0] reserved for SMC
-  localparam int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,
-  localparam int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT - 2,   // SMU exposes 8; DTP [1:0] reserved for SMC
-  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - 1,  // SMU exposes 8; DTP [0] reserved for SMC
-  localparam int unsigned  DTP_XTRIG_NUM_INT_CT = dtp_pkg::DEFAULT_NUM_INT_CT,
-  localparam int unsigned  DTP_XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ,
+  // Cross trigger configuration. SMU-exposed counts come from Cfg; DTP counts
+  // add the SMC-reserved lanes.
+  localparam int unsigned  XTRIG_NUM_CTP          = Cfg.XTRIG_NUM_CTP,
+  localparam int unsigned  XTRIG_NUM_INT_CT       = Cfg.XTRIG_NUM_INT_CT,
+  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = Cfg.XTRIG_NUM_CLK_STOP_REQ,
+  localparam int unsigned  DTP_XTRIG_NUM_INT_CT =
+      Cfg.XTRIG_NUM_INT_CT + smu_pkg::XTRIG_SMC_INT_CT_LANES,
+  localparam int unsigned  DTP_XTRIG_NUM_CLK_STOP_REQ =
+      Cfg.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XTRIG_SMC_CLK_STOP_LANES,
   localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1,
-  localparam logic [DTP_XTRIG_NUM_INT_CT-1:0]  DTP_XTRIG_INT_CT_MODE = {Cfg.XTRIG_INT_CT_MODE, 2'b00}  // Bits [1:0] = 0 for SMC pulse sync
+  localparam logic [DTP_XTRIG_NUM_INT_CT-1:0]  DTP_XTRIG_INT_CT_MODE =
+      {Cfg.XTRIG_INT_CT_MODE[XTRIG_NUM_INT_CT-1:0], {smu_pkg::XTRIG_SMC_INT_CT_LANES{1'b0}}}
 ) (
   // Clock and Reset
   input  logic  clk_smu_i,
@@ -124,13 +127,13 @@ module smu #(
   // JTAG External IC_RESET TDR Slice (typed packed struct; `.ovrd` + `.val` halves)
   output ic_reset_ext_t  jtag_ic_reset_ext_o,
 
-  // Cross Trigger Matrix Interface (ports [7:0] exposed; ports [1:0] internal to SMC)
+  // Cross Trigger Matrix Interface (SMC-reserved lanes stay inside the SMU)
   output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_req_o,
   input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_ack_i,
   input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_req_i,
   output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_ack_o,
 
-  // Clock Stop Request Interface (ports [7:0] exposed; port [0] internal to SMC)
+  // Clock Stop Request Interface (SMC-reserved lane stays inside the SMU)
   input  logic [XTRIG_NUM_CLK_STOP_REQ-1:0]  xtrig_clk_stop_req_i,
 
   // Cross Trigger Port GPIO Interface (16 CTPs)
@@ -390,13 +393,13 @@ module smu #(
   // DTP DEBUG_CONTROL CLA clock-stop enable to SMC TDR path
   logic dtp_cla_clock_stop_en;
 
-  // DTP internal cross trigger signals (10 ports: [1:0] for SMC, [9:2] for external)
+  // DTP internal CT: [XTRIG_SMC_INT_CT_LANES-1:0] for SMC, remainder exposed
   logic [DTP_XTRIG_NUM_INT_CT-1:0]  dtp_xtrig_ctm_src_req;
   logic [DTP_XTRIG_NUM_INT_CT-1:0]  dtp_xtrig_ctm_src_ack;
   logic [DTP_XTRIG_NUM_INT_CT-1:0]  dtp_xtrig_ctm_dst_req;
   logic [DTP_XTRIG_NUM_INT_CT-1:0]  dtp_xtrig_ctm_dst_ack;
 
-  // DTP internal clock stop signals (9 ports: [0] for SMC, [8:1] for external)
+  // DTP clock stop: [XTRIG_SMC_CLK_STOP_LANES-1:0] for SMC, remainder exposed
   logic [DTP_XTRIG_NUM_CLK_STOP_REQ-1:0]  dtp_xtrig_clk_stop_req;
 
   // SMC cross trigger output
@@ -426,11 +429,11 @@ module smu #(
   sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl;
 
   // CLA custom actions map to SEP CPU debug controls
-  // cla_ext_action_custom[0] - mpc_debug_halt_req
-  // cla_ext_action_custom[1] - mpc_debug_run_req
-  // cla_ext_action_custom[2] - mpc_reset_run_req (inverted: action asserted = Debug Mode)
-  // cla_ext_action_custom[3] - i_cpu_halt_req
-  // cla_ext_action_custom[4] - i_cpu_run_req
+  // cla_ext_action_custom[0] - mpc_debug_halt_req_i
+  // cla_ext_action_custom[1] - mpc_debug_run_req_i
+  // cla_ext_action_custom[2] - mpc_reset_run_req_i (inverted: action asserted = Debug Mode)
+  // cla_ext_action_custom[3] - cpu_halt_req_i
+  // cla_ext_action_custom[4] - cpu_run_req_i
   logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
 
   // SEP lifecycle and mailbox signals
@@ -543,6 +546,9 @@ module smu #(
     .JTAG_IDCODE_PART_NUM      (Cfg.JTAG_IDCODE_PART_NUM),
     .JTAG_IDCODE_SI_REV        (Cfg.JTAG_IDCODE_SI_REV),
     .JTAG_OCH_VER              (Cfg.JTAG_OCH_VER),
+    .XTRIG_NUM_CTP             (Cfg.XTRIG_NUM_CTP),
+    .XTRIG_NUM_INT_CT          (DTP_XTRIG_NUM_INT_CT),
+    .XTRIG_NUM_CLK_STOP_REQ    (DTP_XTRIG_NUM_CLK_STOP_REQ),
     .XTRIG_INT_CT_MODE         (DTP_XTRIG_INT_CT_MODE),
     .jtag_tap_ctrl_t           (prim_jtag_pkg::jtag_tap_ctrl_t),
     .jtag_scan_ctrl_t          (prim_jtag_pkg::jtag_scan_ctrl_t),
@@ -845,12 +851,12 @@ module smu #(
 
       .wdt_timer_rst_req_o           (sep_wdt_timer_rst_req),
 
-      .jtag_tck                      (dtp_sep_stap_tap_ctrl.tck),
-      .jtag_tms                      (dtp_sep_stap_tap_ctrl.tms),
-      .jtag_tdi                      (dtp_sep_stap_tdo),
-      .jtag_trst_n                   (dtp_sep_stap_tap_ctrl.trst_n),
-      .jtag_tdo                      (sep_stap_tdo_to_dtp),
-      .jtag_tdoEn                    (/* unused at smu level */),
+      .jtag_tck_i                    (dtp_sep_stap_tap_ctrl.tck),
+      .jtag_tms_i                    (dtp_sep_stap_tap_ctrl.tms),
+      .jtag_tdi_i                    (dtp_sep_stap_tdo),
+      .jtag_trst_ni                  (dtp_sep_stap_tap_ctrl.trst_n),
+      .jtag_tdo_o                    (sep_stap_tdo_to_dtp),
+      .jtag_tdoEn_o                  (/* unused at smu level */),
 
       // JTAG SEP Reset Control Overrides
       .jtag_sep_reset_ctrl_i         (jtag_sep_reset_ctrl),
@@ -858,12 +864,12 @@ module smu #(
       .axil_sep_otp_jtag_req_i       (dtp_axil_sep_otp_jtag_req),
       .axil_sep_otp_jtag_resp_o      (dtp_axil_sep_otp_jtag_resp),
 
-      .mpc_debug_halt_req            (cla_ext_action_custom[0]),
-      .mpc_debug_run_req             (cla_ext_action_custom[1]),
-      .mpc_reset_run_req             (~cla_ext_action_custom[2]), // inverted: default 0 = Normal Mode; CLA action = Debug Mode
+      .mpc_debug_halt_req_i          (cla_ext_action_custom[0]),
+      .mpc_debug_run_req_i           (cla_ext_action_custom[1]),
+      .mpc_reset_run_req_i           (~cla_ext_action_custom[2]), // inverted: default 0 = Normal Mode; CLA action = Debug Mode
 
-      .i_cpu_halt_req                (cla_ext_action_custom[3]),
-      .i_cpu_run_req                 (cla_ext_action_custom[4]),
+      .cpu_halt_req_i                (cla_ext_action_custom[3]),
+      .cpu_run_req_i                 (cla_ext_action_custom[4]),
 
       .test_en_i                     (test_en_i),
       .scan_rst_ni                   (scan_rst_ni),
@@ -1297,28 +1303,31 @@ module smu #(
   // DTP-SMC Internal Connections
   //--------------------------------------------------------------------------
 
-  // Cross Trigger [1:0] (SMC to DTP)
-  assign dtp_xtrig_ctm_dst_req[1:0] = smc_xtrigger_ss_o;
+  assign dtp_xtrig_ctm_dst_req[smu_pkg::XTRIG_SMC_INT_CT_LANES-1:0] = smc_xtrigger_ss_o;
 
-  // Cross Trigger [1:0] (DTP to SMC)
-  assign smc_xtrigger_ss_i = dtp_xtrig_ctm_src_req[1:0];
-  assign dtp_xtrig_ctm_src_ack[1:0] = 2'b00;
+  assign smc_xtrigger_ss_i = dtp_xtrig_ctm_src_req[smu_pkg::XTRIG_SMC_INT_CT_LANES-1:0];
+  assign dtp_xtrig_ctm_src_ack[smu_pkg::XTRIG_SMC_INT_CT_LANES-1:0] = '0;
 
-  // Clock Stop Request #0 (SMC TDR status -> DTP CTN).
-  assign dtp_xtrig_clk_stop_req[0] = tdr_dbg_ctrl_clocks_stopped_by_cla;
+  assign dtp_xtrig_clk_stop_req[smu_pkg::XTRIG_SMC_CLK_STOP_LANES-1:0] =
+      tdr_dbg_ctrl_clocks_stopped_by_cla;
 
   //--------------------------------------------------------------------------
-  // Cross Trigger Port Remapping (DTP [9:2] <-> SMU [7:0])
+  // Cross Trigger Port Remapping
   //--------------------------------------------------------------------------
 
-  assign xtrig_ctm_src_req_o = dtp_xtrig_ctm_src_req[9:2];
+  assign xtrig_ctm_src_req_o =
+      dtp_xtrig_ctm_src_req[DTP_XTRIG_NUM_INT_CT-1:smu_pkg::XTRIG_SMC_INT_CT_LANES];
 
-  assign dtp_xtrig_ctm_src_ack[9:2] = xtrig_ctm_src_ack_i;
+  assign dtp_xtrig_ctm_src_ack[DTP_XTRIG_NUM_INT_CT-1:smu_pkg::XTRIG_SMC_INT_CT_LANES] =
+      xtrig_ctm_src_ack_i;
 
-  assign dtp_xtrig_ctm_dst_req[9:2] = xtrig_ctm_dst_req_i;
+  assign dtp_xtrig_ctm_dst_req[DTP_XTRIG_NUM_INT_CT-1:smu_pkg::XTRIG_SMC_INT_CT_LANES] =
+      xtrig_ctm_dst_req_i;
 
-  assign xtrig_ctm_dst_ack_o = dtp_xtrig_ctm_dst_ack[9:2];
+  assign xtrig_ctm_dst_ack_o =
+      dtp_xtrig_ctm_dst_ack[DTP_XTRIG_NUM_INT_CT-1:smu_pkg::XTRIG_SMC_INT_CT_LANES];
 
-  assign dtp_xtrig_clk_stop_req[8:1] = xtrig_clk_stop_req_i;
+  assign dtp_xtrig_clk_stop_req[DTP_XTRIG_NUM_CLK_STOP_REQ-1:smu_pkg::XTRIG_SMC_CLK_STOP_LANES] =
+      xtrig_clk_stop_req_i;
 
 endmodule

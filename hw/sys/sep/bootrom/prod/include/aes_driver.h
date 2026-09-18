@@ -24,4 +24,12 @@ int aes_init(void);
 //   iv      - 16 bytes initialization vector
 //
 // Returns 0 on success, non-zero on failure.
-int aes128cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, const uint8_t *iv);
+// Decrypt data[0..len) in place with AES-CBC. key_bytes selects the key length:
+// 16 (AES-128) or 32 (AES-256); anything else is rejected rather than defaulted.
+// len must be non-zero and a multiple of 16. Returns 0 on success.
+int aes_cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, uint32_t key_bytes,
+                    const uint8_t *iv);
+
+// Validate and strip PKCS#7 padding, writing the recovered length to out_len.
+// Returns 0 when the padding is well formed, non-zero otherwise.
+int aes_pkcs7_strip(const uint8_t *data, uint32_t len, uint32_t *out_len);

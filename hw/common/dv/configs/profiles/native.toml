@@ -44,7 +44,6 @@ cache_key_extra = []
 [target_defaults.default]
 defines = [
   "SIMULATION",
-  "COMMON_CELLS_ASSERTS_OFF",
   "RANDOM=0",
   "RANDOMIZE_MEM_INIT",
   "RANDOMIZE_REG_INIT",
@@ -60,6 +59,9 @@ flags = [
   "-Wno-UNSIGNED",
   "-Wno-REDEFMACRO",
   "-Wno-MODDUP",
+  # The inline assertion blocks of the vendored common_cells do not compile
+  # under Verilator; VCS and Xcelium compile and run them.
+  "+define+COMMON_CELLS_ASSERTS_OFF",
 ]
 
 [target_defaults.default.tools.xcelium]

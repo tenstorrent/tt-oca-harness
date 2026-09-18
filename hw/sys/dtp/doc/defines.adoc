@@ -102,16 +102,17 @@ VCS/Xcelium this define is not set; `common_cells` macros stay enabled unless
 `SYNTHESIS` is also set.
 
 |`COMMON_CELLS_ASSERTS_OFF`
-|Native profile (every DTP DV tool)
+|Native profile, Verilator tool flags only
+(`[target_defaults.default.tools.verilator].flags`)
 |Turns off the inline assertion blocks inside `common_cells` modules
-(`fifo_v3`, `cdc_fifo_gray`, `rr_arb_tree`, and others that DTP's AXI/CDC path
-instantiates) that are compiled only when `COMMON_CELLS_ASSERTS_OFF` is unset.
-|Those inline asserts are omitted. DTP tests do not rely on them; scoreboards
-and Python/UVM checkers are the pass/fail evidence.
-|The inline asserts compile. On Verilator they usually fail the compile even
-if `ASSERTS_OFF` is set, because they are independent of `OCAH_PULP_INC_ASSERT`.
-On commercial simulators they can fire during JTAG2AXI and cross-trigger
-traffic that the DTP tests already check in software.
+(`fifo_v3`, `cdc_fifo_gray`, `rr_arb_tree`, `stream_xbar`, `addr_decode_dync`,
+and others that DTP's AXI/CDC path instantiates) that are compiled only when
+`COMMON_CELLS_ASSERTS_OFF` is unset.
+|Those inline asserts are omitted (Verilator). The scoreboards and checkers
+carry the pass/fail evidence there.
+|The inline asserts compile and are live for every DTP test (VCS, Xcelium).
+On Verilator they fail the compile even if `ASSERTS_OFF` is set, because they
+are independent of `OCAH_PULP_INC_ASSERT`.
 
 |`SYNTHESIS`
 |Lint and synthesis (`OCAH_FLOW_COMMON_DEFINES`); not the DTP DV profile

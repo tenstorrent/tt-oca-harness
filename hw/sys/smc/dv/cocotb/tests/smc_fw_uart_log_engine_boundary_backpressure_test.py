@@ -9,8 +9,8 @@ into a 64-byte slot that overfills the 32-entry UART TX FIFO so the write FSM
 runs against uart_tx_ready low; C, a completion check against a defined UART
 offset (the write-error path is unreachable, as the image documents); D, a
 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to
-one 8-byte beat. D and E read back exactly the clamped byte count from RBR and
-require no extra byte. Those compares are the firmware's.
+one 8-byte beat. A, D and E read back exactly the requested or clamped byte
+count from RBR and require no extra byte. Those compares are the firmware's.
 
 Bench observation: after the PASS word the SPM source holds E's 0xE0..0xEF in
 its first 16 bytes and B's 0x50..0x7F behind them (B was the only scenario to

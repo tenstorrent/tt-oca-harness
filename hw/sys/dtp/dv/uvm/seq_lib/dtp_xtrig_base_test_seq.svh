@@ -42,8 +42,9 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   `uvm_object_utils(dtp_xtrig_base_test_seq)
 
   // ------------------------------------------------------------------
-  // XTRIG geometry and CSR map (cocotb dtp_xtrig_types parity; the port
-  // counts come from the RTL package).
+  // XTRIG geometry and CSR map (cocotb dtp_xtrig_types parity; dtp_types
+  // transcribes the port counts and CSR windows from the cross-trigger
+  // network document).
   // ------------------------------------------------------------------
   // dtp_types constants under the family's short names.
   localparam int unsigned XtrigNumCtp = DtpXtrigNumCtp;
@@ -115,6 +116,8 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   ocah_checker            m_check;
   dtp_xtrig_ctm_model ctm_model;
   protected bit           m_negative;
+  // Observables already reported X in this pass (one error per name).
+  protected bit           m_x_reported[string];
 
   // Observables a routed pulse can reach; the activity window ORs and ANDs
   // them per cycle from before the input pulse until the drain tail ends.
@@ -551,42 +554,50 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     apply_idle_levels();
   endtask
 
-  // Named cross-trigger observable read (zero-extended to 32 bits).
+  // Named cross-trigger observable read (zero-extended to 32 bits). An X on
+  // the observable is an error once per name per pass: a zero expectation
+  // would otherwise absorb it.
   function bit [31:0] xtrig_pin(string name);
+    logic [31:0] sampled;
     case (name)
-      "xtrig_ctm_src_req":         return 32'(xtrig_vif.xtrig_ctm_src_req);
-      "xtrig_ctm_dst_ack":         return 32'(xtrig_vif.xtrig_ctm_dst_ack);
-      "xtrig_ctm_src_ack":         return 32'(xtrig_vif.xtrig_ctm_src_ack);
-      "xtrig_ctm_dst_req":         return 32'(xtrig_vif.xtrig_ctm_dst_req);
-      "xtrig_ctp_req_out_dout":    return 32'(xtrig_vif.xtrig_ctp_req_out_dout);
-      "xtrig_ctp_req_out_dout_en": return 32'(xtrig_vif.xtrig_ctp_req_out_dout_en);
-      "xtrig_ctp_req_out_din":     return 32'(xtrig_vif.xtrig_ctp_req_out_din);
-      "xtrig_ctp_req_out_din_en":  return 32'(xtrig_vif.xtrig_ctp_req_out_din_en);
-      "xtrig_ctp_req_in_dout":     return 32'(xtrig_vif.xtrig_ctp_req_in_dout);
-      "xtrig_ctp_req_in_dout_en":  return 32'(xtrig_vif.xtrig_ctp_req_in_dout_en);
-      "xtrig_ctp_req_in_din":      return 32'(xtrig_vif.xtrig_ctp_req_in_din);
-      "xtrig_ctp_req_in_din_en":   return 32'(xtrig_vif.xtrig_ctp_req_in_din_en);
-      "xtrig_ctp_ack_in_dout":     return 32'(xtrig_vif.xtrig_ctp_ack_in_dout);
-      "xtrig_ctp_ack_in_dout_en":  return 32'(xtrig_vif.xtrig_ctp_ack_in_dout_en);
-      "xtrig_ctp_ack_in_din":      return 32'(xtrig_vif.xtrig_ctp_ack_in_din);
-      "xtrig_ctp_ack_in_din_en":   return 32'(xtrig_vif.xtrig_ctp_ack_in_din_en);
-      "xtrig_ctp_ack_out_dout":    return 32'(xtrig_vif.xtrig_ctp_ack_out_dout);
-      "xtrig_ctp_ack_out_dout_en": return 32'(xtrig_vif.xtrig_ctp_ack_out_dout_en);
-      "xtrig_ctp_ack_out_din":     return 32'(xtrig_vif.xtrig_ctp_ack_out_din);
-      "xtrig_ctp_ack_out_din_en":  return 32'(xtrig_vif.xtrig_ctp_ack_out_din_en);
-      "xtrig_ctp_busy":            return 32'(tb_vif.xtrig_ctp_busy);
-      "xtrig_demux_aw_lock":       return 32'(tb_vif.xtrig_demux_aw_lock);
-      "xtrig_demux_w_pending":     return 32'(tb_vif.xtrig_demux_w_pending);
-      "xtrig_axil_awvalid_count":  return tb_vif.xtrig_axil_awvalid_count;
-      "xtrig_axil_wvalid_count":   return tb_vif.xtrig_axil_wvalid_count;
-      "xtrig_axil_arvalid_count":  return tb_vif.xtrig_axil_arvalid_count;
-      "xtrig_axil_aw_stall_count": return tb_vif.xtrig_axil_aw_stall_count;
-      "xtrig_axil_ar_stall_count": return tb_vif.xtrig_axil_ar_stall_count;
+      "xtrig_ctm_src_req":         sampled = 32'(xtrig_vif.xtrig_ctm_src_req);
+      "xtrig_ctm_dst_ack":         sampled = 32'(xtrig_vif.xtrig_ctm_dst_ack);
+      "xtrig_ctm_src_ack":         sampled = 32'(xtrig_vif.xtrig_ctm_src_ack);
+      "xtrig_ctm_dst_req":         sampled = 32'(xtrig_vif.xtrig_ctm_dst_req);
+      "xtrig_ctp_req_out_dout":    sampled = 32'(xtrig_vif.xtrig_ctp_req_out_dout);
+      "xtrig_ctp_req_out_dout_en": sampled = 32'(xtrig_vif.xtrig_ctp_req_out_dout_en);
+      "xtrig_ctp_req_out_din":     sampled = 32'(xtrig_vif.xtrig_ctp_req_out_din);
+      "xtrig_ctp_req_out_din_en":  sampled = 32'(xtrig_vif.xtrig_ctp_req_out_din_en);
+      "xtrig_ctp_req_in_dout":     sampled = 32'(xtrig_vif.xtrig_ctp_req_in_dout);
+      "xtrig_ctp_req_in_dout_en":  sampled = 32'(xtrig_vif.xtrig_ctp_req_in_dout_en);
+      "xtrig_ctp_req_in_din":      sampled = 32'(xtrig_vif.xtrig_ctp_req_in_din);
+      "xtrig_ctp_req_in_din_en":   sampled = 32'(xtrig_vif.xtrig_ctp_req_in_din_en);
+      "xtrig_ctp_ack_in_dout":     sampled = 32'(xtrig_vif.xtrig_ctp_ack_in_dout);
+      "xtrig_ctp_ack_in_dout_en":  sampled = 32'(xtrig_vif.xtrig_ctp_ack_in_dout_en);
+      "xtrig_ctp_ack_in_din":      sampled = 32'(xtrig_vif.xtrig_ctp_ack_in_din);
+      "xtrig_ctp_ack_in_din_en":   sampled = 32'(xtrig_vif.xtrig_ctp_ack_in_din_en);
+      "xtrig_ctp_ack_out_dout":    sampled = 32'(xtrig_vif.xtrig_ctp_ack_out_dout);
+      "xtrig_ctp_ack_out_dout_en": sampled = 32'(xtrig_vif.xtrig_ctp_ack_out_dout_en);
+      "xtrig_ctp_ack_out_din":     sampled = 32'(xtrig_vif.xtrig_ctp_ack_out_din);
+      "xtrig_ctp_ack_out_din_en":  sampled = 32'(xtrig_vif.xtrig_ctp_ack_out_din_en);
+      "xtrig_ctp_busy":            sampled = 32'(tb_vif.xtrig_ctp_busy);
+      "xtrig_demux_aw_lock":       sampled = 32'(tb_vif.xtrig_demux_aw_lock);
+      "xtrig_demux_w_pending":     sampled = 32'(tb_vif.xtrig_demux_w_pending);
+      "xtrig_axil_awvalid_count":  sampled = tb_vif.xtrig_axil_awvalid_count;
+      "xtrig_axil_wvalid_count":   sampled = tb_vif.xtrig_axil_wvalid_count;
+      "xtrig_axil_arvalid_count":  sampled = tb_vif.xtrig_axil_arvalid_count;
+      "xtrig_axil_aw_stall_count": sampled = tb_vif.xtrig_axil_aw_stall_count;
+      "xtrig_axil_ar_stall_count": sampled = tb_vif.xtrig_axil_ar_stall_count;
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown xtrig observable %s", name))
-        return '0;
+        sampled = '0;
       end
     endcase
+    if ($isunknown(sampled) && !m_x_reported.exists(name)) begin
+      m_x_reported[name] = 1'b1;
+      `uvm_error(get_type_name(), $sformatf("xtrig observable %s sampled X: 0x%0h", name, sampled))
+    end
+    return sampled;
   endfunction
 
   function void log_xtrig_sample(string label);
@@ -671,6 +682,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // pulse_reset twin; POR and TRST stay released). Every XTRIG CSR returns
   // to its reset value.
   task pulse_reset(int unsigned cycles = 3);
+    logic [31:0] before_count = tb_vif.sys_rst_assert_count;
     clear_xtrig_inputs();
     ctm_model = new();
     p_sequencer.m_xtrig_ctp_shadow.clear();
@@ -678,6 +690,8 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     wait_sys_cycles(cycles);
     tb_vif.sys_rst_n <= 1'b1;
     wait_sys_cycles(cycles + 2);
+    check_reset_counted("sys_rst_assert_count", before_count, tb_vif.sys_rst_assert_count,
+                        $sformatf("pulse_reset cycles=%0d", cycles));
   endtask
 
   // System reset watched from its first held cycle until after release:
@@ -685,6 +699,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // zero activity while the reset holds and for cycles + 2 cycles after
   // release (CHK-XTRIG-QUIET); the CSR shadows reset with the DUT.
   task reset_window(string label, int unsigned cycles = 3);
+    logic [31:0] before_count = tb_vif.sys_rst_assert_count;
     clear_xtrig_inputs();
     tb_vif.sys_rst_n <= 1'b0;
     wait_sys_cycles(1);
@@ -695,6 +710,8 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     p_sequencer.m_xtrig_ctp_shadow.clear();
     wait_sys_cycles(cycles + 2);
     stop_activity_window();
+    check_reset_counted("sys_rst_assert_count", before_count, tb_vif.sys_rst_assert_count,
+                        $sformatf("reset_window.%s cycles=%0d", label, cycles));
     foreach (reset_signals[i])
       check_evidence(ChkQuiet, $sformatf("reset_window.%s.%s", label, reset_signals[i]),
                      64'(window_activity[reset_signals[i]]), 64'd0, $sformatf(
