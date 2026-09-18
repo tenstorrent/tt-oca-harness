@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Fabric :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC networks, address remapping, traffic filtering, protection, and routing.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -109,13 +111,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -123,7 +123,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -131,7 +130,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -139,7 +137,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -147,7 +144,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -155,7 +151,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -172,6 +167,10 @@
 <button class="nav-toggle"></button>
   <a href="../index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="fabric.html">Fabric</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -179,14 +178,18 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="fabric"><a class="anchor" href="#fabric"></a><a class="link" href="#fabric">Fabric</a></h3>
-<div class="paragraph">
+<h1 class="page">Fabric</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="fabric" class="paragraph">
 <p>The SMC fabric provides interconnect infrastructure with address
 management, traffic filtering, and security enforcement mechanisms.</p>
 </div>
-<div class="sect3">
-<h4 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The fabric supports the following configuration parameters to tune
 performance and area:</p>
@@ -301,8 +304,10 @@ parameters (AXI_MAX_WRITE_TXNS, AXI_MAX_READ_TXNS) control outstanding
 transactions to peripherals.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="dual-network-architecture"><a class="anchor" href="#dual-network-architecture"></a><a class="link" href="#dual-network-architecture">Dual-Network Architecture</a></h4>
+</div>
+<div class="sect1">
+<h2 id="dual-network-architecture"><a class="anchor" href="#dual-network-architecture"></a><a class="link" href="#dual-network-architecture">Dual-Network Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SMC fabric implements two separate networks optimized for different
 traffic types:</p>
@@ -343,8 +348,10 @@ traffic types:</p>
 The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) and AXI4-Lite (MMIO) interfaces; internally, the cluster uses a TileLink bus that is protocol-bridged at the cluster boundary.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="axi-interface-widths"><a class="anchor" href="#axi-interface-widths"></a><a class="link" href="#axi-interface-widths">AXI Interface Widths</a></h4>
+</div>
+<div class="sect1">
+<h2 id="axi-interface-widths"><a class="anchor" href="#axi-interface-widths"></a><a class="link" href="#axi-interface-widths">AXI Interface Widths</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The table below lists the common AXI signal widths shared across all AXI4 fabric interfaces.</p>
 </div>
@@ -455,15 +462,17 @@ The table below lists the ID width at each point in the fabric.</p>
 <p>Some internal paths also use a 32-bit data width for AXI4-Lite peripheral access, with corresponding STRB_WIDTH of 4 bits.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="traffic-managers-and-subordinates"><a class="anchor" href="#traffic-managers-and-subordinates"></a><a class="link" href="#traffic-managers-and-subordinates">Traffic Managers and Subordinates</a></h4>
+</div>
+<div class="sect1">
+<h2 id="traffic-managers-and-subordinates"><a class="anchor" href="#traffic-managers-and-subordinates"></a><a class="link" href="#traffic-managers-and-subordinates">Traffic Managers and Subordinates</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SMC fabric supports multiple traffic sources (managers) and
 destinations (subordinates), providing flexible routing with security
 enforcement.</p>
 </div>
-<div class="sect4">
-<h5 id="traffic-managers"><a class="anchor" href="#traffic-managers"></a><a class="link" href="#traffic-managers">Traffic Managers</a></h5>
+<div class="sect2">
+<h3 id="traffic-managers"><a class="anchor" href="#traffic-managers"></a><a class="link" href="#traffic-managers">Traffic Managers</a></h3>
 <div class="paragraph">
 <p>Traffic managers initiate transactions on the fabric, accessing both
 local and remote resources through the dual-network architecture.</p>
@@ -528,8 +537,8 @@ through alias remap logic before reaching their destination, enabling
 flexible address management between local and global address spaces.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="traffic-subordinates"><a class="anchor" href="#traffic-subordinates"></a><a class="link" href="#traffic-subordinates">Traffic Subordinates</a></h5>
+<div class="sect2">
+<h3 id="traffic-subordinates"><a class="anchor" href="#traffic-subordinates"></a><a class="link" href="#traffic-subordinates">Traffic Subordinates</a></h3>
 <div class="paragraph">
 <p>Traffic subordinates respond to transactions initiated by the managers,
 organized by network type and function.</p>
@@ -622,8 +631,10 @@ the AXI4-Lite network for reliable, deterministic access.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">Address Remapping</a></h4>
+</div>
+<div class="sect1">
+<h2 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">Address Remapping</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SMC fabric implements two complementary address remapping mechanisms
 in
@@ -631,8 +642,10 @@ in
 remapping.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="alias-remapping"><a class="anchor" href="#alias-remapping"></a><a class="link" href="#alias-remapping">Alias Remapping</a></h4>
+</div>
+<div class="sect1">
+<h2 id="alias-remapping"><a class="anchor" href="#alias-remapping"></a><a class="link" href="#alias-remapping">Alias Remapping</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Alias remapping translates local SMC addresses to global system addresses,
 decoupling software-visible addresses from physical assignments. This simplifies
@@ -666,8 +679,10 @@ local alias base address (0xC000_0000) for local resources until programmed by
 firmware.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="privilege-controlled-remapping"><a class="anchor" href="#privilege-controlled-remapping"></a><a class="link" href="#privilege-controlled-remapping">Privilege-Controlled Remapping</a></h4>
+</div>
+<div class="sect1">
+<h2 id="privilege-controlled-remapping"><a class="anchor" href="#privilege-controlled-remapping"></a><a class="link" href="#privilege-controlled-remapping">Privilege-Controlled Remapping</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Privilege-controlled address remapping enables programmable, privilege-aware
 translation of outbound SMC transactions. It enforces access boundaries based on
@@ -710,8 +725,10 @@ traffic that matches no entry: the inbound filter blocks it, and the
 outbound filter permits it.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="inbound-filtering"><a class="anchor" href="#inbound-filtering"></a><a class="link" href="#inbound-filtering">Inbound Filtering</a></h4>
+</div>
+<div class="sect1">
+<h2 id="inbound-filtering"><a class="anchor" href="#inbound-filtering"></a><a class="link" href="#inbound-filtering">Inbound Filtering</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Inbound filtering protects SMC resources from unauthorized external
 access by evaluating three dimensions of each transaction:</p>
@@ -746,8 +763,10 @@ each configurable with its own address ranges, source ID matching, and
 protection attribute policies.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="outbound-filtering"><a class="anchor" href="#outbound-filtering"></a><a class="link" href="#outbound-filtering">Outbound Filtering</a></h4>
+</div>
+<div class="sect1">
+<h2 id="outbound-filtering"><a class="anchor" href="#outbound-filtering"></a><a class="link" href="#outbound-filtering">Outbound Filtering</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Outbound filtering manages which external resources the SMC can access,
 restricting SMC-initiated requests to defined system peripherals or
@@ -778,15 +797,17 @@ attributes (NS), and source ID. The outbound filters use the same
 register structure as inbound filters.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="protection-requirements"><a class="anchor" href="#protection-requirements"></a><a class="link" href="#protection-requirements">Protection Requirements</a></h4>
+</div>
+<div class="sect1">
+<h2 id="protection-requirements"><a class="anchor" href="#protection-requirements"></a><a class="link" href="#protection-requirements">Protection Requirements</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SMC fabric implements two types of protection-based filtering
 mechanisms to enforce security policies based on AXI protection
 attributes:</p>
 </div>
-<div class="sect4">
-<h5 id="axi-protection-bit-encoding"><a class="anchor" href="#axi-protection-bit-encoding"></a><a class="link" href="#axi-protection-bit-encoding">AXI Protection Bit Encoding</a></h5>
+<div class="sect2">
+<h3 id="axi-protection-bit-encoding"><a class="anchor" href="#axi-protection-bit-encoding"></a><a class="link" href="#axi-protection-bit-encoding">AXI Protection Bit Encoding</a></h3>
 <div class="paragraph">
 <p>AXI protection bits (<code>aw.prot</code> and <code>ar.prot</code>) are 3-bit fields that
 encode transaction security and privilege attributes:</p>
@@ -869,8 +890,8 @@ encode transaction security and privilege attributes:</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="non-secure-bit-filtering-axi4-filters"><a class="anchor" href="#non-secure-bit-filtering-axi4-filters"></a><a class="link" href="#non-secure-bit-filtering-axi4-filters">Non-Secure Bit Filtering (AXI4 Filters)</a></h5>
+<div class="sect2">
+<h3 id="non-secure-bit-filtering-axi4-filters"><a class="anchor" href="#non-secure-bit-filtering-axi4-filters"></a><a class="link" href="#non-secure-bit-filtering-axi4-filters">Non-Secure Bit Filtering (AXI4 Filters)</a></h3>
 <div class="paragraph">
 <p>The primary protection filtering mechanism for AXI4 full interfaces
 examines the Non-Secure (NS) bit (<code>prot[1]</code>) to control secure vs.
@@ -908,8 +929,8 @@ filter&#8217;s <code>allow_ns</code> configuration. Transactions that no entry a
 routed to an error slave, which returns a decode error response.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="full-3-bit-protection-matching-axi-lite"><a class="anchor" href="#full-3-bit-protection-matching-axi-lite"></a><a class="link" href="#full-3-bit-protection-matching-axi-lite">Full 3-Bit Protection Matching (AXI-Lite)</a></h5>
+<div class="sect2">
+<h3 id="full-3-bit-protection-matching-axi-lite"><a class="anchor" href="#full-3-bit-protection-matching-axi-lite"></a><a class="link" href="#full-3-bit-protection-matching-axi-lite">Full 3-Bit Protection Matching (AXI-Lite)</a></h3>
 <div class="paragraph">
 <p>For AXI4-Lite interfaces, the fabric supports exact matching on all
 three protection bits. This is implemented in the <code>prim_axil_prot_filter</code>
@@ -944,8 +965,8 @@ values are allowed through. All other transactions receive an error
 response.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="protection-bit-pass-through"><a class="anchor" href="#protection-bit-pass-through"></a><a class="link" href="#protection-bit-pass-through">Protection Bit Pass-Through</a></h5>
+<div class="sect2">
+<h3 id="protection-bit-pass-through"><a class="anchor" href="#protection-bit-pass-through"></a><a class="link" href="#protection-bit-pass-through">Protection Bit Pass-Through</a></h3>
 <div class="paragraph">
 <p>All protection bits are passed through the fabric without modification.
 The filters only block or allow transactions based on their protection
@@ -954,8 +975,8 @@ that downstream slaves receive the original protection attributes from
 the originating master.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="configuration-examples"><a class="anchor" href="#configuration-examples"></a><a class="link" href="#configuration-examples">Configuration Examples</a></h5>
+<div class="sect2">
+<h3 id="configuration-examples"><a class="anchor" href="#configuration-examples"></a><a class="link" href="#configuration-examples">Configuration Examples</a></h3>
 <div class="paragraph">
 <p><strong>Example 1: Secure-only access to a peripheral</strong></p>
 </div>
@@ -982,10 +1003,12 @@ Result: Only privileged transactions (prot[0] = 1) are allowed</pre>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="traffic-routing-and-flow"><a class="anchor" href="#traffic-routing-and-flow"></a><a class="link" href="#traffic-routing-and-flow">Traffic Routing and Flow</a></h4>
-<div class="sect4">
-<h5 id="local-and-remote-resource-access"><a class="anchor" href="#local-and-remote-resource-access"></a><a class="link" href="#local-and-remote-resource-access">Local and Remote Resource Access</a></h5>
+</div>
+<div class="sect1">
+<h2 id="traffic-routing-and-flow"><a class="anchor" href="#traffic-routing-and-flow"></a><a class="link" href="#traffic-routing-and-flow">Traffic Routing and Flow</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="local-and-remote-resource-access"><a class="anchor" href="#local-and-remote-resource-access"></a><a class="link" href="#local-and-remote-resource-access">Local and Remote Resource Access</a></h3>
 <div class="paragraph">
 <p>The SMC fabric routing logic determines how transactions reach their
 intended destinations, supporting both local SMC resources and remote
@@ -1013,8 +1036,8 @@ requires the chiplet-global aperture base, which firmware reads from the
 <code>GLOBAL_BASE</code> CSR described above.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="outbound-traffic-flow"><a class="anchor" href="#outbound-traffic-flow"></a><a class="link" href="#outbound-traffic-flow">Outbound Traffic Flow</a></h5>
+<div class="sect2">
+<h3 id="outbound-traffic-flow"><a class="anchor" href="#outbound-traffic-flow"></a><a class="link" href="#outbound-traffic-flow">Outbound Traffic Flow</a></h3>
 <div class="paragraph">
 <p>SMC outbound traffic serves dual purposes: accessing shared system
 services and extending the SMC&#8217;s private domain across the system.</p>
@@ -1061,10 +1084,12 @@ configuration:</p>
 </table>
 </div>
 </div>
-<div class="sect3">
-<h4 id="detailed-register-maps"><a class="anchor" href="#detailed-register-maps"></a><a class="link" href="#detailed-register-maps">Detailed Register Maps</a></h4>
-<div class="sect4">
-<h5 id="alias-remap-registers"><a class="anchor" href="#alias-remap-registers"></a><a class="link" href="#alias-remap-registers">Alias Remap Registers</a></h5>
+</div>
+<div class="sect1">
+<h2 id="detailed-register-maps"><a class="anchor" href="#detailed-register-maps"></a><a class="link" href="#detailed-register-maps">Detailed Register Maps</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="alias-remap-registers"><a class="anchor" href="#alias-remap-registers"></a><a class="link" href="#alias-remap-registers">Alias Remap Registers</a></h3>
 <div class="paragraph">
 <p>The alias remap registers control local address aliasing and attribute
 mapping for SMC-initiated transactions. These registers configure how
@@ -1112,8 +1137,8 @@ local resources are accessed and which address translation is applied.</p>
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="output-remap-registers"><a class="anchor" href="#output-remap-registers"></a><a class="link" href="#output-remap-registers">Output Remap Registers</a></h5>
+<div class="sect2">
+<h3 id="output-remap-registers"><a class="anchor" href="#output-remap-registers"></a><a class="link" href="#output-remap-registers">Output Remap Registers</a></h3>
 <div class="paragraph">
 <p>The output remap registers control privilege-controlled address
 remapping for outbound transactions. The fabric provides separate remap
@@ -1143,8 +1168,8 @@ regions for Machine-mode (highest privilege) and Xvisor/Hypervisor
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="inbound-traffic-filter-control-registers"><a class="anchor" href="#inbound-traffic-filter-control-registers"></a><a class="link" href="#inbound-traffic-filter-control-registers">Inbound Traffic Filter Control Registers</a></h5>
+<div class="sect2">
+<h3 id="inbound-traffic-filter-control-registers"><a class="anchor" href="#inbound-traffic-filter-control-registers"></a><a class="link" href="#inbound-traffic-filter-control-registers">Inbound Traffic Filter Control Registers</a></h3>
 <div class="paragraph">
 <p>The inbound filter control registers protect SMC resources from
 unauthorized external access. Each of the 16 independent filter
@@ -1200,8 +1225,8 @@ protection attribute policies to control inbound traffic.</p>
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="outbound-traffic-filter-control-registers"><a class="anchor" href="#outbound-traffic-filter-control-registers"></a><a class="link" href="#outbound-traffic-filter-control-registers">Outbound Traffic Filter Control Registers</a></h5>
+<div class="sect2">
+<h3 id="outbound-traffic-filter-control-registers"><a class="anchor" href="#outbound-traffic-filter-control-registers"></a><a class="link" href="#outbound-traffic-filter-control-registers">Outbound Traffic Filter Control Registers</a></h3>
 <div class="paragraph">
 <p>The outbound filter control registers determine which external resources
 the SMC can access, restricting SMC-initiated requests to defined system
@@ -1235,6 +1260,8 @@ filters use the same register structure as the inbound filters
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

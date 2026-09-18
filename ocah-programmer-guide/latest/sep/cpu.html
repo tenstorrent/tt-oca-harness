@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>CPU Subsystem :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP VeeR EL2 configuration, boot, DMA, and alarm processing.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></li>
+    <li><a href="cpu.html">CPU Subsystem</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,9 +190,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="cpu-subsystem"><a class="anchor" href="#cpu-subsystem"></a><a class="link" href="#cpu-subsystem">1. CPU Subsystem</a></h3>
-<div class="paragraph">
+<h1 class="page">CPU Subsystem</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cpu-subsystem" class="paragraph">
 <p>SEP uses the 32-bit RISC-V
 <a href="https://github.com/chipsalliance/Cores-VeeR-EL2">VeeR EL2 CPU</a> as its
 host. The core has been silicon proven by Western Digital and others. The
@@ -201,8 +201,11 @@ host. The core has been silicon proven by Western Digital and others. The
 Programmer’s Reference Manual</a> provides the details required for
 programming the CPU.</p>
 </div>
-<div class="sect3">
-<h4 id="cpu-feature-summary"><a class="anchor" href="#cpu-feature-summary"></a><a class="link" href="#cpu-feature-summary">1.1. CPU Feature Summary</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cpu-feature-summary"><a class="anchor" href="#cpu-feature-summary"></a><a class="link" href="#cpu-feature-summary">1. CPU Feature Summary</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
@@ -272,8 +275,10 @@ interrupts</p>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="configuration-straps"><a class="anchor" href="#configuration-straps"></a><a class="link" href="#configuration-straps">1.2. Configuration Straps</a></h4>
+</div>
+<div class="sect1">
+<h2 id="configuration-straps"><a class="anchor" href="#configuration-straps"></a><a class="link" href="#configuration-straps">2. Configuration Straps</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>There shall be a minimum of 8 static configuration straps (preferably
 16) which are associated with the GPIO interface pins. Note that the
@@ -289,8 +294,10 @@ configuring the device as a primary versus secondary chiplet and
 recovery mode versus normal mode.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">1.3. Reset Vector</a></h4>
+</div>
+<div class="sect1">
+<h2 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">3. Reset Vector</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SEP CPU reset vector is held in a test data register (TDR) in the EL2
 debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
@@ -305,8 +312,10 @@ programmed value persists until the TAP is reset. This supports bring-up and
 failure analysis flows that execute from a memory other than the Boot ROM.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="debug-module"><a class="anchor" href="#debug-module"></a><a class="link" href="#debug-module">1.4. Debug Module</a></h4>
+</div>
+<div class="sect1">
+<h2 id="debug-module"><a class="anchor" href="#debug-module"></a><a class="link" href="#debug-module">4. Debug Module</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The VeeR EL2 debug module is reached from the DTP SEP debug STAP through the
 core&#8217;s JTAG TAP. TAP access is already gated by lifecycle state, so the DMI
@@ -315,8 +324,10 @@ check. The DMI uncore aperture is unused: the debug module&#8217;s AXI master al
 reaches the rest of the SEP fabric.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="boot-rom"><a class="anchor" href="#boot-rom"></a><a class="link" href="#boot-rom">1.5. Boot ROM</a></h4>
+</div>
+<div class="sect1">
+<h2 id="boot-rom"><a class="anchor" href="#boot-rom"></a><a class="link" href="#boot-rom">5. Boot ROM</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Boot ROM holds the BL0 immutable Root-of-Trust code which is the
 first code running on the SEP host upon power on. It has the following
@@ -340,27 +351,32 @@ features:</p>
 </ul>
 </div>
 <div class="paragraph">
+<p>See <a href="rom.html#sep-rom" class="xref page">SEP Boot ROM</a> for the hardware and firmware-image layout.</p>
+</div>
+<div class="paragraph">
 <p>There is no ROM patching facility in the first generation
 implementation. This feature is planned for the second generation design
 and will use OTP as the backup storage.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">1.6. BL0 Secure Boot and BL1 Execution Unlock</a></h4>
+</div>
+<div class="sect1">
+<h2 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">6. BL0 Secure Boot and BL1 Execution Unlock</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
 SEP system into a runnable state after power on reset (PoR) and running
 the first stage of external firmware AKA BL1.</p>
 </div>
 <div class="paragraph">
-<p>The complete boot flow is specified in <a href="#sep-rom-boot-arch">[sep-rom-boot-arch]</a>, which is
-normative: CPU initialization, PMP fencing, fuse and lifecycle
-evaluation, SMC synchronization, boot-source selection, manifest and
-payload validation, secure boot, demotion, attestation and hand-off,
-with requirement identifiers and an implementation-status matrix. The
-summary below exists to place the ROM in the context of this chapter; it
-is deliberately not a second description of the same flow, because two
-would drift.</p>
+<p>The complete boot flow is specified by the production ROM documentation under
+<code>hw/sys/sep/bootrom/prod/doc/</code>. It covers CPU initialization, PMP fencing,
+fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
+manifest and payload validation, secure boot, demotion, attestation and
+hand-off, with requirement identifiers and an implementation-status matrix.
+The summary below exists to place the ROM in the context of this chapter; it is
+deliberately not a second description of the same flow, because two would
+drift.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -402,8 +418,10 @@ by running the CPU in Dual Core Lock Step. This will further protect
 against fault attacks.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="dual-scratch-register-banks"><a class="anchor" href="#dual-scratch-register-banks"></a><a class="link" href="#dual-scratch-register-banks">1.7. Dual Scratch Register Banks</a></h4>
+</div>
+<div class="sect1">
+<h2 id="dual-scratch-register-banks"><a class="anchor" href="#dual-scratch-register-banks"></a><a class="link" href="#dual-scratch-register-banks">7. Dual Scratch Register Banks</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>There shall be two sets of 16 x 32-bit scratch register banks
 instantiated at the SEP top level. Both are designed as simple SystemRDL
@@ -434,8 +452,10 @@ power-on-reset event.</p>
 reset by a signal from the Watchdog Timer (WDT).</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"><a class="anchor" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma"></a><a class="link" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma">1.8. Direct Memory Access (DMA)</a></h4>
+</div>
+<div class="sect1">
+<h2 id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"><a class="anchor" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma"></a><a class="link" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma">8. Direct Memory Access (DMA)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA
@@ -447,7 +467,7 @@ built-in SHA2 engine for inline hashing.</p>
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA Controller
 documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 <div class="paragraph">
 <p>Transfers operate on a word by word basis. This is because the TL-UL
@@ -547,8 +567,8 @@ available to DMA for automatic flow control</p>
 </li>
 </ul>
 </div>
-<div class="sect4">
-<h5 id="och-modifications"><a class="anchor" href="#och-modifications"></a><a class="link" href="#och-modifications">OCAH Modifications</a></h5>
+<div class="sect2">
+<h3 id="och-modifications"><a class="anchor" href="#och-modifications"></a><a class="link" href="#och-modifications">8.1. OCAH Modifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -558,8 +578,8 @@ TL-UL bus protocol)</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="future-enhancements"><a class="anchor" href="#future-enhancements"></a><a class="link" href="#future-enhancements">Future Enhancements</a></h5>
+<div class="sect2">
+<h3 id="future-enhancements"><a class="anchor" href="#future-enhancements"></a><a class="link" href="#future-enhancements">8.2. Future Enhancements</a></h3>
 <div class="paragraph">
 <p><em>The following feature enhancements will be considered for the next
 generation implementation:</em></p>
@@ -590,8 +610,10 @@ streaming interfaces</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"><a class="anchor" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"></a><a class="link" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp">1.9. Alarm Aggregation Processor (AGP)</a></h4>
+</div>
+<div class="sect1">
+<h2 id="alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"><a class="anchor" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"></a><a class="link" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp">9. Alarm Aggregation Processor (AGP)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p><em>Note that this module will not be implemented in the first generation
 SEP and will be deferred to the second generation. The AGP use case is
@@ -642,6 +664,8 @@ SEP</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

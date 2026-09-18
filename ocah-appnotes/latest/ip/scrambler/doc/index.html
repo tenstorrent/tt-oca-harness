@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SRAM Scrambling :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -94,13 +95,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -108,7 +107,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -116,7 +114,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -124,7 +121,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -132,7 +128,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -140,7 +135,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -157,6 +151,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="index.html">SRAM Scrambling</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -164,8 +162,9 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect4">
-<h5 id="sram-scrambling"><a class="anchor" href="#sram-scrambling"></a><a class="link" href="#sram-scrambling">SRAM Scrambling</a></h5>
+<h1 class="page">SRAM Scrambling</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div class="paragraph">
 <p>Both the address as well as data can optionally be scrambled. The goal
 of the scrambler is not secure data encryption but rather basic
@@ -193,8 +192,11 @@ register contents into the local key register.</p>
 <div class="paragraph">
 <p>The scrambler IP consists of a generic top-level module (<code>scrambler</code>) and a set of pre-configured size-specific wrappers that fix the address width to match a particular SRAM depth. The generic module selects the correct address scrambling function at elaboration time through generate blocks keyed on <code>ADDR_WIDTH</code>. The <code>scrambler_addr_tweak</code> submodule expands and mixes the memory address into a 32-bit round key. All cryptographic primitives (S-boxes, permutations, and address scramble functions) are declared as <code>automatic</code> functions in <code>scrambler_pkg</code>.</p>
 </div>
-<div class="sect5">
-<h6 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">Parameters</a></h6>
+</div>
+</div>
+<div class="sect1">
+<h2 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1. Parameters</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The scrambler module accepts three parameters. Only 32-bit data widths are supported in the current implementation.</p>
 </div>
@@ -235,8 +237,10 @@ register contents into the local key register.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="port-interface"><a class="anchor" href="#port-interface"></a><a class="link" href="#port-interface">Port Interface</a></h6>
+</div>
+<div class="sect1">
+<h2 id="port-interface"><a class="anchor" href="#port-interface"></a><a class="link" href="#port-interface">2. Port Interface</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The scrambler is purely combinational. It has no clock or reset ports.</p>
 </div>
@@ -307,8 +311,10 @@ register contents into the local key register.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="data-scrambling-algorithm"><a class="anchor" href="#data-scrambling-algorithm"></a><a class="link" href="#data-scrambling-algorithm">Data Scrambling Algorithm</a></h6>
+</div>
+<div class="sect1">
+<h2 id="data-scrambling-algorithm"><a class="anchor" href="#data-scrambling-algorithm"></a><a class="link" href="#data-scrambling-algorithm">3. Data Scrambling Algorithm</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The scrambling algorithm is an extremely rudimentary, round reduced,
 block cipher inspired by the PRESENT cipher. PRESENT works on 64 bit
@@ -580,8 +586,10 @@ Read_data = Read_data_sbo ^ Rkey</pre>
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="address-tweaking"><a class="anchor" href="#address-tweaking"></a><a class="link" href="#address-tweaking">Address Tweaking</a></h6>
+</div>
+<div class="sect1">
+<h2 id="address-tweaking"><a class="anchor" href="#address-tweaking"></a><a class="link" href="#address-tweaking">4. Address Tweaking</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>As previously mentioned, address tweaking is necessary so that the same
 data at different addresses scrambles to unique values. Tweaking is
@@ -643,8 +651,10 @@ bits, truncating any excess bits.</p>
 <p>The expanded address is XORed with <code>scrambler_key_i</code> to produce the 32-bit <code>round_key_o</code>.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="address-scrambling"><a class="anchor" href="#address-scrambling"></a><a class="link" href="#address-scrambling">Address Scrambling</a></h6>
+</div>
+<div class="sect1">
+<h2 id="address-scrambling"><a class="anchor" href="#address-scrambling"></a><a class="link" href="#address-scrambling">5. Address Scrambling</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Address scrambling is done in a similar fashion as data scrambling with
 an arbitrary permutation function. The address bits are first xor&#8217;ed
@@ -724,8 +734,10 @@ address</em>, only scrambling.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="byte-wise-scrambling-mode"><a class="anchor" href="#byte-wise-scrambling-mode"></a><a class="link" href="#byte-wise-scrambling-mode">Byte-Wise Scrambling Mode</a></h6>
+</div>
+<div class="sect1">
+<h2 id="byte-wise-scrambling-mode"><a class="anchor" href="#byte-wise-scrambling-mode"></a><a class="link" href="#byte-wise-scrambling-mode">6. Byte-Wise Scrambling Mode</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>When the <code>BYTE_WISE</code> parameter is set to 1, the permutation layer operates on each byte independently rather than across the full 32-bit word. On the write path, the eight S-box outputs are grouped into four byte lanes and each lane is permuted with <code>perm8</code>. On the read path, <code>iperm8</code> is applied per byte lane before the inverse S-box stage. The S-box and round-key XOR stages are identical regardless of the <code>BYTE_WISE</code> setting.</p>
 </div>
@@ -733,8 +745,10 @@ address</em>, only scrambling.</p>
 <p>This mode is used in the Key Manager SRAM interface where byte-level write strobes require that scrambling of one byte lane does not depend on data in other lanes.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="instantiation-variants"><a class="anchor" href="#instantiation-variants"></a><a class="link" href="#instantiation-variants">Instantiation Variants</a></h6>
+</div>
+<div class="sect1">
+<h2 id="instantiation-variants"><a class="anchor" href="#instantiation-variants"></a><a class="link" href="#instantiation-variants">7. Instantiation Variants</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Five pre-configured modules are provided, each fixing the <code>ADDR_WIDTH</code> parameter for a specific SRAM depth. All variants default to <code>DATA_WIDTH</code> = 32 and <code>BYTE_WISE</code> = 0, though the <code>BYTE_WISE</code> parameter can be overridden at instantiation.</p>
 </div>
@@ -787,8 +801,10 @@ address</em>, only scrambling.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="integration-in-the-key-manager"><a class="anchor" href="#integration-in-the-key-manager"></a><a class="link" href="#integration-in-the-key-manager">Integration in the Key Manager</a></h6>
+</div>
+<div class="sect1">
+<h2 id="integration-in-the-key-manager"><a class="anchor" href="#integration-in-the-key-manager"></a><a class="link" href="#integration-in-the-key-manager">8. Integration in the Key Manager</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Key Manager SRAM interface (<code>km_sram_interface</code>) instantiates two <code>scrambler_4096x32</code> instances with <code>BYTE_WISE</code> = 1. The first instance (<code>u_req_scrambler</code>) scrambles the write data and address on the request path. The second instance (<code>u_rsp_descrambler</code>) descrambles read data on the response path using the address that was captured when the read was issued.</p>
 </div>
@@ -826,6 +842,8 @@ address</em>, only scrambling.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

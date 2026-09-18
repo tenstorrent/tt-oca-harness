@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>I2C Controller :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +122,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +134,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +141,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -151,7 +148,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -159,7 +155,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +162,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +178,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="index.html">I2C Controller</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,10 +189,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="i2c-controller"><a class="anchor" href="#i2c-controller"></a><a class="link" href="#i2c-controller">1. I2C Controller</a></h4>
-<div class="sect4">
-<h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
+<h1 class="page">I2C Controller</h1>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The OCA I2C Interface Component is a comprehensive I2C/SMBus/PMBus
 communication controller that provides full-featured support for both
@@ -204,8 +202,10 @@ FIFOs, and extensive interrupt support, this component enables reliable
 inter-chip communication in complex system-on-chip designs.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+</div>
+<div class="sect1">
+<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
@@ -235,8 +235,10 @@ both controller and target modes</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="i2c-architecture"><a class="anchor" href="#i2c-architecture"></a><a class="link" href="#i2c-architecture">Architecture</a></h5>
+</div>
+<div class="sect1">
+<h2 id="i2c-architecture"><a class="anchor" href="#i2c-architecture"></a><a class="link" href="#i2c-architecture">3. Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The I2C Interface Component is a dual-mode I2C/SMBus/PMBus communication
 controller supporting both controller (master) and target (slave)
@@ -245,16 +247,16 @@ operations. It is based on the
 controller</a>. The architecture provides high reliability with
 configurable timing, robust error handling, and AXI4-Lite integration.</p>
 </div>
-<div class="sect5">
-<h6 id="block-diagram"><a class="anchor" href="#block-diagram"></a><a class="link" href="#block-diagram">Block Diagram</a></h6>
+<div class="sect2">
+<h3 id="block-diagram"><a class="anchor" href="#block-diagram"></a><a class="link" href="#block-diagram">3.1. Block Diagram</a></h3>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/i2c_block_diagram.svg" alt="I2C Block Diagram" width="100%">
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="functional-description"><a class="anchor" href="#functional-description"></a><a class="link" href="#functional-description">Functional Description</a></h6>
+<div class="sect2">
+<h3 id="functional-description"><a class="anchor" href="#functional-description"></a><a class="link" href="#functional-description">3.2. Functional Description</a></h3>
 <div class="paragraph">
 <p>I2C IP is a controller-target combo that can function as an I2C controller and/or an I2C target.
 These functional modules are enabled at runtime by setting the register fields <code>CTRL.ENABLEHOST</code> and <code>CTRL.ENABLETARGET</code>.
@@ -274,12 +276,12 @@ The reference point for <code>InputDelayCycles</code> is the clock edge after th
 In other words, a value of 0 means that the IP&#8217;s 2-flop synchronizer would sample the IP&#8217;s own outputs within one clock cycle (if the external pad driver could switch instantaneously).</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">Functional Blocks</a></h6>
+<div class="sect2">
+<h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">3.3. Functional Blocks</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="control-and-status-registers-csrs"><a class="anchor" href="#control-and-status-registers-csrs"></a><a class="link" href="#control-and-status-registers-csrs">Control and Status Registers (CSRs)</a></h6>
+<div class="sect2">
+<h3 id="control-and-status-registers-csrs"><a class="anchor" href="#control-and-status-registers-csrs"></a><a class="link" href="#control-and-status-registers-csrs">3.4. Control and Status Registers (CSRs)</a></h3>
 <div class="paragraph">
 <p>32-bit AXI4-Lite interface with 8-bit address space:</p>
 </div>
@@ -307,8 +309,8 @@ target modes</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="i2c-core-processing-engine"><a class="anchor" href="#i2c-core-processing-engine"></a><a class="link" href="#i2c-core-processing-engine">I2C Core Processing Engine</a></h6>
+<div class="sect2">
+<h3 id="i2c-core-processing-engine"><a class="anchor" href="#i2c-core-processing-engine"></a><a class="link" href="#i2c-core-processing-engine">3.5. I2C Core Processing Engine</a></h3>
 <div class="paragraph">
 <p>The core engine manages all I2C protocol operations through integrated
 state machines:</p>
@@ -405,8 +407,10 @@ Ensure the RX FIFO has enough space, else overflows can occur.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="controller-nack-handling"><a class="anchor" href="#controller-nack-handling"></a><a class="link" href="#controller-nack-handling">Controller NACK Handling</a></h5>
+</div>
+<div class="sect1">
+<h2 id="controller-nack-handling"><a class="anchor" href="#controller-nack-handling"></a><a class="link" href="#controller-nack-handling">4. Controller NACK Handling</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>If the Controller Module transmits a byte and the 9th bit is a NACK from the Target/Bus, the <code>controller_halt</code> interrupt is usually asserted (modulo the effect of <code>FDATA.NAKOK</code>).
 If the <code>controller_halt</code> interrupt is asserted, the Controller FSM will halt until the interrupt condition has been cleared in the <code>CONTROLLER_EVENTS.NACK</code> register.
@@ -434,8 +438,10 @@ If a NACK handling timeout occurs or <code>CTRL.ENABLEHOST</code> is cleared, th
 The STOP condition terminates the transaction, leaving the FSM halted in the "bus idle" state, with SDA and SCL released.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="bus-arbitration"><a class="anchor" href="#bus-arbitration"></a><a class="link" href="#bus-arbitration">Bus Arbitration</a></h5>
+</div>
+<div class="sect1">
+<h2 id="bus-arbitration"><a class="anchor" href="#bus-arbitration"></a><a class="link" href="#bus-arbitration">5. Bus Arbitration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>In a multi-controller configuration, the Controller Module may begin transmitting at the same time as another controller.
 The Bus Monitor will detect when the Controller Module loses arbitration, such as when it attempts to transmit a logic high, but another device is pulling SDA low.
@@ -464,8 +470,10 @@ The Target Module can also be configured to observe SMBus&#8217;s maximum cumula
 There is no hardware support for calculating or checking the Packet Error Code, however; these values would need to be handled in software.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="target-address-registers"><a class="anchor" href="#target-address-registers"></a><a class="link" href="#target-address-registers">Target Address Registers</a></h5>
+</div>
+<div class="sect1">
+<h2 id="target-address-registers"><a class="anchor" href="#target-address-registers"></a><a class="link" href="#target-address-registers">6. Target Address Registers</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Every transfer involving the I2C Target Module begins with an address.
 The I2C Target Module supports up to two 7-bit address and 7-bit mask pairs.
@@ -483,8 +491,10 @@ If the user wishes to have the target respond to <strong>all</strong> addresses,
 <p>The assigned address and mask pairs are set in registers <code>TARGET_ID.ADDRESS0</code>, <code>TARGET_ID.MASK0</code>, <code>TARGET_ID.ADDRESS1</code>, and <code>TARGET_ID.MASK1</code>.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="target-transfers"><a class="anchor" href="#target-transfers"></a><a class="link" href="#target-transfers">Target Transfers</a></h5>
+</div>
+<div class="sect1">
+<h2 id="target-transfers"><a class="anchor" href="#target-transfers"></a><a class="link" href="#target-transfers">7. Target Transfers</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>When the Target Module accepts a transfer, it acquires the transfer address, read/write bit, and START signal sent by the controller and inserts them into ACQ FIFO, where they can be accessed by software.
 <code>ACQDATA</code> represents the ACQ FIFO output.
@@ -534,8 +544,10 @@ The following diagram shows consecutive entries inserted into ACQ FIFO during a 
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="target-clock-stretching"><a class="anchor" href="#target-clock-stretching"></a><a class="link" href="#target-clock-stretching">Target Clock Stretching</a></h5>
+</div>
+<div class="sect1">
+<h2 id="target-clock-stretching"><a class="anchor" href="#target-clock-stretching"></a><a class="link" href="#target-clock-stretching">8. Target Clock Stretching</a></h2>
+<div class="sectionbody">
 <div id="stretching-during-read" class="paragraph">
 <p>As described in the I2C specification, a target device can pause a transaction by holding SCL low.
 There are 3 cases in which this design stretches the clock:
@@ -544,16 +556,20 @@ There are 3 cases in which this design stretches the clock:
 * After the ACK bit is sent by the controller-transmitter during a read transfer</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="stretching-after-address-read"><a class="anchor" href="#stretching-after-address-read"></a><a class="link" href="#stretching-after-address-read">Stretching after address read</a></h5>
+</div>
+<div class="sect1">
+<h2 id="stretching-after-address-read"><a class="anchor" href="#stretching-after-address-read"></a><a class="link" href="#stretching-after-address-read">9. Stretching after address read</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>When a target device receives a start, the address and R/W bit are written into the ACQ FIFO.
 If there is no space in the ACQ FIFO to receive such a write, the target stretches the clock after the ACK bit and waits for software to make space.
 The <code>acq_stretch</code> interrupt is generated to alert software to such a situation.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="stretching-during-write"><a class="anchor" href="#stretching-during-write"></a><a class="link" href="#stretching-during-write">Stretching during write</a></h5>
+</div>
+<div class="sect1">
+<h2 id="stretching-during-write"><a class="anchor" href="#stretching-during-write"></a><a class="link" href="#stretching-during-write">10. Stretching during write</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>If the controller tries to write a data byte into the ACQ FIFO when there is no available space, the clock is stretched before the rising edge of SCL on the ACK bit.
 In addition, the Target Module may stretch if Target ACK Control Mode is enabled and the Auto ACK Counter has reached 0.
@@ -563,8 +579,10 @@ See the <a href="#target-ack-control-mode">Target ACK Control Mode</a> section f
 <p>The <code>acq_stretch</code> interrupt is generated to alert software to these situations.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="stretching-during-read-2"><a class="anchor" href="#stretching-during-read-2"></a><a class="link" href="#stretching-during-read-2">Stretching during read</a></h5>
+</div>
+<div class="sect1">
+<h2 id="stretching-during-read-2"><a class="anchor" href="#stretching-during-read-2"></a><a class="link" href="#stretching-during-read-2">11. Stretching during read</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>When a target device receives a start and read command, it may stretch the clock for any of the following reasons:
 * If there is no data available to be sent back (TX FIFO empty case), the target stretches the clock until data is made available by software.
@@ -576,8 +594,10 @@ See the <a href="#target-ack-control-mode">Target ACK Control Mode</a> section f
 <p>The <code>tx_stretch</code> interrupt is generated to alert software to such a situation.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="target-nacks"><a class="anchor" href="#target-nacks"></a><a class="link" href="#target-nacks">Target NACKs</a></h5>
+</div>
+<div class="sect1">
+<h2 id="target-nacks"><a class="anchor" href="#target-nacks"></a><a class="link" href="#target-nacks">12. Target NACKs</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>When the Target Module replies with a NACK during the (N)ACK phase, it indicates that it is unable to accept the byte or command.
 The NACK response is sticky until the end of the transaction.
@@ -606,8 +626,10 @@ For write transactions, the particular NACK&#8217;d data byte will also be in th
   Software has some control if ACK Control Mode is enabled</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="target-ack-control-mode"><a class="anchor" href="#target-ack-control-mode"></a><a class="link" href="#target-ack-control-mode">Target ACK Control Mode</a></h5>
+</div>
+<div class="sect1">
+<h2 id="target-ack-control-mode"><a class="anchor" href="#target-ack-control-mode"></a><a class="link" href="#target-ack-control-mode">13. Target ACK Control Mode</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>ACK Control Mode is a feature that allows software to take control of ACK/NACK decisions during a Write transfer.
 When ACK Control Mode is disabled in <code>CTRL.ACK_CTRL_EN</code>, the Target module will automatically ACK any incoming data byte, so long as there is sufficient space in the ACQ FIFO.
@@ -636,8 +658,8 @@ Note that after software indicates its decision, this pending byte will still en
 <div class="paragraph">
 <p>This feature is intended to support protocols that require mid-transfer NACK decisions based on the current data transferred (e.g. as in SMBus).</p>
 </div>
-<div class="sect5">
-<h6 id="fifo-management-system"><a class="anchor" href="#fifo-management-system"></a><a class="link" href="#fifo-management-system">FIFO Management System</a></h6>
+<div class="sect2">
+<h3 id="fifo-management-system"><a class="anchor" href="#fifo-management-system"></a><a class="link" href="#fifo-management-system">13.1. FIFO Management System</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -674,12 +696,12 @@ DMA ready signals, overflow/underflow protection</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">Data Flow and Control Path</a></h6>
+<div class="sect2">
+<h3 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">13.2. Data Flow and Control Path</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="data-flow-architecture"><a class="anchor" href="#data-flow-architecture"></a><a class="link" href="#data-flow-architecture">Data Flow Architecture</a></h6>
+<div class="sect2">
+<h3 id="data-flow-architecture"><a class="anchor" href="#data-flow-architecture"></a><a class="link" href="#data-flow-architecture">13.3. Data Flow Architecture</a></h3>
 <div class="paragraph">
 <p><strong>Controller Mode Data Flow</strong>:</p>
 </div>
@@ -727,8 +749,8 @@ constraints</p>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="control-path-architecture"><a class="anchor" href="#control-path-architecture"></a><a class="link" href="#control-path-architecture">Control Path Architecture</a></h6>
+<div class="sect2">
+<h3 id="control-path-architecture"><a class="anchor" href="#control-path-architecture"></a><a class="link" href="#control-path-architecture">13.4. Control Path Architecture</a></h3>
 <div class="paragraph">
 <p>The control path coordinates operation between multiple state machines:</p>
 </div>
@@ -754,12 +776,12 @@ conditions</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="state-machine-architecture"><a class="anchor" href="#state-machine-architecture"></a><a class="link" href="#state-machine-architecture">State Machine Architecture</a></h6>
+<div class="sect2">
+<h3 id="state-machine-architecture"><a class="anchor" href="#state-machine-architecture"></a><a class="link" href="#state-machine-architecture">13.5. State Machine Architecture</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="controller-state-machine"><a class="anchor" href="#controller-state-machine"></a><a class="link" href="#controller-state-machine">Controller State Machine</a></h6>
+<div class="sect2">
+<h3 id="controller-state-machine"><a class="anchor" href="#controller-state-machine"></a><a class="link" href="#controller-state-machine">13.6. Controller State Machine</a></h3>
 <div class="paragraph">
 <p>The controller FSM implements the complete I2C controller protocol:</p>
 </div>
@@ -820,12 +842,12 @@ transmission</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="signal-conditioning-and-synchronization"><a class="anchor" href="#signal-conditioning-and-synchronization"></a><a class="link" href="#signal-conditioning-and-synchronization">Signal Conditioning and Synchronization</a></h6>
+<div class="sect2">
+<h3 id="signal-conditioning-and-synchronization"><a class="anchor" href="#signal-conditioning-and-synchronization"></a><a class="link" href="#signal-conditioning-and-synchronization">13.7. Signal Conditioning and Synchronization</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="input-signal-processing"><a class="anchor" href="#input-signal-processing"></a><a class="link" href="#input-signal-processing">Input Signal Processing</a></h6>
+<div class="sect2">
+<h3 id="input-signal-processing"><a class="anchor" href="#input-signal-processing"></a><a class="link" href="#input-signal-processing">13.8. Input Signal Processing</a></h3>
 <div class="paragraph">
 <p>To ensure reliable and noise-immune operation, all external I2C signals
 are conditioned through a multi-stage process. Incoming signals first
@@ -842,12 +864,12 @@ detection with hysteresis, and stable sampling in noisy environments,
 with the ability to configure delay compensation from 0 to 255 cycles.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="timing-control-and-configuration"><a class="anchor" href="#timing-control-and-configuration"></a><a class="link" href="#timing-control-and-configuration">Timing Control and Configuration</a></h6>
+<div class="sect2">
+<h3 id="timing-control-and-configuration"><a class="anchor" href="#timing-control-and-configuration"></a><a class="link" href="#timing-control-and-configuration">13.9. Timing Control and Configuration</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="timing-parameter-management"><a class="anchor" href="#timing-parameter-management"></a><a class="link" href="#timing-parameter-management">Timing Parameter Management</a></h6>
+<div class="sect2">
+<h3 id="timing-parameter-management"><a class="anchor" href="#timing-parameter-management"></a><a class="link" href="#timing-parameter-management">13.10. Timing Parameter Management</a></h3>
 <div class="paragraph">
 <p>For Standard-mode, Fast-mode and Fast-mode Plus, the timing requirements for each transaction are detailed in Table 10 of the I2C specification (rev. 6).
 To claim complete compatibility at each mode, the state machine timings need to be adapted to whether there are Standard-mode, Fast-mode and Fast-mode Plus targets on the bus.
@@ -1008,13 +1030,15 @@ As there is an output flop, a 2-flop synchronizer, a rise time, and a pad input 
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="timeout-controls"><a class="anchor" href="#timeout-controls"></a><a class="link" href="#timeout-controls">Timeout Controls</a></h6>
+<div class="sect2">
+<h3 id="timeout-controls"><a class="anchor" href="#timeout-controls"></a><a class="link" href="#timeout-controls">13.11. Timeout Controls</a></h3>
 
 </div>
 </div>
-<div class="sect4">
-<h5 id="bus-timeout-or-stretch-timeout"><a class="anchor" href="#bus-timeout-or-stretch-timeout"></a><a class="link" href="#bus-timeout-or-stretch-timeout">Bus Timeout or Stretch Timeout</a></h5>
+</div>
+<div class="sect1">
+<h2 id="bus-timeout-or-stretch-timeout"><a class="anchor" href="#bus-timeout-or-stretch-timeout"></a><a class="link" href="#bus-timeout-or-stretch-timeout">14. Bus Timeout or Stretch Timeout</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>A malfunctioning (or otherwise very slow) target device can hold SCL low indefinitely, stalling the bus.
 In addition, in an SMBus context, a controller can purposefully hold SCL low for an extended period of time (tTIMEOUT:MIN) to force a bus timeout.
@@ -1039,8 +1063,10 @@ In addition, if the last command byte addressing the module issued a read operat
 <p>For both cases, the counter resets when SCL goes high, so this count only accumulates during a single bit transfer.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="scl-idle-timeout"><a class="anchor" href="#scl-idle-timeout"></a><a class="link" href="#scl-idle-timeout">SCL Idle Timeout</a></h5>
+</div>
+<div class="sect1">
+<h2 id="scl-idle-timeout"><a class="anchor" href="#scl-idle-timeout"></a><a class="link" href="#scl-idle-timeout">15. SCL Idle Timeout</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The I2C IP provisions a counter for detecting when SCL has remained high for too long during an active transaction.
 <code>HOST_TIMEOUT_CTRL</code> is optionally enabled, determined by whether the register value is nonzero.</p>
@@ -1058,14 +1084,16 @@ However, a START condition from any device will terminate the transfer, and that
 Note that this behavior could cause transaction boundaries to be lost; the Target Module will report that this next START condition is a repeated START.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="target-module-stretch-timeout"><a class="anchor" href="#target-module-stretch-timeout"></a><a class="link" href="#target-module-stretch-timeout">Target Module Stretch Timeout</a></h5>
+</div>
+<div class="sect1">
+<h2 id="target-module-stretch-timeout"><a class="anchor" href="#target-module-stretch-timeout"></a><a class="link" href="#target-module-stretch-timeout">16. Target Module Stretch Timeout</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>If enabled with <code>TARGET_TIMEOUT_CTRL.EN</code>, the Target Module will automatically NACK transactions if it stretches the clock for more cycles than <code>TARGET_TIMEOUT_CTRL.VAL</code>.
 This counter accumulates across an entire transaction, and with the correct choice of timeout value, it complies with SMBus&#8217;s specified maximum cumulative clock extension time for the target.</p>
 </div>
-<div class="sect5">
-<h6 id="memory-and-fifo-architecture"><a class="anchor" href="#memory-and-fifo-architecture"></a><a class="link" href="#memory-and-fifo-architecture">Memory and FIFO Architecture</a></h6>
+<div class="sect2">
+<h3 id="memory-and-fifo-architecture"><a class="anchor" href="#memory-and-fifo-architecture"></a><a class="link" href="#memory-and-fifo-architecture">16.1. Memory and FIFO Architecture</a></h3>
 <div class="paragraph">
 <p>The I2C interface uses flexible, configurable memory blocks to implement
 its FIFOs, allowing the choice of memory type (SRAM, register, or
@@ -1081,8 +1109,8 @@ underflow, as well as reset and flush mechanisms for reliable and
 efficient data handling.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="error-handling-and-diagnostics"><a class="anchor" href="#error-handling-and-diagnostics"></a><a class="link" href="#error-handling-and-diagnostics">Error Handling and Diagnostics</a></h6>
+<div class="sect2">
+<h3 id="error-handling-and-diagnostics"><a class="anchor" href="#error-handling-and-diagnostics"></a><a class="link" href="#error-handling-and-diagnostics">16.2. Error Handling and Diagnostics</a></h3>
 <div class="paragraph">
 <p>The I2C component provides comprehensive automatic detection and
 protection against protocol and system-level errors, including:</p>
@@ -1115,15 +1143,17 @@ status can be monitored to quickly identify electrical or protocol-level
 problems.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">Interrupts</a></h6>
+<div class="sect2">
+<h3 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">16.3. Interrupts</a></h3>
 <div class="paragraph">
 <p>The I2C module has a few interrupts including general data flow interrupts and unexpected event interrupts.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="controller-module"><a class="anchor" href="#controller-module"></a><a class="link" href="#controller-module">Controller Module</a></h5>
+</div>
+<div class="sect1">
+<h2 id="controller-module"><a class="anchor" href="#controller-module"></a><a class="link" href="#controller-module">17. Controller Module</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Whenever the RX FIFO exceeds the designated number of entries, the interrupt <code>rx_threshold</code> is asserted to inform firmware.
 Firmware can configure the threshold value via the register <code>HOST_FIFO_CONFIG.RX_THRESH</code>.</p>
@@ -1172,8 +1202,10 @@ This interrupt is overloaded and represents the full IP&#8217;s participation in
 The Target Module&#8217;s transfers also signal <code>cmd_complete</code>.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="target-module"><a class="anchor" href="#target-module"></a><a class="link" href="#target-module">Target Module</a></h5>
+</div>
+<div class="sect1">
+<h2 id="target-module"><a class="anchor" href="#target-module"></a><a class="link" href="#target-module">18. Target Module</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>As mentioned above, the interrupt <code>cmd_complete</code> is asserted whenever a RESTART or a STOP bit is observed by the target, for a transfer that addressed the Target Module.</p>
 </div>
@@ -1209,8 +1241,8 @@ A controller sending an address and R/W bit to all target devices, writing to th
 The time period is counted from the last low-to-high SCL transition and continues counting until SCL goes low.
 Firmware can configure the timeout value via the register <code>HOST_TIMEOUT_CTRL</code>.</p>
 </div>
-<div class="sect5">
-<h6 id="smbus-and-pmbus-protocol-support"><a class="anchor" href="#smbus-and-pmbus-protocol-support"></a><a class="link" href="#smbus-and-pmbus-protocol-support">SMBus and PMBus Protocol Support</a></h6>
+<div class="sect2">
+<h3 id="smbus-and-pmbus-protocol-support"><a class="anchor" href="#smbus-and-pmbus-protocol-support"></a><a class="link" href="#smbus-and-pmbus-protocol-support">18.1. SMBus and PMBus Protocol Support</a></h3>
 <div class="paragraph">
 <p>The I2C component provides comprehensive hardware support for SMBus
 (System Management Bus) and PMBus (Power Management Bus) protocols,
@@ -1218,8 +1250,8 @@ which build upon the I2C physical layer with additional timing,
 electrical, and protocol requirements.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="smbus-physical-interface"><a class="anchor" href="#smbus-physical-interface"></a><a class="link" href="#smbus-physical-interface">SMBus Physical Interface</a></h6>
+<div class="sect2">
+<h3 id="smbus-physical-interface"><a class="anchor" href="#smbus-physical-interface"></a><a class="link" href="#smbus-physical-interface">18.2. SMBus Physical Interface</a></h3>
 <div class="paragraph">
 <p>The component includes dedicated SMBus signal pins beyond standard I2C:</p>
 </div>
@@ -1266,8 +1298,8 @@ systems</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="smbus-timeout-management"><a class="anchor" href="#smbus-timeout-management"></a><a class="link" href="#smbus-timeout-management">SMBus Timeout Management</a></h6>
+<div class="sect2">
+<h3 id="smbus-timeout-management"><a class="anchor" href="#smbus-timeout-management"></a><a class="link" href="#smbus-timeout-management">18.3. SMBus Timeout Management</a></h3>
 <div class="paragraph">
 <p>SMBus protocols enforce strict timing requirements with cumulative
 timeout tracking:</p>
@@ -1325,8 +1357,8 @@ timeout tracking:</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="smbus-acknack-control"><a class="anchor" href="#smbus-acknack-control"></a><a class="link" href="#smbus-acknack-control">SMBus ACK/NACK Control</a></h6>
+<div class="sect2">
+<h3 id="smbus-acknack-control"><a class="anchor" href="#smbus-acknack-control"></a><a class="link" href="#smbus-acknack-control">18.4. SMBus ACK/NACK Control</a></h3>
 <div class="paragraph">
 <p>SMBus protocols require sophisticated mid-transaction NACK capability
 for flow control and error handling:</p>
@@ -1382,8 +1414,8 @@ decision-making</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="smbus-packet-error-checking-pec"><a class="anchor" href="#smbus-packet-error-checking-pec"></a><a class="link" href="#smbus-packet-error-checking-pec">SMBus Packet Error Checking (PEC)</a></h6>
+<div class="sect2">
+<h3 id="smbus-packet-error-checking-pec"><a class="anchor" href="#smbus-packet-error-checking-pec"></a><a class="link" href="#smbus-packet-error-checking-pec">18.5. SMBus Packet Error Checking (PEC)</a></h3>
 <div class="paragraph">
 <p>While the I2C hardware does not implement CRC-8 calculation in hardware,
 it provides the necessary software control points:</p>
@@ -1407,8 +1439,8 @@ acceptance</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="pmbus-protocol-extensions"><a class="anchor" href="#pmbus-protocol-extensions"></a><a class="link" href="#pmbus-protocol-extensions">PMBus Protocol Extensions</a></h6>
+<div class="sect2">
+<h3 id="pmbus-protocol-extensions"><a class="anchor" href="#pmbus-protocol-extensions"></a><a class="link" href="#pmbus-protocol-extensions">18.6. PMBus Protocol Extensions</a></h3>
 <div class="paragraph">
 <p>PMBus builds on SMBus with power management specific features, all
 supported by the underlying I2C/SMBus implementation:</p>
@@ -1437,8 +1469,8 @@ address support</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="hybrid-mode-support"><a class="anchor" href="#hybrid-mode-support"></a><a class="link" href="#hybrid-mode-support">Hybrid Mode Support</a></h6>
+<div class="sect2">
+<h3 id="hybrid-mode-support"><a class="anchor" href="#hybrid-mode-support"></a><a class="link" href="#hybrid-mode-support">18.7. Hybrid Mode Support</a></h3>
 <div class="paragraph">
 <p>The I2C component supports SMBus hybrid mode operation:</p>
 </div>
@@ -1460,8 +1492,8 @@ address support</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="implementation-details-format-flag-parsing"><a class="anchor" href="#implementation-details-format-flag-parsing"></a><a class="link" href="#implementation-details-format-flag-parsing">Implementation Details: Format Flag Parsing</a></h6>
+<div class="sect2">
+<h3 id="implementation-details-format-flag-parsing"><a class="anchor" href="#implementation-details-format-flag-parsing"></a><a class="link" href="#implementation-details-format-flag-parsing">18.8. Implementation Details: Format Flag Parsing</a></h3>
 <div class="paragraph">
 <p>To illustrate the behavior induced by various flags added to the formatting queue, the following figure shows a simplified version of the <code>I2C_Controller</code> state machine.
 In this simplified view, many sequential states have been collapsed into four sub-sequences of states (shown in square brackets) or have their names abbreviated:
@@ -1514,13 +1546,15 @@ Each sub-sequence has a terminal event&#8212;&#8203;generically labeled "[comple
 * From WaitForStop, returns to IdleStart</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="application-notes"><a class="anchor" href="#application-notes"></a><a class="link" href="#application-notes">Application Notes</a></h6>
+<div class="sect2">
+<h3 id="application-notes"><a class="anchor" href="#application-notes"></a><a class="link" href="#application-notes">18.9. Application Notes</a></h3>
 
 </div>
 </div>
-<div class="sect4">
-<h5 id="virtual-open-drain"><a class="anchor" href="#virtual-open-drain"></a><a class="link" href="#virtual-open-drain">Virtual Open Drain</a></h5>
+</div>
+<div class="sect1">
+<h2 id="virtual-open-drain"><a class="anchor" href="#virtual-open-drain"></a><a class="link" href="#virtual-open-drain">19. Virtual Open Drain</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>In devices which lack a true open drain buffer functionality, this IP implements a "virtual Open Drain" functionality.
 The SDA and SCL outputs are assumed to be connected to a tri-state buffer, with independent enable outputs for both signals.</p>
@@ -1534,15 +1568,19 @@ This arrangement allows the output pins to float high if there is no conflict fr
 <p>This arrangement is necessary for FPGA builds.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="glitch-filter"><a class="anchor" href="#glitch-filter"></a><a class="link" href="#glitch-filter">Glitch Filter</a></h5>
+</div>
+<div class="sect1">
+<h2 id="glitch-filter"><a class="anchor" href="#glitch-filter"></a><a class="link" href="#glitch-filter">20. Glitch Filter</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The IP does not currently implement the specification&#8217;s required 50 ns glitch filter.
 For full spec compliance, the glitch filter must be added to the system design.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="override-mode-for-direct-pin-access"><a class="anchor" href="#override-mode-for-direct-pin-access"></a><a class="link" href="#override-mode-for-direct-pin-access">Override Mode for Direct Pin Access</a></h5>
+</div>
+<div class="sect1">
+<h2 id="override-mode-for-direct-pin-access"><a class="anchor" href="#override-mode-for-direct-pin-access"></a><a class="link" href="#override-mode-for-direct-pin-access">21. Override Mode for Direct Pin Access</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The I2C hardware interface consists of two external pins, SCL and SDA, whose behavior is described in the I2C specification (rev. 6).
 These pins are typically controlled by an internal state machine.
@@ -1556,8 +1594,10 @@ When <code>OVRD.SCLVAL</code> and <code>OVRD.SDAVAL</code> are set high, the vir
 In this state, with SCL or SDA asserted high, the register fields <code>VAL.SCL_RX</code> and <code>VAL.SDA_RX</code> can be used to receive inputs (including remote acknowledgments) from target devices.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="fsm-control-of-scl-and-sda"><a class="anchor" href="#fsm-control-of-scl-and-sda"></a><a class="link" href="#fsm-control-of-scl-and-sda">FSM control of SCL and SDA</a></h5>
+</div>
+<div class="sect1">
+<h2 id="fsm-control-of-scl-and-sda"><a class="anchor" href="#fsm-control-of-scl-and-sda"></a><a class="link" href="#fsm-control-of-scl-and-sda">22. FSM control of SCL and SDA</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>SCL and SDA are generated through the internal state machine of the controller and target modules.
 Since SCL is directly decoded from the states, it can have short glitches during transition which the external target may be sensitive to if it is not using an over-sampling scheme.
@@ -1574,15 +1614,17 @@ Another reason to have this higher internal clock frequency is that the timing p
 Since there are currently also a few cycles discrepancy between the specified timings and the actual ones (as described in the <a href="#timing-parameter-tuning-algorithm">Timing Parameter Tuning Algorithm</a>), it is recommended that the internal module clock frequency is at least 24x higher than the I2C line speeds.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="i2c-interface"><a class="anchor" href="#i2c-interface"></a><a class="link" href="#i2c-interface">Interface</a></h5>
+</div>
+<div class="sect1">
+<h2 id="i2c-interface"><a class="anchor" href="#i2c-interface"></a><a class="link" href="#i2c-interface">23. Interface</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The I2C Interface Component provides signal interfaces supporting I2C,
 SMBus, and PMBus protocols with AXI4-Lite register access and DMA
 integration.</p>
 </div>
-<div class="sect5">
-<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
+<div class="sect2">
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">23.1. Configuration Parameters</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -1630,12 +1672,12 @@ integration.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">Signal Interfaces</a></h6>
+<div class="sect2">
+<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">23.2. Signal Interfaces</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">Global Interface</a></h6>
+<div class="sect2">
+<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">23.3. Global Interface</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. Global Interface Signals</caption>
 <colgroup>
@@ -1676,8 +1718,8 @@ logic to known states.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="memory-configuration-interface"><a class="anchor" href="#memory-configuration-interface"></a><a class="link" href="#memory-configuration-interface">Memory Configuration Interface</a></h6>
+<div class="sect2">
+<h3 id="memory-configuration-interface"><a class="anchor" href="#memory-configuration-interface"></a><a class="link" href="#memory-configuration-interface">23.4. Memory Configuration Interface</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 5. Memory Configuration Interface Signals</caption>
 <colgroup>
@@ -1719,8 +1761,8 @@ control, scan chain integration, and debug access - <strong>ECC Support</strong>
 correction enable, threshold settings (when available)</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="i2c-physical-interface"><a class="anchor" href="#i2c-physical-interface"></a><a class="link" href="#i2c-physical-interface">I2C Physical Interface</a></h6>
+<div class="sect2">
+<h3 id="i2c-physical-interface"><a class="anchor" href="#i2c-physical-interface"></a><a class="link" href="#i2c-physical-interface">23.5. I2C Physical Interface</a></h3>
 <div class="paragraph">
 <p>The I2C physical interface implements true open-drain signaling with
 proper electrical characteristics.</p>
@@ -1779,8 +1821,8 @@ drives low only. External pull-up required.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="electrical-characteristics"><a class="anchor" href="#electrical-characteristics"></a><a class="link" href="#electrical-characteristics">Electrical Characteristics:</a></h6>
+<div class="sect2">
+<h3 id="electrical-characteristics"><a class="anchor" href="#electrical-characteristics"></a><a class="link" href="#electrical-characteristics">23.6. Electrical Characteristics:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -1804,8 +1846,8 @@ operation</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="input-delay-configuration"><a class="anchor" href="#input-delay-configuration"></a><a class="link" href="#input-delay-configuration">Input Delay Configuration</a></h6>
+<div class="sect2">
+<h3 id="input-delay-configuration"><a class="anchor" href="#input-delay-configuration"></a><a class="link" href="#input-delay-configuration">23.7. Input Delay Configuration</a></h3>
 <div class="paragraph">
 <p>The IP&#8217;s input pins do not reflect the start point for the full input path delay, since pads and nets from I/O buffers also contribute.
 The RTL parameter <code>InputDelayCycles</code> must be set to the maximum number of cycles of delay from the IP&#8217;s output pin driving SCL or SDA to the IP&#8217;s corresponding input pin sensing the transition.
@@ -1819,8 +1861,8 @@ In other words, a value of 0 means that the IP&#8217;s 2-flop synchronizer would
 * <code>THIGH</code> must be at least 4 cycles + <code>InputDelayCycles</code></p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="virtual-open-drain-implementation"><a class="anchor" href="#virtual-open-drain-implementation"></a><a class="link" href="#virtual-open-drain-implementation">Virtual Open Drain Implementation</a></h6>
+<div class="sect2">
+<h3 id="virtual-open-drain-implementation"><a class="anchor" href="#virtual-open-drain-implementation"></a><a class="link" href="#virtual-open-drain-implementation">23.8. Virtual Open Drain Implementation</a></h3>
 <div class="paragraph">
 <p>In devices which lack a true open drain buffer functionality, this IP implements a "virtual Open Drain" functionality.
 The SDA and SCL outputs are assumed to be connected to a tri-state buffer, with independent enable outputs for both signals.</p>
@@ -1834,8 +1876,8 @@ This arrangement allows the output pins to float high if there is no conflict fr
 <p>This arrangement is necessary for FPGA builds and provides the same electrical behavior as true open-drain outputs.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="bus-configuration"><a class="anchor" href="#bus-configuration"></a><a class="link" href="#bus-configuration">Bus Configuration:</a></h6>
+<div class="sect2">
+<h3 id="bus-configuration"><a class="anchor" href="#bus-configuration"></a><a class="link" href="#bus-configuration">23.9. Bus Configuration:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -1856,8 +1898,8 @@ resistors</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="smbus-extension-interface"><a class="anchor" href="#smbus-extension-interface"></a><a class="link" href="#smbus-extension-interface">SMBus Extension Interface</a></h6>
+<div class="sect2">
+<h3 id="smbus-extension-interface"><a class="anchor" href="#smbus-extension-interface"></a><a class="link" href="#smbus-extension-interface">23.10. SMBus Extension Interface</a></h3>
 <div class="paragraph">
 <p>SMBus-specific signals support System Management Bus protocol
 extensions.</p>
@@ -1916,8 +1958,8 @@ Open-drain output for alert generation.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="smbus-protocol-support"><a class="anchor" href="#smbus-protocol-support"></a><a class="link" href="#smbus-protocol-support">SMBus Protocol Support:</a></h6>
+<div class="sect2">
+<h3 id="smbus-protocol-support"><a class="anchor" href="#smbus-protocol-support"></a><a class="link" href="#smbus-protocol-support">23.11. SMBus Protocol Support:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -1937,8 +1979,8 @@ resolution</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="signal-characteristics"><a class="anchor" href="#signal-characteristics"></a><a class="link" href="#signal-characteristics">Signal Characteristics:</a></h6>
+<div class="sect2">
+<h3 id="signal-characteristics"><a class="anchor" href="#signal-characteristics"></a><a class="link" href="#signal-characteristics">23.12. Signal Characteristics:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -1959,8 +2001,8 @@ deassertion</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">DMA Interface</a></h6>
+<div class="sect2">
+<h3 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">23.13. DMA Interface</a></h3>
 <div class="paragraph">
 <p>DMA interface signals provide efficient data transfer support for
 high-throughput applications.</p>
@@ -2019,8 +2061,8 @@ Asserted when FIFO level is above threshold.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="dma-operation-modes"><a class="anchor" href="#dma-operation-modes"></a><a class="link" href="#dma-operation-modes">DMA Operation Modes:</a></h6>
+<div class="sect2">
+<h3 id="dma-operation-modes"><a class="anchor" href="#dma-operation-modes"></a><a class="link" href="#dma-operation-modes">23.14. DMA Operation Modes:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -2040,8 +2082,8 @@ engines</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="threshold-configuration"><a class="anchor" href="#threshold-configuration"></a><a class="link" href="#threshold-configuration">Threshold Configuration:</a></h6>
+<div class="sect2">
+<h3 id="threshold-configuration"><a class="anchor" href="#threshold-configuration"></a><a class="link" href="#threshold-configuration">23.15. Threshold Configuration:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -2062,8 +2104,8 @@ polling-only operation</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">Interrupt Interface</a></h6>
+<div class="sect2">
+<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">23.16. Interrupt Interface</a></h3>
 <div class="paragraph">
 <p>Comprehensive interrupt interface aggregates all interrupt sources.</p>
 </div>
@@ -2097,8 +2139,8 @@ interrupt condition occurs. Level-sensitive.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="interrupt-sources"><a class="anchor" href="#interrupt-sources"></a><a class="link" href="#interrupt-sources">Interrupt Sources:</a></h6>
+<div class="sect2">
+<h3 id="interrupt-sources"><a class="anchor" href="#interrupt-sources"></a><a class="link" href="#interrupt-sources">23.17. Interrupt Sources:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -2116,8 +2158,8 @@ interrupt condition occurs. Level-sensitive.</p></td>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="interrupt-control"><a class="anchor" href="#interrupt-control"></a><a class="link" href="#interrupt-control">Interrupt Control:</a></h6>
+<div class="sect2">
+<h3 id="interrupt-control"><a class="anchor" href="#interrupt-control"></a><a class="link" href="#interrupt-control">23.18. Interrupt Control:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -2136,10 +2178,12 @@ interrupt condition occurs. Level-sensitive.</p></td>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="i2c-memory-map"><a class="anchor" href="#i2c-memory-map"></a><a class="link" href="#i2c-memory-map">Memory Map</a></h5>
-<div class="sect5">
-<h6 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">Overview</a></h6>
+</div>
+<div class="sect1">
+<h2 id="i2c-memory-map"><a class="anchor" href="#i2c-memory-map"></a><a class="link" href="#i2c-memory-map">24. Memory Map</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">24.1. Overview</a></h3>
 <div class="paragraph">
 <p>The I2C Interface Component provides a comprehensive register interface
 through an 8-bit address space (0x00-0xFF) accessible via AXI4-Lite
@@ -2149,8 +2193,8 @@ parameters, and mode-specific functionality. All registers are 32-bit
 aligned and support both controller and target operating modes.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="register-address-map"><a class="anchor" href="#register-address-map"></a><a class="link" href="#register-address-map">Register Address Map</a></h6>
+<div class="sect2">
+<h3 id="register-address-map"><a class="anchor" href="#register-address-map"></a><a class="link" href="#register-address-map">24.2. Register Address Map</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 10. Register Address Map</caption>
 <colgroup>
@@ -2391,8 +2435,8 @@ information</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="address-alignment-and-access-width"><a class="anchor" href="#address-alignment-and-access-width"></a><a class="link" href="#address-alignment-and-access-width">Address Alignment and Access Width</a></h6>
+<div class="sect2">
+<h3 id="address-alignment-and-access-width"><a class="anchor" href="#address-alignment-and-access-width"></a><a class="link" href="#address-alignment-and-access-width">24.3. Address Alignment and Access Width</a></h3>
 <div class="paragraph">
 <p><strong>Address Alignment:</strong> - All registers are aligned to 32-bit boundaries
 (addresses are multiples of 4) - 8-bit effective address space: only
@@ -2409,8 +2453,8 @@ AXI4-Lite write strobe signals should be set to 4&#8217;b1111 for all writes</p>
 Bit numbering follows standard convention (bit 0 is LSB)</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="reset-values-and-power-on-state"><a class="anchor" href="#reset-values-and-power-on-state"></a><a class="link" href="#reset-values-and-power-on-state">Reset Values and Power-On State</a></h6>
+<div class="sect2">
+<h3 id="reset-values-and-power-on-state"><a class="anchor" href="#reset-values-and-power-on-state"></a><a class="link" href="#reset-values-and-power-on-state">24.4. Reset Values and Power-On State</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 11. Register Reset Values</caption>
 <colgroup>
@@ -2460,8 +2504,8 @@ configuration</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h6>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">24.5. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -2830,10 +2874,12 @@ configuration</p></td>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="i2c-programming"><a class="anchor" href="#i2c-programming"></a><a class="link" href="#i2c-programming">Programming</a></h5>
-<div class="sect5">
-<h6 id="initialization-sequence"><a class="anchor" href="#initialization-sequence"></a><a class="link" href="#initialization-sequence">Initialization Sequence</a></h6>
+</div>
+<div class="sect1">
+<h2 id="i2c-programming"><a class="anchor" href="#i2c-programming"></a><a class="link" href="#i2c-programming">25. Programming</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="initialization-sequence"><a class="anchor" href="#initialization-sequence"></a><a class="link" href="#initialization-sequence">25.1. Initialization Sequence</a></h3>
 <div class="paragraph">
 <p>After reset, the initialization of the I2C HWIP primarily consists of four steps:</p>
 </div>
@@ -2855,8 +2901,10 @@ configuration</p></td>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="timing-parameter-initialization"><a class="anchor" href="#timing-parameter-initialization"></a><a class="link" href="#timing-parameter-initialization">Timing Parameter Initialization</a></h5>
+</div>
+<div class="sect1">
+<h2 id="timing-parameter-initialization"><a class="anchor" href="#timing-parameter-initialization"></a><a class="link" href="#timing-parameter-initialization">26. Timing Parameter Initialization</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Of the four initialization steps, the timing parameter initialization is the most involved.
 With so many timing parameters, it is essential to have dedicated device interface functions (DIFs) to determine appropriate values for the 10 timing parameters.</p>
@@ -2865,8 +2913,10 @@ With so many timing parameters, it is essential to have dedicated device interfa
 <p>See <a href="#timing-parameter-tuning-algorithm">Timing Parameter Tuning Algorithm</a> for a detailed algorithm for determining these parameters.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="fifo-reset-and-configuration"><a class="anchor" href="#fifo-reset-and-configuration"></a><a class="link" href="#fifo-reset-and-configuration">FIFO Reset and Configuration</a></h5>
+</div>
+<div class="sect1">
+<h2 id="fifo-reset-and-configuration"><a class="anchor" href="#fifo-reset-and-configuration"></a><a class="link" href="#fifo-reset-and-configuration">27. FIFO Reset and Configuration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Reset all FIFOs and configure thresholds:</p>
 </div>
@@ -2883,8 +2933,10 @@ write32(base + 0x28, 0x00080010); // TARGET_FIFO_CONFIG: ACQ_THRESH=8, TX_THRESH
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">Interrupt Configuration</a></h5>
+</div>
+<div class="sect1">
+<h2 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">28. Interrupt Configuration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Enable desired interrupts:</p>
 </div>
@@ -2898,8 +2950,10 @@ write32(base + 0x04, 0x0203); // INTR_ENABLE: Enable common interrupts</code></p
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="enable-operation-mode"><a class="anchor" href="#enable-operation-mode"></a><a class="link" href="#enable-operation-mode">Enable Operation Mode</a></h5>
+</div>
+<div class="sect1">
+<h2 id="enable-operation-mode"><a class="anchor" href="#enable-operation-mode"></a><a class="link" href="#enable-operation-mode">29. Enable Operation Mode</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Enable controller or target functionality:</p>
 </div>
@@ -2912,8 +2966,8 @@ write32(base + 0x10, 0x01); // CTRL: ENABLEHOST=1
 // write32(base + 0x10, 0x02); // CTRL: ENABLETARGET=1</code></pre>
 </div>
 </div>
-<div class="sect5">
-<h6 id="timing-parameter-tuning-algorithm"><a class="anchor" href="#timing-parameter-tuning-algorithm"></a><a class="link" href="#timing-parameter-tuning-algorithm">Timing Parameter Tuning Algorithm</a></h6>
+<div class="sect2">
+<h3 id="timing-parameter-tuning-algorithm"><a class="anchor" href="#timing-parameter-tuning-algorithm"></a><a class="link" href="#timing-parameter-tuning-algorithm">29.1. Timing Parameter Tuning Algorithm</a></h3>
 <div class="paragraph">
 <p>The values of these parameters will depend primarily on three bus details:</p>
 </div>
@@ -3182,8 +3236,10 @@ To achieve nominal rates within 5% or so, we recommend that the internal clock i
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="timing-parameter-examples"><a class="anchor" href="#timing-parameter-examples"></a><a class="link" href="#timing-parameter-examples">Timing Parameter Examples</a></h5>
+</div>
+<div class="sect1">
+<h2 id="timing-parameter-examples"><a class="anchor" href="#timing-parameter-examples"></a><a class="link" href="#timing-parameter-examples">30. Timing Parameter Examples</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The following tables show a couple of examples for calculating timing register parameters for Fast-mode Plus devices.
 Both examples assume a desired datarate of 1 Mbaud (the bus maximum) for an SCL period of 1 us, and an internal device clock period of 3 ns.</p>
@@ -3347,13 +3403,15 @@ All other parameters in registers <code>TIMING2</code>, <code>TIMING3</code>, <c
 </tr>
 </tbody>
 </table>
-<div class="sect5">
-<h6 id="controller-module-operations"><a class="anchor" href="#controller-module-operations"></a><a class="link" href="#controller-module-operations">Controller Module Operations</a></h6>
+<div class="sect2">
+<h3 id="controller-module-operations"><a class="anchor" href="#controller-module-operations"></a><a class="link" href="#controller-module-operations">30.1. Controller Module Operations</a></h3>
 
 </div>
 </div>
-<div class="sect4">
-<h5 id="writing-n-bytes-to-a-device"><a class="anchor" href="#writing-n-bytes-to-a-device"></a><a class="link" href="#writing-n-bytes-to-a-device">Writing n bytes to a device</a></h5>
+</div>
+<div class="sect1">
+<h2 id="writing-n-bytes-to-a-device"><a class="anchor" href="#writing-n-bytes-to-a-device"></a><a class="link" href="#writing-n-bytes-to-a-device">31. Writing n bytes to a device</a></h2>
+<div class="sectionbody">
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -3441,8 +3499,10 @@ write32(base + 0x00, 0x200); // Clear CMD_COMPLETE</code></pre>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="reading-n-bytes-from-a-device"><a class="anchor" href="#reading-n-bytes-from-a-device"></a><a class="link" href="#reading-n-bytes-from-a-device">Reading n bytes from a device</a></h5>
+</div>
+<div class="sect1">
+<h2 id="reading-n-bytes-from-a-device"><a class="anchor" href="#reading-n-bytes-from-a-device"></a><a class="link" href="#reading-n-bytes-from-a-device">32. Reading n bytes from a device</a></h2>
+<div class="sectionbody">
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -3542,8 +3602,8 @@ if (read32(base + 0x00) &amp; 0x40) { // CONTROLLER_HALT
 write32(base + 0x00, 0x200); // Clear CMD_COMPLETE</code></pre>
 </div>
 </div>
-<div class="sect5">
-<h6 id="target-mode-configuration-sequence"><a class="anchor" href="#target-mode-configuration-sequence"></a><a class="link" href="#target-mode-configuration-sequence">Target Mode Configuration Sequence</a></h6>
+<div class="sect2">
+<h3 id="target-mode-configuration-sequence"><a class="anchor" href="#target-mode-configuration-sequence"></a><a class="link" href="#target-mode-configuration-sequence">32.1. Target Mode Configuration Sequence</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -3585,8 +3645,8 @@ if (read32(base + 0x00) &amp; 0x04) { // ACQ_THRESHOLD interrupt
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="error-handling-sequences"><a class="anchor" href="#error-handling-sequences"></a><a class="link" href="#error-handling-sequences">Error Handling Sequences</a></h6>
+<div class="sect2">
+<h3 id="error-handling-sequences"><a class="anchor" href="#error-handling-sequences"></a><a class="link" href="#error-handling-sequences">32.2. Error Handling Sequences</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -3626,12 +3686,12 @@ if (intr_state &amp; 0x60) { // SCL or SDA interference
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="usage-examples-and-best-practices"><a class="anchor" href="#usage-examples-and-best-practices"></a><a class="link" href="#usage-examples-and-best-practices">Usage Examples and Best Practices</a></h6>
+<div class="sect2">
+<h3 id="usage-examples-and-best-practices"><a class="anchor" href="#usage-examples-and-best-practices"></a><a class="link" href="#usage-examples-and-best-practices">32.3. Usage Examples and Best Practices</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="high-performance-controller-operation"><a class="anchor" href="#high-performance-controller-operation"></a><a class="link" href="#high-performance-controller-operation">High-Performance Controller Operation</a></h6>
+<div class="sect2">
+<h3 id="high-performance-controller-operation"><a class="anchor" href="#high-performance-controller-operation"></a><a class="link" href="#high-performance-controller-operation">32.4. High-Performance Controller Operation</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// High-throughput controller configuration
@@ -3657,8 +3717,8 @@ void i2c_controller_write_burst(uint8_t addr, uint8_t* data, int len) {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="multi-address-target-configuration"><a class="anchor" href="#multi-address-target-configuration"></a><a class="link" href="#multi-address-target-configuration">Multi-Address Target Configuration</a></h6>
+<div class="sect2">
+<h3 id="multi-address-target-configuration"><a class="anchor" href="#multi-address-target-configuration"></a><a class="link" href="#multi-address-target-configuration">32.5. Multi-Address Target Configuration</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Configure target with multiple address ranges
@@ -3675,8 +3735,8 @@ void configure_multi_address_target() {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="error-recovery-and-diagnostics"><a class="anchor" href="#error-recovery-and-diagnostics"></a><a class="link" href="#error-recovery-and-diagnostics">Error Recovery and Diagnostics</a></h6>
+<div class="sect2">
+<h3 id="error-recovery-and-diagnostics"><a class="anchor" href="#error-recovery-and-diagnostics"></a><a class="link" href="#error-recovery-and-diagnostics">32.6. Error Recovery and Diagnostics</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Comprehensive error handling
@@ -3708,8 +3768,8 @@ void handle_i2c_errors() {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="performance-monitoring"><a class="anchor" href="#performance-monitoring"></a><a class="link" href="#performance-monitoring">Performance Monitoring</a></h6>
+<div class="sect2">
+<h3 id="performance-monitoring"><a class="anchor" href="#performance-monitoring"></a><a class="link" href="#performance-monitoring">32.7. Performance Monitoring</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Monitor FIFO utilization for optimization
@@ -3730,8 +3790,8 @@ void monitor_fifo_performance() {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="device-interface-functions-difs"><a class="anchor" href="#device-interface-functions-difs"></a><a class="link" href="#device-interface-functions-difs">Device Interface Functions (DIFs)</a></h6>
+<div class="sect2">
+<h3 id="device-interface-functions-difs"><a class="anchor" href="#device-interface-functions-difs"></a><a class="link" href="#device-interface-functions-difs">32.8. Device Interface Functions (DIFs)</a></h3>
 <div class="paragraph">
 <p>For convenience, OpenTitan provides Device Interface Functions (DIFs) that abstract the low-level register programming details.
 These DIFs handle timing parameter calculation, FIFO management, and transaction sequencing automatically.</p>
@@ -3764,6 +3824,10 @@ These DIFs handle timing parameter calculation, FIFO management, and transaction
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script src="../../../../../_/js/math.js"></script>
+<script defer src="../../../../../_/js/vendor/mathjax/tex-svg.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

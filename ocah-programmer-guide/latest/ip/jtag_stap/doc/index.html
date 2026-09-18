@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>JTAG STAP :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="Secondary TAP — hierarchical TAP interconnection per IEEE 1838-2019, STAP types and timing parameters.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></li>
+    <li><a href="index.html">JTAG STAP</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,36 +190,39 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="jtag-stap"><a class="anchor" href="#jtag-stap"></a><a class="link" href="#jtag-stap">1. JTAG STAP</a></h3>
-<div class="sect3">
-<h4 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1.1. Overview</a></h4>
-<div class="paragraph">
-<p>The Secondary TAP (STAP) enables hierarchical interconnection of TAP controllers
-across multiple chiplets as specified in IEEE 1838-2019 (3DIC). Each STAP
-interface provides an extension of a SiP&#8217;s primary JTAG interface across
-internal or external chiplets.</p>
+<h1 class="page">JTAG STAP</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="jtag-stap" class="paragraph">
+<p>The Secondary TAP (STAP) enables hierarchical interconnection of TAP
+controllers across multiple chiplets as specified in IEEE 1838-2019 (3DIC).
+Each STAP interface extends the SiP&#8217;s primary JTAG access across internal or
+external chiplets.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The DTP supports the following STAP types:</p>
+<p>The DTP supports these STAP types:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>I/O STAP</strong>: Extends JTAG to the next chiplet in the SiP</p>
+<p><strong>I/O STAP</strong> — extends JTAG to the next chiplet in the SiP.</p>
 </li>
 <li>
-<p><strong>SMC Debug STAP</strong>: Provides access to the SMC CPU core debugger TAP</p>
+<p><strong>SMC Debug STAP</strong> — provides access to the SMC CPU core debugger TAP.</p>
 </li>
 <li>
-<p><strong>SEP Debug STAP</strong>: Provides access to the SEP CPU core debugger TAP</p>
+<p><strong>SEP Debug STAP</strong> — provides access to the SEP CPU core debugger TAP.</p>
 </li>
 <li>
-<p><strong>Additional STAPs</strong>: Provides access to additional TAPs for on or off-chip
-connectivity</p>
+<p><strong>Additional STAPs</strong> — optional connections to additional on- or off-chip TAPs.</p>
 </li>
 <li>
-<p><strong>Extended STAP Scan Interface</strong>: Port for adding STAPs external to the DTP</p>
+<p><strong>Extended STAP Scan Interface</strong> — a port for adding STAPs external to the DTP.</p>
 </li>
 </ul>
 </div>
@@ -229,18 +231,20 @@ connectivity</p>
 selection, host TDO, and 3DCR updates are blocked.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">1.2. Configuration Parameters</a></h4>
+</div>
+<div class="sect1">
+<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The STAP provides three timing-related configuration parameters to optimize
-performance across different physical topologies.</p>
+<p>Three timing parameters are available to optimise the STAP for different
+physical topologies, particularly die-boundary crossings.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 40%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 50%;">
 </colgroup>
 <thead>
 <tr>
@@ -252,29 +256,31 @@ performance across different physical topologies.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SCAN_IN_PIPE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SCAN_IN_PIPE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adds pipeline stage to client interface scan input for timing closure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a pipeline stage to the client interface scan input for timing closure.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TDI_LOCKUP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TDI_LOCKUP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adds lockup latch to STAP TDI input for die boundary crossings</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a lockup latch to the STAP TDI input for die-boundary crossings.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SCAN_OUT_LOCKUP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SCAN_OUT_LOCKUP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adds lockup latch to STAP scan output for extended chain timing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a lockup latch to the STAP scan output for extended chain timing.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="stap-architecture"><a class="anchor" href="#stap-architecture"></a><a class="link" href="#stap-architecture">1.3. Architecture</a></h4>
-<div class="paragraph">
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">3. Architecture</a></h2>
+<div class="sectionbody">
+<div id="stap-architecture" class="paragraph">
 <p>IEEE 1838-2019 enables hierarchical interconnection of TAP controllers across
 multiple chiplets. Each STAP interface provides an extension of a SiP&#8217;s primary
 JTAG interface across internal chiplets. When enabled, a STAP interface is part
@@ -282,17 +288,17 @@ of the JTAG scan chain, otherwise the STAP interface is bypassed. In addition,
 STAPs can also support connection of other TAP interfaces included on the same
 chiplet as the PTAP.</p>
 </div>
-<div class="sect4">
-<h5 id="module-hierarchy"><a class="anchor" href="#module-hierarchy"></a><a class="link" href="#module-hierarchy">Module Hierarchy</a></h5>
+<div class="sect2">
+<h3 id="module-hierarchy"><a class="anchor" href="#module-hierarchy"></a><a class="link" href="#module-hierarchy">3.1. Module Hierarchy</a></h3>
 <div class="paragraph">
 <p>The STAP implementation consists of three main components integrated within a
 single module:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 35%;">
-<col style="width: 50%;">
-<col style="width: 15%;">
+<col style="width: 30%;">
+<col style="width: 52%;">
+<col style="width: 18%;">
 </colgroup>
 <thead>
 <tr>
@@ -320,8 +326,8 @@ single module:</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="stap-module"><a class="anchor" href="#stap-module"></a><a class="link" href="#stap-module">STAP Module</a></h5>
+<div class="sect2">
+<h3 id="stap-module"><a class="anchor" href="#stap-module"></a><a class="link" href="#stap-module">3.2. STAP Module</a></h3>
 <div class="paragraph">
 <p>Each STAP has a 3-bit 3DCR TDR that defines the control interface for the STAP.
 Note that the STAP 3DCRs take a distributed segment approach to improve timing,
@@ -337,18 +343,23 @@ signal.</p>
 </div>
 <div class="paragraph">
 <p>The following diagram illustrates the STAP architecture and the details of the
-3DCR register. The green colored flops are optional, each configured via
-parameters. The red AND gate and nets implement debug disable when
-<code>security_disable_i</code> is asserted.</p>
+3DCR register. Optional input pipeline stages are not shown: SCAN_IN_PIPE on
+<code>client_scan_in_i</code> defaults to disabled for all DTP instances; TDI_LOCKUP on
+<code>host_tdi_i</code> defaults to disabled but is enabled for the I/O STAP
+(<code>gen_stap_io</code>) to provide timing margin for the die boundary crossing. The
+security gate masks <code>stap_sel</code>, <code>host_tdo_o</code>, and <code>update_en</code> when
+<code>security_disable_i</code> is asserted. <code>host_tdo_oen_o</code> and <code>host_tap_ctrl_o</code> are
+independent combinational outputs derived from <code>stap_sel</code> and TAP control
+signals, not outputs of the security gate.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="../../_images/stap_module_diagram.drawio.svg" alt="STAP Module Diagram">
+<img src="../../_images/stap_module_diagram.svg" alt="STAP Module Diagram showing SIB mux" width="3DCR register and lifecycle enable gating">
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="3dcr-register"><a class="anchor" href="#3dcr-register"></a><a class="link" href="#3dcr-register">3DCR Register</a></h5>
+<div class="sect2">
+<h3 id="3dcr-register"><a class="anchor" href="#3dcr-register"></a><a class="link" href="#3dcr-register">3.3. 3DCR Register</a></h3>
 <div class="paragraph">
 <p>The 3-bit 3DCR control register is implemented using <code>prim_jtag_scan_reg</code> with a
 loopback configuration. The register outputs feed back to the data inputs,
@@ -357,10 +368,10 @@ still being scannable for updates.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 8.3333%;">
-<col style="width: 58.3335%;">
+<col style="width: 6%;">
+<col style="width: 20%;">
+<col style="width: 9%;">
+<col style="width: 65%;">
 </colgroup>
 <thead>
 <tr>
@@ -392,8 +403,8 @@ still being scannable for updates.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="stap-types"><a class="anchor" href="#stap-types"></a><a class="link" href="#stap-types">STAP Types</a></h5>
+<div class="sect2">
+<h3 id="stap-types"><a class="anchor" href="#stap-types"></a><a class="link" href="#stap-types">3.4. STAP Types</a></h3>
 <div class="paragraph">
 <p>The following table lists the STAPs allocated for the DTP JTAG interface. The
 STAPs are serially chained TDI &#8594; TDO according to their order in this table
@@ -403,8 +414,8 @@ additional STAPs closer to their point of use.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
+<col style="width: 30%;">
+<col style="width: 70%;">
 </colgroup>
 <thead>
 <tr>
@@ -436,16 +447,16 @@ additional STAPs closer to their point of use.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">Debug Disable</a></h5>
+<div class="sect2">
+<h3 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">3.5. Debug Disable</a></h3>
 <div class="paragraph">
 <p>The <code>security_disable_i</code> input is active-high (1 = STAP disabled). When it is
 asserted, three aspects of STAP operation are blocked:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 40%;">
+<col style="width: 60%;">
 </colgroup>
 <thead>
 <tr>
@@ -473,16 +484,16 @@ asserted, three aspects of STAP operation are blocked:</p>
 the module output, so there is no timing-dependent bypass of the disable.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="lockup-latches"><a class="anchor" href="#lockup-latches"></a><a class="link" href="#lockup-latches">Lockup Latches</a></h5>
+<div class="sect2">
+<h3 id="lockup-latches"><a class="anchor" href="#lockup-latches"></a><a class="link" href="#lockup-latches">3.6. Lockup Latches</a></h3>
 <div class="paragraph">
 <p>The STAP implements three types of lockup latches to manage timing across die
 boundaries and long scan chains. These latches are clocked on the falling edge
 of TCK to capture data during the second half of the clock cycle, providing
 setup time margin for the next rising edge.</p>
 </div>
-<div class="sect5">
-<h6 id="tdo-lockup-latch"><a class="anchor" href="#tdo-lockup-latch"></a><a class="link" href="#tdo-lockup-latch">TDO Lockup Latch</a></h6>
+<div class="sect3">
+<h4 id="tdo-lockup-latch"><a class="anchor" href="#tdo-lockup-latch"></a><a class="link" href="#tdo-lockup-latch">3.6.1. TDO Lockup Latch</a></h4>
 <div class="paragraph">
 <p>The TDO lockup latch is always present and cannot be disabled. This latch
 captures the scan data propagating from client to host on the falling edge of
@@ -490,8 +501,8 @@ TCK. The latch ensures that data from the downstream TAP&#8217;s TDO has suffici
 setup time before being sampled by the upstream TAP on the rising edge of TCK.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="tdi-lockup-latch"><a class="anchor" href="#tdi-lockup-latch"></a><a class="link" href="#tdi-lockup-latch">TDI Lockup Latch</a></h6>
+<div class="sect3">
+<h4 id="tdi-lockup-latch"><a class="anchor" href="#tdi-lockup-latch"></a><a class="link" href="#tdi-lockup-latch">3.6.2. TDI Lockup Latch</a></h4>
 <div class="paragraph">
 <p>The TDI lockup latch is optional and controlled by the <code>TDI_LOCKUP</code> parameter
 (default = 0). When enabled, this latch captures the host TDI input on the
@@ -501,8 +512,8 @@ crossings where signal delays may be significant. In the DTP integration, TDI
 lockup is enabled only for the I/O STAP that crosses between chiplets.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="scan-output-lockup-latch"><a class="anchor" href="#scan-output-lockup-latch"></a><a class="link" href="#scan-output-lockup-latch">Scan Output Lockup Latch</a></h6>
+<div class="sect3">
+<h4 id="scan-output-lockup-latch"><a class="anchor" href="#scan-output-lockup-latch"></a><a class="link" href="#scan-output-lockup-latch">3.6.3. Scan Output Lockup Latch</a></h4>
 <div class="paragraph">
 <p>The scan output lockup latch is optional and controlled by the <code>SCAN_OUT_LOCKUP</code>
 parameter (default = 0). This latch is implemented within the
@@ -513,16 +524,19 @@ chain to provide additional output timing margin.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="stap-interface"><a class="anchor" href="#stap-interface"></a><a class="link" href="#stap-interface">1.4. Interface</a></h4>
-<div class="sect4">
-<h5 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">Signal Interface</a></h5>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect1">
+<h2 id="interface"><a class="anchor" href="#interface"></a><a class="link" href="#interface">4. Interface</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="stap-interface"><a class="anchor" href="#stap-interface"></a><a class="link" href="#stap-interface">4.1. Signal Interface</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="STAP signal interface" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
+<col style="width: 28%;">
+<col style="width: 13%;">
+<col style="width: 9%;">
+<col style="width: 50%;">
 </colgroup>
 <thead>
 <tr>
@@ -626,8 +640,9 @@ chain to provide additional output timing margin.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="timing-requirements"><a class="anchor" href="#timing-requirements"></a><a class="link" href="#timing-requirements">Timing Requirements</a></h5>
+</div>
+<div class="sect2">
+<h3 id="timing-requirements"><a class="anchor" href="#timing-requirements"></a><a class="link" href="#timing-requirements">4.2. Timing Requirements</a></h3>
 <div class="paragraph">
 <p>The STAP interface timing follows IEEE 1838-2019:</p>
 </div>
@@ -649,8 +664,8 @@ out of Shift-DR/IR states</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">Dependencies</a></h5>
+<div class="sect2">
+<h3 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">4.3. Dependencies</a></h3>
 <div class="paragraph">
 <p>The STAP depends on the following components:</p>
 </div>
@@ -685,6 +700,8 @@ out of Shift-DR/IR states</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

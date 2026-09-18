@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Fuse Controller and Peripherals :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP OTP, SPI, watchdog, and reset-control peripherals.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -94,13 +96,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -108,7 +108,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -116,7 +115,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -124,7 +122,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -132,7 +129,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -140,7 +136,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -157,6 +152,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="periphs.html">Fuse Controller and Peripherals</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -164,8 +163,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1. OTP Fuse Controller</a></h4>
+<h1 class="page">Fuse Controller and Peripherals</h1>
+<div class="sect1">
+<h2 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1. OTP Fuse Controller</a></h2>
+<div class="sectionbody">
 <div class="imageblock">
 <div class="content">
 <img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
@@ -280,8 +281,8 @@ downstream logic during test.</p>
 </li>
 </ul>
 </div>
-<div class="sect4">
-<h5 id="fuse-fields"><a class="anchor" href="#fuse-fields"></a><a class="link" href="#fuse-fields">Fuse Fields</a></h5>
+<div class="sect2">
+<h3 id="fuse-fields"><a class="anchor" href="#fuse-fields"></a><a class="link" href="#fuse-fields">1.1. Fuse Fields</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 15%;">
@@ -756,8 +757,8 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <p>The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"><a class="anchor" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc"></a><a class="link" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">Anti-Rollback Counter (ARBC)</a></h5>
+<div class="sect2">
+<h3 id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"><a class="anchor" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc"></a><a class="link" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">1.2. Anti-Rollback Counter (ARBC)</a></h3>
 <div class="paragraph">
 <p>The counter is implemented as a ``population count'' in fuses instead of
 a binary counter. Each 256-bit counter field allocates 240 fuse bits for
@@ -774,8 +775,8 @@ state along with the firmware version, ensuring that older firmware versions
 fail signature verification and cannot be loaded.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="rtl-integration"><a class="anchor" href="#rtl-integration"></a><a class="link" href="#rtl-integration">RTL Integration</a></h5>
+<div class="sect2">
+<h3 id="rtl-integration"><a class="anchor" href="#rtl-integration"></a><a class="link" href="#rtl-integration">1.3. RTL Integration</a></h3>
 <div class="paragraph">
 <p>The eFuse subsystem in the SEP is implemented by <code>sep_efuse_wrapper</code>, which is instantiated inside <code>sep_crypto</code>. The wrapper converts the SEP-side AXI bus (64-bit) to AXI-Lite (32-bit) through an <code>axi_dw_converter</code> and <code>axi_to_axi_lite</code> bridge, and then connects to the shared <code>efuse_interface_controller</code> IP from <code>hw/ip/efuse/</code>. A separate JTAG AXI-Lite port provides debug and manufacturing access.</p>
 </div>
@@ -798,8 +799,10 @@ here.</p>
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">2. Peripheral Subsystem</a></h3>
+</div>
+<div class="sect1">
+<h2 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">2. Peripheral Subsystem</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>SEP will primarily rely on external serial IO peripherals resident in
 the SMC complex. SEP has an AXI4 extension port which has unfettered
@@ -822,8 +825,11 @@ to the SEP BL0 functionality.</p>
 <img src="_images/SEP_Peri_Ext_Port.png" alt="SEP_Peri_Ext_Port">
 </div>
 </div>
-<div class="sect3">
-<h4 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">2.1. Serial Peripheral Interface (SPI)</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">3. Serial Peripheral Interface (SPI)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>SEP will have one SPI host to support access to external NOR flash
 devices which are the primary BL1 image source. Modern devices are MT35
@@ -831,8 +837,8 @@ type and have octal x8 DDR interfaces. We will also support the older
 MT25 category devices using x4 and x1 channels SPI as these are less
 expensive.</p>
 </div>
-<div class="sect4">
-<h5 id="spi-use-cases"><a class="anchor" href="#spi-use-cases"></a><a class="link" href="#spi-use-cases">Use Cases</a></h5>
+<div class="sect2">
+<h3 id="spi-use-cases"><a class="anchor" href="#spi-use-cases"></a><a class="link" href="#spi-use-cases">3.1. Use Cases</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -844,8 +850,8 @@ expensive.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">Features</a></h5>
+<div class="sect2">
+<h3 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">3.2. Features</a></h3>
 <div class="paragraph">
 <p>The component will be based on the
 <a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host</a>
@@ -896,12 +902,14 @@ device present in the SEP peripheral subsystem.</p>
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host
 documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">2.2. Watchdog Timer (WDT)</a></h4>
+</div>
+<div class="sect1">
+<h2 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">4. Watchdog Timer (WDT)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Watchdog timer is a component used to enhance reliability and ensure
 that the system is notified if the SEP subsystem is ``hanging''. The SEP
@@ -923,11 +931,13 @@ that its timeout has expired and there is a problem within the SEP.</p>
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/aon_timer/">OpenTitan Always-On Timer
 documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">2.3. SEP Reset Controller</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">5. SEP Reset Controller</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.</p>
 </div>
@@ -1027,8 +1037,8 @@ reset with a transaction in flight.</p>
 until eFuse sensing completes during boot. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.</p>
 </div>
-<div class="sect4">
-<h5 id="sep-trng-reset"><a class="anchor" href="#sep-trng-reset"></a><a class="link" href="#sep-trng-reset">Resetting the TRNG</a></h5>
+<div class="sect2">
+<h3 id="sep-trng-reset"><a class="anchor" href="#sep-trng-reset"></a><a class="link" href="#sep-trng-reset">5.1. Resetting the TRNG</a></h3>
 <div class="paragraph">
 <p>The TRNG reset bit controls one reset domain containing the entropy source,
 CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three
@@ -1087,6 +1097,8 @@ Consumers are released only after fresh endpoint/pool progress is observed.</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

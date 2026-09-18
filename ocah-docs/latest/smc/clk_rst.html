@@ -3,10 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Clock and Reset Management :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="overview.html">
+    <link rel="next" href="periphs.html">
+    <meta name="description" content="SMC clock domains, reset architecture, and power-management integration.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -93,30 +97,240 @@
     <a class="nav-link" href="../architecture.html">OCAH Architecture &amp; Design</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../architecture.html#ocah-architecture">OCAH Architecture</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
   </li>
 </ul>
   </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#security-processor-sep">Security Processor (SEP)</a>
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#system-management-controller">System Management Controller (SMC)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#system-management-network">System Management Network (SMN)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
   </li>
 </ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Registers</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/drbg/doc/index.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="overview.html">Overview</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="4">
+    <a class="nav-link" href="clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA and Appendices</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../ip-reference.html">IP Reference</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
@@ -127,13 +341,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -141,7 +353,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -149,7 +360,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -157,7 +367,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -165,7 +374,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -173,7 +381,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -190,27 +397,38 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li>OCAH Platform Components</li>
+    <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
+    <li><a href="index.html">System Management Controller (SMC)</a></li>
+    <li><a href="clk_rst.html">Clock and Reset Management</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="2">
+<aside class="toc sidebar" data-title="Contents" data-levels="4">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="clock-and-reset-management"><a class="anchor" href="#clock-and-reset-management"></a><a class="link" href="#clock-and-reset-management">1. Clock and Reset Management</a></h3>
-<div class="paragraph">
+<h1 class="page">Clock and Reset Management</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="clock-and-reset-management" class="paragraph">
 <p>The SMC clock and reset management architecture supports multiple clock
 domains, hierarchical reset structures, and selective power management
 through clock gating.</p>
 </div>
-<div class="sect3">
-<h4 id="clock-architecture"><a class="anchor" href="#clock-architecture"></a><a class="link" href="#clock-architecture">1.1. Clock Architecture</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="clock-architecture"><a class="anchor" href="#clock-architecture"></a><a class="link" href="#clock-architecture">1. Clock Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SMC employs a multi-domain clocking architecture.</p>
 </div>
-<div class="sect4">
-<h5 id="the-smc-clock-domain"><a class="anchor" href="#the-smc-clock-domain"></a><a class="link" href="#the-smc-clock-domain">The SMC Clock Domain</a></h5>
+<div class="sect2">
+<h3 id="the-smc-clock-domain"><a class="anchor" href="#the-smc-clock-domain"></a><a class="link" href="#the-smc-clock-domain">1.1. The SMC Clock Domain</a></h3>
 <div class="paragraph">
 <p>The primary SMC clock domain (clk_smc_i) serves as the operational clock
 for the majority of SMC functionality. This domain encompasses the
@@ -230,8 +448,8 @@ high-performance data movement between system management components.</p>
 filtering mechanisms also belong to this clock domain.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="the-reference-clock-domain"><a class="anchor" href="#the-reference-clock-domain"></a><a class="link" href="#the-reference-clock-domain">The Reference Clock Domain</a></h5>
+<div class="sect2">
+<h3 id="the-reference-clock-domain"><a class="anchor" href="#the-reference-clock-domain"></a><a class="link" href="#the-reference-clock-domain">1.2. The Reference Clock Domain</a></h3>
 <div class="paragraph">
 <p>The reference clock domain (clk_ref_i) provides a low-speed, stable
 timing foundation for operations that require consistent, predictable
@@ -257,8 +475,8 @@ operations, benefit from this stable timing reference to ensure reliable
 debug access independent of system operational state.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="the-peripheral-clock-domain"><a class="anchor" href="#the-peripheral-clock-domain"></a><a class="link" href="#the-peripheral-clock-domain">The Peripheral Clock Domain</a></h5>
+<div class="sect2">
+<h3 id="the-peripheral-clock-domain"><a class="anchor" href="#the-peripheral-clock-domain"></a><a class="link" href="#the-peripheral-clock-domain">1.3. The Peripheral Clock Domain</a></h3>
 <div class="paragraph">
 <p>The peripheral clock domain (clk_periph_i) provides a dedicated timing
 source for all peripheral controllers instantiated within the SMC
@@ -302,8 +520,8 @@ subsystem, reducing dynamic power consumption while still meeting the
 timing requirements of external interfaces.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="the-telemetry-clock-domain"><a class="anchor" href="#the-telemetry-clock-domain"></a><a class="link" href="#the-telemetry-clock-domain">The Telemetry Clock Domain</a></h5>
+<div class="sect2">
+<h3 id="the-telemetry-clock-domain"><a class="anchor" href="#the-telemetry-clock-domain"></a><a class="link" href="#the-telemetry-clock-domain">1.4. The Telemetry Clock Domain</a></h3>
 <div class="paragraph">
 <p>The telemetry clock domain (clk_telemetry_i) provides timing for the
 telemetry receiver module. This clock is sourced from the telemetry
@@ -319,8 +537,10 @@ systems.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">1.2. Reset Architecture</a></h4>
+</div>
+<div class="sect1">
+<h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">2. Reset Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SMC employs a hierarchical reset strategy with multiple reset
 sources and synchronization mechanisms. The following diagram shows the
@@ -402,8 +622,8 @@ and system integration</p></td>
 <div class="paragraph">
 <p>The two primary reset levels are <strong>Primary Reset</strong> and <strong>Core Reset</strong>:</p>
 </div>
-<div class="sect4">
-<h5 id="primary-reset-rst_primary_no"><a class="anchor" href="#primary-reset-rst_primary_no"></a><a class="link" href="#primary-reset-rst_primary_no">Primary Reset (rst_primary_no)</a></h5>
+<div class="sect2">
+<h3 id="primary-reset-rst_primary_no"><a class="anchor" href="#primary-reset-rst_primary_no"></a><a class="link" href="#primary-reset-rst_primary_no">2.1. Primary Reset (rst_primary_no)</a></h3>
 <div class="paragraph">
 <p>The top-level functional reset for the SMC subsystem, including CPU
 cores and cache hierarchies, fabric infrastructure, peripheral
@@ -444,8 +664,8 @@ stable; resets JTAG/TDR state via TAP reset (<code>TRSTN &amp;&amp; pwr_on_rst_n
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="warm-reset-rst_warm_no"><a class="anchor" href="#warm-reset-rst_warm_no"></a><a class="link" href="#warm-reset-rst_warm_no">Warm Reset (rst_warm_no)</a></h5>
+<div class="sect2">
+<h3 id="warm-reset-rst_warm_no"><a class="anchor" href="#warm-reset-rst_warm_no"></a><a class="link" href="#warm-reset-rst_warm_no">2.2. Warm Reset (rst_warm_no)</a></h3>
 <div class="paragraph">
 <p>A more targeted reset affecting CPU cores and associated peripherals.
 Specifically, CPU cores and their private cache hierarchies, PLIC
@@ -483,8 +703,8 @@ per-core watchdog timers and bus error units</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="function-level-reset-flr"><a class="anchor" href="#function-level-reset-flr"></a><a class="link" href="#function-level-reset-flr">Function Level Reset (FLR)</a></h5>
+<div class="sect2">
+<h3 id="function-level-reset-flr"><a class="anchor" href="#function-level-reset-flr"></a><a class="link" href="#function-level-reset-flr">2.3. Function Level Reset (FLR)</a></h3>
 <div class="paragraph">
 <p>Function Level Reset (FLR) addresses the requirements of systems where
 PCIe-based reset operations must be able to selectively reset system
@@ -493,8 +713,8 @@ mechanism responds to PCIe FLR requests (cfg_flr_pf_active) and
 orchestrates a controlled reset sequence that allows selective subsystem
 isolation.</p>
 </div>
-<div class="sect5">
-<h6 id="isolation-control-architecture"><a class="anchor" href="#isolation-control-architecture"></a><a class="link" href="#isolation-control-architecture">Isolation Control Architecture</a></h6>
+<div class="sect3">
+<h4 id="isolation-control-architecture"><a class="anchor" href="#isolation-control-architecture"></a><a class="link" href="#isolation-control-architecture">2.3.1. Isolation Control Architecture</a></h4>
 <div class="paragraph">
 <p>The FLR implementation provides isolation control for up to 32
 individual subsystems, each with configurable isolation capabilities.
@@ -525,8 +745,8 @@ three sources, providing flexible control while maintaining clear
 precedence for safety-critical operations.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="programmable-reset-timing"><a class="anchor" href="#programmable-reset-timing"></a><a class="link" href="#programmable-reset-timing">Programmable Reset Timing</a></h6>
+<div class="sect3">
+<h4 id="programmable-reset-timing"><a class="anchor" href="#programmable-reset-timing"></a><a class="link" href="#programmable-reset-timing">2.3.2. Programmable Reset Timing</a></h4>
 <div class="paragraph">
 <p>The FLR implementation provides two programmable timing phases that
 control the reset sequence with cycle-accurate precision:</p>
@@ -553,8 +773,8 @@ with down-counters that coordinate isolation establishment and reset
 assertion.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="memory-test-bypass"><a class="anchor" href="#memory-test-bypass"></a><a class="link" href="#memory-test-bypass">Memory Test Bypass</a></h6>
+<div class="sect3">
+<h4 id="memory-test-bypass"><a class="anchor" href="#memory-test-bypass"></a><a class="link" href="#memory-test-bypass">2.3.3. Memory Test Bypass</a></h4>
 <div class="paragraph">
 <p>Memory Built-In Self-Test (MBIST) and repair operations can be
 selectively bypassed during FLR operations (skip_mem_repair_o), enabling
@@ -563,8 +783,8 @@ This bypass activates automatically when either FLR-triggered or
 pin-based isolation is asserted.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="clock-domain-crossing-and-synchronization"><a class="anchor" href="#clock-domain-crossing-and-synchronization"></a><a class="link" href="#clock-domain-crossing-and-synchronization">Clock Domain Crossing and Synchronization</a></h6>
+<div class="sect3">
+<h4 id="clock-domain-crossing-and-synchronization"><a class="anchor" href="#clock-domain-crossing-and-synchronization"></a><a class="link" href="#clock-domain-crossing-and-synchronization">2.3.4. Clock Domain Crossing and Synchronization</a></h4>
 <div class="paragraph">
 <p>The FLR trigger signal crosses from the PCIe clock domain into both the
 SMC and reference clock domains through multi-stage synchronizers.
@@ -575,8 +795,8 @@ interface and SMC subsystems.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="reset-synchronization-and-timing-integrity"><a class="anchor" href="#reset-synchronization-and-timing-integrity"></a><a class="link" href="#reset-synchronization-and-timing-integrity">Reset Synchronization and Timing Integrity</a></h5>
+<div class="sect2">
+<h3 id="reset-synchronization-and-timing-integrity"><a class="anchor" href="#reset-synchronization-and-timing-integrity"></a><a class="link" href="#reset-synchronization-and-timing-integrity">2.4. Reset Synchronization and Timing Integrity</a></h3>
 <div class="paragraph">
 <p>The SMC reset architecture implements synchronization mechanisms that
 ensure reset operations maintain timing integrity across multiple clock
@@ -633,8 +853,8 @@ coordination for peripheral controllers</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="advanced-subsystem-reset-capabilities"><a class="anchor" href="#advanced-subsystem-reset-capabilities"></a><a class="link" href="#advanced-subsystem-reset-capabilities">Advanced Subsystem Reset Capabilities</a></h5>
+<div class="sect2">
+<h3 id="advanced-subsystem-reset-capabilities"><a class="anchor" href="#advanced-subsystem-reset-capabilities"></a><a class="link" href="#advanced-subsystem-reset-capabilities">2.5. Advanced Subsystem Reset Capabilities</a></h3>
 <div class="paragraph">
 <p>Beyond basic reset control, SMC supports several features for demanding
 system management needs:</p>
@@ -679,8 +899,8 @@ resets for advanced troubleshooting.</p></td>
 robust operation during complex reset scenarios.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="register-interface"><a class="anchor" href="#register-interface"></a><a class="link" href="#register-interface">Register Interface</a></h5>
+<div class="sect2">
+<h3 id="register-interface"><a class="anchor" href="#register-interface"></a><a class="link" href="#register-interface">2.6. Register Interface</a></h3>
 <div class="paragraph">
 <p>Register interface for subsystem reset control:</p>
 </div>
@@ -822,8 +1042,10 @@ robust operation during complex reset scenarios.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="clock-and-reset-based-power-management-integration"><a class="anchor" href="#clock-and-reset-based-power-management-integration"></a><a class="link" href="#clock-and-reset-based-power-management-integration">1.3. Clock and Reset-Based Power Management Integration</a></h4>
+</div>
+<div class="sect1">
+<h2 id="clock-and-reset-based-power-management-integration"><a class="anchor" href="#clock-and-reset-based-power-management-integration"></a><a class="link" href="#clock-and-reset-based-power-management-integration">3. Clock and Reset-Based Power Management Integration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The following table lists the clock gating control parameters.</p>
 </div>
@@ -871,6 +1093,10 @@ islands where unused subsystems can be fully powered down.</p>
 </div>
 </div>
 </div>
+<nav class="pagination">
+  <span class="prev"><a href="overview.html">Overview</a></span>
+  <span class="next"><a href="periphs.html">Peripherals</a></span>
+</nav>
 </article>
   </div>
 </main>
@@ -892,6 +1118,8 @@ islands where unused subsystems can be fully powered down.</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

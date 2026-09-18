@@ -3,10 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Log Engine :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="../../uart_16550/doc/index.html">
+    <link rel="next" href="../../i2c/doc/index.html">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -93,30 +96,240 @@
     <a class="nav-link" href="../../../architecture.html">OCAH Architecture &amp; Design</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../../../architecture.html#ocah-architecture">OCAH Architecture</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../../../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
   </li>
 </ul>
   </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../architecture.html#security-processor-sep">Security Processor (SEP)</a>
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/overview.html">Architecture and Access Paths</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../architecture.html#system-management-controller">System Management Controller (SMC)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/jtag.html">JTAG Operation</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../architecture.html#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../architecture.html#system-management-network">System Management Network (SMN)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../jtag_ptap/doc/index.html">JTAG PTAP</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../architecture.html#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/reference.html">Configuration and Reference</a>
   </li>
 </ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/memory_map.html">Memory Map and Registers</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../drbg/doc/index.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../key_manager/doc/index.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/periphs.html">Fuse Controller and Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="5">
+    <a class="nav-link" href="index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-ppa-appendices.html">PPA and Appendices</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../ip-reference.html">IP Reference</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../../../dashboard.html">Verification Dashboard</a>
@@ -127,13 +340,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -141,7 +352,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -149,7 +359,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -157,7 +366,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -165,7 +373,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -173,7 +380,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -190,17 +396,25 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li>OCAH Platform Components</li>
+    <li><a href="../../../smu/index.html">System Management Unit (SMU)</a></li>
+    <li><a href="../../../smc/index.html">System Management Controller (SMC)</a></li>
+    <li><a href="../../../smc/periphs.html">Peripherals</a></li>
+    <li><a href="index.html">Log Engine</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="2">
+<aside class="toc sidebar" data-title="Contents" data-levels="4">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="log-engine"><a class="anchor" href="#log-engine"></a><a class="link" href="#log-engine">1. Log Engine</a></h4>
-<div class="sect4">
-<h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
+<h1 class="page">Log Engine</h1>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The OCA Log Engine is a DMA-based logging system that efficiently
 transfers log messages from a configured memory region to a UART
@@ -211,8 +425,10 @@ arbitration, making it suitable for multi-threaded or multi-core logging
 scenarios.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+</div>
+<div class="sect1">
+<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Log Engine features a multi-interface architecture, combining a
 32-bit AXI4-Lite register interface with both 64-bit log fetch and
@@ -227,10 +443,12 @@ log data output. Error conditions in log fetch or write operations are
 tracked via a comprehensive interrupt system for robust monitoring.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="log-engine-architecture"><a class="anchor" href="#log-engine-architecture"></a><a class="link" href="#log-engine-architecture">Architecture</a></h5>
-<div class="sect5">
-<h6 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">Overview</a></h6>
+</div>
+<div class="sect1">
+<h2 id="log-engine-architecture"><a class="anchor" href="#log-engine-architecture"></a><a class="link" href="#log-engine-architecture">3. Architecture</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">3.1. Overview</a></h3>
 <div class="paragraph">
 <p>The OCA Log Engine is a DMA-powered logging system that transfers log
 messages from memory to a UART interface. It supports up to 16 log
@@ -238,12 +456,12 @@ entries with fair round-robin arbitration for efficient multi-source
 logging.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">Functional Blocks</a></h6>
+<div class="sect2">
+<h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">3.2. Functional Blocks</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="control-and-status-registers-csrs"><a class="anchor" href="#control-and-status-registers-csrs"></a><a class="link" href="#control-and-status-registers-csrs">Control and Status Registers (CSRs)</a></h6>
+<div class="sect2">
+<h3 id="control-and-status-registers-csrs"><a class="anchor" href="#control-and-status-registers-csrs"></a><a class="link" href="#control-and-status-registers-csrs">3.3. Control and Status Registers (CSRs)</a></h3>
 <div class="paragraph">
 <p>CSRs, accessed via AXI4-Lite, configure the engine and report status.
 Key registers control global enable/disable (CTRL), region
@@ -253,8 +471,8 @@ UART target (LOG_WRITE_ADDR), and per-log-entry control and length
 robust error detection and error recovery.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="round-robin-arbiter"><a class="anchor" href="#round-robin-arbiter"></a><a class="link" href="#round-robin-arbiter">Round Robin Arbiter</a></h6>
+<div class="sect2">
+<h3 id="round-robin-arbiter"><a class="anchor" href="#round-robin-arbiter"></a><a class="link" href="#round-robin-arbiter">3.4. Round Robin Arbiter</a></h3>
 <div class="paragraph">
 <p>A <code>prim_arbiter_tree</code>-based round robin arbiter ensures fair,
 starvation-free access to DMA for all 16 log entries. It systematically
@@ -263,8 +481,8 @@ and balancing throughput regardless of data rates across logs. Tight
 integration with the fetch FSM ensures smooth flow.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="log-fetch-fsm"><a class="anchor" href="#log-fetch-fsm"></a><a class="link" href="#log-fetch-fsm">Log Fetch FSM</a></h6>
+<div class="sect2">
+<h3 id="log-fetch-fsm"><a class="anchor" href="#log-fetch-fsm"></a><a class="link" href="#log-fetch-fsm">3.5. Log Fetch FSM</a></h3>
 <div class="paragraph">
 <p>The fetch FSM coordinates DMA reads based on arbitration results and
 FIFO space. It cycles through idle, request, and wait states: checking
@@ -275,8 +493,8 @@ supporting efficient, aligned memory access. Progress tracking and FIFO
 handoff ensure reliable completion and seamless operation.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="rdata-fifo"><a class="anchor" href="#rdata-fifo"></a><a class="link" href="#rdata-fifo">RDATA FIFO</a></h6>
+<div class="sect2">
+<h3 id="rdata-fifo"><a class="anchor" href="#rdata-fifo"></a><a class="link" href="#rdata-fifo">3.6. RDATA FIFO</a></h3>
 <div class="paragraph">
 <p>A configurable-depth (default 4), synchronous 64-bit FIFO decouples
 memory reads from UART writes, smoothing timing mismatches. All-zero
@@ -284,8 +502,8 @@ outputs when empty help security. Ready/valid handshakes on both sides
 ensure safe, lossless transfer through variable system conditions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="log-write-fsm"><a class="anchor" href="#log-write-fsm"></a><a class="link" href="#log-write-fsm">Log Write FSM</a></h6>
+<div class="sect2">
+<h3 id="log-write-fsm"><a class="anchor" href="#log-write-fsm"></a><a class="link" href="#log-write-fsm">3.7. Log Write FSM</a></h3>
 <div class="paragraph">
 <p>This FSM manages conversion from 64-bit log words to 8-bit UART writes.
 It only advances when UART is ready and FIFO data is available,
@@ -294,12 +512,12 @@ one byte at a time; FIFO is accessed every eight bytes. A completion
 signal updates registers, enabling accurate monitoring and coordination.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">Data Flow and Control Path</a></h6>
+<div class="sect2">
+<h3 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">3.8. Data Flow and Control Path</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="data-flow"><a class="anchor" href="#data-flow"></a><a class="link" href="#data-flow">Data Flow</a></h6>
+<div class="sect2">
+<h3 id="data-flow"><a class="anchor" href="#data-flow"></a><a class="link" href="#data-flow">3.9. Data Flow</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -326,8 +544,8 @@ signal updates registers, enabling accurate monitoring and coordination.</p>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="control-path"><a class="anchor" href="#control-path"></a><a class="link" href="#control-path">Control Path</a></h6>
+<div class="sect2">
+<h3 id="control-path"><a class="anchor" href="#control-path"></a><a class="link" href="#control-path">3.10. Control Path</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -345,8 +563,8 @@ signal updates registers, enabling accurate monitoring and coordination.</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="clocking-and-reset-methodology"><a class="anchor" href="#clocking-and-reset-methodology"></a><a class="link" href="#clocking-and-reset-methodology">Clocking and Reset Methodology</a></h6>
+<div class="sect2">
+<h3 id="clocking-and-reset-methodology"><a class="anchor" href="#clocking-and-reset-methodology"></a><a class="link" href="#clocking-and-reset-methodology">3.11. Clocking and Reset Methodology</a></h3>
 <div class="paragraph">
 <p>The engine runs in one clock domain (<code>clk_i</code>) shared by all logic and
 AXI4-Lite interfaces.</p>
@@ -369,8 +587,8 @@ preserved (except control fields).</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="memory-interface-protocol"><a class="anchor" href="#memory-interface-protocol"></a><a class="link" href="#memory-interface-protocol">Memory Interface Protocol</a></h6>
+<div class="sect2">
+<h3 id="memory-interface-protocol"><a class="anchor" href="#memory-interface-protocol"></a><a class="link" href="#memory-interface-protocol">3.12. Memory Interface Protocol</a></h3>
 <div class="paragraph">
 <p><strong>Log Fetch</strong>: 64-bit AXI4-Lite read, single-beat transfers, errors
 signaled via LOG_FETCH_ERR.</p>
@@ -380,8 +598,8 @@ signaled via LOG_FETCH_ERR.</p>
 errors signaled via LOG_WRITE_ERR.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="performance-characteristics"><a class="anchor" href="#performance-characteristics"></a><a class="link" href="#performance-characteristics">Performance Characteristics</a></h6>
+<div class="sect2">
+<h3 id="performance-characteristics"><a class="anchor" href="#performance-characteristics"></a><a class="link" href="#performance-characteristics">3.13. Performance Characteristics</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -399,8 +617,8 @@ errors signaled via LOG_WRITE_ERR.</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="design-trade-offs"><a class="anchor" href="#design-trade-offs"></a><a class="link" href="#design-trade-offs">Design Trade-offs</a></h6>
+<div class="sect2">
+<h3 id="design-trade-offs"><a class="anchor" href="#design-trade-offs"></a><a class="link" href="#design-trade-offs">3.14. Design Trade-offs</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -419,14 +637,16 @@ reliability at increased logic cost.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="log-engine-interface"><a class="anchor" href="#log-engine-interface"></a><a class="link" href="#log-engine-interface">Interface</a></h5>
+</div>
+<div class="sect1">
+<h2 id="log-engine-interface"><a class="anchor" href="#log-engine-interface"></a><a class="link" href="#log-engine-interface">4. Interface</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The OCA Log Engine provides multiple AXI4-Lite interfaces for register
 access, memory fetching, and UART communication.</p>
 </div>
-<div class="sect5">
-<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
+<div class="sect2">
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -465,12 +685,12 @@ of 16)</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">Signal Interfaces</a></h6>
+<div class="sect2">
+<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">4.2. Signal Interfaces</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">Global Interface</a></h6>
+<div class="sect2">
+<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.3. Global Interface</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Global Interface Signals</caption>
 <colgroup>
@@ -510,8 +730,8 @@ to initial state.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">DMA Interface</a></h6>
+<div class="sect2">
+<h3 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">4.4. DMA Interface</a></h3>
 <div class="paragraph">
 <p>The DMA interface provides flow control coordination with the UART
 transmitter.</p>
@@ -546,8 +766,8 @@ for transmission. Used as flow control to prevent UART FIFO overflow.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="flow-control-operation"><a class="anchor" href="#flow-control-operation"></a><a class="link" href="#flow-control-operation">Flow Control Operation:</a></h6>
+<div class="sect2">
+<h3 id="flow-control-operation"><a class="anchor" href="#flow-control-operation"></a><a class="link" href="#flow-control-operation">4.5. Flow Control Operation:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -565,8 +785,8 @@ characters</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">Interrupt Interface</a></h6>
+<div class="sect2">
+<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.6. Interrupt Interface</a></h3>
 <div class="paragraph">
 <p>The interrupt interface provides error signaling to the system.</p>
 </div>
@@ -600,8 +820,8 @@ interrupt condition occurs.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="interrupt-sources"><a class="anchor" href="#interrupt-sources"></a><a class="link" href="#interrupt-sources">Interrupt Sources:</a></h6>
+<div class="sect2">
+<h3 id="interrupt-sources"><a class="anchor" href="#interrupt-sources"></a><a class="link" href="#interrupt-sources">4.7. Interrupt Sources:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -619,10 +839,12 @@ via INTR_TEST register</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="log-engine-memory-map"><a class="anchor" href="#log-engine-memory-map"></a><a class="link" href="#log-engine-memory-map">Memory Map</a></h5>
-<div class="sect5">
-<h6 id="overview-3"><a class="anchor" href="#overview-3"></a><a class="link" href="#overview-3">Overview</a></h6>
+</div>
+<div class="sect1">
+<h2 id="log-engine-memory-map"><a class="anchor" href="#log-engine-memory-map"></a><a class="link" href="#log-engine-memory-map">5. Memory Map</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="overview-3"><a class="anchor" href="#overview-3"></a><a class="link" href="#overview-3">5.1. Overview</a></h3>
 <div class="paragraph">
 <p>The Log Engine provides a comprehensive register interface for
 configuration, control, and status monitoring. All registers are
@@ -631,8 +853,8 @@ read/write access patterns. The register map is organized into logical
 groups for ease of use and programming.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="register-address-map"><a class="anchor" href="#register-address-map"></a><a class="link" href="#register-address-map">Register Address Map</a></h6>
+<div class="sect2">
+<h3 id="register-address-map"><a class="anchor" href="#register-address-map"></a><a class="link" href="#register-address-map">5.2. Register Address Map</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. Register Address Map</caption>
 <colgroup>
@@ -733,8 +955,8 @@ control</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h6>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.3. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -818,10 +1040,12 @@ control</p></td>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="log-engine-programming"><a class="anchor" href="#log-engine-programming"></a><a class="link" href="#log-engine-programming">Programming</a></h5>
-<div class="sect5">
-<h6 id="simple-log-transfer"><a class="anchor" href="#simple-log-transfer"></a><a class="link" href="#simple-log-transfer">Simple Log Transfer</a></h6>
+</div>
+<div class="sect1">
+<h2 id="log-engine-programming"><a class="anchor" href="#log-engine-programming"></a><a class="link" href="#log-engine-programming">6. Programming</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="simple-log-transfer"><a class="anchor" href="#simple-log-transfer"></a><a class="link" href="#simple-log-transfer">6.1. Simple Log Transfer</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Initialize log engine for 4KB region at 0x10000000
@@ -849,8 +1073,8 @@ while (read32(LOG_ENGINE_BASE + 0x40) != 0);</code></pre>
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="multiple-entry-management"><a class="anchor" href="#multiple-entry-management"></a><a class="link" href="#multiple-entry-management">Multiple Entry Management</a></h6>
+<div class="sect2">
+<h3 id="multiple-entry-management"><a class="anchor" href="#multiple-entry-management"></a><a class="link" href="#multiple-entry-management">6.2. Multiple Entry Management</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Send logs via multiple entries simultaneously
@@ -872,6 +1096,10 @@ for (int i = 0; i &lt; 3; i++) {
 </div>
 </div>
 </div>
+<nav class="pagination">
+  <span class="prev"><a href="../../uart_16550/doc/index.html">UART 16550</a></span>
+  <span class="next"><a href="../../i2c/doc/index.html">I2C</a></span>
+</nav>
 </article>
   </div>
 </main>
@@ -893,6 +1121,8 @@ for (int i = 0; i &lt; 3; i++) {
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

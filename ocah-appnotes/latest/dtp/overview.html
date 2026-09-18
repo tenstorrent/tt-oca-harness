@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Architecture and Access Paths :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="DTP internal structure and how debug access reaches the JIU and CTN.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -94,13 +96,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -108,7 +108,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -116,7 +115,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -124,7 +122,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -132,7 +129,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -140,7 +136,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -157,6 +152,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="overview.html">Architecture and Access Paths</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -164,171 +163,109 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="dtp-overview"><a class="anchor" href="#dtp-overview"></a><a class="link" href="#dtp-overview">1. Overview</a></h3>
-<div class="paragraph">
-<p>The Debug and Test Ports (DTP) module provides the debug and test infrastructure
-for Tenstorrent chiplets. It implements IEEE 1149.1 (JTAG) and IEEE 1687 (iJTAG)
-compliant interfaces along with cross-trigger capabilities for multi-chiplet
-debugging.</p>
-</div>
-<div class="paragraph">
-<p>The DTP has two major blocks, the JTAG Interface Unit and Cross Trigger Network,
-shown in the figure below.</p>
+<h1 class="page">Architecture and Access Paths</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="dtp-overview" class="paragraph">
+<p>The DTP contains two major functional blocks — the JTAG Interface Unit (JIU) and
+the Cross Trigger Network (CTN) — plus the DTP top-level wiring that connects
+them to each other, to the SMU AXI crossbar, and to the external JTAG and
+cross-trigger pads.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/dtp_arch_diagram.drawio.svg" alt="DTP Architecture Diagram">
+<img src="_images/dtp_arch_overview.svg" alt="DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface">
 </div>
+<div class="title">Figure 1. DTP internal structure</div>
 </div>
-<div class="sect3">
-<h4 id="purpose"><a class="anchor" href="#purpose"></a><a class="link" href="#purpose">1.1. Purpose</a></h4>
 <div class="paragraph">
-<p>The DTP serves as the central hub for:</p>
+<p>The figure uses blue borders and connectors for JTAG/JIU paths (including
+instruction decode and selection signals), red for CTN paths, grey for pad I/O,
+and gold-dashed for the <code>jtag_clock_stop</code> control signal from PTAP to the
+clock-stop aggregator. Arrowheads indicate direction; solid arrows show primary
+paths and dashed arrows show return, selection, or control paths. JTAG scan-in
+and scan-out, AXI-Lite requests and responses, and CTP pad outputs and inputs
+each use separate arrows.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="jtag-interface-unit"><a class="anchor" href="#jtag-interface-unit"></a><a class="link" href="#jtag-interface-unit">1. JTAG Interface Unit</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The JTAG Interface Unit (JIU) is the top-level JTAG control module. It contains:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Debug Access</strong>: JTAG-based access to on-chip registers and memory</p>
+<p>A Primary TAP (PTAP) — the main chiplet JTAG entry point, connected to the
+five external JTAG pins (TCK, TDI, TDO, TMS, TRST_n).</p>
 </li>
 <li>
-<p><strong>Boundary Scan</strong>: IEEE 1149.1 boundary scan for board-level testing</p>
+<p>A configurable set of Secondary TAPs (STAPs) — for I/O chiplet-to-chiplet
+JTAG, SMC CPU debug, SEP CPU debug, and optional extra TAPs.</p>
 </li>
 <li>
-<p><strong>Cross Triggering</strong>: Die-to-die and internal trigger coordination</p>
-</li>
-<li>
-<p><strong>Clock Control</strong>: Debug clock-stop controls and CLA clock-stop request
-aggregation</p>
+<p>An iJTAG network with SIB-based chains for DFT secure, DFT non-secure, DFD,
+SMC fabric debug (JTAG2AXI), SMC OTP (JTAG2AXIL), and SEP OTP (JTAG2AXIL).</p>
 </li>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="key-features"><a class="anchor" href="#key-features"></a><a class="link" href="#key-features">1.2. Key Features</a></h4>
+</div>
+<div class="sect1">
+<h2 id="cross-trigger-network"><a class="anchor" href="#cross-trigger-network"></a><a class="link" href="#cross-trigger-network">2. Cross Trigger Network</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p><strong>JTAG Interface</strong></p>
+<p>The Cross Trigger Network (CTN) routes cross-trigger pulses between on-chip
+sources and sinks and the external CTP pads. It consists of:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>IEEE 1149.1-2013 compliant TAP controller</p>
+<p><strong>Cross Trigger Ports (CTPs)</strong> — pad-facing modules, each connecting to four
+I/O pads (CT_Req_out, CT_Ack_in, CT_Req_in, CT_Ack_out) and supporting both
+wire-OR and point-to-point signalling.</p>
 </li>
 <li>
-<p>Configurable instruction register</p>
+<p><strong>Cross Trigger Matrix (CTM)</strong> — a 26×26 AND-OR crossbar that statically routes
+trigger pulses under AXI-Lite CSR control.</p>
 </li>
 <li>
-<p>Support for standard instructions (BYPASS, IDCODE, EXTEST, etc.)</p>
-</li>
-<li>
-<p>Optional JTAG-to-AXI bridges for register access</p>
-</li>
-<li>
-<p>Per-path debug-disable inputs that gate STAPs, iJTAG SIBs, and JTAG2AXI
-bridges</p>
+<p><strong>Clock stop aggregation</strong> — the CTN OR-reduces all <code>xtrig_clk_stop_req_i</code>
+inputs (CLA sources) and OR-combines the result with the JTAG <code>jtag_clock_stop</code>
+bit to produce the registered <code>stop_clks_o</code> output.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p><strong>Cross Trigger Network</strong></p>
+<p>Per-path debug-disable inputs gate STAPs, iJTAG SIBs, and JTAG2AXI bridges.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Configurable number of external Cross Trigger Ports (1-32)</p>
-</li>
-<li>
-<p>Configurable number of internal cross triggers (0-32)</p>
-</li>
-<li>
-<p>Cross Trigger Matrix for flexible routing</p>
-</li>
-<li>
-<p>Wire-OR and Point-to-Point signaling modes</p>
-</li>
-<li>
-<p>OR aggregation of incoming CLA clock-stop request sources, OR-combined with
-JTAG clock stop for clock control gating</p>
-</li>
-</ul>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug-access-paths"><a class="anchor" href="#debug-access-paths"></a><a class="link" href="#debug-access-paths">3. Debug Access Paths</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>External debug access reaches the DTP subsystem through two routes:</p>
 </div>
 <div class="paragraph">
-<p><strong>iJTAG Support</strong></p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>IEEE 1687 compliant scan chain management</p>
-</li>
-<li>
-<p>Separate chains for BSR, DFD, and DFT</p>
-</li>
-<li>
-<p>SIB-based hierarchical access</p>
-</li>
-</ul>
+<p><strong>JTAG path</strong>: An external debugger drives the five JTAG pins directly. The PTAP
+decodes the JTAG instruction, selects the appropriate TDR, and routes data
+through the scan chain. JTAG2AXI instructions allow the debugger to generate
+AXI transactions on the SMC fabric via the PTAP&#8217;s built-in bridges, without
+involving the SMC CPU.</p>
 </div>
 <div class="paragraph">
-<p><strong>Secondary TAPs</strong></p>
+<p><strong>AXI path</strong>: The DTP cross-trigger configuration registers (CTM and CTP CSRs)
+are memory-mapped inside the SMC address space. The SMC exposes them on its
+<code>axil_dtp_csr_req_o</code> / <code>axil_dtp_csr_resp_i</code> interface, which the SMU wires
+directly to the DTP <code>axil_xtrig_req_i</code> / <code>axil_xtrig_resp_o</code> ports. Software
+running on the SMC reaches the CTN CSRs through its own register map
+(<code>dtp_ctrl_reg</code> in <code>smc.rdl</code>). An external debugger using the PTAP JTAG2AXI
+bridge reaches the same window through the SMC fabric AXI port.
+See the CTN Memory Map section for the CTN-internal address layout.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>I/O STAP for chiplet-to-chiplet JTAG connectivity</p>
-</li>
-<li>
-<p>SEP debug STAP for Security Processor access</p>
-</li>
-<li>
-<p>Configurable number of extra STAPs</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect3">
-<h4 id="specifications"><a class="anchor" href="#specifications"></a><a class="link" href="#specifications">1.3. Specifications</a></h4>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Feature</th>
-<th class="tableblock halign-left valign-top">Specification</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG Standard</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IEEE 1149.1-2013</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">iJTAG Standard</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IEEE 1687-2014</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger Protocol</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH Cross Trigger v1.0</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CSR Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite (32-bit)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Debug AXI Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 (configurable width)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum CTPs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum Internal CTs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 </article>
@@ -352,6 +289,8 @@ JTAG clock stop for clock control gating</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

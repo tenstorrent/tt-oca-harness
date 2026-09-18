@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Cryptographic Subsystem :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP cryptographic accelerators, entropy sources, and key management.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="crypto.html">Cryptographic Subsystem</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,9 +190,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="cryptographic-subsystem"><a class="anchor" href="#cryptographic-subsystem"></a><a class="link" href="#cryptographic-subsystem">1. Cryptographic Subsystem</a></h3>
-<div class="paragraph">
+<h1 class="page">Cryptographic Subsystem</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cryptographic-subsystem" class="paragraph">
 <p>The cryptographic subsystem is composed of hardware and software. The
 hardware subsystem has a number of accelerators interconnected by two
 distinct buses:</p>
@@ -229,7 +229,7 @@ of the OpenTitan components, and the firmware is also based on the
 <a href="https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html">OpenTitan
 cryptographic library</a>. Generated PeakRDL maps for the Key Manager,
 entropy source, and the other crypto CSRs are included in
-<a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 <div class="paragraph">
 <p>The primary modifications to the hardware is the separation of the key
@@ -265,10 +265,13 @@ the Key Manager or the destination accelerator enters software reset.</p>
 Controller drains and isolates both its host and Key Manager paths before
 asserting reset; a Key Manager reset similarly drains all of its key paths. The
 entropy source, CSRNG, and EDN share one coordinated reset. See
-<a href="#sep-reset-controller">[sep-reset-controller]</a> and <a href="#sep-trng-reset">[sep-trng-reset]</a>.</p>
+<a href="periphs.html#sep-reset-controller" class="xref page">SEP Reset Controller</a> and <a href="periphs.html#sep-trng-reset" class="xref page">Resetting the TRNG</a>.</p>
 </div>
-<div class="sect3">
-<h4 id="sep-crypto-alert-policy"><a class="anchor" href="#sep-crypto-alert-policy"></a><a class="link" href="#sep-crypto-alert-policy">1.1. OpenTitan Alert Termination</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-crypto-alert-policy"><a class="anchor" href="#sep-crypto-alert-policy"></a><a class="link" href="#sep-crypto-alert-policy">1. OpenTitan Alert Termination</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>SEP does not instantiate OpenTitan&#8217;s <code>alert_handler</code>. Each OpenTitan crypto
 alert channel is terminated locally by a <code>prim_alert_receiver</code> in <code>sep_crypto</code>.
@@ -278,7 +281,7 @@ and pulses <code>alert_o</code> when the handshake starts; a malformed encoding 
 unused.</p>
 </div>
 <div class="paragraph">
-<p>PIC sources are in <a href="#sep-cpu-interrupt-vector-map">[sep-cpu-interrupt-vector-map]</a>. A receiver&#8217;s pulse and
+<p>PIC sources are in <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>. A receiver&#8217;s pulse and
 integrity-fail stay per-block at the receiver. The table shows which of those,
 the native error IRQs, and the bridge faults are OR&#8217;d onto a PIC source and
 which are not.</p>
@@ -370,17 +373,18 @@ is covered without per-register marking. The marked roots in <code>sep_crypto</c
 infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="crypto-single-beat-only"><a class="anchor" href="#crypto-single-beat-only"></a><a class="link" href="#crypto-single-beat-only">1.2. Single-Beat Access Only</a></h4>
+</div>
+<div class="sect1">
+<h2 id="crypto-single-beat-only"><a class="anchor" href="#crypto-single-beat-only"></a><a class="link" href="#crypto-single-beat-only">2. Single-Beat Access Only</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The <code>sep_crypto</code> demux accepts single-beat transactions only. Any access whose
 <code>AxLEN</code> is non-zero is routed to the internal error slave and answered with
 DECERR on every beat, whatever its address; no beat reaches an accelerator.
 Software must access the whole crypto region with single-beat transactions.</p>
 </div>
-</div>
 <div class="sect3">
-<h4 id="km-key-delivery"><a class="anchor" href="#km-key-delivery"></a><a class="link" href="#km-key-delivery">1.3. Key Manager Key Delivery</a></h4>
+<h4 id="km-key-delivery"><a class="anchor" href="#km-key-delivery"></a><a class="link" href="#km-key-delivery">2.1. Key Manager Key Delivery</a></h4>
 <div class="paragraph">
 <p>The Key Manager delivers keys and seeds to the crypto accelerators over a
 private key interface that software cannot read. Every delivery uses the same
@@ -460,14 +464,17 @@ summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per ac
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.4. HMAC-SHA2</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">3. HMAC-SHA2</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The HMAC component is based on the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC</a> design.</p>
 </div>
-<div class="sect4">
-<h5 id="och-modifications-4"><a class="anchor" href="#och-modifications-4"></a><a class="link" href="#och-modifications-4">OCAH Modifications</a></h5>
+<div class="sect2">
+<h3 id="och-modifications-4"><a class="anchor" href="#och-modifications-4"></a><a class="link" href="#och-modifications-4">3.1. OCAH Modifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -508,12 +515,14 @@ key is mixed into the key and the resulting digest is wrong but repeatable.</p>
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC
 documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.5. OTBN PKA Public Key Accelerator</a></h4>
+</div>
+<div class="sect1">
+<h2 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">4. OTBN PKA Public Key Accelerator</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan
@@ -590,8 +599,8 @@ currently supports the following algorithms:</p>
 at a later time. The microcode is loaded into SRAM based instruction
 memory allowing firmware updates to be made in the field.</p>
 </div>
-<div class="sect4">
-<h5 id="och-modifications-1"><a class="anchor" href="#och-modifications-1"></a><a class="link" href="#och-modifications-1">OCAH Modifications</a></h5>
+<div class="sect2">
+<h3 id="och-modifications-1"><a class="anchor" href="#och-modifications-1"></a><a class="link" href="#och-modifications-1">4.1. OCAH Modifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -641,12 +650,14 @@ material.</p>
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan OTBN
 documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.6. AES Cipher</a></h4>
+</div>
+<div class="sect1">
+<h2 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">5. AES Cipher</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
@@ -673,8 +684,8 @@ space and produces 128-bit output blocks <em>round</em> number of cycles. The
 </li>
 </ul>
 </div>
-<div class="sect4">
-<h5 id="och-modifications-2"><a class="anchor" href="#och-modifications-2"></a><a class="link" href="#och-modifications-2">OCAH Modifications</a></h5>
+<div class="sect2">
+<h3 id="och-modifications-2"><a class="anchor" href="#och-modifications-2"></a><a class="link" href="#och-modifications-2">5.1. OCAH Modifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -715,18 +726,20 @@ does not combine them on the delivery path.</p>
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES
 documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.7. KMAC-SHA3</a></h4>
+</div>
+<div class="sect1">
+<h2 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">6. KMAC-SHA3</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC</a> design.</p>
 </div>
-<div class="sect4">
-<h5 id="och-modifications-3"><a class="anchor" href="#och-modifications-3"></a><a class="link" href="#och-modifications-3">OCAH Modifications</a></h5>
+<div class="sect2">
+<h3 id="och-modifications-3"><a class="anchor" href="#och-modifications-3"></a><a class="link" href="#och-modifications-3">6.1. OCAH Modifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -765,12 +778,14 @@ instead of producing a digest.</p>
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC
 documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.8. Adams Bridge (ABR)</a></h4>
+</div>
+<div class="sect1">
+<h2 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">7. Adams Bridge (ABR)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The module is a post-quantum accelerator based on the
 <a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge</a> design.</p>
@@ -793,12 +808,12 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 may be provisioned with an ML-DSA root public key alongside its classical key,
 with <code>REQUIRED_SIGNERS</code> selecting which owners must sign and <code>REQUIRED_ALGS</code>
 selecting, per owner, which of the two algorithms it must sign with (see
-<a href="#life-cycle-controller-lcc-life-cycle-controller-lcc">[life-cycle-controller-lcc-life-cycle-controller-lcc]</a>). SEP ROM does not use
+<a href="lifecycle_controller.html#life-cycle-controller-lcc-life-cycle-controller-lcc" class="xref page">Life Cycle Controller (LCC)</a>). SEP ROM does not use
 this path today&#8201;&#8212;&#8201;it verifies a single classical RSA-3072 signature, and
 combined classical + PQC signing is deferred to a later release.</p>
 </div>
-<div class="sect4">
-<h5 id="och-modifications-5"><a class="anchor" href="#och-modifications-5"></a><a class="link" href="#och-modifications-5">OCAH Modifications</a></h5>
+<div class="sect2">
+<h3 id="och-modifications-5"><a class="anchor" href="#och-modifications-5"></a><a class="link" href="#och-modifications-5">7.1. OCAH Modifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -857,7 +872,7 @@ macros versus nine, plus a second NTT. That choice changes ABR internal behavior
 <div class="paragraph">
 <p>ABR has no alert channel&#8201;&#8212;&#8201;it is the only crypto accelerator that reports faults
 solely by interrupt (Adams Bridge error and notification in
-<a href="#sep-cpu-interrupt-vector-map">[sep-cpu-interrupt-vector-map]</a>), plus a gated ML-KEM shared-key interrupt
+<a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>), plus a gated ML-KEM shared-key interrupt
 consumed directly by the Key Manager. Whether the block is present in a build is
 controlled by <code>SEP_ABR_EN</code>, which always implies the vendored RTL&#8217;s <code>CALIPTRA</code>
 define; when it is absent, both the crypto crossbar port and the Key Manager key
@@ -884,12 +899,14 @@ back-to-back operations.
 documentation</a> for the authoritative core functionality of the IP. Its CSRs are
 defined by the vendored Caliptra register package rather than by an OCAH PeakRDL
 source, so unlike the other accelerators they do not appear in
-<a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+<a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.9. True Random Number Generator (TRNG)</a></h4>
+</div>
+<div class="sect1">
+<h2 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">8. True Random Number Generator (TRNG)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Entropy bits are fundamental data for key generation as well as for
 attack countermeasure implementations. The entropy source must be high
@@ -973,7 +990,7 @@ fan-out;</p>
 <p>endpoint <code>[2]</code> feeds the fabric-level entropy-pool FIFO (<code>u_entropy_fifo</code> in
 <code>sep.sv</code>) through <code>u_axis_edn_pool_s3c_scan</code>. The pool generates three
 dedicated interrupts (<code>entropy_pool_low</code>, <code>entropy_pool_fill_stall</code>, and
-<code>entropy_pool_err</code>) listed in <a href="#sep-cpu-interrupt-vector-map">[sep-cpu-interrupt-vector-map]</a>.</p>
+<code>entropy_pool_err</code>) listed in <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>.</p>
 </li>
 </ul>
 </div>
@@ -1003,7 +1020,7 @@ required by the TRNG reset coordinator.</p>
 <div class="paragraph">
 <p>The Key Manager stream is not behind a post-mux adapter and is not scrubbed.
 The SEP host must keep the Key Manager idle before asserting the TRNG reset;
-see <a href="#sep-trng-reset">[sep-trng-reset]</a>. After release, firmware fully reinitializes ESRC, CSRNG,
+see <a href="periphs.html#sep-trng-reset" class="xref page">Resetting the TRNG</a>. After release, firmware fully reinitializes ESRC, CSRNG,
 and EDN and waits for fresh entropy progress before releasing consumers. The
 post-mux adapters reset even when an external source is selected, so an
 external stream is interrupted and cleanly restarted; the external TRNG CSR
@@ -1083,18 +1100,6 @@ integer width</p>
 </tr>
 </tbody>
 </table>
-<div class="paragraph">
-<p><a href="../ip/entropy_source/doc/index.html" class="xref page">Entropy Source</a></p>
-</div>
-<div class="paragraph">
-<p><a href="../ip/drbg/doc/index.html" class="xref page">DRBG</a></p>
-</div>
-<div class="paragraph">
-<p><a href="../ip/key_manager/doc/index.html" class="xref page">Key Manager</a></p>
-</div>
-<div class="paragraph">
-<p><a href="../ip/key_manager/doc/firmware.html" class="xref page">Key Manager Firmware</a></p>
-</div>
 </div>
 </div>
 </article>
@@ -1118,6 +1123,8 @@ integer width</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>GPIO Peripheral :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -133,13 +134,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -147,7 +146,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -155,7 +153,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -163,7 +160,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -171,7 +167,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -179,7 +174,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -196,6 +190,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></li>
+    <li><a href="index.html">GPIO Peripheral</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -203,10 +201,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="gpio-peripheral"><a class="anchor" href="#gpio-peripheral"></a><a class="link" href="#gpio-peripheral">1. GPIO Peripheral</a></h4>
-<div class="sect4">
-<h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
+<h1 class="page">GPIO Peripheral</h1>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The GPIO (General Purpose Input/Output) peripheral provides programmable
 digital I/O capabilities for the OCAH system. It serves as a flexible
@@ -217,8 +215,10 @@ Input/Output) interface control with comprehensive access filtering and
 interrupt generation capabilities.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+</div>
+<div class="sect1">
+<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
@@ -252,8 +252,10 @@ register interfaces</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="gpio-architecture"><a class="anchor" href="#gpio-architecture"></a><a class="link" href="#gpio-architecture">Architecture</a></h5>
+</div>
+<div class="sect1">
+<h2 id="gpio-architecture"><a class="anchor" href="#gpio-architecture"></a><a class="link" href="#gpio-architecture">3. Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>At the heart of the OCAH system’s digital I/O lies the GPIO peripheral, a
 controller designed for both versatility and robust security. Its
@@ -262,8 +264,8 @@ register-driven control and direct hardware guidance via the LSIO
 interface, all while maintaining strict access governance and flexible
 interrupt handling throughout.</p>
 </div>
-<div class="sect5">
-<h6 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">Functional Blocks</a></h6>
+<div class="sect2">
+<h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">3.1. Functional Blocks</a></h3>
 <div class="paragraph">
 <p>The top-level GPIO controller (gpio.sv) sits at the center of the
 architecture, orchestrating the actions of all internal components. It
@@ -313,8 +315,8 @@ against glitches, and fully independent TX/RX enables, making true
 bidirectional I/O possible.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="data-flow-architecture"><a class="anchor" href="#data-flow-architecture"></a><a class="link" href="#data-flow-architecture">Data Flow Architecture</a></h6>
+<div class="sect2">
+<h3 id="data-flow-architecture"><a class="anchor" href="#data-flow-architecture"></a><a class="link" href="#data-flow-architecture">3.2. Data Flow Architecture</a></h3>
 <div class="paragraph">
 <p>In typical register-driven mode, the data path forms a tight,
 predictable loop: software writes an output value into a DATA_CTRL
@@ -332,8 +334,8 @@ purposes. Thanks to the clear priority scheme, LSIO always wins control
 if contention arises.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="control-path-and-mode-selection"><a class="anchor" href="#control-path-and-mode-selection"></a><a class="link" href="#control-path-and-mode-selection">Control Path and Mode Selection</a></h6>
+<div class="sect2">
+<h3 id="control-path-and-mode-selection"><a class="anchor" href="#control-path-and-mode-selection"></a><a class="link" href="#control-path-and-mode-selection">3.3. Control Path and Mode Selection</a></h3>
 <div class="paragraph">
 <p>Configuration sources follow a strict ranking: LSIO commands always take
 the highest precedence, overriding any register settings when active. If
@@ -364,8 +366,8 @@ pad remains in a benign state.</p>
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="interrupts-flexible-and-responsive"><a class="anchor" href="#interrupts-flexible-and-responsive"></a><a class="link" href="#interrupts-flexible-and-responsive">Interrupts: Flexible and Responsive</a></h6>
+<div class="sect2">
+<h3 id="interrupts-flexible-and-responsive"><a class="anchor" href="#interrupts-flexible-and-responsive"></a><a class="link" href="#interrupts-flexible-and-responsive">3.4. Interrupts: Flexible and Responsive</a></h3>
 <div class="paragraph">
 <p>The GPIO’s interrupt subsystem is engineered for flexibility. It
 supports both level and edge detection, allowing software to choose
@@ -389,8 +391,8 @@ interrupt_o = interrupt_enable &amp;&amp; interrupt_trigger;</code></pre>
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="clocking-and-reset-safe-and-predictable"><a class="anchor" href="#clocking-and-reset-safe-and-predictable"></a><a class="link" href="#clocking-and-reset-safe-and-predictable">Clocking and Reset: Safe and Predictable</a></h6>
+<div class="sect2">
+<h3 id="clocking-and-reset-safe-and-predictable"><a class="anchor" href="#clocking-and-reset-safe-and-predictable"></a><a class="link" href="#clocking-and-reset-safe-and-predictable">3.5. Clocking and Reset: Safe and Predictable</a></h3>
 <div class="paragraph">
 <p>All GPIO logic is synchronized to a single system clock (clk_i). There
 are no internal clock domains or generated clocks to complicate timing—
@@ -407,14 +409,16 @@ secure.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="gpio-interface"><a class="anchor" href="#gpio-interface"></a><a class="link" href="#gpio-interface">Interface</a></h5>
+</div>
+<div class="sect1">
+<h2 id="gpio-interface"><a class="anchor" href="#gpio-interface"></a><a class="link" href="#gpio-interface">4. Interface</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The GPIO peripheral provides bus interfaces for register access, LSIO
 integration for hardware protocols, and direct GPIO pad connections.</p>
 </div>
-<div class="sect5">
-<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
+<div class="sect2">
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -453,12 +457,12 @@ APB4)</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="signal-interface-definitions"><a class="anchor" href="#signal-interface-definitions"></a><a class="link" href="#signal-interface-definitions">Signal Interface Definitions</a></h6>
+<div class="sect2">
+<h3 id="signal-interface-definitions"><a class="anchor" href="#signal-interface-definitions"></a><a class="link" href="#signal-interface-definitions">4.2. Signal Interface Definitions</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">Global Interface</a></h6>
+<div class="sect2">
+<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.3. Global Interface</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Global Interface Signals</caption>
 <colgroup>
@@ -505,8 +509,8 @@ Test) support.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="lsio-interface"><a class="anchor" href="#lsio-interface"></a><a class="link" href="#lsio-interface">LSIO Interface</a></h6>
+<div class="sect2">
+<h3 id="lsio-interface"><a class="anchor" href="#lsio-interface"></a><a class="link" href="#lsio-interface">4.4. LSIO Interface</a></h3>
 <div class="paragraph">
 <p>The LSIO (Low Speed Input/Output) interface enables hardware-controlled
 GPIO operation for protocol processing.</p>
@@ -562,8 +566,8 @@ GPIO operation for protocol processing.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="lsio-protocol-specifications"><a class="anchor" href="#lsio-protocol-specifications"></a><a class="link" href="#lsio-protocol-specifications">LSIO Protocol Specifications</a></h6>
+<div class="sect2">
+<h3 id="lsio-protocol-specifications"><a class="anchor" href="#lsio-protocol-specifications"></a><a class="link" href="#lsio-protocol-specifications">4.5. LSIO Protocol Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -590,8 +594,8 @@ gated by lsio_disable, so it reads 0 during a software-forced LSIO</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="gpio-pad-interface"><a class="anchor" href="#gpio-pad-interface"></a><a class="link" href="#gpio-pad-interface">GPIO Pad Interface</a></h6>
+<div class="sect2">
+<h3 id="gpio-pad-interface"><a class="anchor" href="#gpio-pad-interface"></a><a class="link" href="#gpio-pad-interface">4.6. GPIO Pad Interface</a></h3>
 <div class="paragraph">
 <p>The GPIO pad interface provides direct connection to external pads with
 bidirectional capabilities.</p>
@@ -640,8 +644,8 @@ bidirectional capabilities.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">Interrupt Interface</a></h6>
+<div class="sect2">
+<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.7. Interrupt Interface</a></h3>
 <div class="paragraph">
 <p>The interrupt interface provides event notification capabilities with
 configurable trigger modes.</p>
@@ -679,8 +683,8 @@ indicator</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">Interrupt Specifications</a></h6>
+<div class="sect2">
+<h3 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">4.8. Interrupt Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -704,8 +708,10 @@ event</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="gpio-memory-map"><a class="anchor" href="#gpio-memory-map"></a><a class="link" href="#gpio-memory-map">Memory Map</a></h5>
+</div>
+<div class="sect1">
+<h2 id="gpio-memory-map"><a class="anchor" href="#gpio-memory-map"></a><a class="link" href="#gpio-memory-map">5. Memory Map</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The GPIO peripheral provides two separate register banks for
 comprehensive I/O control: the Interface Register Bank (gpio_intf_reg)
@@ -714,8 +720,8 @@ for high-level GPIO functionality and the Control Register Bank
 accessed through 32-bit AXI4-Lite interfaces with independent address
 spaces.</p>
 </div>
-<div class="sect5">
-<h6 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">Address Space Organization</a></h6>
+<div class="sect2">
+<h3 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">5.1. Address Space Organization</a></h3>
 <div class="paragraph">
 <p>The GPIO peripheral uses a dual-bank register architecture:</p>
 </div>
@@ -736,8 +742,8 @@ and termination</p>
 enable concurrent access and modular functionality.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="reset-behavior"><a class="anchor" href="#reset-behavior"></a><a class="link" href="#reset-behavior">Reset Behavior</a></h6>
+<div class="sect2">
+<h3 id="reset-behavior"><a class="anchor" href="#reset-behavior"></a><a class="link" href="#reset-behavior">5.2. Reset Behavior</a></h3>
 <div class="paragraph">
 <p>When the system reset (rst_ni) is asserted, the GPIO peripheral
 initializes each register bank to well-defined, safe starting values. In
@@ -758,8 +764,8 @@ reset, the hardware maintains a safe low-current output condition on the
 pads, minimizing the risk of unintended external drive or contention.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h6>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.3. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -817,10 +823,12 @@ pads, minimizing the risk of unintended external drive or contention.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="gpio-programming"><a class="anchor" href="#gpio-programming"></a><a class="link" href="#gpio-programming">Programming</a></h5>
-<div class="sect5">
-<h6 id="basic-gpio-configuration"><a class="anchor" href="#basic-gpio-configuration"></a><a class="link" href="#basic-gpio-configuration">Basic GPIO Configuration</a></h6>
+</div>
+<div class="sect1">
+<h2 id="gpio-programming"><a class="anchor" href="#gpio-programming"></a><a class="link" href="#gpio-programming">6. Programming</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="basic-gpio-configuration"><a class="anchor" href="#basic-gpio-configuration"></a><a class="link" href="#basic-gpio-configuration">6.1. Basic GPIO Configuration</a></h3>
 <div class="paragraph">
 <p>Setting up GPIO for simple output operation:</p>
 </div>
@@ -842,8 +850,8 @@ pads, minimizing the risk of unintended external drive or contention.</p>
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="configuration-strap-capture"><a class="anchor" href="#configuration-strap-capture"></a><a class="link" href="#configuration-strap-capture">Configuration Strap Capture</a></h6>
+<div class="sect2">
+<h3 id="configuration-strap-capture"><a class="anchor" href="#configuration-strap-capture"></a><a class="link" href="#configuration-strap-capture">6.2. Configuration Strap Capture</a></h3>
 <div class="paragraph">
 <p>Reading configuration straps captured during reset:</p>
 </div>
@@ -860,8 +868,8 @@ pads, minimizing the risk of unintended external drive or contention.</p>
 default (INPUT_BY_DEFAULT parameter = 1).</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">Interrupt Configuration</a></h6>
+<div class="sect2">
+<h3 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">6.3. Interrupt Configuration</a></h3>
 <div class="paragraph">
 <p>Setting up GPIO interrupt generation:</p>
 </div>
@@ -884,8 +892,8 @@ default (INPUT_BY_DEFAULT parameter = 1).</p>
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="lsio-interface-operation"><a class="anchor" href="#lsio-interface-operation"></a><a class="link" href="#lsio-interface-operation">LSIO Interface Operation</a></h6>
+<div class="sect2">
+<h3 id="lsio-interface-operation"><a class="anchor" href="#lsio-interface-operation"></a><a class="link" href="#lsio-interface-operation">6.4. LSIO Interface Operation</a></h3>
 <div class="paragraph">
 <p>Configuring GPIO for LSIO hardware control:</p>
 </div>
@@ -949,8 +957,8 @@ On those, step 1 above is mandatory: interface_enable alone will not take the
 pad, because the hardware request outranks it.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="security-configuration"><a class="anchor" href="#security-configuration"></a><a class="link" href="#security-configuration">Security Configuration</a></h6>
+<div class="sect2">
+<h3 id="security-configuration"><a class="anchor" href="#security-configuration"></a><a class="link" href="#security-configuration">6.5. Security Configuration</a></h3>
 <div class="paragraph">
 <p>The GPIO controller implements protection-based access filtering to
 enforce security policies. The filter examines AXI protection bits
@@ -959,8 +967,10 @@ configurable requirement values.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="protection-bit-encoding"><a class="anchor" href="#protection-bit-encoding"></a><a class="link" href="#protection-bit-encoding">Protection Bit Encoding</a></h5>
+</div>
+<div class="sect1">
+<h2 id="protection-bit-encoding"><a class="anchor" href="#protection-bit-encoding"></a><a class="link" href="#protection-bit-encoding">7. Protection Bit Encoding</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>AXI protection bits are 3-bit fields encoding transaction attributes:</p>
 </div>
@@ -985,8 +995,10 @@ configurable requirement values.</p>
 * <code>0x3</code> (011): Data, Non-Secure, Privileged</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="filter-configuration"><a class="anchor" href="#filter-configuration"></a><a class="link" href="#filter-configuration">Filter Configuration</a></h5>
+</div>
+<div class="sect1">
+<h2 id="filter-configuration"><a class="anchor" href="#filter-configuration"></a><a class="link" href="#filter-configuration">8. Filter Configuration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Setting up access control filtering:</p>
 </div>
@@ -1013,8 +1025,10 @@ configurable requirement values.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="filter-behavior"><a class="anchor" href="#filter-behavior"></a><a class="link" href="#filter-behavior">Filter Behavior</a></h5>
+</div>
+<div class="sect1">
+<h2 id="filter-behavior"><a class="anchor" href="#filter-behavior"></a><a class="link" href="#filter-behavior">9. Filter Behavior</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>When protection filtering is enabled:
 * Transactions with protection bits matching the requirement are allowed
@@ -1027,8 +1041,8 @@ configurable requirement values.</p>
 <p>The filter operates on every transaction, providing real-time security
 enforcement without impacting performance for legitimate accesses.</p>
 </div>
-<div class="sect5">
-<h6 id="bidirectional-operation"><a class="anchor" href="#bidirectional-operation"></a><a class="link" href="#bidirectional-operation">Bidirectional Operation</a></h6>
+<div class="sect2">
+<h3 id="bidirectional-operation"><a class="anchor" href="#bidirectional-operation"></a><a class="link" href="#bidirectional-operation">9.1. Bidirectional Operation</a></h3>
 <div class="paragraph">
 <p>Configuring GPIO for bidirectional communication:</p>
 </div>
@@ -1075,6 +1089,8 @@ enforcement without impacting performance for legitimate accesses.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

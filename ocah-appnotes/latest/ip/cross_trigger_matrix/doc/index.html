@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Cross-Trigger Matrix :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="CTM — AND-OR crossbar for cross-trigger pulse routing. Dimensions come from the generated register map.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -94,13 +96,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -108,7 +108,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -116,7 +115,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -124,7 +122,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -132,7 +129,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -140,7 +136,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -157,6 +152,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="index.html">Cross-Trigger Matrix</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -164,33 +163,37 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="cross-trigger-matrix"><a class="anchor" href="#cross-trigger-matrix"></a><a class="link" href="#cross-trigger-matrix">1. Cross Trigger Matrix</a></h3>
-<div class="sect3">
-<h4 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1.1. Overview</a></h4>
+<h1 class="page">Cross-Trigger Matrix</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cross-trigger-matrix" class="paragraph">
+<p>The Cross Trigger Matrix (CTM) is an AND-OR crossbar that aggregates and
+statically routes cross-trigger pulses between all sources (CTPs, CLAs,
+internal devices) and sinks under AXI-Lite CSR control.
+The default DTP configuration uses 26 input ports and 26 output ports.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The Cross Trigger Matrix (CTM) is a crossbar that aggregates and statically
-routes cross trigger pulses between various sources and sinks. Typical
-connections to the CTM include Core Logic Analyzers (CLAs) and Cross Trigger
-Ports (CTPs), including other miscellaneous devices.</p>
+<p>The CTM is compatible with both wire-OR and point-to-point CTPs. Typical
+connections include Core Logic Analyzers (CLAs) and Cross Trigger Ports (CTPs).
+Each device connected to the CTM acts as both a source and a sink.</p>
 </div>
 <div class="paragraph">
-<p>The CTM is compatible with CTPs operating in either of the two signaling modes,
-point-to-point or wire-OR. Typically, each device or logic module connected to
-the CTM will act as both a source and a sink for cross trigger pulses.</p>
+<p>The <code>NUM_CT_SRC</code> and <code>NUM_CT_DST</code> parameters in
+<code>regs/cross_trigger_matrix.rdl</code> define the matrix dimensions and default to
+26 each. The RTL derives the following localparams from the generated
+register map:</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="configuration"><a class="anchor" href="#configuration"></a><a class="link" href="#configuration">1.2. Configuration</a></h4>
-<div class="paragraph">
-<p>The port counts are localparams read from the generated register collateral, not
-module parameters, so they cannot be overridden at instantiation:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="CTM configuration constants" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 33.3333%;">
-<col style="width: 33.3334%;">
+<col style="width: 24%;">
+<col style="width: 10%;">
+<col style="width: 66%;">
 </colgroup>
 <thead>
 <tr>
@@ -201,41 +204,45 @@ module parameters, so they cannot be overridden at instantiation:</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_CT_SRC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CT_SRC</code> array size in the register map (26)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of CT_Src output ports</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_CT_SRC</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of CT_Src output ports (sized by the <code>CT_SRC</code> array in the register map).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_CT_DST</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CT_DST_SELECT</code> field width in the register map (26)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of CT_Dst input ports</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_CT_DST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of CT_Dst input ports (sized by the <code>CT_DST_SELECT</code> field width in the
+register map).</p></td>
 </tr>
 </tbody>
 </table>
-<div class="paragraph">
-<p>The register map carries both dimensions as parameters of its own: it declares
-one configuration register per CT_Src port as an array sized by <code>NUM_CT_SRC</code>,
-each holding one select bit per CT_Dst port over a field sized by <code>NUM_CT_DST</code>,
-where that field may be 1 to 64 bits wide. Resizing the matrix therefore means
-regenerating the register map rather than editing the RTL or overriding a
-parameter. See <a href="#ctm-architecture">Architecture</a> for how the select fields drive the
-crossbar.</p>
 </div>
 <div class="paragraph">
-<p>The two parameters the module does take are the AXI-Lite request and response
-types, which the cross trigger network overrides to match its crossbar.</p>
+<p>These values cannot be overridden at instantiation. Resizing the matrix
+requires regenerating the register map with PeakRDL addrmap overrides
+(<code>OCAH_REG_RDL_PARAMS_cross_trigger_matrix</code>) that match the elaborated
+Cross-Trigger Network total (<code>NUM_CTP + NUM_INT_CT</code>). The CTN fails
+elaboration if that total disagrees with the generated <code>NUM_CT_SRC</code> and
+<code>NUM_CT_DST</code>. The CTM takes the AXI-Lite request and response types as
+module parameters, which the CTN overrides to match its own crossbar.</p>
 </div>
 <div class="paragraph">
-<p>Every port occupies 8 bytes regardless of the port count. Above 32 destinations
-the select mask fills both words of that space and its writes become buffered,
-committing when the upper word is written so that a mask spanning the word
-boundary never takes effect half-programmed. At or below 32 destinations,
-including the DTP&#8217;s 26, the register is a single word with immediate writes.</p>
+<p>Every CT_Src port occupies 8 bytes regardless of the port count. At or below
+32 destinations, each register is a single 32-bit word with immediate write
+semantics. Above 32 destinations both words must be written before the mask
+takes effect, preventing half-programmed states.</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="ctm-architecture"><a class="anchor" href="#ctm-architecture"></a><a class="link" href="#ctm-architecture">1.3. Architecture</a></h4>
 <div class="paragraph">
+<p>The register map for the CTM and for each CTP is included once in the
+<a href="../../cross_trigger_network/doc/index.html#ctn-memory-map" class="xref page">CTN Memory Map</a>
+section. This page covers the crossbar architecture and signal interface only.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">2. Architecture</a></h2>
+<div class="sectionbody">
+<div id="ctm-architecture" class="paragraph">
 <p>The Cross Trigger Matrix in this tree is configured for 26 source ports and 26
 destination ports, matching the DTP cross-trigger topology. The matrix
 implements a combinatorial AND-OR crossbar with registered outputs to route
@@ -251,17 +258,18 @@ cross-trigger pulses between CTPs and internal cross-trigger sources.</p>
 configuration of the CTMs in each chiplet will minimize trigger latency and
 prevent loops in the SiP cross trigger network.</p>
 </div>
-<div class="sect4">
-<h5 id="routing-logic"><a class="anchor" href="#routing-logic"></a><a class="link" href="#routing-logic">Routing Logic</a></h5>
+<div class="sect2">
+<h3 id="routing-logic"><a class="anchor" href="#routing-logic"></a><a class="link" href="#routing-logic">2.1. Routing Logic</a></h3>
 <div class="paragraph">
 <p>The CTM routing implements a two-stage combinatorial path followed by output
 registration. Each of the 26 CT_Src output ports is driven by a dedicated
 <code>ctm_src_selector</code> module that performs the following operation:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="CTM routing stages" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
+<col style="width: 28%;">
+<col style="width: 72%;">
 </colgroup>
 <thead>
 <tr>
@@ -284,6 +292,7 @@ registration. Each of the 26 CT_Src output ports is driven by a dedicated
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>This architecture allows each CT_Src output to combine pulses from multiple
 CT_Dst inputs through OR-aggregation. Multiple CT_Src outputs can source from
@@ -292,15 +301,15 @@ prevents glitches on the output when configuration changes or when multiple
 input pulses arrive simultaneously.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="port-indexing"><a class="anchor" href="#port-indexing"></a><a class="link" href="#port-indexing">Port Indexing</a></h5>
+<div class="sect2">
+<h3 id="port-indexing"><a class="anchor" href="#port-indexing"></a><a class="link" href="#port-indexing">2.2. Port Indexing</a></h3>
 <div class="paragraph">
 <p>CTM ports are indexed as follows:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
+<col style="width: 30%;">
+<col style="width: 70%;">
 </colgroup>
 <thead>
 <tr>
@@ -325,16 +334,19 @@ ct_src_o port assignment and CTM routing configuration registers.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="ctm-interface"><a class="anchor" href="#ctm-interface"></a><a class="link" href="#ctm-interface">1.4. Interface</a></h4>
-<div class="sect4">
-<h5 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">Signal Interface</a></h5>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect1">
+<h2 id="interface"><a class="anchor" href="#interface"></a><a class="link" href="#interface">3. Interface</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="ctm-interface"><a class="anchor" href="#ctm-interface"></a><a class="link" href="#ctm-interface">3.1. Signal Interface</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="CTM signal interface" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
+<col style="width: 24%;">
+<col style="width: 13%;">
+<col style="width: 10%;">
+<col style="width: 53%;">
 </colgroup>
 <thead>
 <tr>
@@ -389,12 +401,13 @@ ct_src_o port assignment and CTM routing configuration registers.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>Where N = NUM_CTP and M = NUM_INT_CT.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="data-ports"><a class="anchor" href="#data-ports"></a><a class="link" href="#data-ports">Data Ports</a></h5>
+<div class="sect2">
+<h3 id="data-ports"><a class="anchor" href="#data-ports"></a><a class="link" href="#data-ports">3.2. Data Ports</a></h3>
 <div class="paragraph">
 <p>The CTM has the following data ports:</p>
 </div>
@@ -413,8 +426,8 @@ these cross trigger sources.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">Dependencies</a></h5>
+<div class="sect2">
+<h3 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">3.3. Dependencies</a></h3>
 <div class="paragraph">
 <p>The CTM depends on the following components:</p>
 </div>
@@ -449,6 +462,8 @@ these cross trigger sources.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

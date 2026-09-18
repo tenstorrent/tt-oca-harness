@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Boot ROM :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC Boot ROM architecture, hardware configuration, firmware, and operation.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -94,13 +96,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -108,7 +108,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -116,7 +115,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -124,7 +122,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -132,7 +129,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -140,7 +136,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -157,6 +152,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="rom.html">Boot ROM</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -164,14 +163,18 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="rom"><a class="anchor" href="#rom"></a><a class="link" href="#rom">1. Boot ROM</a></h3>
-<div class="paragraph">
+<h1 class="page">Boot ROM</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="rom" class="paragraph">
 <p>The SMC maps a 128 KiB read-only region at <code>0xC004_0000</code> through
 <code>0xC005_FFFF</code>. The cold-reset CPU vector is <code>0xC004_0000</code>.</p>
 </div>
-<div class="sect3">
-<h4 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1.1. ROM Architecture</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1. ROM Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>In the current four-core implementation, the CPU reaches the ROM over its
 internal TileLink memory path. <code>smc_cpu_wrapper</code> converts that path to the
@@ -190,8 +193,10 @@ addresses in the SRAM region at <code>0xC006_0000</code> and load images in ROM.
 <code>.bss</code>, the stack, and the heap occupy only SRAM.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="rom-hardware-configuration"><a class="anchor" href="#rom-hardware-configuration"></a><a class="link" href="#rom-hardware-configuration">1.2. ROM Hardware Configuration</a></h4>
+</div>
+<div class="sect1">
+<h2 id="rom-hardware-configuration"><a class="anchor" href="#rom-hardware-configuration"></a><a class="link" href="#rom-hardware-configuration">2. ROM Hardware Configuration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p><code>OCAH4CORECluster_mems</code> passes the 11-bit <code>rom_cfg_i</code> value unchanged to the
 ROM wrapper&#8217;s <code>mem_cfg_i</code>, where it is cast to <code>prim_rom_pkg::rom_cfg_t</code> and
@@ -228,6 +233,8 @@ eFuse shadow-register output.</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

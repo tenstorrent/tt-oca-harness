@@ -3,10 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Boot ROM :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="cpu.html">
+    <link rel="next" href="interrupts.html">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -93,30 +96,240 @@
     <a class="nav-link" href="../architecture.html">OCAH Architecture &amp; Design</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../architecture.html#ocah-architecture">OCAH Architecture</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
   </li>
 </ul>
   </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#security-processor-sep">Security Processor (SEP)</a>
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#system-management-controller">System Management Controller (SMC)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#system-management-network">System Management Network (SMN)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../architecture.html#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
   </li>
 </ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="memory_map.html">Memory Map and Registers</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="4">
+    <a class="nav-link" href="rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/drbg/doc/index.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="periphs.html">Fuse Controller and Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA and Appendices</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../ip-reference.html">IP Reference</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
@@ -127,13 +340,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -141,7 +352,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -149,7 +359,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -157,7 +366,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -165,7 +373,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -173,7 +380,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -190,23 +396,34 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li>OCAH Platform Components</li>
+    <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
+    <li><a href="index.html">Security Processor (SEP)</a></li>
+    <li><a href="rom.html">Boot ROM</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="2">
+<aside class="toc sidebar" data-title="Contents" data-levels="4">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="sep-rom"><a class="anchor" href="#sep-rom"></a><a class="link" href="#sep-rom">1. Boot ROM</a></h3>
-<div class="paragraph">
+<h1 class="page">Boot ROM</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="sep-rom" class="paragraph">
 <p>The SEP maps a 64 KiB immutable Boot ROM aperture at <code>0x1004_0000</code> through
 <code>0x1004_FFFF</code>. The SEP CPU wrapper sets the VeeR EL2 <code>RESET_VEC</code> parameter to
 the base of this region, so a cold boot begins in the BL0 Root-of-Trust
 firmware.</p>
 </div>
-<div class="sect3">
-<h4 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1.1. ROM architecture</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1. ROM architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
 dedicated path outside the SEP local AXI crossbar. The SEP ROM interface shim
@@ -237,8 +454,10 @@ The CPU load/store unit cannot access ICCM, so BL0 cannot populate it with an
 ordinary software copy.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="integrity-features"><a class="anchor" href="#integrity-features"></a><a class="link" href="#integrity-features">1.2. Integrity features</a></h4>
+</div>
+<div class="sect1">
+<h2 id="integrity-features"><a class="anchor" href="#integrity-features"></a><a class="link" href="#integrity-features">2. Integrity features</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The open generic ROM model has a 64-bit data path and no ECC or integrity-error
 sideband. Technology-specific integrity behavior is therefore outside this
@@ -246,8 +465,10 @@ integration&#8217;s visible hardware contract. The first-generation SEP has no R
 patching facility.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="firmware-behavior"><a class="anchor" href="#firmware-behavior"></a><a class="link" href="#firmware-behavior">1.3. Firmware behavior</a></h4>
+</div>
+<div class="sect1">
+<h2 id="firmware-behavior"><a class="anchor" href="#firmware-behavior"></a><a class="link" href="#firmware-behavior">3. Firmware behavior</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The production BL0 firmware selects SPI flash or an SMC-staged image from the
 captured boot straps. It validates the manifest, applies the lifecycle and
@@ -258,6 +479,10 @@ in detail.</p>
 </div>
 </div>
 </div>
+<nav class="pagination">
+  <span class="prev"><a href="cpu.html">CPU Subsystem</a></span>
+  <span class="next"><a href="interrupts.html">Interrupts</a></span>
+</nav>
 </article>
   </div>
 </main>
@@ -279,6 +504,8 @@ in detail.</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

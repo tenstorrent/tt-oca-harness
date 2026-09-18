@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>System Timer OCTS :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -109,13 +110,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -123,7 +122,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -131,7 +129,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -139,7 +136,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -147,7 +143,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -155,7 +150,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -172,6 +166,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="index.html">System Timer OCTS</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -179,10 +177,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="system-timer-octs"><a class="anchor" href="#system-timer-octs"></a><a class="link" href="#system-timer-octs">System Timer OCTS</a></h4>
-<div class="sect4">
-<h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
+<h1 class="page">System Timer OCTS</h1>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The System Timer OCTS (Open Chiplet Time Synchronization) IP is a
 sophisticated 64-bit timer designed specifically for multi-chiplet
@@ -197,8 +195,10 @@ timestamping and synchronized operations in distributed chiplet
 architectures.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+</div>
+<div class="sect1">
+<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The System Timer OCTS offers both PRIMARY and SECONDARY modes to serve
 as either a timing master or follower within a synchronized network of
@@ -214,8 +214,10 @@ easily adjusted. Real-time status and timer values are always available
 through readable registers.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="system-timer-octs-architecture"><a class="anchor" href="#system-timer-octs-architecture"></a><a class="link" href="#system-timer-octs-architecture">Architecture</a></h5>
+</div>
+<div class="sect1">
+<h2 id="system-timer-octs-architecture"><a class="anchor" href="#system-timer-octs-architecture"></a><a class="link" href="#system-timer-octs-architecture">Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The System Timer OCTS (Open Chiplet Time Synchronization) IP provides
 precise time coordination across distributed multi-chiplet systems. The
@@ -237,8 +239,8 @@ specifications, version , using credit-based synchronization for
 continuous maintenance that adapts to varying system loads and
 communication delays.</p>
 </div>
-<div class="sect5">
-<h6 id="timer-core-processing"><a class="anchor" href="#timer-core-processing"></a><a class="link" href="#timer-core-processing">Timer Core Processing</a></h6>
+<div class="sect2">
+<h3 id="timer-core-processing"><a class="anchor" href="#timer-core-processing"></a><a class="link" href="#timer-core-processing">Timer Core Processing</a></h3>
 <div class="paragraph">
 <p>The timer core implements 64-bit counter management supporting both
 PRIMARY and SECONDARY operational modes.</p>
@@ -279,16 +281,16 @@ alignment with the overall timeline. Credit expiration is monitored via a
 providing diagnostics for synchronization health.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="clock-domain-crossing"><a class="anchor" href="#clock-domain-crossing"></a><a class="link" href="#clock-domain-crossing">Clock Domain Crossing</a></h6>
+<div class="sect2">
+<h3 id="clock-domain-crossing"><a class="anchor" href="#clock-domain-crossing"></a><a class="link" href="#clock-domain-crossing">Clock Domain Crossing</a></h3>
 <div class="paragraph">
 <p>The CDC architecture maintains signal integrity and timing precision
 across clock domains with different frequencies, phase relationships,
 and jitter characteristics.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="edge-detection"><a class="anchor" href="#edge-detection"></a><a class="link" href="#edge-detection">Edge Detection</a></h6>
+<div class="sect2">
+<h3 id="edge-detection"><a class="anchor" href="#edge-detection"></a><a class="link" href="#edge-detection">Edge Detection</a></h3>
 <div class="paragraph">
 <p>To ensure robust metastability protection during clock domain crossing,
 the design employs prim_edge_detector modules. These modules reliably
@@ -299,8 +301,8 @@ and maintain stable operation despite potential variations in signal
 arrival times or delays.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="synchronization-protocol"><a class="anchor" href="#synchronization-protocol"></a><a class="link" href="#synchronization-protocol">Synchronization Protocol</a></h6>
+<div class="sect2">
+<h3 id="synchronization-protocol"><a class="anchor" href="#synchronization-protocol"></a><a class="link" href="#synchronization-protocol">Synchronization Protocol</a></h3>
 <div class="paragraph">
 <p>The synchronization protocol relies on a two-level mechanism to
 establish and maintain timer alignment across chiplets. During
@@ -316,8 +318,8 @@ timing dependencies and promoting robust synchronization regardless of
 clock differences.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="credit-based-synchronization"><a class="anchor" href="#credit-based-synchronization"></a><a class="link" href="#credit-based-synchronization">Credit-Based Synchronization</a></h6>
+<div class="sect2">
+<h3 id="credit-based-synchronization"><a class="anchor" href="#credit-based-synchronization"></a><a class="link" href="#credit-based-synchronization">Credit-Based Synchronization</a></h3>
 <div class="paragraph">
 <p>Credit-based synchronization balances autonomous operation with
 centralized coordination, allowing SECONDARY timers to maintain temporal
@@ -325,15 +327,16 @@ progression during communication interruptions while ensuring long-term
 accuracy through periodic resynchronization.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="credit-management"><a class="anchor" href="#credit-management"></a><a class="link" href="#credit-management">Credit Management</a></h6>
+<div class="sect2">
+<h3 id="credit-management"><a class="anchor" href="#credit-management"></a><a class="link" href="#credit-management">Credit Management</a></h3>
 <div class="paragraph">
 <p>The credit management system operates differently in PRIMARY and SECONDARY modes:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="OCTS credit management" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 32%;">
+<col style="width: 68%;">
 </colgroup>
 <thead>
 <tr>
@@ -365,8 +368,9 @@ accuracy through periodic resynchronization.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="synchronization-logic"><a class="anchor" href="#synchronization-logic"></a><a class="link" href="#synchronization-logic">Synchronization Logic</a></h6>
+</div>
+<div class="sect2">
+<h3 id="synchronization-logic"><a class="anchor" href="#synchronization-logic"></a><a class="link" href="#synchronization-logic">Synchronization Logic</a></h3>
 <div class="paragraph">
 <p>In SECONDARY mode, the timer advances when credits are available. The
 credit accumulator (cur_credits) increments by the step input value
@@ -386,19 +390,20 @@ synchronization validation and helps detect drift between the actual timer
 count and the expected timeline.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="pulse-generation"><a class="anchor" href="#pulse-generation"></a><a class="link" href="#pulse-generation">Pulse Generation</a></h6>
+<div class="sect2">
+<h3 id="pulse-generation"><a class="anchor" href="#pulse-generation"></a><a class="link" href="#pulse-generation">Pulse Generation</a></h3>
 <div class="paragraph">
 <p>PRIMARY timers generate synchronization signals for SECONDARY timer
 coordination.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="pulse-state-machine"><a class="anchor" href="#pulse-state-machine"></a><a class="link" href="#pulse-state-machine">Pulse State Machine</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+<div class="sect2">
+<h3 id="pulse-state-machine"><a class="anchor" href="#pulse-state-machine"></a><a class="link" href="#pulse-state-machine">Pulse State Machine</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="OCTS pulse states" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 75%;">
+<col style="width: 30%;">
+<col style="width: 70%;">
 </colgroup>
 <thead>
 <tr>
@@ -424,8 +429,9 @@ maintenance</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="pulse-width-control"><a class="anchor" href="#pulse-width-control"></a><a class="link" href="#pulse-width-control">Pulse Width Control</a></h6>
+</div>
+<div class="sect2">
+<h3 id="pulse-width-control"><a class="anchor" href="#pulse-width-control"></a><a class="link" href="#pulse-width-control">Pulse Width Control</a></h3>
 <div class="paragraph">
 <p>The pulse width for synchronization can be configured between 1 and 255
 cycles using the CTRL.PULSE_WIDTH register. If PULSE_WIDTH is set to 0, it
@@ -443,8 +449,8 @@ propagation delays.</p>
 generation.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">Data Flow and Control Path</a></h6>
+<div class="sect2">
+<h3 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">Data Flow and Control Path</a></h3>
 <div class="paragraph">
 <p>In PRIMARY mode, the timer core begins with software issuing a preset
 value and asserting the START register. This action loads the counter
@@ -481,8 +487,8 @@ The expected count is incremented by CREDIT_VAL on credit pulse events
 using a carry-select adder.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="control-path-overview"><a class="anchor" href="#control-path-overview"></a><a class="link" href="#control-path-overview">Control Path Overview</a></h6>
+<div class="sect2">
+<h3 id="control-path-overview"><a class="anchor" href="#control-path-overview"></a><a class="link" href="#control-path-overview">Control Path Overview</a></h3>
 <div class="paragraph">
 <p>The control path of the System Timer OCTS integrates subsystems for
 enabling, mode selection, and credit tracking. The global enable signal
@@ -513,8 +519,8 @@ with each credit using carry-select adders, and provides a real-time
 CREDIT_VAL—essential for synchronization health diagnostics.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="pulse-generation-in-primary-mode"><a class="anchor" href="#pulse-generation-in-primary-mode"></a><a class="link" href="#pulse-generation-in-primary-mode">Pulse Generation in PRIMARY Mode</a></h6>
+<div class="sect2">
+<h3 id="pulse-generation-in-primary-mode"><a class="anchor" href="#pulse-generation-in-primary-mode"></a><a class="link" href="#pulse-generation-in-primary-mode">Pulse Generation in PRIMARY Mode</a></h3>
 <div class="paragraph">
 <p>In PRIMARY mode, the timer autonomously produces two kinds of
 synchronization pulses: sync_load, which resets all timers system-wide
@@ -536,21 +542,24 @@ multi-chiplet synchronization even in complex environments.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="system-timer-octs-interface"><a class="anchor" href="#system-timer-octs-interface"></a><a class="link" href="#system-timer-octs-interface">Interface</a></h5>
+</div>
+<div class="sect1">
+<h2 id="system-timer-octs-interface"><a class="anchor" href="#system-timer-octs-interface"></a><a class="link" href="#system-timer-octs-interface">Interface</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The System Timer OCTS IP provides interfaces supporting both PRIMARY and
 SECONDARY timer modes, with flexible support for either AXI4-Lite or
 APB4 bus protocols. All interface signals operate synchronously to the
 system clock.</p>
 </div>
-<div class="sect5">
-<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+<div class="sect2">
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="OCTS configuration parameters" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
 <col style="width: 30%;">
-<col style="width: 20%;">
-<col style="width: 50%;">
+<col style="width: 16%;">
+<col style="width: 54%;">
 </colgroup>
 <thead>
 <tr>
@@ -578,6 +587,7 @@ APB4)</p></td>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -592,16 +602,17 @@ via the <code>is_primary_i</code> input signal, not through a compile-time param
 </table>
 </div>
 </div>
-<div class="sect5">
-<h6 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">Global Interface</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+<div class="sect2">
+<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">Global Interface</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="OCTS global interface signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <caption class="title">Table 1. Global Interface Signals</caption>
 <colgroup>
-<col style="width: 15%;">
+<col style="width: 28%;">
+<col style="width: 9%;">
+<col style="width: 13%;">
 <col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 55%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
@@ -644,16 +655,18 @@ behavior, register visibility, and synchronization signal direction.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="test-interface"><a class="anchor" href="#test-interface"></a><a class="link" href="#test-interface">Test Interface</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect2">
+<h3 id="test-interface"><a class="anchor" href="#test-interface"></a><a class="link" href="#test-interface">Test Interface</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="OCTS test interface signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <caption class="title">Table 2. Test Interface Signals</caption>
 <colgroup>
-<col style="width: 15%;">
+<col style="width: 28%;">
+<col style="width: 9%;">
+<col style="width: 13%;">
 <col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 55%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
@@ -685,16 +698,18 @@ support.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">OCTS Synchronization Interface</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect2">
+<h3 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">OCTS Synchronization Interface</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="OCTS synchronization interface signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <caption class="title">Table 3. OCTS Synchronization Interface Signals</caption>
 <colgroup>
-<col style="width: 20%;">
+<col style="width: 28%;">
+<col style="width: 9%;">
+<col style="width: 13%;">
 <col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 50%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
@@ -741,6 +756,7 @@ timers.</p></td>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>When operating in PRIMARY mode, the timer generates synchronization
 pulses: <code>timer_sync_load_o</code> is asserted when the START register is
@@ -753,15 +769,16 @@ that allow continuous synchronization. In this mode, the outputs remain
 inactive.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="timer-counter-interface"><a class="anchor" href="#timer-counter-interface"></a><a class="link" href="#timer-counter-interface">Timer Counter Interface</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+<div class="sect2">
+<h3 id="timer-counter-interface"><a class="anchor" href="#timer-counter-interface"></a><a class="link" href="#timer-counter-interface">Timer Counter Interface</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="OCTS timer counter interface signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <caption class="title">Table 4. Timer Counter Interface Signals</caption>
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 60%;">
+<col style="width: 28%;">
+<col style="width: 9%;">
+<col style="width: 13%;">
+<col style="width: 50%;">
 </colgroup>
 <thead>
 <tr>
@@ -788,6 +805,7 @@ the system.</p></td>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>For SECONDARY timers, the step input (<code>timer_cnt_step_i</code>) enables
 granular control over the increment rate. Typically set to 1 for a
@@ -803,19 +821,20 @@ monitoring, or debugging, and can also be read from the COUNT_LO and
 COUNT_HI registers.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="timing-specifications"><a class="anchor" href="#timing-specifications"></a><a class="link" href="#timing-specifications">Timing Specifications</a></h6>
+<div class="sect2">
+<h3 id="timing-specifications"><a class="anchor" href="#timing-specifications"></a><a class="link" href="#timing-specifications">Timing Specifications</a></h3>
 <div class="paragraph">
 <p>All input signals are required to meet setup and hold times with respect
 to the rising edge of clk_i.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <caption class="title">Table 5. Timing Requirements</caption>
 <colgroup>
-<col style="width: 20%;">
+<col style="width: 30%;">
 <col style="width: 15%;">
 <col style="width: 15%;">
-<col style="width: 50%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
@@ -855,6 +874,7 @@ delay</p></td>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>The interface ensures that register outputs are valid within 3.0 ns of a
 rising clock edge, while the timer count output also updates within 3.0
@@ -875,8 +895,8 @@ a 2FF synchronizer with closure on all relevant timing), with internal
 logic maintaining the width of each transmitted pulse.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="reset-behavior-and-initialization"><a class="anchor" href="#reset-behavior-and-initialization"></a><a class="link" href="#reset-behavior-and-initialization">Reset Behavior and Initialization</a></h6>
+<div class="sect2">
+<h3 id="reset-behavior-and-initialization"><a class="anchor" href="#reset-behavior-and-initialization"></a><a class="link" href="#reset-behavior-and-initialization">Reset Behavior and Initialization</a></h3>
 <div class="paragraph">
 <p>When reset is asserted asynchronously (<code>rst_ni</code>), all outputs
 immediately transition to safe, inactive states. The timer count is
@@ -907,8 +927,8 @@ synchronization. Clock domain crossing will add 2–3 cycles of latency to
 these signals.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="integration-guidelines"><a class="anchor" href="#integration-guidelines"></a><a class="link" href="#integration-guidelines">Integration Guidelines</a></h6>
+<div class="sect2">
+<h3 id="integration-guidelines"><a class="anchor" href="#integration-guidelines"></a><a class="link" href="#integration-guidelines">Integration Guidelines</a></h3>
 <div class="paragraph">
 <p>For multi-chiplet integration, the PRIMARY timer should be placed
 centrally to achieve the most efficient signal distribution and minimize
@@ -937,16 +957,18 @@ across power events.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="system-timer-octs-memory-map"><a class="anchor" href="#system-timer-octs-memory-map"></a><a class="link" href="#system-timer-octs-memory-map">Memory Map</a></h5>
+</div>
+<div class="sect1">
+<h2 id="system-timer-octs-memory-map"><a class="anchor" href="#system-timer-octs-memory-map"></a><a class="link" href="#system-timer-octs-memory-map">Memory Map</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The System Timer OCTS IP provides a concise and efficient register
 interface through a 32-byte address space (0x00-0x1F) accessible via
 AXI4-Lite or APB4 protocols. All registers are 32-bit aligned and
 optimized for both PRIMARY and SECONDARY timer modes.</p>
 </div>
-<div class="sect5">
-<h6 id="programming-sequences"><a class="anchor" href="#programming-sequences"></a><a class="link" href="#programming-sequences">Programming Sequences</a></h6>
+<div class="sect2">
+<h3 id="programming-sequences"><a class="anchor" href="#programming-sequences"></a><a class="link" href="#programming-sequences">Programming Sequences</a></h3>
 <div class="paragraph">
 <p>Complete system initialization for multi-timer synchronization:</p>
 </div>
@@ -1002,8 +1024,8 @@ for (int i = 0; i &lt; total_timers; i++) {
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="primary-timer-operation"><a class="anchor" href="#primary-timer-operation"></a><a class="link" href="#primary-timer-operation">Primary Timer Operation</a></h6>
+<div class="sect2">
+<h3 id="primary-timer-operation"><a class="anchor" href="#primary-timer-operation"></a><a class="link" href="#primary-timer-operation">Primary Timer Operation</a></h3>
 <div class="paragraph">
 <p>PRIMARY timer management and monitoring:</p>
 </div>
@@ -1043,8 +1065,8 @@ uint64_t current_time = ((uint64_t)count_hi &lt;&lt; 32) | count_lo;</code></pre
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="secondary-timer-operation"><a class="anchor" href="#secondary-timer-operation"></a><a class="link" href="#secondary-timer-operation">Secondary Timer Operation</a></h6>
+<div class="sect2">
+<h3 id="secondary-timer-operation"><a class="anchor" href="#secondary-timer-operation"></a><a class="link" href="#secondary-timer-operation">Secondary Timer Operation</a></h3>
 <div class="paragraph">
 <p>SECONDARY timer synchronization monitoring and maintenance:</p>
 </div>
@@ -1089,8 +1111,8 @@ if (credit_expired &gt; SYNC_THRESHOLD) {
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="error-handling-and-recovery"><a class="anchor" href="#error-handling-and-recovery"></a><a class="link" href="#error-handling-and-recovery">Error Handling and Recovery</a></h6>
+<div class="sect2">
+<h3 id="error-handling-and-recovery"><a class="anchor" href="#error-handling-and-recovery"></a><a class="link" href="#error-handling-and-recovery">Error Handling and Recovery</a></h3>
 <div class="paragraph">
 <p>The OCTS timer provides comprehensive error detection and recovery
 procedures:</p>
@@ -1158,8 +1180,8 @@ write32(primary_base + 0x04, ctrl);</code></pre>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="address-alignment-and-access-requirements"><a class="anchor" href="#address-alignment-and-access-requirements"></a><a class="link" href="#address-alignment-and-access-requirements">Address Alignment and Access Requirements</a></h6>
+<div class="sect2">
+<h3 id="address-alignment-and-access-requirements"><a class="anchor" href="#address-alignment-and-access-requirements"></a><a class="link" href="#address-alignment-and-access-requirements">Address Alignment and Access Requirements</a></h3>
 <div class="paragraph">
 <p>The System Timer OCTS uses a 36-byte (0x00–0x23) register space, with
 each register 32-bit aligned for easy mapping on AXI4-Lite or APB4
@@ -1201,14 +1223,15 @@ timer registers—crucial for correct operation in high-reliability
 multi-chiplet systems.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="reset-values-and-power-on-behavior"><a class="anchor" href="#reset-values-and-power-on-behavior"></a><a class="link" href="#reset-values-and-power-on-behavior">Reset Values and Power-On Behavior</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+<div class="sect2">
+<h3 id="reset-values-and-power-on-behavior"><a class="anchor" href="#reset-values-and-power-on-behavior"></a><a class="link" href="#reset-values-and-power-on-behavior">Reset Values and Power-On Behavior</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="OCTS register reset values" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <caption class="title">Table 6. <strong>Register Reset Values and Power-On Behavior</strong></caption>
 <colgroup>
+<col style="width: 32%;">
 <col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 60%;">
+<col style="width: 48%;">
 </colgroup>
 <thead>
 <tr>
@@ -1254,8 +1277,9 @@ software before use</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h6>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1335,10 +1359,12 @@ software before use</p></td>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="system-timer-octs-programming"><a class="anchor" href="#system-timer-octs-programming"></a><a class="link" href="#system-timer-octs-programming">Programming</a></h5>
-<div class="sect5">
-<h6 id="multi-chiplet-deployment-example"><a class="anchor" href="#multi-chiplet-deployment-example"></a><a class="link" href="#multi-chiplet-deployment-example">Multi-Chiplet Deployment Example</a></h6>
+</div>
+<div class="sect1">
+<h2 id="system-timer-octs-programming"><a class="anchor" href="#system-timer-octs-programming"></a><a class="link" href="#system-timer-octs-programming">Programming</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="multi-chiplet-deployment-example"><a class="anchor" href="#multi-chiplet-deployment-example"></a><a class="link" href="#multi-chiplet-deployment-example">Multi-Chiplet Deployment Example</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// System with 1 PRIMARY + 3 SECONDARY timers
@@ -1374,8 +1400,8 @@ void initialize_multi_chiplet_timing() {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="high-precision-timestamping"><a class="anchor" href="#high-precision-timestamping"></a><a class="link" href="#high-precision-timestamping">High-Precision Timestamping</a></h6>
+<div class="sect2">
+<h3 id="high-precision-timestamping"><a class="anchor" href="#high-precision-timestamping"></a><a class="link" href="#high-precision-timestamping">High-Precision Timestamping</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Get high-precision timestamp from any timer
@@ -1407,8 +1433,8 @@ void performance_measurement() {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="synchronization-health-monitoring"><a class="anchor" href="#synchronization-health-monitoring"></a><a class="link" href="#synchronization-health-monitoring">Synchronization Health Monitoring</a></h6>
+<div class="sect2">
+<h3 id="synchronization-health-monitoring"><a class="anchor" href="#synchronization-health-monitoring"></a><a class="link" href="#synchronization-health-monitoring">Synchronization Health Monitoring</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void monitor_synchronization_health() {
@@ -1441,8 +1467,8 @@ void performance_measurement() {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="dynamic-reconfiguration"><a class="anchor" href="#dynamic-reconfiguration"></a><a class="link" href="#dynamic-reconfiguration">Dynamic Reconfiguration</a></h6>
+<div class="sect2">
+<h3 id="dynamic-reconfiguration"><a class="anchor" href="#dynamic-reconfiguration"></a><a class="link" href="#dynamic-reconfiguration">Dynamic Reconfiguration</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void adjust_synchronization_parameters() {
@@ -1492,6 +1518,8 @@ void performance_measurement() {
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Cross-Trigger Port :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="CTP — pad-facing cross-trigger signalling module, wire-OR and point-to-point modes, architecture and interface.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="index.html">Cross-Trigger Port</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,80 +190,110 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="cross-trigger-port"><a class="anchor" href="#cross-trigger-port"></a><a class="link" href="#cross-trigger-port">1. Cross Trigger Port</a></h3>
-<div class="sect3">
-<h4 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1.1. Overview</a></h4>
-<div class="paragraph">
-<p>The Cross Trigger Port (CTP) module serves as the signaling interface between
-the chiplet core logic and the I/O pads for cross-trigger communication as
-specified in the Open Chiplet Cross Triggering (OCCT) specification.</p>
+<h1 class="page">Cross-Trigger Port</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cross-trigger-port" class="paragraph">
+<p>The Cross Trigger Port (CTP) is the pad-facing signalling module for
+cross-trigger communication per the Open Chiplet Cross Triggering (OCCT)
+specification. Each CTP connects the chiplet core logic to four I/O pads and
+handles the timing and handshaking required for both wire-OR and
+point-to-point signalling schemes.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>Each CTP connects to four separate I/O pads:</p>
+<p>Each CTP connects to four I/O pads:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>CT_Req_out</strong> - The cross trigger request output signal</p>
+<p><strong>CT_Req_out</strong> — cross-trigger request output.</p>
 </li>
 <li>
-<p><strong>CT_Ack_in</strong> - The cross trigger acknowledge input signal (point-to-point only)</p>
+<p><strong>CT_Ack_in</strong> — acknowledge input (point-to-point only).</p>
 </li>
 <li>
-<p><strong>CT_Req_in</strong> - The cross trigger request input signal (point-to-point only)</p>
+<p><strong>CT_Req_in</strong> — cross-trigger request input (point-to-point only).</p>
 </li>
 <li>
-<p><strong>CT_Ack_out</strong> - The cross trigger acknowledge output signal (point-to-point
-only)</p>
+<p><strong>CT_Ack_out</strong> — acknowledge output (point-to-point only).</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The CTPs support two different inter-chiplet cross trigger signalling schemes:</p>
+<p>Two inter-chiplet signalling schemes are supported:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Wire-OR</strong>: Supports a wider range of existing chiplet implementations and is
-very resource efficient</p>
+<p><strong>Wire-OR</strong> — supports a wide range of existing chiplet implementations and
+is resource efficient. Uses pulse stretching to ensure reliable detection
+across chiplet boundary delays.</p>
 </li>
 <li>
-<p><strong>Point-to-Point</strong>: Faster, more reliable, and simpler to configure</p>
+<p><strong>Point-to-point</strong> — faster, more reliable, and simpler to configure. Uses
+four-phase handshaking with CDC synchronisers at the die boundary.</p>
 </li>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="configuration"><a class="anchor" href="#configuration"></a><a class="link" href="#configuration">1.2. Configuration</a></h4>
+</div>
+<div class="sect1">
+<h2 id="configuration"><a class="anchor" href="#configuration"></a><a class="link" href="#configuration">2. Configuration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The Cross Trigger Port has no build-time configuration parameters. All
-operational settings are configured at runtime via CSR registers accessed
-through the AXI-Lite interface:</p>
+<p>The CTP has no build-time parameters. All operational settings are
+programmed at runtime through the AXI-Lite CSR interface:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>MODE</strong> - Wire-OR (0) or Point-to-Point (1) mode selection</p>
-</li>
-<li>
-<p><strong>STRETCH_MULT</strong> - 16-bit pulse stretch multiplier for Wire-OR mode</p>
-</li>
-<li>
-<p><strong>INVERT</strong> - Signal polarity inversion for GPIO adaptation</p>
-</li>
-<li>
-<p><strong>RESET</strong> - Handshake state machine reset control</p>
-</li>
-</ul>
+<div class="port-reference-scroll" role="region" aria-label="CTP configuration registers" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
+<colgroup>
+<col style="width: 28%;">
+<col style="width: 72%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MODE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Select wire-OR (0) or point-to-point (1) signalling.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRETCH_MULT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16-bit pulse stretch multiplier for wire-OR mode.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INVERT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Signal polarity inversion for GPIO adaptation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RESET</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Handshake state machine reset.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="paragraph">
-<p>Refer to the register documentation for detailed CSR field descriptions.</p>
+<p>See the
+<a href="../../cross_trigger_network/doc/index.html#ctn-memory-map" class="xref page">CTN Memory Map</a>
+for the full CTP register layout and field descriptions. The CTN decodes the
+AXI-Lite CSR window and presents each CTP&#8217;s registers at a 16-byte stride
+starting at offset 0x0200.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="ctp-architecture"><a class="anchor" href="#ctp-architecture"></a><a class="link" href="#ctp-architecture">1.3. Architecture</a></h4>
-<div class="paragraph">
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">3. Architecture</a></h2>
+<div class="sectionbody">
+<div id="ctp-architecture" class="paragraph">
 <p>The Cross Trigger Port architecture separates the register interface from core
 logic to enable reuse. The full <code>cross_trigger_port</code> module includes CSRs for
 runtime configuration, while the <code>cross_trigger_port_core</code> module provides the
@@ -276,16 +305,17 @@ cross-trigger connections without AXI-Lite overhead.</p>
 <img src="../../_images/ctp_module_diagram.png" alt="CTP Module Diagram">
 </div>
 </div>
-<div class="sect4">
-<h5 id="submodule-hierarchy"><a class="anchor" href="#submodule-hierarchy"></a><a class="link" href="#submodule-hierarchy">Submodule Hierarchy</a></h5>
+<div class="sect2">
+<h3 id="submodule-hierarchy"><a class="anchor" href="#submodule-hierarchy"></a><a class="link" href="#submodule-hierarchy">3.1. Submodule Hierarchy</a></h3>
 <div class="paragraph">
 <p>The CTP core instantiates four specialized submodules for different aspects of
 cross-trigger operation:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="CTP submodule hierarchy" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 34%;">
+<col style="width: 66%;">
 </colgroup>
 <thead>
 <tr>
@@ -313,8 +343,9 @@ cross-trigger operation:</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="wire-or-mode"><a class="anchor" href="#wire-or-mode"></a><a class="link" href="#wire-or-mode">Wire-OR Mode</a></h5>
+</div>
+<div class="sect2">
+<h3 id="wire-or-mode"><a class="anchor" href="#wire-or-mode"></a><a class="link" href="#wire-or-mode">3.2. Wire-OR Mode</a></h3>
 <div class="paragraph">
 <p>Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
 existing cross triggering implementations. This scheme is very resource
@@ -323,8 +354,8 @@ network. However, the performance of the network decreases as the number of
 connected chiplets increase. Also, the duration of the cross trigger pulse must
 be pre-arranged across all connected chiplets.</p>
 </div>
-<div class="sect5">
-<h6 id="pulse-stretcher-operation"><a class="anchor" href="#pulse-stretcher-operation"></a><a class="link" href="#pulse-stretcher-operation">Pulse Stretcher Operation</a></h6>
+<div class="sect3">
+<h4 id="pulse-stretcher-operation"><a class="anchor" href="#pulse-stretcher-operation"></a><a class="link" href="#pulse-stretcher-operation">3.2.1. Pulse Stretcher Operation</a></h4>
 <div class="paragraph">
 <p>The pulse stretcher extends single-cycle core-side pulses to multi-cycle GPIO
 assertions lasting <code>stretch_mult + 1</code> clock cycles. The module implements a
@@ -370,8 +401,8 @@ in the following example diagram:</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="point-to-point-mode"><a class="anchor" href="#point-to-point-mode"></a><a class="link" href="#point-to-point-mode">Point-to-Point Mode</a></h5>
+<div class="sect2">
+<h3 id="point-to-point-mode"><a class="anchor" href="#point-to-point-mode"></a><a class="link" href="#point-to-point-mode">3.3. Point-to-Point Mode</a></h3>
 <div class="paragraph">
 <p>Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a
 cross trigger quickly and reliably between two chiplets without pulse
@@ -413,19 +444,20 @@ same sequence.</p>
 <img src="../../_images/p2p_timing_diagram.svg" alt="Point-to-Point Request/Acknowledge Timing">
 </div>
 </div>
-<div class="sect5">
-<h6 id="synchronization-and-cdc-handling"><a class="anchor" href="#synchronization-and-cdc-handling"></a><a class="link" href="#synchronization-and-cdc-handling">Synchronization and CDC Handling</a></h6>
+<div class="sect3">
+<h4 id="synchronization-and-cdc-handling"><a class="anchor" href="#synchronization-and-cdc-handling"></a><a class="link" href="#synchronization-and-cdc-handling">3.3.1. Synchronization and CDC Handling</a></h4>
 <div class="paragraph">
 <p>All GPIO input signals are asynchronous with respect to the CTP system clock and
 require synchronization to prevent metastability. The <code>ctp_synchronizer</code> module
 implements three independent 2-FF synchronizer chains using the
 <code>prim_flop_2sync</code> primitive:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="CTP signal synchronization" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 35%;">
-<col style="width: 30%;">
-<col style="width: 35%;">
+<col style="width: 28%;">
+<col style="width: 20%;">
+<col style="width: 52%;">
 </colgroup>
 <thead>
 <tr>
@@ -452,6 +484,7 @@ implements three independent 2-FF synchronizer chains using the
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>After synchronization, an optional inversion is applied if the <code>INVERT</code>
 configuration bit is set. This allows adaptation to GPIO pads with different
@@ -460,8 +493,8 @@ synchronized (and optionally inverted) signals, ensuring all CTP core logic
 operates on glitch-free inputs.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="handshake-state-machines"><a class="anchor" href="#handshake-state-machines"></a><a class="link" href="#handshake-state-machines">Handshake State Machines</a></h6>
+<div class="sect3">
+<h4 id="handshake-state-machines"><a class="anchor" href="#handshake-state-machines"></a><a class="link" href="#handshake-state-machines">3.3.2. Handshake State Machines</a></h4>
 <div class="paragraph">
 <p>Point-to-point mode implements two independent state machines within the
 <code>ctp_handshake_ctrl</code> module, enabling full-duplex cross-triggering. The sender
@@ -472,12 +505,13 @@ the system clock domain on synchronized GPIO inputs.</p>
 <div class="paragraph">
 <p><strong>Sender State Machine:</strong></p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="CTP sender state transitions" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
+<col style="width: 28%;">
+<col style="width: 22%;">
+<col style="width: 28%;">
+<col style="width: 22%;">
 </colgroup>
 <thead>
 <tr>
@@ -514,15 +548,17 @@ the system clock domain on synchronized GPIO inputs.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p><strong>Receiver State Machine:</strong></p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="CTP receiver state transitions" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
+<col style="width: 27%;">
 <col style="width: 20%;">
+<col style="width: 27%;">
+<col style="width: 26%;">
 </colgroup>
 <thead>
 <tr>
@@ -559,6 +595,7 @@ the system clock domain on synchronized GPIO inputs.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>The <code>ct_dst</code> output pulse is generated for a single clock cycle when the
 receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is
@@ -568,15 +605,18 @@ active cross-trigger transfer.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="ctp-interface"><a class="anchor" href="#ctp-interface"></a><a class="link" href="#ctp-interface">1.4. Interface</a></h4>
-<div class="sect4">
-<h5 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">Signal Interface</a></h5>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect1">
+<h2 id="interface"><a class="anchor" href="#interface"></a><a class="link" href="#interface">4. Interface</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="ctp-interface"><a class="anchor" href="#ctp-interface"></a><a class="link" href="#ctp-interface">4.1. Signal Interface</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="CTP signal interface" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference">
 <colgroup>
-<col style="width: 34%;">
-<col style="width: 33%;">
-<col style="width: 33%;">
+<col style="width: 30%;">
+<col style="width: 12%;">
+<col style="width: 58%;">
 </colgroup>
 <thead>
 <tr>
@@ -669,8 +709,9 @@ active cross-trigger transfer.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">Dependencies</a></h5>
+</div>
+<div class="sect2">
+<h3 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">4.2. Dependencies</a></h3>
 <div class="paragraph">
 <p>The CTP depends on the following components:</p>
 </div>
@@ -705,6 +746,8 @@ active cross-trigger transfer.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

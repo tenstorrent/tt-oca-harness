@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Zeroer :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC hardware-assisted memory clearing architecture and operation.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -109,13 +111,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -123,7 +123,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -131,7 +130,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -139,7 +137,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -147,7 +144,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -155,7 +151,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -172,6 +167,10 @@
 <button class="nav-toggle"></button>
   <a href="../index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="zeroer.html">Zeroer</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -179,9 +178,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="memory-zeroer"><a class="anchor" href="#memory-zeroer"></a><a class="link" href="#memory-zeroer">Zeroer</a></h3>
-<div class="paragraph">
+<h1 class="page">Zeroer</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="memory-zeroer" class="paragraph">
 <p>The SMC Memory Zeroer efficiently initializes large memory regions to
 zero without CPU intervention. The unit uses a state machine-based
 architecture with dual clock domains.</p>
@@ -221,8 +221,11 @@ architecture with dual clock domains.</p>
 </tr>
 </tbody>
 </table>
-<div class="sect3">
-<h4 id="use-cases"><a class="anchor" href="#use-cases"></a><a class="link" href="#use-cases">Use Cases</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="use-cases"><a class="anchor" href="#use-cases"></a><a class="link" href="#use-cases">Use Cases</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
@@ -241,10 +244,12 @@ sequences</p>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">Architecture</a></h4>
-<div class="sect4">
-<h5 id="state-machine"><a class="anchor" href="#state-machine"></a><a class="link" href="#state-machine">State Machine</a></h5>
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">Architecture</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="state-machine"><a class="anchor" href="#state-machine"></a><a class="link" href="#state-machine">State Machine</a></h3>
 <div class="paragraph">
 <p>The zeroer implements a three-state operation model:</p>
 </div>
@@ -276,8 +281,8 @@ sequences</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="operation-flow"><a class="anchor" href="#operation-flow"></a><a class="link" href="#operation-flow">Operation Flow</a></h5>
+<div class="sect2">
+<h3 id="operation-flow"><a class="anchor" href="#operation-flow"></a><a class="link" href="#operation-flow">Operation Flow</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -302,8 +307,8 @@ optional interrupt</p>
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="axi-master-interface"><a class="anchor" href="#axi-master-interface"></a><a class="link" href="#axi-master-interface">AXI Master Interface</a></h5>
+<div class="sect2">
+<h3 id="axi-master-interface"><a class="anchor" href="#axi-master-interface"></a><a class="link" href="#axi-master-interface">AXI Master Interface</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. AXI4 Master Characteristics</caption>
 <colgroup>
@@ -352,8 +357,8 @@ optional interrupt</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="outstanding-transaction-management"><a class="anchor" href="#outstanding-transaction-management"></a><a class="link" href="#outstanding-transaction-management">Outstanding Transaction Management</a></h5>
+<div class="sect2">
+<h3 id="outstanding-transaction-management"><a class="anchor" href="#outstanding-transaction-management"></a><a class="link" href="#outstanding-transaction-management">Outstanding Transaction Management</a></h3>
 <div class="paragraph">
 <p>The zeroer efficiently manages outstanding AXI transactions using a
 32-bit counter to track in-flight writes. When the number of pending
@@ -370,15 +375,15 @@ zeroer achieves high parallelism and optimal memory bandwidth
 utilization.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="dual-clock-domain-architecture"><a class="anchor" href="#dual-clock-domain-architecture"></a><a class="link" href="#dual-clock-domain-architecture">Dual Clock Domain Architecture</a></h5>
+<div class="sect2">
+<h3 id="dual-clock-domain-architecture"><a class="anchor" href="#dual-clock-domain-architecture"></a><a class="link" href="#dual-clock-domain-architecture">Dual Clock Domain Architecture</a></h3>
 <div class="paragraph">
 <p>The zeroer implements dual clock domain operation for power management
 and interface isolation.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">Clock Domains</a></h5>
+<div class="sect2">
+<h3 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">Clock Domains</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. Clock Domain Characteristics</caption>
 <colgroup>
@@ -405,8 +410,8 @@ independent of AXI activity</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">Clock Gating</a></h5>
+<div class="sect2">
+<h3 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">Clock Gating</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 5. Clock Gating Control</caption>
 <colgroup>
@@ -443,10 +448,10 @@ independent of AXI activity</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="control-and-status"><a class="anchor" href="#control-and-status"></a><a class="link" href="#control-and-status">Control and Status</a></h5>
-<div class="sect5">
-<h6 id="operation-control"><a class="anchor" href="#operation-control"></a><a class="link" href="#operation-control">Operation Control</a></h6>
+<div class="sect2">
+<h3 id="control-and-status"><a class="anchor" href="#control-and-status"></a><a class="link" href="#control-and-status">Control and Status</a></h3>
+<div class="sect3">
+<h4 id="operation-control"><a class="anchor" href="#operation-control"></a><a class="link" href="#operation-control">Operation Control</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 6. Configuration and Control</caption>
 <colgroup>
@@ -483,8 +488,8 @@ independent of AXI activity</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="status-features"><a class="anchor" href="#status-features"></a><a class="link" href="#status-features">Status Features</a></h6>
+<div class="sect3">
+<h4 id="status-features"><a class="anchor" href="#status-features"></a><a class="link" href="#status-features">Status Features</a></h4>
 <div class="ulist">
 <ul>
 <li>
@@ -504,8 +509,10 @@ independent of AXI activity</p></td>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="operation-details"><a class="anchor" href="#operation-details"></a><a class="link" href="#operation-details">Operation Details</a></h4>
+</div>
+<div class="sect1">
+<h2 id="operation-details"><a class="anchor" href="#operation-details"></a><a class="link" href="#operation-details">Operation Details</a></h2>
+<div class="sectionbody">
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 7. Data Generation and Control</caption>
 <colgroup>
@@ -547,8 +554,10 @@ unaligned addresses</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h4>
+</div>
+<div class="sect1">
+<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h2>
+<div class="sectionbody">
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -608,6 +617,8 @@ unaligned addresses</p></td>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

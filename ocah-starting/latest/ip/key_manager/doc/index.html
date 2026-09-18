@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Key Manager (KM) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -133,13 +134,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -147,7 +146,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -155,7 +153,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -163,7 +160,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -171,7 +167,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -179,7 +174,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -196,6 +190,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></li>
+    <li><a href="index.html">Key Manager (KM)</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -203,8 +201,9 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="key-manager-km-key-manager-km"><a class="anchor" href="#key-manager-km-key-manager-km"></a><a class="link" href="#key-manager-km-key-manager-km">1. Key Manager (KM)</a></h4>
+<h1 class="page">Key Manager (KM)</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM module aims to support a superset of the
 <a href="https://opentitan.org/book/hw/ip/keymgr/index.html">OpenTitan Key
@@ -320,14 +319,17 @@ fault: the KM notifies the SEP host and halts (see
 <img src="../../_images/SEP_Key_Manager.png" alt="SEP_Key_Manager">
 </div>
 </div>
-<div class="sect4">
-<h5 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">Parameters</a></h5>
+</div>
+</div>
+<div class="sect1">
+<h2 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1. Parameters</a></h2>
+<div class="sectionbody">
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 45%;">
+<col style="width: 30%;">
+<col style="width: 18%;">
+<col style="width: 10%;">
+<col style="width: 42%;">
 </colgroup>
 <thead>
 <tr>
@@ -365,8 +367,10 @@ fault: the KM notifies the SEP host and halts (see
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h5>
+</div>
+<div class="sect1">
+<h2 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">2. Memory Map</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.</p>
 </div>
@@ -375,8 +379,8 @@ fault: the KM notifies the SEP host and halts (see
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
+<col style="width: 32%;">
+<col style="width: 18%;">
 <col style="width: 50%;">
 </colgroup>
 <thead>
@@ -455,8 +459,10 @@ fault: the KM notifies the SEP host and halts (see
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="reset-conditioning"><a class="anchor" href="#reset-conditioning"></a><a class="link" href="#reset-conditioning">Reset Conditioning</a></h5>
+</div>
+<div class="sect1">
+<h2 id="reset-conditioning"><a class="anchor" href="#reset-conditioning"></a><a class="link" href="#reset-conditioning">3. Reset Conditioning</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM exposes two independent external reset inputs that map to two
 distinct reset domains. This split allows the SEP host to recover the KM
@@ -465,10 +471,10 @@ forcing a full power-on style reset of the subsystem.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 50%;">
+<col style="width: 22%;">
+<col style="width: 16%;">
+<col style="width: 22%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
@@ -559,8 +565,8 @@ is asserted.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 75%;">
+<col style="width: 30%;">
+<col style="width: 70%;">
 </colgroup>
 <thead>
 <tr>
@@ -777,11 +783,11 @@ unallocated.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
+<col style="width: 22%;">
+<col style="width: 22%;">
+<col style="width: 8%;">
+<col style="width: 14%;">
+<col style="width: 34%;">
 </colgroup>
 <thead>
 <tr>
@@ -918,8 +924,10 @@ data structure as described below.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="adams-bridge-key-sideload"><a class="anchor" href="#adams-bridge-key-sideload"></a><a class="link" href="#adams-bridge-key-sideload">Adams Bridge Key Sideload Interfaces</a></h5>
+</div>
+<div class="sect1">
+<h2 id="adams-bridge-key-sideload"><a class="anchor" href="#adams-bridge-key-sideload"></a><a class="link" href="#adams-bridge-key-sideload">4. Adams Bridge Key Sideload Interfaces</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM provides dedicated sideload interfaces to the Adams Bridge (ABR)
 post-quantum engine, exposed as a single AXI4-Lite register block mapped at
@@ -932,9 +940,9 @@ KM side-loads into ABR:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 32%;">
-<col style="width: 10%;">
-<col style="width: 58%;">
+<col style="width: 30%;">
+<col style="width: 15%;">
+<col style="width: 55%;">
 </colgroup>
 <thead>
 <tr>
@@ -1003,8 +1011,10 @@ KPV slot in response to a SEP <code>CMD_ABR_SK_TRANSFER</code> command (see the 
 documentation).</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="key-manager-cpu-interrupt-processing"><a class="anchor" href="#key-manager-cpu-interrupt-processing"></a><a class="link" href="#key-manager-cpu-interrupt-processing">Key Manager CPU Interrupt Processing</a></h5>
+</div>
+<div class="sect1">
+<h2 id="key-manager-cpu-interrupt-processing"><a class="anchor" href="#key-manager-cpu-interrupt-processing"></a><a class="link" href="#key-manager-cpu-interrupt-processing">5. Key Manager CPU Interrupt Processing</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM receives interrupts from the KM Management CSR register block.
 The register block collects error and information status from the
@@ -1054,8 +1064,10 @@ All event signals can also be triggered by a parallel software interrupt
 register to enable testing of interrupt service routines (ISR).</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="key-and-policy-vault-kpv"><a class="anchor" href="#key-and-policy-vault-kpv"></a><a class="link" href="#key-and-policy-vault-kpv">Key and Policy Vault (KPV)</a></h5>
+</div>
+<div class="sect1">
+<h2 id="key-and-policy-vault-kpv"><a class="anchor" href="#key-and-policy-vault-kpv"></a><a class="link" href="#key-and-policy-vault-kpv">6. Key and Policy Vault (KPV)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Key and Policy Vault (KPV) is a custom implementation with a
 single-port AXI4-Lite interface for full read/write access by KM
@@ -1197,8 +1209,10 @@ power up with random (undefined) values for security. The implementation
 must not connect reset to key entry storage flops.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="kpv-scrambling"><a class="anchor" href="#kpv-scrambling"></a><a class="link" href="#kpv-scrambling">KPV Scrambling</a></h5>
+</div>
+<div class="sect1">
+<h2 id="kpv-scrambling"><a class="anchor" href="#kpv-scrambling"></a><a class="link" href="#kpv-scrambling">7. KPV Scrambling</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KPV supports address and data scrambling during normal operation for
 all key entry data reads and writes, using the same PRESENT-based
@@ -1233,8 +1247,10 @@ and lock) resets to 0. On an emergency wipe (rising edge of
 control registers, and the KPV scrambler key and control registers.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="wipe-state"><a class="anchor" href="#wipe-state"></a><a class="link" href="#wipe-state">Wipe State</a></h5>
+</div>
+<div class="sect1">
+<h2 id="wipe-state"><a class="anchor" href="#wipe-state"></a><a class="link" href="#wipe-state">8. Wipe State</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM has a <em>wipe_state</em> control input for emergency wipe. The
 <em>wipe_state</em> signal must be held high for at least one complete KM clock
@@ -1260,8 +1276,10 @@ the register itself. The emergency wipe is software-initiated only: no
 hardware tamper or alarm source asserts <em>wipe_state</em>.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-scan-and-scan-dump-protection"><a class="anchor" href="#km-scan-and-scan-dump-protection"></a><a class="link" href="#km-scan-and-scan-dump-protection">Scan and Scan-Dump Protection</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-scan-and-scan-dump-protection"><a class="anchor" href="#km-scan-and-scan-dump-protection"></a><a class="link" href="#km-scan-and-scan-dump-protection">9. Scan and Scan-Dump Protection</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>For simplicity, the <strong>entire</strong> KM&#8201;&#8212;&#8201;every register and downstream logic block,
 including the KPV, KMCSR, mailbox, and DRBG sampler&#8201;&#8212;&#8201;is treated
@@ -1326,8 +1344,10 @@ cannot retain runtime secrets.</p>
 secret-bearing scan chain.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="remote-attestation-support-in-kpv-and-pcrv"><a class="anchor" href="#remote-attestation-support-in-kpv-and-pcrv"></a><a class="link" href="#remote-attestation-support-in-kpv-and-pcrv">Remote Attestation Support in KPV and PCRV</a></h5>
+</div>
+<div class="sect1">
+<h2 id="remote-attestation-support-in-kpv-and-pcrv"><a class="anchor" href="#remote-attestation-support-in-kpv-and-pcrv"></a><a class="link" href="#remote-attestation-support-in-kpv-and-pcrv">10. Remote Attestation Support in KPV and PCRV</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>This section describes facilities to support TPM 2.0 attestation. Here
 are the basic constraints and procedures:</p>
@@ -1365,8 +1385,10 @@ firmware. Once the entries are in place, the KM can read them and derive
 further keys, populating other KPV slots with the KDF results.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="pk-key-generation-support"><a class="anchor" href="#pk-key-generation-support"></a><a class="link" href="#pk-key-generation-support">PK Key Generation support</a></h5>
+</div>
+<div class="sect1">
+<h2 id="pk-key-generation-support"><a class="anchor" href="#pk-key-generation-support"></a><a class="link" href="#pk-key-generation-support">11. PK Key Generation support</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>KM must be able to generate a public-private key pair during device test
 and provisioning manufacturing steps. RSA is a complicated process as
@@ -1380,8 +1402,10 @@ and the public key is exported. Export is performed through the outbound
 mailbox path.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="key-manager-control-and-status-kmcsr"><a class="anchor" href="#key-manager-control-and-status-kmcsr"></a><a class="link" href="#key-manager-control-and-status-kmcsr">Key Manager Control and Status Registers (KMCSR)</a></h5>
+</div>
+<div class="sect1">
+<h2 id="key-manager-control-and-status-kmcsr"><a class="anchor" href="#key-manager-control-and-status-kmcsr"></a><a class="link" href="#key-manager-control-and-status-kmcsr">12. Key Manager Control and Status Registers (KMCSR)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>This block of 32-bit registers is separate from the Key and Policy
 register block. Its purpose is to manage the configuration and operation
@@ -2061,8 +2085,8 @@ power up with random (undefined) values.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 80%;">
+<col style="width: 25%;">
+<col style="width: 75%;">
 </colgroup>
 <thead>
 <tr>
@@ -2163,9 +2187,9 @@ relationship.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 16.6666%;">
-<col style="width: 50.0001%;">
+<col style="width: 40%;">
+<col style="width: 15%;">
+<col style="width: 45%;">
 </colgroup>
 <thead>
 <tr>
@@ -2575,8 +2599,10 @@ demotion, PCR, and so on). Inclusion is selected per signing operation; only
 inclusion in the signed hash cryptographically attests the configuration.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="crc-accelerator"><a class="anchor" href="#crc-accelerator"></a><a class="link" href="#crc-accelerator">CRC Accelerator</a></h5>
+</div>
+<div class="sect1">
+<h2 id="crc-accelerator"><a class="anchor" href="#crc-accelerator"></a><a class="link" href="#crc-accelerator">13. CRC Accelerator</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM CPU is fitted with a CRC accelerator attached through the PicoRV32
 PCPI (Pico Co-Processor Interface). It provides hardware versions of the
@@ -2596,11 +2622,11 @@ updated chaining state to <code>rd</code>.</p>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. CRC Accelerator Instructions</caption>
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 10%;">
+<col style="width: 28%;">
+<col style="width: 17%;">
 <col style="width: 12%;">
-<col style="width: 12%;">
-<col style="width: 36%;">
+<col style="width: 14%;">
+<col style="width: 29%;">
 </colgroup>
 <thead>
 <tr>
@@ -2685,8 +2711,10 @@ the PicoRV32 built-in multiply/divide support remains enabled and
 unchanged.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="key-manager-rom-code"><a class="anchor" href="#key-manager-rom-code"></a><a class="link" href="#key-manager-rom-code">Key Manager ROM Code</a></h5>
+</div>
+<div class="sect1">
+<h2 id="key-manager-rom-code"><a class="anchor" href="#key-manager-rom-code"></a><a class="link" href="#key-manager-rom-code">14. Key Manager ROM Code</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM ROM will be as minimal as possible and support just a few
 functions described next. Any other functions will be loaded dynamically
@@ -2793,8 +2821,10 @@ not tied to a configuration; they are used where a unique secret — not a
 deterministic derivation — is needed.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="rom-and-sram-error-detection"><a class="anchor" href="#rom-and-sram-error-detection"></a><a class="link" href="#rom-and-sram-error-detection">ROM and SRAM Error Detection</a></h5>
+</div>
+<div class="sect1">
+<h2 id="rom-and-sram-error-detection"><a class="anchor" href="#rom-and-sram-error-detection"></a><a class="link" href="#rom-and-sram-error-detection">15. ROM and SRAM Error Detection</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Data will be stored with byte-wise odd parity. This feature cannot be
 turned off, but the interrupt mask register can disable this event from
@@ -2802,8 +2832,10 @@ propagating up the interrupt tree to the KM CPU as well as to the
 external error event signal output.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="parity-error-protection"><a class="anchor" href="#parity-error-protection"></a><a class="link" href="#parity-error-protection">Parity Error Protection</a></h5>
+</div>
+<div class="sect1">
+<h2 id="parity-error-protection"><a class="anchor" href="#parity-error-protection"></a><a class="link" href="#parity-error-protection">16. Parity Error Protection</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Parity bits will be ``out-of-band'' from the data and hence not part of
 the scrambled word. The motivation for this is to minimize any data path
@@ -2812,8 +2844,10 @@ descrambling. Parity is on a byte-wise basis so will add an additional 4
 bits next to the 32-bit data word.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sram-write-locking"><a class="anchor" href="#sram-write-locking"></a><a class="link" href="#sram-write-locking">SRAM Write Locking</a></h5>
+</div>
+<div class="sect1">
+<h2 id="sram-write-locking"><a class="anchor" href="#sram-write-locking"></a><a class="link" href="#sram-write-locking">17. SRAM Write Locking</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SRAM interface incorporates a write-locking mechanism to designate
 specific 1 KB memory regions as read-only; 32 regions cover the whole 32 KB
@@ -2836,8 +2870,10 @@ the KM CPU always re-enters ROM after a warm reset, mutable firmware never
 executes against an unlocked SRAM region.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="rom-warm-persist-region"><a class="anchor" href="#rom-warm-persist-region"></a><a class="link" href="#rom-warm-persist-region">ROM Warm-Persistent SRAM Region</a></h5>
+</div>
+<div class="sect1">
+<h2 id="rom-warm-persist-region"><a class="anchor" href="#rom-warm-persist-region"></a><a class="link" href="#rom-warm-persist-region">18. ROM Warm-Persistent SRAM Region</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The highest 1 KB of KM SRAM (region 31, <code>0x0000_FC00</code>–<code>0x0000_FFFF</code>) are
 reserved as a ROM-managed warm-persistent data structure (<code>rom_persist</code>). The
@@ -2896,8 +2932,10 @@ is cleared on the next warm or cold reset; ROM re-establishes it
 before transferring control to mutable code.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="mutable-firmware-model"><a class="anchor" href="#mutable-firmware-model"></a><a class="link" href="#mutable-firmware-model">Mutable Firmware Model</a></h5>
+</div>
+<div class="sect1">
+<h2 id="mutable-firmware-model"><a class="anchor" href="#mutable-firmware-model"></a><a class="link" href="#mutable-firmware-model">19. Mutable Firmware Model</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM ROM supports loading and executing a mutable software image from SRAM,
 controlled by the <code>CMD_SRAM_LOAD_EXEC</code> and <code>CMD_SRAM_EXEC</code> mailbox commands.</p>
@@ -3006,8 +3044,10 @@ whole-SRAM scramble writing into locked firmware regions).</p>
 <p><a href="../../scrambler/doc/index.html" class="xref page">Scrambler</a></p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="key-manager-km-firmware"><a class="anchor" href="#key-manager-km-firmware"></a><a class="link" href="#key-manager-km-firmware">Key Manager (KM) Firmware</a></h5>
+</div>
+<div class="sect1">
+<h2 id="key-manager-km-firmware"><a class="anchor" href="#key-manager-km-firmware"></a><a class="link" href="#key-manager-km-firmware">20. Key Manager (KM) Firmware</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>This section is the developer reference for the KM ROM firmware that runs
 on the PicoRV32 and services SEP requests. It documents the SEP-facing
@@ -3075,16 +3115,20 @@ because the ROM hands control to the mutable firmware before returning,
 <code>CMD_SRAM_VER</code> is only meaningful when sent to running mutable firmware.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-global-parameters"><a class="anchor" href="#km-firmware-global-parameters"></a><a class="link" href="#km-firmware-global-parameters">Firmware Global Parameters</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-global-parameters"><a class="anchor" href="#km-firmware-global-parameters"></a><a class="link" href="#km-firmware-global-parameters">21. Firmware Global Parameters</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p><code>SHRED_ITER</code> indicates the number of extra overwrite passes used during
 shred operations. Any shred sequence therefore performs <code>SHRED_ITER + 1</code>
 total passes.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-command-message-reference"><a class="anchor" href="#km-firmware-command-message-reference"></a><a class="link" href="#km-firmware-command-message-reference">Command Message Reference</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-command-message-reference"><a class="anchor" href="#km-firmware-command-message-reference"></a><a class="link" href="#km-firmware-command-message-reference">22. Command Message Reference</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SEP communicates with the KM through a framed command/response
 protocol carried over the mailbox FIFOs. Every direct SEP command elicits
@@ -3101,103 +3145,23 @@ decoding, payload-length checking, and payload CRC checking all occur
 before a command handler is allowed to act on the payload.</p>
 </div>
 <div class="paragraph">
+<p>Packet diagrams show each 32-bit word from bit 31 (most significant) on the
+left to bit 0 (least significant) on the right. Field widths are proportional
+to their bit counts; reserved fields are shaded grey. Word offsets start at
+zero within the message or payload shown. In the message layouts, <code>n</code> is
+<code>PAYLOAD_LEN</code>.</p>
+</div>
+<div class="paragraph">
 <p>All command messages use the following container format.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_command_message.svg" alt="Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: COMMAND_ID; bits 7 to 0: CMD_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32." width="544">
+</div>
+<div class="title">Figure 1. Command Message</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Command Message</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>HEADER_CRC8[31:24]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>PAYLOAD_LEN[23:16]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>COMMAND_ID[15:8]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>CMD_SEQ_NUM[7:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>PAYLOAD_WORD[0][31:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>&#8230;&#8203;</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>PAYLOAD_WORD[n-1][31:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>PAYLOAD_CRC32[31:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Message Field Description</caption>
+<caption class="title">Table 2. Message Field Description</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 78%;">
@@ -3239,11 +3203,11 @@ before a command handler is allowed to act on the payload.</p>
 <p>The rest of this section describes all valid commands and their payloads.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. KM Command Summary</caption>
+<caption class="title">Table 3. KM Command Summary</caption>
 <colgroup>
-<col style="width: 15%;">
+<col style="width: 10%;">
 <col style="width: 40%;">
-<col style="width: 45%;">
+<col style="width: 50%;">
 </colgroup>
 <thead>
 <tr>
@@ -3330,8 +3294,8 @@ before a command handler is allowed to act on the payload.</p>
 </tr>
 </tbody>
 </table>
-<div class="sect5">
-<h6 id="km-cmd-hw-ver"><a class="anchor" href="#km-cmd-hw-ver"></a><a class="link" href="#km-cmd-hw-ver">0x00 - CMD_HW_VER</a></h6>
+<div class="sect2">
+<h3 id="km-cmd-hw-ver"><a class="anchor" href="#km-cmd-hw-ver"></a><a class="link" href="#km-cmd-hw-ver">22.1. 0x00 - CMD_HW_VER</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3351,90 +3315,15 @@ before a command handler is allowed to act on the payload.</p>
 <p>This command has a <code>RESP_CMD</code> response with a return code of <em>success</em>,
 and a return argument containing the version of the hardware.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>HW_MAJOR_REV[23:16]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>HW_MINOR_REV[15:8]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>HW_PATCH_REV[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_hw_version.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: HW_MAJOR_REV; bits 15 to 8: HW_MINOR_REV; bits 7 to 0: HW_PATCH_REV." width="544">
 </div>
-<div class="sect5">
-<h6 id="km-cmd-rom-ver"><a class="anchor" href="#km-cmd-rom-ver"></a><a class="link" href="#km-cmd-rom-ver">0x01 - CMD_ROM_VER</a></h6>
+<div class="title">Figure 2. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="km-cmd-rom-ver"><a class="anchor" href="#km-cmd-rom-ver"></a><a class="link" href="#km-cmd-rom-ver">22.2. 0x01 - CMD_ROM_VER</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3454,90 +3343,15 @@ and a return argument containing the version of the hardware.</p>
 <p>This command has a <code>RESP_CMD</code> response with a return code of <em>success</em>,
 and a return argument containing the version of the ROM firmware.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>ROM_MAJOR_REV[23:16]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>ROM_MINOR_REV[15:8]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>ROM_PATCH_REV[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_rom_version.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: ROM_MAJOR_REV; bits 15 to 8: ROM_MINOR_REV; bits 7 to 0: ROM_PATCH_REV." width="544">
 </div>
-<div class="sect5">
-<h6 id="km-cmd-sram-ver"><a class="anchor" href="#km-cmd-sram-ver"></a><a class="link" href="#km-cmd-sram-ver">0x02 - CMD_SRAM_VER</a></h6>
+<div class="title">Figure 3. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="km-cmd-sram-ver"><a class="anchor" href="#km-cmd-sram-ver"></a><a class="link" href="#km-cmd-sram-ver">22.3. 0x02 - CMD_SRAM_VER</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3570,90 +3384,15 @@ a return code of <em>failure</em>, and no return argument.</p>
 response with a return code of <em>success</em>, and a return argument
 containing the version of the SRAM firmware.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>SRAM_MAJOR_REV[23:16]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>SRAM_MINOR_REV[15:8]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>SRAM_PATCH_REV[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_sram_version.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: SRAM_MAJOR_REV; bits 15 to 8: SRAM_MINOR_REV; bits 7 to 0: SRAM_PATCH_REV." width="544">
 </div>
-<div class="sect5">
-<h6 id="km-cmd-stat"><a class="anchor" href="#km-cmd-stat"></a><a class="link" href="#km-cmd-stat">0x03 - CMD_STAT</a></h6>
+<div class="title">Figure 4. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="km-cmd-stat"><a class="anchor" href="#km-cmd-stat"></a><a class="link" href="#km-cmd-stat">22.4. 0x03 - CMD_STAT</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3673,86 +3412,14 @@ containing the version of the SRAM firmware.</p>
 <p>This command has a <code>RESP_CMD</code> response with a return code of <em>success</em>,
 and a return argument containing the KM status information.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_status.svg" alt="Word 0: bits 31 to 0: KM_STATUS." width="544">
+</div>
+<div class="title">Figure 5. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>KM_STATUS[31:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. KM_STATUS Payload</caption>
+<caption class="title">Table 4. KM_STATUS Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3779,8 +3446,8 @@ and a return argument containing the KM status information.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="km-cmd-recov-ack"><a class="anchor" href="#km-cmd-recov-ack"></a><a class="link" href="#km-cmd-recov-ack">0x04 - CMD_RECOV_ACK</a></h6>
+<div class="sect2">
+<h3 id="km-cmd-recov-ack"><a class="anchor" href="#km-cmd-recov-ack"></a><a class="link" href="#km-cmd-recov-ack">22.5. 0x04 - CMD_RECOV_ACK</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3802,8 +3469,8 @@ and a return argument containing the KM status information.</p>
 and no return argument.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-cmd-exec-rom"><a class="anchor" href="#km-cmd-exec-rom"></a><a class="link" href="#km-cmd-exec-rom">0x10 - CMD_EXEC_ROM</a></h6>
+<div class="sect2">
+<h3 id="km-cmd-exec-rom"><a class="anchor" href="#km-cmd-exec-rom"></a><a class="link" href="#km-cmd-exec-rom">22.6. 0x10 - CMD_EXEC_ROM</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3829,8 +3496,8 @@ first call, or <em>failure</em> if a handover command has already been issued in
 this epoch (including a prior <code>CMD_EXEC_ROM</code>).</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-cmd-sram-load-exec"><a class="anchor" href="#km-cmd-sram-load-exec"></a><a class="link" href="#km-cmd-sram-load-exec">0x11 - CMD_SRAM_LOAD_EXEC</a></h6>
+<div class="sect2">
+<h3 id="km-cmd-sram-load-exec"><a class="anchor" href="#km-cmd-sram-load-exec"></a><a class="link" href="#km-cmd-sram-load-exec">22.7. 0x11 - CMD_SRAM_LOAD_EXEC</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3921,87 +3588,14 @@ This ordering is required because the assembly wipes the C stack.</p>
 <div class="paragraph">
 <p><strong>Payload</strong></p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_sram_load_exec.svg" alt="Word 0: bits 31 to 16: RESERVED; bits 15 to 0: FW_WORDS." width="544">
+</div>
+<div class="title">Figure 6. CMD_SRAM_LOAD_EXEC Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. CMD_SRAM_LOAD_EXEC Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="16"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="16"><p class="tableblock"><code>FW_WORDS[15:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. CMD_SRAM_LOAD_EXEC Payload Fields</caption>
+<caption class="title">Table 5. CMD_SRAM_LOAD_EXEC Payload Fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4035,7 +3629,7 @@ This ordering is required because the assembly wipes the C stack.</p>
 mailbox frame with the following structure:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. CMD_SRAM_LOAD_EXEC Image Frame (sent by SEP after confirmation)</caption>
+<caption class="title">Table 6. CMD_SRAM_LOAD_EXEC Image Frame (sent by SEP after confirmation)</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -4072,8 +3666,8 @@ or image exceeds the stack guard region), a <code>RESP_CMD</code> error response
 sent by the normal dispatcher path.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-cmd-sram-exec"><a class="anchor" href="#km-cmd-sram-exec"></a><a class="link" href="#km-cmd-sram-exec">0x12 - CMD_SRAM_EXEC</a></h6>
+<div class="sect2">
+<h3 id="km-cmd-sram-exec"><a class="anchor" href="#km-cmd-sram-exec"></a><a class="link" href="#km-cmd-sram-exec">22.8. 0x12 - CMD_SRAM_EXEC</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4110,8 +3704,8 @@ is responsible for sending its own ready message to the SEP.</p>
 <p>If the handover-disabled flag is set, the command returns <em>failure</em>.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-cmd-key-generate"><a class="anchor" href="#km-cmd-key-generate"></a><a class="link" href="#km-cmd-key-generate">0x22 - CMD_KEY_GENERATE</a></h6>
+<div class="sect2">
+<h3 id="km-cmd-key-generate"><a class="anchor" href="#km-cmd-key-generate"></a><a class="link" href="#km-cmd-key-generate">22.9. 0x22 - CMD_KEY_GENERATE</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4125,91 +3719,14 @@ is responsible for sending its own ready message to the SEP.</p>
 <p>The size of the requested key in multiples of 32-bit words (equal to
 <code>REQ_SIZE+1</code>), as well as the valid destinations for the key.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_generate_payload.svg" alt="Word 0: bits 31 to 7: RESERVED; bits 6 to 0: REQ_SIZE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID." width="544">
+</div>
+<div class="title">Figure 7. Command Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 13. Command Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="25"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="7"><p class="tableblock"><code>REQ_SIZE[6:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_VALID[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 14. DEST_VALID Payload</caption>
+<caption class="title">Table 7. DEST_VALID Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4289,91 +3806,15 @@ of the generated key, including its handle, its size, and its valid
 destinations. The granted size must always be equivalent to the requested
 size.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 15. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_VALID[23:16]</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="7"><p class="tableblock"><code>REQ_SIZE[14:8]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>KEY_HANDLE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_result.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: DEST_VALID; bit 15: RESERVED; bits 14 to 8: REQ_SIZE; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="sect5">
-<h6 id="km-cmd-key-revoke"><a class="anchor" href="#km-cmd-key-revoke"></a><a class="link" href="#km-cmd-key-revoke">0x23 - CMD_KEY_REVOKE</a></h6>
+<div class="title">Figure 8. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="km-cmd-key-revoke"><a class="anchor" href="#km-cmd-key-revoke"></a><a class="link" href="#km-cmd-key-revoke">22.10. 0x23 - CMD_KEY_REVOKE</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4387,85 +3828,12 @@ handle.</p>
 <div class="paragraph">
 <p>The handle for the key to invalidate.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. Command Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>KEY_HANDLE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_handle.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE." width="544">
+</div>
+<div class="title">Figure 9. Command Payload</div>
+</div>
 <div class="paragraph">
 <p><strong>Response</strong></p>
 </div>
@@ -4484,88 +3852,15 @@ argument.</p>
 return code of <em>success</em>, and a return argument containing the handle of
 the revoked key.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>KEY_HANDLE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_handle.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="sect5">
-<h6 id="km-cmd-key-transfer"><a class="anchor" href="#km-cmd-key-transfer"></a><a class="link" href="#km-cmd-key-transfer">0x24 - CMD_KEY_TRANSFER</a></h6>
+<div class="title">Figure 10. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="km-cmd-key-transfer"><a class="anchor" href="#km-cmd-key-transfer"></a><a class="link" href="#km-cmd-key-transfer">22.11. 0x24 - CMD_KEY_TRANSFER</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4582,91 +3877,14 @@ destination-policy bitmask stored for the key handle in the key registry.</p>
 <p>The handle of the key to transfer in the KPV and the bitmask of the
 destination crypto engines.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_transfer_payload.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE." width="544">
+</div>
+<div class="title">Figure 11. Command Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. Command Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>KEY_HANDLE[7:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_ENGINE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. DEST_ENGINE Payload</caption>
+<caption class="title">Table 8. DEST_ENGINE Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4741,88 +3959,14 @@ will result in <em>failure</em> and no requested key transfers will take place.<
 return code of <em>success</em>, and a return argument containing the key handle
 and a bitfield of the crypto engines to which the key was transferred.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_transfer_result.svg" alt="Word 0: bits 31 to 16: RESERVED; bits 15 to 8: DEST_ENGINE; bits 7 to 0: KEY_HANDLE." width="544">
+</div>
+<div class="title">Figure 12. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="16"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_ENGINE[15:8]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>KEY_HANDLE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. DEST_ENGINE Payload</caption>
+<caption class="title">Table 9. DEST_ENGINE Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4879,8 +4023,8 @@ and a bitfield of the crypto engines to which the key was transferred.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="km-cmd-engine-shred"><a class="anchor" href="#km-cmd-engine-shred"></a><a class="link" href="#km-cmd-engine-shred">0x25 - CMD_ENGINE_SHRED</a></h6>
+<div class="sect2">
+<h3 id="km-cmd-engine-shred"><a class="anchor" href="#km-cmd-engine-shred"></a><a class="link" href="#km-cmd-engine-shred">22.12. 0x25 - CMD_ENGINE_SHRED</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4895,87 +4039,14 @@ number of engines may be selected.</p>
 <div class="paragraph">
 <p>A bitfield indicating the crypto engines to purge.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_engine_mask.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE." width="544">
+</div>
+<div class="title">Figure 13. Command Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. Command Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_ENGINE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. DEST_ENGINE Payload</caption>
+<caption class="title">Table 10. DEST_ENGINE Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -5049,87 +4120,14 @@ argument.</p>
 return code of <em>success</em>, and a return argument indicating the crypto
 engines that were purged.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_engine_mask.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE." width="544">
+</div>
+<div class="title">Figure 14. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 24. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_ENGINE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 25. DEST_ENGINE Payload</caption>
+<caption class="title">Table 11. DEST_ENGINE Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -5186,8 +4184,8 @@ engines that were purged.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="km-cmd-key-load"><a class="anchor" href="#km-cmd-key-load"></a><a class="link" href="#km-cmd-key-load">0x26 - CMD_KEY_LOAD</a></h6>
+<div class="sect2">
+<h3 id="km-cmd-key-load"><a class="anchor" href="#km-cmd-key-load"></a><a class="link" href="#km-cmd-key-load">22.13. 0x26 - CMD_KEY_LOAD</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -5203,100 +4201,14 @@ KPV.</p>
 key size is <code>KEY_SIZE+1</code>) and the valid destinations for the key,
 followed by the key material itself.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_load_payload.svg" alt="Word 0: bits 31 to 7: RESERVED; bits 6 to 0: KEY_SIZE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID. Word 2: bits 31 to 0: KEY_DATA[0]. Intermediate words omitted. Word KEY_SIZE + 2: bits 31 to 0: KEY_DATA[KEY_SIZE]." width="544">
+</div>
+<div class="title">Figure 15. Command Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 26. Command Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="25"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="7"><p class="tableblock"><code>KEY_SIZE[6:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_VALID[7:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>KEY_DATA[0][31:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>&#8230;&#8203;</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>KEY_DATA[KEY_SIZE][31:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 27. DEST_VALID Payload</caption>
+<caption class="title">Table 12. DEST_VALID Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -5370,12 +4282,12 @@ The return argument is the fixed header-word index of the offending field
 <code>KEY_DATA</code> position.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 28. CMD_KEY_LOAD Validation Order</caption>
+<caption class="title">Table 13. CMD_KEY_LOAD Validation Order</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 55%;">
-<col style="width: 15%;">
 <col style="width: 20%;">
+<col style="width: 15%;">
 </colgroup>
 <thead>
 <tr>
@@ -5444,91 +4356,15 @@ requested size, and the returned handle is usable by every other
 key-management command with no distinction from a <code>CMD_KEY_GENERATE</code>
 handle.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 29. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_VALID[23:16]</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="7"><p class="tableblock"><code>REQ_SIZE[14:8]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>KEY_HANDLE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_result.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: DEST_VALID; bit 15: RESERVED; bits 14 to 8: REQ_SIZE; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="sect5">
-<h6 id="km-cmd-abr-sk-transfer"><a class="anchor" href="#km-cmd-abr-sk-transfer"></a><a class="link" href="#km-cmd-abr-sk-transfer">0x27 - CMD_ABR_SK_TRANSFER</a></h6>
+<div class="title">Figure 16. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="km-cmd-abr-sk-transfer"><a class="anchor" href="#km-cmd-abr-sk-transfer"></a><a class="link" href="#km-cmd-abr-sk-transfer">22.14. 0x27 - CMD_ABR_SK_TRANSFER</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -5553,87 +4389,14 @@ key-management command.</p>
 <div class="paragraph">
 <p>The valid crypto engine destinations for the captured key.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_destination_mask.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID." width="544">
+</div>
+<div class="title">Figure 17. Command Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 30. Command Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>DEST_VALID[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 31. DEST_VALID Payload</caption>
+<caption class="title">Table 14. DEST_VALID Payload</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -5706,88 +4469,15 @@ response is also returned if the KPV cannot allocate a slot for the key.</p>
 <p>If the request is granted, the command returns <code>RESP_CMD</code> <em>success</em> with a
 return argument containing the handle of the newly stored key.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 32. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>KEY_HANDLE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_key_handle.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="sect5">
-<h6 id="km-cmd-otp-read-lock-cold"><a class="anchor" href="#km-cmd-otp-read-lock-cold"></a><a class="link" href="#km-cmd-otp-read-lock-cold">0x28 - CMD_OTP_READ_LOCK_COLD</a></h6>
+<div class="title">Figure 18. RESP_CMD <em>Success</em> Return Argument</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="km-cmd-otp-read-lock-cold"><a class="anchor" href="#km-cmd-otp-read-lock-cold"></a><a class="link" href="#km-cmd-otp-read-lock-cold">22.15. 0x28 - CMD_OTP_READ_LOCK_COLD</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -5819,95 +4509,14 @@ reserved and must be zero; a non-zero reserved field returns
 word returns <em>invalid_len</em> rather than <em>invalid_arg</em>, because the length
 check precedes any inspection of the argument.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_otp_read_locks.svg" alt="Word 0: bits 31 to 9: RESERVED; bit 8: SsI; bit 7: SiI; bit 6: cI; bit 5: CK; bit 4: SU; bit 3: SiU; bit 2: cU; bit 1: D; bit 0: LC." width="544">
+</div>
+<div class="title">Figure 19. Command Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. Command Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="23"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SsI</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiI</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>cI</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>CK</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SU</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiU</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>cU</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>D</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>LC</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. LOCK_BITS Field Encoding</caption>
+<caption class="title">Table 15. LOCK_BITS Field Encoding</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 20%;">
@@ -5986,190 +4595,24 @@ for the secret UID fields.</p>
 and returns <code>RESP_CMD</code> <em>success</em> with <code>return_arg</code> = the resulting
 <code>OTP_READ_LOCK_COLD</code> register value after the write.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. RESP_CMD <em>Success</em> Return Argument</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="23"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SsI</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiI</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>cI</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>CK</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SU</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiU</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>cU</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>D</code></p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>LC</code></p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_otp_read_locks.svg" alt="Word 0: bits 31 to 9: RESERVED; bit 8: SsI; bit 7: SiI; bit 6: cI; bit 5: CK; bit 4: SU; bit 3: SiU; bit 2: cU; bit 1: D; bit 0: LC." width="544">
+</div>
+<div class="title">Figure 20. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-response-message-reference"><a class="anchor" href="#km-firmware-response-message-reference"></a><a class="link" href="#km-firmware-response-message-reference">Response Message Reference</a></h5>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. Response Message</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>HEADER_CRC8[31:24]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>PAYLOAD_LEN[23:16]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>RESPONSE_ID[15:8]</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>RESP_SEQ_NUM[7:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>PAYLOAD_WORD[0][31:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>&#8230;&#8203;</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>PAYLOAD_WORD[n-1][31:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>PAYLOAD_CRC32[31:0]</code></p></td>
-</tr>
-</tbody>
-</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-response-message-reference"><a class="anchor" href="#km-firmware-response-message-reference"></a><a class="link" href="#km-firmware-response-message-reference">23. Response Message Reference</a></h2>
+<div class="sectionbody">
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_response_message.svg" alt="Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: RESPONSE_ID; bits 7 to 0: RESP_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32." width="544">
+</div>
+<div class="title">Figure 21. Response Message</div>
+</div>
 <div class="paragraph">
 <p>The KM sends response messages to the SEP using the exact same basic
 message container format as command messages.</p>
@@ -6180,10 +4623,10 @@ sequence numbers of command messages. There is also no direct
 relationship between command IDs and response IDs.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. KM Response Summary</caption>
+<caption class="title">Table 16. KM Response Summary</caption>
 <colgroup>
-<col style="width: 15%;">
-<col style="width: 35%;">
+<col style="width: 10%;">
+<col style="width: 40%;">
 <col style="width: 50%;">
 </colgroup>
 <thead>
@@ -6221,8 +4664,8 @@ relationship between command IDs and response IDs.</p>
 </tr>
 </tbody>
 </table>
-<div class="sect5">
-<h6 id="km-resp-cmd"><a class="anchor" href="#km-resp-cmd"></a><a class="link" href="#km-resp-cmd">0x00 - RESP_CMD</a></h6>
+<div class="sect2">
+<h3 id="km-resp-cmd"><a class="anchor" href="#km-resp-cmd"></a><a class="link" href="#km-resp-cmd">23.1. 0x00 - RESP_CMD</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -6237,98 +4680,14 @@ direct commands from the SEP with this response.</p>
 <p>The sequence number from the source command, the source command ID, a
 signed 8-bit return code, and an optional argument.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_response_payload.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: CMD_SEQ_NUM. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: COMMAND_ID. Word 2: bits 31 to 8: RESERVED; bits 7 to 0: RETURN_CODE. Word 3: bits 31 to 0: RETURN_ARG (optional)." width="544">
+</div>
+<div class="title">Figure 22. Response Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. Response Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>CMD_SEQ_NUM[7:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>COMMAND_ID[7:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>RESERVED</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>RETURN_CODE[7:0]</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="32"><p class="tableblock"><code>RETURN_ARG[31:0] (Optional)</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 39. Return Codes</caption>
+<caption class="title">Table 17. Return Codes</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 18%;">
@@ -6406,8 +4765,8 @@ is answered <code>failure</code> with no return argument, and its handler is nev
 (<a href="#km-seq-error-recovery">Error Recovery</a>).</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-resp-km-ready"><a class="anchor" href="#km-resp-km-ready"></a><a class="link" href="#km-resp-km-ready">0x55 - RESP_KM_READY</a></h6>
+<div class="sect2">
+<h3 id="km-resp-km-ready"><a class="anchor" href="#km-resp-km-ready"></a><a class="link" href="#km-resp-km-ready">23.2. 0x55 - RESP_KM_READY</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -6423,8 +4782,8 @@ life indicator for the SEP.</p>
 <p>This message has no payload.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-resp-abr-shared-key-ready"><a class="anchor" href="#km-resp-abr-shared-key-ready"></a><a class="link" href="#km-resp-abr-shared-key-ready">0x56 - RESP_ABR_SHARED_KEY_READY</a></h6>
+<div class="sect2">
+<h3 id="km-resp-abr-shared-key-ready"><a class="anchor" href="#km-resp-abr-shared-key-ready"></a><a class="link" href="#km-resp-abr-shared-key-ready">23.3. 0x56 - RESP_ABR_SHARED_KEY_READY</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -6443,8 +4802,8 @@ KPV and obtain a handle.</p>
 <p>This message has no payload.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-resp-recoverable-fault"><a class="anchor" href="#km-resp-recoverable-fault"></a><a class="link" href="#km-resp-recoverable-fault">0xFE - RESP_RECOVERABLE_FAULT</a></h6>
+<div class="sect2">
+<h3 id="km-resp-recoverable-fault"><a class="anchor" href="#km-resp-recoverable-fault"></a><a class="link" href="#km-resp-recoverable-fault">23.4. 0xFE - RESP_RECOVERABLE_FAULT</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -6460,87 +4819,14 @@ recoverable fault.</p>
 full payload word. Only <code>[7:0]</code> is meaningful; because every code is negative,
 <code>[31:8]</code> reads as all ones rather than zero.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_fault_code.svg" alt="Word 0: bits 31 to 8: SIGN_EXTENSION; bits 7 to 0: FAULT_CODE." width="544">
+</div>
+<div class="title">Figure 23. Response Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 40. Response Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>SIGN_EXTENSION</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>FAULT_CODE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 41. Fault Codes</caption>
+<caption class="title">Table 18. Fault Codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -6582,8 +4868,8 @@ full payload word. Only <code>[7:0]</code> is meaningful; because every code is 
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="km-resp-unrecoverable-fault"><a class="anchor" href="#km-resp-unrecoverable-fault"></a><a class="link" href="#km-resp-unrecoverable-fault">0xFF - RESP_UNRECOVERABLE_FAULT</a></h6>
+<div class="sect2">
+<h3 id="km-resp-unrecoverable-fault"><a class="anchor" href="#km-resp-unrecoverable-fault"></a><a class="link" href="#km-resp-unrecoverable-fault">23.5. 0xFF - RESP_UNRECOVERABLE_FAULT</a></h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -6599,87 +4885,14 @@ unrecoverable fault. Core execution has halted.</p>
 full payload word. Only <code>[7:0]</code> is meaningful; because every code is negative,
 <code>[31:8]</code> reads as all ones rather than zero.</p>
 </div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/km_packet_fault_code.svg" alt="Word 0: bits 31 to 8: SIGN_EXTENSION; bits 7 to 0: FAULT_CODE." width="544">
+</div>
+<div class="title">Figure 24. Response Payload</div>
+</div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 42. Response Payload</caption>
-<colgroup>
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-<col style="width: 3.125%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">[31]</th>
-<th class="tableblock halign-center valign-top">[30]</th>
-<th class="tableblock halign-center valign-top">[29]</th>
-<th class="tableblock halign-center valign-top">[28]</th>
-<th class="tableblock halign-center valign-top">[27]</th>
-<th class="tableblock halign-center valign-top">[26]</th>
-<th class="tableblock halign-center valign-top">[25]</th>
-<th class="tableblock halign-center valign-top">[24]</th>
-<th class="tableblock halign-center valign-top">[23]</th>
-<th class="tableblock halign-center valign-top">[22]</th>
-<th class="tableblock halign-center valign-top">[21]</th>
-<th class="tableblock halign-center valign-top">[20]</th>
-<th class="tableblock halign-center valign-top">[19]</th>
-<th class="tableblock halign-center valign-top">[18]</th>
-<th class="tableblock halign-center valign-top">[17]</th>
-<th class="tableblock halign-center valign-top">[16]</th>
-<th class="tableblock halign-center valign-top">[15]</th>
-<th class="tableblock halign-center valign-top">[14]</th>
-<th class="tableblock halign-center valign-top">[13]</th>
-<th class="tableblock halign-center valign-top">[12]</th>
-<th class="tableblock halign-center valign-top">[11]</th>
-<th class="tableblock halign-center valign-top">[10]</th>
-<th class="tableblock halign-center valign-top">[9]</th>
-<th class="tableblock halign-center valign-top">[8]</th>
-<th class="tableblock halign-center valign-top">[7]</th>
-<th class="tableblock halign-center valign-top">[6]</th>
-<th class="tableblock halign-center valign-top">[5]</th>
-<th class="tableblock halign-center valign-top">[4]</th>
-<th class="tableblock halign-center valign-top">[3]</th>
-<th class="tableblock halign-center valign-top">[2]</th>
-<th class="tableblock halign-center valign-top">[1]</th>
-<th class="tableblock halign-center valign-top">[0]</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top" colspan="24"><p class="tableblock"><code>SIGN_EXTENSION</code></p></td>
-<td class="tableblock halign-center valign-top" colspan="8"><p class="tableblock"><code>FAULT_CODE[7:0]</code></p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 43. Fault Codes</caption>
+<caption class="title">Table 19. Fault Codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -6787,10 +5000,12 @@ full payload word. Only <code>[7:0]</code> is meaningful; because every code is 
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-common-sequences"><a class="anchor" href="#km-firmware-common-sequences"></a><a class="link" href="#km-firmware-common-sequences">Common Sequences</a></h5>
-<div class="sect5">
-<h6 id="km-seq-initial-boot"><a class="anchor" href="#km-seq-initial-boot"></a><a class="link" href="#km-seq-initial-boot">Initial Boot</a></h6>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-common-sequences"><a class="anchor" href="#km-firmware-common-sequences"></a><a class="link" href="#km-firmware-common-sequences">24. Common Sequences</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-seq-initial-boot"><a class="anchor" href="#km-seq-initial-boot"></a><a class="link" href="#km-seq-initial-boot">24.1. Initial Boot</a></h3>
 <div class="paragraph">
 <p>As soon as the KM is taken out of reset, it begins executing out of the
 ROM. The ROM performs basic setup routines such as initialization of
@@ -6804,8 +5019,8 @@ boot process is complete, the KM sends a liveness message to the SEP via
 and status via the <code>CMD_HW_VER</code>, <code>CMD_ROM_VER</code>, and <code>CMD_STAT</code>.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-seq-sep-key-loading"><a class="anchor" href="#km-seq-sep-key-loading"></a><a class="link" href="#km-seq-sep-key-loading">SEP Key Loading</a></h6>
+<div class="sect2">
+<h3 id="km-seq-sep-key-loading"><a class="anchor" href="#km-seq-sep-key-loading"></a><a class="link" href="#km-seq-sep-key-loading">24.2. SEP Key Loading</a></h3>
 <div class="paragraph">
 <p>The KM supports loading host-provided key material into the KPV directly
 over the mailbox using the <code>CMD_KEY_LOAD</code> command. The SEP never writes
@@ -6834,8 +5049,8 @@ management operations.</p>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-seq-key-transfer-purge"><a class="anchor" href="#km-seq-key-transfer-purge"></a><a class="link" href="#km-seq-key-transfer-purge">Key Transfer and Sideload Purge</a></h6>
+<div class="sect2">
+<h3 id="km-seq-key-transfer-purge"><a class="anchor" href="#km-seq-key-transfer-purge"></a><a class="link" href="#km-seq-key-transfer-purge">24.3. Key Transfer and Sideload Purge</a></h3>
 <div class="paragraph">
 <p>The SEP requests transfer of a key from the KPV to any crypto engine
 sideload key register via the <code>CMD_KEY_TRANSFER</code> command. The SEP
@@ -6852,8 +5067,8 @@ registers. The KM will respond with <em>success</em> when the operation is
 complete.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-seq-abr-shared-key-capture"><a class="anchor" href="#km-seq-abr-shared-key-capture"></a><a class="link" href="#km-seq-abr-shared-key-capture">Adams Bridge Shared-Key Capture</a></h6>
+<div class="sect2">
+<h3 id="km-seq-abr-shared-key-capture"><a class="anchor" href="#km-seq-abr-shared-key-capture"></a><a class="link" href="#km-seq-abr-shared-key-capture">24.4. Adams Bridge Shared-Key Capture</a></h3>
 <div class="paragraph">
 <p>The Adams Bridge ML-KEM shared-key interface flows in the opposite direction
 from the seed and engine sideloads: Adams Bridge computes a shared key and
@@ -6891,8 +5106,8 @@ including transferring the captured key to a permitted engine.</p>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-seq-key-revocation"><a class="anchor" href="#km-seq-key-revocation"></a><a class="link" href="#km-seq-key-revocation">Key Revocation</a></h6>
+<div class="sect2">
+<h3 id="km-seq-key-revocation"><a class="anchor" href="#km-seq-key-revocation"></a><a class="link" href="#km-seq-key-revocation">24.5. Key Revocation</a></h3>
 <div class="paragraph">
 <p>The SEP requests revocation of a key in the KPV via the <code>CMD_KEY_REVOKE</code>
 command. The KM erases every slot the key occupies and then removes the key from
@@ -6906,8 +5121,8 @@ revocation is retired instead of freed, and is neither readable nor reusable
 until warm reset.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-seq-error-recovery"><a class="anchor" href="#km-seq-error-recovery"></a><a class="link" href="#km-seq-error-recovery">Error Recovery</a></h6>
+<div class="sect2">
+<h3 id="km-seq-error-recovery"><a class="anchor" href="#km-seq-error-recovery"></a><a class="link" href="#km-seq-error-recovery">24.6. Error Recovery</a></h3>
 <div class="paragraph">
 <p>The KM can encounter a variety of recoverable and unrecoverable errors.</p>
 </div>
@@ -7033,8 +5248,8 @@ the wiping is skipped. The condition is reachable only through a firmware bug or
 memory corruption, since every caller passes a compile-time-bounded count.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-seq-sram-fw-handover"><a class="anchor" href="#km-seq-sram-fw-handover"></a><a class="link" href="#km-seq-sram-fw-handover">SRAM Firmware Handover</a></h6>
+<div class="sect2">
+<h3 id="km-seq-sram-fw-handover"><a class="anchor" href="#km-seq-sram-fw-handover"></a><a class="link" href="#km-seq-sram-fw-handover">24.7. SRAM Firmware Handover</a></h3>
 <div class="paragraph">
 <p>The KM ROM supports handing control from immutable ROM to mutable SRAM
 firmware via the <code>CMD_SRAM_LOAD_EXEC</code> (load + run) or <code>CMD_SRAM_EXEC</code>
@@ -7210,8 +5425,8 @@ firmware runs its <code>.text</code> from there. VROM does not exist in producti
 and carries no security requirement.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-rom-stack-budget"><a class="anchor" href="#km-rom-stack-budget"></a><a class="link" href="#km-rom-stack-budget">ROM Stack Budget and the Static Load Ceiling</a></h6>
+<div class="sect2">
+<h3 id="km-rom-stack-budget"><a class="anchor" href="#km-rom-stack-budget"></a><a class="link" href="#km-rom-stack-budget">24.8. ROM Stack Budget and the Static Load Ceiling</a></h3>
 <div class="paragraph">
 <p>Mutable firmware is loaded from the SRAM base (<code>0x8000</code>) and grows upward,
 while the ROM stack grows downward from <code>STACK</code> (the top of the ROM&#8217;s
@@ -7267,10 +5482,12 @@ IRQ stack depths and deepest paths:</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-bootloader"><a class="anchor" href="#km-firmware-bootloader"></a><a class="link" href="#km-firmware-bootloader">Bootloader</a></h5>
-<div class="sect5">
-<h6 id="km-boot-sequence"><a class="anchor" href="#km-boot-sequence"></a><a class="link" href="#km-boot-sequence">Boot Sequence</a></h6>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-bootloader"><a class="anchor" href="#km-firmware-bootloader"></a><a class="link" href="#km-firmware-bootloader">25. Bootloader</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-boot-sequence"><a class="anchor" href="#km-boot-sequence"></a><a class="link" href="#km-boot-sequence">25.1. Boot Sequence</a></h3>
 <div class="paragraph">
 <p>The ROM bootloader will perform the following sequence of steps:</p>
 </div>
@@ -7316,8 +5533,7 @@ CPU execution (jump to address 0).</p>
 </li>
 <li>
 <p>On a cold boot, initialize the warm-persistent SRAM region
-(<a href="architecture.html#rom-warm-persist-region" class="xref page">ROM warm
-persist region</a>). A warm boot leaves it intact.</p>
+(<a href="#rom-warm-persist-region">ROM warm persist region</a>). A warm boot leaves it intact.</p>
 </li>
 <li>
 <p>Initialize the KPV scrambler, enable it, and lock it.</p>
@@ -7377,8 +5593,10 @@ message to the SEP. These two steps are adjacent and last by design:
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-message-buffers"><a class="anchor" href="#km-firmware-message-buffers"></a><a class="link" href="#km-firmware-message-buffers">Message Buffers</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-message-buffers"><a class="anchor" href="#km-firmware-message-buffers"></a><a class="link" href="#km-firmware-message-buffers">26. Message Buffers</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The message receive and transmit buffers are fixed size SRAM-based linear
 buffers that store message frames that have been read from or are ready to be
@@ -7420,10 +5638,12 @@ mask the mailbox IRQ for the duration of the mutation and then restore it to
 its previous state.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-prng"><a class="anchor" href="#km-firmware-prng"></a><a class="link" href="#km-firmware-prng">Pseudorandom Generators</a></h5>
-<div class="sect5">
-<h6 id="km-prng-firmware"><a class="anchor" href="#km-prng-firmware"></a><a class="link" href="#km-prng-firmware">Firmware PRNG</a></h6>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-prng"><a class="anchor" href="#km-firmware-prng"></a><a class="link" href="#km-firmware-prng">27. Pseudorandom Generators</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-prng-firmware"><a class="anchor" href="#km-prng-firmware"></a><a class="link" href="#km-prng-firmware">27.1. Firmware PRNG</a></h3>
 <div class="paragraph">
 <p>The KM firmware shall use the xoshiro128++ algorithm as its
 general-purpose pseudorandom number generator. The PRNG is used for
@@ -7464,8 +5684,8 @@ object in SRAM and the PRNG routines are called from drivers throughout the ROM.
 The state object is overwritten along with the rest of SRAM when the shred runs.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-prng-register-shuffling"><a class="anchor" href="#km-prng-register-shuffling"></a><a class="link" href="#km-prng-register-shuffling">Register Access Shuffling</a></h6>
+<div class="sect2">
+<h3 id="km-prng-register-shuffling"><a class="anchor" href="#km-prng-register-shuffling"></a><a class="link" href="#km-prng-register-shuffling">27.2. Register Access Shuffling</a></h3>
 <div class="paragraph">
 <p>All operations requiring pseudorandom-order register access must use the
 Fisher-Yates shuffle to generate the access order. This covers the shred and key
@@ -7493,8 +5713,10 @@ insufficient bits remain. Bits are consumed from LSB to MSB.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-interrupt-handlers"><a class="anchor" href="#km-firmware-interrupt-handlers"></a><a class="link" href="#km-firmware-interrupt-handlers">Interrupt Handlers</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-interrupt-handlers"><a class="anchor" href="#km-firmware-interrupt-handlers"></a><a class="link" href="#km-firmware-interrupt-handlers">28. Interrupt Handlers</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The PicoRV32 has a very basic interrupt controller that does not support
 hardware interrupt priority or nested interrupts. Due to these
@@ -7503,8 +5725,8 @@ interrupt handlers must be kept as short as possible to minimize interrupt
 response latency. The main ISR must process all currently active
 interrupts within a single call.</p>
 </div>
-<div class="sect5">
-<h6 id="km-irq-priority"><a class="anchor" href="#km-irq-priority"></a><a class="link" href="#km-irq-priority">Interrupt Priority</a></h6>
+<div class="sect2">
+<h3 id="km-irq-priority"><a class="anchor" href="#km-irq-priority"></a><a class="link" href="#km-irq-priority">28.1. Interrupt Priority</a></h3>
 <div class="paragraph">
 <p>Interrupt priority must be handled by firmware within the PicoRV32&#8217;s main
 interrupt service routine (ISR). Any new interrupts that arrive while the
@@ -7586,8 +5808,8 @@ boot sequence (<a href="#km-boot-sequence">Boot Sequence</a>) determines which s
 ROM.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-ebreak"><a class="anchor" href="#km-irq-ebreak"></a><a class="link" href="#km-irq-ebreak">EBREAK / Illegal Instruction</a></h6>
+<div class="sect2">
+<h3 id="km-irq-ebreak"><a class="anchor" href="#km-irq-ebreak"></a><a class="link" href="#km-irq-ebreak">28.2. EBREAK / Illegal Instruction</a></h3>
 <div class="paragraph">
 <p>The EBREAK / illegal instruction interrupt handler distinguishes the
 faulting instruction by reading the opcode at the saved PC. An EBREAK
@@ -7596,16 +5818,16 @@ Any other illegal instruction triggers an unrecoverable fault with the
 <code>illegal_insn</code> fault code. The interrupt status bit is not cleared.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-bus-error"><a class="anchor" href="#km-irq-bus-error"></a><a class="link" href="#km-irq-bus-error">Bus Error or Misaligned Access</a></h6>
+<div class="sect2">
+<h3 id="km-irq-bus-error"><a class="anchor" href="#km-irq-bus-error"></a><a class="link" href="#km-irq-bus-error">28.3. Bus Error or Misaligned Access</a></h3>
 <div class="paragraph">
 <p>The bus error or misaligned access interrupt handler will trigger an
 unrecoverable fault. The interrupt status bit is not cleared. This
 behavior may change in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-wipe-state"><a class="anchor" href="#km-irq-wipe-state"></a><a class="link" href="#km-irq-wipe-state">Wipe State</a></h6>
+<div class="sect2">
+<h3 id="km-irq-wipe-state"><a class="anchor" href="#km-irq-wipe-state"></a><a class="link" href="#km-irq-wipe-state">28.4. Wipe State</a></h3>
 <div class="paragraph">
 <p>The wipe state interrupt handler will purge keys from all crypto engines,
 trigger an unrecoverable fault, and finally shred the entire SRAM.
@@ -7634,48 +5856,48 @@ from the DRBG.
 </table>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-rom-parity"><a class="anchor" href="#km-irq-rom-parity"></a><a class="link" href="#km-irq-rom-parity">ROM Parity Error</a></h6>
+<div class="sect2">
+<h3 id="km-irq-rom-parity"><a class="anchor" href="#km-irq-rom-parity"></a><a class="link" href="#km-irq-rom-parity">28.5. ROM Parity Error</a></h3>
 <div class="paragraph">
 <p>The ROM parity error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-sram-parity"><a class="anchor" href="#km-irq-sram-parity"></a><a class="link" href="#km-irq-sram-parity">SRAM Parity Error</a></h6>
+<div class="sect2">
+<h3 id="km-irq-sram-parity"><a class="anchor" href="#km-irq-sram-parity"></a><a class="link" href="#km-irq-sram-parity">28.6. SRAM Parity Error</a></h3>
 <div class="paragraph">
 <p>The SRAM parity error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-rom-write"><a class="anchor" href="#km-irq-rom-write"></a><a class="link" href="#km-irq-rom-write">ROM Write Error</a></h6>
+<div class="sect2">
+<h3 id="km-irq-rom-write"><a class="anchor" href="#km-irq-rom-write"></a><a class="link" href="#km-irq-rom-write">28.7. ROM Write Error</a></h3>
 <div class="paragraph">
 <p>The ROM write error interrupt handler will trigger an unrecoverable fault.
 The interrupt status bit is not cleared. This behavior may change in
 future firmware revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-sram-write-lock"><a class="anchor" href="#km-irq-sram-write-lock"></a><a class="link" href="#km-irq-sram-write-lock">SRAM Write Lock Error</a></h6>
+<div class="sect2">
+<h3 id="km-irq-sram-write-lock"><a class="anchor" href="#km-irq-sram-write-lock"></a><a class="link" href="#km-irq-sram-write-lock">28.8. SRAM Write Lock Error</a></h3>
 <div class="paragraph">
 <p>The SRAM write lock error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-axi-decerr"><a class="anchor" href="#km-irq-axi-decerr"></a><a class="link" href="#km-irq-axi-decerr">AXI DECERR</a></h6>
+<div class="sect2">
+<h3 id="km-irq-axi-decerr"><a class="anchor" href="#km-irq-axi-decerr"></a><a class="link" href="#km-irq-axi-decerr">28.9. AXI DECERR</a></h3>
 <div class="paragraph">
 <p>The AXI DECERR interrupt handler will trigger an unrecoverable fault. The
 interrupt status bit is not cleared. This behavior may change in future
 firmware revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-axi-slverr"><a class="anchor" href="#km-irq-axi-slverr"></a><a class="link" href="#km-irq-axi-slverr">AXI SLVERR</a></h6>
+<div class="sect2">
+<h3 id="km-irq-axi-slverr"><a class="anchor" href="#km-irq-axi-slverr"></a><a class="link" href="#km-irq-axi-slverr">28.10. AXI SLVERR</a></h3>
 <div class="paragraph">
 <p>The AXI SLVERR interrupt handler will trigger an unrecoverable fault with the
 <code>axi_slverr</code> fault code. It is reached only when the DRBG error status bit is
@@ -7684,8 +5906,8 @@ interrupt status bit is not cleared. This behavior may change in future
 firmware revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-drbg-error"><a class="anchor" href="#km-irq-drbg-error"></a><a class="link" href="#km-irq-drbg-error">DRBG Error</a></h6>
+<div class="sect2">
+<h3 id="km-irq-drbg-error"><a class="anchor" href="#km-irq-drbg-error"></a><a class="link" href="#km-irq-drbg-error">28.11. DRBG Error</a></h3>
 <div class="paragraph">
 <p>The DRBG error interrupt handler will trigger an unrecoverable fault with the
 <code>drbg_err</code> fault code. It is checked before the AXI SLVERR handler, because a
@@ -7696,8 +5918,8 @@ status bit is not cleared. This behavior may change in future firmware
 revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-otp-sigint"><a class="anchor" href="#km-irq-otp-sigint"></a><a class="link" href="#km-irq-otp-sigint">OTP Integrity Violation</a></h6>
+<div class="sect2">
+<h3 id="km-irq-otp-sigint"><a class="anchor" href="#km-irq-otp-sigint"></a><a class="link" href="#km-irq-otp-sigint">28.12. OTP Integrity Violation</a></h3>
 <div class="paragraph">
 <p>The OTP integrity violation interrupt handler will trigger an
 unrecoverable fault with the <code>otp_sigint</code> fault code. This interrupt is
@@ -7706,8 +5928,8 @@ on a redundantly-encoded OTP field. The interrupt status bit is not
 cleared. This behavior may change in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-exec-violation"><a class="anchor" href="#km-irq-exec-violation"></a><a class="link" href="#km-irq-exec-violation">Execute Permission Violation</a></h6>
+<div class="sect2">
+<h3 id="km-irq-exec-violation"><a class="anchor" href="#km-irq-exec-violation"></a><a class="link" href="#km-irq-exec-violation">28.13. Execute Permission Violation</a></h3>
 <div class="paragraph">
 <p>The execute permission violation interrupt handler will trigger an
 unrecoverable fault with the <code>exec</code> fault code. This interrupt is asserted when
@@ -7716,8 +5938,8 @@ execute-permission whitelist, other than the ROM. The interrupt status bit is
 not cleared.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-rom-access-violation"><a class="anchor" href="#km-irq-rom-access-violation"></a><a class="link" href="#km-irq-rom-access-violation">ROM Access Violation</a></h6>
+<div class="sect2">
+<h3 id="km-irq-rom-access-violation"><a class="anchor" href="#km-irq-rom-access-violation"></a><a class="link" href="#km-irq-rom-access-violation">28.14. ROM Access Violation</a></h3>
 <div class="paragraph">
 <p>The ROM access violation interrupt handler will trigger an unrecoverable fault
 with the <code>rom_access</code> fault code. This interrupt is asserted when a ROM
@@ -7732,8 +5954,8 @@ after the lockout engages, containment is the illegal-instruction trap on the
 zeros a blocked fetch returns.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-otp-change"><a class="anchor" href="#km-irq-otp-change"></a><a class="link" href="#km-irq-otp-change">OTP Change Status</a></h6>
+<div class="sect2">
+<h3 id="km-irq-otp-change"><a class="anchor" href="#km-irq-otp-change"></a><a class="link" href="#km-irq-otp-change">28.15. OTP Change Status</a></h3>
 <div class="paragraph">
 <p>The OTP change status interrupt is an informational (non-fault) source
 that indicates one or more monitored OTP fields have changed. Unlike the
@@ -7760,8 +5982,8 @@ leaving an informational interrupt masked keeps it from adding ISR entries durin
 boot. Firmware that overrides the hook enables the source itself.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-mailbox"><a class="anchor" href="#km-irq-mailbox"></a><a class="link" href="#km-irq-mailbox">Mailbox</a></h6>
+<div class="sect2">
+<h3 id="km-irq-mailbox"><a class="anchor" href="#km-irq-mailbox"></a><a class="link" href="#km-irq-mailbox">28.16. Mailbox</a></h3>
 <div class="paragraph">
 <p>The mailbox interrupt handler transfers message frames between the mailbox
 FIFOs and the message buffers. It also handles any other interrupts raised
@@ -7926,8 +6148,8 @@ disable the incoming mailbox FIFO interrupt.</p>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-abr-sharedkey"><a class="anchor" href="#km-irq-abr-sharedkey"></a><a class="link" href="#km-irq-abr-sharedkey">Adams Bridge ML-KEM Shared Key</a></h6>
+<div class="sect2">
+<h3 id="km-irq-abr-sharedkey"><a class="anchor" href="#km-irq-abr-sharedkey"></a><a class="link" href="#km-irq-abr-sharedkey">28.17. Adams Bridge ML-KEM Shared Key</a></h3>
 <div class="paragraph">
 <p>The Adams Bridge shared-key interrupt is an informational (non-fault) source
 delivered on its own PicoRV32 interrupt (bit 5), separate from the
@@ -7955,8 +6177,8 @@ automatically. The main loop sends <code>RESP_ABR_SHARED_KEY_READY</code> to the
 it observes the pending-notify flag.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-irq-spurious"><a class="anchor" href="#km-irq-spurious"></a><a class="link" href="#km-irq-spurious">Spurious IRQ</a></h6>
+<div class="sect2">
+<h3 id="km-irq-spurious"><a class="anchor" href="#km-irq-spurious"></a><a class="link" href="#km-irq-spurious">28.18. Spurious IRQ</a></h3>
 <div class="paragraph">
 <p>After all known IRQ sources have been serviced, the ISR checks for any
 unrecognised bits in the IRQ mask. If any are set, the ISR triggers an
@@ -7966,8 +6188,10 @@ sources.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-incoming-message-handler"><a class="anchor" href="#km-firmware-incoming-message-handler"></a><a class="link" href="#km-firmware-incoming-message-handler">Incoming Message Handler</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-incoming-message-handler"><a class="anchor" href="#km-firmware-incoming-message-handler"></a><a class="link" href="#km-firmware-incoming-message-handler">29. Incoming Message Handler</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The incoming message handler parses incoming message frames from the
 message receive buffer in SRAM, checks their properties, and calls the
@@ -8162,8 +6386,10 @@ return argument from the command handler.</p>
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-outgoing-message-handler"><a class="anchor" href="#km-firmware-outgoing-message-handler"></a><a class="link" href="#km-firmware-outgoing-message-handler">Outgoing Message Handler</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-outgoing-message-handler"><a class="anchor" href="#km-firmware-outgoing-message-handler"></a><a class="link" href="#km-firmware-outgoing-message-handler">30. Outgoing Message Handler</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The outgoing message handler constructs a message from a given response
 payload and writes it into the message transmit buffer in SRAM. The
@@ -8223,8 +6449,10 @@ sent at handover. Each of these is followed immediately by a CPU halt or by
 interrupt masking, so a buffered frame would never be drained.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-command-handlers"><a class="anchor" href="#km-firmware-command-handlers"></a><a class="link" href="#km-firmware-command-handlers">Command Handlers</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-command-handlers"><a class="anchor" href="#km-firmware-command-handlers"></a><a class="link" href="#km-firmware-command-handlers">31. Command Handlers</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Each supported KM command has an associated command handler function. They
 are called by the incoming message handler, validate the arguments
@@ -8236,8 +6464,10 @@ errors it will return a <em>success</em> code and provide an optional return
 argument.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-drbg-driver"><a class="anchor" href="#km-firmware-drbg-driver"></a><a class="link" href="#km-firmware-drbg-driver">DRBG Driver</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-drbg-driver"><a class="anchor" href="#km-firmware-drbg-driver"></a><a class="link" href="#km-firmware-drbg-driver">32. DRBG Driver</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p><strong>Initialize DRBG</strong></p>
 </div>
@@ -8295,8 +6525,10 @@ reading it in a loop returns one value repeatedly instead of a stream — which
 would silently yield a key made of a single repeated word.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-kpv-driver"><a class="anchor" href="#km-firmware-kpv-driver"></a><a class="link" href="#km-firmware-kpv-driver">KPV Driver</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-kpv-driver"><a class="anchor" href="#km-firmware-kpv-driver"></a><a class="link" href="#km-firmware-kpv-driver">33. KPV Driver</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>These functions provide firmware abstractions for the KPV. The vault holds 64
 slots of 16 words each, and each slot carries a <code>CTRL</code> register holding the
@@ -8467,8 +6699,10 @@ erased. A sealed slot gains <code>lock_use</code> only from an erase completing,
 <code>lock_use</code> is what separates a retired slot from a sealed live one.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-crypto-drivers"><a class="anchor" href="#km-firmware-crypto-drivers"></a><a class="link" href="#km-firmware-crypto-drivers">Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-crypto-drivers"><a class="anchor" href="#km-firmware-crypto-drivers"></a><a class="link" href="#km-firmware-crypto-drivers">34. Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Each crypto engine (HMAC, KMAC, AES, OTBN) and each of the four Adams Bridge
 seed inputs (ML-DSA seed, ML-KEM seed D, ML-KEM seed Z, ML-KEM message) has a
@@ -8572,8 +6806,10 @@ acknowledgement rather than toggling the enable per event.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-kdf-library"><a class="anchor" href="#km-firmware-kdf-library"></a><a class="link" href="#km-firmware-kdf-library">Key Derivation Function Library</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-kdf-library"><a class="anchor" href="#km-firmware-kdf-library"></a><a class="link" href="#km-firmware-kdf-library">35. Key Derivation Function Library</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The <code>rom_kdf</code> library implements the NIST SP 800-108r1 counter-mode key
 derivation function (KDF) with HMAC-SHA-256 as its pseudorandom function.
@@ -8603,7 +6839,7 @@ PicoRV32 in-memory byte representation; only the surrounding counter and
 output-length fields are big-endian.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 44. KDF Fixed Input Layout</caption>
+<caption class="title">Table 20. KDF Fixed Input Layout</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8722,8 +6958,10 @@ material should run it and fail closed, but nothing in the current ROM enforces
 that.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-crc-library"><a class="anchor" href="#km-firmware-crc-library"></a><a class="link" href="#km-firmware-crc-library">CRC Function Library</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-crc-library"><a class="anchor" href="#km-firmware-crc-library"></a><a class="link" href="#km-firmware-crc-library">36. CRC Function Library</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The CRC function library contains routines for CRC computations. The
 high-level functions (<code>rom_crc8_rohc</code>, <code>rom_crc32c</code>) preserve their public
@@ -8737,13 +6975,13 @@ updates, and applies the final XOR once at the end. See the CRC Accelerator
 section of the architecture documentation for the instruction encodings
 and engine behavior.</p>
 </div>
-<div class="sect5">
-<h6 id="km-crc8-rohc"><a class="anchor" href="#km-crc8-rohc"></a><a class="link" href="#km-crc8-rohc">CRC-8/ROHC</a></h6>
+<div class="sect2">
+<h3 id="km-crc8-rohc"><a class="anchor" href="#km-crc8-rohc"></a><a class="link" href="#km-crc8-rohc">36.1. CRC-8/ROHC</a></h3>
 <div class="paragraph">
 <p>Compute the CRC-8/ROHC for a given block of data.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 45. CRC-8/ROHC Parameters</caption>
+<caption class="title">Table 21. CRC-8/ROHC Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -8790,13 +7028,13 @@ and engine behavior.</p>
 from least significant byte to most significant byte.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="km-crc32c"><a class="anchor" href="#km-crc32c"></a><a class="link" href="#km-crc32c">CRC-32C</a></h6>
+<div class="sect2">
+<h3 id="km-crc32c"><a class="anchor" href="#km-crc32c"></a><a class="link" href="#km-crc32c">36.2. CRC-32C</a></h3>
 <div class="paragraph">
 <p>Compute the CRC-32C (Castagnoli) for a given block of data.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 46. CRC-32C Parameters</caption>
+<caption class="title">Table 22. CRC-32C Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -8848,8 +7086,10 @@ least significant byte to most significant byte.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-key-registry"><a class="anchor" href="#km-firmware-key-registry"></a><a class="link" href="#km-firmware-key-registry">Key Registry</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-key-registry"><a class="anchor" href="#km-firmware-key-registry"></a><a class="link" href="#km-firmware-key-registry">37. Key Registry</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>KM firmware maintains a mapping between key handles and key slots in the
 KPV, called the key registry. Key handles are unique 8-bit numbers that
@@ -9015,8 +7255,10 @@ Allocating a free run of slots is the caller&#8217;s responsibility
 used again. Returns with an error if the given key handle does not exist.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-key-management"><a class="anchor" href="#km-firmware-key-management"></a><a class="link" href="#km-firmware-key-management">Key Management</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-key-management"><a class="anchor" href="#km-firmware-key-management"></a><a class="link" href="#km-firmware-key-management">38. Key Management</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>These functions provide high-level key management operations. In general,
 they are called by command handler functions.</p>
@@ -9233,8 +7475,10 @@ returning with an error if any are invalid.</p>
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="km-firmware-main-event-loop"><a class="anchor" href="#km-firmware-main-event-loop"></a><a class="link" href="#km-firmware-main-event-loop">Main Event Loop</a></h5>
+</div>
+<div class="sect1">
+<h2 id="km-firmware-main-event-loop"><a class="anchor" href="#km-firmware-main-event-loop"></a><a class="link" href="#km-firmware-main-event-loop">39. Main Event Loop</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>After the bootloader initializes the KM, the main loop of the KM
 continuously monitors the incoming message buffer for commands. When the
@@ -9253,8 +7497,8 @@ around the flag sample/clear and the wait-for-interrupt decision so that a
 notification set by the ISR can neither be dropped (lost update) nor leave the
 CPU sleeping with work pending (lost wakeup).</p>
 </div>
-<div class="sect5">
-<h6 id="km-main-fault-handling"><a class="anchor" href="#km-main-fault-handling"></a><a class="link" href="#km-main-fault-handling">Fault Handling</a></h6>
+<div class="sect2">
+<h3 id="km-main-fault-handling"><a class="anchor" href="#km-main-fault-handling"></a><a class="link" href="#km-main-fault-handling">39.1. Fault Handling</a></h3>
 <div class="paragraph">
 <p>When the KM encounters an unrecoverable fault it purges key material, flushes
 the mailbox FIFOs, and then writes a <code>RESP_UNRECOVERABLE_FAULT</code> message directly
@@ -9300,6 +7544,8 @@ triggered the fault.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

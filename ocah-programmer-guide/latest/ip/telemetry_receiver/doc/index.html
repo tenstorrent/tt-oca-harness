@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Telemetry Receiver :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +122,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +134,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +141,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -151,7 +148,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -159,7 +155,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +162,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +178,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></li>
+    <li><a href="index.html">Telemetry Receiver</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,15 +189,14 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="telemetry-receiver"><a class="anchor" href="#telemetry-receiver"></a><a class="link" href="#telemetry-receiver">1. Telemetry Receiver</a></h4>
-<div class="sect4">
-<h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
+<h1 class="page">Telemetry Receiver</h1>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Telemetry Receiver decodes, buffers, and processes telemetry data from
 telemetry transmitters. It implements a receiver for a probe-ID and
 multi-counter message format.</p>
-</div>
 </div>
 <div class="sect4">
 <h5 id="telemetry-receiver-message-format"><a class="anchor" href="#telemetry-receiver-message-format"></a><a class="link" href="#telemetry-receiver-message-format">Message Format</a></h5>
@@ -248,8 +245,11 @@ form a message that ends when <code>last_packet</code> is set.</p>
 counters per message is parameterized (default 4); the field layout is fixed.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+</div>
+</div>
+<div class="sect1">
+<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
@@ -275,8 +275,10 @@ buffer thresholds and error conditions</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="telemetry-receiver-architecture"><a class="anchor" href="#telemetry-receiver-architecture"></a><a class="link" href="#telemetry-receiver-architecture">Architecture</a></h5>
+</div>
+<div class="sect1">
+<h2 id="telemetry-receiver-architecture"><a class="anchor" href="#telemetry-receiver-architecture"></a><a class="link" href="#telemetry-receiver-architecture">3. Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Telemetry Receiver leverages a dual-buffer design for robust and
 continuous telemetry data capture from an Advanced Trace Bus (ATB) source.
@@ -284,12 +286,12 @@ Its architecture brings together configurable register interfaces, full
 ATB compliance, intelligent buffering, and efficient message
 processing—balancing narrative clarity with compact organization.</p>
 </div>
-<div class="sect5">
-<h6 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">Functional Blocks</a></h6>
+<div class="sect2">
+<h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">3.1. Functional Blocks</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="register-interface-block"><a class="anchor" href="#register-interface-block"></a><a class="link" href="#register-interface-block">Register Interface Block</a></h6>
+<div class="sect2">
+<h3 id="register-interface-block"><a class="anchor" href="#register-interface-block"></a><a class="link" href="#register-interface-block">3.2. Register Interface Block</a></h3>
 <div class="paragraph">
 <p>The register interface uses an AXI4-Lite bus for access to control,
 status, and data registers. Control registers handle buffer thresholds
@@ -299,8 +301,8 @@ and counter details accessible, while interrupt registers support
 selective and responsive event handling for seamless system integration.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="atb-interface-block"><a class="anchor" href="#atb-interface-block"></a><a class="link" href="#atb-interface-block">ATB Interface Block</a></h6>
+<div class="sect2">
+<h3 id="atb-interface-block"><a class="anchor" href="#atb-interface-block"></a><a class="link" href="#atb-interface-block">3.3. ATB Interface Block</a></h3>
 <div class="paragraph">
 <p>The ATB interface guarantees protocol-compliant 8-bit telemetry data
 reception using handshaked ready/valid flows, supporting industrial
@@ -310,8 +312,8 @@ load, with flush signaling to mark stream boundaries and maintain
 session integrity.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="assembly-buffer"><a class="anchor" href="#assembly-buffer"></a><a class="link" href="#assembly-buffer">Assembly Buffer</a></h6>
+<div class="sect2">
+<h3 id="assembly-buffer"><a class="anchor" href="#assembly-buffer"></a><a class="link" href="#assembly-buffer">3.4. Assembly Buffer</a></h3>
 <div class="paragraph">
 <p>This buffer assembles streams of 8-bit ATB data into 64-bit packets. It
 ensures data ordering, detects packet boundaries, and supports
@@ -320,8 +322,8 @@ smooth handling of irregular traffic and guarantees data integrity
 throughout packet reconstruction.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="message-decoder"><a class="anchor" href="#message-decoder"></a><a class="link" href="#message-decoder">Message Decoder</a></h6>
+<div class="sect2">
+<h3 id="message-decoder"><a class="anchor" href="#message-decoder"></a><a class="link" href="#message-decoder">3.5. Message Decoder</a></h3>
 <div class="paragraph">
 <p>Assembled packets are parsed for the probe ID and counters in the fixed
 layout in <a href="#telemetry-receiver-message-format">Message Format</a>. Each 9-bit block is
@@ -329,16 +331,16 @@ checked for validity, and last-packet boundaries mark the end of a
 message.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="message-buffer"><a class="anchor" href="#message-buffer"></a><a class="link" href="#message-buffer">Message Buffer</a></h6>
+<div class="sect2">
+<h3 id="message-buffer"><a class="anchor" href="#message-buffer"></a><a class="link" href="#message-buffer">3.6. Message Buffer</a></h3>
 <div class="paragraph">
 <p>A circular message buffer persistently holds decoded messages. It offers
 configurable depth (2–N entries), FIFO access, threshold monitoring with
 interrupt generation, and full status reporting (occupancy, empty/full).</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="data-flow"><a class="anchor" href="#data-flow"></a><a class="link" href="#data-flow">Data Flow</a></h6>
+<div class="sect2">
+<h3 id="data-flow"><a class="anchor" href="#data-flow"></a><a class="link" href="#data-flow">3.7. Data Flow</a></h3>
 <div class="paragraph">
 <p><strong>Reception Phase</strong> The ATB interface receives telemetry in 8-bit beats,
 accumulated into 64-bit packets in the assembly buffer, then validated
@@ -360,8 +362,8 @@ Buffer pointers advance after each access, and status or error
 conditions are monitored in real-time.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="control-path"><a class="anchor" href="#control-path"></a><a class="link" href="#control-path">Control Path</a></h6>
+<div class="sect2">
+<h3 id="control-path"><a class="anchor" href="#control-path"></a><a class="link" href="#control-path">3.8. Control Path</a></h3>
 <div class="paragraph">
 <p><strong>Configuration Control</strong> Software configures buffer thresholds, enables
 interrupts, and clears errors, permitting runtime adaptation and robust
@@ -376,8 +378,8 @@ accessible, providing up-to-date telemetry collection health.</p>
 crossings and validation errors; all can be cleared by software.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="clocking-and-reset"><a class="anchor" href="#clocking-and-reset"></a><a class="link" href="#clocking-and-reset">Clocking and Reset</a></h6>
+<div class="sect2">
+<h3 id="clocking-and-reset"><a class="anchor" href="#clocking-and-reset"></a><a class="link" href="#clocking-and-reset">3.9. Clocking and Reset</a></h3>
 <div class="paragraph">
 <p><strong>Clock Domain</strong> The design operates fully synchronous on <code>clk_i</code>,
 avoiding clock crossing complexity and easing verification.</p>
@@ -390,19 +392,22 @@ reliable operation from power-on forward.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="telemetry-receiver-interface"><a class="anchor" href="#telemetry-receiver-interface"></a><a class="link" href="#telemetry-receiver-interface">Interface</a></h5>
+</div>
+<div class="sect1">
+<h2 id="telemetry-receiver-interface"><a class="anchor" href="#telemetry-receiver-interface"></a><a class="link" href="#telemetry-receiver-interface">4. Interface</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Telemetry Receiver component provides AXI4-Lite register access and
 Advanced Trace Bus (ATB) telemetry data reception interfaces.</p>
 </div>
-<div class="sect5">
-<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+<div class="sect2">
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver configuration parameters" tabindex="0">
+<table class="tableblock frame-all grid-all stretch telemetry-table">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 20%;">
-<col style="width: 50%;">
+<col style="width: 32%;">
+<col style="width: 12%;">
+<col style="width: 56%;">
 </colgroup>
 <thead>
 <tr>
@@ -445,24 +450,26 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">Signal Interfaces</a></h6>
+</div>
+<div class="sect2">
+<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">4.2. Signal Interfaces</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">Global Interface</a></h6>
+<div class="sect2">
+<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.3. Global Interface</a></h3>
 <div class="paragraph">
 <p>The global interface provides fundamental clock and reset signals
 required for basic operation.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver global signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch telemetry-table">
 <caption class="title">Table 1. Global Interface Signals</caption>
 <colgroup>
-<col style="width: 15%;">
+<col style="width: 18%;">
 <col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 55%;">
+<col style="width: 16%;">
+<col style="width: 12%;">
+<col style="width: 44%;">
 </colgroup>
 <thead>
 <tr>
@@ -493,8 +500,9 @@ synchronous deassertion.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="clock-and-reset-specifications"><a class="anchor" href="#clock-and-reset-specifications"></a><a class="link" href="#clock-and-reset-specifications">Clock and Reset Specifications</a></h6>
+</div>
+<div class="sect2">
+<h3 id="clock-and-reset-specifications"><a class="anchor" href="#clock-and-reset-specifications"></a><a class="link" href="#clock-and-reset-specifications">4.4. Clock and Reset Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -514,19 +522,20 @@ reset deassertion</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="atb-telemetry-interface"><a class="anchor" href="#atb-telemetry-interface"></a><a class="link" href="#atb-telemetry-interface">ATB Telemetry Interface</a></h6>
+<div class="sect2">
+<h3 id="atb-telemetry-interface"><a class="anchor" href="#atb-telemetry-interface"></a><a class="link" href="#atb-telemetry-interface">4.5. ATB Telemetry Interface</a></h3>
 <div class="paragraph">
 <p>The ATB (Advanced Trace Bus) interface receives telemetry data using standard
 ATB protocol.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver ATB signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch telemetry-table">
 <caption class="title">Table 2. ATB Interface Signals</caption>
 <colgroup>
-<col style="width: 15%;">
+<col style="width: 20%;">
 <col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 65%;">
+<col style="width: 16%;">
+<col style="width: 54%;">
 </colgroup>
 <thead>
 <tr>
@@ -576,8 +585,9 @@ ATB protocol.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="atb-protocol-specifications"><a class="anchor" href="#atb-protocol-specifications"></a><a class="link" href="#atb-protocol-specifications">ATB Protocol Specifications</a></h6>
+</div>
+<div class="sect2">
+<h3 id="atb-protocol-specifications"><a class="anchor" href="#atb-protocol-specifications"></a><a class="link" href="#atb-protocol-specifications">4.6. ATB Protocol Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -603,19 +613,20 @@ back-pressure</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">Interrupt Interface</a></h6>
+<div class="sect2">
+<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.7. Interrupt Interface</a></h3>
 <div class="paragraph">
 <p>The interrupt interface provides a single interrupt output for event
 notification.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver interrupt signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch telemetry-table">
 <caption class="title">Table 3. Interrupt Interface Signals</caption>
 <colgroup>
-<col style="width: 15%;">
+<col style="width: 20%;">
 <col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 65%;">
+<col style="width: 16%;">
+<col style="width: 54%;">
 </colgroup>
 <thead>
 <tr>
@@ -635,8 +646,9 @@ notification.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">Interrupt Specifications</a></h6>
+</div>
+<div class="sect2">
+<h3 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">4.8. Interrupt Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -660,16 +672,18 @@ condition</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="telemetry-receiver-memory-map"><a class="anchor" href="#telemetry-receiver-memory-map"></a><a class="link" href="#telemetry-receiver-memory-map">Memory Map</a></h5>
+</div>
+<div class="sect1">
+<h2 id="telemetry-receiver-memory-map"><a class="anchor" href="#telemetry-receiver-memory-map"></a><a class="link" href="#telemetry-receiver-memory-map">5. Memory Map</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Telemetry Receiver provides a comprehensive register interface for
 configuration, status monitoring, and telemetry data access. All
 registers are accessed through a 32-bit AXI4-Lite interface with 4-byte
 address alignment.</p>
 </div>
-<div class="sect5">
-<h6 id="address-space-overview"><a class="anchor" href="#address-space-overview"></a><a class="link" href="#address-space-overview">Address Space Overview</a></h6>
+<div class="sect2">
+<h3 id="address-space-overview"><a class="anchor" href="#address-space-overview"></a><a class="link" href="#address-space-overview">5.1. Address Space Overview</a></h3>
 <div class="paragraph">
 <p>The component uses a 128-byte address space (7-bit address width) with
 the following organization:</p>
@@ -685,15 +699,16 @@ the following organization:</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="register-map"><a class="anchor" href="#register-map"></a><a class="link" href="#register-map">Register Map</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+<div class="sect2">
+<h3 id="register-map"><a class="anchor" href="#register-map"></a><a class="link" href="#register-map">5.2. Register Map</a></h3>
+<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver register map" tabindex="0">
+<table class="tableblock frame-all grid-all stretch telemetry-table">
 <caption class="title">Table 4. Complete Register Map</caption>
 <colgroup>
-<col style="width: 15%;">
-<col style="width: 25%;">
-<col style="width: 10%;">
-<col style="width: 50%;">
+<col style="width: 14%;">
+<col style="width: 38%;">
+<col style="width: 12%;">
+<col style="width: 36%;">
 </colgroup>
 <thead>
 <tr>
@@ -785,8 +800,9 @@ the following organization:</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="reset-behavior"><a class="anchor" href="#reset-behavior"></a><a class="link" href="#reset-behavior">Reset Behavior</a></h6>
+</div>
+<div class="sect2">
+<h3 id="reset-behavior"><a class="anchor" href="#reset-behavior"></a><a class="link" href="#reset-behavior">5.3. Reset Behavior</a></h3>
 <div class="paragraph">
 <p>Upon system reset (rst_ni assertion):</p>
 </div>
@@ -815,8 +831,8 @@ deassertion, ensuring clean startup behavior and proper synchronization
 with the system clock domain.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h6>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.4. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -928,6 +944,8 @@ with the system clock domain.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

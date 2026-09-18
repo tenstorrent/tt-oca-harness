@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Attack Countermeasures :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP architectural, debug, and DFT security protections.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="attack_countermeasures.html">Attack Countermeasures</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,9 +190,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="attack-countermeasures"><a class="anchor" href="#attack-countermeasures"></a><a class="link" href="#attack-countermeasures">1. Attack Countermeasures</a></h4>
-<div class="paragraph">
+<h1 class="page">Attack Countermeasures</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="attack-countermeasures" class="paragraph">
 <p>Countermeasures include:</p>
 </div>
 <div class="ulist">
@@ -233,8 +233,10 @@ e.g. cryptographic keys</p>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="debug-and-dft-security-considerations"><a class="anchor" href="#debug-and-dft-security-considerations"></a><a class="link" href="#debug-and-dft-security-considerations">2. Debug and DFT Security Considerations</a></h4>
+</div>
+<div class="sect1">
+<h2 id="debug-and-dft-security-considerations"><a class="anchor" href="#debug-and-dft-security-considerations"></a><a class="link" href="#debug-and-dft-security-considerations">1. Debug and DFT Security Considerations</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The debug facilities and DFT share the scan chain infrastructure for
 their respective tasks. This is a security hazard as certain secret
@@ -279,8 +281,8 @@ Protection</em>): group 1 = Class 3 (general), group 2 = Class 2 (crypto / KM
 secret-bearing, plus the fuse program path), group 3 = Class 1 (secrets and
 integrity-critical control fields).</p>
 </div>
-<div class="sect4">
-<h5 id="debug-and-scan-dump"><a class="anchor" href="#debug-and-scan-dump"></a><a class="link" href="#debug-and-scan-dump">Debug and Scan Dump</a></h5>
+<div class="sect2">
+<h3 id="debug-and-scan-dump"><a class="anchor" href="#debug-and-scan-dump"></a><a class="link" href="#debug-and-scan-dump">1.1. Debug and Scan Dump</a></h3>
 <div class="paragraph">
 <p>Debug mode is enabled when in-field debug is granted, via demotion (DEMOTE_1 /
 DEMOTE_2) or an RMA debug state (RMA_SIP / RMA_CHIPLET). In
@@ -322,8 +324,8 @@ registers (<code>*_TOKEN_I</code>), raw fuse read-back data.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="class-2-asset-manifest"><a class="anchor" href="#class-2-asset-manifest"></a><a class="link" href="#class-2-asset-manifest">Class 2 Asset Manifest and Naming</a></h5>
+<div class="sect2">
+<h3 id="class-2-asset-manifest"><a class="anchor" href="#class-2-asset-manifest"></a><a class="link" href="#class-2-asset-manifest">1.2. Class 2 Asset Manifest and Naming</a></h3>
 <div class="paragraph">
 <p>The authoritative class definitions, scan-chain policy, and gating rules are
 in the Lifecycle Controller chapter (<em>Asset and Scan-Chain Protection</em>); Key
@@ -398,8 +400,8 @@ of the fuse controller stays Class 3, so the implementation must identify the
 program-path scan roots and name them accordingly.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="secure-test-mode-secure_tm-secure-test-mode-secure_tm"><a class="anchor" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm"></a><a class="link" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm">Secure Test Mode (SECURE_TM)</a></h5>
+<div class="sect2">
+<h3 id="secure-test-mode-secure_tm-secure-test-mode-secure_tm"><a class="anchor" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm"></a><a class="link" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm">1.3. Secure Test Mode (SECURE_TM)</a></h3>
 <div class="paragraph">
 <p>We assert a GPIO pin strap to enable secure test mode. This generates
 the SECURE_TM signal which is consumed by</p>
@@ -449,6 +451,7 @@ the SECURE_TM signal which is consumed by</p>
 </div>
 </div>
 </div>
+</div>
 </article>
   </div>
 </main>
@@ -470,6 +473,8 @@ the SECURE_TM signal which is consumed by</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

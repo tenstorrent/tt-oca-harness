@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>JTAG Interface Unit :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="JTAG Interface Unit — top-level JTAG control, STAP configuration, iJTAG chains and JTAG2AXI bridges.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="index.html">JTAG Interface Unit</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,99 +190,56 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="jtag-interface-unit"><a class="anchor" href="#jtag-interface-unit"></a><a class="link" href="#jtag-interface-unit">1. JTAG Interface Unit</a></h3>
-<div class="sect3">
-<h4 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1.1. Overview</a></h4>
+<h1 class="page">JTAG Interface Unit</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="jtag-interface-unit" class="paragraph">
+<p>The JTAG Interface Unit (JIU) is the top-level JTAG control module for the
+DTP subsystem. It manages the primary JTAG port and all supporting instrument
+logic.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The JTAG Interface Unit serves as the top-level JTAG control module, managing
-the primary JTAG port for the chiplet and all supporting instrument logic. It
-contains the following design blocks and features:</p>
+<p>The JIU contains:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>One PTAP</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Chiplet IDCODE register</p>
+<p>A Primary TAP (PTAP) with chiplet IDCODE, boundary scan, BIST, reset
+control and JTAG2AXI bridges.</p>
 </li>
 <li>
-<p>Boundary scan control</p>
+<p>A configurable number of Secondary TAPs (STAPs) for downstream chiplet JTAG,
+SMC CPU debug, SEP CPU debug, and optional additional TAPs.</p>
 </li>
 <li>
-<p>BIST control</p>
+<p>An iJTAG network with SIB-based chains for DFT (secure and non-secure), DFD,
+and JTAG2AXI bridges to the SMC fabric, SMC OTP and SEP OTP controllers.</p>
 </li>
 <li>
-<p>Reset control</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>A configurable number of STAPs</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Downstream chiplet JTAG</p>
-</li>
-<li>
-<p>SMC TAP interface</p>
-</li>
-<li>
-<p>SEP TAP Interface</p>
-</li>
-<li>
-<p>An optional number of additional STAPs</p>
-</li>
-<li>
-<p>Extended STAP scan interface</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>An iJTAG network</p>
-<div class="ulist">
-<ul>
-<li>
-<p>A debug port for the SMC fabric</p>
-</li>
-<li>
-<p>A debug port for the SMC OTP</p>
-</li>
-<li>
-<p>A debug port for the SEP OTP</p>
-</li>
-<li>
-<p>A port for extending the iJTAG network outside the interface unit</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Per-path debug-disable inputs that gate STAPs, iJTAG SIBs, and JTAG2AXI
-bridges</p>
+<p>Per-path debug-disable inputs gate STAPs, iJTAG SIBs, and JTAG2AXI bridges.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The PTAP, STAP and all other supporting logic conform to IEEE standards
-1149.1-2013 <em>Test Access Port and Boundary-Scan Architecture</em>, 1687-2014 <em>Access
-and Control of Instrumentation Embedded within a Semiconductor Device</em>, and
-1838-2019 <em>Test Access Architecture for Three-Dimensional Stacked Integrated
-Circuits</em>.</p>
+<p>The PTAP, STAP and all supporting logic conform to IEEE 1149.1-2013 (JTAG),
+IEEE 1687-2014 (iJTAG) and IEEE 1838-2019 (3DIC).</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">1.2. Configuration Parameters</a></h4>
+</div>
+<div class="sect1">
+<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
+<div class="sectionbody">
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
+<col style="width: 28%;">
+<col style="width: 12%;">
+<col style="width: 12%;">
+<col style="width: 48%;">
 </colgroup>
 <thead>
 <tr>
@@ -295,62 +251,64 @@ Circuits</em>.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0-8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_STAP</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0–8</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of STAP interfaces</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of STAP interfaces.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">STAP_IO_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STAP_IO_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0/1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable I/O STAP for chiplet-to-chiplet connectivity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable I/O STAP for chiplet-to-chiplet connectivity.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_DBG_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_DBG_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0/1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable SMC debug STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable SMC debug STAP.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_DBG_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_DBG_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0/1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable SEP debug STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable SEP debug STAP.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_XTRA_STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0-4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_XTRA_STAP</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0–4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of additional STAPs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of additional STAPs.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="jtag-intf-unit-architecture"><a class="anchor" href="#jtag-intf-unit-architecture"></a><a class="link" href="#jtag-intf-unit-architecture">1.3. Architecture</a></h4>
-<div class="paragraph">
-<p>The JTAG Interface Unit integrates PTAP, STAP chain, and iJTAG network into a
-unified debug access point.</p>
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">3. Architecture</a></h2>
+<div class="sectionbody">
+<div id="jtag-intf-unit-architecture" class="paragraph">
+<p>The JTAG Interface Unit integrates the PTAP, STAP chain and iJTAG network into
+a unified debug access point.</p>
 </div>
 <div class="paragraph">
 <p>Shown below is an abstract diagram of the JTAG scan chain.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="../../_images/jtag_scan_chain.drawio.svg" alt="JTAG Scan Chain Diagram">
+<img src="../../_images/jtag_scan_chain.svg" alt="JTAG Interface Unit scan chain diagram showing PTAP, STAP chain and iJTAG SIB network">
 </div>
 </div>
-<div class="sect4">
-<h5 id="scan-chain-topology"><a class="anchor" href="#scan-chain-topology"></a><a class="link" href="#scan-chain-topology">Scan Chain Topology</a></h5>
+<div class="sect2">
+<h3 id="scan-chain-topology"><a class="anchor" href="#scan-chain-topology"></a><a class="link" href="#scan-chain-topology">3.1. Scan Chain Topology</a></h3>
 <div class="paragraph">
 <p>The PTAP is connected to the incoming JTAG interface for the chiplet. The scan
 chain is organized in three major segments: the Primary TAP processes all
 instructions, the Secondary TAP chain provides hierarchical TAP access, and the
 iJTAG network enables instrument-level access to debug blocks.</p>
 </div>
-<div class="sect5">
-<h6 id="stap-chain-hierarchy"><a class="anchor" href="#stap-chain-hierarchy"></a><a class="link" href="#stap-chain-hierarchy">STAP Chain Hierarchy</a></h6>
+<div class="sect3">
+<h4 id="stap-chain-hierarchy"><a class="anchor" href="#stap-chain-hierarchy"></a><a class="link" href="#stap-chain-hierarchy">3.1.1. STAP Chain Hierarchy</a></h4>
 <div class="paragraph">
 <p>The STAP chain implements a four-level hierarchy with configurable lockup latch
 insertion optimized for different physical routing distances.</p>
@@ -411,8 +369,8 @@ enables scan output lockup when <code>NUM_EXTRA_STAPS &gt; 0</code>, providing a
 output timing margin before the scan path returns to the PTAP.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="debug-disable-synchronization"><a class="anchor" href="#debug-disable-synchronization"></a><a class="link" href="#debug-disable-synchronization">Debug Disable Synchronization</a></h6>
+<div class="sect3">
+<h4 id="debug-disable-synchronization"><a class="anchor" href="#debug-disable-synchronization"></a><a class="link" href="#debug-disable-synchronization">3.1.2. Debug Disable Synchronization</a></h4>
 <div class="paragraph">
 <p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is in the system clock
 domain and must be synchronized to TCK before use. The interface unit
@@ -483,28 +441,28 @@ PTAP for the JTAG2AXI bridges.</p>
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="ijtag-network"><a class="anchor" href="#ijtag-network"></a><a class="link" href="#ijtag-network">iJTAG Network</a></h5>
+<div class="sect2">
+<h3 id="ijtag-network"><a class="anchor" href="#ijtag-network"></a><a class="link" href="#ijtag-network">3.2. iJTAG Network</a></h3>
 <div class="paragraph">
 <p>The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
 chains. Each SIB is gated by the corresponding synchronized debug-disable field.</p>
 </div>
-<div class="sect5">
-<h6 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">DFT Secure Chain</a></h6>
+<div class="sect3">
+<h4 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">3.2.1. DFT Secure Chain</a></h4>
 <div class="paragraph">
 <p>The DFT Secure chain is gated by <code>dbg_disable_i.dft_secure</code>. This port is for
 security-sensitive DFT control.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="dft-non-secure-chain"><a class="anchor" href="#dft-non-secure-chain"></a><a class="link" href="#dft-non-secure-chain">DFT Non-Secure Chain</a></h6>
+<div class="sect3">
+<h4 id="dft-non-secure-chain"><a class="anchor" href="#dft-non-secure-chain"></a><a class="link" href="#dft-non-secure-chain">3.2.2. DFT Non-Secure Chain</a></h4>
 <div class="paragraph">
 <p>The DFT Non-Secure chain is gated by <code>dbg_disable_i.dft_nonsecure</code>. General DFT
 control is attached to this port.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="dfd-chain"><a class="anchor" href="#dfd-chain"></a><a class="link" href="#dfd-chain">DFD Chain</a></h6>
+<div class="sect3">
+<h4 id="dfd-chain"><a class="anchor" href="#dfd-chain"></a><a class="link" href="#dfd-chain">3.2.3. DFD Chain</a></h4>
 <div class="paragraph">
 <p>The Design-for-Debug (DFD) chain is gated by <code>dbg_disable_i.dfd</code>. The
 resources reached through it are gated again inside the PTAP, where each
@@ -528,8 +486,8 @@ JTAG2AXI bridge is gated by its own disable input. This chain grants access to:<
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="jtag2axi-interfaces"><a class="anchor" href="#jtag2axi-interfaces"></a><a class="link" href="#jtag2axi-interfaces">JTAG2AXI Interfaces</a></h5>
+<div class="sect2">
+<h3 id="jtag2axi-interfaces"><a class="anchor" href="#jtag2axi-interfaces"></a><a class="link" href="#jtag2axi-interfaces">3.3. JTAG2AXI Interfaces</a></h3>
 <div class="paragraph">
 <p>The interface unit instantiates multiple JTAG2AXI bridges:</p>
 </div>
@@ -553,10 +511,12 @@ fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="jtag-intf-unit-interface"><a class="anchor" href="#jtag-intf-unit-interface"></a><a class="link" href="#jtag-intf-unit-interface">1.4. Interface</a></h4>
-<div class="sect4">
-<h5 id="instruction-encodings"><a class="anchor" href="#instruction-encodings"></a><a class="link" href="#instruction-encodings">Instruction Encodings</a></h5>
+</div>
+<div class="sect1">
+<h2 id="interface"><a class="anchor" href="#interface"></a><a class="link" href="#interface">4. Interface</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="jtag-intf-unit-interface"><a class="anchor" href="#jtag-intf-unit-interface"></a><a class="link" href="#jtag-intf-unit-interface">4.1. Instruction Encodings</a></h3>
 <div class="paragraph">
 <p>The JTAG interface unit uses 6-bit instruction encodings:</p>
 </div>
@@ -823,8 +783,8 @@ fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
 to the BYPASS instruction.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">Signal Interface</a></h5>
+<div class="sect2">
+<h3 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">4.2. Signal Interface</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -964,8 +924,8 @@ to the BYPASS instruction.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">Dependencies</a></h5>
+<div class="sect2">
+<h3 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">4.3. Dependencies</a></h3>
 <div class="paragraph">
 <p>The JTAG Interface Unit depends on the following components:</p>
 </div>
@@ -1006,6 +966,8 @@ to the BYPASS instruction.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

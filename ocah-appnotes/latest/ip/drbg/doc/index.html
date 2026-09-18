@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>DRBG Deterministic Random Bit Generator :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -94,13 +95,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -108,7 +107,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -116,7 +114,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -124,7 +121,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -132,7 +128,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -140,7 +135,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -157,6 +151,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="index.html">DRBG Deterministic Random Bit Generator</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -164,8 +162,9 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="drbg-deterministic-random-bit-generator"><a class="anchor" href="#drbg-deterministic-random-bit-generator"></a><a class="link" href="#drbg-deterministic-random-bit-generator">1. DRBG Deterministic Random Bit Generator</a></h4>
+<h1 class="page">DRBG Deterministic Random Bit Generator</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div class="paragraph">
 <p>This module is <a href="https://csrc.nist.gov/pubs/sp/800/90/a/r1/final">NIST
 800-90A</a> compliant. The module is based on the OpenTitan design.</p>
@@ -181,8 +180,11 @@ Generator.</p>
 <div class="paragraph">
 <p>The <code>drbg</code> top-level module wraps the OpenTitan CSRNG and EDN blocks with bus-protocol adapters. It accepts a raw 32-bit entropy stream from the entropy source, feeds it directly into the CSRNG seed path, and exposes AXI-Stream (and optionally native) EDN endpoints for deterministic random data delivery.</p>
 </div>
-<div class="sect4">
-<h5 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">Parameters</a></h5>
+</div>
+</div>
+<div class="sect1">
+<h2 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1. Parameters</a></h2>
+<div class="sectionbody">
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -226,8 +228,10 @@ Generator.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="external-interfaces"><a class="anchor" href="#external-interfaces"></a><a class="link" href="#external-interfaces">External Interfaces</a></h5>
+</div>
+<div class="sect1">
+<h2 id="external-interfaces"><a class="anchor" href="#external-interfaces"></a><a class="link" href="#external-interfaces">2. External Interfaces</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The DRBG presents several interface types to the rest of the SEP subsystem.</p>
 </div>
@@ -278,14 +282,18 @@ Generator.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="seed-assembly"><a class="anchor" href="#seed-assembly"></a><a class="link" href="#seed-assembly">Seed Assembly</a></h5>
+</div>
+<div class="sect1">
+<h2 id="seed-assembly"><a class="anchor" href="#seed-assembly"></a><a class="link" href="#seed-assembly">3. Seed Assembly</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The <code>drbg_csrng_seed_adapter</code> receives one 32-bit entropy word per valid cycle directly from the entropy source (there is no upstream routing or distribution FIFO) and packs the words into full CSRNG-width seeds using an OpenTitan <code>prim_packer_fifo</code>. The packed seed is pushed into a shallow FIFO (default depth 1) along with a FIPS compliance flag set to a provisional value (<code>DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1</code>). The CSRNG pulls seeds through the standard <code>entropy_src_hw_if</code> handshake: <code>es_req</code> / <code>es_ack</code> / <code>es_bits</code> / <code>es_fips</code>. Because ingress is fire-and-forget with no backpressure, the producer must supply entropy no faster than the seed adapter can pack it.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="opentitan-csrng-and-edn"><a class="anchor" href="#opentitan-csrng-and-edn"></a><a class="link" href="#opentitan-csrng-and-edn">OpenTitan CSRNG and EDN</a></h5>
+</div>
+<div class="sect1">
+<h2 id="opentitan-csrng-and-edn"><a class="anchor" href="#opentitan-csrng-and-edn"></a><a class="link" href="#opentitan-csrng-and-edn">4. OpenTitan CSRNG and EDN</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The CSRNG and EDN instances are standard OpenTitan IP blocks. The CSRNG implements AES-CTR-DRBG per NIST SP 800-90A. It accepts entropy seeds from the hardware interface, processes firmware-issued commands (instantiate, reseed, generate, uninstantiate) through TL-UL, and serves random data to multiple hardware application ports. In this integration, EDN is connected to CSRNG hardware application port 0; any additional hardware application ports are tied off.</p>
 </div>
@@ -299,8 +307,10 @@ Generator.</p>
 functionality of those IPs.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="bus-protocol-adaptation"><a class="anchor" href="#bus-protocol-adaptation"></a><a class="link" href="#bus-protocol-adaptation">Bus Protocol Adaptation</a></h5>
+</div>
+<div class="sect1">
+<h2 id="bus-protocol-adaptation"><a class="anchor" href="#bus-protocol-adaptation"></a><a class="link" href="#bus-protocol-adaptation">5. Bus Protocol Adaptation</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The CSRNG and EDN register interfaces use TL-UL, following the OpenTitan convention. The DRBG wrapper provides two levels of adaptation. The <code>drbg_axil64_lane_adapter</code> accepts 64-bit AXI4-Lite transactions from the SoC interconnect and narrows them to 32-bit AXI-Lite by selecting the appropriate data lane based on address bit [2]. Only aligned single-lane accesses with strobe <code>0x0F</code> or <code>0xF0</code> are forwarded; all others are rejected with SLVERR. Write address, write data, and read address are independent channels. The adapter holds a single downstream 32-bit slot: it accepts each write half as soon as that half is not already pending, and it accepts a read only when neither write half is pending. When a read address and a complete write handshake in the same idle cycle, the adapter forwards the read and holds the write until it returns to idle. The downstream <code>axi_lite_to_tlul</code> bridge then converts 32-bit AXI-Lite into TL-UL for the CSRNG and EDN register blocks.</p>
 </div>
@@ -330,6 +340,8 @@ functionality of those IPs.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

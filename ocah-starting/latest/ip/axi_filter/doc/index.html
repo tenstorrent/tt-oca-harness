@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>AXI Traffic Filter :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="Common AXI address and attribute filter (`axi_filter_wrap`) used on the inbound and outbound paths of SEP and SMC — instances, decode algorithm, address granule and blocked-transaction behaviour.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -133,13 +135,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -147,7 +147,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -155,7 +154,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -163,7 +161,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -171,7 +168,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -179,7 +175,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -196,6 +191,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></li>
+    <li><a href="index.html">AXI Traffic Filter</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -203,9 +202,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="axi-traffic-filter"><a class="anchor" href="#axi-traffic-filter"></a><a class="link" href="#axi-traffic-filter">1. AXI Traffic Filter</a></h3>
-<div class="paragraph">
+<h1 class="page">AXI Traffic Filter</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="axi-traffic-filter" class="paragraph">
 <p>The AXI traffic filter (<code>axi_filter_wrap</code>) is the common address and
 attribute filter used on the inbound and outbound AXI paths of both SEP
 and SMC. This section describes the decode algorithm, which is identical
@@ -217,8 +217,11 @@ sits in their fabric and how firmware is expected to program it.</p>
 is one <code>filter_ctrl</code> register triple&#8201;&#8212;&#8201;<code>FILTER_CONFIG</code>, <code>START_ADDR</code>,
 <code>END_ADDR</code>&#8201;&#8212;&#8201;and every entry is evaluated against every transaction.</p>
 </div>
-<div class="sect3">
-<h4 id="axi-traffic-filter-instances"><a class="anchor" href="#axi-traffic-filter-instances"></a><a class="link" href="#axi-traffic-filter-instances">1.1. Instances</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="axi-traffic-filter-instances"><a class="anchor" href="#axi-traffic-filter-instances"></a><a class="link" href="#axi-traffic-filter-instances">1. Instances</a></h2>
+<div class="sectionbody">
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Traffic filter instances</caption>
 <colgroup>
@@ -281,8 +284,10 @@ matching is disabled at build time on all four, so the <code>group_id</code> fie
 has no effect.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="axi-traffic-filter-decode"><a class="anchor" href="#axi-traffic-filter-decode"></a><a class="link" href="#axi-traffic-filter-decode">1.2. Match, Then Permit</a></h4>
+</div>
+<div class="sect1">
+<h2 id="axi-traffic-filter-decode"><a class="anchor" href="#axi-traffic-filter-decode"></a><a class="link" href="#axi-traffic-filter-decode">2. Match, Then Permit</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Decode is two distinct steps, and the difference between them governs
 what happens when entries overlap.</p>
@@ -353,8 +358,10 @@ length, <code>prot[1]</code> and source ID, so a write and a read to the same
 address may select different entries.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="axi-traffic-filter-granule"><a class="anchor" href="#axi-traffic-filter-granule"></a><a class="link" href="#axi-traffic-filter-granule">1.3. Address Range Granule</a></h4>
+</div>
+<div class="sect1">
+<h2 id="axi-traffic-filter-granule"><a class="anchor" href="#axi-traffic-filter-granule"></a><a class="link" href="#axi-traffic-filter-granule">3. Address Range Granule</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Address comparison ignores the low address bits, so a filter range
 always covers a whole number of granules. <code>allow_burst</code> selects the
@@ -440,8 +447,10 @@ suggest. Size protected regions in whole granules, and prefer
 4 KB.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="axi-traffic-filter-blocked"><a class="anchor" href="#axi-traffic-filter-blocked"></a><a class="link" href="#axi-traffic-filter-blocked">1.4. Blocked Transactions</a></h4>
+</div>
+<div class="sect1">
+<h2 id="axi-traffic-filter-blocked"><a class="anchor" href="#axi-traffic-filter-blocked"></a><a class="link" href="#axi-traffic-filter-blocked">4. Blocked Transactions</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>A blocked transaction is not dropped. It is steered to an AXI error
 subordinate that terminates it with a <code>DECERR</code> response on <code>BRESP</code> or
@@ -471,6 +480,8 @@ never stalls on a filter denial.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

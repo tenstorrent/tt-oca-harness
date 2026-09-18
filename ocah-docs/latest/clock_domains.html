@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Clock Domains :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="power_domains.html">
+    <link rel="next" href="reset.html">
+    <meta name="description" content="OCAH clock domains, the always-on reference clock, and the reference counter.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/memory_map.html">Memory Map and Registers</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/drbg/doc/index.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/key_manager/doc/index.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/periphs.html">Fuse Controller and Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-ppa-appendices.html">PPA and Appendices</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="dashboard.html">Verification Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li><a href="architecture.html">OCAH Architecture &amp; Design</a></li>
+    <li><a href="clock_domains.html">Clock Domains</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="4">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Clock Domains</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="ocah-clock-domains" class="paragraph">
+<p>OCAH distinguishes low-level management timing from functional application
+clocks. The SMC receives an always-on reference clock (<code>clk_ref_i</code>) that is
+available from power-on, before any PLL is locked. Using this reference clock,
+the SMC controls the PLLs during early bring-up and generates the primary
+system clock (<code>clk_smu_i</code>) that is then distributed to the SMC itself, the
+SEP, and the DTP.</p>
+</div>
+<div class="paragraph">
+<p>The SMN lives in its own clock domain with respect to the SMU --- as highlighted
+by the clock domain crossing in the top level diagram --- and with respect
+to the application logic.</p>
+</div>
+<div class="paragraph">
+<p>The following table summarises the clock domains present in OCAH.</p>
+</div>
+<table id="ocah-clock-domain-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. OCAH Clock Domains</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Clock</th>
+<th class="tableblock halign-left valign-top">Subsystem</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_smu_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU (SMC, SEP, DTP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary system clock, generated by the PLL under SMC control. Distributed
+internally to the SMC, SEP, and DTP subsystems. Drives the CPU cluster,
+fabric interconnect, peripheral controllers, and DTP cross-trigger / AXI
+bridges.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_smn_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Management Network clock. Independent of <code>clk_smu_i</code>; clock-domain
+crossings (CDCs) are used at the SMU-SMN boundary to isolate the management
+fabric timing from the SMU subsystem clock.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_ref_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always-on reference clock, available before PLL lock. Used by the SMC for
+early bring-up, PLL control, reset synchronisation, and peripherals requiring
+a stable, lower-frequency source.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_periph_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral clock domain. Drives SMC peripheral subsystems. The reset unit
+generates a dedicated synchronised reset (<code>rst_primary_periph_clk</code>) in this
+domain.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_telemetry_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry clock domain. Separate clock for Advanced Trace Bus data
+collection, with its own reset (<code>rst_telemetry_ni</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_sep_wdt_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Low-frequency watchdog timer clock. Must be independent of the system clock
+so the WDT can detect system clock failures.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tck</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP / SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG Test Clock. Drives PTAP, STAP state machines, and all JTAG-domain scan
+logic inside the DTP/SMC/SEP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>entropy_rosc_sample_clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ring-oscillator sample clock for the entropy source (TRNG). Must be
+asynchronous to <code>clk_i</code> and typically runs between 100 and 400 MHz.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The figure below will be provided as an annotated version of the
+top-level block diagram highlighting the clock domains.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ocah-reference-counter"><a class="anchor" href="#ocah-reference-counter"></a><a class="link" href="#ocah-reference-counter">1. Reference Counter</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Both the SMC and the SEP expose a free-running 64-bit reference counter in their
+CPU control register block (the <code>REFERENCE_COUNTER</code> CSR), clocked by the
+always-on reference clock (<code>clk_ref_i</code>). It advances continuously from reset,
+independent of the system clock (<code>clk_smu_i</code>) frequency or PLL state. Its value
+is synchronised into the CPU clock domain for software reads, and software may
+write the CSR to reload the counter, after which it resumes counting from the
+loaded value. Both subsystems share the same implementation
+(<code>prim_refclk_count_w_cdc</code>) and behave identically.</p>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="power_domains.html">Power Domains</a></span>
+  <span class="next"><a href="reset.html">Reset</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

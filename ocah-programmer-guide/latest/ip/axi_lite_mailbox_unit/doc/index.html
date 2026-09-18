@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Mailbox Unit :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +122,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +134,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +141,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -151,7 +148,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -159,7 +155,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +162,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +178,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></li>
+    <li><a href="index.html">Mailbox Unit</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,10 +189,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="mailbox-unit"><a class="anchor" href="#mailbox-unit"></a><a class="link" href="#mailbox-unit">1. Mailbox Unit</a></h4>
-<div class="sect4">
-<h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
+<h1 class="page">Mailbox Unit</h1>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>This document specifies the Mailbox Unit hardware IP functionality. The
 Mailbox Unit provides FIFO-based bidirectional communication channels
@@ -204,8 +202,10 @@ elements through dedicated hardware channels with minimal software
 overhead.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+</div>
+<div class="sect1">
+<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Mailbox Unit enables secure, FIFO-based, bidirectional communication
 between processing elements or chiplets in multicore systems. Each
@@ -223,16 +223,18 @@ needs, while hardware minimizes software overhead for efficient,
 low-latency data exchange.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="mailbox-unit-architecture"><a class="anchor" href="#mailbox-unit-architecture"></a><a class="link" href="#mailbox-unit-architecture">Architecture</a></h5>
+</div>
+<div class="sect1">
+<h2 id="mailbox-unit-architecture"><a class="anchor" href="#mailbox-unit-architecture"></a><a class="link" href="#mailbox-unit-architecture">3. Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Mailbox IP provides inter-processor and inter-chiplet communication
 through a register-based interface. A single AXI4-Lite slave port is demuxed
 into one register aperture per mailbox direction, and each mailbox pair owns
 the two FIFOs that carry data between its two apertures.</p>
 </div>
-<div class="sect5">
-<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
+<div class="sect2">
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">3.1. Configuration Parameters</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -282,8 +284,8 @@ status</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="address-space"><a class="anchor" href="#address-space"></a><a class="link" href="#address-space">Address Space</a></h6>
+<div class="sect2">
+<h3 id="address-space"><a class="anchor" href="#address-space"></a><a class="link" href="#address-space">3.2. Address Space</a></h3>
 <div class="paragraph">
 <p>The architecture supports up to 64 mailbox instances (32 bidirectional
 pairs):</p>
@@ -313,8 +315,8 @@ leaves the ten registers sparsely mapped; offsets above the register map are
 unmapped rather than aliased.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="internal-structure"><a class="anchor" href="#internal-structure"></a><a class="link" href="#internal-structure">Internal Structure</a></h6>
+<div class="sect2">
+<h3 id="internal-structure"><a class="anchor" href="#internal-structure"></a><a class="link" href="#internal-structure">3.3. Internal Structure</a></h3>
 <div class="paragraph">
 <p>The unit is an <code>axi_lite_demux</code> in front of <code>NUM_MAILBOXES</code> mailbox instances.
 Each mailbox instance has two AXI4-Lite slave ports, one per aperture, and
@@ -324,8 +326,8 @@ of the other. The FIFOs are internal to the IP; there is no external FIFO
 interface.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="transaction-processing"><a class="anchor" href="#transaction-processing"></a><a class="link" href="#transaction-processing">Transaction Processing</a></h6>
+<div class="sect2">
+<h3 id="transaction-processing"><a class="anchor" href="#transaction-processing"></a><a class="link" href="#transaction-processing">3.4. Transaction Processing</a></h3>
 <div class="paragraph">
 <p>AXI4-Lite transactions follow this flow:</p>
 </div>
@@ -352,8 +354,8 @@ combinational paths from the request</p>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="bidirectional-communication"><a class="anchor" href="#bidirectional-communication"></a><a class="link" href="#bidirectional-communication">Bidirectional Communication</a></h6>
+<div class="sect2">
+<h3 id="bidirectional-communication"><a class="anchor" href="#bidirectional-communication"></a><a class="link" href="#bidirectional-communication">3.5. Bidirectional Communication</a></h3>
 <div class="paragraph">
 <p>Each mailbox pair provides two register apertures, conventionally used as an
 outbound and an inbound direction. The two are not independent storage: they
@@ -367,8 +369,8 @@ naming reflects intended use, not an access restriction.</p>
 and interrupt output.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">Clock and Reset</a></h6>
+<div class="sect2">
+<h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">3.6. Clock and Reset</a></h3>
 <div class="paragraph">
 <p>The mailbox uses a single clock domain for integration reliability:</p>
 </div>
@@ -409,8 +411,8 @@ mailbox state</p></td>
 clock domain simplifies timing analysis and integration verification.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="interrupt-architecture"><a class="anchor" href="#interrupt-architecture"></a><a class="link" href="#interrupt-architecture">Interrupt Architecture</a></h6>
+<div class="sect2">
+<h3 id="interrupt-architecture"><a class="anchor" href="#interrupt-architecture"></a><a class="link" href="#interrupt-architecture">3.7. Interrupt Architecture</a></h3>
 <div class="paragraph">
 <p>The mailbox provides independent interrupt outputs for each mailbox
 instance:</p>
@@ -470,14 +472,16 @@ interrupts enable fault recovery and diagnostic analysis.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="mailbox-unit-interface"><a class="anchor" href="#mailbox-unit-interface"></a><a class="link" href="#mailbox-unit-interface">Interface</a></h5>
+</div>
+<div class="sect1">
+<h2 id="mailbox-unit-interface"><a class="anchor" href="#mailbox-unit-interface"></a><a class="link" href="#mailbox-unit-interface">4. Interface</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Mailbox Unit exposes a single struct-based AXI4-Lite slave port. All
 mailbox apertures are decoded from this one port by an internal demux.</p>
 </div>
-<div class="sect5">
-<h6 id="axi4-lite-interface"><a class="anchor" href="#axi4-lite-interface"></a><a class="link" href="#axi4-lite-interface">AXI4-Lite Interface</a></h6>
+<div class="sect2">
+<h3 id="axi4-lite-interface"><a class="anchor" href="#axi4-lite-interface"></a><a class="link" href="#axi4-lite-interface">4.1. AXI4-Lite Interface</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">input  axi_req_t  mailbox_axi_req_i,
@@ -525,8 +529,8 @@ the <code>axi_req_t</code>/<code>axi_resp_t</code> parameters, together with the
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="interrupt-outputs"><a class="anchor" href="#interrupt-outputs"></a><a class="link" href="#interrupt-outputs">Interrupt Outputs</a></h6>
+<div class="sect2">
+<h3 id="interrupt-outputs"><a class="anchor" href="#interrupt-outputs"></a><a class="link" href="#interrupt-outputs">4.2. Interrupt Outputs</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,
@@ -562,8 +566,8 @@ output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o</code></pre>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="control-signals"><a class="anchor" href="#control-signals"></a><a class="link" href="#control-signals">Control Signals</a></h6>
+<div class="sect2">
+<h3 id="control-signals"><a class="anchor" href="#control-signals"></a><a class="link" href="#control-signals">4.3. Control Signals</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">input logic clk_i,       // System clock
@@ -599,8 +603,8 @@ input logic test_en_i    // Test enable for DFT</code></pre>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="timing-characteristics"><a class="anchor" href="#timing-characteristics"></a><a class="link" href="#timing-characteristics">Timing Characteristics</a></h6>
+<div class="sect2">
+<h3 id="timing-characteristics"><a class="anchor" href="#timing-characteristics"></a><a class="link" href="#timing-characteristics">4.4. Timing Characteristics</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -628,8 +632,8 @@ input logic test_en_i    // Test enable for DFT</code></pre>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="error-handling"><a class="anchor" href="#error-handling"></a><a class="link" href="#error-handling">Error Handling</a></h6>
+<div class="sect2">
+<h3 id="error-handling"><a class="anchor" href="#error-handling"></a><a class="link" href="#error-handling">4.5. Error Handling</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -678,8 +682,8 @@ the clearing read is retained</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="integration-requirements"><a class="anchor" href="#integration-requirements"></a><a class="link" href="#integration-requirements">Integration Requirements</a></h6>
+<div class="sect2">
+<h3 id="integration-requirements"><a class="anchor" href="#integration-requirements"></a><a class="link" href="#integration-requirements">4.6. Integration Requirements</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -711,10 +715,12 @@ sequencing; single clock domain (no CDC required)</p></td>
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h5>
-<div class="sect5">
-<h6 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">Address Space Organization</a></h6>
+</div>
+<div class="sect1">
+<h2 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5. Memory Map</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">5.1. Address Space Organization</a></h3>
 <div class="paragraph">
 <p>Each mailbox aperture occupies a dedicated 2KB (0x800) address space.
 The total address space is 0x20000 bytes supporting up to 64 mailbox
@@ -764,8 +770,8 @@ paired inbound aperture pops, and vice versa. Both ends are reachable from the
 same AXI4-Lite slave port.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="per-mailbox-register-map"><a class="anchor" href="#per-mailbox-register-map"></a><a class="link" href="#per-mailbox-register-map">Per-Mailbox Register Map</a></h6>
+<div class="sect2">
+<h3 id="per-mailbox-register-map"><a class="anchor" href="#per-mailbox-register-map"></a><a class="link" href="#per-mailbox-register-map">5.2. Per-Mailbox Register Map</a></h3>
 <div class="paragraph">
 <p>Within each 2KB mailbox aperture, registers are organized as follows.
 Offsets are spaced by <code>DATA_WIDTH</code>/8, so they are 8 bytes apart in the
@@ -867,8 +873,8 @@ not registered, so reads return 0 with OKAY</p></td>
 <p>Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="address-examples"><a class="anchor" href="#address-examples"></a><a class="link" href="#address-examples">Address Examples</a></h6>
+<div class="sect2">
+<h3 id="address-examples"><a class="anchor" href="#address-examples"></a><a class="link" href="#address-examples">5.3. Address Examples</a></h3>
 <div class="paragraph">
 <p>For a system with 2 mailbox pairs (NUM_MAILBOXES = 2) at base address
 0x10000000:</p>
@@ -911,8 +917,8 @@ not registered, so reads return 0 with OKAY</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="specific-register-examples"><a class="anchor" href="#specific-register-examples"></a><a class="link" href="#specific-register-examples">Specific Register Examples:</a></h6>
+<div class="sect2">
+<h3 id="specific-register-examples"><a class="anchor" href="#specific-register-examples"></a><a class="link" href="#specific-register-examples">5.4. Specific Register Examples:</a></h3>
 <table class="tableblock frame-all grid-all" style="width: 60%;">
 <caption class="title">Table 6. Register Address Example (Mailbox Pair 0)</caption>
 <colgroup>
@@ -981,8 +987,8 @@ not registered, so reads return 0 with OKAY</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h6>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.5. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1101,6 +1107,8 @@ not registered, so reads return 0 with OKAY</p></td>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

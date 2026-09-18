@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>CPU &amp; Memory System :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC processor cluster, caches, local memory, isolation, interrupts, and debug.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -109,13 +111,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -123,7 +123,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -131,7 +130,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -139,7 +137,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -147,7 +144,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -155,7 +151,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -172,6 +167,10 @@
 <button class="nav-toggle"></button>
   <a href="../index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="cpu.html">CPU &amp; Memory System</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -179,9 +178,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="cpu-memory-system"><a class="anchor" href="#cpu-memory-system"></a><a class="link" href="#cpu-memory-system">CPU &amp; Memory System</a></h3>
-<div class="paragraph">
+<h1 class="page">CPU &amp; Memory System</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cpu-memory-system" class="paragraph">
 <p>This section describes the SMC&#8217;s CPU subsystem, which is based on the
 Rocket RV64GC RISC-V processor core (see:
 <a href="https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html">Rocket
@@ -213,16 +213,19 @@ management workloads</p>
 </li>
 </ul>
 </div>
-<div class="sect3">
-<h4 id="processor-core-overview"><a class="anchor" href="#processor-core-overview"></a><a class="link" href="#processor-core-overview">Processor Core Overview</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="processor-core-overview"><a class="anchor" href="#processor-core-overview"></a><a class="link" href="#processor-core-overview">Processor Core Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The table below summarizes the key features of the Rocket CPU core, and
 its cache hierarchy</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
+<col style="width: 30%;">
+<col style="width: 70%;">
 </colgroup>
 <thead>
 <tr>
@@ -258,13 +261,16 @@ its cache hierarchy</p>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="cache-and-memory-hierarchy"><a class="anchor" href="#cache-and-memory-hierarchy"></a><a class="link" href="#cache-and-memory-hierarchy">Cache and Memory Hierarchy</a></h4>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect1">
+<h2 id="cache-and-memory-hierarchy"><a class="anchor" href="#cache-and-memory-hierarchy"></a><a class="link" href="#cache-and-memory-hierarchy">Cache and Memory Hierarchy</a></h2>
+<div class="sectionbody">
+<div class="smc-memory-table-scroll" role="region" aria-label="Cache and memory hierarchy" tabindex="0">
+<table class="tableblock frame-all grid-all stretch smc-memory-table">
 <colgroup>
 <col style="width: 25%;">
-<col style="width: 15%;">
-<col style="width: 35%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
 <col style="width: 25%;">
 </colgroup>
 <thead>
@@ -302,6 +308,7 @@ its cache hierarchy</p>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>All memory components (SRAM, caches, ROM) are configurable via top-level
 parameters. The scratchpad SRAM allows deterministic accesses,
@@ -310,11 +317,15 @@ management.</p>
 </div>
 <div class="paragraph">
 <p>Internally, the CPU cluster uses a TileLink bus to connect cores to the scratchpad, Boot ROM, PLIC, CLINT, and Bus Error Units.
-At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for integration with the SMC fabric (see <a href="#fabric">[fabric]</a>).</p>
+At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for integration with the SMC fabric (see
+<a href="fabric.html#fabric" class="xref page">Fabric</a>
+).</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="smc-per-core-reset"><a class="anchor" href="#smc-per-core-reset"></a><a class="link" href="#smc-per-core-reset">Reset, Boot, and Initialization</a></h4>
+</div>
+<div class="sect1">
+<h2 id="smc-per-core-reset"><a class="anchor" href="#smc-per-core-reset"></a><a class="link" href="#smc-per-core-reset">Reset, Boot, and Initialization</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Each CPU core supports an independent reset mechanism and a programmable
 reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
@@ -337,8 +348,10 @@ initialization is reported through the smc_init_mem_done_o status signal,
 allowing software to reliably detect when memory is ready for use.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="memory-repair"><a class="anchor" href="#memory-repair"></a><a class="link" href="#memory-repair">Memory Repair</a></h4>
+</div>
+<div class="sect1">
+<h2 id="memory-repair"><a class="anchor" href="#memory-repair"></a><a class="link" href="#memory-repair">Memory Repair</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SMC CPU subsystem includes Built-In Redundancy Analysis (BIRA) memory repair
 support to address manufacturing defects in SRAM arrays. Repair uses redundant
@@ -400,13 +413,15 @@ to enable rapid reset sequences. Normal cold reset sequences always execute
 repair unless explicitly bypassed via strap configuration.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="system-interfaces"><a class="anchor" href="#system-interfaces"></a><a class="link" href="#system-interfaces">System Interfaces</a></h4>
+</div>
+<div class="sect1">
+<h2 id="system-interfaces"><a class="anchor" href="#system-interfaces"></a><a class="link" href="#system-interfaces">System Interfaces</a></h2>
+<div class="sectionbody">
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 33.3333%;">
-<col style="width: 33.3334%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 55%;">
 </colgroup>
 <thead>
 <tr>
@@ -434,8 +449,10 @@ repair unless explicitly bypassed via strap configuration.</p>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="cluster-boundary-isolation"><a class="anchor" href="#cluster-boundary-isolation"></a><a class="link" href="#cluster-boundary-isolation">Cluster Boundary Isolation</a></h4>
+</div>
+<div class="sect1">
+<h2 id="cluster-boundary-isolation"><a class="anchor" href="#cluster-boundary-isolation"></a><a class="link" href="#cluster-boundary-isolation">Cluster Boundary Isolation</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The cluster is reset independently of the surrounding SMC fabric.
 If the cluster were reset while a transaction on one of its AXI ports
@@ -469,8 +486,8 @@ into the fabric.</p>
 glitches either. The boundary also self-isolates on cold boot, releasing only
 once SRAM initialization completes and the cores and uncore are out of reset.</p>
 </div>
-<div class="sect4">
-<h5 id="drain-handshake"><a class="anchor" href="#drain-handshake"></a><a class="link" href="#drain-handshake">Drain Handshake</a></h5>
+<div class="sect2">
+<h3 id="drain-handshake"><a class="anchor" href="#drain-handshake"></a><a class="link" href="#drain-handshake">Drain Handshake</a></h3>
 <div class="paragraph">
 <p>Isolation is coordinated with the control logic
 (<code>smc_cpu_ctrl_wrap</code>) through two signals:</p>
@@ -490,12 +507,14 @@ released.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="reset-domain-crossing"><a class="anchor" href="#reset-domain-crossing"></a><a class="link" href="#reset-domain-crossing">Reset-Domain Crossing</a></h5>
+<div class="sect2">
+<h3 id="reset-domain-crossing"><a class="anchor" href="#reset-domain-crossing"></a><a class="link" href="#reset-domain-crossing">Reset-Domain Crossing</a></h3>
 <div class="paragraph">
 <p>The flops driving the isolate-control logic are held by the cluster&#8217;s
 uncore/core reset, while the flops inside <code>axi_isolate</code> are held by the Primary
-Reset (see <a href="#clock-and-reset-management">Clock and Reset Management</a>). The
+Reset (see
+<a href="clk_rst.html#clock-and-reset-management" class="xref page">Clock and Reset Management</a>
+). The
 uncore/core reset is driven from two sources:</p>
 </div>
 <div class="ulist">
@@ -520,21 +539,27 @@ synchronous and crosses no domains.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="interrupt-and-control-integration"><a class="anchor" href="#interrupt-and-control-integration"></a><a class="link" href="#interrupt-and-control-integration">Interrupt and Control Integration</a></h4>
+</div>
+<div class="sect1">
+<h2 id="interrupt-and-control-integration"><a class="anchor" href="#interrupt-and-control-integration"></a><a class="link" href="#interrupt-and-control-integration">Interrupt and Control Integration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
 units; the authoritative <code>cpu_interrupts_o</code> map; PLIC/CLINT register
-documentation; and BEU NMI delivery—is documented in <a href="#interrupts">Interrupts</a>.</p>
+documentation; and BEU NMI delivery—is documented in
+<a href="interrupts.html#interrupts" class="xref page">Interrupts</a>.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="watchdog-timer-system"><a class="anchor" href="#watchdog-timer-system"></a><a class="link" href="#watchdog-timer-system">Watchdog Timer System</a></h4>
+</div>
+<div class="sect1">
+<h2 id="watchdog-timer-system"><a class="anchor" href="#watchdog-timer-system"></a><a class="link" href="#watchdog-timer-system">Watchdog Timer System</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
 0x400), enabling per-core fault detection and recovery without impacting
 other cores. Base addresses and interrupt-related context for the WDT are
-summarized in <a href="#interrupts">Interrupts</a>.</p>
+summarized in
+<a href="interrupts.html#interrupts" class="xref page">Interrupts</a>.</p>
 </div>
 <div class="paragraph">
 <p>Timeouts are configurable to suit different workloads, and staged
@@ -546,8 +571,10 @@ reset is triggered.</p>
 triggers, supporting uninterrupted development and troubleshooting.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="advanced-bus-infrastructure-monitoring-and-error-management"><a class="anchor" href="#advanced-bus-infrastructure-monitoring-and-error-management"></a><a class="link" href="#advanced-bus-infrastructure-monitoring-and-error-management">Advanced Bus Infrastructure Monitoring and Error Management</a></h4>
+</div>
+<div class="sect1">
+<h2 id="advanced-bus-infrastructure-monitoring-and-error-management"><a class="anchor" href="#advanced-bus-infrastructure-monitoring-and-error-management"></a><a class="link" href="#advanced-bus-infrastructure-monitoring-and-error-management">Advanced Bus Infrastructure Monitoring and Error Management</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Per-core bus error monitors (at 0xC801_0000 + N * 0x1000) track AXI
 transactions, allowing the system to quickly detect and respond to
@@ -569,8 +596,10 @@ like addresses and data to support thorough fault analysis and recovery
 coordination.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="debug"><a class="anchor" href="#debug"></a><a class="link" href="#debug">Debug</a></h4>
+</div>
+<div class="sect1">
+<h2 id="debug"><a class="anchor" href="#debug"></a><a class="link" href="#debug">Debug</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Debugging is facilitated by a dedicated APB interface and JTAG, enabling
 per-core access to registers, memory, and both hardware and software
@@ -579,8 +608,10 @@ functional resets and allow override of reset vectors to support
 firmware development and diagnostics.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h4>
+</div>
+<div class="sect1">
+<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h2>
+<div class="sectionbody">
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1225,6 +1256,8 @@ firmware development and diagnostics.</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

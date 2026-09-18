@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>JTAG PTAP :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="Primary TAP — IEEE 1149.1-2013/1687-2014/1838-2019 implementation, configuration, architecture and interface.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -109,13 +111,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -123,7 +123,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -131,7 +130,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -139,7 +137,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -147,7 +144,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -155,7 +151,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -172,6 +167,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="index.html">JTAG PTAP</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -179,53 +178,56 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="jtag-ptap"><a class="anchor" href="#jtag-ptap"></a><a class="link" href="#jtag-ptap">JTAG PTAP</a></h3>
-<div class="sect3">
-<h4 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h4>
-<div class="paragraph">
-<p>The Primary TAP (PTAP) provides the main JTAG access point for the chiplet,
-implementing IEEE 1149.1-2013 compliance with extensions for IEEE 1687-2014
-(iJTAG) and IEEE 1838-2019 (3DIC).</p>
+<h1 class="page">JTAG PTAP</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="jtag-ptap" class="paragraph">
+<p>The Primary TAP (PTAP) is the main JTAG access point for the chiplet. It
+implements IEEE 1149.1-2013 with extensions for IEEE 1687-2014 (iJTAG) and
+IEEE 1838-2019 (3DIC).</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The PTAP design includes:</p>
+<p>The PTAP provides:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Full IEEE 1149.1-2013 JTAG TAP controller</p>
+<p>Full IEEE 1149.1-2013 TAP controller with 16-state FSM and one-hot encoding.</p>
 </li>
 <li>
-<p>Test Data Registers (TDRs) for all defined JTAG instructions</p>
+<p>Test Data Registers (TDRs) for all defined JTAG instructions.</p>
 </li>
 <li>
-<p>Test Mode Persistence (TMP) support</p>
+<p>Test Mode Persistence (TMP) support — gates JTAG clock stop and test
+assertion across a configurable list of reset conditions.</p>
 </li>
 <li>
-<p>Boundary scan support with scan ports and control signals</p>
+<p>Boundary scan with scan ports and control signals.</p>
 </li>
 <li>
-<p>BIST support</p>
+<p>BIST support via the RUNBIST instruction.</p>
 </li>
 <li>
-<p>3DIC support with STAP scan ports and control signals</p>
+<p>3DIC support (TAP_3DCR) for STAP selection over a JTAG scan chain.</p>
 </li>
 <li>
-<p>iJTAG network access</p>
+<p>iJTAG SIB-based network access.</p>
 </li>
 <li>
-<p>JTAG2AXI debug interface for memory-mapped access</p>
+<p>JTAG2AXI debug bridges for SMC fabric, SMC OTP and SEP OTP.</p>
 </li>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h4>
-<div class="paragraph">
-<p>The PTAP is highly parameterizable to support different feature sets and
-integration requirements.</p>
 </div>
+<div class="sect1">
+<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h2>
+<div class="sectionbody">
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 28%;">
@@ -243,209 +245,211 @@ integration requirements.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>Feature Enable Parameters</strong></p></td>
+<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>Feature enable parameters</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BSR_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BSR_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables all mandatory JTAG boundary scan instructions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable all mandatory IEEE 1149.1 boundary scan instructions.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EXTEST_TRAIN_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXTEST_TRAIN_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables optional EXTEST_TRAIN instruction</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable optional EXTEST_TRAIN instruction.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EXTEST_PULSE_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXTEST_PULSE_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables optional EXTEST_PULSE instruction</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable optional EXTEST_PULSE instruction.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INTEST_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INTEST_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables optional INTEST instruction</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable optional INTEST instruction.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLAMP_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CLAMP_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables optional CLAMP instruction</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable optional CLAMP instruction.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HIGHZ_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>HIGHZ_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables optional HIGHZ instruction</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable optional HIGHZ instruction.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RUNBIST_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RUNBIST_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables optional RUNBIST instruction</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable optional RUNBIST instruction.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TMP_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TMP_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables TMP controller functionality and instructions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable TMP controller and associated instructions.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IC_RESET_SMC_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IC_RESET_SMC_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the SMC slice of the IC_RESET TDR (requires matching <code>ic_reset_smc_t</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable SMC slice of the IC_RESET TDR.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IC_RESET_SEP_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IC_RESET_SEP_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the SEP slice of the IC_RESET TDR (requires matching <code>ic_reset_sep_t</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable SEP slice of the IC_RESET TDR.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IC_RESET_EXT_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IC_RESET_EXT_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the external slice of the IC_RESET TDR (requires matching <code>ic_reset_ext_t</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable external slice of the IC_RESET TDR.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_DBG_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_DBG_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables JTAG2AXI ports for SMC debug interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable JTAG2AXI ports for SMC debug.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_DBG_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_DBG_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables STAP for SEP debug interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable STAP for SEP debug.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">STAP_IO_ENABLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STAP_IO_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables STAP for chiplet-to-chiplet connectivity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable STAP for chiplet-to-chiplet connectivity.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>IC_RESET Struct Type Parameters</strong></p></td>
+<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>IC_RESET struct type parameters</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ic_reset_smc_t</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_smc_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">type</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Packed struct type for the SMC IC_RESET slice (typically <code>smc_pkg::jtag_smc_reset_ctrl_t</code>). Must contain <code>.ovrd</code> and <code>.val</code> sub-structs of identical width.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Packed struct for the SMC IC_RESET slice. Must contain <code>.ovrd</code> and <code>.val</code> sub-structs of identical width.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ic_reset_sep_t</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_sep_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">type</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Packed struct type for the SEP IC_RESET slice (typically <code>sep_pkg::jtag_sep_reset_ctrl_t</code>). Must contain <code>.ovrd</code> and <code>.val</code> sub-structs of identical width.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Packed struct for the SEP IC_RESET slice.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ic_reset_ext_t</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_ext_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">type</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Packed struct type for the external IC_RESET slice. Must contain <code>.ovrd</code> and <code>.val</code> sub-structs of identical width.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Packed struct for the external IC_RESET slice.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>Size Parameters</strong></p></td>
+<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>Size parameters</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_EXTRA_STAPS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_EXTRA_STAPS</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">int</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of additional STAPs for local connectivity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of additional STAPs for local connectivity.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_XTRIG_CTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_XTRIG_CTP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">int</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of cross trigger ports</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of cross-trigger ports.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_XTRIG_INT_CT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_XTRIG_INT_CT</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">int</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of internal cross triggers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of internal cross triggers.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>IDCODE Parameters</strong></p></td>
+<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>IDCODE parameters</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IDCODE_MFR_ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IDCODE_MFR_ID</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[10:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">11&#8217;h000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">JEDEC manufacturer ID (11 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11&#8217;h000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JEDEC manufacturer ID.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IDCODE_PART_NUM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IDCODE_PART_NUM</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[15:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16&#8217;h0000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet model ID (16 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>16&#8217;h0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet model ID.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IDCODE_SI_REV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IDCODE_SI_REV</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[3:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4&#8217;h0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Silicon revision (4 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>4&#8217;h0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Silicon revision.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>Version Parameter</strong></p></td>
+<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>Version parameter</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OCH_VER</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCH_VER</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[7:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8&#8217;h00</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DTP IP major version number</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>8&#8217;h00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP IP major version number, reflected in JTAG_CAPS.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>AXI Pipeline Depth Parameters</strong></p></td>
+<td class="tableblock halign-center valign-top" colspan="4"><p class="tableblock"><strong>AXI pipeline depth parameters</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_RD_PL_DEPTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_OTP_RD_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;h3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP read pipeline depth (0=single outstanding)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP read pipeline depth (0 = single outstanding).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_WR_PL_DEPTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_OTP_WR_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;h3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP write pipeline depth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP write pipeline depth.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_RD_PL_DEPTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_OTP_RD_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;h3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP read pipeline depth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP read pipeline depth.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_WR_PL_DEPTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_OTP_WR_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;h3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP write pipeline depth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP write pipeline depth.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_RD_PL_DEPTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_RD_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;h3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric read pipeline depth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric read pipeline depth.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_WR_PL_DEPTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_WR_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">logic[1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;h3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric write pipeline depth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric write pipeline depth.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="ptap-architecture"><a class="anchor" href="#ptap-architecture"></a><a class="link" href="#ptap-architecture">Architecture</a></h4>
-<div class="paragraph">
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">Architecture</a></h2>
+<div class="sectionbody">
+<div id="ptap-architecture" class="paragraph">
 <p>The PTAP is fully compliant with the IEEE JTAG specifications. It implements a
 modular design with a core TAP controller, dedicated register modules for each
 instruction type, and optional AXI bridge modules for debug access. The
@@ -455,15 +459,30 @@ scan ports and control signals derived from internal TDRs.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="../../_images/ptap_module_diagram.drawio.svg" alt="PTAP Module Diagram">
+<img src="../../_images/ptap_module_diagram.svg" alt="PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select">
 </div>
+<div class="title">Figure 1. PTAP module architecture</div>
 </div>
-<div class="sect4">
-<h5 id="module-hierarchy"><a class="anchor" href="#module-hierarchy"></a><a class="link" href="#module-hierarchy">Module Hierarchy</a></h5>
+<div class="paragraph">
+<p>Blue arrows show TAP Controller control signals (Capture/Shift/Update) and
+decoded instruction/selection signals from the Instruction Decoder.
+Grey arrows show scan-data paths: solid grey carries PTAP_TDI scan-in (fanning
+out directly to IR, all TDR scan-in inputs, <code>BSR_SI</code>, and <code>IJTAG_SI</code>); dashed
+grey carries scan-out returns — the selected IR or TDR scan-out is chosen by the
+Scan Path Mux and forwarded to PTAP_TDO (retimed on falling TCK edge; zero-length
+bypass uses the ZLB path, which bypasses the retimer).
+The TDR Bank registers (<code>BYPASS</code>, <code>IDCODE</code>, <code>DBG_CTRL</code>, and others) are listed in
+the Module Hierarchy table below.
+<code>BSR_SI</code>/<code>IJTAG_SI</code> scan-in arrives directly from PTAP_TDI fan-out;
+<code>BSR_SO</code>/<code>IJTAG_SO</code> scan-out returns are selected by the Scan Path Mux.</p>
+</div>
+<div class="sect2">
+<h3 id="module-hierarchy"><a class="anchor" href="#module-hierarchy"></a><a class="link" href="#module-hierarchy">Module Hierarchy</a></h3>
 <div class="paragraph">
 <p>The PTAP implementation instantiates the following submodules:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="ptap-module-hierarchy-scroll" tabindex="0" aria-label="Module Hierarchy table, scrollable">
+<table class="tableblock frame-all grid-all stretch ptap-module-hierarchy">
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 45%;">
@@ -550,8 +569,9 @@ scan ports and control signals derived from internal TDRs.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="tap-controller-state-machine"><a class="anchor" href="#tap-controller-state-machine"></a><a class="link" href="#tap-controller-state-machine">TAP Controller State Machine</a></h5>
+</div>
+<div class="sect2">
+<h3 id="tap-controller-state-machine"><a class="anchor" href="#tap-controller-state-machine"></a><a class="link" href="#tap-controller-state-machine">TAP Controller State Machine</a></h3>
 <div class="paragraph">
 <p>The TAP controller implements the IEEE 1149.1 16-state finite state machine
 using one-hot encoding. Each state is assigned a unique bit position within a
@@ -666,8 +686,8 @@ Capture and shift signals are registered on the falling edge of TCK to ensure
 stable control windows before the rising edge samples data.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="reset-hierarchy"><a class="anchor" href="#reset-hierarchy"></a><a class="link" href="#reset-hierarchy">Reset Hierarchy</a></h5>
+<div class="sect2">
+<h3 id="reset-hierarchy"><a class="anchor" href="#reset-hierarchy"></a><a class="link" href="#reset-hierarchy">Reset Hierarchy</a></h3>
 <div class="paragraph">
 <p>The PTAP employs a three-level reset hierarchy to support power-on
 initialization, JTAG reset, and conditional register preservation.</p>
@@ -712,8 +732,8 @@ conditional reset <code>chrst_n</code> allows boundary scan and configuration re
 survive TEST_LOGIC_RESET state transitions while in persistence mode.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="tdr-multiplexer"><a class="anchor" href="#tdr-multiplexer"></a><a class="link" href="#tdr-multiplexer">TDR Multiplexer</a></h5>
+<div class="sect2">
+<h3 id="tdr-multiplexer"><a class="anchor" href="#tdr-multiplexer"></a><a class="link" href="#tdr-multiplexer">TDR Multiplexer</a></h3>
 <div class="paragraph">
 <p>The PTAP implements a 41-case instruction-dependent data register multiplexer.
 During IR scan operations, the instruction register connects to the scan path.
@@ -737,8 +757,8 @@ the instruction register and data register scan controls, enabling STAP
 operation during both IR and DR scan sequences as required by IEEE 1838.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="tdo-retiming"><a class="anchor" href="#tdo-retiming"></a><a class="link" href="#tdo-retiming">TDO Retiming</a></h5>
+<div class="sect2">
+<h3 id="tdo-retiming"><a class="anchor" href="#tdo-retiming"></a><a class="link" href="#tdo-retiming">TDO Retiming</a></h3>
 <div class="paragraph">
 <p>The TDO output is retimed on the falling edge of TCK as required by IEEE 1149.1
 Section 4.5.2. The retiming register ensures that TDO transitions occur at the
@@ -748,8 +768,8 @@ retimer is bypassed using an explicit <code>prim_stdmux2</code> cell to minimize
 latency.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="id-code"><a class="anchor" href="#id-code"></a><a class="link" href="#id-code">ID Code</a></h5>
+<div class="sect2">
+<h3 id="id-code"><a class="anchor" href="#id-code"></a><a class="link" href="#id-code">ID Code</a></h3>
 <div class="paragraph">
 <p>The IDCODE instruction accesses a TDR containing device identification
 information.</p>
@@ -816,8 +836,8 @@ IDCODE TDR will shift out on TDO.</p>
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="debug-control"><a class="anchor" href="#debug-control"></a><a class="link" href="#debug-control">Debug Control</a></h5>
+<div class="sect2">
+<h3 id="debug-control"><a class="anchor" href="#debug-control"></a><a class="link" href="#debug-control">Debug Control</a></h3>
 <div class="paragraph">
 <p>The DEBUG_CONTROL instruction accesses a TDR defining general control bits for
 debug and control of the design.</p>
@@ -897,8 +917,8 @@ will be ignored. The contents of the DEBUG_CONTROL TDR will shift out on TDO.</p
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="jtag-capabilities"><a class="anchor" href="#jtag-capabilities"></a><a class="link" href="#jtag-capabilities">JTAG Capabilities</a></h5>
+<div class="sect2">
+<h3 id="jtag-capabilities"><a class="anchor" href="#jtag-capabilities"></a><a class="link" href="#jtag-capabilities">JTAG Capabilities</a></h3>
 <div class="paragraph">
 <p>The JTAG_CAPS instruction accesses a read-only TDR reporting the DTP version
 number and general configuration parameters for the DTP.</p>
@@ -1055,8 +1075,8 @@ JTAG_CAPS TDR will shift out on TDO.</p>
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="boundary-scan-support"><a class="anchor" href="#boundary-scan-support"></a><a class="link" href="#boundary-scan-support">Boundary Scan Support</a></h5>
+<div class="sect2">
+<h3 id="boundary-scan-support"><a class="anchor" href="#boundary-scan-support"></a><a class="link" href="#boundary-scan-support">Boundary Scan Support</a></h3>
 <div class="paragraph">
 <p>All boundary scan and BIST instructions defined in IEEE 1149.1 are optionally
 supported, but support is not enabled by default. RTL parameters are provided to
@@ -1082,8 +1102,8 @@ with the least significant bit.</p>
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="bist-support"><a class="anchor" href="#bist-support"></a><a class="link" href="#bist-support">BIST Support</a></h5>
+<div class="sect2">
+<h3 id="bist-support"><a class="anchor" href="#bist-support"></a><a class="link" href="#bist-support">BIST Support</a></h3>
 <div class="paragraph">
 <p>The RUNBIST instruction is optionally supported, but support is not enabled by
 default. An RTL parameter is provided to selectively enable support. Any
@@ -1121,8 +1141,8 @@ the BIST TDR.</p>
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="test-mode-persistence-tmp-support"><a class="anchor" href="#test-mode-persistence-tmp-support"></a><a class="link" href="#test-mode-persistence-tmp-support">Test Mode Persistence (TMP) Support</a></h5>
+<div class="sect2">
+<h3 id="test-mode-persistence-tmp-support"><a class="anchor" href="#test-mode-persistence-tmp-support"></a><a class="link" href="#test-mode-persistence-tmp-support">Test Mode Persistence (TMP) Support</a></h3>
 <div class="paragraph">
 <p>There is optional support for TMP, but support for TMP is disabled by default.
 An RTL parameter enables support for TMP.</p>
@@ -1170,8 +1190,8 @@ i.e. it is an exact copy of the <em>RESET_N</em> signal.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="3dic-support"><a class="anchor" href="#3dic-support"></a><a class="link" href="#3dic-support">3DIC Support</a></h5>
+<div class="sect2">
+<h3 id="3dic-support"><a class="anchor" href="#3dic-support"></a><a class="link" href="#3dic-support">3DIC Support</a></h3>
 <div class="paragraph">
 <p>There is optional support for STAP interfaces, and support is enabled by
 default. An RTL parameter selects the number of STAP interfaces, where a value
@@ -1221,8 +1241,8 @@ chain.</p>
 the <em>BYPASS</em> instruction, and the STAP scan chain cannot be selected.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="ic_reset-support"><a class="anchor" href="#ic_reset-support"></a><a class="link" href="#ic_reset-support">IC_RESET Support</a></h5>
+<div class="sect2">
+<h3 id="ic_reset-support"><a class="anchor" href="#ic_reset-support"></a><a class="link" href="#ic_reset-support">IC_RESET Support</a></h3>
 <div class="paragraph">
 <p>The PTAP provides support for a configurable number of IEEE 1149.1-compliant
 reset controls. The IC_RESET TDR is composed of three independently-enabled
@@ -1341,18 +1361,18 @@ reset passes through.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="ijtag-support"><a class="anchor" href="#ijtag-support"></a><a class="link" href="#ijtag-support">iJTAG Support</a></h5>
+<div class="sect2">
+<h3 id="ijtag-support"><a class="anchor" href="#ijtag-support"></a><a class="link" href="#ijtag-support">iJTAG Support</a></h3>
 <div class="paragraph">
 <p>The PTAP has optional support for a IEEE 1687-2014-compliant hierarchical iJTAG
 network, and support is enabled by default. When the <em>SELECT_IJTAG</em> instruction
 is enabled, the iJTAG network is selected for scan.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="jtag2axi-support"><a class="anchor" href="#jtag2axi-support"></a><a class="link" href="#jtag2axi-support">JTAG2AXI Support</a></h5>
-<div class="sect5">
-<h6 id="_jtag2axi_caps"><a class="anchor" href="#_jtag2axi_caps"></a><a class="link" href="#_jtag2axi_caps">*_JTAG2AXI_CAPS</a></h6>
+<div class="sect2">
+<h3 id="jtag2axi-support"><a class="anchor" href="#jtag2axi-support"></a><a class="link" href="#jtag2axi-support">JTAG2AXI Support</a></h3>
+<div class="sect3">
+<h4 id="_jtag2axi_caps"><a class="anchor" href="#_jtag2axi_caps"></a><a class="link" href="#_jtag2axi_caps">*_JTAG2AXI_CAPS</a></h4>
 <div class="paragraph">
 <p>This is a private instruction that accesses a read-only TDR reporting the
 configuration parameters for the given JTAG2AXI debugging instrument.</p>
@@ -1406,8 +1426,8 @@ configuration parameters for the given JTAG2AXI debugging instrument.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="_axi_single_op"><a class="anchor" href="#_axi_single_op"></a><a class="link" href="#_axi_single_op">*_AXI_SINGLE_OP</a></h6>
+<div class="sect3">
+<h4 id="_axi_single_op"><a class="anchor" href="#_axi_single_op"></a><a class="link" href="#_axi_single_op">*_AXI_SINGLE_OP</a></h4>
 <div class="paragraph">
 <p>This is a private instruction that generates a single AXI read or write
 transaction. It provides a mechanism for an external debugger to do sparse reads
@@ -1420,7 +1440,7 @@ instruction.</p>
 <div class="content">
 <img src="../../_images/jtag2axi_single_op.svg" alt="AXI Single OP Instruction layout with size==3 and addr_size==51">
 </div>
-<div class="title">Figure 1. AXI Single OP Instruction layout with size==3 and addr_size==51.</div>
+<div class="title">Figure 2. AXI Single OP Instruction layout with size==3 and addr_size==51.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1478,8 +1498,8 @@ instruction.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="_axi_series_ctrl"><a class="anchor" href="#_axi_series_ctrl"></a><a class="link" href="#_axi_series_ctrl">*_AXI_SERIES_CTRL</a></h6>
+<div class="sect3">
+<h4 id="_axi_series_ctrl"><a class="anchor" href="#_axi_series_ctrl"></a><a class="link" href="#_axi_series_ctrl">*_AXI_SERIES_CTRL</a></h4>
 <div class="paragraph">
 <p>This is a private instruction that preloads the start address of a region that
 will be subsequently read or written using the AXI_SERIES_DATA instruction. It
@@ -1503,7 +1523,7 @@ more time efficient for these use cases.</p>
 <div class="content">
 <img src="../../_images/jtag2axi_series_ctrl.svg" alt="AXI Series Control Instruction layout with addr_size==51">
 </div>
-<div class="title">Figure 2. AXI Series Control Instruction layout with addr_size==51.</div>
+<div class="title">Figure 3. AXI Series Control Instruction layout with addr_size==51.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1561,8 +1581,8 @@ more time efficient for these use cases.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="_axi_series_data_incr"><a class="anchor" href="#_axi_series_data_incr"></a><a class="link" href="#_axi_series_data_incr">*_AXI_SERIES_DATA_INCR</a></h6>
+<div class="sect3">
+<h4 id="_axi_series_data_incr"><a class="anchor" href="#_axi_series_data_incr"></a><a class="link" href="#_axi_series_data_incr">*_AXI_SERIES_DATA_INCR</a></h4>
 <div class="paragraph">
 <p>This is a private instruction that does the actual read/write to the address
 previously specified.</p>
@@ -1590,25 +1610,25 @@ and Capture-DR returns the payload from those lanes.</p>
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_incr0.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==0">
 </div>
-<div class="title">Figure 3. AXISeriesDataIncr when AXISeriesCtrl.size==0.</div>
+<div class="title">Figure 4. AXISeriesDataIncr when AXISeriesCtrl.size==0.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_incr1.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==1">
 </div>
-<div class="title">Figure 4. AXISeriesDataIncr when AXISeriesCtrl.size==1.</div>
+<div class="title">Figure 5. AXISeriesDataIncr when AXISeriesCtrl.size==1.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_incr2.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==2">
 </div>
-<div class="title">Figure 5. AXISeriesDataIncr when AXISeriesCtrl.size==2.</div>
+<div class="title">Figure 6. AXISeriesDataIncr when AXISeriesCtrl.size==2.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_incr3.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==3">
 </div>
-<div class="title">Figure 6. AXISeriesDataIncr when AXISeriesCtrl.size==3.</div>
+<div class="title">Figure 7. AXISeriesDataIncr when AXISeriesCtrl.size==3.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1638,8 +1658,8 @@ and Capture-DR returns the payload from those lanes.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="_axi_series_data_no_incr"><a class="anchor" href="#_axi_series_data_no_incr"></a><a class="link" href="#_axi_series_data_no_incr">*_AXI_SERIES_DATA_NO_INCR</a></h6>
+<div class="sect3">
+<h4 id="_axi_series_data_no_incr"><a class="anchor" href="#_axi_series_data_no_incr"></a><a class="link" href="#_axi_series_data_no_incr">*_AXI_SERIES_DATA_NO_INCR</a></h4>
 <div class="paragraph">
 <p>This is a private instruction that does the actual read/write to the address
 previously specified.</p>
@@ -1663,25 +1683,25 @@ and Capture-DR returns the payload from those lanes.</p>
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_incr0.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==0">
 </div>
-<div class="title">Figure 7. AXISeriesDataNoIncr when AXISeriesCtrl.size==0.</div>
+<div class="title">Figure 8. AXISeriesDataNoIncr when AXISeriesCtrl.size==0.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_incr1.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==1">
 </div>
-<div class="title">Figure 8. AXISeriesDataNoIncr when AXISeriesCtrl.size==1.</div>
+<div class="title">Figure 9. AXISeriesDataNoIncr when AXISeriesCtrl.size==1.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_incr2.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==2">
 </div>
-<div class="title">Figure 9. AXISeriesDataNoIncr when AXISeriesCtrl.size==2.</div>
+<div class="title">Figure 10. AXISeriesDataNoIncr when AXISeriesCtrl.size==2.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_incr3.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==3">
 </div>
-<div class="title">Figure 10. AXISeriesDataNoIncr when AXISeriesCtrl.size==3.</div>
+<div class="title">Figure 11. AXISeriesDataNoIncr when AXISeriesCtrl.size==3.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1711,8 +1731,8 @@ and Capture-DR returns the payload from those lanes.</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="_axi_series_data_with_error_status"><a class="anchor" href="#_axi_series_data_with_error_status"></a><a class="link" href="#_axi_series_data_with_error_status">*_AXI_SERIES_DATA_WITH_ERROR_STATUS</a></h6>
+<div class="sect3">
+<h4 id="_axi_series_data_with_error_status"><a class="anchor" href="#_axi_series_data_with_error_status"></a><a class="link" href="#_axi_series_data_with_error_status">*_AXI_SERIES_DATA_WITH_ERROR_STATUS</a></h4>
 <div class="paragraph">
 <p>This is a private instruction that does the actual read/write to the address
 previously specified.</p>
@@ -1736,25 +1756,25 @@ and Capture-DR returns the payload from those lanes.</p>
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_error0.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0">
 </div>
-<div class="title">Figure 11. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0.</div>
+<div class="title">Figure 12. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_error1.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1">
 </div>
-<div class="title">Figure 12. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1.</div>
+<div class="title">Figure 13. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_error2.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2">
 </div>
-<div class="title">Figure 13. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2.</div>
+<div class="title">Figure 14. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2.</div>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/jtag2axi_series_data_error3.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3">
 </div>
-<div class="title">Figure 14. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3.</div>
+<div class="title">Figure 15. AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3.</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1792,8 +1812,8 @@ and Capture-DR returns the payload from those lanes.</p>
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">Debug Disable</a></h5>
+<div class="sect2">
+<h3 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">Debug Disable</a></h3>
 <div class="paragraph">
 <p>The PTAP has three per-bridge debug-disable inputs. The JTAG interface unit
 synchronizes those bits to TCK and presents them here as ready-to-gate signals.
@@ -1828,10 +1848,12 @@ blocks AXI transaction generation.</p>
 </table>
 </div>
 </div>
-<div class="sect3">
-<h4 id="ptap-interface"><a class="anchor" href="#ptap-interface"></a><a class="link" href="#ptap-interface">Interface</a></h4>
-<div class="sect4">
-<h5 id="instruction-encodings"><a class="anchor" href="#instruction-encodings"></a><a class="link" href="#instruction-encodings">Instruction Encodings</a></h5>
+</div>
+<div class="sect1">
+<h2 id="interface"><a class="anchor" href="#interface"></a><a class="link" href="#interface">Interface</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="ptap-interface"><a class="anchor" href="#ptap-interface"></a><a class="link" href="#ptap-interface">Instruction Encodings</a></h3>
 <div class="paragraph">
 <p>The PTAP uses 6-bit instruction encodings. During the capture phase, the least
 significant bit (closest to TDO) of the instruction register always presents a 1
@@ -1988,8 +2010,8 @@ register always return 0s.</p>
 to the BYPASS instruction.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">Signal Interface</a></h5>
+<div class="sect2">
+<h3 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">Signal Interface</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -2177,18 +2199,18 @@ to the BYPASS instruction.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">Dependencies</a></h5>
+<div class="sect2">
+<h3 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">Dependencies</a></h3>
 <div class="paragraph">
 <p>The PTAP depends on the following components:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>hw/common/och_prim</code> - Primitive cells (synchronizers, clock gating)</p>
+<p><a href="https://github.com/tenstorrent/tt-oca-harness/tree/829b09cf54dde1969dc309733f97f8fb32cefbdd/hw/common/och_prim"><code>hw/common/och_prim</code></a> — Primitive cells (synchronizers, clock gating)</p>
 </li>
 <li>
-<p><code>hw/ip/jtag/jtag_stap</code> - Secondary TAP (when 3DIC support enabled)</p>
+<p><a href="../../jtag_stap/doc/index.html" class="xref page"><code>hw/ip/jtag/jtag_stap</code></a> — Secondary TAP (when 3DIC support enabled)</p>
 </li>
 </ul>
 </div>
@@ -2216,6 +2238,8 @@ to the BYPASS instruction.</p>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

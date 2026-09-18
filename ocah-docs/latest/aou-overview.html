@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>AoU Overview and Features :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="aou.html">
+    <link rel="next" href="aou-architecture.html">
+    <meta name="description" content="AXI-over-UCIe bridge operation, interfaces, configurations, and capabilities.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/memory_map.html">Memory Map and Registers</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/drbg/doc/index.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/key_manager/doc/index.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/periphs.html">Fuse Controller and Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item is-current-page" data-depth="3">
+    <a class="nav-link" href="aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-ppa-appendices.html">PPA and Appendices</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="dashboard.html">Verification Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li>OCAH Platform Components</li>
+    <li><a href="aou.html">AXI-over-UCIe Bridge (AoU)</a></li>
+    <li><a href="aou-overview.html">Overview and Features</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="4">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">AoU Overview and Features</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache License Release<br>
+AOU_CORE Microarchitecture specification<br>
+Version 1.00, Feb.27 2026<br>
+BOS Semiconductors</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="aou-1-introduction"><a class="anchor" href="#aou-1-introduction"></a><a class="link" href="#aou-1-introduction">1. Introduction</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This microarchitecture specification includes detailed functional description of AOU_CORE.</p>
+</div>
+<div class="paragraph">
+<p>The contents of this document are given as follows. Section 1 is for overview. Section 2 is for features, implementation specific features, and assumptions. In Section 3, the architecture and operation of AoU IP are given. Section 4 covers interrupt sources. Section 5 covers error handling. Section 6 includes the integration guidelines such as clocks, resets, and I/O descriptions. Section 7 includes the software operation guide including the register map and activation flows. Section 8 includes performance, power, and area information.</p>
+</div>
+<div class="sect2">
+<h3 id="aou-11-overview"><a class="anchor" href="#aou-11-overview"></a><a class="link" href="#aou-11-overview">1.1. Overview</a></h3>
+<div class="paragraph">
+<p>The AOU_CORE is a bridge between AXI interface and the UCIe FDI interface, defined in AoU standard v0.7 spec. To achieve low latency, AOU_CORE directly handles signals related to the UCIe FDI interface data flow control and processes data in 32-byte, 64-byte, or 128-byte chunks (selected at integration time via the <span class="monospaced">FDI_CONFIG</span> parameter; see <a href="../../ocah-integrator-guide/latest/aou.html#aou-ig-parameter-list" class="xref page">Section 2</a>) in a cut-through manner, without converting them to 256-byte flit data. It receives AXI messages from its own AXI subordinate interface, packs them into chunks of the configured FDI width, and transmits these chunks to the remote AoU device via UCIe. The remote AoU receives the chunks from the UCIe FDI interface, unpacks them into AXI messages, and delivers the data through its AXI manager interface. The one-way AoU latency, measured from the AXI input of the local device to the AXI output of the remote device over a back-to-back connection in a single clock domain, is 7 cycles for read requests, 8 cycles for read data, 9 cycles for write requests, 9 cycles for write data, and 6 cycles for write responses. For applications using UCIe, including those with some CDC domains, the round-trip time (RTT) latency from an AXI read request to the corresponding AXI read response through this AoU IP over UCIe is approximately 45 cycles, excluding the memory latency of the remote device.</p>
+</div>
+<div class="paragraph">
+<p>To achieve high efficiency, all TX requests and data messages are packed in a compact format, ensuring that no AoU payload slots are wasted. The current payload is even updated when the UCIe stalls the current chunk and space remains available. As a result, the throughput matches the values defined in the AoU specification. In each cycle, the RX can process the maximum number of messages defined in the AoU standard: 4 read requests, 4 write requests, 2 read data, 2 write data, and 12 write responses, respectively.</p>
+</div>
+<div class="paragraph">
+<p>It supports flow control for all exceptional cases defined in the UCIe standard. First, it handles the chunk valid/cancel signal, including the alternative implementation method described in the UCIe specification. Second, it handles the stall request signal received from the D2D Adapter while maintaining the Flit-aligned boundary. Interoperability is also supported when the remote device uses a different AXI data width.</p>
+</div>
+<div class="paragraph">
+<p>AOU_CORE supports a configurable number of Resource Plane(RPs), with both the number of RPs and each RP's AXI data width fully parameterizable. A dedicated field in the SFR allows software to configure the target RP, enabling flexible RP mapping. For each RP, the AW, W and AR channel support three arbitration modes: Round Robin, AXI QoS scheme, and Port QoS scheme. Additionally, a starvation-prevention mechanism is implemented to ensure fair arbitration across all RP channels.</p>
+</div>
+<div class="paragraph">
+<p>The operating frequency of AOU_CORE targets 1 GHz and meets timing requirements without relying on multi-cycle paths. The TX buffer is configured with a minimal number of FIFO entries, while the RX Data buffer default depth is FDI-config aware: default 140 entries when <span class="monospaced">FDI_CONFIG</span> selects a 1024b (128B) FDI interface (<span class="monospaced">FDI_CFG_SP_128B</span> or <span class="monospaced">FDI_CFG_TP_64B_128B</span>), and default 88 entries otherwise. The entry size takes into account the round-trip latency for credit consumption and return, and matches the per-RP <span class="monospaced">RP*_RX_W_FIFO_DEPTH</span> / <span class="monospaced">RP*_RX_R_FIFO_DEPTH</span> parameter defaults documented in <a href="../../ocah-integrator-guide/latest/aou.html#aou-ig-parameter-list" class="xref page">Section 2</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="aou-2-features"><a class="anchor" href="#aou-2-features"></a><a class="link" href="#aou-2-features">2. Features</a></h2>
+<div class="sectionbody">
+<div id="figure-1" class="imageblock">
+<div class="content">
+<img src="_images/image1.png" alt="Figure 1. Block Diagram of AOU_CORE and function description">
+</div>
+<div class="title">Figure 1. Block Diagram of AOU_CORE and function description</div>
+</div>
+<div class="sect2">
+<h3 id="aou-21-basic-features"><a class="anchor" href="#aou-21-basic-features"></a><a class="link" href="#aou-21-basic-features">2.1. Basic features</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p>Single APB subordinate interface</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Configuration/control/status register access</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Multiple AXI subordinate &amp; manager interface</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Configurable RP port &amp; RP remapping supported</p>
+</li>
+<li>
+<p>Supports variable data widths and burst length requests. Configurable FIFO Depth</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>UCIe 256B latency-optimized flit(Format 6) support only</p>
+</li>
+<li>
+<p>Message packing and unpacking are handled in a unit of 32, 64, or 128 bytes, corresponding to the configured FDI data width (32B@1 GHz, 64B@1 GHz, or 128B@1 GHz).</p>
+</li>
+<li>
+<p>Selectable Early response by setting SFR</p>
+</li>
+<li>
+<p>Selectable 32B / 64B / 128B single-PHY and 32B+64B / 64B+128B two-PHY FDI configurations, selected via the <span class="monospaced">FDI_CONFIG</span> parameter (see <a href="../../ocah-integrator-guide/latest/aou.html#aou-ig-parameter-list" class="xref page">Section 2</a>). Two-PHY variants additionally require the <span class="monospaced">+define+TWO_PHY</span> build flag so the second-PHY ports physically exist.</p>
+</li>
+<li>
+<p>Configurable number of Resource Plane and each RP's AXI data width</p>
+</li>
+<li>
+<p>RP Remapping</p>
+</li>
+<li>
+<p>QoS scheme between RP with AW, W, AR channel</p>
+</li>
+<li>
+<p>Interoperability with different data width remote die</p>
+</li>
+<li>
+<p>Handling of flit cancel and stall request as specified in the UCIe specification</p>
+</li>
+<li>
+<p>Selectable AXI Aggregator added for BUS efficiency</p>
+</li>
+<li>
+<p>According to the AoU specification, except for the AXI data width, the parameters AXI_ADDR_WD, AXI_ID_WD, and AXI_LEN_WD are fixed. Porting to match the width of the connected ports must be handled externally to AOU_CORE_TOP.</p>
+</li>
+<li>
+<p>Returning read data that exceeds the AXI data width of the remote die is treated as a violation.</p>
+</li>
+<li>
+<p>For a Read Request received from the remote die, if ARSIZE is 5 or less, it returns a Read Data message with DLEN = 2'b00; if ARSIZE is 6, it returns a Read Data message with DLEN = 2'b01; if ARSIZE is 7, it returns a Read Data message with DLEN = 2'b10; Accordingly, if the local die receives a read data message from the remote die whose size is smaller than its own AXI data width, it duplicates the data to match its own AXI data width.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="aou.html">AXI-over-UCIe Bridge (AoU)</a></span>
+  <span class="next"><a href="aou-architecture.html">Architecture</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

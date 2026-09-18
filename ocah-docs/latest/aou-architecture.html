@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>AoU Architecture :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="aou-overview.html">
+    <link rel="next" href="aou-interrupts-errors.html">
+    <meta name="description" content="AoU data paths, transaction handling, credit control, and UCIe flow control.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/memory_map.html">Memory Map and Registers</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/drbg/doc/index.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/key_manager/doc/index.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/periphs.html">Fuse Controller and Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="3">
+    <a class="nav-link" href="aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-ppa-appendices.html">PPA and Appendices</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="dashboard.html">Verification Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li>OCAH Platform Components</li>
+    <li><a href="aou.html">AXI-over-UCIe Bridge (AoU)</a></li>
+    <li><a href="aou-architecture.html">Architecture</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="4">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">AoU Architecture</h1>
+<div class="sect1">
+<h2 id="aou-3-architecture"><a class="anchor" href="#aou-3-architecture"></a><a class="link" href="#aou-3-architecture">3. Architecture</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This section describes the block diagram of AOU_CORE.</p>
+</div>
+<div class="sect2">
+<h3 id="aou-31-block-diagram"><a class="anchor" href="#aou-31-block-diagram"></a><a class="link" href="#aou-31-block-diagram">3.1. Block diagram</a></h3>
+<div id="figure-2" class="imageblock">
+<div class="content">
+<img src="_images/image2.png" alt="Figure 2. Architecture of AOU_CORE">
+</div>
+<div class="title">Figure 2. Architecture of AOU_CORE</div>
+</div>
+<div class="paragraph">
+<p><a href="#figure-2">Figure 2</a> shows block diagram of current AOU_CORE. The AXI interface supports both Manager and Subordinate transactions for message transmission and reception. AOU_CORE may issue AR and AW requests to the remote die using the local bus width. Consequently, R-data from the remote die and W-data from the local die are constrained to the local bus width. However, since the remote die can transmit data with variable DLEN, AOU_CORE must support all possible data lengths. This functionality is managed by AXI4MUX_3X1_TOP, which receives variable DLEN data from RX_CORE, aligns it to the local bus width, and splits the burst length into segments matching the local bus burst size.</p>
+</div>
+<div class="paragraph">
+<p>Inside AXI4MUX_3X1_TOP, AXI aggregator is added for improving bus utilization. AXI aggregator combines narrow read &amp; write data and send it to BUS. This functionality may modify AXI Len &amp; Size. For example, AXI AR with 256-bit size &amp; 16 burst length may transfer into 1024-bit size &amp; 4 burst length. This operation can be controlled via SFR setting.</p>
+</div>
+<div class="paragraph">
+<p>AOU_CORE provides a parameterizable FDI interface; the data-path width is selected by <span class="monospaced">FDI_CONFIG</span> (<span class="monospaced">FDI_CFG_SP_32B</span> / <span class="monospaced">FDI_CFG_SP_64B</span> / <span class="monospaced">FDI_CFG_SP_128B</span> for single-PHY, <span class="monospaced">FDI_CFG_TP_32B_64B</span> / <span class="monospaced">FDI_CFG_TP_64B_128B</span> for two-PHY). See <a href="../../ocah-integrator-guide/latest/aou.html#aou-ig-parameter-list" class="xref page">Section 2</a> for the full table of <span class="monospaced">FDI_CONFIG</span> values and resulting per-PHY widths.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-32-tx_core"><a class="anchor" href="#aou-32-tx_core"></a><a class="link" href="#aou-32-tx_core">3.2. TX_CORE</a></h3>
+<div id="figure-3" class="imageblock">
+<div class="content">
+<img src="_images/image3.png" alt="Figure 3. Block Diagram of Single RP AOU_TX_CORE">
+</div>
+<div class="title">Figure 3. Block Diagram of Single RP AOU_TX_CORE</div>
+</div>
+<div class="paragraph">
+<p><a href="#figure-3">Figure 3</a> shows the simplified block diagram of single RP AOU_TX_CORE. The module receives AXI messages for Remote Die. AOU_TX_AXI_BUFFER captures AXI messages from the system bus. When AOU_TX_CORE obtains sufficient credit from AOU_CRD_CTRL, it packs the AXI message into an AOU message and stores it in the ring buffer. Once there is enough space to hold all messages, messages are stored to the ring buffer in parallel. The ring buffer subsequently performs handshake operations with the FDI interface.</p>
+</div>
+<div class="sect3">
+<h4 id="aou-321-tx_core-qos-scheme"><a class="anchor" href="#aou-321-tx_core-qos-scheme"></a><a class="link" href="#aou-321-tx_core-qos-scheme">3.2.1. TX_CORE QoS Scheme</a></h4>
+<div id="figure-4" class="imageblock">
+<div class="content">
+<img src="_images/image4.png" alt="Figure 4. TX_CORE QoS Scheme">
+</div>
+<div class="title">Figure 4. TX_CORE QoS Scheme</div>
+</div>
+<div class="paragraph">
+<p>When multiple RP requests are issued from the TX core, a QoS scheme is applied. The TX core supports three QoS schemes: <strong>Round-Robin</strong>, <strong>Port QoS</strong>, and <strong>AXI QoS</strong>. Each transaction supports three QoS level: <strong>High, Normal, Low.</strong></p>
+</div>
+<div class="paragraph">
+<p><strong>Round-Robin (ARB_MODE = 2'b00)</strong> : Round-robin arbitration between valid RP. When a handshake occurs, the RP that will receive the next grant is determined.</p>
+</div>
+<div id="figure-5" class="imageblock">
+<div class="content">
+<img src="_images/image5.png" alt="Figure 5. Round-Robin arbitration example">
+</div>
+<div class="title">Figure 5. Round-Robin arbitration example</div>
+</div>
+<div class="paragraph">
+<p><strong>Port QoS (ARB_MODE = 2'b01):</strong> For each RP, the QoS level is configured by an SFR. Arbitration is performed based on the QoS value is the SFR. The AXI QoS field is not used for arbitration.</p>
+</div>
+<div class="paragraph">
+<p>The port QoS is divided into three levels: High, Normal, and Low priority. Port QoS can be configured by setting PRIOR_RP_AXI.PRx_PRIOR. A 2-bit field is used for QoS and supports values from 1 to 3. If the field is set to 0, it is treated as 1.</p>
+</div>
+<div class="paragraph">
+<p>By default, arbitration is performed in the order <strong>High → Normal → Low</strong>. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority. Timeout value can be configured by setting PRIOR_TIMER.TIMER_THRESHOLD. The resolution used for timeout determination can be configured through PRIOR_TIMER.TIMER_RESOLUTION.</p>
+</div>
+<div class="paragraph">
+<p>If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.</p>
+</div>
+<div id="figure-6" class="imageblock">
+<div class="content">
+<img src="_images/image6.png" alt="Figure 6. Port QoS arbitration example">
+</div>
+<div class="title">Figure 6. Port QoS arbitration example</div>
+</div>
+<div class="paragraph">
+<p><strong>AXI QoS (ARB_MODE = 2'b10):</strong> For each RP, the QoS level is determined by the value of the AXI QoS field. Arbitration is performed based on the AXI QoS value. For the 4-bit AXI QoS field, boundary of High priority and Normal Priority can be configured by SFR setting. The port QoS is divided into three levels: <strong>High</strong>, <strong>Normal</strong>, and <strong>Low</strong> priority. By default, arbitration is performed in the order <strong>High → Normal → Low</strong>. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority. If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.</p>
+</div>
+<div id="figure-7" class="imageblock">
+<div class="content">
+<img src="_images/image7.png" alt="Figure 7. AXI QoS arbitration example">
+</div>
+<div class="title">Figure 7. AXI QoS arbitration example</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-33-rx_core"><a class="anchor" href="#aou-33-rx_core"></a><a class="link" href="#aou-33-rx_core">3.3. RX_CORE</a></h3>
+<div id="figure-8" class="imageblock">
+<div class="content">
+<img src="_images/image8.png" alt="Figure 8. Block Diagram of AOU_RX_CORE">
+</div>
+<div class="title">Figure 8. Block Diagram of AOU_RX_CORE</div>
+</div>
+<div class="paragraph">
+<p><a href="#figure-8">Figure 8</a> shows the simplified block diagram of AOU_RX_CORE. AOU_RX_CORE is a submodule that interfaces directly with the D2D adapter, receiving I_FDI_PL_VALID, I_FDI_PL_DATA, and I_FDI_PL_FLIT_CANCEL signals to determine the validity of incoming chunks, and unpacking messages in accordance with the AOU specification. Within RX_CORE, there is a submodule called RX_FDI_IF, which is designed to handle flit cancel as defined in the UCIe specification. This module forwards only valid chunks to the Chunk Decoder.</p>
+</div>
+<div class="paragraph">
+<p>To ensure that the local die can support AXI transfers regardless of the AXI data width of the remote die, AOU_RX_CORE integrates both Downsizer and Upsizer modules internally.</p>
+</div>
+<div class="paragraph">
+<p>AOU_RX_CORE includes a splitter that can divide burst lengths so that AXI messages with any burst length from the remote die can be supported on the local bus. The AW, W, and AR messages received from the remote die are sent to the AXI Manager interface, while the B and R messages received from the remote die are directed to the AXI Subordinate interface. The R data may be smaller than the local die AXI data width depending on the ARSIZE of the corresponding AR requests, but R 4M1S FIFO duplicate values so that it is delivered to the AXI Subordinate interface with the same width as the local die AXI data width. Furthermore, the B responses corresponding to the AW and W AXI transfers issued through the Manager interface are routed into the AXI_3X1_MUX before being sent to the AOU_TX_CORE.</p>
+</div>
+<div class="paragraph">
+<p>As illustrated in the figure above, the granularity of data transmitted from the FIFO, whether directed to the bus or to the AXI_3X1_MUX, is conveyed to the AOU_CRD_CTRL.</p>
+</div>
+<div id="figure-9" class="imageblock">
+<div class="content">
+<img src="_images/image9.png" alt="Figure 9. Architecture of Chunk Decoder">
+</div>
+<div class="title">Figure 9. Architecture of Chunk Decoder</div>
+</div>
+<div class="paragraph">
+<p><a href="#figure-9">Figure 9</a> shows the architecture of the Chunk Decoder which is central submodule of RX_CORE. It consists of shift registers and multiple decoders that decode each message, based on the received valid chunk along with its associated msg_idx and msg_valid information. Since AXI messages differ in the number of granules, the time required for decoding also varies.</p>
+</div>
+<div class="paragraph">
+<p>For example, a B message has a size of 1 granule and can therefore be decoded immediately once a valid chunk is received from RX_FDI_IF. In contrast, Rdata or Wdata, which have a data width of 1024 bits, require 27-30 granules, and thus cannot be decoded immediately. Instead, they are decoded after approximately three cycles. Because messages of 27-30 granules may span up to four flits during transmission.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-34-message-fifo"><a class="anchor" href="#aou-34-message-fifo"></a><a class="link" href="#aou-34-message-fifo">3.4. Message FIFO</a></h3>
+<div id="figure-10" class="imageblock">
+<div class="content">
+<img src="_images/image10.png" alt="Figure 10. Data FIFO">
+</div>
+<div class="title">Figure 10. Data FIFO</div>
+</div>
+<div id="figure-11" class="imageblock">
+<div class="content">
+<img src="_images/image11.png" alt="Figure 11. Req / Resp FIFO">
+</div>
+<div class="title">Figure 11. Req / Resp FIFO</div>
+</div>
+<div class="paragraph">
+<p>The Turn-Around-Time(TAT) of AOU_CORE, including the D2D adaptor, is approximately 40 ns (equivalent to 40 cycles at 1 GHz). Therefore, the depth of the AW, AR, and B FIFOs is set to 44 regarding the margin.</p>
+</div>
+<div class="paragraph">
+<p>The width of the Req and Resp FIFOs is equal to the length of the corresponding message. Since 12 granules are currently being decoded at once, up to 4 AW/AR requests and up to 12 B responses can be written into the FIFO in a single cycle. Therefore, the AW/AR FIFO is implemented as a 4S1M FIFO and B FIFO is implemented as a 12S1M FIFO.</p>
+</div>
+<div class="paragraph">
+<p>In contrast, for the Wdata and Rdata FIFOs, the FIFO width and depth is defined differently.</p>
+</div>
+<div class="paragraph">
+<p>The width of a data message varies depending on the bus data width. Therefore, the width of the Data FIFO corresponds to the message width in the case of the minimum bus data width.</p>
+</div>
+<div class="paragraph">
+<p>For example, the width of the RDATA FIFO is 279 bits, which consists of 256 bits for the minimum bus data width, 10 bits for RID, 2 bits for RRESP, 1 bit for RLAST, and additional sdlen 2 bits to identify message width.</p>
+</div>
+<div class="paragraph">
+<p>In aspect of WDATA FIFO, the width is 290bit. It contains 256 bits for the minimum bus data widths, 32bits for the minimum strb data widths, and additional sdlen 2bits to identify message width.</p>
+</div>
+<div class="paragraph">
+<p>If the data received from the remote die has sdlen of 0(256bit data), the message will be stored in a single entry of the DATA FIFO. If the data received from the remote die has sdlen of 1(512bit data), the message will be stored across two entries of the Data FIFO. Similarly, if the data received from the remote die has sdlen of 2(1024bit), the message will be stored across four entries of the Data FIFO.</p>
+</div>
+<div class="paragraph">
+<p>In addition, the depth of the Data FIFO is not 44. The depth has been determined under the assumption that the current bus data width is 512 bits. When the bus data width is 512 bits, a W message occupies 15 granules. Since the decoder in RX_CORE can decode 12 granules per cycle, the maximum W message can reach the FIFO once every 1.25 cycles (15G ÷ 12G/cycle = 1.25 cycles). Furthermore, as mentioned above, when the bus data width is 512 bits, each message is stored across two FIFO entries. Therefore, if the maximum turnaround time (TAT) to be covered is 50 ns (50 cycles), the depth can be set to 80 (50 / 1.25 x 2 = 80). Regarding the margin, Data FIFO's depth is set to 88.</p>
+</div>
+<div class="paragraph">
+<p>When <span class="monospaced">FDI_CONFIG</span> selects a 1024b (128B) FDI interface (<span class="monospaced">FDI_CFG_SP_128B</span> or <span class="monospaced">FDI_CFG_TP_64B_128B</span>), the per-chunk granule rate roughly doubles, so the per-RP <span class="monospaced">RP*_RX_W_FIFO_DEPTH</span> / <span class="monospaced">RP*_RX_R_FIFO_DEPTH</span> parameter defaults are bumped to 140 entries to keep the same effective TAT margin. See <a href="../../ocah-integrator-guide/latest/aou.html#aou-ig-parameter-list" class="xref page">Section 2</a> for the parameter defaults.</p>
+</div>
+<div class="paragraph">
+<p>FIFOs are allocated for each RP, and the depth of the FIFOs for each RP is configurable.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-35-data-width-converter"><a class="anchor" href="#aou-35-data-width-converter"></a><a class="link" href="#aou-35-data-width-converter">3.5. Data width converter</a></h3>
+<div class="sect3">
+<h4 id="aou-351-overview"><a class="anchor" href="#aou-351-overview"></a><a class="link" href="#aou-351-overview">3.5.1. Overview</a></h4>
+<div id="figure-12" class="imageblock">
+<div class="content">
+<img src="_images/image12.png" alt="Figure 12. AXI4MUX_3X1_TOP">
+</div>
+<div class="title">Figure 12. AXI4MUX_3X1_TOP</div>
+</div>
+<div class="paragraph">
+<p>According to the AoU specification, even if the data width differs between chips, they must be able to transmit AXI transfers to each other. Because the remote die may issue read or write transactions with data widths of 256, 512, or 1024 bits, the local die is responsible for converting the data to align with its own bus data width. The response must then be reformatted to match the original request size before being returned.</p>
+</div>
+<div class="paragraph">
+<p>Within AOU_CORE_TOP, the <span class="monospaced">AOU_AXI4MUX_3X1_TOP</span> module performs this function. <a href="#figure-12">Figure 12</a> shows how the structure of the Bypass, AXI Downsizer, and AXI Upsizer varies depending on the AXI data width of the local die.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-352-width-adaptation-paths"><a class="anchor" href="#aou-352-width-adaptation-paths"></a><a class="link" href="#aou-352-width-adaptation-paths">3.5.2. Width Adaptation Paths</a></h4>
+<div class="paragraph">
+<p>Three slave channel slots correspond to three possible remote data widths: 256 bits, 512 bits, and 1024 bits. Which slot uses an upsizer, bypass, or downsizer depends on the local die's <span class="monospaced">AXI_DATA_WD</span> parameter. A dedicated variant of the width-adapter module is instantiated for each supported local width:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Local AXI_DATA_WD</th>
+<th class="tableblock halign-left valign-top">Variant instantiated</th>
+<th class="tableblock halign-left valign-top">CH0 (256b remote)</th>
+<th class="tableblock halign-left valign-top">CH1 (512b remote)</th>
+<th class="tableblock halign-left valign-top">CH2 (1024b remote)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_AXI4MUX_3X1_256</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Downsizer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Downsizer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_AXI4MUX_3X1_512</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Upsizer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Downsizer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1024</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_AXI4MUX_3X1_1024</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Upsizer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Upsizer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>Write path routing:</strong> The <span class="monospaced">DLEN</span> field embedded in the Write Data message indicates the original data width. <span class="monospaced">AOU_AXI4MUX_3X1_TOP</span> uses this field to steer write data and strobes to the correct channel slot (and therefore through the correct width adapter).</p>
+</div>
+<div class="paragraph">
+<p><strong>Read path routing:</strong> The <span class="monospaced">ARSIZE</span> field of the Read Request message determines which channel slot handles the read response. The 3:1 mux selects the active slave R channel based on a 2-bit selector derived from <span class="monospaced">ARSIZE</span>.</p>
+</div>
+<div class="paragraph">
+<p>The upsizer (<span class="monospaced">AOU_AXI_UP</span>) packs multiple narrow beats into a single wider beat, recalculating <span class="monospaced">AWLEN</span>/<span class="monospaced">ARLEN</span> accordingly. The downsizer (<span class="monospaced">AOU_AXI_DOWN</span>) splits a single wide beat into multiple narrower beats. Both modules regenerate <span class="monospaced">WLAST</span> internally using a beat counter that compares the current W beat count against the recalculated burst length.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-353-wlast-regeneration"><a class="anchor" href="#aou-353-wlast-regeneration"></a><a class="link" href="#aou-353-wlast-regeneration">3.5.3. WLAST Regeneration</a></h4>
+<div class="paragraph">
+<p>The AoU Write Data message does not carry a <span class="monospaced">WLAST</span> signal. The <span class="monospaced">AOU_AXI_WLAST_GEN</span> module regenerates <span class="monospaced">WLAST</span> by aligning the phases of WriteReq and Write Data messages. It operates upstream of the width adapters in the RX-to-AXI path within <span class="monospaced">AOU_CORE_RP</span>.</p>
+</div>
+<div class="paragraph">
+<p>The module uses <span class="monospaced">I_S_WDLENGTH</span> (derived from the <span class="monospaced">DLEN</span> field) to determine the number of W beats expected for each AW transaction:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>When <span class="monospaced">AWLEN == 0</span> (single-beat burst), <span class="monospaced">WLAST</span> is asserted immediately on the first AW/W handshake.</p>
+</li>
+<li>
+<p>For multi-beat bursts, <span class="monospaced">WLAST</span> is asserted when the internal remaining beat counter <span class="monospaced">r_m_awch_remain_beat</span> reaches 1.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>In addition to <span class="monospaced">AOU_AXI_WLAST_GEN</span>, the upsizer and downsizer modules (<span class="monospaced">AOU_AXI_UP</span> and <span class="monospaced">AOU_AXI_DOWN</span>) each contain their own WLAST generation logic to account for the changed burst length after width conversion.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-36-axi-transaction-splitter"><a class="anchor" href="#aou-36-axi-transaction-splitter"></a><a class="link" href="#aou-36-axi-transaction-splitter">3.6. AXI Transaction Splitter</a></h3>
+<div class="sect3">
+<h4 id="aou-361-overview"><a class="anchor" href="#aou-361-overview"></a><a class="link" href="#aou-361-overview">3.6.1. Overview</a></h4>
+<div class="paragraph">
+<p>In the AoU specification, the AXI LEN field is fixed at 8 bits, allowing the remote die to issue burst transactions up to the maximum supported by an 8-bit AXI LEN. However, because the local die's bus may not support the full 8-bit burst length, inbound AXI transactions must be split into bursts that the local bus can handle and then reassembled to match the original request.</p>
+</div>
+<div class="paragraph">
+<p>Even if the burst length increases as a result of data-width conversion, the AXI transactions are always split to ensure they do not exceed the maximum burst length supported by the local bus.</p>
+</div>
+<div class="paragraph">
+<p>The splitter (<span class="monospaced">AOU_AXI_SPLIT_TR</span>) sits between the 3:1 arbitration mux and the <a href="#aou-38-axi-aggregator">AXI Aggregator</a> inside <span class="monospaced">AOU_AXI4MUX_3X1_TOP</span>. One instance exists per RP, and the maximum burst length can be configured independently for each RP through the <span class="monospaced">AOU_SPLIT_TR_RPn</span> SFRs.</p>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p><strong>Note:</strong> The <span class="monospaced">AOU_CON0.AXI_SPLIT_TR_EN</span> field exists in the SFR but is currently tied to <span class="monospaced">1'b0</span> in <span class="monospaced">AOU_CORE_RP</span>, making the splitter always active. The enable bit is reserved for future use.</p>
+</div>
+</blockquote>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-362-burst-splitting"><a class="anchor" href="#aou-362-burst-splitting"></a><a class="link" href="#aou-362-burst-splitting">3.6.2. Burst Splitting</a></h4>
+<div class="paragraph">
+<p>The splitter uses internal address-generator submodules (<span class="monospaced">aou_axi_split_addrgen_ar</span> for reads, <span class="monospaced">aou_axi_split_addrgen_aw</span> for writes) to decompose a single long burst into multiple sub-bursts, each no longer than <span class="monospaced">MAX_AxBURSTLEN + 1</span> beats. Addresses for each sub-burst are computed from the original base address, burst type, and size.</p>
+</div>
+<div class="paragraph">
+<p>The <span class="monospaced">MAX_AxBURSTLEN</span> value must be of the form 2^n - 1. Legal values are:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">MAX_AxBURSTLEN</th>
+<th class="tableblock halign-left valign-top">Max beats per sub-burst</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">31</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">63</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">127</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">255</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 (no split)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>ID width:</strong> The splitter reserves 2 bits from the AXI ID for internal sub-burst tracking. Master-side IDs are therefore <span class="monospaced">ID_WD - 2</span> bits wide. The 2 extra bits allow the splitter to correlate responses from up to 4 outstanding sub-bursts per original transaction.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-363-response-reassembly"><a class="anchor" href="#aou-363-response-reassembly"></a><a class="link" href="#aou-363-response-reassembly">3.6.3. Response Reassembly</a></h4>
+<div class="paragraph">
+<p><strong>Read path:</strong> The <span class="monospaced">aou_split_tr_arch</span> reorder buffer tracks the sub-burst sequence for each outstanding read. Slave-side <span class="monospaced">RLAST</span> is asserted only when the final beat of the last sub-burst is received, reconstructing the original burst boundary. Intermediate <span class="monospaced">RLAST</span> signals from the master side are consumed internally.</p>
+</div>
+<div class="paragraph">
+<p><strong>Write path:</strong> B responses from sub-bursts are merged. The splitter tracks outstanding write sub-bursts with <span class="monospaced">r_wr_pending_cnt</span> and returns a single B response to the slave side once all sub-bursts have completed. If any sub-burst returns an error (<span class="monospaced">|I_M_BRESP_RS</span>), the merged <span class="monospaced">BRESP_ERR</span> flag is set, propagating the error to the slave-side response.</p>
+</div>
+<div class="paragraph">
+<p><strong>ID mismatch detection:</strong> The splitter exports <span class="monospaced">DEST_TABLE_RID_ERR</span> and <span class="monospaced">DEST_TABLE_BID_ERR</span> signals that flag responses with IDs not matching any outstanding transaction. These feed the <a href="aou-interrupts-errors.html#aou-4-interrupt" class="xref page">INT_MI0_ID_MISMATCH</a> interrupt source via <span class="monospaced">AOU_AXI4MUX_3X1_TOP</span>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-364-sfr-configuration"><a class="anchor" href="#aou-364-sfr-configuration"></a><a class="link" href="#aou-364-sfr-configuration">3.6.4. SFR Configuration</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 34%;">
+<col style="width: 33%;">
+<col style="width: 33%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">SFR</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_CON0</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AXI_SPLIT_TR_EN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Global enable (reserved, tied inactive in current RTL)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_SPLIT_TR_RP0</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">MAX_AWBURSTLEN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Max write burst length for RP0 (must be 2^n - 1)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_SPLIT_TR_RP0</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">MAX_ARBURSTLEN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Max read burst length for RP0 (must be 2^n - 1)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_SPLIT_TR_RP1</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">MAX_AWBURSTLEN</span> / <span class="monospaced">MAX_ARBURSTLEN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same for RP1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_SPLIT_TR_RP2</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">MAX_AWBURSTLEN</span> / <span class="monospaced">MAX_ARBURSTLEN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same for RP2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_SPLIT_TR_RP3</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">MAX_AWBURSTLEN</span> / <span class="monospaced">MAX_ARBURSTLEN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same for RP3</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>These SFRs must be configured before activation and must not be changed during normal operation.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-37-write-early-response-controller"><a class="anchor" href="#aou-37-write-early-response-controller"></a><a class="link" href="#aou-37-write-early-response-controller">3.7. Write Early Response Controller</a></h3>
+<div class="sect3">
+<h4 id="aou-371-overview"><a class="anchor" href="#aou-371-overview"></a><a class="link" href="#aou-371-overview">3.7.1. Overview</a></h4>
+<div class="paragraph">
+<p>The <span class="monospaced">AOU_EARLY_BRESP_CTRL_AWCACHE</span> module sits between the local AXI subordinate interface and the AOU TX datapath. One instance exists per RP and can be independently enabled or disabled via the per-RP <span class="monospaced">WRITE_EARLY_RESPONSE_RPn.EARLY_BRESP_EN</span> SFR.</p>
+</div>
+<div class="paragraph">
+<p>When enabled, the module returns an early B response (<span class="monospaced">BRESP = OKAY</span>) to the local AXI manager as soon as both the write address (AW) and the last write data beat (W with WLAST) have been received at the AXI subordinate port -- before the write is packed into AoU messages, transmitted over FDI, and completed on the remote die. This reduces the write latency seen by the local requester at the cost of deferred error reporting.</p>
+</div>
+<div class="paragraph">
+<p>Early response applies only to <strong>bufferable</strong> writes (<span class="monospaced">AWCACHE[0] = 1</span>). Non-bufferable writes (<span class="monospaced">AWCACHE[0] = 0</span>) pass through the module unchanged: the AW, W, and B channels are forwarded directly between the local AXI interface and the AOU TX datapath with no early response generated, and the actual BRESP from the remote die is returned to the local AXI manager as normal.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-372-transaction-flow----normal-case"><a class="anchor" href="#aou-372-transaction-flow----normal-case"></a><a class="link" href="#aou-372-transaction-flow----normal-case">3.7.2. Transaction Flow -- Normal Case</a></h4>
+<div class="paragraph">
+<p>The following diagram shows the message flow for a bufferable write when the remote die returns a successful response.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/early-response-normal-flow.svg" alt="Message flow for a bufferable write with a successful early response">
+</div>
+</div>
+<div class="paragraph">
+<p>When the actual B response arrives from the remote die for a transaction that already received an early response, the controller consumes it internally: <span class="monospaced">O_AXI_S_BVALID</span> is held low (the local AXI manager sees no second response) while <span class="monospaced">O_AXI_M_BREADY</span> is asserted high (the response is drained from the AOU RX path).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-373-transaction-flow----error-case"><a class="anchor" href="#aou-373-transaction-flow----error-case"></a><a class="link" href="#aou-373-transaction-flow----error-case">3.7.3. Transaction Flow -- Error Case</a></h4>
+<div class="paragraph">
+<p>If the actual B response from the remote die carries an error (<span class="monospaced">BRESP[1] = 1</span>, indicating SLVERR or DECERR), the error cannot be reported via the AXI B channel because the early OKAY response was already returned to the local AXI manager. Instead, the error is reported via interrupt and SFR capture.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/early-response-error-flow.svg" alt="Message flow for a bufferable write whose consumed response carries an error">
+</div>
+</div>
+<div class="paragraph">
+<p>The interrupt fires when the consumed response has <span class="monospaced">BRESP[1] = 1</span>. SW must:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Read <span class="monospaced">WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_ERR_ID_INFO</span> to identify the failing transaction's AXI ID.</p>
+</li>
+<li>
+<p>Read <span class="monospaced">WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_ERR_TYPE_INFO</span> to identify the error type (SLVERR or DECERR).</p>
+</li>
+<li>
+<p>Write 1 to <span class="monospaced">WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_ERR</span> (W1C) to clear the interrupt.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-374-id-ordering"><a class="anchor" href="#aou-374-id-ordering"></a><a class="link" href="#aou-374-id-ordering">3.7.4. ID Ordering</a></h4>
+<div class="paragraph">
+<p>The <span class="monospaced">AOU_EARLY_TABLE</span> inside the controller maintains a tracking table with <span class="monospaced">WR_MO_CNT</span> entries (matching the subordinate write outstanding count). Each entry records:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">id</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI write ID (<span class="monospaced">AWID</span>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">bufferable</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AWCACHE[0]</span> flag</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">pending</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transaction is in flight (AW accepted, B not yet received from remote)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">same_id_tr_cnt</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Count of older pending transactions with the same AXI ID that have not yet been early-responded or actually responded</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">early_go</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Set when <span class="monospaced">same_id_tr_cnt</span> reaches 0, indicating this entry is eligible for early response</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">wid_numbering</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-ID sequence number for matching B responses to the correct table entry</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The <span class="monospaced">early_go</span> flag ensures that for transactions sharing the same AXI ID, early responses are issued strictly in order. A later bufferable transaction with the same ID waits until all prior same-ID transactions have been responded to (either via early response or actual remote BRESP). This preserves AXI ID ordering even when bufferable and non-bufferable writes with the same ID are interleaved.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-375-write-outstanding-queue-backpressure"><a class="anchor" href="#aou-375-write-outstanding-queue-backpressure"></a><a class="link" href="#aou-375-write-outstanding-queue-backpressure">3.7.5. Write-Outstanding Queue Backpressure</a></h4>
+<div class="paragraph">
+<p>The backpressure mechanism described in this section is only active when the early response feature is enabled (<span class="monospaced">EARLY_BRESP_EN = 1</span>). When disabled, the module is a transparent pass-through: all AW, W, and B signals are wired directly between the subordinate and manager interfaces with no outstanding-count gating, and write depth is bounded only by whatever the downstream AOU TX datapath can accept.</p>
+</div>
+<div class="paragraph">
+<p>When enabled, the early table has <span class="monospaced">WR_MO_CNT</span> entries (default 32, set by the <span class="monospaced">S_WR_MO_CNT</span> parameter). Every write that enters the controller -- bufferable or non-bufferable -- occupies one table entry from the time WLAST is accepted until the <strong>actual B response</strong> arrives from the remote die and is consumed.</p>
+</div>
+<div class="paragraph">
+<p>Issuing an early B does <strong>not</strong> free the table entry. The entry remains occupied (<span class="monospaced">pending = 1, out = 1</span>) until the real remote B is received. The table depth therefore limits the total number of writes in flight across the FDI link, not just the number awaiting early response.</p>
+</div>
+<div class="paragraph">
+<p>When <span class="monospaced">r_aw_cnt == WR_MO_CNT</span>, <span class="monospaced">AWREADY</span> and <span class="monospaced">WREADY</span> are deasserted toward the local AXI manager, stalling both the AW and W channels. The AOU TX datapath and FDI link continue operating normally during this time -- only new write acceptance is blocked. As actual B responses arrive from the remote die and table entries are freed, <span class="monospaced">AWREADY</span> and <span class="monospaced">WREADY</span> reassert and the manager may resume issuing writes.</p>
+</div>
+<div class="paragraph">
+<p>The <span class="monospaced">O_PENDING_CNT_OVER</span> signal (exposed via the interrupt controller) fires if a write handshake is attempted while the counter is already at the limit, serving as a diagnostic for system-hang detection.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/write-outstanding-backpressure.svg" alt="Write-outstanding queue filling" width="stalling" height="and draining as early-table entries free up">
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id"><a class="anchor" href="#aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id"></a><a class="link" href="#aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id">3.7.6. Mixed Ordering -- Bufferable Before Non-Bufferable (Same ID)</a></h4>
+<div class="paragraph">
+<p>When a bufferable write (TXN0) is followed by a non-bufferable write (TXN1) on the same AWID, the controller handles them as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>TXN0 enters the table with <span class="monospaced">same_id_tr_cnt = 0</span> and <span class="monospaced">early_go = 1</span>. Its early B is eligible immediately and is returned to the manager.</p>
+</li>
+<li>
+<p>After TXN0's early B is issued, <span class="monospaced">out</span> is set to 1. TXN1 enters the table with <span class="monospaced">bufferable = 0</span>. The <span class="monospaced">same_id_tr_cnt</span> computation excludes entries with <span class="monospaced">out = 1</span>, so TXN1 sees <span class="monospaced">same_id_tr_cnt = 0</span>.</p>
+</li>
+<li>
+<p>TXN1 is non-bufferable, so no early B is generated for it regardless of <span class="monospaced">early_go</span>. It waits for the actual remote B.</p>
+</li>
+<li>
+<p>The <span class="monospaced">wid_numbering</span> field ensures actual B responses are matched in issue order: TXN0 has <span class="monospaced">wid_numbering = 0</span>, TXN1 has <span class="monospaced">wid_numbering = 1</span>.</p>
+</li>
+<li>
+<p>When TXN0's actual B arrives, <span class="monospaced">O_EarlyResponse_Consume = 1</span> (bufferable entry at the read pointer), so the response is consumed silently. TXN1's <span class="monospaced">wid_numbering</span> decrements to 0.</p>
+</li>
+<li>
+<p>When TXN1's actual B arrives, <span class="monospaced">O_EarlyResponse_Consume = 0</span> (non-bufferable), so the response is forwarded to the subordinate as a normal <span class="monospaced">BVALID</span>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The local AXI manager sees: early B for TXN0 first, then actual B for TXN1 -- correct AXI ID ordering is preserved.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/mixed-order-bufferable-first.svg" alt="Mixed-ordering flow with a bufferable write followed by a non-bufferable write on the same AXI ID">
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-377-mixed-ordering----non-bufferable-before-bufferable-same-id"><a class="anchor" href="#aou-377-mixed-ordering----non-bufferable-before-bufferable-same-id"></a><a class="link" href="#aou-377-mixed-ordering----non-bufferable-before-bufferable-same-id">3.7.7. Mixed Ordering -- Non-Bufferable Before Bufferable (Same ID)</a></h4>
+<div class="paragraph">
+<p>When a non-bufferable write (TXN0) is followed by a bufferable write (TXN1) on the same AWID, the early response for TXN1 is <strong>delayed</strong> until TXN0's actual B has been received.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>TXN0 enters the table with <span class="monospaced">bufferable = 0, out = 0</span>. No early B is generated (not bufferable).</p>
+</li>
+<li>
+<p>TXN1 enters the table with <span class="monospaced">bufferable = 1</span>. Because TXN0 is still <span class="monospaced">pending</span> and <span class="monospaced">~out</span>, TXN1 sees <span class="monospaced">same_id_tr_cnt = 1</span> and <span class="monospaced">early_go = 0</span>. The early B for TXN1 is <strong>blocked</strong>.</p>
+</li>
+<li>
+<p>When TXN0's actual B arrives from the remote die, it is forwarded to the subordinate (non-bufferable pass-through, <span class="monospaced">O_EarlyResponse_Consume = 0</span>). The table update loop decrements TXN1's <span class="monospaced">same_id_tr_cnt</span> from 1 to 0, setting <span class="monospaced">early_go = 1</span>.</p>
+</li>
+<li>
+<p>On the following cycle, TXN1's early B becomes eligible and is issued to the manager.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>This is the key latency impact of mixed-cacheability ordering: the bufferable write's early response is delayed until the preceding non-bufferable same-ID write fully completes its round trip through the remote die. The early-response latency benefit is lost for that transaction. Software or interconnect designers should be aware that interleaving non-bufferable writes ahead of bufferable writes on the same ID negates the early-response advantage for those bufferable transactions.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/mixed-order-nonbufferable-first.svg" alt="Mixed-ordering flow with a non-bufferable write followed by a bufferable write on the same AXI ID">
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-378-enabledisable-procedure"><a class="anchor" href="#aou-378-enabledisable-procedure"></a><a class="link" href="#aou-378-enabledisable-procedure">3.7.8. Enable/Disable Procedure</a></h4>
+<div class="paragraph">
+<p>The <span class="monospaced">EARLY_BRESP_EN</span> SFR may be written at any time, but the internal enable (<span class="monospaced">r_early_bresp_en</span>) only transitions when it is safe to do so:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Confirm <span class="monospaced">WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_DONE = 1</span> (no pending write transactions; <span class="monospaced">r_aw_cnt == 0</span>).</p>
+</li>
+<li>
+<p>Set or clear <span class="monospaced">EARLY_BRESP_EN</span> via APB write.</p>
+</li>
+<li>
+<p>The internal register transitions on the next clock edge where <span class="monospaced">O_BRESP_DONE</span> is asserted and no AW handshake is in progress. This guarantees that the mode change does not occur mid-transaction.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-379-sfr-fields"><a class="anchor" href="#aou-379-sfr-fields"></a><a class="link" href="#aou-379-sfr-fields">3.7.9. SFR Fields</a></h4>
+<div class="paragraph">
+<p>The <span class="monospaced">WRITE_EARLY_RESPONSE_RPn</span> register (one per RP: RP0 at <span class="monospaced">0x0028</span>, RP1 at <span class="monospaced">0x0040</span>, RP2 at <span class="monospaced">0x0058</span>, RP3 at <span class="monospaced">0x0070</span>) contains:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Bits</th>
+<th class="tableblock halign-left valign-top">Access</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EARLY_BRESP_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable early B response for bufferable writes on this RP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_ID_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[10:1]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI ID of the transaction whose actual BRESP had an error.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_TYPE_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[12:11]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BRESP error type (2'b10 = SLVERR, 2'b11 = DECERR).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[13]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write 1 to clear the <span class="monospaced">INT_EARLY_RESP_ERR</span> interrupt.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_DONE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[14]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 when no write transactions are pending (<span class="monospaced">r_aw_cnt == 0</span>).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>See the full register map in Section 7.1 for the complete SFR listing.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-38-axi-aggregator"><a class="anchor" href="#aou-38-axi-aggregator"></a><a class="link" href="#aou-38-axi-aggregator">3.8. AXI Aggregator</a></h3>
+<div class="sect3">
+<h4 id="aou-381-overview"><a class="anchor" href="#aou-381-overview"></a><a class="link" href="#aou-381-overview">3.8.1. Overview</a></h4>
+<div class="paragraph">
+<p>The AXI Aggregator (<span class="monospaced">AOU_AGGREGATOR</span>) combines narrow read and write data into full-width bus beats to improve bus utilization. It sits downstream of the <a href="#aou-36-axi-transaction-splitter">AXI Transaction Splitter</a> and is the last processing stage before the AXI manager port inside <span class="monospaced">AOU_AXI4MUX_3X1_TOP</span>. One instance exists per RP.</p>
+</div>
+<div class="paragraph">
+<p>When enabled, the aggregator promotes <span class="monospaced">AWSIZE</span>/<span class="monospaced">ARSIZE</span> to the full bus width and recalculates <span class="monospaced">AWLEN</span>/<span class="monospaced">ARLEN</span> accordingly. For example, an incoming AR with size 256 bits and burst length 16 is converted to size 1024 bits and burst length 4, then issued on the AXI manager interface. When R data returns, it is split to restore the original format. The same principle applies to writes.</p>
+</div>
+<div class="paragraph">
+<p>When disabled via the per-RP <span class="monospaced">AOU_CON0.RPn_AXI_AGGREGATOR_EN</span> SFR, all master-side signals bypass the aggregator entirely and flow directly to the AXI manager port without modification.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-382-write-aggregation"><a class="anchor" href="#aou-382-write-aggregation"></a><a class="link" href="#aou-382-write-aggregation">3.8.2. Write Aggregation</a></h4>
+<div class="paragraph">
+<p>Write aggregation is activated when <strong>both</strong> conditions are met:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><span class="monospaced">AWSIZE</span> is narrower than the full bus width (<span class="monospaced">AXSIZE &lt; $clog2(DATA_WD/8)</span>).</p>
+</li>
+<li>
+<p><span class="monospaced">AWLEN</span> is non-zero (multi-beat burst).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>When activated, the aggregator:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Promotes <span class="monospaced">AWSIZE</span> to the full bus width.</p>
+</li>
+<li>
+<p>Recalculates <span class="monospaced">AWLEN</span> based on the ratio between original and promoted sizes.</p>
+</li>
+<li>
+<p>OR-merges <span class="monospaced">WDATA</span> and <span class="monospaced">WSTRB</span> across consecutive narrow beats until a full-width beat is assembled, then emits the merged beat on the master W channel.</p>
+</li>
+<li>
+<p><span class="monospaced">AWBURST</span> is passed through unchanged.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A depth-16 synchronous FIFO decouples the AW and W channels. The AW is issued on the master side only after confirming that sufficient W FIFO space is available for the recalculated <span class="monospaced">AWLEN</span>, preventing deadlocks when the downstream bus back-pressures the W channel.</p>
+</div>
+<div id="figure-13" class="imageblock">
+<div class="content">
+<img src="_images/write-aggregation.svg" alt="Figure 13. Write Aggregation&#8201;&#8212;&#8201;Narrow-to-Wide Beat Merging">
+</div>
+<div class="title">Figure 13. Write Aggregation -- Narrow-to-Wide Beat Merging</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-383-read-aggregation"><a class="anchor" href="#aou-383-read-aggregation"></a><a class="link" href="#aou-383-read-aggregation">3.8.3. Read Aggregation</a></h4>
+<div class="paragraph">
+<p>Read aggregation follows the same size-promotion logic as writes. <span class="monospaced">ARSIZE</span> and <span class="monospaced">ARLEN</span> are promoted to the full bus width, and <span class="monospaced">ARBURST</span> is passed through (the aggregator does not restrict burst type to INCR).</p>
+</div>
+<div class="paragraph">
+<p>The <span class="monospaced">AOU_AGGREGATOR_INFO</span> submodule tracks outstanding AR transactions. For each issued AR, it records the original burst geometry (size, length) so that when wide R data returns from the manager side, the module can regenerate the correct slave-side <span class="monospaced">RLAST</span> at the original burst boundaries. Wide R beats are presented to the slave side multiple times (once per original narrow beat) with the appropriate byte-lane selection.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-384-sfr-fields"><a class="anchor" href="#aou-384-sfr-fields"></a><a class="link" href="#aou-384-sfr-fields">3.8.4. SFR Fields</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">SFR</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Bits</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_CON0</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">RP0_AXI_AGGREGATOR_EN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[20]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable aggregator for RP0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_CON0</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">RP1_AXI_AGGREGATOR_EN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[21]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable aggregator for RP1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_CON0</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">RP2_AXI_AGGREGATOR_EN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[22]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable aggregator for RP2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">AOU_CON0</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">RP3_AXI_AGGREGATOR_EN</span></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[23]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable aggregator for RP3</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>These fields must be configured before activation and must not be changed during normal operation.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-39-credit-controller"><a class="anchor" href="#aou-39-credit-controller"></a><a class="link" href="#aou-39-credit-controller">3.9. Credit Controller</a></h3>
+<div id="figure-14" class="imageblock">
+<div class="content">
+<img src="_images/image13.png" alt="Figure 14. Block Diagram of AOU_CRD_CTRL">
+</div>
+<div class="title">Figure 14. Block Diagram of AOU_CRD_CTRL</div>
+</div>
+<div class="paragraph">
+<p><a href="#figure-14">Figure 14</a> shows the simplified block diagram of AOU_CRD_CTRL. The Credit Controller manages both the credits granted to the remote die and the credits received from the remote die. It considers the credit consumed when the TX CORE packs an AXI message into the ring buffer, and considers the credit returned when an AXI message is popped from the RX CORE FIFO. The credit controller always grants the maximum credits available and uses only one of the two methods - either the Misc Credit Grant messages or the Message Credit field - to grant credits.**</p>
+</div>
+<div class="paragraph">
+<p>Rx Credit**</p>
+</div>
+<div class="paragraph">
+<p>The local die is responsible for tracking the credits advertised to the remote die and issuing new credits once they are returned. Rx Credit accounts for both advertised and returned credits and is managed by the AOU_RX_CRD_CTRL module inside AOU_CRD_CTRL.</p>
+</div>
+<div class="paragraph">
+<p>More specifically, Rx Credit refers to the credit provided by the local die to the remote die. The remote die uses this credit to transmit messages, which are then received and unpacked by the local Rx Core. Because the processing and unpacking occur within the Rx Core, this credit is defined as Rx Credit. The maximum available Rx Credit is determined by the depth of the Rx FIFO.</p>
+</div>
+<div class="paragraph">
+<p>To ensure that no data is lost under flow control, credits shall not be granted when sufficient buffer space is unavailable. Therefore, the amount of credit advertised shall be determined conservatively by considering the worst-case condition. Here, the worst case is defined as the condition in which the smallest amount of credit can be advertised. Consequently, the maximum available is specified as the minimum value among all possible cases when credits are fully advertised:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>MAX AVAILABLE CREDIT = min(max advertised credit case1, max advertised credit case2, ..., max advertised credit caseN)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Assuming all PROFEXTLEN values are set to 0, the maximum advertised credit is calculated as follows: <strong>For WREQ, RREQ, WRESPCRED</strong>, each FIFO entry is considered to be allocated according to the granule size of each message.</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>RX AW MAX CREDIT = RX AW FIFO DEPTH x WriteReq Granules
+RX AR MAX CREDIT = RX AR FIFO DEPTH x ReadReq Granules
+RX B  MAX CREDIT = RX B  FIFO DEPTH x WriteResp Granules</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>In the case of WDATA</strong>, data widths of 256, 512 or 1024 may be received. Separate FIFOs are provided for data and for strobe, each with the same FIFO depth. Each FIFO entry is 256 bits wide for DATA and 32 bits wide for STRB, ensuring efficient utilization of the FIFO. Accordingly, 512-bit width data occupies two entries, while 1024-bit width data occupies four entries. As illustrated in <a href="#figure-14">Figure 14</a>, for non-Writefull message types, WDATA is stored in the DATA FIFO and WSTRB is stored in the STRB FIFO.</p>
+</div>
+<div id="figure-15" class="imageblock">
+<div class="content">
+<img src="_images/image14.png" alt="Figure 15. Example of WDATA and WSTRB FIFO Operation">
+</div>
+<div class="title">Figure 15. Example of WDATA and WSTRB FIFO Operation</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Occupying Data entry per message = WDATA Width / DATA FIFO Width</pre>
+</div>
+</div>
+<table id="table-1" class="tableblock frame-all grid-all" style="width: 99%;">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 16%;">
+<col style="width: 16%;">
+<col style="width: 16%;">
+<col style="width: 16%;">
+<col style="width: 16%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">WDATA width</th>
+<th class="tableblock halign-left valign-top">Granule size per message</th>
+<th class="tableblock halign-left valign-top">Occupying Data entry per message</th>
+<th class="tableblock halign-left valign-top">Granules per Data FIFO entry</th>
+<th class="tableblock halign-left valign-top">Granules per Strb FIFO entry</th>
+<th class="tableblock halign-left valign-top">Granules per FIFO entry</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256b</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512b</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7.5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7.5</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1024b</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7.5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7.5</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><em>Table 1. WriteData Credit Calculation</em></p>
+</div>
+<table id="table-2" class="tableblock frame-all grid-all" style="width: 99%;">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 16%;">
+<col style="width: 16%;">
+<col style="width: 16%;">
+<col style="width: 16%;">
+<col style="width: 16%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">WDATA width</th>
+<th class="tableblock halign-left valign-top">Granule size per message</th>
+<th class="tableblock halign-left valign-top">Occupying Data entry per message</th>
+<th class="tableblock halign-left valign-top">Granules per Data FIFO entry</th>
+<th class="tableblock halign-left valign-top">Granules per Strb FIFO entry</th>
+<th class="tableblock halign-left valign-top">Granules per FIFO entry</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256b</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512b</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1024b</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6.75</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6.75</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><em>Table 2. WriteDataFull Credit Calculation</em></p>
+</div>
+<div class="paragraph">
+<p><a href="#table-1">Table 1</a> and <a href="#table-2">Table 2</a> illustrates all possible writedata, writedatafull message types and the credit calculation when messages consist solely of one type. The minimum advertised credit occurs when only 1024bit writedatafull messages are received. According the maximum available credit for WDATA is defined as follows:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>RX W MAX CREDIT = (RX W FIFO DEPTH / 4) x WriteData Full1024bit Granules</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>In the case of RDATA,</strong> Receiving RDATA from the remote die implies that the local die has already issued a ReadReq message. The ARSIZE used when sending is determined by the AXI_DATA_WD of the local die. For example, if AXI_DATA_WD is 512, the AR will request RDATA of 512 bits or less, and the received RDATA will therefore be 512 or 256 bits wide.</p>
+</div>
+<div id="figure-16" class="imageblock">
+<div class="content">
+<img src="_images/image15.png" alt="Figure 16. Example of RDATA FIFO Operation">
+</div>
+<div class="title">Figure 16. Example of RDATA FIFO Operation</div>
+</div>
+<table id="table-3" class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">RDATA Width</th>
+<th class="tableblock halign-left valign-top">Granule size</th>
+<th class="tableblock halign-left valign-top">Occupying entry (RDATA width / FIFO width)</th>
+<th class="tableblock halign-left valign-top">Granules per FIFO entry (Granule size / Occupying entry)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1024</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6.75</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><em>Table 3. ReadData Credit Calculation</em></p>
+</div>
+<div class="paragraph">
+<p>Similarly, for RDATA, credits must be advertised conservatively by considering the maximum data width associated with AXI_DATA_WD. As AXI_DATA_WD increases, the maximum credit that can be advertised decreases. Therefore, credit shall always be calculated based on AXI_DATA_WD. For example, if AXI_DATA_WD is 512, the possible RDATA widths are 256, 512, and credit must be determined under the conservative assumption that all RDATA widths are 512bits. Likewise, if AXI_DATA_WD is 1024, the possible RDATA widths are 256, 512, and 1024, and credits must be determined under the conservative assumption that all RDATA are 1024bits.</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>RX R MAX CREDIT = {RX R FIFO DEPTH / (AXI_DATA_WD / 256)} x AXI_DATA_WD RDATA Granule Size</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Tx Max Credit</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Tx Credit refers to the credit that the local die receives from the remote die. Based on this credit, the Tx Core is permitted to pack messages into flits and transmit them. For this reason, the term is defined as Tx Credit.</p>
+</li>
+<li>
+<p>Tx Credit is managed by the AOU_TX_CRD_CTRL in AOU_CRD_CTRL, which is responsible for counting the credits received from the remote die and tracking the credits consumed during message packing.</p>
+</li>
+<li>
+<p>It is recommended that Tx Max Credit parameter be set to the maximum credit value that the remote die is capable of granting.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>If Tx Max Credit is configured to a value lower than the maximum credit issued by the remote die, credit accounting shall be limited to the Tx Max Credit value. In this case, flow control operates strictly within the range defined by Tx Max Credit, regardless of the remote die's capability.</p>
+</li>
+<li>
+<p>If Tx Max Credit is configured to a value greater than or equal to the maximum grantable credit of the remote die, the local die can fully utilize all credits actually granted by the remote die.</p>
+</li>
+<li>
+<p>This behavior implies that the Tx Max Credit setting is not dependent on the remote die's internal configuration. The local die shall simply make use of the credits that are actually granted to it.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Credit Advertisement Mechanism</strong></p>
+</div>
+<div class="paragraph">
+<p>Upon receipt of an ActivateReq from the remote die, AOU_CORE_TOP responds with an ActivateAck and, at the same time, advertises credit through a Misc CreditGrant Message. Only the initial credit advertisement is performed through this Misc message. Because only a single Resource Plane is implemented, after the initial advertisement, subsequent credit advertisements are carried by the Message Credit field within the protocol header. In multiple-RP configuration, credit advertisement is likewise delivered exclusively through the Message Credit field within the protocol header. Credits for multiple RPs are advertised in a round-robin manner. A grant is issued only when at least one of the credit fields - wreq, wdata, rreq, rdata, or wresp - contains a non-zero value to be advertised.</p>
+</div>
+<div class="paragraph">
+<p><strong>Definition of Tx Credit Consumption and Rx Credit Advertisement/Return Timing</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The Tx Credit is increased immediately upon receipt of a credit message from the Rx Core, within the updated value taking effect in the following cycle. Credit is decremented when the Tx Core packs a message and places it into the ring buffer. The consumption point is defined at the time of insertion into the per-RP Tx FIFO.</p>
+</li>
+<li>
+<p>The AOU_RX_CRD_CTRL exchanges credit messages (PLP protocol header MsgCredit field, dedicated Misc message) with the Tx core through valid/ready signaling. Tx core asserts CRDTGRANT_READY when the Tx core can pack a Misc Credit Message or asserts MSGCREDIT_CRED_READY when a protocol header is required to be transmitted. A credit is considered advertised at the point when the credit message handshake (valid and ready both asserted) occurs. At that instant, the advertised credits are treated as already reserved for the RX FIFO. Accordingly, a credit is not considered returned when a message leaves the RX Core, but only when data is actually dequeued from the RX FIFO, releasing the previously reserved credit.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-310-rp-remapping"><a class="anchor" href="#aou-310-rp-remapping"></a><a class="link" href="#aou-310-rp-remapping">3.10. RP Remapping</a></h3>
+<div class="sect3">
+<h4 id="aou-3101-configuration-rules"><a class="anchor" href="#aou-3101-configuration-rules"></a><a class="link" href="#aou-3101-configuration-rules">3.10.1. Configuration Rules</a></h4>
+<div class="paragraph">
+<p>The Resource Plane (RP) operates based on the smaller RP count between the local and remote dies and follows a strict one-to-one mapping. RP assignments are configured through the <strong>DEST_RP</strong> SFR. The values of <span class="monospaced">RP3_DEST</span>, <span class="monospaced">RP2_DEST</span>, <span class="monospaced">RP1_DEST</span>, and <span class="monospaced">RP0_DEST</span> must be unique, and for any RP that is utilized, the configuration on the local and remote dies must be symmetrical.</p>
+</div>
+<div class="paragraph">
+<p>This configuration must remain static and must be programmed before activation. It must not be altered during normal operation.</p>
+</div>
+<div class="paragraph">
+<p>When the local and remote dies have different <span class="monospaced">RP_COUNT</span> values, the effective RP count is the smaller of the two. Unused RP slots in the <span class="monospaced">DEST_RP</span> register are functionally don't-care but should be set to non-overlapping values for clean credit routing (see <a href="#aou-3103-misconfiguration-behavior">Section 3.10.3</a>).</p>
+</div>
+<div id="figure-17" class="imageblock">
+<div class="content">
+<img src="_images/image16.png" alt="Figure 17. Resource Plane Remapping">
+</div>
+<div class="title">Figure 17. Resource Plane Remapping</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-3102-header-encoding"><a class="anchor" href="#aou-3102-header-encoding"></a><a class="link" href="#aou-3102-header-encoding">3.10.2. Header Encoding</a></h4>
+<div class="paragraph">
+<p>For AXI messages (WriteReq, WriteData, ReadReq), the TX path (<span class="monospaced">AOU_TX_AXI_BUFFER</span>) embeds the <span class="monospaced">DEST_RP</span> field from the SFR into the destination RP field of every outgoing message header. The remote die uses this field to route the received message to the correct RP for processing.</p>
+</div>
+<div class="paragraph">
+<p>For credit grant messages, <span class="monospaced">AOU_TX_CRD_CTRL</span> encodes the <em>local</em> RP index (not the <span class="monospaced">DEST_RP</span> value) so that the remote die can route returned credits to the correct local RP's credit counter. This asymmetry -- destination RP in data messages, source RP in credit messages -- is fundamental to the RP remapping scheme.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-3103-misconfiguration-behavior"><a class="anchor" href="#aou-3103-misconfiguration-behavior"></a><a class="link" href="#aou-3103-misconfiguration-behavior">3.10.3. Misconfiguration Behavior</a></h4>
+<div class="paragraph">
+<p>No hardware duplicate-detection logic exists for the <span class="monospaced">DEST_RP</span> register. If <span class="monospaced">DEST_RP</span> values are configured with overlapping (duplicate) entries, the credit routing logic in <span class="monospaced">AOU_TX_CRD_CTRL</span> -- which uses a <span class="monospaced">unique case</span> statement on <span class="monospaced">I_RP_DEST_RP[i]</span> -- will fall through to the <span class="monospaced">default</span> case, mapping to the RP0 credit view. This results in silent credit accounting errors rather than a flagged interrupt or error condition.</p>
+</div>
+<div class="paragraph">
+<p>Software is responsible for ensuring uniqueness and symmetry of the <span class="monospaced">DEST_RP</span> configuration on both link partners before initiating activation.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aou-311-ucie-flit-cancel-mechanism"><a class="anchor" href="#aou-311-ucie-flit-cancel-mechanism"></a><a class="link" href="#aou-311-ucie-flit-cancel-mechanism">3.11. UCIe Flit cancel mechanism</a></h3>
+<div class="paragraph">
+<p>AOU_CORE supports all UCIe flit cancel mechanisms. The three cases -- retransmit, flit partially valid, and full flit cancel -- are handled by the <span class="monospaced">AOU_RX_FDI_IF</span> submodule within RX_CORE.</p>
+</div>
+<div id="figure-18" class="imageblock">
+<div class="content">
+<img src="_images/image17.png" alt="Figure 18. UCIe Flit Cancel - Retransmit case">
+</div>
+<div class="title">Figure 18. UCIe Flit Cancel - Retransmit case</div>
+</div>
+<div id="figure-19" class="imageblock">
+<div class="content">
+<img src="_images/image18.png" alt="Figure 19. UCIe Flit Cancel - Flit Partially Valid case">
+</div>
+<div class="title">Figure 19. UCIe Flit Cancel - Flit Partially Valid case</div>
+</div>
+<div id="figure-20" class="imageblock">
+<div class="content">
+<img src="_images/image19.png" alt="Figure 20. UCIe Flit Cancel - Full Flit Cancel case">
+</div>
+<div class="title">Figure 20. UCIe Flit Cancel - Full Flit Cancel case</div>
+</div>
+<div class="sect3">
+<h4 id="aou-3111-cancel-cases"><a class="anchor" href="#aou-3111-cancel-cases"></a><a class="link" href="#aou-3111-cancel-cases">3.11.1. Cancel Cases</a></h4>
+<div class="paragraph">
+<p>The <span class="monospaced">AOU_RX_FDI_IF</span> module uses the FDI <span class="monospaced">pl_valid</span> and <span class="monospaced">pl_flit_cancel</span> signals to determine how to handle each incoming chunk. Three cases are distinguished:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 34%;">
+<col style="width: 33%;">
+<col style="width: 33%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><span class="monospaced">pl_valid</span></th>
+<th class="tableblock halign-left valign-top"><span class="monospaced">pl_flit_cancel</span></th>
+<th class="tableblock halign-left valign-top">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Normal</strong>: Phase counter increments. Chunk is stored in the staging buffer.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Retransmit / Partial Valid</strong>: Phase counter decrements by 1. The staging buffer is re-aligned with <span class="monospaced">{zero_data, pl_data}</span> and a valid pattern of <span class="monospaced">{1'b0, 1'b1}</span>, replacing the previously stored partial chunk with the corrected data.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Full Flit Cancel</strong>: Phase counter decrements by 2. Staging buffer entries are cleared. This is the strongest rollback, discarding the entire in-progress half-flit.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="aou-3112-rx_fdi_if-buffering"><a class="anchor" href="#aou-3112-rx_fdi_if-buffering"></a><a class="link" href="#aou-3112-rx_fdi_if-buffering">3.11.2. RX_FDI_IF Buffering</a></h4>
+<div class="paragraph">
+<p>The <span class="monospaced">AOU_RX_FDI_IF</span> module maintains a staging buffer (<span class="monospaced">r_data</span>) that is <span class="monospaced">HF_PHASE_CNT</span> entries deep, where <span class="monospaced">HF_PHASE_CNT = PHASE_CNT / 2</span>. For the default 512-bit FDI data width, <span class="monospaced">PHASE_CNT = 4</span> and <span class="monospaced">HF_PHASE_CNT = 2</span>, so the staging buffer holds 2 chunk entries -- one half-flit of data.</p>
+</div>
+<div class="paragraph">
+<p>A parallel valid array (<span class="monospaced">r_data_valid</span>) tracks which staging buffer entries contain valid chunk data. The output to RX_CORE is gated:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>rx_chunk_data_valid = r_data_valid[1] &amp;&amp; !pl_flit_cancel</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This ensures that chunk presentation is suppressed whenever <span class="monospaced">pl_flit_cancel</span> is asserted, even if valid data exists in the staging buffer. Downstream, <span class="monospaced">AOU_RX_CORE</span> advances its phase counter (<span class="monospaced">r_aou_rx_phase</span>) only when <span class="monospaced">rx_chunk_data_valid</span> is high, so cancel-suppressed cycles stall the RX phase progression without data loss.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="aou-3113-timing"><a class="anchor" href="#aou-3113-timing"></a><a class="link" href="#aou-3113-timing">3.11.3. Timing</a></h4>
+<div class="paragraph">
+<p>Cancel handling is purely combinational on the same clock edge as the FDI input signals. No additional pipeline stages are introduced beyond the 2-entry staging buffer and the phase FSM. The latency from FDI input to valid chunk presentation at RX_CORE is therefore determined solely by the half-flit fill time under normal operation.</p>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p><strong>Note:</strong> The <span class="monospaced">flit_packing_state</span> counter (a TX-side concept in <span class="monospaced">AOU_TX_CORE</span>) is unrelated to RX cancel handling. RX cancel operates entirely within <span class="monospaced">AOU_RX_FDI_IF</span> using the phase counter <span class="monospaced">r_phase</span>.</p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>The figures below illustrate an example of how only valid chunk data is delivered to RX_CORE. Within the design, <span class="monospaced">pl_data</span>, <span class="monospaced">pl_valid</span>, and <span class="monospaced">pl_flit_cancel</span> are defined as part of the FDI interface. In contrast, <span class="monospaced">rx_chunk_data</span> and <span class="monospaced">rx_chunk_data_valid</span> represent the signals responsible for delivering valid chunks to RX_CORE.</p>
+</div>
+<div id="figure-21" class="imageblock">
+<div class="content">
+<img src="_images/image20.png" alt="Figure 21. Example of selecting valid chunks for RX_CORE">
+</div>
+<div class="title">Figure 21. Example of selecting valid chunks for RX_CORE</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="aou-overview.html">Overview and Features</a></span>
+  <span class="next"><a href="aou-interrupts-errors.html">Interrupts and Errors</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

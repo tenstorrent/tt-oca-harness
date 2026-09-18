@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Design-for-Debug (DFD) and Core Logic Analyzer (CLA) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC debug observation, event triggering, actions, and trace capture.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></li>
+    <li><a href="dfd.html">Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,9 +190,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="smc-dfd-cla"><a class="anchor" href="#smc-dfd-cla"></a><a class="link" href="#smc-dfd-cla">1. Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</a></h3>
-<div class="paragraph">
+<h1 class="page">Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="smc-dfd-cla" class="paragraph">
 <p>The SMC integrates a Design-for-Debug (DFD) subsystem that observes
 internal activity, triggers on programmable conditions, and captures
 trace, all on-chip and without external instrumentation. Its core is a
@@ -231,8 +231,11 @@ which pair fired</p>
 </li>
 </ul>
 </div>
-<div class="sect3">
-<h4 id="debug-bus"><a class="anchor" href="#debug-bus"></a><a class="link" href="#debug-bus">1.1. Debug Bus</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug-bus"><a class="anchor" href="#debug-bus"></a><a class="link" href="#debug-bus">1. Debug Bus</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The analyzer operates on a debug bus: a fixed-width vector of internal
 signals sampled every cycle. A selection fabric chooses which internal
@@ -242,8 +245,10 @@ observed signal set, then programs the event engine against the resulting
 bus value.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="core-logic-analyzer"><a class="anchor" href="#core-logic-analyzer"></a><a class="link" href="#core-logic-analyzer">1.2. Core Logic Analyzer</a></h4>
+</div>
+<div class="sect1">
+<h2 id="core-logic-analyzer"><a class="anchor" href="#core-logic-analyzer"></a><a class="link" href="#core-logic-analyzer">2. Core Logic Analyzer</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The CLA is organized as a set of nodes, each holding several event-action
 pairs (EAPs). An EAP binds one or more events, computed from the debug
@@ -307,8 +312,10 @@ post-mortem inspection. EAPs are enabled together once programming is
 complete, so a partially programmed pairing never triggers.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="actions-and-cross-triggering"><a class="anchor" href="#actions-and-cross-triggering"></a><a class="link" href="#actions-and-cross-triggering">1.3. Actions and Cross-Triggering</a></h4>
+</div>
+<div class="sect1">
+<h2 id="actions-and-cross-triggering"><a class="anchor" href="#actions-and-cross-triggering"></a><a class="link" href="#actions-and-cross-triggering">3. Actions and Cross-Triggering</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>An EAP can drive one or more actions:</p>
 </div>
@@ -342,8 +349,10 @@ debug conditions can be correlated across blocks rather than observed in
 isolation.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="trace"><a class="anchor" href="#trace"></a><a class="link" href="#trace">1.4. Trace</a></h4>
+</div>
+<div class="sect1">
+<h2 id="trace"><a class="anchor" href="#trace"></a><a class="link" href="#trace">4. Trace</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The trace subsystem captures, timestamps, and streams debug activity for
 offline analysis. Samples and events are encoded and packetized, merged
@@ -353,11 +362,13 @@ from different sources on a common time base, so captures can be aligned
 after the fact.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">1.5. Interrupts</a></h4>
+</div>
+<div class="sect1">
+<h2 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">5. Interrupts</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The SMC interrupt table in <a href="#interrupts">Interrupts</a> lists the two CLA-driven
-sources:</p>
+<p>The SMC interrupt table lists the two CLA-driven sources. See
+<a href="interrupts.html#interrupts" class="xref page">Interrupts</a>.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -370,11 +381,14 @@ sources:</p>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="register-map"><a class="anchor" href="#register-map"></a><a class="link" href="#register-map">1.6. Register Map</a></h4>
+</div>
+<div class="sect1">
+<h2 id="register-map"><a class="anchor" href="#register-map"></a><a class="link" href="#register-map">6. Register Map</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The generated <code>smc_cla</code> map is the programmer view of this aperture (see
-<a href="#smc-memory-map">[smc-memory-map]</a>).</p>
+<a href="memmap.html#smc-memory-map" class="xref page">Memory Map</a>
+).</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -1595,6 +1609,8 @@ sources:</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

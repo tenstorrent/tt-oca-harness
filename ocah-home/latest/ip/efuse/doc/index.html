@@ -3,10 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>eFuse :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -109,13 +110,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component is-current">
-      <div class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
@@ -123,7 +122,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-starting/latest/index.html">latest</a>
@@ -131,7 +129,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -139,7 +136,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -147,7 +143,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
@@ -155,7 +150,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
@@ -172,6 +166,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="index.html">eFuse</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -179,17 +177,23 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="efuse-peripheral-module"><a class="anchor" href="#efuse-peripheral-module"></a><a class="link" href="#efuse-peripheral-module">eFuse</a></h4>
+<h1 class="page">eFuse</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div class="paragraph">
 <p>TODO</p>
 </div>
-<div class="sect4">
-<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+</div>
+</div>
+<div class="sect1">
+<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h2>
+<div class="sectionbody">
 
 </div>
-<div class="sect4">
-<h5 id="efuse-architecture"><a class="anchor" href="#efuse-architecture"></a><a class="link" href="#efuse-architecture">Architecture</a></h5>
+</div>
+<div class="sect1">
+<h2 id="efuse-architecture"><a class="anchor" href="#efuse-architecture"></a><a class="link" href="#efuse-architecture">Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The eFuse IP provides secure One-Time Programmable (OTP) memory
 management with foundry-agnostic design. The layered architecture
@@ -197,15 +201,15 @@ separates security control logic from foundry-specific implementation
 details, enabling deployment across different OTP technologies while
 maintaining consistent security characteristics and software interfaces.</p>
 </div>
-<div class="sect5">
-<h6 id="interface-controller"><a class="anchor" href="#interface-controller"></a><a class="link" href="#interface-controller">Interface Controller</a></h6>
+<div class="sect2">
+<h3 id="interface-controller"><a class="anchor" href="#interface-controller"></a><a class="link" href="#interface-controller">Interface Controller</a></h3>
 <div class="paragraph">
 <p>The eFuse Interface Controller (efuse_interface_controller.sv) provides
 dual-path access control with security policy enforcement.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="access-paths"><a class="anchor" href="#access-paths"></a><a class="link" href="#access-paths">Access Paths</a></h6>
+<div class="sect2">
+<h3 id="access-paths"><a class="anchor" href="#access-paths"></a><a class="link" href="#access-paths">Access Paths</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -219,8 +223,8 @@ development</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="destination-endpoints"><a class="anchor" href="#destination-endpoints"></a><a class="link" href="#destination-endpoints">Destination Endpoints</a></h6>
+<div class="sect2">
+<h3 id="destination-endpoints"><a class="anchor" href="#destination-endpoints"></a><a class="link" href="#destination-endpoints">Destination Endpoints</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -255,14 +259,14 @@ access control</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="shadow-register-subsystem"><a class="anchor" href="#shadow-register-subsystem"></a><a class="link" href="#shadow-register-subsystem">Shadow Register Subsystem</a></h6>
+<div class="sect2">
+<h3 id="shadow-register-subsystem"><a class="anchor" href="#shadow-register-subsystem"></a><a class="link" href="#shadow-register-subsystem">Shadow Register Subsystem</a></h3>
 <div class="paragraph">
 <p>The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with <code>access_length_words</code> set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">Features</a></h6>
+<div class="sect2">
+<h3 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">Features</a></h3>
 <div class="paragraph">
 <p>The feature list for the shadow register subsystem is as follows:</p>
 </div>
@@ -297,8 +301,8 @@ access control</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="state-machine-architecture"><a class="anchor" href="#state-machine-architecture"></a><a class="link" href="#state-machine-architecture">State Machine Architecture</a></h6>
+<div class="sect2">
+<h3 id="state-machine-architecture"><a class="anchor" href="#state-machine-architecture"></a><a class="link" href="#state-machine-architecture">State Machine Architecture</a></h3>
 <div class="paragraph">
 <p>The read interface FSM (efuse_read_interface.sv) operates in a simple
 two-state sequence, transitioning from idle to waiting for a response as
@@ -316,8 +320,8 @@ against intended data, and fully blocks any unauthorized overwrites to
 maintain data integrity.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="parameterized-command-typedefs"><a class="anchor" href="#parameterized-command-typedefs"></a><a class="link" href="#parameterized-command-typedefs">Parameterized Command Typedefs</a></h6>
+<div class="sect2">
+<h3 id="parameterized-command-typedefs"><a class="anchor" href="#parameterized-command-typedefs"></a><a class="link" href="#parameterized-command-typedefs">Parameterized Command Typedefs</a></h3>
 <div class="paragraph">
 <p>The fuse command request/response structs exchanged between the
 controller and the SHIM are not declared with fixed types. Instead, they
@@ -396,13 +400,13 @@ types:</p>
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="foundry-specific-signals"><a class="anchor" href="#foundry-specific-signals"></a><a class="link" href="#foundry-specific-signals">Foundry-Specific Signals</a></h6>
+<div class="sect2">
+<h3 id="foundry-specific-signals"><a class="anchor" href="#foundry-specific-signals"></a><a class="link" href="#foundry-specific-signals">Foundry-Specific Signals</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Example Hardware Interfaces by OTP Variant</caption>
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 80%;">
+<col style="width: 30%;">
+<col style="width: 70%;">
 </colgroup>
 <thead>
 <tr>
@@ -422,8 +426,8 @@ types:</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="interface-shim-layer"><a class="anchor" href="#interface-shim-layer"></a><a class="link" href="#interface-shim-layer">Interface SHIM Layer</a></h6>
+<div class="sect2">
+<h3 id="interface-shim-layer"><a class="anchor" href="#interface-shim-layer"></a><a class="link" href="#interface-shim-layer">Interface SHIM Layer</a></h3>
 <div class="paragraph">
 <p>The Interface SHIM (<code>efuse_interface_shim.sv</code>) is an example, foundry-specific
 implementation of the custom fuse command interface. Its role is to translate
@@ -455,8 +459,8 @@ are exposed through the SHIM Control CSRs, accessed over the
 <code>fuse_bank_ctrl</code> AXI4-Lite interface.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="efuse-bank-model"><a class="anchor" href="#efuse-bank-model"></a><a class="link" href="#efuse-bank-model">eFuse Bank Model</a></h6>
+<div class="sect2">
+<h3 id="efuse-bank-model"><a class="anchor" href="#efuse-bank-model"></a><a class="link" href="#efuse-bank-model">eFuse Bank Model</a></h3>
 <div class="paragraph">
 <p>The eFuse bank model (<code>efuse_bank_model.sv</code>) is a reference, simulation-only
 stand-in for the real foundry OTP macro. It is a 3KB (768 x 32-bit word) store
@@ -466,8 +470,8 @@ silicon. In a production integration it is replaced by the actual foundry
 macro driven by the SHIM.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="access-permissions-and-security"><a class="anchor" href="#access-permissions-and-security"></a><a class="link" href="#access-permissions-and-security">Access Permissions and Security</a></h6>
+<div class="sect2">
+<h3 id="access-permissions-and-security"><a class="anchor" href="#access-permissions-and-security"></a><a class="link" href="#access-permissions-and-security">Access Permissions and Security</a></h3>
 <div class="paragraph">
 <p>Access control is layered for defense in depth: per-field permissions
 are described by <code>efuse_field_map_i</code>, lock state is enforced by the eFuse
@@ -494,8 +498,8 @@ for the field:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 15%;">
-<col style="width: 25%;">
+<col style="width: 18%;">
+<col style="width: 22%;">
 <col style="width: 60%;">
 </colgroup>
 <thead>
@@ -524,8 +528,8 @@ for the field:</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="hardware-vs-software-locks"><a class="anchor" href="#hardware-vs-software-locks"></a><a class="link" href="#hardware-vs-software-locks">Hardware vs. Software Locks</a></h6>
+<div class="sect2">
+<h3 id="hardware-vs-software-locks"><a class="anchor" href="#hardware-vs-software-locks"></a><a class="link" href="#hardware-vs-software-locks">Hardware vs. Software Locks</a></h3>
 <div class="paragraph">
 <p>The same permission semantics are reached through two independent
 mechanisms, and the guard enforces whichever is more restrictive:</p>
@@ -586,8 +590,8 @@ Token for chiplet-specific operations, or the Security Disable Token to
 override protections, can access to these resources be granted.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="security-disable-bypass-mechanism"><a class="anchor" href="#security-disable-bypass-mechanism"></a><a class="link" href="#security-disable-bypass-mechanism">Security Disable Bypass Mechanism</a></h6>
+<div class="sect2">
+<h3 id="security-disable-bypass-mechanism"><a class="anchor" href="#security-disable-bypass-mechanism"></a><a class="link" href="#security-disable-bypass-mechanism">Security Disable Bypass Mechanism</a></h3>
 <div class="paragraph">
 <p>The eFuse interface controller supports a security disable bypass mechanism
 via the <code>security_disable_i</code> input signal. This mechanism is primarily used
@@ -641,8 +645,8 @@ asserted, shadow registers are initialized to zero (default reset value for SMC)
 <code>security_disable_i</code> input port.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="lifecycle-state-lc_state-effects"><a class="anchor" href="#lifecycle-state-lc_state-effects"></a><a class="link" href="#lifecycle-state-lc_state-effects">Lifecycle State (LC_STATE) Effects</a></h6>
+<div class="sect2">
+<h3 id="lifecycle-state-lc_state-effects"><a class="anchor" href="#lifecycle-state-lc_state-effects"></a><a class="link" href="#lifecycle-state-lc_state-effects">Lifecycle State (LC_STATE) Effects</a></h3>
 <div class="paragraph">
 <p>The eFuse interface controller enforces access restrictions based on the
 chip&#8217;s lifecycle state.</p>
@@ -710,9 +714,9 @@ to eFuse registers is restricted:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 35%;">
-<col style="width: 35%;">
+<col style="width: 32%;">
+<col style="width: 43%;">
+<col style="width: 25%;">
 </colgroup>
 <thead>
 <tr>
@@ -753,8 +757,8 @@ package ID registers is permitted. This allows identification of the chip
 for manufacturing and field returns without exposing sensitive eFuse contents.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="secure-test-mode-secure_tm_i"><a class="anchor" href="#secure-test-mode-secure_tm_i"></a><a class="link" href="#secure-test-mode-secure_tm_i">Secure Test Mode (secure_tm_i)</a></h6>
+<div class="sect2">
+<h3 id="secure-test-mode-secure_tm_i"><a class="anchor" href="#secure-test-mode-secure_tm_i"></a><a class="link" href="#secure-test-mode-secure_tm_i">Secure Test Mode (secure_tm_i)</a></h3>
 <div class="paragraph">
 <p>The eFuse interface controller supports a Secure Test Mode via the <code>secure_tm_i</code>
 input signal. This mode provides additional protection for sensitive security
@@ -807,10 +811,12 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="efuse-interface"><a class="anchor" href="#efuse-interface"></a><a class="link" href="#efuse-interface">Interface</a></h5>
-<div class="sect5">
-<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
+</div>
+<div class="sect1">
+<h2 id="efuse-interface"><a class="anchor" href="#efuse-interface"></a><a class="link" href="#efuse-interface">Interface</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -843,18 +849,18 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">Signal Interfaces</a></h6>
+<div class="sect2">
+<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">Signal Interfaces</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">Clock and Reset</a></h6>
+<div class="sect2">
+<h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">Clock and Reset</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 50%;">
+<col style="width: 24%;">
+<col style="width: 14%;">
+<col style="width: 8%;">
+<col style="width: 54%;">
 </colgroup>
 <thead>
 <tr>
@@ -880,21 +886,22 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="main-axi4-lite-interfaces"><a class="anchor" href="#main-axi4-lite-interfaces"></a><a class="link" href="#main-axi4-lite-interfaces">Main AXI4-Lite Interfaces</a></h6>
+<div class="sect2">
+<h3 id="main-axi4-lite-interfaces"><a class="anchor" href="#main-axi4-lite-interfaces"></a><a class="link" href="#main-axi4-lite-interfaces">Main AXI4-Lite Interfaces</a></h3>
 <div class="paragraph">
 <p>The eFuse controller provides two AXI4-Lite interfaces for register
 access:</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="smc-interface-functional-access"><a class="anchor" href="#smc-interface-functional-access"></a><a class="link" href="#smc-interface-functional-access">SMC Interface (Functional Access)</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+<div class="sect2">
+<h3 id="smc-interface-functional-access"><a class="anchor" href="#smc-interface-functional-access"></a><a class="link" href="#smc-interface-functional-access">SMC Interface (Functional Access)</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="eFuse SMC Interface (Functional Access)" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 50%;">
+<col style="width: 30%;">
+<col style="width: 12%;">
+<col style="width: 28%;">
+<col style="width: 30%;">
 </colgroup>
 <thead>
 <tr>
@@ -920,14 +927,16 @@ access:</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="jtag-interface-debug-access"><a class="anchor" href="#jtag-interface-debug-access"></a><a class="link" href="#jtag-interface-debug-access">JTAG Interface (Debug Access)</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect2">
+<h3 id="jtag-interface-debug-access"><a class="anchor" href="#jtag-interface-debug-access"></a><a class="link" href="#jtag-interface-debug-access">JTAG Interface (Debug Access)</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="eFuse JTAG Interface (Debug Access)" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 50%;">
+<col style="width: 30%;">
+<col style="width: 12%;">
+<col style="width: 28%;">
+<col style="width: 30%;">
 </colgroup>
 <thead>
 <tr>
@@ -955,17 +964,19 @@ JTAG</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="fuse-bank-control-interface"><a class="anchor" href="#fuse-bank-control-interface"></a><a class="link" href="#fuse-bank-control-interface">Fuse Bank Control Interface</a></h6>
+</div>
+<div class="sect2">
+<h3 id="fuse-bank-control-interface"><a class="anchor" href="#fuse-bank-control-interface"></a><a class="link" href="#fuse-bank-control-interface">Fuse Bank Control Interface</a></h3>
 <div class="paragraph">
 <p>APB interface for communicating with the eFuse bank model:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Bank Control Interface" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 50%;">
+<col style="width: 30%;">
+<col style="width: 12%;">
+<col style="width: 28%;">
+<col style="width: 30%;">
 </colgroup>
 <thead>
 <tr>
@@ -993,17 +1004,19 @@ eFuse bank</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="fuse-command-interface"><a class="anchor" href="#fuse-command-interface"></a><a class="link" href="#fuse-command-interface">Fuse Command Interface</a></h6>
+</div>
+<div class="sect2">
+<h3 id="fuse-command-interface"><a class="anchor" href="#fuse-command-interface"></a><a class="link" href="#fuse-command-interface">Fuse Command Interface</a></h3>
 <div class="paragraph">
 <p>Custom interface for SHIM state machine communication:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Command Interface" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 50%;">
+<col style="width: 30%;">
+<col style="width: 12%;">
+<col style="width: 28%;">
+<col style="width: 30%;">
 </colgroup>
 <thead>
 <tr>
@@ -1031,14 +1044,16 @@ from SHIM</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">Security and Control Signals</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect2">
+<h3 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">Security and Control Signals</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="eFuse Security and Control Signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
-<col style="width: 20%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 50%;">
+<col style="width: 28%;">
+<col style="width: 12%;">
+<col style="width: 25%;">
+<col style="width: 35%;">
 </colgroup>
 <thead>
 <tr>
@@ -1101,14 +1116,16 @@ control rules</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="debug-and-status-signals"><a class="anchor" href="#debug-and-status-signals"></a><a class="link" href="#debug-and-status-signals">Debug and Status Signals</a></h6>
-<table class="tableblock frame-all grid-all stretch">
+</div>
+<div class="sect2">
+<h3 id="debug-and-status-signals"><a class="anchor" href="#debug-and-status-signals"></a><a class="link" href="#debug-and-status-signals">Debug and Status Signals</a></h3>
+<div class="port-reference-scroll" role="region" aria-label="eFuse Debug and Status Signals" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
 <colgroup>
-<col style="width: 30%;">
+<col style="width: 42%;">
 <col style="width: 12%;">
-<col style="width: 13%;">
-<col style="width: 45%;">
+<col style="width: 8%;">
+<col style="width: 38%;">
 </colgroup>
 <thead>
 <tr>
@@ -1200,8 +1217,9 @@ control rules</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="fuse-command-protocol"><a class="anchor" href="#fuse-command-protocol"></a><a class="link" href="#fuse-command-protocol">Fuse Command Protocol</a></h6>
+</div>
+<div class="sect2">
+<h3 id="fuse-command-protocol"><a class="anchor" href="#fuse-command-protocol"></a><a class="link" href="#fuse-command-protocol">Fuse Command Protocol</a></h3>
 <div class="paragraph">
 <p>Custom command interface between controller and SHIM:</p>
 </div>
@@ -1249,10 +1267,12 @@ control rules</p></td>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="efuse-memory-map"><a class="anchor" href="#efuse-memory-map"></a><a class="link" href="#efuse-memory-map">Memory Map</a></h5>
-<div class="sect5">
-<h6 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h6>
+</div>
+<div class="sect1">
+<h2 id="efuse-memory-map"><a class="anchor" href="#efuse-memory-map"></a><a class="link" href="#efuse-memory-map">Memory Map</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h3>
 <div class="paragraph">
 <p>The eFuse IP address space is divided into four regions. Base addresses and
 sizes are set by the instantiating subsystem through module parameters; the
@@ -1262,9 +1282,9 @@ is configured with a lifecycle controller (<code>HAS_LC_STATE=1</code>).</p>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. Address Space Overview</caption>
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 30%;">
-<col style="width: 40%;">
+<col style="width: 25%;">
+<col style="width: 23%;">
+<col style="width: 52%;">
 </colgroup>
 <thead>
 <tr>
@@ -1297,8 +1317,8 @@ is configured with a lifecycle controller (<code>HAS_LC_STATE=1</code>).</p>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="shadow-registers"><a class="anchor" href="#shadow-registers"></a><a class="link" href="#shadow-registers">Shadow Registers</a></h6>
+<div class="sect2">
+<h3 id="shadow-registers"><a class="anchor" href="#shadow-registers"></a><a class="link" href="#shadow-registers">Shadow Registers</a></h3>
 <div class="paragraph">
 <p>The shadow registers provide cached read access to eFuse contents, loaded
 automatically from the physical eFuse array during boot. The field layout is
@@ -1432,8 +1452,8 @@ instance documented in this section.</p>
 </table>
 </div>
 </div>
-<div class="sect5">
-<h6 id="mmr-registers"><a class="anchor" href="#mmr-registers"></a><a class="link" href="#mmr-registers">MMR Registers</a></h6>
+<div class="sect2">
+<h3 id="mmr-registers"><a class="anchor" href="#mmr-registers"></a><a class="link" href="#mmr-registers">MMR Registers</a></h3>
 <div class="paragraph">
 <p>The MMR (Memory Mapped Register) space provides access to security tokens for
 authentication, including RMA tokens and security disable tokens.</p>
@@ -1521,8 +1541,8 @@ authentication, including RMA tokens and security disable tokens.</p>
 </table>
 </div>
 </div>
-<div class="sect5">
-<h6 id="efuse-control-registers"><a class="anchor" href="#efuse-control-registers"></a><a class="link" href="#efuse-control-registers">eFuse Control Registers</a></h6>
+<div class="sect2">
+<h3 id="efuse-control-registers"><a class="anchor" href="#efuse-control-registers"></a><a class="link" href="#efuse-control-registers">eFuse Control Registers</a></h3>
 <div class="paragraph">
 <p>The eFuse Control CSR provides command and status registers for read, write,
 and verification operations on the eFuse array.</p>
@@ -1615,8 +1635,8 @@ and verification operations on the eFuse array.</p>
 </table>
 </div>
 </div>
-<div class="sect5">
-<h6 id="shim-control-registers"><a class="anchor" href="#shim-control-registers"></a><a class="link" href="#shim-control-registers">SHIM Control Registers</a></h6>
+<div class="sect2">
+<h3 id="shim-control-registers"><a class="anchor" href="#shim-control-registers"></a><a class="link" href="#shim-control-registers">SHIM Control Registers</a></h3>
 <div class="paragraph">
 <p>The SHIM Control CSR provides foundry-specific configuration registers for
 timing adaptation and eFuse bank initialization.</p>
@@ -1644,14 +1664,16 @@ timing adaptation and eFuse bank initialization.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="smc-dv-efuse-programming"><a class="anchor" href="#smc-dv-efuse-programming"></a><a class="link" href="#smc-dv-efuse-programming">Programming</a></h5>
-<div class="sect5">
-<h6 id="usage-examples"><a class="anchor" href="#usage-examples"></a><a class="link" href="#usage-examples">Usage Examples</a></h6>
+</div>
+<div class="sect1">
+<h2 id="smc-dv-efuse-programming"><a class="anchor" href="#smc-dv-efuse-programming"></a><a class="link" href="#smc-dv-efuse-programming">Programming</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="usage-examples"><a class="anchor" href="#usage-examples"></a><a class="link" href="#usage-examples">Usage Examples</a></h3>
 
 </div>
-<div class="sect5">
-<h6 id="example-1-programming-a-single-bit"><a class="anchor" href="#example-1-programming-a-single-bit"></a><a class="link" href="#example-1-programming-a-single-bit">Example 1: Programming a Single Bit</a></h6>
+<div class="sect2">
+<h3 id="example-1-programming-a-single-bit"><a class="anchor" href="#example-1-programming-a-single-bit"></a><a class="link" href="#example-1-programming-a-single-bit">Example 1: Programming a Single Bit</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Enable programming
@@ -1670,8 +1692,8 @@ if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x3) {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">Example 2: Reading Multiple Words</a></h6>
+<div class="sect2">
+<h3 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">Example 2: Reading Multiple Words</a></h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Setup read operation
@@ -1688,8 +1710,8 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="program-operation-sequence"><a class="anchor" href="#program-operation-sequence"></a><a class="link" href="#program-operation-sequence">Program Operation Sequence</a></h6>
+<div class="sect2">
+<h3 id="program-operation-sequence"><a class="anchor" href="#program-operation-sequence"></a><a class="link" href="#program-operation-sequence">Program Operation Sequence</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -1756,8 +1778,8 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="read-operation-sequence"><a class="anchor" href="#read-operation-sequence"></a><a class="link" href="#read-operation-sequence">Read Operation Sequence</a></h6>
+<div class="sect2">
+<h3 id="read-operation-sequence"><a class="anchor" href="#read-operation-sequence"></a><a class="link" href="#read-operation-sequence">Read Operation Sequence</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -1831,6 +1853,8 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
 </footer>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
 <script async src="../../../../../_/js/vendor/highlight.js"></script>
 <script src="../../../../../_/js/vendor/lunr.js"></script>

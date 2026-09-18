@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Clock Stop / Reset :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="DTP clock stop integration — combined JTAG and CLA halt path, CLA-only readback, exported enable policy.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -109,13 +111,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -123,7 +123,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -131,7 +130,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -139,7 +137,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -147,7 +144,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -155,7 +151,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -172,6 +167,10 @@
 <button class="nav-toggle"></button>
   <a href="../index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="clock_stop.html">Clock Stop / Reset</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -179,65 +178,77 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="dtp-clock-stop"><a class="anchor" href="#dtp-clock-stop"></a><a class="link" href="#dtp-clock-stop">Clock Stop</a></h3>
+<h1 class="page">Clock Stop / Reset</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="dtp-clock-stop" class="paragraph">
+<p>The DTP combines JTAG DEBUG_CONTROL and CLA clock-stop request sources into
+one functional chiplet halt path, while keeping the CLA-only status separate
+for debugger readback.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="halt-path-architecture"><a class="anchor" href="#halt-path-architecture"></a><a class="link" href="#halt-path-architecture">Halt Path Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>This section describes DTP-level clock stop integration. For the clock stop
-controller implementation details, see <a href="#cross-trigger-network">[cross-trigger-network]</a>.</p>
+<p>Three distinct signals participate in clock stop:</p>
 </div>
-<div class="paragraph">
-<p>From the DTP perspective, clock-stop handling combines JTAG DEBUG_CONTROL and
-CLA request sources into one functional halt path, while keeping CLA-only status
-separate for DEBUG_CONTROL readback.</p>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><strong><code>jtag_clock_stop</code></strong> (JTAG DEBUG_CONTROL bit)</dt>
+<dd>
+<p>Captured by the JTAG Interface Unit in the TCK domain and routed to the CTN
+clock-stop controller. OR-combined with CLA requests to form the registered
+<code>stop_clks_o</code> output that connects to chiplet functional clock gating.</p>
+</dd>
+<dt class="hdlist1"><strong><code>cla_clock_stop_en</code></strong> (JTAG DEBUG_CONTROL bit)</dt>
+<dd>
+<p>Exported at the DTP top level for downstream use (for example SMC/CLA debug
+policy). Not included in the <code>stop_clks_o</code> aggregation inside the CTN.</p>
+</dd>
+<dt class="hdlist1"><strong>CLA clock-stop indication</strong></dt>
+<dd>
+<p>The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> (CLA sources only, not
+<code>jtag_clock_stop</code>) to form the <code>cla_clock_stop</code> readback status. This status
+feeds back into the DEBUG_CONTROL readback so software or a debugger can
+observe whether any CLA clock-stop source is active.</p>
+</dd>
+</dl>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>JTAG <code>jtag_clock_stop</code></strong>: The JTAG Interface Unit captures the DEBUG_CONTROL
-<code>jtag_clock_stop</code> bit and drives it into the Cross Trigger Network (CTN) clock
-stop controller. It is OR-combined with CLA clock-stop requests to form the
-registered DTP <code>stop_clks_o</code> output that connects to chiplet functional clock
-gating.</p>
-</li>
-<li>
-<p><strong>Exported <code>cla_clock_stop_en</code></strong>: The DEBUG_CONTROL <code>cla_clock_stop_en</code> bit is
-exported at the DTP top level for downstream use (for example SMC/CLA debug
-policy). It is not used inside the CTN <code>stop_clks_o</code> aggregation.</p>
-</li>
-<li>
-<p><strong>CLA clock-stop indication</strong>: The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> to form
-the <code>cla_clock_stop</code> readback status (CLA requests only). This does not
-include the JTAG <code>jtag_clock_stop</code> bit.</p>
-</li>
-</ul>
 </div>
-<div class="sect3">
-<h4 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">Architecture</a></h4>
-<div class="paragraph">
-<p>At a high level, the architecture is:</p>
 </div>
+<div class="sect1">
+<h2 id="signal-flow"><a class="anchor" href="#signal-flow"></a><a class="link" href="#signal-flow">Signal Flow</a></h2>
+<div class="sectionbody">
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>The JTAG Interface Unit captures DEBUG_CONTROL bits. The <code>jtag_clock_stop</code>
-bit is routed to the CTN clock stop controller; <code>cla_clock_stop_en</code> is
-exported at the DTP boundary.</p>
+<p>The JTAG Interface Unit captures DEBUG_CONTROL bits in the TCK domain.
+The <code>jtag_clock_stop</code> bit is routed to the CTN clock-stop controller;
+<code>cla_clock_stop_en</code> is exported at the DTP boundary.</p>
 </li>
 <li>
-<p>The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> for <code>cla_clock_stop</code> status and
-combines that aggregate with <code>jtag_clock_stop</code> for the registered
-<code>stop_clks_o</code> output.</p>
+<p>The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> to produce <code>cla_clock_stop</code>
+status, then OR-combines that aggregate with <code>jtag_clock_stop</code> to produce
+the registered <code>stop_clks_o</code> output.</p>
 </li>
 <li>
 <p>The <code>cla_clock_stop</code> status is fed back into the DEBUG_CONTROL readback path
-so software or a debugger can observe whether any CLA clock-stop source is
-active.</p>
+so a debugger can observe CLA clock-stop source activity independently of its
+own direct-stop assertion.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>This keeps CLA clock-stop observability distinct from the JTAG direct-stop path,
-while both can assert the functional chiplet halt through <code>stop_clks_o</code>.</p>
+<p>This architecture keeps CLA observability distinct from the JTAG direct-stop
+path, while either source can assert the functional chiplet halt through
+<code>stop_clks_o</code>.</p>
+</div>
+<div class="paragraph">
+<p>For the CTN clock-stop controller implementation and the <code>xtrig_clk_stop_req_i</code>
+input indexing, see
+<a href="../ip/cross_trigger_network/doc/index.html#cross-trigger-network" class="xref page">Cross-Trigger Network</a>.</p>
 </div>
 </div>
 </div>
@@ -262,6 +273,8 @@ while both can assert the functional chiplet halt through <code>stop_clks_o</cod
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

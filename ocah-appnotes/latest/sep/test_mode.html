@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Test Mode Entry :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP secure test-mode qualification and control.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -94,13 +96,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -108,7 +108,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -116,7 +115,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -124,7 +122,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -132,7 +129,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -140,7 +136,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -157,6 +152,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="test_mode.html">Test Mode Entry</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -164,9 +163,8 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="test-mode-entry"><a class="anchor" href="#test-mode-entry"></a><a class="link" href="#test-mode-entry">1. Test Mode Entry</a></h3>
-<div class="paragraph">
+<h1 class="page">Test Mode Entry</h1>
+<div id="test-mode-entry" class="paragraph">
 <p>Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
 latched when SEP fuse sensing is done if SEC_DIS is not asserted.
 TEST_EN is latched on chiplet cold reset release if SEC_DIS is asserted.</p>
@@ -182,7 +180,7 @@ determined solely by the LC state, the DIS vectors, and the SEC_DIS
 override. SECURE_TM is instead a coercion&#8201;&#8212;&#8201;it forces the part into a
 configuration in which no secret is present and no fuse can be
 programmed. It has four uses, defined normatively in the Life Cycle
-Controller chapter, <em>`secure_tm` and the Secure Scan Chain</em>:</p>
+Controller chapter, <a href="lifecycle_controller.html#secure-tm-vs-scandump" class="xref page"><code>secure_tm</code> and the Secure Scan Chain</a>:</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -205,7 +203,6 @@ erased before entering RMA modes.</p>
 </li>
 </ol>
 </div>
-</div>
 </article>
   </div>
 </main>
@@ -227,6 +224,8 @@ erased before entering RMA modes.</p>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

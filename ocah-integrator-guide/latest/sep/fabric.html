@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SEP Interconnect :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP internal fabric, external interfaces, address remapping, and mailboxes.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="fabric.html">SEP Interconnect</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,9 +190,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="sep-interconnect"><a class="anchor" href="#sep-interconnect"></a><a class="link" href="#sep-interconnect">1. SEP Interconnect</a></h3>
-<div class="paragraph">
+<h1 class="page">SEP Interconnect</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="sep-interconnect" class="paragraph">
 <p>The interconnect of SEP components and subsystems is done with a
 hierarchical AXI4 crossbar fabric. Masters drive traffic onto the
 interconnect fabric and receive responses from the addressed slave.
@@ -221,14 +221,14 @@ handle</p>
 </li>
 </ul>
 </div>
-<div class="sect3">
-<h4 id="top-level-axi4"><a class="anchor" href="#top-level-axi4"></a><a class="link" href="#top-level-axi4">1.1. Top Level AXI4</a></h4>
-<div class="paragraph">
-<p><strong>C</strong> = Connected, <strong>N/C</strong> = Not Connected.</p>
 </div>
+</div>
+<div class="sect1">
+<h2 id="top-level-axi4"><a class="anchor" href="#top-level-axi4"></a><a class="link" href="#top-level-axi4">1. Top Level AXI4</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The table below reflects the generated crossbar connectivity defined in
-<code>meta/crossbars/configs/sep_local_axi_xbar.yaml</code>, along with the dedicated
+<p>The diagram below shows the crossbar connectivity implemented in
+<code>hw/sys/sep/rtl/sep_local_axi_xbar.sv</code>, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
 and ten targets.</p>
@@ -271,119 +271,21 @@ not attach to this crossbar directly; it enters SEP through the dedicated
 <code>smn_inbound</code> port and the inbound traffic filter (block-by-default), then
 through the <code>sep_system_peripherals</code> inner crossbar. That inner crossbar
 reaches the <strong>mailboxes</strong> and <strong>system CSRs</strong> directly, and loops everything
-else back into this crossbar&#8217;s System Interface row. The inbound filter
+else back into this crossbar&#8217;s System Interface initiator. The inbound filter
 controls which addresses the external master may reach; it is block-by-default
 after POR and configured by SEP firmware.</p>
 </div>
-<table class="tableblock frame-all grid-all fit-content">
-<colgroup>
-<col>
-<col>
-<col>
-<col>
-<col>
-<col>
-<col>
-<col>
-<col>
-<col>
-<col>
-<col>
-</colgroup>
-<tbody>
-<tr>
-<th class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock">Masters</p></th>
-<th class="tableblock halign-center valign-top" colspan="10"><p class="tableblock">Crossbar</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">Dedicated Path</p></th>
-</tr>
-<tr>
-<th class="tableblock halign-left valign-top"><p class="tableblock">CPU TCM</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">Scratch SRAM</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">DMA CSR</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">WDT</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">Reset Ctrl</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">Crypto Periph</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">System Periph</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">IO Periph</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">Entropy Pool</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">AXI Extension</p></th>
-<th class="tableblock halign-center valign-top"><p class="tableblock">Boot ROM</p></th>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU IFI</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU LSU</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU DBG</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMA</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System I/F</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
-</tr>
-</tbody>
-</table>
+<div class="imageblock">
+<div class="content">
+<img src="_images/sep_axi_connectivity.svg" alt="SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path" width="720">
 </div>
-<div class="sect3">
-<h4 id="subsystem-external-interfaces"><a class="anchor" href="#subsystem-external-interfaces"></a><a class="link" href="#subsystem-external-interfaces">1.2. Subsystem External Interfaces</a></h4>
+<div class="title">Figure 1. SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="subsystem-external-interfaces"><a class="anchor" href="#subsystem-external-interfaces"></a><a class="link" href="#subsystem-external-interfaces">2. Subsystem External Interfaces</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
@@ -405,8 +307,10 @@ OTBN IMEM, OTBN DMEM</p>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="local-and-external-axi4-traffic-remapping"><a class="anchor" href="#local-and-external-axi4-traffic-remapping"></a><a class="link" href="#local-and-external-axi4-traffic-remapping">1.3. Local and External AXI4 Traffic Remapping</a></h4>
+</div>
+<div class="sect1">
+<h2 id="local-and-external-axi4-traffic-remapping"><a class="anchor" href="#local-and-external-axi4-traffic-remapping"></a><a class="link" href="#local-and-external-axi4-traffic-remapping">3. Local and External AXI4 Traffic Remapping</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The figure below illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of
@@ -416,8 +320,8 @@ within the SMU or beyond the SMU. Traffic beyond the SMU to the rest of
 the chiplet or remote chiplets will bridge to the system NOC also known
 as the SMN.</p>
 </div>
-<div class="sect4">
-<h5 id="transaction-routing"><a class="anchor" href="#transaction-routing"></a><a class="link" href="#transaction-routing">Transaction Routing</a></h5>
+<div class="sect2">
+<h3 id="transaction-routing"><a class="anchor" href="#transaction-routing"></a><a class="link" href="#transaction-routing">3.1. Transaction Routing</a></h3>
 <div class="paragraph">
 <p>Local resources can be addressed by SEP CPU direct internal addresses
 or by the SEP CPU local-alias view. Local resources include CSRs in SEP
@@ -492,8 +396,8 @@ filters. Again, these filters enable filtering based on address, NS and
 source ID.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sep-traffic-filter-decode"><a class="anchor" href="#sep-traffic-filter-decode"></a><a class="link" href="#sep-traffic-filter-decode">Traffic Filter Decode</a></h5>
+<div class="sect2">
+<h3 id="sep-traffic-filter-decode"><a class="anchor" href="#sep-traffic-filter-decode"></a><a class="link" href="#sep-traffic-filter-decode">3.2. Traffic Filter Decode</a></h3>
 <div class="paragraph">
 <p>Both SEP filters are instances of the common <code>axi_filter_wrap</code> block. The
 inbound filter has 16 entries and the outbound filter has 32; each entry
@@ -505,18 +409,18 @@ entry.</p>
 <div class="paragraph">
 <p>The inbound filter is bypassed in its entirety, admitting all inbound
 traffic, while SEP-scope debug is enabled; see
-<a href="#feature-control-vector-definition">[feature-control-vector-definition]</a> for the <code>SEP_DBG</code> control. The
+<a href="lifecycle_controller.html#feature-control-vector-definition" class="xref page">Disable Vector Format (SIP_DIS / SYS_DIS)</a> for the <code>SEP_DBG</code> control. The
 outbound filter has no bypass and is always in effect.</p>
 </div>
 <div class="paragraph">
 <p>The decode algorithm&#8201;&#8212;&#8201;entry priority, the match conditions, the
 address range granule and its widening direction, and the response
 returned to a blocked initiator&#8201;&#8212;&#8201;is common to SEP and SMC. It is
-documented once with the IP in <a href="#axi-traffic-filter">[axi-traffic-filter]</a>.</p>
+documented once with the IP in <a href="../ip/axi_filter/doc/index.html#axi-traffic-filter" class="xref page">AXI Traffic Filter</a>.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">Address Remapping</a></h5>
+<div class="sect2">
+<h3 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">3.3. Address Remapping</a></h3>
 <div class="paragraph">
 <p>Sixteen remap regions are available, each supported by an address
 remapper. Remappers define the following attributes:</p>
@@ -598,8 +502,8 @@ mapped IO, SEP’s traffic directly goes to the system fabric.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="mailboxes"><a class="anchor" href="#mailboxes"></a><a class="link" href="#mailboxes">Mailboxes</a></h5>
+<div class="sect2">
+<h3 id="mailboxes"><a class="anchor" href="#mailboxes"></a><a class="link" href="#mailboxes">3.4. Mailboxes</a></h3>
 <div class="paragraph">
 <p>SEP uses mailboxes to communicate with the rest of the system such as AP
 cores for example. Each different agent has its own private mailbox in
@@ -661,13 +565,13 @@ enabled entry over its aperture is unreachable from the fabric, and
 reprogramming an entry retypes that mailbox at run time. An entry pairs an
 address range with the qualification criteria below, plus separate read and
 write permissions and a write-once lock bit. See <a href="#sep-traffic-filter-decode">Traffic Filter Decode</a>
-for the SEP filter instances and <a href="#axi-traffic-filter">[axi-traffic-filter]</a> for the entry
+for the SEP filter instances and <a href="../ip/axi_filter/doc/index.html#axi-traffic-filter" class="xref page">AXI Traffic Filter</a> for the entry
 registers and the decode algorithm used to program them.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
+<col style="width: 20%;">
+<col style="width: 80%;">
 </colgroup>
 <thead>
 <tr>
@@ -729,6 +633,8 @@ action required by SEP.</p></td>
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

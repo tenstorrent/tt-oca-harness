@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Life Cycle Controller (LCC) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP lifecycle states, demotion, feature control, and asset protection.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -133,13 +135,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -147,7 +147,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -155,7 +154,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -163,7 +161,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
@@ -171,7 +168,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -179,7 +175,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -196,6 +191,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></li>
+    <li><a href="lifecycle_controller.html">Life Cycle Controller (LCC)</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -203,9 +202,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="life-cycle-controller-lcc-life-cycle-controller-lcc"><a class="anchor" href="#life-cycle-controller-lcc-life-cycle-controller-lcc"></a><a class="link" href="#life-cycle-controller-lcc-life-cycle-controller-lcc">1. Life Cycle Controller (LCC)</a></h4>
-<div class="paragraph">
+<h1 class="page">Life Cycle Controller (LCC)</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="life-cycle-controller-lcc-life-cycle-controller-lcc" class="paragraph">
 <p>The Life Cycle Controller (LCC) supports multiple security domains in
 chiplet-based systems. It manages the device life cycle: it decodes the
 life-cycle state and generates the debug/test/function feature control vector
@@ -257,8 +257,11 @@ components.</p>
 <img src="_images/SEP_LC_Block.png" alt="SEP_LC_Block">
 </div>
 </div>
-<div class="sect4">
-<h5 id="demote-1-2-in-field-debug-demotion"><a class="anchor" href="#demote-1-2-in-field-debug-demotion"></a><a class="link" href="#demote-1-2-in-field-debug-demotion">Demotion 1 and Demotion 2&#8201;&#8212;&#8201;In-Field Debug Demotion</a></h5>
+</div>
+</div>
+<div class="sect1">
+<h2 id="demote-1-2-in-field-debug-demotion"><a class="anchor" href="#demote-1-2-in-field-debug-demotion"></a><a class="link" href="#demote-1-2-in-field-debug-demotion">1. Demotion 1 and Demotion 2&#8201;&#8212;&#8201;In-Field Debug Demotion</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>In addition to the LC state stored in OTP, SEP implements two volatile
 demotion CSRs (DEMOTE_1, DEMOTE_2) and two companion lock CSRs
@@ -282,8 +285,8 @@ access path (DBG_2) is also open. Each control selects a per-LC-state
 feature-control profile (see <a href="#feature-control-table">Per-LC-state feature control profile</a>), and its authorization
 is governed by the <a href="#demote-signing-model">Secure-Boot Signing Model</a>.</p>
 </div>
-<div class="sect5">
-<h6 id="secure-boot-enforcement"><a class="anchor" href="#secure-boot-enforcement"></a><a class="link" href="#secure-boot-enforcement">Secure-Boot Enforcement</a></h6>
+<div class="sect2">
+<h3 id="secure-boot-enforcement"><a class="anchor" href="#secure-boot-enforcement"></a><a class="link" href="#secure-boot-enforcement">1.1. Secure-Boot Enforcement</a></h3>
 <div class="paragraph">
 <p>Whether SEP enforces secure boot&#8201;&#8212;&#8201;that is, whether a manifest must be verified
 before its image is allowed to run&#8201;&#8212;&#8201;is decided by the lifecycle state and two
@@ -312,8 +315,8 @@ therefore leave SBOOT_DIS unburned and write-lock it via the LOCK field.</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="demote-signing-model"><a class="anchor" href="#demote-signing-model"></a><a class="link" href="#demote-signing-model">Secure-Boot Signing Model</a></h6>
+<div class="sect2">
+<h3 id="demote-signing-model"><a class="anchor" href="#demote-signing-model"></a><a class="link" href="#demote-signing-model">1.2. Secure-Boot Signing Model</a></h3>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -453,8 +456,8 @@ chapter).
 </table>
 </div>
 </div>
-<div class="sect5">
-<h6 id="signing-model-examples"><a class="anchor" href="#signing-model-examples"></a><a class="link" href="#signing-model-examples">Signing-Model Examples</a></h6>
+<div class="sect2">
+<h3 id="signing-model-examples"><a class="anchor" href="#signing-model-examples"></a><a class="link" href="#signing-model-examples">1.3. Signing-Model Examples</a></h3>
 <div class="paragraph">
 <p>These examples show which signers are required <strong>when secure boot is enforced for
 a manifest</strong>. Whether it is enforced at all is a separate decision, governed by
@@ -482,8 +485,8 @@ co-signs it).</p>
 next cold reset, so the chain restarts from the fuse-provided requirement.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="demote-lock-behavior"><a class="anchor" href="#demote-lock-behavior"></a><a class="link" href="#demote-lock-behavior">Lock Behavior</a></h6>
+<div class="sect2">
+<h3 id="demote-lock-behavior"><a class="anchor" href="#demote-lock-behavior"></a><a class="link" href="#demote-lock-behavior">1.4. Lock Behavior</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -510,8 +513,8 @@ OCAH SEP boot specification.</p>
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="demote-reset-behavior"><a class="anchor" href="#demote-reset-behavior"></a><a class="link" href="#demote-reset-behavior">Reset Behavior</a></h6>
+<div class="sect2">
+<h3 id="demote-reset-behavior"><a class="anchor" href="#demote-reset-behavior"></a><a class="link" href="#demote-reset-behavior">1.5. Reset Behavior</a></h3>
 <div class="paragraph">
 <p>SEP cold reset clears all four demote registers (DEMOTE_1, DEMOTE_2,
 DEMOTE_LOCK_1, DEMOTE_LOCK_2), restoring the device to its
@@ -519,8 +522,10 @@ OTP-stored LC state.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="multiple-security-domains"><a class="anchor" href="#multiple-security-domains"></a><a class="link" href="#multiple-security-domains">Multiple Security Domains</a></h5>
+</div>
+<div class="sect1">
+<h2 id="multiple-security-domains"><a class="anchor" href="#multiple-security-domains"></a><a class="link" href="#multiple-security-domains">2. Multiple Security Domains</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>OCAH defines two <strong>types</strong> of security domain, distinguished by which owner
 controls debug/test access to the assets in that domain:</p>
@@ -607,8 +612,10 @@ controls the debug path to every chiplet (the SiP-owner domain), and each
 chiplet owner controls its own chiplet-owner domain.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="lc-state-machine"><a class="anchor" href="#lc-state-machine"></a><a class="link" href="#lc-state-machine">LC State Machine</a></h5>
+</div>
+<div class="sect1">
+<h2 id="lc-state-machine"><a class="anchor" href="#lc-state-machine"></a><a class="link" href="#lc-state-machine">3. LC State Machine</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The LC controller is a stateless decoder of the <code>LC_STATE</code> shadow
 register provided by the OTP/Fuse controller. The OTP controller
@@ -671,9 +678,9 @@ or FIB modification).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 34%;">
-<col style="width: 33%;">
-<col style="width: 33%;">
+<col style="width: 22%;">
+<col style="width: 16%;">
+<col style="width: 62%;">
 </colgroup>
 <thead>
 <tr>
@@ -761,8 +768,10 @@ end-of-life state: the chip is permanently inoperable.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors"><a class="anchor" href="#debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors"></a><a class="link" href="#debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors">Debug and Functional Feature Control</a></h5>
+</div>
+<div class="sect1">
+<h2 id="debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors"><a class="anchor" href="#debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors"></a><a class="link" href="#debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors">4. Debug and Functional Feature Control</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Debug and functional features are gated at runtime by the feature
 control vector <code>feat_ctrl_o</code>. This vector is not stored directly: it is
@@ -778,8 +787,8 @@ overridden by SEC_DIS:</p>
 <div class="paragraph">
 <p>In other words, each feature&#8217;s enable is the inverse of its disable bits.</p>
 </div>
-<div class="sect5">
-<h6 id="feature-control-vector-definition"><a class="anchor" href="#feature-control-vector-definition"></a><a class="link" href="#feature-control-vector-definition">Disable Vector Format (SIP_DIS / SYS_DIS)</a></h6>
+<div class="sect2">
+<h3 id="feature-control-vector-definition"><a class="anchor" href="#feature-control-vector-definition"></a><a class="link" href="#feature-control-vector-definition">4.1. Disable Vector Format (SIP_DIS / SYS_DIS)</a></h3>
 <div class="paragraph">
 <p>The table below defines the <strong>disable</strong> vector format&#8201;&#8212;&#8201;the bit layout shared by
 both SIP_DIS and SYS_DIS (each is 64 bits). Each defined bit gates a specific
@@ -799,7 +808,8 @@ the <code>T</code>/enabled state exactly when its DIS bit is <code>1&#8217;b0</c
 profile in <a href="#feature-control-table">Per-LC-state feature control profile</a> refers to these sub-groups as
 SIP_DIS.DBG_1 / DBG_2 and SYS_DIS.DBG_1 / DBG_2.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="lifecycle-table-scroll" role="region" aria-label="Feature disable vector" tabindex="0">
+<table class="tableblock frame-all grid-all stretch lifecycle-table">
 <colgroup>
 <col style="width: 8%;">
 <col style="width: 13%;">
@@ -869,8 +879,9 @@ forwarded downstream. See <a href="#adopter-extension">Adopter Extension</a>.</p
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="dis-vector-ownership"><a class="anchor" href="#dis-vector-ownership"></a><a class="link" href="#dis-vector-ownership">DIS Vector Ownership: Predecessor-Programs-Disables</a></h6>
+</div>
+<div class="sect2">
+<h3 id="dis-vector-ownership"><a class="anchor" href="#dis-vector-ownership"></a><a class="link" href="#dis-vector-ownership">4.2. DIS Vector Ownership: Predecessor-Programs-Disables</a></h3>
 <div class="paragraph">
 <p>OCAH uses a <strong>predecessor-programs-disables</strong> convention. Each X_DIS
 vector specifies restrictions imposed by an earlier owner that should
@@ -904,8 +915,8 @@ TEST_DEV to PROD. See the <em>OTP fuse controller</em> section in this
 chapter for the full multi-owner provisioning sequence.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="dis-vector-or-rationale"><a class="anchor" href="#dis-vector-or-rationale"></a><a class="link" href="#dis-vector-or-rationale">Combining Rule: OR then Invert</a></h6>
+<div class="sect2">
+<h3 id="dis-vector-or-rationale"><a class="anchor" href="#dis-vector-or-rationale"></a><a class="link" href="#dis-vector-or-rationale">4.3. Combining Rule: OR then Invert</a></h3>
 <div class="paragraph">
 <p>The per-LC-state formulas combine SIP_DIS and SYS_DIS with bitwise
 OR, then invert (<code>~(SIP_DIS | SYS_DIS)</code>) to produce the
@@ -935,8 +946,8 @@ enabled"), so the combined disable is inverted: <code>~(SIP_DIS | SYS_DIS)</code
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="dis-vector-applicability"><a class="anchor" href="#dis-vector-applicability"></a><a class="link" href="#dis-vector-applicability">When Each DIS Vector Applies</a></h6>
+<div class="sect2">
+<h3 id="dis-vector-applicability"><a class="anchor" href="#dis-vector-applicability"></a><a class="link" href="#dis-vector-applicability">4.4. When Each DIS Vector Applies</a></h3>
 <div class="paragraph">
 <p>Both SIP_DIS and SYS_DIS apply at TEST_DEV, PROD, and PROD_END&#8201;&#8212;&#8201;including
 under demotion in PROD, where a demoted debug group still honors the DIS
@@ -947,8 +958,8 @@ SEC_DIS override sits on top of this; see <a href="#feat-ctrl-overrides-and-gate
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 26%;">
+<col style="width: 74%;">
 </colgroup>
 <thead>
 <tr>
@@ -989,8 +1000,8 @@ restriction remains in force.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="feat-ctrl-overrides-and-gates"><a class="anchor" href="#feat-ctrl-overrides-and-gates"></a><a class="link" href="#feat-ctrl-overrides-and-gates">Overrides and Final Gates (SEC_DIS)</a></h6>
+<div class="sect2">
+<h3 id="feat-ctrl-overrides-and-gates"><a class="anchor" href="#feat-ctrl-overrides-and-gates"></a><a class="link" href="#feat-ctrl-overrides-and-gates">4.5. Overrides and Final Gates (SEC_DIS)</a></h3>
 <div class="paragraph">
 <p>Two controls sit <strong>on top of</strong> the per-LC-state / DIS-vector computation, applied in
 this order (a later step overrides an earlier one):</p>
@@ -1018,8 +1029,8 @@ override. <code>secure_tm</code> acts on the scan path and on the fuse controlle
 than on feature control&#8201;&#8212;&#8201;see <a href="#secure-tm-vs-scandump"><code>secure_tm</code> and the Secure Scan Chain</a>.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="per-lc-state-feature-control-profile-section"><a class="anchor" href="#per-lc-state-feature-control-profile-section"></a><a class="link" href="#per-lc-state-feature-control-profile-section">Per-LC-state Feature Control Profile</a></h6>
+<div class="sect2">
+<h3 id="per-lc-state-feature-control-profile-section"><a class="anchor" href="#per-lc-state-feature-control-profile-section"></a><a class="link" href="#per-lc-state-feature-control-profile-section">4.6. Per-LC-state Feature Control Profile</a></h3>
 <div class="paragraph">
 <p>Each LC state has a feature control profile that determines which features are
 enabled on the chiplet. The table below gives, for each combination of LC state,
@@ -1031,14 +1042,15 @@ feature is enabled and False (F) indicates that it is disabled. The disable vect
 (SIP_DIS / SYS_DIS), defined above, act as masks: a bit value of 1&#8217;b0 enables
 the corresponding feature, and 1&#8217;b1 disables it.</p>
 </div>
-<table id="feature-control-table" class="tableblock frame-all grid-all stretch">
+<div class="lifecycle-table-scroll" role="region" aria-label="Per-LC-state feature control profile" tabindex="0">
+<table id="feature-control-table" class="tableblock frame-all grid-all stretch lifecycle-table lifecycle-table-wide">
 <caption class="title">Table 1. Per-LC-state feature control profile</caption>
 <colgroup>
-<col style="width: 13%;">
-<col style="width: 7%;">
-<col style="width: 11%;">
-<col style="width: 47%;">
-<col style="width: 22%;">
+<col style="width: 17%;">
+<col style="width: 10%;">
+<col style="width: 12%;">
+<col style="width: 35%;">
+<col style="width: 26%;">
 </colgroup>
 <thead>
 <tr>
@@ -1149,6 +1161,7 @@ the corresponding feature, and 1&#8217;b1 disables it.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>In the DEMOTE column, a dash means demotion has no effect in that state, and X
 means it is irrelevant because SEC_DIS forces all features on. Demotion acts in
@@ -1158,8 +1171,10 @@ honor the DIS vectors (one level down). The two demotions are independent&#8201;
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="asset-and-scan-chain-protection"><a class="anchor" href="#asset-and-scan-chain-protection"></a><a class="link" href="#asset-and-scan-chain-protection">Asset and Scan-Chain Protection</a></h5>
+</div>
+<div class="sect1">
+<h2 id="asset-and-scan-chain-protection"><a class="anchor" href="#asset-and-scan-chain-protection"></a><a class="link" href="#asset-and-scan-chain-protection">5. Asset and Scan-Chain Protection</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Two distinct DFT operations use the scan chains, and the protection model
 treats them differently:</p>
@@ -1180,21 +1195,22 @@ two cycles, then shift the result out. Used for manufacturing / DFT coverage.</p
 chain as possible) while ensuring secrets can never be <strong>dumped</strong>. This section
 maps SEP asset classes to scan chains and to the gates that control each.</p>
 </div>
-<div class="sect5">
-<h6 id="asset-classes"><a class="anchor" href="#asset-classes"></a><a class="link" href="#asset-classes">Asset Classes</a></h6>
+<div class="sect2">
+<h3 id="asset-classes"><a class="anchor" href="#asset-classes"></a><a class="link" href="#asset-classes">5.1. Asset Classes</a></h3>
 <div class="paragraph">
 <p>SEP assets are partitioned into three classes. Class 1 (non-scannable) and
 Class 2 (scannable for test coverage but <strong>never</strong> scan-dumpable) are each split by
 protection rationale&#8201;&#8212;&#8201;<strong>a</strong> for confidentiality and <strong>b</strong> for integrity. Class 3 is
 everything else.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="lifecycle-table-scroll" role="region" aria-label="Asset classes and scan-chain treatment" tabindex="0">
+<table class="tableblock frame-all grid-all stretch lifecycle-table lifecycle-table-wide">
 <colgroup>
-<col style="width: 9%;">
-<col style="width: 30%;">
-<col style="width: 11%;">
-<col style="width: 13%;">
-<col style="width: 37%;">
+<col style="width: 17%;">
+<col style="width: 25%;">
+<col style="width: 10%;">
+<col style="width: 12%;">
+<col style="width: 36%;">
 </colgroup>
 <thead>
 <tr>
@@ -1227,7 +1243,7 @@ everything else.</p>
 (secret-bearing; confidentiality)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The complete Key Manager; AES, HMAC-SHA2, KMAC-SHA3, OTBN, entropy,
 DRBG/EDN, Adams Bridge, and TRNG sequential state; KM/OTBN companion SRAMs
-(see <a href="#class-2-asset-manifest">[class-2-asset-manifest]</a>)</p></td>
+(see <a href="attack_countermeasures.html#class-2-asset-manifest" class="xref page">Class 2 Asset Manifest and Naming</a>)</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">Yes</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><strong>Never</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Dedicated secure scan chain.</strong> Reachable when its SIB is opened by the
@@ -1266,8 +1282,9 @@ array.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect5">
-<h6 id="secure-tm-vs-scandump"><a class="anchor" href="#secure-tm-vs-scandump"></a><a class="link" href="#secure-tm-vs-scandump"><code>secure_tm</code> and the Secure Scan Chain</a></h6>
+</div>
+<div class="sect2">
+<h3 id="secure-tm-vs-scandump"><a class="anchor" href="#secure-tm-vs-scandump"></a><a class="link" href="#secure-tm-vs-scandump">5.2. <code>secure_tm</code> and the Secure Scan Chain</a></h3>
 <div class="paragraph">
 <p><code>secure_tm</code> is the secure-test-mode indicator: the <code>TEST_EN</code> strap latched into
 the internal <code>SECURE_TM</code> signal. It is latched when SEP fuse sensing completes
@@ -1376,8 +1393,8 @@ rule still applies, so the secure chain stays undumpable whatever the <code>*_DB
 bits say.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="feature-bit-to-scan-chain-mapping"><a class="anchor" href="#feature-bit-to-scan-chain-mapping"></a><a class="link" href="#feature-bit-to-scan-chain-mapping">Feature-Bit to Scan-Chain Mapping</a></h6>
+<div class="sect2">
+<h3 id="feature-bit-to-scan-chain-mapping"><a class="anchor" href="#feature-bit-to-scan-chain-mapping"></a><a class="link" href="#feature-bit-to-scan-chain-mapping">5.3. Feature-Bit to Scan-Chain Mapping</a></h3>
 <div class="paragraph">
 <p>Each <strong>general</strong> (Class 3) scan chain is gated by a per-scope <code>*_DBG</code>
 feature control bit in <code>feat_ctrl_o</code>; the bit&#8217;s owner&#8201;&#8212;&#8201;which predecessor DIS
@@ -1389,12 +1406,13 @@ own SIB, which the feature control bits gate in the same way; what distinguishes
 it is that reaching it never permits a dump, because the DFT controller admits
 only test commands there and only while <code>secure_tm = 1</code>.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="lifecycle-table-scroll" role="region" aria-label="Feature-bit to scan-chain mapping" tabindex="0">
+<table class="tableblock frame-all grid-all stretch lifecycle-table">
 <colgroup>
+<col style="width: 18%;">
 <col style="width: 20%;">
-<col style="width: 26%;">
-<col style="width: 28%;">
-<col style="width: 26%;">
+<col style="width: 27%;">
+<col style="width: 35%;">
 </colgroup>
 <thead>
 <tr>
@@ -1428,6 +1446,7 @@ feature-bit gated like any other chain, but opening it grants test access only&#
 </tr>
 </tbody>
 </table>
+</div>
 <div class="paragraph">
 <p>Reserved-bit ranges available for adopter-defined scan chains (see
 <a href="#adopter-extension">Adopter Extension</a>):</p>
@@ -1443,8 +1462,8 @@ feature-bit gated like any other chain, but opening it grants test access only&#
 </ul>
 </div>
 </div>
-<div class="sect5">
-<h6 id="dtp-path-gating"><a class="anchor" href="#dtp-path-gating"></a><a class="link" href="#dtp-path-gating">Debug and Test Port Path Gating</a></h6>
+<div class="sect2">
+<h3 id="dtp-path-gating"><a class="anchor" href="#dtp-path-gating"></a><a class="link" href="#dtp-path-gating">5.4. Debug and Test Port Path Gating</a></h3>
 <div class="paragraph">
 <p>This section is <strong>authoritative</strong> for which feature control bits gate which Debug
 and Test Ports (DTP) path. It formalizes the layered model of
@@ -1497,9 +1516,9 @@ nothing.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 44%;">
-<col style="width: 26%;">
 <col style="width: 30%;">
+<col style="width: 20%;">
+<col style="width: 50%;">
 </colgroup>
 <thead>
 <tr>
@@ -1616,8 +1635,10 @@ layered model deliberately does not map a path to the like-named bit.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="non-primary-chiplets"><a class="anchor" href="#non-primary-chiplets"></a><a class="link" href="#non-primary-chiplets">Non-Primary Chiplets</a></h5>
+</div>
+<div class="sect1">
+<h2 id="non-primary-chiplets"><a class="anchor" href="#non-primary-chiplets"></a><a class="link" href="#non-primary-chiplets">6. Non-Primary Chiplets</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Primary chiplets always include a local SEP and LCC; the asset
 partitioning described in <a href="#asset-and-scan-chain-protection">Asset and Scan-Chain Protection</a> applies
@@ -1657,8 +1678,10 @@ chiplet. The primary LCC therefore governs debug access to a non-primary
 chiplet by controlling whether DFT traffic is forwarded to it.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="adopter-extension"><a class="anchor" href="#adopter-extension"></a><a class="link" href="#adopter-extension">Adopter Extension</a></h5>
+</div>
+<div class="sect1">
+<h2 id="adopter-extension"><a class="anchor" href="#adopter-extension"></a><a class="link" href="#adopter-extension">7. Adopter Extension</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>If an adopter integrates SEP into a chiplet with assets that require
 their own scan-chain protection&#8201;&#8212;&#8201;assets not covered by the
@@ -1754,6 +1777,8 @@ in a future revision of this specification.
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>

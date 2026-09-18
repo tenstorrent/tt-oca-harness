@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Direct Memory Access (DMA) Engine :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC DMA architecture, control, data paths, and system integration.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
     <link rel="stylesheet" href="../../../_/css/image-zoom.css">
   </head>
   <body class="article">
@@ -121,13 +123,11 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <div class="context">
-    <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
     <span class="version">latest</span>
-  </div>
+  </button>
   <ul class="components">
     <li class="component">
-      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas (OCA) Harness</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
@@ -135,7 +135,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-starting/latest/index.html">latest</a>
@@ -143,7 +142,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
@@ -151,7 +149,6 @@
       </ul>
     </li>
     <li class="component is-current">
-      <div class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></div>
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
@@ -159,7 +156,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
@@ -167,7 +163,6 @@
       </ul>
     </li>
     <li class="component">
-      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-appnotes/latest/index.html">latest</a>
@@ -184,6 +179,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></li>
+    <li><a href="dma.html">Direct Memory Access (DMA) Engine</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -191,9 +190,10 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="direct-memory-access-dma-engine"><a class="anchor" href="#direct-memory-access-dma-engine"></a><a class="link" href="#direct-memory-access-dma-engine">1. Direct Memory Access (DMA) Engine</a></h3>
-<div class="paragraph">
+<h1 class="page">Direct Memory Access (DMA) Engine</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="direct-memory-access-dma-engine" class="paragraph">
 <p>The SMC DMA controller provides data movement services for telemetry
 collection, security data processing, and inter-component communication
 without CPU intervention. The controller uses a frontend-backend
@@ -237,8 +237,11 @@ SMC fabric filtering.</p>
 </tr>
 </tbody>
 </table>
-<div class="sect3">
-<h4 id="architecture-overview"><a class="anchor" href="#architecture-overview"></a><a class="link" href="#architecture-overview">1.1. Architecture Overview</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="architecture-overview"><a class="anchor" href="#architecture-overview"></a><a class="link" href="#architecture-overview">1. Architecture Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The DMA controller implements a frontend-backend architecture with the
 following modules:</p>
@@ -264,8 +267,10 @@ distribute requests across multiple master interfaces</p>
 control plane and data plane operations.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">1.2. Configuration Parameters</a></h4>
+</div>
+<div class="sect1">
+<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The DMA controller supports the following configuration parameters:</p>
 </div>
@@ -347,14 +352,16 @@ cycle delay)</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="dma-frontend"><a class="anchor" href="#dma-frontend"></a><a class="link" href="#dma-frontend">1.3. DMA Frontend</a></h4>
+</div>
+<div class="sect1">
+<h2 id="dma-frontend"><a class="anchor" href="#dma-frontend"></a><a class="link" href="#dma-frontend">3. DMA Frontend</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The frontend (idma_frontend_wrapper) manages register interface, command
 processing, and transfer descriptor handling.</p>
 </div>
-<div class="sect4">
-<h5 id="control-interface"><a class="anchor" href="#control-interface"></a><a class="link" href="#control-interface">Control Interface</a></h5>
+<div class="sect2">
+<h3 id="control-interface"><a class="anchor" href="#control-interface"></a><a class="link" href="#control-interface">3.1. Control Interface</a></h3>
 <div class="paragraph">
 <p>The table below describes the frontend control interface.</p>
 </div>
@@ -397,8 +404,8 @@ transfers</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="dma-stream-support"><a class="anchor" href="#dma-stream-support"></a><a class="link" href="#dma-stream-support">Stream Support</a></h5>
+<div class="sect2">
+<h3 id="dma-stream-support"><a class="anchor" href="#dma-stream-support"></a><a class="link" href="#dma-stream-support">3.2. Stream Support</a></h3>
 <div class="paragraph">
 <p>A stream is an independent transfer-ID and status-tracking context in the
 frontend. The <code>dma_ctrl</code> register map reserves banks for 16 streams:
@@ -439,8 +446,8 @@ to 0 and never update.</p>
 treat the remaining banks as reserved.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="transfer-descriptor-support"><a class="anchor" href="#transfer-descriptor-support"></a><a class="link" href="#transfer-descriptor-support">Transfer Descriptor Support</a></h5>
+<div class="sect2">
+<h3 id="transfer-descriptor-support"><a class="anchor" href="#transfer-descriptor-support"></a><a class="link" href="#transfer-descriptor-support">3.3. Transfer Descriptor Support</a></h3>
 <div class="paragraph">
 <p>The table below describes the transfer descriptor support.</p>
 </div>
@@ -478,8 +485,8 @@ parsing</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="command-processing"><a class="anchor" href="#command-processing"></a><a class="link" href="#command-processing">Command Processing</a></h5>
+<div class="sect2">
+<h3 id="command-processing"><a class="anchor" href="#command-processing"></a><a class="link" href="#command-processing">3.4. Command Processing</a></h3>
 <div class="paragraph">
 <p>The DMA frontend streamlines command processing by parsing hardware
 descriptors directly, freeing software from interpretation overhead. It
@@ -492,8 +499,8 @@ operation, while back-pressure handling absorbs system overloads without
 losing commands.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="dma-request-manager"><a class="anchor" href="#dma-request-manager"></a><a class="link" href="#dma-request-manager">DMA Request Manager</a></h5>
+<div class="sect2">
+<h3 id="dma-request-manager"><a class="anchor" href="#dma-request-manager"></a><a class="link" href="#dma-request-manager">3.5. DMA Request Manager</a></h3>
 <div class="paragraph">
 <p>The request manager (idma_request_manager_wrapper) sits between the frontend and
 backend, providing flexible request routing when multiple control
@@ -502,8 +509,8 @@ interfaces or master interfaces are configured. In the simplest case
 operates as a passthrough with no arbitration overhead.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="request-arbitration"><a class="anchor" href="#request-arbitration"></a><a class="link" href="#request-arbitration">Request Arbitration</a></h5>
+<div class="sect2">
+<h3 id="request-arbitration"><a class="anchor" href="#request-arbitration"></a><a class="link" href="#request-arbitration">3.6. Request Arbitration</a></h3>
 <div class="paragraph">
 <p>When multiple control or master interfaces are present, the request
 manager employs round-robin arbitration to fairly distribute requests.
@@ -513,8 +520,8 @@ a master accepts a request, that request is masked from other masters
 until completion.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="request-tracking"><a class="anchor" href="#request-tracking"></a><a class="link" href="#request-tracking">Request Tracking</a></h5>
+<div class="sect2">
+<h3 id="request-tracking"><a class="anchor" href="#request-tracking"></a><a class="link" href="#request-tracking">3.7. Request Tracking</a></h3>
 <div class="paragraph">
 <p>The manager maintains a tracking FIFO (depth 4) for each master
 interface to record which control interface originated each request.
@@ -524,8 +531,8 @@ and returns a response, the ID is popped to route the response back to
 the correct control interface.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="response-routing"><a class="anchor" href="#response-routing"></a><a class="link" href="#response-routing">Response Routing</a></h5>
+<div class="sect2">
+<h3 id="response-routing"><a class="anchor" href="#response-routing"></a><a class="link" href="#response-routing">3.8. Response Routing</a></h3>
 <div class="paragraph">
 <p>Responses flow from masters back through tracking FIFOs to identify
 their originating control interfaces. A single-entry response buffer
@@ -536,8 +543,10 @@ and deadlock-free response delivery.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="dma-backend"><a class="anchor" href="#dma-backend"></a><a class="link" href="#dma-backend">1.4. DMA Backend</a></h4>
+</div>
+<div class="sect1">
+<h2 id="dma-backend"><a class="anchor" href="#dma-backend"></a><a class="link" href="#dma-backend">4. DMA Backend</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The backend (idma_backend_wrapper) implements the data movement engine based on
 iDMA.</p>
@@ -596,10 +605,12 @@ access</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="dma-configuration-and-control"><a class="anchor" href="#dma-configuration-and-control"></a><a class="link" href="#dma-configuration-and-control">1.5. DMA Configuration and Control</a></h4>
-<div class="sect4">
-<h5 id="transfer-configuration"><a class="anchor" href="#transfer-configuration"></a><a class="link" href="#transfer-configuration">Transfer Configuration</a></h5>
+</div>
+<div class="sect1">
+<h2 id="dma-configuration-and-control"><a class="anchor" href="#dma-configuration-and-control"></a><a class="link" href="#dma-configuration-and-control">5. DMA Configuration and Control</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="transfer-configuration"><a class="anchor" href="#transfer-configuration"></a><a class="link" href="#transfer-configuration">5.1. Transfer Configuration</a></h3>
 <div class="paragraph">
 <p>The table below describes the transfer configuration parameters of the
 DMA backend.</p>
@@ -648,8 +659,8 @@ DMA backend.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="status-and-control"><a class="anchor" href="#status-and-control"></a><a class="link" href="#status-and-control">Status and Control</a></h5>
+<div class="sect2">
+<h3 id="status-and-control"><a class="anchor" href="#status-and-control"></a><a class="link" href="#status-and-control">5.2. Status and Control</a></h3>
 <div class="paragraph">
 <p>The table below describes the status and control features of the DMA
 backend.</p>
@@ -703,8 +714,8 @@ changes</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="performance-optimization-and-power-management"><a class="anchor" href="#performance-optimization-and-power-management"></a><a class="link" href="#performance-optimization-and-power-management">Performance Optimization and Power Management</a></h5>
+<div class="sect2">
+<h3 id="performance-optimization-and-power-management"><a class="anchor" href="#performance-optimization-and-power-management"></a><a class="link" href="#performance-optimization-and-power-management">5.3. Performance Optimization and Power Management</a></h3>
 <div class="paragraph">
 <p>The two tables below describe the iDMA backend&#8217;s performance
 optimization and power management features.</p>
@@ -795,16 +806,18 @@ clock to frontend, request manager, and backend</p></td>
 </table>
 </div>
 </div>
-<div class="sect3">
-<h4 id="system-integration"><a class="anchor" href="#system-integration"></a><a class="link" href="#system-integration">1.6. System Integration</a></h4>
+</div>
+<div class="sect1">
+<h2 id="system-integration"><a class="anchor" href="#system-integration"></a><a class="link" href="#system-integration">6. System Integration</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The DMA wrapper (idma_wrapper) integrates the frontend, backend, request
 manager, and clock gating into a complete DMA subsystem. The
 architecture orchestrates a clear data flow from software configuration
 through hardware execution.</p>
 </div>
-<div class="sect4">
-<h5 id="request-path"><a class="anchor" href="#request-path"></a><a class="link" href="#request-path">Request Path</a></h5>
+<div class="sect2">
+<h3 id="request-path"><a class="anchor" href="#request-path"></a><a class="link" href="#request-path">6.1. Request Path</a></h3>
 <div class="paragraph">
 <p>Transfer requests enter through AXI4-Lite control interfaces, where the
 frontend receives configuration and commands from software. The frontend
@@ -816,8 +829,8 @@ independent iDMA backends execute the transfers on separate AXI4 master
 interfaces, enabling parallel data movement.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="response-path"><a class="anchor" href="#response-path"></a><a class="link" href="#response-path">Response Path</a></h5>
+<div class="sect2">
+<h3 id="response-path"><a class="anchor" href="#response-path"></a><a class="link" href="#response-path">6.2. Response Path</a></h3>
 <div class="paragraph">
 <p>As backends complete transfers, responses flow back through the request
 manager to the appropriate frontend, which updates status registers and
@@ -825,8 +838,8 @@ generates interrupts. This completes the transfer loop and notifies
 software of completion.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="type-definitions"><a class="anchor" href="#type-definitions"></a><a class="link" href="#type-definitions">Type Definitions</a></h5>
+<div class="sect2">
+<h3 id="type-definitions"><a class="anchor" href="#type-definitions"></a><a class="link" href="#type-definitions">6.3. Type Definitions</a></h3>
 <div class="paragraph">
 <p>The wrapper configures iDMA for 2D transfer support with 56-bit transfer
 length and stride widths (matching the address width) and 32-bit
@@ -835,8 +848,10 @@ data movement patterns.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">1.7. Detailed Register Map</a></h4>
+</div>
+<div class="sect1">
+<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">7. Detailed Register Map</a></h2>
+<div class="sectionbody">
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -1279,6 +1294,8 @@ register file is generated at the maximum stream count. With
 </footer>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
 <script async src="../../../_/js/vendor/highlight.js"></script>
 <script src="../../../_/js/vendor/lunr.js"></script>
