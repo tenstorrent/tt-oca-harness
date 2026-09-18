@@ -330,8 +330,11 @@ specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
 signal.</p>
 </div>
 <div class="paragraph">
-<p>The following diagram illustrates the STAP architecture and the details of the
-3DCR register. Optional input pipeline stages are not shown: SCAN_IN_PIPE on
+<p>The following diagram separates the serial scan path, host TDO path, and
+combinational control logic. Repeated signal names refer to the same signal;
+in particular, <code>stap_scan_in</code> feeds both the scan-in mux and the TDO lockup flop.
+The SIB inserts or bypasses the 3DCR while remaining in the client scan path.
+Optional input pipeline stages are not shown: SCAN_IN_PIPE on
 <code>client_scan_in_i</code> defaults to disabled for all DTP instances; TDI_LOCKUP on
 <code>host_tdi_i</code> defaults to disabled but is enabled for the I/O STAP
 (<code>gen_stap_io</code>) to provide timing margin for the die boundary crossing. The
@@ -342,7 +345,7 @@ signals, not outputs of the security gate.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="../../_images/stap_module_diagram.svg" alt="STAP Module Diagram showing SIB mux" width="3DCR register and lifecycle enable gating">
+<img src="../../_images/stap_module_diagram.svg" alt="STAP scan-in mux and SIB with a 3DCR scan loop, separate falling-edge host TDO path, and security-masked control relationships">
 </div>
 </div>
 </div>
@@ -386,7 +389,7 @@ still being scannable for updates.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Config-Hold</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by <code>trst_n AND (config_hold OR scan_reset)</code>, protecting configuration when <code>config_hold=1</code>. TRST assertion always resets the register regardless of this bit.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Preserves the 3DCR configuration across Test-Logic-Reset. The active-low register reset is <code>client_tap_ctrl_i.trst_n AND (config_hold_sticky OR host_sib_scan_ctrl.rst_n)</code>, where <code>config_hold_sticky</code> samples <code>config_hold</code> on the falling edge of TCK and resets only on TRST. TRST assertion always resets the register regardless of this bit.</p></td>
 </tr>
 </tbody>
 </table>
