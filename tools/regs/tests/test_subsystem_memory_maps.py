@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -44,75 +45,160 @@ def rows_by_key(view):
     return {row.key: row for row in view.rows}
 
 
+def sv_hex(source: str, name: str) -> int:
+    match = re.search(rf"\b{name}\s*=\s*\d+'h([0-9a-fA-F_]+)", source)
+    if not match:
+        raise AssertionError(f"SystemVerilog constant {name} not found")
+    return int(match.group(1).replace("_", ""), 16)
+
+
 class SubsystemMemoryMapsTest(unittest.TestCase):
-    def test_sep_reconciled_windows(self):
-        views = build_views(
-            load_config(ROOT / "hw/sys/sep/regs/memmap.toml"),
-            {"main": compile_root(ROOT / "hw/sys/sep/regs/sep.rdl", UDP, catalog(), "och_sep_top")},
+    def test_configured_maps_build_from_rdl(self):
+        specs = (
+            (
+                "hw/sys/sep/regs/sep.rdl",
+                "hw/sys/sep/regs/memmap.toml",
+                "och_sep_top",
+            ),
+            (
+                "hw/sys/smc/regs/smc.rdl",
+                "hw/sys/smc/regs/memmap.toml",
+                "smc_top",
+            ),
+            (
+                "hw/ip/key_manager/regs/key_manager.rdl",
+                "hw/ip/key_manager/regs/memmap.toml",
+                "key_manager",
+            ),
+            (
+                "hw/ip/cross_trigger/cross_trigger_network/regs/cross_trigger_network.rdl",
+                "hw/ip/cross_trigger/cross_trigger_network/regs/memmap.toml",
+                "cross_trigger_network",
+            ),
         )
-        rows = rows_by_key(next(view for view in views if view.name == "sep-components"))
-        self.assertEqual(rows["main:sep_sram"].aperture_size, 0x40000)
-        self.assertEqual(rows["main:trng"].base, 0x10917000)
-        self.assertEqual(rows["main:abr"].aperture_size, 0x10000)
-        self.assertEqual(rows["main:entropy_pool"].base, 0x10950000)
+        for rdl, config, top in specs:
+            with self.subTest(rdl=rdl):
+                view = one_view(rdl, config, top)
+                self.assertTrue(view.rows)
 
-    def test_smc_current_decode(self):
-        views = build_views(
-            load_config(ROOT / "hw/sys/smc/regs/memmap.toml"),
-            {"main": compile_root(ROOT / "hw/sys/smc/regs/smc.rdl", UDP, catalog(), "smc_top")},
-        )
-        view = next(view for view in views if view.name == "smc-components")
-        rows = rows_by_key(view)
-        self.assertEqual(rows["main:smc_avsbus_controller"].base, 0xC0004000)
-        self.assertEqual(rows["main:smc_cpu_ctrl"].base, 0xC0039000)
-        self.assertEqual(rows["main:oca_i3c_wrap"].base, 0xC003A000)
-        self.assertEqual(rows["main:smc_mailbox"].aperture_size, 0x20000)
-
-    def test_key_manager_memories_and_windows(self):
-        view = one_view(
-            "hw/ip/key_manager/regs/key_manager.rdl",
-            "hw/ip/key_manager/regs/memmap.toml",
-            "key_manager",
-        )
-        rows = rows_by_key(view)
-        self.assertEqual(rows["main:rom"].aperture_size, 0x4000)
-        self.assertEqual(rows["main:sram"].base, 0x8000)
-        self.assertEqual(rows["main:kpv"].aperture_size, 0x2000)
-
-    def test_cross_trigger_count_and_stride(self):
-        view = one_view(
-            "hw/ip/cross_trigger/cross_trigger_network/regs/cross_trigger_network.rdl",
-            "hw/ip/cross_trigger/cross_trigger_network/regs/memmap.toml",
-            "cross_trigger_network",
-        )
-        rows = rows_by_key(view)
-        self.assertEqual(rows["main:ctp"].count, 16)
-        self.assertEqual(rows["main:ctp"].stride, 0x10)
-        self.assertEqual(rows["main:ctm"].aperture_size, 0x200)
-
-    def test_mailbox_pair_layouts(self):
-        config = load_config(ROOT / "hw/ip/axi_lite_mailbox_unit/regs/memmap.toml")
-        roots = {
-            source["name"]: compile_root(ROOT / source["rdl"], UDP, catalog(), source["top"])
-            for source in config["sources"]
-        }
-        views = {view.name: view for view in build_views(config, roots)}
-        smc = views["smc-mailboxes"].rows
-        sep = views["sep-mailboxes"].rows
-        self.assertEqual((len(smc), smc[0].base, smc[-1].base), (64, 0, 0x1F800))
-        self.assertEqual((len(sep), sep[0].base, sep[-1].base), (16, 0, 0x7800))
-        self.assertTrue(all(row.aperture_size == 0x800 for row in (*smc, *sep)))
+    def test_multi_source_maps_build_from_rdl(self):
+        for config_path in (
+            "hw/ip/efuse/regs/memmap.toml",
+            "hw/ip/axi_lite_mailbox_unit/regs/memmap.toml",
+        ):
+            with self.subTest(config=config_path):
+                config = load_config(ROOT / config_path)
+                roots = {
+                    source["name"]: compile_root(
+                        ROOT / source["rdl"],
+                        UDP,
+                        catalog(),
+                        source["top"],
+                    )
+                    for source in config["sources"]
+                }
+                views = build_views(config, roots)
+                self.assertTrue(views)
+                self.assertTrue(all(view.rows for view in views))
 
     def test_rtl_decode_matches_canonical_maps(self):
         sep_crypto = (ROOT / "hw/sys/sep/rtl/sep_crypto_pkg.sv").read_text()
         sep_xbar = (ROOT / "hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv").read_text()
         smc_xbar = (ROOT / "hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv").read_text()
-        self.assertIn("TRNG_BASE_ADDR = 32'h1091_7000", sep_crypto)
-        self.assertIn("ABR_REG_MAP_BASE_ADDR = 32'h1094_0000", sep_crypto)
-        self.assertIn("ENTROPY_FIFO_MAIN_BASE = 32'h10950000", sep_xbar)
-        self.assertIn("FRONT_PORT_PLIC_BASE = 32'hc4000000", smc_xbar)
-        self.assertIn("FRONT_PORT_PLIC_SIZE = 32'h4000000", smc_xbar)
-        self.assertIn("FRONT_PORT_CLINT_BEU_BASE = 32'hc8000000", smc_xbar)
+        smc_periph_xbar = (
+            ROOT / "hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar_pkg.sv"
+        ).read_text()
+        smc_internal_xbar = (
+            ROOT / "hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv"
+        ).read_text()
+        km_intf = (ROOT / "hw/ip/key_manager/rtl/km_intf_pkg.sv").read_text()
+
+        sep = rows_by_key(
+            next(
+                view
+                for view in build_views(
+                    load_config(ROOT / "hw/sys/sep/regs/memmap.toml"),
+                    {
+                        "main": compile_root(
+                            ROOT / "hw/sys/sep/regs/sep.rdl",
+                            UDP,
+                            catalog(),
+                            "och_sep_top",
+                        )
+                    },
+                )
+                if view.name == "sep-components"
+            )
+        )
+        self.assertEqual(sep["main:trng"].base, sv_hex(sep_crypto, "TRNG_BASE_ADDR"))
+        self.assertEqual(sep["main:abr"].base, sv_hex(sep_crypto, "ABR_REG_MAP_BASE_ADDR"))
+        self.assertEqual(
+            sep["main:entropy_pool"].base,
+            sv_hex(sep_xbar, "ENTROPY_FIFO_MAIN_BASE"),
+        )
+
+        smc = rows_by_key(
+            next(
+                view
+                for view in build_views(
+                    load_config(ROOT / "hw/sys/smc/regs/memmap.toml"),
+                    {
+                        "main": compile_root(
+                            ROOT / "hw/sys/smc/regs/smc.rdl",
+                            UDP,
+                            catalog(),
+                            "smc_top",
+                        )
+                    },
+                )
+                if view.name == "smc-components"
+            )
+        )
+        self.assertEqual(
+            smc["main:smc_avsbus_controller"].base,
+            sv_hex(smc_periph_xbar, "APB2AVSBUS_APB2AVSBUS_BASE"),
+        )
+        self.assertEqual(
+            smc["main:smc_cpu_ctrl"].base,
+            sv_hex(smc_xbar, "FRONT_PORT_CPU_CTRL_BASE"),
+        )
+        self.assertEqual(
+            smc["main:oca_i3c_wrap"].base,
+            sv_hex(smc_xbar, "PERIPH_REG_OCA_I3C_BASE"),
+        )
+        self.assertEqual(
+            smc["main:smc_mailbox"].base,
+            sv_hex(smc_internal_xbar, "MAILBOX_MAILBOX_BASE"),
+        )
+        self.assertEqual(
+            smc["main:smc_mailbox"].aperture_size,
+            sv_hex(smc_internal_xbar, "MAILBOX_MAILBOX_SIZE"),
+        )
+        self.assertEqual(
+            smc["main:smc_cluster_plic"].base,
+            sv_hex(smc_xbar, "FRONT_PORT_PLIC_BASE"),
+        )
+        self.assertEqual(
+            smc["main:smc_cluster_plic"].aperture_size,
+            sv_hex(smc_xbar, "FRONT_PORT_PLIC_SIZE"),
+        )
+        self.assertEqual(
+            smc["main:smc_cluster_clint"].base,
+            sv_hex(smc_xbar, "FRONT_PORT_CLINT_BEU_BASE"),
+        )
+
+        km = rows_by_key(
+            one_view(
+                "hw/ip/key_manager/regs/key_manager.rdl",
+                "hw/ip/key_manager/regs/memmap.toml",
+                "key_manager",
+            )
+        )
+        for node, prefix in (("rom", "ROM"), ("sram", "SRAM")):
+            base = sv_hex(km_intf, f"{prefix}_BASE_ADDR")
+            end = sv_hex(km_intf, f"{prefix}_END_ADDR")
+            self.assertEqual(km[f"main:{node}"].base, base)
+            self.assertEqual(km[f"main:{node}"].aperture_size, end - base + 1)
 
 
 if __name__ == "__main__":

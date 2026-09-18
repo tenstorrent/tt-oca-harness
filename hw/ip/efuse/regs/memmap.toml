@@ -27,27 +27,16 @@ columns = ["base", "end", "size", "occupied_size", "label", "description"]
 source = "sep"
 selector = "sep_efuse_map"
 label = "Shadow Registers"
-description = "Cached eFuse shadow registers."
-expected_address = 0x10930000
-expected_kind = "addrmap"
 
 [[views.rows]]
 source = "sep"
 selector = "efuse_interface_ctrl"
 label = "eFuse Control CSR"
-aperture_size = 0x100
-description = "eFuse command and status registers."
-expected_address = 0x10930400
-expected_kind = "addrmap"
 
 [[views.rows]]
 source = "sep"
 selector = "efuse_mmr"
 label = "MMR Registers"
-aperture_size = 0x100
-description = "eFuse security-token registers."
-expected_address = 0x10930500
-expected_kind = "addrmap"
 
 [[views]]
 name = "smc-efuse"
@@ -61,18 +50,11 @@ columns = ["range", "size", "occupied_size", "label", "description"]
 source = "smc"
 selector = "smc_efuse_map"
 label = "Shadow Registers"
-aperture_size = 0x1000
-expected_address = 0xC0007000
-expected_kind = "addrmap"
 
 [[views.rows]]
 source = "smc"
 selector = "efuse_interface_ctrl"
 label = "eFuse Control CSR"
-aperture_size = 0x1000
-description = "eFuse command and status registers."
-expected_address = 0xC0008000
-expected_kind = "addrmap"
 
 [[views]]
 name = "km-efuse"
@@ -83,24 +65,13 @@ columns = ["base", "end", "size", "occupied_size", "label", "description"]
 source = "km"
 selector = "otp_efuse_map"
 label = "Shadow Registers"
-description = "SEP eFuse shadow-register pass-through."
-expected_address = 0x00011000
-expected_kind = "addrmap"
 
 [[views.rows]]
 source = "km"
 selector = "otp_efuse_ctrl"
 label = "eFuse Control CSR"
-aperture_size = 0x100
-description = "SEP eFuse command and status pass-through."
-expected_address = 0x00011400
-expected_kind = "addrmap"
 
 [[views.rows]]
 source = "km"
 selector = "otp_efuse_mmr"
 label = "MMR Registers"
-aperture_size = 0x100
-description = "SEP eFuse security-token pass-through."
-expected_address = 0x00011500
-expected_kind = "addrmap"

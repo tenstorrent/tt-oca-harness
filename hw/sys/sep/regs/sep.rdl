@@ -218,4 +218,40 @@ addrmap och_sep_top #(
     // Base: 0xC008_0000, Size: 32 KB (0x8000)
     el2_pic                    pic                       @BASE_ADDR + 0xC008_0000;
 
+`ifdef OCAH_MEMORY_MAP
+    sep_boot_rom->desc = "BL0 immutable instruction memory.";
+    secure_dma->ocah_aperture_size = 0x1000;
+    secure_dma->desc = "Secure DMA control and status registers.";
+    wdt_timer->ocah_aperture_size = 0x1000;
+    sep_scratch_cold->desc = "Cold-reset scratch register bank.";
+    sep_scratch_warm->desc = "Warm-reset scratch register bank.";
+    sep_reset_ctrl->ocah_aperture_size = 0x1000;
+    otbn->ocah_aperture_size = 0x10000;
+    aes->ocah_aperture_size = 0x1000;
+    aes->desc = "AES block-cipher accelerator.";
+    csrng->ocah_aperture_size = 0x800;
+    edn->ocah_aperture_size = 0x800;
+    entropy_source->ocah_aperture_size = 0x1000;
+    sep_lifecycle_ctrl->ocah_aperture_size = 0x8000;
+    sep_lifecycle_ctrl->desc = "Lifecycle state and transition control.";
+    km_mailbox_sep->ocah_aperture_size = 0x1000;
+    sep_efuse_map->desc = "Cached eFuse shadow registers.";
+    efuse_interface_ctrl->ocah_aperture_size = 0x100;
+    efuse_interface_ctrl->desc = "eFuse command and status registers.";
+    efuse_mmr->ocah_aperture_size = 0x100;
+    efuse_mmr->desc = "eFuse security-token registers.";
+    abr->ocah_aperture_size = 0x10000;
+    entropy_pool->ocah_aperture_size = 0x10000;
+    axil_mailbox->ocah_aperture_size = 0x8000;
+    axil_mailbox->desc = "Eight bidirectional mailbox pairs.";
+    local_master_alias_remap_ctrl->ocah_aperture_size = 0x200;
+    outbound_filter_ctrl->ocah_aperture_size = 0x400;
+    inbound_filter_ctrl->ocah_aperture_size = 0x200;
+    sep_cpu_ctrl->ocah_aperture_size = 0x2000;
+    sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
+    spi_controller->ocah_aperture_size = 0x100000;
+    spi_controller->desc = "External I/O SPI controller bridge.";
+    pic->ocah_aperture_size = 0x8000;
+`endif
+
 };

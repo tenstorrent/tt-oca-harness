@@ -17,4 +17,9 @@ addrmap cross_trigger_network #(
     ) ctm @0x0;
 
     cross_trigger_port ctp[NUM_CTP] @0x200 += 0x10;
+
+`ifdef OCAH_MEMORY_MAP
+    ctm->ocah_aperture_size = 0x200;
+    ctp->ocah_aperture_size = NUM_CTP * 0x10;
+`endif
 };

@@ -34,9 +34,13 @@ addrmap child {
 };
 addrmap top {
     child first @0x1000;
+`ifdef OCAH_MEMORY_MAP
     first->ocah_aperture_size = 0x100;
+`endif
     child repeated[2] @0x2000 += 0x100;
+`ifdef OCAH_MEMORY_MAP
     repeated->ocah_aperture_size = 0x200;
+`endif
 };
 """
 
@@ -65,18 +69,8 @@ class MemoryMapTest(unittest.TestCase):
                     "bounds_end": 0x2200,
                     "derive_gaps": True,
                     "rows": [
-                        {
-                            "selector": "first",
-                            "expected_address": 0x1000,
-                            "expected_occupied_size": 4,
-                            "expected_kind": "addrmap",
-                        },
-                        {
-                            "selector": "repeated",
-                            "expected_address": 0x2000,
-                            "expected_count": 2,
-                            "expected_stride": 0x100,
-                        },
+                        {"selector": "first"},
+                        {"selector": "repeated"},
                     ],
                 }
             ],
@@ -102,18 +96,18 @@ class MemoryMapTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "matched no elaborated node"):
             build_views(config, {"main": self.root})
 
-    def test_rejects_undersized_override(self):
+    def test_rejects_undersized_rdl_aperture(self):
+        undersized = Path(self.temp.name) / "undersized.rdl"
+        undersized.write_text(
+            RDL.replace("first->ocah_aperture_size = 0x100;", "first->ocah_aperture_size = 0x2;")
+        )
+        root = compile_root(undersized, self.udp, top="top")
         config = {
             "version": 1,
-            "views": [
-                {
-                    "name": "map",
-                    "rows": [{"selector": "repeated", "aperture_size": 0x100}],
-                }
-            ],
+            "views": [{"name": "map", "rows": [{"selector": "first"}]}],
         }
         with self.assertRaisesRegex(ValueError, "smaller than occupied"):
-            build_views(config, {"main": self.root})
+            build_views(config, {"main": root})
 
     def test_rejects_overlap(self):
         config = {
@@ -178,6 +172,20 @@ class MemoryMapTest(unittest.TestCase):
     def test_config_rejects_unknown_keys(self):
         config = Path(self.temp.name) / "bad.toml"
         config.write_text('version = 1\n[[views]]\nname = "bad"\ncolums = ["base"]\n')
+        with self.assertRaisesRegex(ValueError, "unknown key"):
+            load_config(config)
+
+    def test_config_rejects_hardware_facts(self):
+        config = Path(self.temp.name) / "bad.toml"
+        for field in ("expected_address", "aperture_size"):
+            with self.subTest(field=field):
+                config.write_text(
+                    f'version = 1\n[[views]]\nname = "bad"\n'
+                    f'[[views.rows]]\nselector = "first"\n{field} = 1\n'
+                )
+                with self.assertRaisesRegex(ValueError, "unknown key"):
+                    load_config(config)
+        config.write_text('version = 1\n[[nodes]]\nselector = "first"\n')
         with self.assertRaisesRegex(ValueError, "unknown key"):
             load_config(config)
 

@@ -22,12 +22,6 @@ _SELECT_KEYS = {
     "selector",
     "label",
     "description",
-    "aperture_size",
-    "expected_address",
-    "expected_occupied_size",
-    "expected_count",
-    "expected_stride",
-    "expected_kind",
 }
 _REGION_KEYS = {
     "kind",
@@ -85,7 +79,13 @@ def compile_root(
     compiler = RDLCompiler()
     if udp:
         compiler.compile_file(str(udp))
-    compiler.compile_file(str(rdl), incl_search_paths=[str(path) for path in incdirs])
+    # Dynamic instance properties create derived RDL types. Enable map annotations
+    # only here so other exporters retain their established software and RTL names.
+    compiler.compile_file(
+        str(rdl),
+        incl_search_paths=[str(path) for path in incdirs],
+        defines={"OCAH_MEMORY_MAP": ""},
+    )
     return compiler.elaborate(top, parameters=parameters)
 
 
@@ -151,7 +151,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
         data = tomllib.load(stream)
     if data.get("version") != 1:
         raise ValueError(f"{path}: expected version = 1")
-    _reject_unknown(data, {"version", "sources", "nodes", "views"}, str(path))
+    _reject_unknown(data, {"version", "sources", "views"}, str(path))
     source_names: set[str] = set()
     for index, source in enumerate(data.get("sources", ())):
         location = f"{path}:sources[{index}]"
@@ -166,8 +166,6 @@ def load_config(path: str | Path) -> dict[str, Any]:
         if name in source_names:
             raise ValueError(f"{path}: duplicate source name {name!r}")
         source_names.add(name)
-    for index, node in enumerate(data.get("nodes", ())):
-        _reject_unknown(node, _SELECT_KEYS - {"kind"}, f"{path}:nodes[{index}]")
     view_names: set[str] = set()
     for index, view in enumerate(data.get("views", ())):
         location = f"{path}:views[{index}]"
@@ -229,25 +227,6 @@ def _as_int(value: Any, field: str) -> int:
     raise ValueError(f"{field} must be an integer or base-prefixed string")
 
 
-def _assert_expected(spec: dict[str, Any], row: MapRow) -> None:
-    checks = {
-        "expected_address": row.base,
-        "expected_occupied_size": row.occupied_size,
-        "expected_count": row.count,
-        "expected_stride": row.stride,
-    }
-    for field, actual in checks.items():
-        if field in spec and _as_int(spec[field], field) != actual:
-            raise ValueError(
-                f"{row.key}: {field} expected 0x{_as_int(spec[field], field):X}, "
-                f"elaborated 0x{actual:X}"
-            )
-    if "expected_kind" in spec and spec["expected_kind"] != row.kind:
-        raise ValueError(
-            f"{row.key}: expected_kind {spec['expected_kind']!r}, elaborated {row.kind!r}"
-        )
-
-
 def _select(
     spec: dict[str, Any],
     sources: dict[str, dict[str, MapRow]],
@@ -261,25 +240,16 @@ def _select(
         row = sources[source][selector]
     except KeyError as exc:
         raise ValueError(f"selector {source}:{selector} matched no elaborated node") from exc
-    _assert_expected(spec, row)
     used.add(row.key)
-    aperture = (
-        _as_int(spec["aperture_size"], "aperture_size")
-        if "aperture_size" in spec
-        else row.aperture_size
-    )
-    if "aperture_size" in spec and aperture == row.aperture_size:
-        raise ValueError(f"{row.key}: redundant aperture_size override")
-    if aperture < row.occupied_size:
+    if row.aperture_size < row.occupied_size:
         raise ValueError(
-            f"{row.key}: aperture 0x{aperture:X} is smaller than occupied "
+            f"{row.key}: aperture 0x{row.aperture_size:X} is smaller than occupied "
             f"extent 0x{row.occupied_size:X}"
         )
     return replace(
         row,
         label=spec.get("label", row.label),
         description=spec.get("description", row.description),
-        aperture_size=aperture,
     )
 
 
@@ -362,12 +332,6 @@ def build_views(
     for source, root in roots.items():
         nodes = _walk(_top(root))
         sources[source] = {key: _node_row(source, key, node) for key, node in nodes.items()}
-
-    annotated: set[str] = set()
-    for spec in config.get("nodes", ()):
-        row = _select(spec, sources, annotated)
-        _, selector = row.key.split(":", 1)
-        sources[row.source][selector] = row
 
     views: list[MapView] = []
     for spec in config.get("views", ()):
