@@ -33,20 +33,21 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from env.smc_reset_item import SmcResetOp
 
+from .smc_isolate_pin_utils import await_skip_mem_repair, drive_isolate_pin, skip_mem_repair
 from .smc_reset_seq_base import SmcResetSeqBase
 
-# GPIO pad 53 is the isolate-request pin (smc_padring.sv drives
-# `isolate_req_pin_o` from `lsio_pad2core_data[53]`, input-by-default). The
-# bench leaves it undriven, so the pad model's pull-up makes it read 1 and
-# `skip_mem_repair_o = isolate_req_pin_sync_smc | isolate_req_smc_reg`
-# (smc_cool_reset_wrap.sv) is 1 for the whole simulation with nothing having
-# requested isolation. A board idles this pin low, which is what the two legs
-# below drive and observe.
-_ISOLATE_REQ_PAD = 53
-# `isolate_req_pin_i` crosses into clk_smc_i through a 3-stage prim_sync3 with
-# no reset, so the observation window is a few cycles wide; the poll below is
-# bounded and fails on expiry with the last observed level.
-_SKIP_SYNC_BOUND = 32
+# The isolate-request pin is the pad the DV-owned pad table
+# (`doc/integrator/meta/ocah_gpio_table.csv`) names "Isolate Request";
+# `smc_isolate_pin_utils` reads the index from that table. `clk_rst.adoc`
+# ("Function Level Reset") makes pin-based isolation one of the three isolation
+# sources and, under "Memory Test Bypass", activates `skip_mem_repair_o`
+# automatically when either FLR-triggered or pin-based isolation is asserted.
+# With no FLR signalled and ISOLATE_REQ_SMC_REG at its reset 0, the pin is the
+# only isolation source that can be asserted, so `skip_mem_repair_o` must
+# follow it: 0 with the pin low, 1 with the pin high. The bench leaves the pad
+# undriven by default and it then reads 1, so with nothing driving the pin every
+# fuse-sense edge in this package is a bypassed one; a board idles the pin low,
+# which is what the two legs below drive and observe.
 # Ceiling on the fuse-sense re-run after the last reset release, matching the
 # package-wide `wait_fuse_sense_done` bound. Expiry is a FAILURE.
 _SENSE_BOUND = 200_000
@@ -80,42 +81,20 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
         self.skip_at_sense_done = -1
 
     def _skip_mem_repair(self, dut) -> int:
-        raw = dut.tb_skip_mem_repair_o.value
-        assert raw.is_resolvable, f"tb_skip_mem_repair_o is X/Z: {raw}"
-        return int(raw) & 1
+        return skip_mem_repair(dut)
 
     async def _await_skip_mem_repair(self, dut, want: int, label: str) -> int:
-        last = -1
-        for cycle in range(1, _SKIP_SYNC_BOUND + 1):
-            await ClockCycles(dut.clk_smc_i, 1)
-            last = self._skip_mem_repair(dut)
-            if last == want:
-                return cycle
-        raise AssertionError(
-            f"{label}: tb_skip_mem_repair_o stayed {last} for "
-            f"{_SKIP_SYNC_BOUND} clk_smc_i cycles, want {want}"
-        )
+        return await await_skip_mem_repair(dut, want, label)
 
     def _drive_isolate_pin(self, dut, level: int | None) -> None:
-        mask = 1 << _ISOLATE_REQ_PAD
-        en = int(dut.tb_gpio_ext_drive_en.value)
-        val = int(dut.tb_gpio_ext_drive_value.value)
-        if level is None:
-            dut.tb_gpio_ext_drive_en.value = en & ~mask
-            return
-        if level:
-            val |= mask
-        else:
-            val &= ~mask
-        dut.tb_gpio_ext_drive_value.value = val
-        dut.tb_gpio_ext_drive_en.value = en | mask
+        drive_isolate_pin(dut, level)
 
     async def _prove_skip_mem_repair_tracks_isolate_pin(self, dut) -> None:
         """Both polarities of the isolate pin on one `skip_mem_repair_o` probe.
 
-        `isolate_req_smc_reg`, the other term of the OR, is 0 here: no FLR has
-        been signalled and the register resets to 0, so the pin is the only
-        thing that moves between the three samples below. Driving the pin low
+        No FLR has been signalled and ISOLATE_REQ_SMC_REG resets to 0, so of the
+        isolation sources `clk_rst.adoc` names the pin is the only one that
+        moves between the three samples below. Driving the pin low
         is also what lets the fuse-sense edges of the reset cycles that follow
         happen with the repair path enabled at all -- with the pin floating,
         every sense edge in this package is a bypassed one.
