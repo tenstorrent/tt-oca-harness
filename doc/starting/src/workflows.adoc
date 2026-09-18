@@ -185,15 +185,15 @@ The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) 
 The build is split into two halves so each can run in the correct environment:
 
 * `toolchain-images` — RISC-V/picolibc compilation; use the container toolchain when `RISCV_TOOLCHAIN` is unset.
-* `pack-images` — pure Python manifest packing via the `tt-boot-manifest` submodule (requires `uv`); runs on the host without the container.
+* `pack-images` — pure Python manifest packing via the `tt-oca-manifest` submodule (requires `uv`); runs on the host without the container.
 
 ```bash
 # OpenTitan SPI-host build (outputs to build_ot/):
 # Prefix with `scripts/docker-run.sh run` to use the container toolchain
 make -C hw/sys/sep/bootrom/prod ot-toolchain-images
 
-# Signed (secure boot) SPI flash image — requires the tt-boot-manifest submodule:
-# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+# Signed (secure boot) SPI flash image — requires the tt-oca-manifest submodule:
+# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 make -C hw/sys/sep/bootrom/prod secure_boot_spi
 
 # Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):

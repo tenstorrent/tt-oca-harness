@@ -217,7 +217,7 @@ nixos_run() {
   else
     # The repo in the container is owned by root, so nix/git will by default give untrusted errors when interacting with it.
     local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
-            git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-boot-manifest &&"
+            git config --global --add safe.directory \$(pwd)/${MANIFEST_SUBMODULE} &&"
     local nix_git_env=()
     if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
       nix_git_env=(
