@@ -182,7 +182,7 @@ nixos_run() {
             export NIX_CONFIG=\"$NIX_CONFIG\"
             export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
             $GIT_ALLOW_CMD
-            $@
+            $*
         "
   fi
 }

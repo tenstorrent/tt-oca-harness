@@ -146,6 +146,7 @@ def is_dv_check_required(paths: list[str]) -> bool:
     """Return True when the diff touches the DV runner or a DUT's DV package."""
     return any(is_dv_check_path(path) for path in paths)
 
+
 def is_nix_path(path: str) -> bool:
     """Return True when path is a Nix file"""
     normalized = path.replace("\\", "/").lstrip("./")
