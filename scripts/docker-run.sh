@@ -51,6 +51,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
 IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
+MANIFEST_SUBMODULE="hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
 
 NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
 
@@ -198,13 +199,36 @@ run_image() {
 nixos_run() {
   # Nix Flakes and Nix-Command are required for this - enable them
   local NIX_CONFIG="experimental-features = nix-command flakes"
+  local manifest_status=""
+  manifest_status="$(git -C "$ROOT" submodule status -- "$MANIFEST_SUBMODULE" 2>/dev/null || true)"
   if command -v nix >/dev/null 2>&1; then
-    NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
+    if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
+      NIX_CONFIG="$NIX_CONFIG" \
+        GIT_CONFIG_COUNT=2 \
+        GIT_CONFIG_KEY_0=protocol.file.allow \
+        GIT_CONFIG_VALUE_0=always \
+        GIT_CONFIG_KEY_1="url.file://${ROOT}/${MANIFEST_SUBMODULE}.insteadOf" \
+        GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git \
+        bash -c "$*"
+    else
+      NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
+    fi
   else
     # The repo in the container is owned by root, so nix/git will by default give untrusted errors when interacting with it.
     local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
             git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-boot-manifest &&"
-    run_image $NIXOS_IMAGE -it sh -c "
+    local nix_git_env=()
+    if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
+      nix_git_env=(
+        env
+        GIT_CONFIG_COUNT=2
+        GIT_CONFIG_KEY_0=protocol.file.allow
+        GIT_CONFIG_VALUE_0=always
+        "GIT_CONFIG_KEY_1=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
+        GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git
+      )
+    fi
+    run_image "$NIXOS_IMAGE" "${nix_git_env[@]}" sh -c "
             export NIX_CONFIG=\"$NIX_CONFIG\"
             export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
             $GIT_ALLOW_CMD
@@ -216,14 +240,8 @@ nixos_run() {
 image_hash() {
   local flake_output
   flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
-  nixos_run "nix eval \$(pwd)#containerHashes.$flake_output 2> /dev/null" | tr -d '"'
+  nixos_run "nix eval \$(pwd)#containerHashes.$flake_output" | tr -d '"'
 }
-# Don't need to get image hash for Formatter/NixOS Shell
-case "${1:-}" in
-nixos-shell | nix-fmt | nix-fmt-check)
-  IMAGE=$NIX_IMAGE_NAME:$(image_hash)
-  ;;
-esac
 
 # Open a shell in the Nix Container - even on a nix-enabled host
 nixos_shell() {
@@ -272,6 +290,7 @@ build_image() {
 ensure_image() {
   local flake_hash
   flake_hash=$(image_hash)
+  IMAGE="${NIX_IMAGE_NAME}:${flake_hash}"
   # Test for loaded image in podman
   if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then
     return 0
