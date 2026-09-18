@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Boot ROM
+:description: SMC Boot ROM architecture, hardware configuration, firmware, and operation.
+
 [[rom]]
-=== Boot ROM
 
 The SMC maps a 128 KiB read-only region at `0xC004_0000` through
 `0xC005_FFFF`. The cold-reset CPU vector is `0xC004_0000`.
 
-==== ROM Architecture
+== ROM Architecture
 
 In the current four-core implementation, the CPU reaches the ROM over its
 internal TileLink memory path. `smc_cpu_wrapper` converts that path to the
@@ -24,7 +26,7 @@ ROM padding in that region. `.data`, `.tdata`, `.itim`, and `.lim` have runtime
 addresses in the SRAM region at `0xC006_0000` and load images in ROM. `.tbss`,
 `.bss`, the stack, and the heap occupy only SRAM.
 
-==== ROM Hardware Configuration
+== ROM Hardware Configuration
 
 `OCAH4CORECluster_mems` passes the 11-bit `rom_cfg_i` value unchanged to the
 ROM wrapper's `mem_cfg_i`, where it is cast to `prim_rom_pkg::rom_cfg_t` and

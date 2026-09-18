@@ -262,8 +262,27 @@ class dtp_scoreboard extends ocah_scoreboard;
       if (strb_e !== strb_o) diff = {diff, " strobes"};
       if ((exp.first_data() & lanes) !== (obs.first_data() & lanes)) diff = {diff, " data"};
     end
-    record_compare(DtpFeatureJtag2axiReq, diff == "", exp.convert2string(), obs.convert2string(), {
+    record_compare(DtpFeatureJtag2axiReq, diff == "", request_string(exp), request_string(obs), {
                    "port=", obs.source, (diff == "") ? "" : {" mismatch:", diff}});
+  endfunction
+
+  // The request-side fields this feature judges. The response code is the
+  // AXI recorder's verdict (CHK-AXI-RESP, CHK-AXI-ERR-INJ) and stays out of
+  // this record.
+  protected function string request_string(ocah_axi_item item);
+    string s = $sformatf("%s addr=0x%0h", item.direction.name(), item.address);
+    if (item.protocol == OCAH_AXI_PROTO_AXI4) s = {s, $sformatf(" size=%0d", item.size)};
+    s = {s, $sformatf(" beats=%0d", item.beat_count())};
+    if (item.direction == OCAH_AXI_DIR_WRITE)
+      s = {
+        s,
+        $sformatf(
+            " strb=0x%02h data=0x%0h",
+            (item.strobes.size() != 0) ? item.strobes[0] : 8'h00,
+            item.first_data()
+        )
+      };
+    return s;
   endfunction
 
   // One verdict per bridge capture: the status field, and the data field

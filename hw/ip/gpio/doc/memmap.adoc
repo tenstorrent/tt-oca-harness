@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[gpio-memory-map]]
-===== Memory Map
+== Memory Map
 
 The GPIO peripheral provides two separate register banks for
 comprehensive I/O control: the Interface Register Bank (gpio_intf_reg)
@@ -11,7 +11,7 @@ for high-level GPIO functionality and the Control Register Bank
 accessed through 32-bit AXI4-Lite interfaces with independent address
 spaces.
 
-====== Address Space Organization
+=== Address Space Organization
 
 The GPIO peripheral uses a dual-bank register architecture:
 
@@ -23,7 +23,7 @@ and termination
 Each bank operates independently with separate AXI4-Lite interfaces to
 enable concurrent access and modular functionality.
 
-====== Reset Behavior
+=== Reset Behavior
 
 When the system reset (rst_ni) is asserted, the GPIO peripheral
 initializes each register bank to well-defined, safe starting values. In
@@ -42,7 +42,7 @@ configuration is required to enable any functional path. Throughout
 reset, the hardware maintains a safe low-current output condition on the
 pads, minimizing the risk of unintended external drive or contention.
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

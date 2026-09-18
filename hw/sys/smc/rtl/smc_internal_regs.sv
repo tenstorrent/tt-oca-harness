@@ -862,7 +862,7 @@ module smc_internal_regs #(
   /////////////////////
 
   smc_dfd_wrap #(
-    .BASE_ADDR({32'd0, smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR})
+    .BASE_ADDR(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR[22:0])
   ) u_smc_dfd_wrap (
     .clk_smc_i                                  (clk_smc_i),
     .clk_ref_i                                  (clk_ref_i),

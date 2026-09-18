@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Security Disable (SEC_DIS)
+:description: SEP emergency security-disable behavior and integration requirements.
+
 [[security-disable-sec_dis]]
-==== Security Disable (SEC_DIS)
 
 Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
 silicon. On deassertion of power-on reset, the fuse sense logic runs before
@@ -66,4 +68,3 @@ implementation flow -- for example as an RTL parameter passed down the
 instance hierarchy (chiplet top to SMU to SEP to fuse controller). One member of the DV team
 shall perform final verification of the SEC_DIS_TOKEN functionality on the
 post-layout extracted netlist with *_gate-level simulation_*.
-

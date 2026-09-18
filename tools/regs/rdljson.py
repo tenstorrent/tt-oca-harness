@@ -23,6 +23,9 @@ from typing import Union
 
 from systemrdl import RDLCompileError, RDLCompiler, node
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common.rdlview import parse_rdl_params  # noqa: E402
+
 SCRIPT_VERSION = "r2026-08-04"
 
 
@@ -218,13 +221,21 @@ def main():
         default=os.getenv("GIT_SHA", "unknown"),
         help="git SHA recorded in the model",
     )
+    parser.add_argument(
+        "-P",
+        dest="rdl_params",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="override an addrmap parameter (repeatable)",
+    )
     args = parser.parse_args()
 
     rdlc = RDLCompiler()
     try:
         rdlc.compile_file(args.udp_rdl_file)
         rdlc.compile_file(args.input_rdl_file, incl_search_paths=args.incdir)
-        root = rdlc.elaborate(args.top)
+        root = rdlc.elaborate(args.top, parameters=parse_rdl_params(args.rdl_params) or None)
     except RDLCompileError:
         sys.exit(1)
 

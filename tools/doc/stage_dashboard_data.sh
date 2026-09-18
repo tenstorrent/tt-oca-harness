@@ -69,4 +69,5 @@ if [ -f "$history" ]; then
 fi
 python3 "$root/tools/doc/aggregate_test_history.py" "$data/test-history.json" \
   --ref "$ref" --prefix "$runs_prefix" --limit "$runs_limit"
+python3 "$root/tools/doc/render_badges.py" "$summary" "$data"
 echo "Staged dashboard data into $data/"

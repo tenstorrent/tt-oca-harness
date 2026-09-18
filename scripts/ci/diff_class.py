@@ -115,7 +115,11 @@ def is_docs_path(path: str) -> bool:
 def is_register_regen_path(path: str) -> bool:
     """Return True when changing *path* can affect register collateral."""
     normalized = path.replace("\\", "/").lstrip("./")
-    if normalized == UNCLASSIFIED or normalized.endswith(".rdl"):
+    if (
+        normalized == UNCLASSIFIED
+        or normalized.endswith(".rdl")
+        or normalized.endswith(("/doc/memmap.toml", "/regs/regdoc.toml"))
+    ):
         return True
     if normalized in REGISTER_INFRASTRUCTURE_PATHS or normalized.startswith(
         REGISTER_INFRASTRUCTURE_DIRS
@@ -369,7 +373,8 @@ def changed_files() -> tuple[list[str], str | None]:
         # pipeline (not a separate downstream project), so GitLab forwards
         # the parent's CI_MERGE_REQUEST_*/CI_COMMIT_* variables unchanged;
         # only the pipeline-source classification itself needs recovering,
-        # which .gitlab-ci.yml's `nonfree:` job does via PARENT_PIPELINE_SOURCE.
+        # which the trusted GitLab parent's `nonfree:` job does via
+        # PARENT_PIPELINE_SOURCE.
         source = os.environ.get("PARENT_PIPELINE_SOURCE") or source
     if source == "merge_request_event":
         base = os.environ.get("CI_MERGE_REQUEST_DIFF_BASE_SHA", "")
@@ -418,6 +423,7 @@ def self_test() -> None:
 
     for path in (
         "hw/sys/smc/regs/smc.rdl",
+        "hw/sys/smc/doc/memmap.toml",
         "hw/ip/uart/regs/gen/sv/uart_reg.sv",
         "hw/ip/foo/registers/bar/gen/c/bar.h",
         "vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_reg.sv",

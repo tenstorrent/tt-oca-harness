@@ -1,9 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[.small,stretch]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="SMC port reference" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide.small,stretch]
 .SMC Port Declaration
+ifdef::backend-html5[]
+[cols="<19%,<15%,<11%,<8%,<20%,<14%,<13%",options="header",frame=all,grid=all]
+endif::backend-html5[]
+ifndef::backend-html5[]
 [%autowidth,options="header",frame=all,grid=all]
+endif::backend-html5[]
 |===
 |Interface Name |Type |Direction |Width |Description |Connection |Default value (if applicable)
 
@@ -98,3 +109,9 @@
 |`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller → All modules |1'b0
 |`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller → All modules |1'b1
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]

@@ -347,7 +347,7 @@ Sampling rules:
   under its `coverage/` directory recording the cells it hit.
 * `dtp_scan_fcov` additionally mirrors the field values as cover points
   (`c_dbg_disable_<field>_{clear,set}`) so the merged coverage database
-  records field exercise; the checker-gated cells above remain the
+  records field exercise; the checker-gated cells above are the
   contract.
 
 [[dtp-fcov-closure]]
@@ -413,12 +413,12 @@ task an open hole waits on, and of the review that accepted a waiver.
 
 ==== Reviewers
 
-The owner who writes an entry is not its reviewer. A `waive`,
-`exclude_scope`, or `fix_design` entry whose rationale is a design fact is
-reviewed by the design owner; a `fix_model` or `cover` entry by the DV
-owner; a `pass:[[[thresholds]]]` rule or a `pass:[[[native_files]]]` entry by the owner
-of the coverage flow. The pull request that adds or changes an entry names
-the run the change was graded against.
+An entry's `reviewer` differs from its `owner`. A `waive`,
+`exclude_scope`, or `fix_design` entry whose rationale is a design fact
+takes design review; a `fix_model` or `cover` entry takes DV review; a
+`pass:[[[thresholds]]]` rule or a `pass:[[[native_files]]]` entry takes coverage-flow
+review. Every entry change is graded against a named finished run with the
+runner's `--waive` re-grade.
 
 ==== Expiry and reopen triggers
 
@@ -473,7 +473,7 @@ on every `--waive` re-grade of its run tree.
 |===
 |Flow |Strategy
 |Verilator open-source CI |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
-|Per-group reporting |The DV dashboard ingests the merged run's `coverage-details.json` (policy dispositions included), keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`); no DTP-specific report script
+|Per-group reporting |The DV dashboard ingests the merged run's `coverage-details.json` (policy dispositions included), keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
 |Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage and leaves toggle out; the weekly regression merges every leaf and seed into one report
 |Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer); both frameworks collect through the runner — `run_dv.py --cov --tool vcs` for cocotb, `run_dv.py --framework uvm --cov` for SV-UVM — with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are merged again into one DUT-scoped report for signoff
 |Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage, scoped to the DUT instance
@@ -491,7 +491,7 @@ change.
 |===
 |Item |Reason
 |SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the public flow
-|`jtag2axi_robustness_cg` reset-timing request-issued/data-phase/response-wait and CDC clear/isolate bins |Sampled only by the two reset-abort scenarios, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in `AXI_WAIT_BRESP` after an AXI-side reset until a TAP reset); they are open hole entries in the coverage policy file, not waivers
+|`jtag2axi_robustness_cg` reset-timing request-issued and response-wait bins and CDC clear bins |Sampled only by the two reset-abort scenarios, which drive the system reset while the bridge is mid-flight; the bins carry dispositions in the coverage policy file, not waivers
 |Stimulus-intent bins (IC_RESET pattern source, seeded random request masks) |Test-layer randomization intent, not signal-observable; the modules record the resulting behavior instead
 |Invalid IDCODE marker, contradictory debug-disable outcomes |Checker failures in a passing run, never coverage bins
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract

@@ -13,6 +13,7 @@
 ## Regenerate non-documentation register collateral for all OCAH register blocks.
 ## @param OCAH_REG_BLOCKS Registered block roots to regenerate
 ## @param TARGET=smc Optional register block basename to regenerate
+## @param OCAH_REG_RDL_PARAMS_<block>=NAME=VALUE Optional PeakRDL addrmap overrides for that block
 .PHONY: ocah-regen-regs
 ocah-regen-regs: $(OCAH_REGEN_ALL) $(OCAH_REGEN_REG_STAMPS)
 
@@ -59,7 +60,7 @@ ocah-regen-regs-ral: $(OCAH_REGEN_REG_RAL)
 ## Regenerate AsciiDoc register documentation for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-adoc
-ocah-regen-regs-adoc: $(OCAH_REGEN_REG_ADOC)
+ocah-regen-regs-adoc: $(OCAH_REGEN_REG_ADOC) $(OCAH_REGEN_REG_MEMORY_MAP)
 
 ## Regenerate HTML register documentation for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate

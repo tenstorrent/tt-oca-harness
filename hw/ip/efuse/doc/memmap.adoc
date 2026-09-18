@@ -2,26 +2,29 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[efuse-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
-The eFuse IP address space is divided into four regions. Base addresses and
-sizes are set by the instantiating subsystem through module parameters; the
-values below are defaults. The MMR region is only present when the instance
-is configured with a lifecycle controller (`HAS_LC_STATE=1`).
+eFuse is not one universally placed address space. SEP, SMC, and the Key
+Manager pass-through expose different subsets and placements. The generated
+tables below compose those integration-specific views from their canonical
+SystemRDL roots.
 
-.Address Space Overview
-[width="100%",cols="30%,30%,40%",options="header",]
-|=================================================================================
-|Default Address Range |Register Block |Description
-|`0x0000-0x0FFF` |Shadow Registers |Cached eFuse contents; size parameterized by `EFUSE_MAP_REG_MAP_SIZE`
-|`0x1000-0x1FFF` |MMR Registers |Security tokens; present only when `HAS_LC_STATE=1`
-|`0x2000-0x2FFF` |eFuse Control CSR |Command and status registers; size parameterized by `EFUSE_CTRL_REG_MAP_SIZE`
-|`0x3000-...` |SHIM Control CSR |Foundry-specific timing and initialization; outside harness
-|=================================================================================
+ifdef::backend-html5[]
+include::partial$efuse/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
 
-====== Shadow Registers
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
+
+At the IP boundary, each region's base address and aperture size are
+integration parameters; the generated tables show the selected integration
+values. The MMR region exists only when the eFuse instance includes lifecycle
+state (`HAS_LC_STATE=1`).
+
+=== Shadow Registers
 
 The shadow registers provide cached read access to eFuse contents, loaded
 automatically from the physical eFuse array during boot. The field layout is
@@ -39,7 +42,7 @@ ifdef::backend-pdf[]
 include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc[]
 endif::backend-pdf[]
 
-====== MMR Registers
+=== MMR Registers
 
 The MMR (Memory Mapped Register) space provides access to security tokens for
 authentication, including RMA tokens and security disable tokens.
@@ -54,10 +57,13 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/efuse_mmr.adoc[]
 endif::backend-pdf[]
 
-====== eFuse Control Registers
+=== eFuse Control Registers
 
 The eFuse Control CSR provides command and status registers for read, write,
-and verification operations on the eFuse array.
+and verification operations on the eFuse array. `program_enable` and
+`read_enable` are mutually exclusive; software deasserts `program_enable`
+after `PROGRAM_DONE` before issuing a read. See
+<<smc-dv-efuse-programming>>.
 
 ifdef::backend-html5[]
 ++++
@@ -69,10 +75,12 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/efuse_interface_ctrl.adoc[]
 endif::backend-pdf[]
 
-====== SHIM Control Registers
+=== SHIM Control Registers
 
 The SHIM Control CSR provides foundry-specific configuration registers for
-timing adaptation and eFuse bank initialization.
+timing adaptation and eFuse bank initialization. Its placement is
+adopter-defined within the adopter-owned SMC external aperture; it therefore
+does not appear at a fixed address in the generated OCAH map.
 
 ifdef::backend-html5[]
 ++++
