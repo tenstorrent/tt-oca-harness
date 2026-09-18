@@ -72,6 +72,7 @@ in
       ocah-ditaa
       mermaid-cli
       plantuml
+      kroki
       # Build Tools
       gnumake
       bender

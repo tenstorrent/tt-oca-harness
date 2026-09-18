@@ -48,6 +48,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
 IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
+NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
 
 NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
 
@@ -89,6 +90,18 @@ else
   echo "error: podman or docker is required" >&2
   exit 1
 fi
+
+# Create a named network if it does not already exist. Both Docker and Podman
+# support the same syntax; neither auto-removes the network when containers
+# leave, so trap removal on exit
+ensure_network() {
+  local net="$1"
+  if ! "$ENGINE" network ls --format '{{.Name}}' 2>/dev/null | grep -qx "$net"; then
+    "$ENGINE" network create "$net" >/dev/null
+    echo "docker-run: created network '$net'" >&2
+  fi
+  trap '"$ENGINE" network rm "$NETWORK" 2>/dev/null || true' EXIT
+}
 
 # Rootless podman's newuidmap/newgidmap helpers refuse to set up the user
 # namespace unless the process's primary GID matches the account's registered
@@ -156,13 +169,19 @@ USER_FLAGS=()
 run_image() {
   local image="$1"
   shift
-  local f=()
+  local f=() net_flags=()
+  [[ "${1:-}" == "--net" ]] && {
+    net_flags=(--network "$2" ${NETWORK_NAME:+--name "$NETWORK_NAME"})
+    ensure_network "$2"
+    shift
+    shift
+  }
   [[ "${1:-}" == "-it" ]] && {
     f=(-it)
     shift
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
+    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
 }
 
 # Run a command in an environment with a nix binary. This will run locally if it
@@ -381,13 +400,19 @@ run_here() {
 run_image_1to1() {
   local image="$1"
   shift
-  local f=()
+  local f=() net_flags=()
+  [[ "${1:-}" == "--net" ]] && {
+    net_flags=(--network "$2" ${NETWORK_NAME:+--name "$NETWORK_NAME"})
+    ensure_network "$2"
+    shift
+    shift
+  }
   [[ "${1:-}" == "-it" ]] && {
     f=(-it)
     shift
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
+    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
 
@@ -435,7 +460,7 @@ doc_html() {
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
   doc_setup "$product"
   doc_release_enabled && release_args=(--attribute release)
-  run antora --cache-dir /tmp/antora "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
+  run --net "$NETWORK" antora --cache-dir /tmp/antora "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
   # Only the TRM carries the dashboard page; staging elsewhere would leave a
   # stray ocah-docs/ tree inside another book's site.
   if [ "$product" = trm ]; then
@@ -453,7 +478,7 @@ doc_html_all() {
     doc_setup appnotes
     doc_setup home
     doc_setup starting
-    run env \
+    run --net "$NETWORK" env \
         SITE_SEARCH_PROVIDER=lunr \
         antora --cache-dir /tmp/antora "${release_args[@]}" antora-playbook.yml
 }
@@ -525,6 +550,13 @@ doc_stage() {
   echo "Preview locally with: cd $ghpages_dir && python3 -m http.server 8000"
 }
 
+doc_kroki() {
+    ensure_network "$NETWORK"
+    KROKI_PORT="${OCAH_KROKI_PORT:-8000}"
+    echo "docker-run: Kroki listening on http://localhost:${KROKI_PORT}; antora containers reach it at http://kroki:8000" >&2
+    PODMAN_RUN_FLAGS="$PODMAN_RUN_FLAGS -p ${KROKI_PORT}:8000" NETWORK_NAME=kroki run --net "$NETWORK" -it kroki
+}
+
 case "${1:-}" in
 build) build_image ;;
 nixos-shell) nixos_shell ;;
@@ -562,6 +594,7 @@ doc-pdf)
   doc_pdf "${1:-trm}"
   ;;
 doc-stage) doc_stage ;;
+doc-kroki) doc_kroki ;;
 "" | -h | --help | help) sed -n '7,35p' "$0" ;;
 *)
   echo "error: unknown command '$1'" >&2

@@ -5,7 +5,7 @@
   antora-lunr-extension,
   asciidoctor-kroki,
   runCommand,
-  makeWrapper,
+  writeShellScript,
   ...
 }:
 let
@@ -16,13 +16,15 @@ let
     asciidoctor-kroki
   ];
   nodePath = lib.concatMapStringsSep ":" (p: "${p}/lib/node_modules") pkgList;
+  wrapper = writeShellScript "antora" ''
+    export NODE_PATH="${nodePath}"
+    extra=()
+    [[ -n "''${KROKI_SERVER_URL:-}" ]] && extra+=(--attribute "kroki-server-url=''${KROKI_SERVER_URL}")
+    exec ${antora}/bin/antora "''${extra[@]}" "$@"
+  '';
 in
-runCommand "ocah-antora"
-  {
-    nativeBuildInputs = [ makeWrapper ];
-  }
-  ''
-    mkdir -p $out/bin
-    makeWrapper ${antora}/bin/antora $out/bin/antora \
-      --set NODE_PATH "${nodePath}"
-  ''
+runCommand "ocah-antora" {} ''
+  mkdir -p $out/bin
+  cp ${wrapper} $out/bin/antora
+  chmod +x $out/bin/antora
+''
