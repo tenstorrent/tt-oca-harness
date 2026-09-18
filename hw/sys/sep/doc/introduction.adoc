@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Introduction
+:description: SEP responsibilities and security services.
+
 [[sep-introduction]]
-=== Introduction
 
 SEP is the Root of Trust (RoT) of the chiplet with the highest security
 privilege. SEP provides a physically isolated execution environment for

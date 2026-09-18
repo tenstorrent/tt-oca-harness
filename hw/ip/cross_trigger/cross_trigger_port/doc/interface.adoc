@@ -2,11 +2,16 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctp-interface]]
-==== Interface
 
-===== Signal Interface
+=== Signal Interface
 
-[width="100%",cols="<34%,<33%,<33%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP signal interface" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<30,<12,<58",options="header",role="port-reference"]
 |===
 |Name |Direction |Description
 |mode |input |Indicates the operational mode of the CTP. 0 for wire-OR and 1 for peer-to-peer. The value at reset should be 0.
@@ -27,7 +32,13 @@
 |ct_ack_out_dout |output |The output data to drive on the _CT_Ack_out_ pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls this signal. In wire-OR mode it is unused.
 |===
 
-===== Dependencies
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Dependencies
 
 The CTP depends on the following components:
 

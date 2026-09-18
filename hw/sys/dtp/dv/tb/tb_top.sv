@@ -726,6 +726,10 @@ module dtp_uvm_top
     .rst_n_i                          (rst_n_i),
     .pwr_on_rst_ni                    (pwr_on_rst_ni),
 
+    // DFT controls, functional mode unless a scenario drives them
+    .test_en_i                        (u_tb_if.test_en),
+    .scan_rst_ni                      (u_tb_if.scan_rst_n),
+
     // Lifecycle debug gating: active-high disables pre-resolved per
     // interface; '0 == nothing disabled (full debug access).
     .dbg_disable_i                    (dbg_disable),

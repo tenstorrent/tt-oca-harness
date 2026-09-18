@@ -317,22 +317,22 @@ the first image that consumes it, not ahead of it.
 |ROM banks 1..3 decode and endian flip under eFuse scramble; the cocotb aliases `smc_rom_efuse_bits_0_test` / `_1_test` are catalog-only in `SMC_DEFERRED_DISPOSITION.adoc`. Closes with a scrambled four-bank `+rom_hex` asset, a matching `+smc_efuse_hex`, and a `smc_fw_hello_world_test`-pattern leaf (`firmware = "rom_efuse_bits"`, `+smc_scratch_ram_hex=rom_efuse_bits.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
 |occp_comprehensive_error_verification_test
 |deferred
-|OCCP error codes and the SMC status ring against the status-coordination contract. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|OCCP error codes and the SMC status ring against the status-coordination contract. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
 |occp_crc_err_injection_test
 |deferred
-|Header and body CRC fault injection, wire error plus status ring. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|Header and body CRC fault injection, wire error plus status ring. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
 |occp_invalid_cmd_test
 |deferred
-|Invalid command code rejection and the status low byte. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|Invalid command code rejection and the status low byte. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
 |occp_ring_buffer_overflow_test
 |deferred
-|SMC status ring overflow (sole user of `include/smc_ring_buffer.h`). Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|SMC status ring overflow (sole user of `include/smc_ring_buffer.h`). Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
 |occp_zero_length_rw_test
 |deferred
-|Zero WLen/RLen -> `0x03 Invalid_header`. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|Zero WLen/RLen -> `0x03 Invalid_header`. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
 |occp_zero_length_test
 |deferred
-|Zero-length operations and status records 0x120/0x130. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|Zero-length operations and status records 0x120/0x130. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
 |occp_boot_sequence_status_test
 |deferred
 |Boot status codes 0x001..0x021 in the SMC ring. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.

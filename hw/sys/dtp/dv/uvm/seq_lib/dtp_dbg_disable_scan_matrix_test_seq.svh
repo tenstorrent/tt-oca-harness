@@ -110,8 +110,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     start_scan_window(watch);
     stap_chain_maintain(d, {context_s, ".observe"}, captured);
     stop_scan_window(edges, counts);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {
-                 context_s, ".window"});
+    check_window_shifted("CHK-SCAN-WIN", {context_s, ".window"});
 
     // Gated ports stop forwarding with tms parked at the stored
     // tms_hold=1; ungated ports keep forwarding.

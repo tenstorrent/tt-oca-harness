@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Overview
+:description: SMC responsibilities, architecture, and top-level organization.
+
 [[overview]]
-=== Overview
 
 The System Management Controller (SMC) is a subsystem in a chiplet that
 takes on the system management tasks, including managing

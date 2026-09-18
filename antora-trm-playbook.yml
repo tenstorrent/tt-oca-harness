@@ -11,6 +11,26 @@ content:
       branches: HEAD
       start_path: doc/trm
       edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/home
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/integrator
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/programmer
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/appnotes
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/starting
+      edit_url: false
 asciidoc:
   attributes:
     kroki-default-format: svg

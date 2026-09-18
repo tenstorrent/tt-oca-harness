@@ -468,9 +468,12 @@ Negative validation proves each checking path can fail:
 `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` corrupts every family expectation,
 `DTP_JTAG_TAP_CHECKER_NEGATIVE` arms a wrong IDCODE, `DTP_AXI_SCOREBOARD_NEGATIVE`
 arms the wrong expected response, `DTP_XTRIG_CHECKER_NEGATIVE` inverts the
-CTM model selects, and (SV-UVM) `DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge
+CTM model selects, (SV-UVM) `DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge
 request reference model predict corrupted addresses so the scoreboard pairing
-fails against the observed bus; a run with any of them set must fail. The same
+fails against the observed bus, `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the
+expected address size of the per-pass CAPS comparison, and
+`DTP_J2A_STATUS_BIT_NEGATIVE` leaves the with-status fault beat unarmed while
+its expectation stands; a run with any of them set must fail. The same
 knob names are environment variables in cocotb and plusargs in SV-UVM.
 
 === Coverage Strategy
@@ -577,6 +580,81 @@ below; each row states what each realization does.
 |Debug-TDR evidence |Inline `CHECK` assertions of the base sequence |Named `CHK-DBG-TDR`, `CHK-DBG-PIN`, `CHK-CAPS`, `CHK-CAPS-RO`, and `CHK-TMP-*` records
 |Plain-model basenames |`env/dtp_scan_ref_model.py` and `env/dtp_xtrig_types.py` hold the plain scan and cross-trigger models |`dtp_stap_3dcr_model.svh`, `dtp_ijtag_sib_model.svh`, `dtp_xtrig_ctm_model.svh`
 |===
+
+=== Adding a Scenario to the SV-UVM Realization
+
+One VPLAN scenario, two implementations: the testlist entry's `module`
+binding map carries both, and the same `--items` name selects either
+realization. To add the SV-UVM twin of a cocotb scenario:
+
+[arabic]
+. *Sequence* — add `uvm/seq_lib/<name>_seq.svh` mirroring the cocotb
+  `cocotb/seq_lib/<name>_seq.py` semantics as a virtual sequence on the family
+  layer that matches the scenario: `dtp_jtag_base_test_seq` for
+  instruction-family scenarios (per-pass family evidence and scan-builder
+  cross-checks), `dtp_jtag2axi_base_test_seq` for bridge scenarios (single
+  and series operations, responder backdoor, error arming),
+  `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, or
+  `dtp_xtrig_base_test_seq`. The scenario starts the reusable operations
+  (`dtp_jtag_<op>_seq`, `dtp_jtag2axi_<op>_seq`, `dtp_axi_csr_<op>_seq`)
+  through the base wrappers and never a VIP driver or interface; a missing
+  operation becomes a new `_seq` on the VIP sequence API first. Start
+  `body()` with `seed_scenario_rng()` so every pass replays from `--seed`,
+  and read knobs from `test_cfg`. Add the include line to
+  `uvm/seq_lib/dtp_seq_lib_pkg.sv`.
+. *Test* — add `uvm/tests/<name>.svh` (file, class, and scenario share the
+  name) extending `dtp_base_test`: override `create_scenario_seq()` and the
+  loop-count knob hooks (`specific_loops_knob`, `group_loops_knob`), declare
+  the scoreboard features and the required `CHK-*` IDs the scenario owns in
+  `configure_test_cfg()` (`cfg.require_feature`, `cfg.require_jtag_ids`,
+  `cfg.require_axi_ids`), and plumb scenario evidence handles in
+  `plumb_scenario_seq()` after `super`. Add the include line to
+  `uvm/tests/dtp_tests.sv`.
+. *Testlist* — change the scenario's entry to
+  `module = { cocotb = "<name>", uvm = "<name>" }`; the `uvm` value drives
+  `+UVM_TESTNAME`.
+. *Qualify* — the group's VCS run is green at the 16-pass floor, and each
+  checker the scenario arms fails the run under its negative knob (the
+  Checking Strategy above lists them).
+
+=== Overlaying a Commercial VIP (`DTP_OVERLAY_TESTS`)
+
+The SV-UVM realization can host a commercial protocol VIP as a passive
+overlay: an adopter-side build variation that adds vendor protocol monitors
+to the stock tests without editing this tree. The seam is the
+`DTP_OVERLAY_TESTS` compile hook at the end of `uvm/tests/dtp_tests.sv`:
+defined to the quoted name of an include file on the overlay's own include
+path, that file compiles into the test manifest. The OSS filelists leave it
+undefined.
+
+An overlay is three adopter-owned files kept outside this repository, since
+vendor VIP collateral cannot be committed here:
+
+[arabic]
+. *Wiring top* — a second elaboration top that taps the observed port's pins
+  (for example `dtp_uvm_top.m_axi_*`, the SMC fabric AXI4 manager port) into
+  the vendor interface with continuous assigns, as a pure observer, and
+  publishes the virtual interface through `uvm_config_db`. Nothing in the
+  overlay drives DUT or responder signals.
+. *Overlay test* — the hook's include file: a class extending any stock test
+  (for example `dtp_jtag2axi_smc_axi_single_write_test`) whose `build_phase`
+  additionally creates the vendor env in passive mode, configured to the
+  observed port geometry (SMC fabric: AXI4, 56-bit address, 64-bit data,
+  2-bit ID). The stock scenario, evidence arming, and looped runner are
+  inherited unchanged, so the in-repo `CHK-*` checkers and the vendor monitor
+  run side by side on the same traffic. Select the overlay class per run with
+  `--plusarg +UVM_TESTNAME=<overlay class>` on the stock `--items` name: the
+  runner emits the testlist-mapped test name only when none is supplied, and
+  a `+uvm_set_type_override` cannot swap the test itself because the
+  simulator-shipped UVM library applies command-line factory overrides only
+  after `run_test()` has created the test.
+. *Vendor package compile unit* — the vendor library analyzed into the same
+  work library before `dtp_uvm_compile.f`, then both tops elaborated
+  (`dtp_uvm_top` plus the wiring top).
+
+A vendor library brings its own compile-unit requirements (packer-size
+defines applied to every analysis step, macro-header ordering, an
+installation-root variable); those live in the overlay's build recipe.
 
 === Build and Run
 
