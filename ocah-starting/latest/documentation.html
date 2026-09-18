@@ -359,7 +359,75 @@ use the up/down arrow keys to zoom, and press Escape to close the viewer.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="references"><a class="anchor" href="#references"></a><a class="link" href="#references">1.5. References</a></h3>
+<h3 id="local-kroki"><a class="anchor" href="#local-kroki"></a><a class="link" href="#local-kroki">1.5. Local Kroki</a></h3>
+<div class="paragraph">
+<p><a href="https://kroki.io">Kroki</a> renders text-based diagrams (Mermaid, PlantUML, D2, and others)
+into images at build time. By default the <code>asciidoctor-kroki</code> Antora extension sends
+diagram source to the public <code><a href="https://kroki.io" class="bare">https://kroki.io</a></code> service. Running a local Kroki server
+avoids the network round-trip, works offline, and keeps diagram source off an external
+service.</p>
+</div>
+<div class="sect3">
+<h4 id="container-workflow"><a class="anchor" href="#container-workflow"></a><a class="link" href="#container-workflow">1.5.1. Container workflow</a></h4>
+<div class="paragraph">
+<p>Start Kroki in one terminal — it keeps running while you build:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">scripts/docker-run.sh doc-kroki</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then build with <code>OCAH_ANTORA_KROKI_OFFLINE=true</code> in another terminal:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">OCAH_ANTORA_KROKI_OFFLINE=true scripts/docker-run.sh doc-html trm
+# or for the full combined site:
+OCAH_ANTORA_KROKI_OFFLINE=true scripts/docker-run.sh doc-html all</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>doc-kroki</code> puts the Kroki container on the same Docker/Podman network as the Antora
+container and names it <code>kroki</code>, so Antora can reach it at <code><a href="http://kroki:8001" class="bare">http://kroki:8001</a></code>.
+<code>OCAH_ANTORA_KROKI_OFFLINE=true</code> tells <code>doc-html</code> to pass that URL as the
+<code>kroki-server-url</code> Antora attribute.</p>
+</div>
+<div class="paragraph">
+<p>By default <code>doc-kroki</code> exposes Kroki on host port 8001 (<code><a href="http://localhost:8001" class="bare">http://localhost:8001</a></code>).
+Override with <code>OCAH_KROKI_PORT</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">OCAH_ANTORA_KROKI_OFFLINE=true OCAH_KROKI_PORT=9000 scripts/docker-run.sh doc-kroki</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="nix-native-workflow"><a class="anchor" href="#nix-native-workflow"></a><a class="link" href="#nix-native-workflow">1.5.2. Nix-native workflow</a></h4>
+<div class="paragraph">
+<p>In a nix dev shell the <code>kroki</code> binary is available directly. Start it in one terminal:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kroki</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It listens on <code><a href="http://localhost:8001" class="bare">http://localhost:8001</a></code> by default. Then build with <code>KROKI_SERVER_URL</code>
+pointing at it — the <code>ocah-antora</code> wrapper picks this up automatically:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">KROKI_SERVER_URL=http://localhost:8001 make doc-trm-serve
+# or
+KROKI_SERVER_URL=http://localhost:8001 make doc-all-html</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="references"><a class="anchor" href="#references"></a><a class="link" href="#references">1.6. References</a></h3>
 <div class="ulist">
 <ul>
 <li>

@@ -241,7 +241,7 @@ OCAH project. To install the required packages, refer to <a href="setup.html" cl
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Linux Distribution</strong>: The guide included in <a href="setup.html" class="xref page">Environment Setup</a> is written
+<p><strong>Linux Distribution</strong>: The <a href="setup.html#native" class="xref page">Native Installation guide</a> is written
 for Ubuntu 26.04 LTS, but most modern distributions should be compatible, though package
 installation instructions may vary. Development on MacOS <em>should</em> also be possible, though
 you will need to handle package installation yourself.</p>
@@ -266,8 +266,8 @@ you will need to handle package installation yourself.</p>
 <h2 id="software-dependencies"><a class="anchor" href="#software-dependencies"></a><a class="link" href="#software-dependencies">2. Software Dependencies</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The project uses the following documentation tools, a Python virtual environment for SystemRDL
-and a docker container for synthesis tools:</p>
+<p>The project uses the following documentation tools. See <a href="setup.html" class="xref page">Environment Setup</a> for
+installation/setup options.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -289,18 +289,9 @@ run <code>make uv-sync</code> or <code>uv sync</code> from the repository root.<
 </div>
 </li>
 <li>
-<p><strong>Podman/Docker Containers</strong>: Used for some workflows.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>If using Podman, also required is <strong>Fuse-OverlayFS</strong></p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>RISC-V Toolchain</strong>: <code>riscv64-unknown-elf-*</code> with support for both 32 bit and 64 bit architectures - used
-to compile firmware and bootcode - containerised alternative available</p>
+<p><strong>RISC-V Toolchain</strong>: <code>riscv64-unknown-elf-*</code> with support for both 32-bit and
+64-bit architectures — used to compile firmware and bootcode. Provided by the
+project container; a native install is optional.</p>
 <div class="ulist">
 <ul>
 <li>
@@ -331,7 +322,14 @@ to compile firmware and bootcode - containerised alternative available</p>
 <p><strong>Slang</strong>: Version 9.1+</p>
 </li>
 <li>
-<p><strong>Yosys</strong>: Version 0.60+ - Currently only used via a container, included for completeness</p>
+<p><strong>Yosys</strong>: Version 0.60+</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SV-Elab</strong>: Version 2026-08-30+ (formerly yosys-slang)</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><strong>GCC</strong>: Version 15.3.0+ recommended</p>
@@ -343,7 +341,8 @@ to compile firmware and bootcode - containerised alternative available</p>
 <p><strong>CMake</strong>: Version 4.2.3+</p>
 </li>
 <li>
-<p>The Virtual Platform for testing the SEP Firmware has the following additional dependencies, but installs and manages them itself unless configured otherwise:</p>
+<p>The Virtual Platform for testing the SEP Firmware has the following additional
+dependencies, but installs and manages them itself unless configured otherwise:</p>
 <div class="ulist">
 <ul>
 <li>

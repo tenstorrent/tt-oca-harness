@@ -391,7 +391,7 @@ Rocket/SMC) never share ISA/ABI/libc flag state.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Prefix with `scripts/docker-run.sh run` to use the container toolchain
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make dv-fw-tests TARGET=smc
 make dv-fw-tests TARGET=smc TEST=version_id   # one test</code></pre>
 </div>
@@ -441,7 +441,7 @@ via <code>NONFREE_DRIVER_SOURCES</code>.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># From the repo root (OCAH_ROOT resolved automatically):
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make -C hw/sys/smc/bootrom/dummy</code></pre>
 </div>
 </div>
@@ -456,7 +456,7 @@ the shared <code>compile.mk</code> engine):</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Prefix with `scripts/docker-run.sh run` to use the container toolchain
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make -C hw/sys/smc/bootrom/prod</code></pre>
 </div>
 </div>
@@ -484,7 +484,7 @@ A proprietary memory-mapped SPI controller is also supported, plugged via the SE
 <p><code>toolchain-images</code> — RISC-V/picolibc compilation; use the container toolchain when <code>RISCV_TOOLCHAIN</code> is unset.</p>
 </li>
 <li>
-<p><code>pack-images</code> — pure Python manifest packing via the <code>tt-boot-manifest</code> submodule (requires <code>uv</code>); runs on the host without the container.</p>
+<p><code>pack-images</code> — pure Python manifest packing via the <code>tt-oca-manifest</code> submodule (requires <code>uv</code>); runs on the host without the container.</p>
 </li>
 </ul>
 </div>
@@ -494,8 +494,8 @@ A proprietary memory-mapped SPI controller is also supported, plugged via the SE
 # Prefix with `scripts/docker-run.sh run` to use the container toolchain
 make -C hw/sys/sep/bootrom/prod ot-toolchain-images
 
-# Signed (secure boot) SPI flash image — requires the tt-boot-manifest submodule:
-# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+# Signed (secure boot) SPI flash image — requires the tt-oca-manifest submodule:
+# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 make -C hw/sys/sep/bootrom/prod secure_boot_spi
 
 # Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):
@@ -755,11 +755,25 @@ different program, the program suggested may be overridden with <code>--wave-vie
 provide a synthesis flow using Yosys.</p>
 </div>
 <div class="paragraph">
-<p>To synthesise OCAH, use the following command:</p>
+<p><code>make ocah-synth-all</code> requires <code>yosys</code> on <code>PATH</code>. If it is not installed, Make
+prints a hint to use the container instead:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make ocah-synth-all</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Native (yosys must be on PATH)
+make ocah-synth-all
+
+# Via the container
+./scripts/docker-run.sh run-here make ocah-synth-all</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The PDK (<code>ihp-sg13g2</code> by default) is downloaded automatically by <code>ciel</code> on first
+run. To pre-download all supported PDKs:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make ocah-synth-pdks</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1014,6 +1028,35 @@ make format-shell-check</code></pre>
 </div>
 <div class="paragraph">
 <p>In all cases, <code>SHELL_PATH</code> may be used to constrain the above.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="format-nix-with-nix-fmt"><a class="anchor" href="#format-nix-with-nix-fmt"></a><a class="link" href="#format-nix-with-nix-fmt">6.4.3. Format Nix with <code>nix fmt</code></a></h4>
+<div class="paragraph">
+<p>Nix files (<code>*.nix</code>) are formatted with <a href="https://github.com/kamadorueda/alejandra">alejandra</a>.
+To check formatting without modifying files:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make format-nix-check</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To apply formatting in place:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make format-nix</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both commands invoke <code>nix fmt</code> under the hood via <code>scripts/docker-run.sh nix-fmt[-check]</code>,
+which runs in the nix environment rather than the firmware toolchain container.
+On hosts without nix installed, a NixOS container provides it automatically.</p>
+</div>
+<div class="paragraph">
+<p>CI runs <code>format-nix-check</code> on every pull request and push to <code>main</code>, reporting
+inline diff annotations through reviewdog.</p>
 </div>
 </div>
 </div>
