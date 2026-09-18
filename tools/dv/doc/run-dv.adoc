@@ -1456,29 +1456,6 @@ each run records the site file under `site` in its `result.json`.
 `hw/common/dv/configs/site.local.example.toml` is the template for the site
 file.
 
-[[runner-formal-readme]]
-=== The DUT README's formal section
-
-A DUT that carries a formal view states it in its DV `README.md` with one
-section in this shape, which `hw/sys/dtp/dv/README.md` instantiates:
-
-[source,markdown]
-----
-## Formal
-
-`formal/` holds <the described block and the formal top>; the properties
-follow `hw/common/dv/docs/formal-property-style.adoc`. `<dut>_formal_cfg.toml`
-and `testlists/formal.toml` launch it through the runner; the plan section is
-"<section title>" in `docs/<DUT>_VPLAN.adoc`.
-
-    python3 tools/dv/run_dv.py --dut <dut> --mode formal            # <group>: <items>
-    python3 tools/dv/run_dv.py --dut <dut> --mode formal --dry-run  # the rendered command
-
-<One sentence on the toolchain the item needs, and one on how a site with a
-licensed backend selects it, pointing at the Formal verification chapter of
-`tools/dv/doc/run-dv.adoc`.>
-----
-
 == Stage planning
 
 The canonical logical stage names are:
