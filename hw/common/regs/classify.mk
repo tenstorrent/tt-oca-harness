@@ -95,9 +95,12 @@ OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
 OCAH_REG_JSON_BLOCKS ?= hw/sys/smc
 OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 
-# Top-level address-space documentation is opt-in. Leaf register tables remain
-# under their existing adoc targets. Each entry reads presentation directives
-# from doc/memmap.toml and emits regs/gen/adoc/memory_map.adoc.
+# Address-space tables (rdlmap) are opt-in and distinct from the per-block
+# register tables that rdladoc already emits for every RDL. List a block here
+# only when it needs a composed window or aperture view. Leaf IPs keep
+# including their existing regs/gen/adoc/<block>.adoc tables and do not belong
+# here. Each entry reads presentation directives from doc/memmap.toml and
+# emits regs/gen/adoc/memory_map.adoc.
 OCAH_REG_MEMORY_MAP_BLOCKS ?= \
   hw/sys/sep \
   hw/sys/smc \
