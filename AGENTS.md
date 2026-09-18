@@ -189,6 +189,17 @@ bwrap: Can't mkdir parents for <repository path>: Read-only file system
 
 `unset OCAH_TOOLCHAIN_ROOTFS` to fall back to the container engine.
 
+### The toolchain sandbox carries no Python packages
+
+The image and the extracted rootfs both provide a bare `python3` with only the packages
+`tools/docker/Dockerfile` installs. Any build step importing `cryptography`,
+`ruamel.yaml` or similar fails there with `ModuleNotFoundError`.
+
+Keep such steps on the host, run the compile in the sandbox, and order the two so the
+host half produces what the compile consumes — as the SEP boot ROM does with
+`key-digests` and `oca-images` (`hw/sys/sep/bootrom/prod/README.md`). Adding a package
+to the Dockerfile does not reach the bwrap rootfs, which is extracted separately.
+
 ### Rebuilding the image invalidates existing firmware objects
 
 Only the Dockerfile's base image is digest-pinned; the packages installed on top of it
@@ -528,7 +539,7 @@ open files to compensate.
 
 Each of these is an auto-generated alias for the `ocah-`-prefixed target of the same name, so
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
-plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
+plus the matching `./scripts/docker-run.sh run-here make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 The internal GitLab mirror loads its parent pipeline from a separately access-controlled
 configuration project rather than from this repository, so a pull request cannot replace the

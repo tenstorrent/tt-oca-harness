@@ -118,7 +118,7 @@ The RISC-V toolchain is provided by the project container or selected via
 C test images are built via the standard dispatcher:
 
 ```bash
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make dv-fw-tests TARGET=smc
 make dv-fw-tests TARGET=smc TEST=version_id   # one test
 ```
@@ -155,7 +155,7 @@ Build the dummy ROM with its standalone Makefile:
 
 ```bash
 # From the repo root (OCAH_ROOT resolved automatically):
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make -C hw/sys/smc/bootrom/dummy
 ```
 
@@ -167,7 +167,7 @@ Build the production ROM from the same container (self-contained Makefile, not
 the shared `compile.mk` engine):
 
 ```bash
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make -C hw/sys/smc/bootrom/prod
 ```
 
@@ -185,15 +185,15 @@ The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) 
 The build is split into two halves so each can run in the correct environment:
 
 * `toolchain-images` — RISC-V/picolibc compilation; use the container toolchain when `RISCV_TOOLCHAIN` is unset.
-* `pack-images` — pure Python manifest packing via the `tt-boot-manifest` submodule (requires `uv`); runs on the host without the container.
+* `pack-images` — pure Python manifest packing via the `tt-oca-manifest` submodule (requires `uv`); runs on the host without the container.
 
 ```bash
 # OpenTitan SPI-host build (outputs to build_ot/):
 # Prefix with `scripts/docker-run.sh run` to use the container toolchain
 make -C hw/sys/sep/bootrom/prod ot-toolchain-images
 
-# Signed (secure boot) SPI flash image — requires the tt-boot-manifest submodule:
-# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+# Signed (secure boot) SPI flash image — requires the tt-oca-manifest submodule:
+# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 make -C hw/sys/sep/bootrom/prod secure_boot_spi
 
 # Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):
@@ -372,9 +372,23 @@ Open-source synthesis is Yosys (`yosys-slang` for SystemVerilog). It uses the
 same `flow.mk` tops as slang and Verilator: `dtp`, `sep`, `smc`, `smu`, and
 `aou`. `BLOCK=` selects one of those tops; it is not an IP name.
 
+`make synth-yosys-all` requires `yosys` on `PATH`. If it is not installed, Make
+prints a hint to use the container instead:
+
 ```bash
+# Native (yosys must be on PATH)
 make synth-yosys-all
 make synth-yosys-all BLOCK=smu TECH=ihp-sg13g2
+
+# Via the container
+./scripts/docker-run.sh run-here make synth-yosys-all
+```
+
+The PDK (`ihp-sg13g2` by default) is downloaded automatically by `ciel` on first
+run. To pre-download all supported PDKs:
+
+```bash
+make ocah-synth-pdks
 ```
 
 [WARNING]
@@ -385,8 +399,8 @@ and are not yet consumed by ABC.
 
 Discovery, `TECH=`, and the shared Bender filelist are documented in
 https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/README.md[`flows/synth/yosys/README.md`].
-Yosys runs through the EDA container by default; see
-https://github.com/tenstorrent/tt-oca-harness/blob/main/tools/docker/README.md[`tools/docker/README.md`].
+How to invoke the container is in
+https://github.com/tenstorrent/tt-oca-harness/blob/main/scripts/docker.md[`scripts/docker.md`].
 
 [[linting]]
 == Linting
@@ -417,7 +431,7 @@ How a block is discovered, how slang and Yosys share one filelist, and when
 to use the EDA container are in
 https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/README.md[`flows/synth/yosys/README.md`]
 and
-https://github.com/tenstorrent/tt-oca-harness/blob/main/tools/docker/README.md[`tools/docker/README.md`].
+https://github.com/tenstorrent/tt-oca-harness/blob/main/scripts/docker.md[`scripts/docker.md`].
 
 === Verilog
 
@@ -560,6 +574,28 @@ make format-shell-check
 ```
 
 In all cases, `SHELL_PATH` may be used to constrain the above.
+
+==== Format Nix with `nix fmt`
+
+Nix files (`*.nix`) are formatted with https://github.com/kamadorueda/alejandra[alejandra].
+To check formatting without modifying files:
+
+```bash
+make format-nix-check
+```
+
+To apply formatting in place:
+
+```bash
+make format-nix
+```
+
+Both commands invoke `nix fmt` under the hood via `scripts/docker-run.sh nix-fmt[-check]`,
+which runs in the nix environment rather than the firmware toolchain container.
+On hosts without nix installed, a NixOS container provides it automatically.
+
+CI runs `format-nix-check` on every pull request and push to `main`, reporting
+inline diff annotations through reviewdog.
 
 === Configuration Files
 

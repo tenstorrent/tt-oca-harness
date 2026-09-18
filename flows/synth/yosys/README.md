@@ -1,12 +1,11 @@
 # Open-source lint/synth/format flows
 
-Slang and verible Make targets are native-or-fail (tools must be on `PATH`);
-yosys synthesis is Docker-by-default. Covered blocks: the four `hw/sys`
-blocks (`smc`, `sep`, `smu`, `dtp`) plus vendored IP packages (currently
-`aou`). The EDA container image,
-[`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools), bundles
-`slang`, `yosys` + the `yosys-slang` plugin, and `verible`. See
-[`tools/docker/README.md`](../../../tools/docker/README.md) for how the
+All targets are native-or-fail (tools must be on `PATH`; a hint to use the
+container is printed on failure). Covered blocks:
+the four `hw/sys` blocks (`smc`, `sep`, `smu`, `dtp`) plus vendored IP
+packages (currently `aou`). The container bundles `slang`,
+`yosys` + the `yosys-slang` plugin, and `verible`. See
+[`scripts/docker.md`](../../../scripts/docker.md) for how the
 container is invoked.
 
 **Status: work in progress.** What is here is an initial set of scripts -
@@ -35,16 +34,17 @@ namespace, unconditionally, for every goal - `make lint-slang-all TARGET=smu` wo
 have no registers. `FORMAT_PATH` scopes formatting to a subtree (default
 `hw`); it is not called `PATH` for the same kind of reason - that would
 clobber the shell's own command-search path for every recipe. `make
-lint-slang*` / `format-sv*` / `lint-sv-verible` require the matching tool on
-`PATH` (or use `./scripts/docker-run.sh eda-run make …`). Only `make synth-yosys*`
-runs through Docker by default (`OCAH_EDA_IMAGE`, overridable), since few
-hosts have `yosys`+`yosys-slang`+an open PDK installed.
+lint-slang*` / `format-sv*` / `lint-sv-verible` / `synth-yosys*` all require the
+matching tool on `PATH`; if it is not found, Make prints a hint to use
+`./scripts/docker-run.sh run-here make …` and exits. `yosys` and `yosys-slang`
+are optional host installs — the container is the intended fallback for
+hosts that do not have them.
 
 For ad-hoc debugging, the container is also reachable directly:
 
 ```bash
-./scripts/docker-run.sh eda-run yosys --version
-./scripts/docker-run.sh eda-shell
+./scripts/docker-run.sh run-here yosys --version
+./scripts/docker-run.sh shell-here # Use 1-1 paths as bender flist uses absolute paths
 ```
 
 ## Lint (slang) vs. synth's elaboration (yosys)
@@ -75,35 +75,16 @@ make synth-yosys-all BLOCK=smu TECH=ihp-sg13g2   # default
 make synth-yosys-all BLOCK=smu TECH=sky130A      # once wired up (see below)
 ```
 
-The value is literally the PDK subdirectory name `hpretl/iic-osic-tools`
-itself uses: it bundles several (`ihp-sg13g2`, `sky130A`, `gf180mcuD`,
-`ihp-sg13cmos5l`) at `$PDK_ROOT/<name>`, selected by the `PDK` environment
-variable. `TECH` is forwarded into the container as `PDK=$(TECH)` (see
-`yosys.mk`), and `scripts/init_tech.tcl` reads `$::env(PDK)` back out.
+The value is the PDK name as used by `ciel` — `yosys.mk` passes it into the
+container as `PDK=$(TECH)`, and `scripts/init_tech.tcl` reads `$::env(PDK)`
+back out. Only `ihp-sg13g2` is currently supported. PDKs are downloaded on
+demand via `ciel build` into `PDK_ROOT` (default `local/pdks`). See
+[`pdks.md`](pdks.md) for install instructions and how to wire up a new PDK.
 
 Build output is TECH-scoped (`hw/<tree>/<block>/build/synth/<tech>/...`), so
 re-running with a different `TECH` never clobbers a previous PDK's results.
 `lint`/`format` have no PDK dimension, so their output stays flat
 (`build/lint/...`).
-
-### Adding a PDK
-
-1. Add `tech/<pdk>/tech.tcl` - the only PDK-specific data: `pdk_cells_lib`/
-   `pdk_sram_lib`/`pdk_io_lib` paths, the liberty file(s) (`tech_cells`/
-   `tech_macros`), the tie-off cell names (`tech_cell_tiehi`/`tech_cell_tielo`),
-   an optional `dont_use_list`, and the ABC constraint (`abc_constr`,
-   `abc_period_ps`) - see `tech/ihp-sg13g2/tech.tcl` for the shape. Each PDK
-   gets its own directory so it can grow beyond these two files (e.g. extra
-   corners, vendored macro views) without colliding with another PDK's names.
-2. If the PDK is already bundled in the image, nothing else changes:
-   `scripts/init_tech.tcl` is a thin, tech-agnostic dispatcher that resolves
-   `tech/$PDK/tech.tcl` from the environment and errors with the list of
-   known `tech/*` subdirectories on an unknown value.
-3. If it is not bundled, point `OCAH_EDA_IMAGE` at an image/tag that has it.
-
-`scripts/common.tcl`, `scripts/elab.tcl`, and `scripts/synth.tcl` never change
-for a new PDK - every tech-specific value is hidden behind the generic names
-`init_tech.tcl` + `tech/<pdk>/tech.tcl` define.
 
 ## Timing constraints (`constraints.sdc`) vs. the ABC driving-cell/load model
 
@@ -137,12 +118,6 @@ This repo's flow currently stops at Yosys synthesis, so the `.sdc` files are
 carried as genuine, validated documentation of block-level timing intent:
 ready to become real inputs the moment such a stage exists, rather than
 needing to be reverse-engineered from scratch later.
-
-A standalone post-synthesis OpenSTA run (source the SDC, check timing
-against the synthesized netlist, no P&R required) is a plausible, low-cost
-future addition - OpenSTA (`sta`) is already present in the EDA image used
-by this flow - but it was deliberately not wired up in this pass so this SDC
-work could land as pure documentation first.
 
 ## Layout
 
