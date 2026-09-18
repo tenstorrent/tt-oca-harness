@@ -225,7 +225,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 [cols="2,3,1,2,3,1",options="header",]
 |===
 |Requirement |Canonical tests |Groups |Coverage intent |Checker evidence |Credit
-|F1.1 TAP state machine: all sixteen states and legal TMS arcs, one-hot state |`dtp_sanity_test` |smoke, functional, basic_jtag |`tap_state_cg`, `tap_smoke_cg` |`CHK-TAP-STATE` aggregate from `dtp_tap_fsm_checker`, `CHK-TAP-RESET-TLR`, `CHK-TAP-GOTO` (SV-UVM); `ast_tap_*` formal corroboration |YES
+|F1.1 TAP state machine: all sixteen states and legal TMS arcs, one-hot state |`dtp_sanity_test` |smoke, functional, basic_jtag |`tap_state_cg`, `tap_smoke_cg` |SV-UVM: `CHK-TAP-STATE` aggregate from `dtp_tap_fsm_checker`, `CHK-TAP-RESET-TLR`, `CHK-TAP-GOTO`; cocotb: `CHK-TAP-STATE` per raw TMS step, `CHK-TAP-RESET-TLR`, `CHK-TAP-GOTO`, `CHK-TAP-VISIT-ALL`, `CHK-TAP-TLR-TMS5`; `ast_tap_*` formal corroboration |YES
 |F1.2 TAP reset: TRST, power-on reset, five TMS-high clocks; power-on reset and TRST each force Test-Logic-Reset alone |`dtp_jtag_trst_test`, `dtp_jtag_trst_por_independence_test`, `dtp_jtag_tlr_reset_test` |basic_jtag |`tap_smoke_cg` reset-source bins, `tap_state_cg` reset reachability |`CHK-TAP-TRST-ASYNC`, `CHK-TAP-TRST-TLR`, `CHK-TAP-POR-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TLR-TDR-DEFAULT`, `CHK-TLR-RESUME`, `CHK-IDCODE-RAW`, `CHK-IDCODE-RECOVERY`; `idcode` scoreboard feature |YES
 |F1.3 IDCODE: default after reset, explicit load, field values, marker bit |`dtp_jtag_idcode_test` |smoke, functional, basic_jtag |`tap_smoke_cg` IDCODE bins |`CHK-IDCODE-MARKER`, `CHK-IDCODE-MANUFACTURER`, `CHK-IDCODE-PART-NUMBER`, `CHK-IDCODE-VERSION`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`, `CHK-IDCODE-RECOVERY`; `idcode` scoreboard feature |YES
 |F1.4 Instruction decode; BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS; undefined opcodes select BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |basic_jtag |`jtag_instruction_cg`: all 64 opcodes, categories, disabled behavior |`CHK-IR-DECODE`, `+CHK-BYPASS-<opcode>+`, `CHK-BYPASS-DELAY`, `CHK-BYPASS-LATENCY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-UNDEF-NO-SELECT`; `ir_decode` and `bypass` scoreboard features |YES
@@ -509,12 +509,12 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`sanity_fsm_visit_chk` |Every targeted IEEE 1149.1 state and legal transition is observed on `jtag_ptap_state_o`
-|`sanity_bypass_latency_chk` |BYPASS (IR=0x00) yields exactly a 1-TCK TDI-to-TDO delay in Shift-DR
-|`sanity_scan_path_chk` |IR/DR scan sequence completes and the TAP returns to Run-Test/Idle cleanly
+|`sanity_fsm_visit_chk` |Every targeted IEEE 1149.1 state and legal transition is observed on `jtag_ptap_state_o`: each raw TMS step against the TAP reference model (`CHK-TAP-STATE`), each navigation landing on its target (`CHK-TAP-GOTO`), and all sixteen states within the pass (cocotb `CHK-TAP-VISIT-ALL`; SV-UVM the `dtp_tap_fsm_checker` closure)
+|`sanity_bypass_latency_chk` |BYPASS (IR=0x00) decodes as itself and yields exactly a 1-TCK TDI-to-TDO delay in Shift-DR (cocotb `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`; SV-UVM `CHK-BYPASS-LATENCY`)
+|`sanity_scan_path_chk` |IR/DR scan sequence completes, the TAP returns to Run-Test/Idle cleanly, and five TMS-high cycles force Test-Logic-Reset (`CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`)
 |===
 
-*Evidence*: SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO` required; `CHK-BYPASS-LATENCY`, the `CHK-IDCODE-*` records, and the `bypass` and `idcode` scoreboard features. cocotb: the state-visit, transition, and latency checks are plain assertions of the sequence (<<dtp-vplan-signoff-jtag-dispositions>>).
+*Evidence*: SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO` required; `CHK-BYPASS-LATENCY`, the `CHK-IDCODE-*` records, and the `bypass` and `idcode` scoreboard features. cocotb: `CHK-TAP-RESET-TLR`, `CHK-TAP-STATE`, `CHK-TAP-GOTO`, `CHK-TAP-VISIT-ALL`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-TAP-TLR-TMS5`, `CHK-NONVAC` required through the family checker, finalized once per pass; the raw TMS walks visit the Shift states, so the pin-level scan monitor stays off and the pass records no `CHK-SCAN-*` (<<dtp-vplan-signoff-jtag-dispositions>>).
 
 *Pass Criteria*: The TAP sequences correctly through all targeted states with every IEEE 1149.1 state visited and BYPASS showing 1-bit latency, with zero scoreboard/reference-model errors.
 
@@ -7413,7 +7413,7 @@ as `CHK-SB-IR-DECODE`, `CHK-SB-IDCODE`, and `CHK-SB-BYPASS`, and the
 [cols="1,2,3,2,1",options="header",]
 |===
 |Row |Tests |Named evidence |Coverage points |Credit
-|F1.1 TAP state machine |`dtp_sanity_test` |SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO` required; `bypass` and `idcode` scoreboard features. cocotb: the state-visit and transition checks are plain assertions of the sequence (<<dtp-vplan-signoff-jtag-dispositions>>) |`c_state_*` (the sixteen states), `c_arc_*` (the thirty-two legal arcs) |YES
+|F1.1 TAP state machine |`dtp_sanity_test` |SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO` required; `bypass` and `idcode` scoreboard features. cocotb: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-GOTO`, `CHK-TAP-VISIT-ALL`, `CHK-TAP-TLR-TMS5`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-NONVAC` required (<<dtp-vplan-signoff-jtag-dispositions>>) |`c_state_*` (the sixteen states), `c_arc_*` (the thirty-two legal arcs) |YES
 |F1.2 TAP reset |`dtp_jtag_trst_test`, `dtp_jtag_trst_por_independence_test`, `dtp_jtag_tlr_reset_test` |`CHK-TAP-TRST-ASYNC`, `CHK-TAP-TRST-TLR`, `CHK-TAP-POR-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TLR-TDR-DEFAULT`, `CHK-TLR-RESUME`, `CHK-IDCODE-RAW`, `CHK-IDCODE-RECOVERY`, `CHK-TAP-RESET-TLR`, `CHK-TAP-STATE` |`c_smoke_reset_source_trst`, `c_smoke_reset_source_tms_to_tlr`, `c_reset_trst_from_active`, `c_reset_tms5_from_active` |YES
 |F1.3 IDCODE |`dtp_jtag_idcode_test` |`CHK-IDCODE-MARKER`, `CHK-IDCODE-MANUFACTURER`, `CHK-IDCODE-PART-NUMBER`, `CHK-IDCODE-VERSION`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`; `idcode` scoreboard feature |`c_smoke_idcode_default_after_reset`, `c_smoke_idcode_explicit_instruction`, `c_smoke_idcode_marker_1` |YES
 |F1.4 Instruction decode and BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |`CHK-BYPASS-00`, `CHK-BYPASS-3F`, `CHK-BYPASS-LATENCY`, `CHK-BYPASS-DELAY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-IR-DECODE`, `CHK-UNDEF-NO-SELECT`, `CHK-SCAN-DR-LEN` (the one-bit and zero-bit chain lengths); `ir_decode` and `bypass` scoreboard features |`c_ir_opcode_*` (all sixty-four encodings), `c_ir_category_*`, `c_ir_behavior_enabled_instruction`, `c_ir_behavior_undefined_to_bypass` |YES
@@ -7433,8 +7433,9 @@ environment variable on cocotb and a plusarg of the same name on SV-UVM, and
 a run with either set must fail:
 
 * `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` corrupts every family expectation
-  (loopback, bypass delay, decoded instruction, TMP persistence) in every
-  scenario that attaches the family checker.
+  (loopback, bypass delay, decoded instruction, TMP persistence, the sanity
+  scenario's navigation targets and state-visit count) in every scenario
+  that attaches the family checker.
 * `DTP_JTAG_TAP_CHECKER_NEGATIVE` arms a wrong IDCODE and a wrong TAP-state
   prediction in the reset-family scenarios and, on SV-UVM, in the sanity
   scenario's TAP checker.
@@ -7442,6 +7443,7 @@ a run with either set must fail:
 [source,bash]
 ----
 DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_extest_test
+DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
 DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_tlr_reset_test
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
 ----
@@ -7455,7 +7457,7 @@ text, with where the behavior is proven and the scope of any exclusion.
 [cols="2,3,3",options="header",]
 |===
 |Checker |Realization |Disposition
-|`sanity_fsm_visit_chk`, `sanity_bypass_latency_chk`, `sanity_scan_path_chk` |cocotb: plain assertions of the sequence with no attached checker, so `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` does not reach them and any mismatch fails the pass directly. SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO`, `CHK-BYPASS-LATENCY`, and the `CHK-IDCODE-*` records through the env checker |Named evidence on the SV-UVM twin; the cocotb sequence records no named evidence
+|`sanity_fsm_visit_chk`, `sanity_bypass_latency_chk`, `sanity_scan_path_chk` |cocotb: the family checker records `CHK-TAP-STATE` for every raw TMS step, `CHK-TAP-GOTO` after every navigation, `CHK-TAP-VISIT-ALL` for the sixteen states of the pass, `CHK-IR-DECODE` and `CHK-BYPASS-DELAY` for the BYPASS scans, and `CHK-TAP-TLR-TMS5` for the closing TMS-high walk; the raw walks visit the Shift states, so the pin-level scan monitor stays off, and the pass asserts the sixteen state visits. SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO`, `CHK-BYPASS-LATENCY`, and the `CHK-IDCODE-*` records through the env checker, with the thirty-two-arc closure asserted by `dtp_tap_fsm_checker` |Named evidence in both realizations; the arc closure and the IDCODE records are the SV-UVM twin's
 |`extest_output_drive_chk`, `extest_capture_chk`, `intest_input_drive_chk`, `intest_capture_chk`, `clamp_output_hold_chk`, `clamp_glitch_free_chk`, `highz_oen_deassert_chk`, `highz_recover_chk`, `sample_capture_chk`, `preload_no_drive_chk`, `preload_retain_chk`, `extest_train_pattern_chk`, `extest_train_no_disturb_chk`, `extest_pulse_single_chk`, `extest_pulse_timing_chk` |The bench models no boundary cells: the BSR is the compact identity loopback of `DtpScanModel` (TB_ARCH, DUT-local model ownership). The scenarios prove instruction decode, the chain select and the TAP's capture/shift/update strobes across each scan (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`), the Run-Test/Idle launch strobe of EXTEST_TRAIN (`CHK-BSR-RTI`), and capture and shift through the loopback (`CHK-BSR-LOOPBACK`), plus the bypass path of CLAMP and HIGHZ; pin drive, output enables, and glitch-free transitions have no observable on this bench, and each row's text states the protocol evidence that stands in for them |Out of bench scope: boundary-cell pin behavior belongs to the integrating design's cells; the DTP carries instruction decode, chain select, and the scan strobes, which these fifteen rows credit through `CHK-BSR-*`
 |`inv_bypass_no_side_effect_chk` |No direct check; the `ir_decode` scoreboard feature and the bypass reference model bound what INV_BYPASS selects |Credited through the scoreboard features
 |===
@@ -8013,7 +8015,8 @@ the disposition tables of the component subsections.
 |===
 |Family (scenarios) |Stimulus and reproduction |Expected values and checker |Design observability |Interface legality |Must-fail proof
 |Smoke and basic JTAG with the family checker (the section 0 scenarios with the family checker) |Sixteen passes per run, `scenario_seed = seed {plus} pass`, `DTP_RANDOM_COUNT` seeded patterns per pass, TCK and system-clock periods drawn by the test configuration; one seed reproduces one leaf |Opcodes, TAP-state encodings, and IDCODE fields transcribed from the PTAP and interface-unit documents; the VIP TAP model; the family checker with required IDs and the passive scan monitor cross-check |`jtag_ptap_state_o`, the decoded instruction, the BSR loopback, and the TMP state through `dtp_tb_if` |The VIP master driver; `ocah_jtag_sva` on the primary TAP |`DTP_JTAG_FAMILY_CHECKER_NEGATIVE`, `DTP_JTAG_TAP_CHECKER_NEGATIVE`
-|`dtp_sanity_test`, `dtp_jtag_undef_instr_test` |As above |cocotb: plain assertions of the sequence; SV-UVM: the TAP checker and the `bypass` and `idcode` features |As above |As above |SV-UVM only (<<dtp-vplan-signoff-jtag-dispositions>>)
+|`dtp_sanity_test` |As above |cocotb: the family checker without the scan monitor, its raw TMS walks visiting the Shift states; SV-UVM: the TAP checker and the `bypass` and `idcode` features |As above |As above |cocotb: `DTP_JTAG_FAMILY_CHECKER_NEGATIVE`; SV-UVM: `DTP_JTAG_TAP_CHECKER_NEGATIVE` (<<dtp-vplan-signoff-jtag-dispositions>>)
+|`dtp_jtag_undef_instr_test` |As above |cocotb: plain assertions of the sequence; SV-UVM: the TAP checker and the `bypass` and `idcode` features |As above |As above |SV-UVM only (<<dtp-vplan-signoff-jtag-dispositions>>)
 |Debug TDRs (the section 1 scenarios) |As above; seeded IC_RESET patterns, clock-stop combinations, CAPS write-attempt patterns |TDR layouts and pin defaults from the PTAP document, the elaboration constants, the DV geometry table; cocotb: plain assertions; SV-UVM: the family checker |The TDR readbacks and the flattened pins through `dtp_tb_if`, polled across the synchronizer |The VIP master driver; `ocah_jtag_sva` |SV-UVM only (<<dtp-vplan-signoff-dbg-dispositions>>)
 |JTAG2AXI bridges (the scenarios of sections 2 to 4) |As above; seeded addresses, data, strobes, operation mixes, error beats, skew and stall lengths |The responder memory backdoor, the DV geometry table, the armed error responses; the shared `ocah_axi_vip` passive environment per bridge port with required IDs and stream minimums; the sequence's own fault-beat judgements; SV-UVM: the bridge request and status features |The three bridge ports' monitors, the TDR status, and the FSM, pending, and CDC flags through `dtp_tb_if` |The VIP slave responders; `ocah_axi_sva` per bus |`DTP_AXI_SCOREBOARD_NEGATIVE`, `DTP_J2A_GEOMETRY_NEGATIVE`, `DTP_J2A_STATUS_BIT_NEGATIVE`; SV-UVM `DTP_J2A_REF_MODEL_NEGATIVE`
 |Scan routing (the section 5 scenarios) |As above; seeded SIB patterns, disable masks, 3DCR payloads, marker words, downstream register values |The SIB and STAP models programmed from the sequence's intent; the downstream device table; the family checker |The host scan controls, `tms` and `tdo_oen` per port, the chain images, and the downstream devices' records |The VIP master driver and VIP slave devices; `ocah_jtag_sva` |`DTP_JTAG_FAMILY_CHECKER_NEGATIVE` in both realizations; the cocotb matrix through its ledger only (<<dtp-vplan-signoff-scan-dispositions>>)
