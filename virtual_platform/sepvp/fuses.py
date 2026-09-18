@@ -131,9 +131,8 @@ _TOML_REG_MAP = {
     "STATUS_RPT": ("uint32", "status_rpt"),
     "SEP_ROM_CTRL": ("rom_ctrl", "sep_rom_ctrl"),
     "SEP_SPI_CTRL": ("spi_ctrl", None),
-    # The model used to call these PUBLIC_KEY_0/1; they are the RDL's
-    # CHIPLET_PUBK_HASH0/1. Both spellings are accepted so an existing TOML
-    # written against the old name keeps working.
+    # CHIPLET_PUBK_HASH0/1 is the RDL's name, PUBLIC_KEY_0/1 the model's; both
+    # spellings map to the same fuses.
     "CHIPLET_PUBK_HASH0": ("array8", "chiplet_pubk_hash0"),
     "CHIPLET_PUBK_HASH1": ("array8", "chiplet_pubk_hash1"),
     "PUBLIC_KEY_0": ("array8", "chiplet_pubk_hash0"),

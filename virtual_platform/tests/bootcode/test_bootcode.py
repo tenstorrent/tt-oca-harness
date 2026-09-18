@@ -102,14 +102,7 @@ def test_sep_status_can_be_disabled(vp, bootcode_elf):
     """
     t = vp(_cfg("boot_no_status", bootcode_elf, boot="primary", sep_status=False))
     t.spawn()
-    # 'COLD' is an early SIM_OUT marker; assert it arrives and that no SEP_STATUS line did.
-    # Status lines are now bare (no "[SEP_STATUS] - " tag), so the negative assertion matches
-    # the decoded line *shape* instead of the vanished prefix.
+    # 'COLD' is an early SIM_OUT marker. Status lines carry no prefix tag, so the
+    # negative assertion matches the decoded line's shape.
     t.expect(SIM_OUT_PREFIX + r"\bCOLD\b", error_patterns=[SEP_STATUS_ANY_RE], timeout=TIMEOUT)
     t.close()
-
-
-# The full-boot-to-BL1 milestone this file used to hold as a skipped placeholder
-# now lives in test_bootcode_oca.py, which stages real signed and encrypted OCA
-# images and reaches SEP_MSG_STARTING_BL1. Keeping the placeholder would report a
-# coverage gap that has been closed.

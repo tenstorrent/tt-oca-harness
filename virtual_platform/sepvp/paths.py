@@ -66,7 +66,7 @@ OCA_ROM_KEY_IMAGES = {
     **{n: BOOTCODE_DIR / "build" / f"oca_rom_key{n}_boot.bin" for n in range(1, 6)},
 }
 
-# --- SEP DV firmware engine (replaces the old fw/sep/tests tree) --------------
+# --- SEP DV firmware engine ---------------------------------------------------
 # Tests live in hw/sys/sep/dv/fw/tests/ and are built by the shared engine
 # (`make ocah-dv-fw-tests TARGET=sep TEST=<name>` at the repo root).
 FW_DIR = OCAH_ROOT / "hw" / "sys" / "sep" / "dv" / "fw"

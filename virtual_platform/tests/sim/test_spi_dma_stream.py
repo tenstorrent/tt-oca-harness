@@ -57,10 +57,7 @@ def _require_prereqs(request):
         pytest.skip(f"test firmware dir missing ({FW_DIR})")
 
 
-# Number of seconds the VP is allowed to run. sep-vp never self-terminates: tt-oca-harness-model 0ec43f9cc
-# replaced the self-timing sim-unstaged/sim-staged targets with a plain `sim` that runs the
-# VP directly, so the timeout has to come from here. Mirrors the upstream default this test
-# used to get for free.
+# sep-vp never self-terminates, so the run limit comes from here.
 SIM_TIMEOUT = 60
 
 

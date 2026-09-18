@@ -21,16 +21,15 @@ import pexpect
 
 log = logging.getLogger("sepvp")
 
-# Decoded status/console lines lost their CSML prefixes in tt-oca-harness-model 0ec43f9cc, which folded
-# sep_status_report + sep_virt_console into sep_scratch_cold and emits straight to std::cout:
+# A decoded status/console line carries the CSML prefix or not, depending on the model
+# generation:
 #
-#   old:  [174010 ns] [INFO 2] [SEP_STATUS] - BL0 ERROR    0x0213 SEP_MSG_MANIFEST_LOAD_FAILED
-#   new:                                      BL0 ERROR    0x0213 SEP_MSG_MANIFEST_LOAD_FAILED
+#   with:     [174010 ns] [INFO 2] [SEP_STATUS] - BL0 ERROR    0x0213 SEP_MSG_MANIFEST_LOAD_FAILED
+#   without:                                      BL0 ERROR    0x0213 SEP_MSG_MANIFEST_LOAD_FAILED
 #
-# Both prefixes are matched optionally so one harness drives either VP generation (useful when
-# bisecting across the bump). Without the prefix to anchor on, the patterns instead pin the full
-# line shape -- stage, padded severity, 4-hex code, SEP_MSG_ name -- so ordinary SIM_OUT text
-# that happens to contain the word ERROR cannot masquerade as a production status line.
+# Both prefixes are optional so one harness drives either. With no prefix to anchor on, the
+# patterns pin the full line shape -- stage, padded severity, 4-hex code, SEP_MSG_ name -- so
+# SIM_OUT text containing the word ERROR cannot masquerade as a production status line.
 SEP_STATUS_PREFIX = r"(?:\[SEP_STATUS\] - )?"
 SIM_OUT_PREFIX = r"(?:\[SIM_OUT\] - )?"
 
