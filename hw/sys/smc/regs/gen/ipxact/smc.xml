@@ -7238,7 +7238,7 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>read_status</ipxact:name>
-              <ipxact:description>0: No Error.  1: Logic error, assert read_go when read is not enabled</ipxact:description>
+              <ipxact:description>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</ipxact:description>
               <ipxact:bitOffset>26</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
