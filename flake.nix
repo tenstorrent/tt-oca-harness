@@ -131,12 +131,17 @@
             tmpdir="$(mktemp -d)/"
             tmpdir_rel="''${tmpdir#/}"
             trap 'rm -rf "$tmpdir"' EXIT
+            if [[ -n "''${NIX_FMT_CHECK_NO_COLOUR:-}" ]]; then
+              colour_flag="--color=never"
+            else
+              colour_flag="--color=always"
+            fi
             for f in "$@"; do
               rel="''${f#./}"
               dst="$tmpdir$rel"
               mkdir -p "$(dirname "$dst")"
               alejandra --quiet - < "$f" > "$dst"
-              diff_out=$(git diff --no-index --color=always -- "$f" "$dst" 2>&1 || true)
+              diff_out=$(git diff --no-index "$colour_flag" -- "$f" "$dst" 2>&1 || true)
               if [ -n "$diff_out" ]; then
                 echo "''${diff_out//$tmpdir_rel/}"
                 failed=1

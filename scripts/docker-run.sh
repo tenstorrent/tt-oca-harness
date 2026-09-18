@@ -42,6 +42,8 @@
 #                               (space-separated; each bound at its own path)
 set -euo pipefail
 
+[[ -n ${OCAH_DOCKER_RUN_CI:-} ]] && set -x
+
 # -P: the physical path, so symlinked checkout parents don't produce a path
 # that fails to resolve inside the container's bind mount.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -67,6 +69,11 @@ run | run-here | verify | shell)
   if [[ -n "${OCAH_TOOLCHAIN_ROOTFS:-}" ]] &&
     [[ -x "${OCAH_TOOLCHAIN_ROOTFS}/bin/riscv64-unknown-elf-gcc" ]] &&
     command -v bwrap >/dev/null 2>&1; then
+    NEEDS_ENGINE=0
+  fi
+  ;;
+nix-fmt | nix-fmt-check | nixos-shell)
+  if command -v nix >/dev/null 2>&1; then
     NEEDS_ENGINE=0
   fi
   ;;
@@ -192,7 +199,13 @@ image_hash() {
   flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
   nixos_run "nix eval \$(pwd)#containerHashes.$flake_output 2> /dev/null" | tr -d '"'
 }
-IMAGE=$NIX_IMAGE_NAME:$(image_hash)
+# Don't need to get image hash for Formatter/NixOS Shell
+case "${1:-}" in
+nixos-shell | nix-fmt | nix-fmt-check)
+  IMAGE=$NIX_IMAGE_NAME:$(image_hash)
+  ;;
+esac
+
 
 # Open a shell in the Nix Container - even on a nix-enabled host
 nixos_shell() {

@@ -16,7 +16,6 @@ configJson = runCommand "config.json" {} ''
 config = builtins.fromJSON (builtins.readFile configJson);
 
 vp_version = config.env.BOOST_VERSION;
-
 version = if builtins.pathExists vp_mk then vp_version else "1.84.0";
 
 boost=boost182.overrideAttrs(old: {
