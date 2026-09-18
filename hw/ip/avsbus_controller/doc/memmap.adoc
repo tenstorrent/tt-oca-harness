@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[avsbus-controller-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 The AVSBus Controller provides a comprehensive register interface
 through a 256-byte address space (0x00-0xFF) accessible via AXI4-Lite or
@@ -18,7 +18,7 @@ access patterns. The interface supports both polling and
 interrupt-driven operation modes, with extensive status reporting and
 diagnostic capabilities for robust system integration and debugging.
 
-====== Register Address Map
+=== Register Address Map
 
 .Register Address Map
 [width="100%",cols="10%,25%,10%,55%",options="header",]
@@ -67,7 +67,7 @@ controls
 |Reserved address space for future extensions
 |=====================================================================================
 
-====== Address Alignment and Access Requirements
+=== Address Alignment and Access Requirements
 
 *Address Alignment*: - All registers aligned to 32-bit boundaries
 (addresses multiples of 4) - 256-byte total address space (0x00-0xFF) -
@@ -84,7 +84,7 @@ are inherently atomic - Status registers provide consistent snapshots of
 hardware state - No special atomic access patterns required for normal
 operation
 
-====== Reset Values and Power-On Behavior
+=== Reset Values and Power-On Behavior
 
 .Register Reset Values
 [width="100%",cols="30%,20%,50%",options="header",]
@@ -117,7 +117,7 @@ operation
 |AVS_CONFIG |0x00000001 |GPIO enabled by default
 |=====================================================================================
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

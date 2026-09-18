@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[ip-reference]]
+= IP Reference
+:description: Reference documentation for reusable IP blocks in OCAH.
+
+This catalogue collects the reusable IP reference pages published in the TRM.
+The subsystem chapters describe how these blocks are integrated into OCAH.
+
+== Management and I/O
+
+* xref:ip:avsbus_controller/doc/index.adoc[AVSBus Controller]
+* xref:ip:axi_lite_mailbox_unit/doc/index.adoc[AXI-Lite Mailbox Unit]
+* xref:ip:gpio/doc/index.adoc[GPIO]
+* xref:ip:i2c/doc/index.adoc[I2C]
+* xref:ip:log_engine/doc/index.adoc[Log Engine]
+* xref:ip:system_timer_octs/doc/index.adoc[System Timer OCTS]
+* xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
+* xref:ip:uart_16550/doc/index.adoc[UART 16550]
+
+== Security
+
+* xref:ip:drbg/doc/index.adoc[Deterministic Random Bit Generator (DRBG)]
+* xref:ip:efuse/doc/index.adoc[eFuse]
+* xref:ip:entropy_source/doc/index.adoc[Entropy Source]
+* xref:ip:key_manager/doc/index.adoc[Key Manager]
+* xref:ip:scrambler/doc/index.adoc[Scrambler]
+
+== Debug and cross-trigger
+
+* xref:ip:jtag_intf_unit/doc/index.adoc[JTAG Interface Unit]
+* xref:ip:jtag_ptap/doc/index.adoc[JTAG PTAP]
+* xref:ip:jtag_stap/doc/index.adoc[JTAG STAP]
+* xref:ip:cross_trigger_network/doc/index.adoc[Cross-Trigger Network]
+* xref:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port]
+* xref:ip:cross_trigger_matrix/doc/index.adoc[Cross-Trigger Matrix]
+
+== Interconnect infrastructure
+
+* xref:ip:axi_filter/doc/index.adoc[AXI Filter]

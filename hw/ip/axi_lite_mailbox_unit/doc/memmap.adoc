@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Address Space Organization
+=== Address Space Organization
 
 Each mailbox aperture occupies a dedicated 2KB (0x800) address space.
 The total address space is 0x20000 bytes supporting up to 64 mailbox
@@ -35,7 +35,7 @@ The two apertures of a pair are the two ends of the same pair of FIFOs:
 paired inbound aperture pops, and vice versa. Both ends are reachable from the
 same AXI4-Lite slave port.
 
-====== Per-Mailbox Register Map
+=== Per-Mailbox Register Map
 
 Within each 2KB mailbox aperture, registers are organized as follows.
 Offsets are spaced by `DATA_WIDTH`/8, so they are 8 bytes apart in the
@@ -60,7 +60,7 @@ not registered, so reads return 0 with OKAY
 
 Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.
 
-====== Address Examples
+=== Address Examples
 
 For a system with 2 mailbox pairs (NUM_MAILBOXES = 2) at base address
 0x10000000:
@@ -75,7 +75,7 @@ For a system with 2 mailbox pairs (NUM_MAILBOXES = 2) at base address
 |1            |0x10001800 - 0x10001FFF     |Inbound Mailbox 1
 |===============================================================
 
-====== Specific Register Examples:
+=== Specific Register Examples:
 
 .Register Address Example (Mailbox Pair 0)
 [width="60%",cols="20%,40%,40%",options="header"]
@@ -93,7 +93,7 @@ For a system with 2 mailbox pairs (NUM_MAILBOXES = 2) at base address
 |...          |...             |Inbound
 |=================================================
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

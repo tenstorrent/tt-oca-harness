@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i3c-controller]]
-==== I3C Core Controller
+= I3C Core Controller
 
-===== Overview
+== Overview
 
 The OCA I3C Core Controller is a comprehensive MIPI I3C/I2C communication
 controller providing full HCI (Host Controller Interface) v1.2 compliant
@@ -13,7 +13,7 @@ Based on the CHIPS Alliance i3c-core with extensive OCA enhancements, this
 controller enables high-speed inter-chip communication with advanced features
 including In-Band Interrupts, Common Command Codes, and device recovery.
 
-===== Description and Features
+== Description and Features
 
 * *MIPI Specification Compliance*: Full compliance with I3C Basic v1.0/v1.1.1,
 I3C HCI v1.2, and TCRI v1.0 recovery specifications
@@ -44,7 +44,17 @@ ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]
 
+ifdef::backend-html5[]
+include::partial$i3ccore_wrap/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
 // include::interface.adoc[]
+ifdef::backend-html5[]
+include::partial$i3ccore_wrap/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]
 // include::programming.adoc[]

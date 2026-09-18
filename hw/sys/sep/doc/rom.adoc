@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[sep-rom]]
-=== Boot ROM
+= Boot ROM
 
+[[sep-rom]]
 The SEP maps a 64 KiB immutable Boot ROM aperture at `0x1004_0000` through
 `0x1004_FFFF`. The SEP CPU wrapper sets the VeeR EL2 `RESET_VEC` parameter to
 the base of this region, so a cold boot begins in the BL0 Root-of-Trust
 firmware.
 
-==== ROM architecture
+== ROM architecture
 
 The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
 dedicated path outside the SEP local AXI crossbar. The SEP ROM interface shim
@@ -36,14 +36,14 @@ BL0 stages the selected manifest and payload in SEP SRAM beginning at
 The CPU load/store unit cannot access ICCM, so BL0 cannot populate it with an
 ordinary software copy.
 
-==== Integrity features
+== Integrity features
 
 The open generic ROM model has a 64-bit data path and no ECC or integrity-error
 sideband. Technology-specific integrity behavior is therefore outside this
 integration's visible hardware contract. The first-generation SEP has no ROM
 patching facility.
 
-==== Firmware behavior
+== Firmware behavior
 
 The production BL0 firmware selects SPI flash or an SMC-staged image from the
 captured boot straps. It validates the manifest, applies the lifecycle and
