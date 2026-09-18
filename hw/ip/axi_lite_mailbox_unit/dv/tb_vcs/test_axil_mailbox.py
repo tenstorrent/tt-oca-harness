@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import sys
+from typing import Callable
 
 import cocotb
 from cocotb.clock import Clock
@@ -177,7 +178,7 @@ async def mailbox_sanity_test(dut):
         assert rcvd == test_datas[num * 2 + 1], (
             f"Test failed for inbound mailbox {num}. Expected {hex(test_datas[num * 2 + 1])}, got {hex(rcvd)}"
         )
-        # TODO: Check o_int_mailbox_interrupt
+        # TODO: check inbound_interrupt_o
         log.info(f"Inbound mailbox {num} test passed")
 
     # Disable inbound mailbox IRQs
@@ -194,7 +195,7 @@ async def mailbox_sanity_test(dut):
     for i in range(NUM_MAILBOXES):
         await reg_write(dut, OUTBOUND_MAILBOX_0_IRQEN_REG_ADDR + (0x1000 * i), irq_en.val)
 
-    # Test all outbound mailboxes, cant trigger an internal interrupt, so we just check the data written and read
+    # Test all outbound mailboxes, can't trigger an internal interrupt, so we just check the data written and read
     offset = NUM_MAILBOXES * MAILBOX_FIFO_DEPTH  # Offset to start of outbound test data
     for num in range(NUM_MAILBOXES):
         log.info(f"Testing outbound mailbox {num}")
@@ -221,10 +222,8 @@ async def mailbox_sanity_test(dut):
 
 if cocotb.SIM_NAME:
     sanity_tests = [mailbox_sanity_test]
-    stress_tests = [
-        # Add mailbox-specific stress tests here
-    ]
-    tests = []
+    stress_tests: list[Callable] = []
+    tests: list[Callable] = []
 
     if "+stress" in cocotb.argv:
         tests += sanity_tests

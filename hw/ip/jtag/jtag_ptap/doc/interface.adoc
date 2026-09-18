@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ptap-interface]]
-==== Interface
 
-===== Instruction Encodings
+=== Instruction Encodings
 
 The PTAP uses 6-bit instruction encodings. During the capture phase, the least
 significant bit (closest to TDO) of the instruction register always presents a 1
@@ -41,7 +40,7 @@ register always return 0s.
 **NOTE:** All instruction encodings _not_ explicitly defined in this table map
 to the BYPASS instruction.
 
-===== Signal Interface
+=== Signal Interface
 
 [cols="<,<,<,<",options="header"]
 |===
@@ -71,12 +70,19 @@ to the BYPASS instruction.
 |pwr_on_rst_ni |Input |1 |Power-on reset (active low), AND-combined with TRST
 |clk_i |Input |1 |System clock for AXI bridge modules
 |rst_n_i |Input |1 |System reset for AXI bridge modules (active low)
-|feat_ctrl_i |Input |64 |Lifecycle feature control vector, enable-polarity (1 = feature enabled); security gating for debug interfaces
+|smc_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SMC fabric JTAG2AXI bridge (1 = bridge disabled)
+|smc_otp_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SMC OTP JTAG2AXIL bridge (1 = bridge disabled)
+|sep_otp_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SEP OTP JTAG2AXIL bridge (1 = bridge disabled)
 |===
 
-===== Dependencies
+=== Dependencies
 
 The PTAP depends on the following components:
 
-* `hw/common/och_prim` - Primitive cells (synchronizers, clock gating)
-* `hw/ip/jtag/jtag_stap` - Secondary TAP (when 3DIC support enabled)
+* https://github.com/tenstorrent/tt-oca-harness/tree/829b09cf54dde1969dc309733f97f8fb32cefbdd/hw/common/och_prim[`hw/common/och_prim`] — Primitive cells (synchronizers, clock gating)
+ifdef::backend-html5[]
+* xref:ip:jtag_stap/doc/index.adoc[`hw/ip/jtag/jtag_stap`] — Secondary TAP (when 3DIC support enabled)
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* <<jtag-stap,`hw/ip/jtag/jtag_stap`>> — Secondary TAP (when 3DIC support enabled)
+endif::backend-pdf[]

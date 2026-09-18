@@ -13,12 +13,14 @@ class dtp_jtag2axi_smc_axi_series_write_incr_narrow_test(dtp_base_test):
     """Run the `series_write_incr_narrow` SMC fabric JTAG2AXI scenario."""
 
     # Shared AXI checker: passive bus monitors + reference model compare every
-    # observed transaction; the required evidence IDs and per-stream minimum
-    # compared-transaction counts below make a silent no-op run fail at
-    # finalization.
+    # observed transaction, and every beat's strobes must match the lanes its
+    # address selects (the stimulus wstrb intent); the required evidence IDs
+    # and per-stream minimum compared-transaction counts below make a silent
+    # no-op run fail at finalization.
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-STRB",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
     )
@@ -28,9 +30,9 @@ class dtp_jtag2axi_smc_axi_series_write_incr_narrow_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_smc_axi_wr_test_seq,
             "series_write_incr_narrow",
-            specific_env="DTP_JTAG2AXI_SMC_AXI_SERIES_WRITE_INCR_NARROW_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SMC_AXI_SERIES_WRITE_INCR_NARROW_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="series_write_incr_narrow",
         )
         for seq in sequences:

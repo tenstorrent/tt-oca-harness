@@ -372,42 +372,6 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS
 
-    // reg - sep_cpu_ctrl.SEP_STRAPS
-    class sep_cpu_ctrl__SEP_STRAPS extends uvm_reg;
-        `uvm_object_utils(sep_cpu_ctrl__SEP_STRAPS)
-        rand uvm_reg_field test_en;
-        rand uvm_reg_field bypass_mem_repair;
-
-        function new(string name = "sep_cpu_ctrl__SEP_STRAPS");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.test_en = uvm_reg_field::type_id::create("test_en");
-            this.test_en.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.bypass_mem_repair = uvm_reg_field::type_id::create("bypass_mem_repair");
-            this.bypass_mem_repair.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_cpu_ctrl__SEP_STRAPS
-
-    // reg - sep_cpu_ctrl.RAS_BANK_INFO
-    class sep_cpu_ctrl__RAS_BANK_INFO extends uvm_reg;
-        `uvm_object_utils(sep_cpu_ctrl__RAS_BANK_INFO)
-        rand uvm_reg_field bank_chip;
-        rand uvm_reg_field bank_instance;
-
-        function new(string name = "sep_cpu_ctrl__RAS_BANK_INFO");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.bank_chip = uvm_reg_field::type_id::create("bank_chip");
-            this.bank_chip.configure(this, 4, 0, "RW", 0, 'h0, 1, 1, 0);
-            this.bank_instance = uvm_reg_field::type_id::create("bank_instance");
-            this.bank_instance.configure(this, 4, 4, "RW", 0, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_cpu_ctrl__RAS_BANK_INFO
-
     // reg - sep_cpu_ctrl.SEP_SW_DEBUG
     class sep_cpu_ctrl__SEP_SW_DEBUG extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_SW_DEBUG)
@@ -641,8 +605,6 @@
         rand sep_cpu_ctrl__SMU_REGION_SIZE SMU_REGION_SIZE;
         rand sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS SMC_FUSE_SENSE_STATUS;
         rand sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS SEP_FUSE_SENSE_STATUS;
-        rand sep_cpu_ctrl__SEP_STRAPS SEP_STRAPS;
-        rand sep_cpu_ctrl__RAS_BANK_INFO RAS_BANK_INFO;
         rand sep_cpu_ctrl__SEP_SW_DEBUG SEP_SW_DEBUG;
         rand sep_cpu_ctrl__SEP_NMI_VEC SEP_NMI_VEC;
         rand sep_cpu_ctrl__SEP_NMI_VEC_LOCK SEP_NMI_VEC_LOCK;
@@ -776,16 +738,6 @@
 
             this.SEP_FUSE_SENSE_STATUS.build();
             this.default_map.add_reg(this.SEP_FUSE_SENSE_STATUS, 'h150);
-            this.SEP_STRAPS = sep_cpu_ctrl__SEP_STRAPS::type_id::create("SEP_STRAPS");
-            this.SEP_STRAPS.configure(this);
-
-            this.SEP_STRAPS.build();
-            this.default_map.add_reg(this.SEP_STRAPS, 'h160);
-            this.RAS_BANK_INFO = sep_cpu_ctrl__RAS_BANK_INFO::type_id::create("RAS_BANK_INFO");
-            this.RAS_BANK_INFO.configure(this);
-
-            this.RAS_BANK_INFO.build();
-            this.default_map.add_reg(this.RAS_BANK_INFO, 'h170);
             this.SEP_SW_DEBUG = sep_cpu_ctrl__SEP_SW_DEBUG::type_id::create("SEP_SW_DEBUG");
             this.SEP_SW_DEBUG.configure(this);
 

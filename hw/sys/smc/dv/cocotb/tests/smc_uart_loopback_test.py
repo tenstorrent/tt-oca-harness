@@ -24,6 +24,9 @@ class smc_uart_loopback_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the TX-empty poll is timing-dependent.
+            min_csr_accesses=7,
             csr_accesses=seq.accesses,
             proxy=False,
             details=(

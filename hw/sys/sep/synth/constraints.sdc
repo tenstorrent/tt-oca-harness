@@ -19,9 +19,8 @@
 #   - The entropy clock-tree section below (ENTROPY_ROSC_CLK /
 #     ENTROPY_SHARED_RO / per-tap generated clocks) targets post-synthesis
 #     standard-cell instances by hierarchical path and by cell reference name
-#     (`ref_name == gdffqb`, a toggle-flop primitive). That cell does not
-#     exist in the IHP SG13G2 library this repo currently targets, and none
-#     of these `get_pins` / `get_cells` lookups resolve pre-synthesis.
+#     (`ref_name == prim_dffrxq`, a resettable-flop primitive). None of these
+#     `get_pins` / `get_cells` lookups resolve pre-synthesis.
 #     `entropy_source` inside `sep_crypto` is currently blackboxed, so this
 #     section is kept as documentation of the intended clock topology for
 #     whichever technology/EDA flow eventually implements it, not as a
@@ -86,7 +85,7 @@ create_clock -add -name SEPCLK            -period $clock_periods(SYSCLK_PERIOD) 
 # crosses to it from SEPCLK through a synchronizer and an async FIFO.
 create_clock -add -name REFCLK            -period $clock_periods(REFCLK_PERIOD)                [get_ports "clk_ref_i"]
 create_clock -add -name WDTCLK            -period $clock_periods(WDTCLK_PERIOD)                [get_ports "clk_wdt_i"]
-create_clock -add -name JTAG_TCK          -period $clock_periods(JTAG_TCK_PERIOD)              [get_ports "jtag_tck"]
+create_clock -add -name JTAG_TCK          -period $clock_periods(JTAG_TCK_PERIOD)              [get_ports "jtag_tck_i"]
 
 # OTBN PKA memories (have clock output in request struct)
 create_generated_clock [get_ports sep_crypto_pka_imem_sram_req*clk] -name SEPCLK_PKA_IMEM -master_clock SEPCLK -divide_by 1 -source [get_ports "clk_i"] -combinational
@@ -106,7 +105,7 @@ create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
 # acts as a clock and is declared from both sources. Divide ratio is immaterial for
 # CDC; only the source-clock relationship matters.
 # shared ring oscillator output buffer pin
-set entropy_shared_ro_pin [get_pins "sep_crypto/u_entropy_source/egen/sclk/shared_ro/fbf/z_o"]
+set entropy_shared_ro_pin [get_pins "sep_crypto/u_entropy_source/egen/sclk/shared_ro/u_fbf/y_o"]
 
 # entropy_source ring-oscillator sample clock
 create_clock -add -name ENTROPY_ROSC_CLK  -period $clock_periods(ENTROPY_ROSC_PERIOD) [get_ports "entropy_rosc_sample_clk_i"]
@@ -115,11 +114,11 @@ create_clock -add -name ENTROPY_ROSC_CLK  -period $clock_periods(ENTROPY_ROSC_PE
 create_clock -add -name ENTROPY_SHARED_RO -period $clock_periods(ENTROPY_SHARED_RO_PERIOD) $entropy_shared_ro_pin
 
 # all toggle-flop cells once; each divider's taps are selected by path below
-set entropy_gdffqb [lsort -dictionary [get_object_name [get_cells -hierarchical -filter "ref_name == gdffqb"]]]
+set entropy_div_flops [lsort -dictionary [get_object_name [get_cells -hierarchical -filter "ref_name == prim_dffrxq"]]]
 
 # one generated clock per divider tap from each source, numbered in stamping order
 set entropy_tap_idx 0
-foreach entropy_tap_cell [lsearch -all -inline -glob $entropy_gdffqb {*egen/sclk/g_ecmplx*u_sample_clk_divider*u_div_ff}] {
+foreach entropy_tap_cell [lsearch -all -inline -glob $entropy_div_flops {*egen/sclk/gen_ecmplx*u_sample_clk_divider*u_div_ff}] {
     set entropy_tap_pin [get_pins "${entropy_tap_cell}/q_o/Q"]
     create_generated_clock -add -name ENTROPY_SCLK_FROM_ROSC_${entropy_tap_idx}      -master_clock ENTROPY_ROSC_CLK  -divide_by 2 -source [get_ports "entropy_rosc_sample_clk_i"] $entropy_tap_pin
     create_generated_clock -add -name ENTROPY_SCLK_FROM_SHARED_RO_${entropy_tap_idx} -master_clock ENTROPY_SHARED_RO -divide_by 2 -source $entropy_shared_ro_pin $entropy_tap_pin
@@ -131,7 +130,7 @@ foreach entropy_tap_cell [lsearch -all -inline -glob $entropy_gdffqb {*egen/sclk
 # The source is a dynamic debug mux, so declare each tap as its own clock and keep the whole
 # divider in one async group, isolated from the functional clocks.
 set entropy_dbg_tap_idx 0
-foreach entropy_dbg_cell [lsearch -all -inline -glob $entropy_gdffqb {*dbg/u_ripple_divider*u_div_ff}] {
+foreach entropy_dbg_cell [lsearch -all -inline -glob $entropy_div_flops {*dbg/u_ripple_divider*u_div_ff}] {
     create_clock -add -name ENTROPY_DBG_MON_${entropy_dbg_tap_idx} -period $clock_periods(ENTROPY_ROSC_PERIOD) [get_pins "${entropy_dbg_cell}/q_o/Q"]
     incr entropy_dbg_tap_idx
 }
@@ -178,24 +177,24 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports wdt_timer_rst_req_o] -add_delay
 
 # JTAG
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tms] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdi] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports jtag_trst_n] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdo] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdoEn] -add_delay
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tms_i] -add_delay
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdi_i] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports jtag_trst_ni] -add_delay
+set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdo_o] -add_delay
+set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdoEn_o] -add_delay
 
 # OTP debug AXI-Lite interface
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {axil_sep_otp_jtag_req_i*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {axil_sep_otp_jtag_resp_o*}] -add_delay
 
 # MPC debug interface (async)
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports mpc_debug_halt_req] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports mpc_debug_run_req] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports mpc_reset_run_req] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports mpc_debug_halt_req_i] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports mpc_debug_run_req_i] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports mpc_reset_run_req_i] -add_delay
 
 # CPU halt/run interface (async)
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports i_cpu_halt_req] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports i_cpu_run_req] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports cpu_halt_req_i] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports cpu_run_req_i] -add_delay
 
 # JTAG SEP reset control overrides (TCK domain)
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_sep_reset_ctrl_i.val*}] -add_delay
@@ -276,7 +275,6 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {ext_trng_axis_req_i*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {ext_trng_axis_rsp_o*}] -add_delay
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports ext_trng_alarm_i] -add_delay
 
 # Key Manager interfaces
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports km_unrecoverable_err_o] -add_delay
@@ -297,8 +295,6 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {sep_io_spi_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {sep_io_spi_rsp_i*}] -add_delay
 
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports spi_irq_i] -add_delay
-
 # LC state
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {lc_state_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports lc_sigint_err_o] -add_delay
@@ -313,7 +309,7 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports sep_fuse_sense_done_o] -add_delay
 
 # Straps
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {sep_straps_i*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {secure_tm_req_i}] -add_delay
 
 # AXI extension interface
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {axi_extension_axi_req_o*}] -add_delay

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Direct Memory Access (DMA) Engine
+:description: SMC DMA architecture, control, data paths, and system integration.
+
 [[direct-memory-access-dma-engine]]
-=== Direct Memory Access (DMA) Engine
 
 The SMC DMA controller provides data movement services for telemetry
 collection, security data processing, and inter-component communication
@@ -19,11 +21,11 @@ SMC fabric filtering.
 |Address Range |0xC003_8000 - 0xC003_81FF (512 bytes)
 |Control Interface |AXI4-Lite (9-bit address space, 64-bit data width)
 |Data Interface |AXI4 Master (56-bit address, 64-bit data, 4-bit ID)
-|Channel Support |Multiple independent concurrent transfer channels
+|Stream Support |Register map exposes 16 stream banks; SMC instantiates 1
 |Security |Integration with SMC fabric filtering mechanisms
 |=====================================================================
 
-==== Architecture Overview
+== Architecture Overview
 
 The DMA controller implements a frontend-backend architecture with the
 following modules:
@@ -38,7 +40,7 @@ distribute requests across multiple master interfaces
 This separation enables independent optimization and power management of
 control plane and data plane operations.
 
-==== Configuration Parameters
+== Configuration Parameters
 
 The DMA controller supports the following configuration parameters:
 
@@ -50,7 +52,7 @@ The DMA controller supports the following configuration parameters:
 interfaces (must be ≥ 1)
 
 |NUM_CTRL_STREAMS |1 |Number of control streams per interface (must be ≥
-1)
+1, maximum 16). SMC fixes this at 1; see <<dma-stream-support>>
 
 |NUM_MST_INTERFACES |1 |Number of independent AXI master interfaces
 (must be ≥ 1)
@@ -77,12 +79,12 @@ interface (timing optimization)
 cycle delay)
 |=======================================================================
 
-==== DMA Frontend
+== DMA Frontend
 
 The frontend (idma_frontend_wrapper) manages register interface, command
 processing, and transfer descriptor handling.
 
-===== Control Interface
+=== Control Interface
 
 The table below describes the frontend control interface.
 
@@ -104,7 +106,38 @@ conditions
 transfers
 |=======================================================================
 
-===== Transfer Descriptor Support
+[[dma-stream-support]]
+=== Stream Support
+
+A stream is an independent transfer-ID and status-tracking context in the
+frontend. The `dma_ctrl` register map reserves banks for 16 streams:
+`NEXT_ID_0` through `NEXT_ID_15`, `STATUS_0` through `STATUS_15`, and
+`DONE_0` through `DONE_15`. Streams do not have private transfer
+descriptors. There is a single set of `SRC_ADDRESS`, `DST_ADDRESS`,
+`LENGTH`, stride, and repetition registers shared by every stream;
+reading `NEXT_ID_n` launches a transfer built from those shared registers
+and tags it with stream index n.
+
+SMC instantiates the DMA with `NUM_CTRL_STREAMS = 1`, so only stream 0 is
+functional. Streams 1 through 15 cannot be used.
+
+`NUM_CTRL_STREAMS` does not size the register file. The register file is
+always generated with all 16 stream banks, and every bank decodes
+normally regardless of the parameter. The parameter gates only the logic
+behind the banks, so with `NUM_CTRL_STREAMS = 1` the effect is:
+
+* Reading `NEXT_ID_1` through `NEXT_ID_15` does *not* start a transfer.
+The access completes with no bus error and returns 0, which is the same
+value `NEXT_ID` returns for a command that was not set up correctly.
+Software cannot distinguish a dropped request from a rejected one by the
+returned value.
+* `STATUS_1` through `STATUS_15` and `DONE_1` through `DONE_15` are tied
+to 0 and never update.
+
+Software must use `NEXT_ID_0`, `STATUS_0`, and `DONE_0` exclusively and
+treat the remaining banks as reserved.
+
+=== Transfer Descriptor Support
 
 The table below describes the transfer descriptor support.
 
@@ -123,7 +156,7 @@ source/destination stride
 parsing
 |=======================================================================
 
-===== Command Processing
+=== Command Processing
 
 The DMA frontend streamlines command processing by parsing hardware
 descriptors directly, freeing software from interpretation overhead. It
@@ -134,7 +167,7 @@ FIFO buffering between the frontend and midend ensures pipelined
 operation, while back-pressure handling absorbs system overloads without
 losing commands.
 
-===== DMA Request Manager
+=== DMA Request Manager
 
 The request manager (idma_request_manager_wrapper) sits between the frontend and
 backend, providing flexible request routing when multiple control
@@ -142,7 +175,7 @@ interfaces or master interfaces are configured. In the simplest case
 (single control interface and single master interface), the module
 operates as a passthrough with no arbitration overhead.
 
-===== Request Arbitration
+=== Request Arbitration
 
 When multiple control or master interfaces are present, the request
 manager employs round-robin arbitration to fairly distribute requests.
@@ -151,7 +184,7 @@ pending control interface requests. To prevent duplicate execution, once
 a master accepts a request, that request is masked from other masters
 until completion.
 
-===== Request Tracking
+=== Request Tracking
 
 The manager maintains a tracking FIFO (depth 4) for each master
 interface to record which control interface originated each request.
@@ -160,7 +193,7 @@ pushed into the tracking FIFO. When the master completes the transfer
 and returns a response, the ID is popped to route the response back to
 the correct control interface.
 
-===== Response Routing
+=== Response Routing
 
 Responses flow from masters back through tracking FIFOs to identify
 their originating control interfaces. A single-entry response buffer
@@ -169,7 +202,7 @@ When multiple masters attempt to respond to the same control interface
 simultaneously, a second level of round-robin arbitration ensures fair
 and deadlock-free response delivery.
 
-==== DMA Backend
+== DMA Backend
 
 The backend (idma_backend_wrapper) implements the data movement engine based on
 iDMA.
@@ -200,9 +233,9 @@ optimization
 access
 |=======================================================================
 
-==== DMA Configuration and Control
+== DMA Configuration and Control
 
-===== Transfer Configuration
+=== Transfer Configuration
 
 The table below describes the transfer configuration parameters of the
 DMA backend.
@@ -220,7 +253,7 @@ DMA backend.
 |Repeat Count |Configurable repeat count for pattern transfers
 |=======================================================================
 
-===== Status and Control
+=== Status and Control
 
 The table below describes the status and control features of the DMA
 backend.
@@ -247,7 +280,7 @@ changes
 |Interrupt Control |Configurable interrupt generation and masking
 |=======================================================================
 
-===== Performance Optimization and Power Management
+=== Performance Optimization and Power Management
 
 The two tables below describe the iDMA backend's performance
 optimization and power management features.
@@ -292,14 +325,14 @@ clock to frontend, request manager, and backend
 |Test Mode |Clock gating bypassed during test mode
 |=======================================================================
 
-==== System Integration
+== System Integration
 
 The DMA wrapper (idma_wrapper) integrates the frontend, backend, request
 manager, and clock gating into a complete DMA subsystem. The
 architecture orchestrates a clear data flow from software configuration
 through hardware execution.
 
-===== Request Path
+=== Request Path
 
 Transfer requests enter through AXI4-Lite control interfaces, where the
 frontend receives configuration and commands from software. The frontend
@@ -310,21 +343,26 @@ requests from M control interfaces across N master interfaces. Finally,
 independent iDMA backends execute the transfers on separate AXI4 master
 interfaces, enabling parallel data movement.
 
-===== Response Path
+=== Response Path
 
 As backends complete transfers, responses flow back through the request
 manager to the appropriate frontend, which updates status registers and
 generates interrupts. This completes the transfer loop and notifies
 software of completion.
 
-===== Type Definitions
+=== Type Definitions
 
 The wrapper configures iDMA for 2D transfer support with 56-bit transfer
 length and stride widths (matching the address width) and 32-bit
 repetition counts. This enables efficient handling of both linear and 2D
 data movement patterns.
 
-==== Detailed Register Map
+== Detailed Register Map
+
+NOTE: The register map below covers all 16 stream banks because the
+register file is generated at the maximum stream count. With
+`NUM_CTRL_STREAMS = 1`, only the `_0` bank of `NEXT_ID`, `STATUS`, and
+`DONE` has any effect; see <<dma-stream-support>>.
 
 ifdef::backend-html5[]
 ++++

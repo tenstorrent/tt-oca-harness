@@ -1,98 +1,30 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[verification-dashboard]]
 = Verification Dashboard
 :doctype: book
 
-[NOTE]
-====
-This is a static visual preview showing the intended layout and styling for
-the DV & coverage dashboard, using placeholder sample data. It is not yet
-connected to the real WP3 regression/coverage pipeline -- see the project
-tracking document for the data-contract and integration plan (targeted for
-completion alongside the real pipeline later this year).
-====
+The tables below are rendered in the browser from the normalised DV data
+contract produced by `tools/dv/run_dashboard.py` and published to the
+https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data[`dv-dashboard-data`]
+branch by the `dashboard` workflow.
 
+ifdef::backend-html5[]
 ++++
 <div class="dashboard">
+  <div id="dashboard-status" class="dashboard-status">Loading dashboard data&hellip;</div>
+
   <h3>Chip-Level</h3>
   <table class="dashboard-table">
-    <thead>
-      <tr>
-        <th>Block</th>
-        <th>Tests</th>
-        <th>Passing</th>
-        <th>Code Coverage</th>
-        <th>Toggle Coverage</th>
-        <th>Assert Coverage</th>
-        <th>Functional Coverage</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><a href="#">chip_ocah</a></td>
-        <td>2956</td>
-        <td class="dash-pass">99.1&nbsp;%</td>
-        <td class="dash-pass">94.4&nbsp;%</td>
-        <td class="dash-pass">95.4&nbsp;%</td>
-        <td class="dash-pass">97.7&nbsp;%</td>
-        <td class="dash-pass">99.6&nbsp;%</td>
-      </tr>
-    </tbody>
+    <thead id="dashboard-chip-head"></thead>
+    <tbody id="dashboard-chip-rows"></tbody>
   </table>
 
   <h3>Block-Level</h3>
   <table class="dashboard-table">
-    <thead>
-      <tr>
-        <th>Block</th>
-        <th>Tests</th>
-        <th>Passing</th>
-        <th>Code Coverage</th>
-        <th>Toggle Coverage</th>
-        <th>Assert Coverage</th>
-        <th>Functional Coverage</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><a href="#">dtp</a></td>
-        <td>430</td>
-        <td class="dash-pass">98.4&nbsp;%</td>
-        <td class="dash-pass">96.8&nbsp;%</td>
-        <td class="dash-pass">100&nbsp;%</td>
-        <td class="dash-pass">95.9&nbsp;%</td>
-        <td class="dash-warn">62.3&nbsp;%</td>
-      </tr>
-      <tr>
-        <td><a href="#">sep</a></td>
-        <td>1602</td>
-        <td class="dash-pass">97.6&nbsp;%</td>
-        <td class="dash-pass">98.0&nbsp;%</td>
-        <td class="dash-pass">97.7&nbsp;%</td>
-        <td class="dash-pass">99.1&nbsp;%</td>
-        <td class="dash-pass">96.6&nbsp;%</td>
-      </tr>
-      <tr>
-        <td><a href="#">smc</a></td>
-        <td>1010</td>
-        <td class="dash-pass">100&nbsp;%</td>
-        <td class="dash-pass">98.5&nbsp;%</td>
-        <td class="dash-pass">100&nbsp;%</td>
-        <td class="dash-pass">97.0&nbsp;%</td>
-        <td class="dash-pass">98.8&nbsp;%</td>
-      </tr>
-      <tr>
-        <td><a href="#">aou</a></td>
-        <td>210</td>
-        <td class="dash-fail">64.2&nbsp;%</td>
-        <td class="dash-warn">71.0&nbsp;%</td>
-        <td class="dash-warn">68.5&nbsp;%</td>
-        <td class="dash-fail">55.0&nbsp;%</td>
-        <td class="dash-fail">40.2&nbsp;%</td>
-      </tr>
-    </tbody>
+    <thead id="dashboard-block-head"></thead>
+    <tbody id="dashboard-block-rows"></tbody>
   </table>
 
   <p class="dashboard-legend">
@@ -100,5 +32,27 @@ completion alongside the real pipeline later this year).
     <span class="dash-warn">&nbsp;&nbsp;&nbsp;</span> Below target, in progress &nbsp;
     <span class="dash-fail">&nbsp;&nbsp;&nbsp;</span> Needs attention
   </p>
+
+  <p class="dashboard-more"><a href="dashboard-trends.html">Verification trends over time &#8594;</a></p>
+
+  <noscript>
+    <p class="dashboard-status dashboard-status-error">
+      This dashboard renders live regression data with JavaScript. With
+      scripting disabled, read the published data directly from the
+      <a href="https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data"><code>dv-dashboard-data</code></a>
+      branch.
+    </p>
+  </noscript>
 </div>
+<script src="../../_/js/dashboard.js"></script>
 ++++
+endif::[]
+
+ifndef::backend-html5[]
+[NOTE]
+====
+The verification dashboard renders live regression data in the browser and has
+no static equivalent in this PDF. See the Verification Dashboard page of the
+published HTML documentation for current figures.
+====
+endif::[]

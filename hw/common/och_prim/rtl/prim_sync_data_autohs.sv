@@ -5,16 +5,16 @@
 // Auto-Handshake Data Synchronizer
 //
 //--------------------------------------------------
- module prim_sync_data_autohs #(
-    parameter int unsigned WIDTH = 1,
-    parameter int unsigned DEPTH = 2    // default currently 2 in order to not break existing usage
+module prim_sync_data_autohs #(
+  parameter int unsigned WIDTH = 1,
+  parameter int unsigned DEPTH = 2    // default currently 2 in order to not break existing usage
 ) (
-    input  logic             i_clk_src,
-    input  logic             i_reset_src_n,
-    input  logic [WIDTH-1:0] i_data,
-    input  logic             i_clk_dst,
-    input  logic             i_reset_dst_n,
-    output logic [WIDTH-1:0] o_data
+  input  logic             clk_src_i,
+  input  logic             rst_src_ni,
+  input  logic [WIDTH-1:0] data_i,
+  input  logic             clk_dst_i,
+  input  logic             rst_dst_ni,
+  output logic [WIDTH-1:0] data_o
 );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -32,33 +32,33 @@
   logic  clk2_ack_toggle_reg;
 
 
-  if (DEPTH == 2) begin : g_depth_2
+  if (DEPTH == 2) begin : gen_depth_2
     prim_flop_2sync_r sync_req_toggle (
-        .i_CK     (i_clk_dst),
-        .i_RN     (i_reset_dst_n),
-        .i_D      (clk1_req_toggle_reg),
-        .o_Q      (clk2_req_toggle)
+      .clk_i (clk_dst_i),
+      .rst_ni(rst_dst_ni),
+      .d_i   (clk1_req_toggle_reg),
+      .q_o   (clk2_req_toggle)
     );
 
     prim_flop_2sync_r sync_ack_toggle (
-        .i_CK     (i_clk_src),
-        .i_RN     (i_reset_src_n),
-        .i_D      (clk2_ack_toggle_reg),
-        .o_Q      (clk1_ack_toggle)
+      .clk_i (clk_src_i),
+      .rst_ni(rst_src_ni),
+      .d_i   (clk2_ack_toggle_reg),
+      .q_o   (clk1_ack_toggle)
     );
-  end else begin : g_depth_3
+  end else begin : gen_depth_3
     prim_flop_3sync_r sync_req_toggle (
-        .i_CK     (i_clk_dst),
-        .i_RN     (i_reset_dst_n),
-        .i_D      (clk1_req_toggle_reg),
-        .o_Q      (clk2_req_toggle)
+      .clk_i (clk_dst_i),
+      .rst_ni(rst_dst_ni),
+      .d_i   (clk1_req_toggle_reg),
+      .q_o   (clk2_req_toggle)
     );
 
     prim_flop_3sync_r sync_ack_toggle (
-        .i_CK     (i_clk_src),
-        .i_RN     (i_reset_src_n),
-        .i_D      (clk2_ack_toggle_reg),
-        .o_Q      (clk1_ack_toggle)
+      .clk_i (clk_src_i),
+      .rst_ni(rst_src_ni),
+      .d_i   (clk2_ack_toggle_reg),
+      .q_o   (clk1_ack_toggle)
     );
   end
 
@@ -68,8 +68,8 @@
   logic o_clk1_ack;
   assign src_req = ~o_clk1_ack;
 
-  always @(posedge i_clk_src) begin
-    if (!i_reset_src_n) begin
+  always @(posedge clk_src_i) begin
+    if (!rst_src_ni) begin
       clk1_req_ongoing_reg <= 1'b0;
       clk1_req_toggle_reg  <= 1'b0;
       clk1_ack_toggle_reg  <= 1'b0;
@@ -86,8 +86,8 @@
 
   logic dst_ack;
 
-  always @(posedge i_clk_dst) begin
-    if (!i_reset_dst_n) begin
+  always @(posedge clk_dst_i) begin
+    if (!rst_dst_ni) begin
       clk2_req_ongoing_reg <= 1'b0;
       clk2_req_toggle_reg  <= 1'b0;
       clk2_ack_toggle_reg  <= 1'b0;
@@ -104,8 +104,8 @@
   assign o_clk2_req = clk2_req_ongoing_reg;
 
   // generate dst ack, delayed one clock from o_clk2_req
-  always @(posedge i_clk_dst) begin
-    if (!i_reset_dst_n) begin
+  always @(posedge clk_dst_i) begin
+    if (!rst_dst_ni) begin
       dst_ack <= 1'b0;
     end else begin
       dst_ack <= o_clk2_req;
@@ -117,29 +117,29 @@
 
   logic [WIDTH-1:0] clk1_val_reg;
 
-  always @(posedge i_clk_src) begin
-    if (!i_reset_src_n) begin
+  always @(posedge clk_src_i) begin
+    if (!rst_src_ni) begin
       clk1_val_reg <= WIDTH'(0);
     end else if (!clk1_req_ongoing_reg && src_req) begin
-      clk1_val_reg <= i_data;
+      clk1_val_reg <= data_i;
     end
   end
 
   logic clk2_val_sample;
 
-  assign  clk2_val_sample = !clk2_req_ongoing_reg && (clk2_req_toggle != clk2_req_toggle_reg);
+  assign clk2_val_sample = !clk2_req_ongoing_reg && (clk2_req_toggle != clk2_req_toggle_reg);
 
   logic [WIDTH-1:0] clk2_val_reg;
 
-  always @(posedge i_clk_dst) begin
-    if (!i_reset_dst_n) begin
+  always @(posedge clk_dst_i) begin
+    if (!rst_dst_ni) begin
       clk2_val_reg <= WIDTH'(0);
     end else if (clk2_val_sample) begin
       clk2_val_reg <= clk1_val_reg;
     end
   end
 
-  assign o_data = clk2_val_reg;
+  assign data_o = clk2_val_reg;
 
 
 endmodule

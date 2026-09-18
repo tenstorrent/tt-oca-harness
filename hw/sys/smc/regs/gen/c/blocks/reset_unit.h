@@ -145,31 +145,6 @@ typedef union {
     uint32_t w;
 } reset_unit__SS_FORCE_TO_REF_CLK_t;
 
-// reg - reset_unit::STRAPS_LO
-#define RESET_UNIT__STRAPS_LO__STRAPS_bm 0xffffffff
-#define RESET_UNIT__STRAPS_LO__STRAPS_bp 0
-#define RESET_UNIT__STRAPS_LO__STRAPS_bw 32
-#define RESET_UNIT__STRAPS_LO__STRAPS_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t straps :32;
-    } f;
-    uint32_t w;
-} reset_unit__STRAPS_LO_t;
-
-// reg - reset_unit::STRAPS_HI
-#define RESET_UNIT__STRAPS_HI__STRAPS_bm 0x1fffffff
-#define RESET_UNIT__STRAPS_HI__STRAPS_bp 0
-#define RESET_UNIT__STRAPS_HI__STRAPS_bw 29
-#define RESET_UNIT__STRAPS_HI__STRAPS_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t straps :29;
-        uint32_t :3;
-    } f;
-    uint32_t w;
-} reset_unit__STRAPS_HI_t;
-
 // reg - reset_unit::SYNC_REG
 #define RESET_UNIT__SYNC_REG__SYNC_bm 0x1
 #define RESET_UNIT__SYNC_REG__SYNC_bp 0
@@ -299,10 +274,7 @@ typedef struct __attribute__ ((__packed__)) {
     reset_unit__SS_COLD_RESET_LOCK_t SS_COLD_RESET_LOCK;
     uint8_t RESERVED_74_7f[0xc];
     reset_unit__SS_FORCE_TO_REF_CLK_t SS_FORCE_TO_REF_CLK;
-    uint8_t RESERVED_84_8f[0xc];
-    reset_unit__STRAPS_LO_t STRAPS_LO;
-    reset_unit__STRAPS_HI_t STRAPS_HI;
-    uint8_t RESERVED_98_a7[0x10];
+    uint8_t RESERVED_84_a7[0x24];
     reset_unit__SYNC_REG_t SYNC_REG;
     uint8_t RESERVED_ac_af[0x4];
     reset_unit__ISOLATE_REQ_REG_t ISOLATE_REQ_REG;

@@ -5,15 +5,11 @@
 // Standard 2:1 Mux
 //
 //--------------------------------------------------
-module prim_stdmux2 #(
-    parameter int Width = 1
-)(
-    input  [Width-1:0]  i_I0,
-    input  [Width-1:0]  i_I1,
-    input              i_SEL,
-    output [Width-1:0]   o_Y
-);  
-  assign o_Y = i_SEL ? i_I1 : i_I0;
+module prim_stdmux2 (
+  input  i0_i,
+  input  i1_i,
+  input  sel_i,
+  output y_o
+);
+  assign y_o = sel_i ? i1_i : i0_i;
 endmodule
-
-

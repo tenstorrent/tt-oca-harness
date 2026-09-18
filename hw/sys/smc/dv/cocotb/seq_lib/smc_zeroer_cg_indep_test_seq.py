@@ -6,8 +6,6 @@ DV-CARD: SMC_ZEROER_CG_INDEP_TEST ANCHOR: smc_zeroer_cg_indep_test
 
 from __future__ import annotations
 
-import logging
-
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge, Timer
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
@@ -17,14 +15,20 @@ from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
 
-_LOG = logging.getLogger(__name__)
-
 # hyst=0 so register-idle gate-off can open while axi busy is still high.
 HYST = 0
 IDLE_OBSERVE = 16
 GATE_OFF_TIMEOUT_SMC = 256
 BUSY_TIMEOUT_SMC = 512
 ZEROER_WAIT_CYCLES = 512
+
+# Declared minimum length of the S2 (register-active) observation window, in
+# clk_smc_i cycles. The S2 stimulus is ONE AXI4-Lite access to the Zeroer
+# register block, whose `zeroer_bus_active` span at this bench is the address
+# phase plus the data phase, i.e. 2 clk_smc_i cycles; a shorter window means
+# the access never really occupied the register interface, and the
+# "reg_clk toggles every cycle" claim would rest on a single sample.
+MIN_S2_WINDOW = 2
 
 CLOCK_GATE_CONTROL = _addr.CLOCK_GATE_CONTROL
 ZEROER_CG_EN = _addr.ZEROER_CG_EN
@@ -124,8 +128,8 @@ class smc_zeroer_cg_indep_test_seq(SmcCsrSeq):
         """S1 window after programming settles: busy=1, bus_active=0, reg gated.
 
         Observation starts only once register-idle is established (no AXI4-Lite
-        and reg_clk already gated off). Strength unchanged: every subsequent
-        busy cycle must keep axi_clk enabled and reg_clk gated.
+        and reg_clk already gated off); every subsequent busy cycle must keep
+        axi_clk enabled and reg_clk gated.
         """
         dut = self._dut()
         state = {
@@ -310,8 +314,8 @@ class smc_zeroer_cg_indep_test_seq(SmcCsrSeq):
                 OUTPUT_FABRIC_MODEL_REGION, OUTPUT_FABRIC_ADDR, OUTPUT_FABRIC_MODEL_SIZE
             )
         await self._program_output_fabric_pass_all()
-        # Seed destination so zeroer has work; write in chunks via AXI VIP.
-        # Large region: write first 8 bytes then rely on zeroer SIZE for busy window.
+        # Seed the first 8 bytes of the destination; the Zeroer SIZE provides
+        # the busy window.
         await self._write_bytes(OUTPUT_FABRIC_ADDR, ZEROER_POISON[:8])
 
         # disable_cg=0 (zeroer_cg_en=1), out of reset.
@@ -364,7 +368,11 @@ class smc_zeroer_cg_indep_test_seq(SmcCsrSeq):
             "reg_clk every cycle, axi_clk gated off",
         )
         w2, axi2_post, reg2, axi2_all = await self._observe_reg_active_axi_idle()
-        assert w2 > 0, "S2 post-resume observation window empty"
+        assert w2 >= MIN_S2_WINDOW, (
+            f"S2 post-resume observation window too short to support an "
+            f"'every cycle' claim: post_resume_cycles={w2} < "
+            f"MIN_S2_WINDOW={MIN_S2_WINDOW}"
+        )
         assert reg2 == w2, (
             f"S2 reg_clk missing toggles after resume: reg_hits={reg2} post_resume_cycles={w2}"
         )
@@ -391,18 +399,43 @@ class smc_zeroer_cg_indep_test_seq(SmcCsrSeq):
             f"reg_hits={reg2} axi_hits_all={axi2_all})",
         )
 
-        cg.assert_fence_order(
+        # `assert_fence_progress` requires strictly increasing simulation
+        # timestamps across the listed phases (order alone holds by
+        # construction) and returns them for the token below.
+        fence_times = cg.assert_fence_progress(
             self.fence,
             [
                 "axi-active-reg-idle-decoupled-observed",
                 "reg-active-axi-idle-decoupled-observed",
             ],
         )
+        # Measured contrast carried in the token: in each window one domain ran
+        # every cycle while the OTHER was gated off for the whole window. A
+        # coupled (or dead) pair of clocks fails here, not silently.
+        assert axi1 == w1 and reg1 == 0 and w1 > 0, (
+            f"S1 NONVAC contrast absent: window={w1} axi_hits={axi1} reg_hits={reg1}"
+        )
+        assert reg2 == w2 and axi2_all == 0 and w2 >= MIN_S2_WINDOW, (
+            f"S2 NONVAC contrast absent: post_resume_cycles={w2} "
+            f"reg_hits={reg2} axi_hits_all={axi2_all}"
+        )
         cg.emit_chk(
             self.chk_seen,
             "CHK-NONVAC",
-            "CHK-NONVAC: axi-active-reg-idle-decoupled-observed < "
-            "reg-active-axi-idle-decoupled-observed < PASS",
+            "CHK-NONVAC: axi-active-reg-idle-decoupled-observed@{}ns < "
+            "reg-active-axi-idle-decoupled-observed@{}ns < PASS "
+            "S1(window={} axi_hits={} reg_hits={}) "
+            "S2(post_resume_cycles={} min={} reg_hits={} axi_hits_all={})".format(
+                fence_times[0],
+                fence_times[1],
+                w1,
+                axi1,
+                reg1,
+                w2,
+                MIN_S2_WINDOW,
+                reg2,
+                axi2_all,
+            ),
         )
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_zeroer_cg_indep_test_seq PASS")
+        cocotb.log.info("smc_zeroer_cg_indep_test_seq PASS")

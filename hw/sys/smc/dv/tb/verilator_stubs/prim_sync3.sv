@@ -9,30 +9,30 @@
 // and deadlocks the OpenTitan I2C host (HOSTIDLE never asserts).
 
 module prim_sync3 #(
-    parameter int unsigned WIDTH                  = 1,
-    parameter bit          RANDOM_DELAY_GRAY_CODE = 1'b0
+  parameter int unsigned WIDTH                  = 1,
+  parameter bit          RANDOM_DELAY_GRAY_CODE = 1'b0
 ) (
-    input  logic             i_clk,
-    input  logic [WIDTH-1:0] i_d,
-    output logic [WIDTH-1:0] o_q
+  input  logic             clk_i,
+  input  logic [WIDTH-1:0] d_i,
+  output logic [WIDTH-1:0] q_o
 );
 
-    logic [WIDTH-1:0] q0;
-    logic [WIDTH-1:0] q1;
-    logic [WIDTH-1:0] q2;
+  logic [WIDTH-1:0] q0;
+  logic [WIDTH-1:0] q1;
+  logic [WIDTH-1:0] q2;
 
-    initial begin
-        q0 = '0;
-        q1 = '0;
-        q2 = '0;
-    end
+  initial begin
+    q0 = '0;
+    q1 = '0;
+    q2 = '0;
+  end
 
-    always @(posedge i_clk) begin
-        q0 <= i_d;
-        q1 <= q0;
-        q2 <= q1;
-    end
+  always @(posedge clk_i) begin
+    q0 <= d_i;
+    q1 <= q0;
+    q2 <= q1;
+  end
 
-    assign o_q = q2;
+  assign q_o = q2;
 
 endmodule

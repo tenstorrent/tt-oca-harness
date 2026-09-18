@@ -5,18 +5,24 @@ DV-CARD: SMC_DMA_CG_ACTIVITY_TEST ANCHOR: smc_dma_cg_activity_test
 
 DV-CARD: SMC_CG_P2_001 ANCHOR: smc_dma_cg_activity_test
 
-The P2 card extends this same anchor (additive): the P1 steps/checkers above are
-UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1
-grade); the P2 extension below (_p2_extension) adds the full-range hysteresis
-sweep {0,1,32,63,64} and the activity-reassert race, called once at the end of
-body(). CG_HYSTERESIS_W==6 (hw/sys/smc/doc/dma.adoc) -- gap=64 exercises the
-field's own truncation (64 & 0x3F == 0), not a TB special case.
+The P2 card extends this same anchor: the P1 steps and checkers in body() keep
+their evidence tokens verbatim, and the P2 extension (_p2_extension) adds the
+full-range hysteresis sweep {0,1,32,63,64} and the activity-reassert race,
+called once at the end of body(). CG_HYSTERESIS_W==6 (hw/sys/smc/doc/dma.adoc)
+-- gap=64 exercises the
+field's own truncation (64 & 0x3F == 0), not a TB special case, and its
+expectation is the truncated value 0, not a `<= 63` bound that no RTL can
+violate.
+
+Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly
+asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..8 band is
+carried as UNPROVEN and must not be counted as covered by any closure
+report -- see P2_LOW_BAND_EXCLUSION_REASON.
 """
 
 from __future__ import annotations
 
 import json
-import logging
 import os
 import random
 from pathlib import Path
@@ -24,9 +30,6 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotb.utils import get_sim_time
-
-_LOG = logging.getLogger(__name__)
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from . import smc_addr_map as _addr
@@ -34,9 +37,14 @@ from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
+# Every record this sequence emits goes through `cocotb.log`: a module-level
+# `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
+# the STEP/CHK/FENCE and P2_COVERAGE_ARTIFACT evidence written through one never
+# reaches the kept log ([EVIDENCE-TOKEN-CONDITIONAL]).
+
 
 def _p2_coverage_report_dirs() -> list[Path]:
-    """Prefer run logs/coverage dirs so Skill 2 can find the artifact beside the kept log."""
+    """Prefer the run's log/coverage dirs so the artifact sits beside the kept log."""
     candidates: list[Path] = []
     env_dir = os.environ.get("SMC_DV_RUN_LOGDIR")
     if env_dir:
@@ -60,15 +68,18 @@ def _p2_coverage_report_dirs() -> list[Path]:
     return out
 
 
-def _emit_p2_hyst_sweep_coverage_report(cells_hit: list[str]) -> Path:
-    """FL-required functional-coverage-report for SMC-CG-DMA-HYST.S1 required_cells."""
-    required = [
-        "hyst-gap=0",
-        "hyst-gap=1",
-        "hyst-gap=32",
-        "hyst-gap=63",
-        "hyst-gap=64",
-    ]
+def _emit_p2_hyst_sweep_coverage_report(
+    cells_hit: list[str], cell_measurements: dict[str, dict[str, int]]
+) -> Path:
+    """Functional-coverage-report for SMC-CG-DMA-HYST.S1 required_cells.
+
+    ``cells_hit`` must be derived from the sweep results (a cell is hit only
+    after its exact deassert-cycle compare PASSED), never restated from the
+    required list -- otherwise the artifact records intent, not measurement
+    ([EVIDENCE-TOKEN-CONDITIONAL]). ``cell_measurements`` carries the observed
+    numbers behind each hit so the artifact is auditable on its own.
+    """
+    required = [f"hyst-gap={g}" for g in P2_REQUIRED_SWEEP_GAPS]
     payload = {
         "artifact_type": "functional-coverage-report",
         "feature_key": "SMC-CG-DMA-HYST.S1",
@@ -76,6 +87,9 @@ def _emit_p2_hyst_sweep_coverage_report(cells_hit: list[str]) -> Path:
         "seed": int(os.environ.get("RANDOM_SEED", os.environ.get("SEED", "1")), 0),
         "required_cells": required,
         "cells_hit": cells_hit,
+        "cell_measurements": cell_measurements,
+        "excluded_cells": [f"hyst-gap={g}" for g in P2_LOW_BAND_SWEEP_GAPS],
+        "excluded_reason": P2_LOW_BAND_EXCLUSION_REASON,
         "satisfied": set(cells_hit) >= set(required),
     }
     text = json.dumps(payload, indent=2) + "\n"
@@ -90,7 +104,7 @@ def _emit_p2_hyst_sweep_coverage_report(cells_hit: list[str]) -> Path:
             continue
     if not written:
         raise AssertionError("failed to write functional-coverage-report.json")
-    _LOG.info(
+    cocotb.log.info(
         "P2_COVERAGE_ARTIFACT: functional-coverage-report.json path=%s cells=%s",
         written[0],
         ",".join(cells_hit),
@@ -143,24 +157,60 @@ IDLE_OBSERVE = 16
 GATE_OFF_TIMEOUT_SMC = 256
 RESUME_TIMEOUT_SMC = 64
 BACKEND_ONLY_TIMEOUT_SMC = 512
-# Card r2 S3: observe every-cycle toggles across a multi-cycle backend-only window.
+# S3: observe every-cycle toggles across a multi-cycle backend-only window.
 S3_MEASURE_WINDOW = 8
 
 # P2 (SMC_CG_P2_001) additions: hysteresis full-range sweep + reassert race.
-# Required cells per SMC-CG-DMA-HYST.S1 (hyst-gap sweep): 0, 1, 32-mid, 63-max,
-# 64-just-over-max (exercises the 6-bit CG_HYSTERESIS_W field's own truncation).
+# Cells GRADED for SMC-CG-DMA-HYST.S1: 32-mid, 63-max, 64-just-over-max
+# (the last exercises the 6-bit CG_HYSTERESIS_W field's own truncation).
 # Seed-driven extras (inventory random_knobs: hysteresis_value) are appended
 # on top of these anchors so required_cells stay closed every seed.
-P2_REQUIRED_SWEEP_GAPS = (0, 1, 32, 63, 64)
+P2_REQUIRED_SWEEP_GAPS = (32, 63, 64)
+
+# The cells this testcase INTENDS to book, written out as an independent
+# literal rather than derived from P2_REQUIRED_SWEEP_GAPS or from the booked
+# `cells_hit` list. This is the expected side of the booked-cell check and of
+# the SWEEP-COMPLETE fence term; deriving both sides from `cells_hit` would
+# make that comparison equal by construction ([NO-ALWAYS-PASS-CHECKER]), so a
+# silent change to the required tuple, to the sweep loop, or to the `cells_hit`
+# construction must fail here instead of quietly renaming the fence term.
+P2_GRADED_CELL_NAMES = ("hyst-gap=32", "hyst-gap=63", "hyst-gap=64")
+
+# The 0..8 hysteresis band is SWEPT at 0 and 1 and exactly asserted below, but
+# it is NOT booked as covered by this testcase's coverage artifact: the DMA
+# command never completes at legal hysteresis 0 and 1 when dma_cg_en=1, so the
+# within-1-cycle hysteresis-scaling proof holds for 9..63 only. Booking
+# `hyst-gap=0` / `hyst-gap=1` as hit here would claim coverage of a band whose
+# DUT behaviour is not established, so the two gaps stay as stimulus and as a
+# fail-capable compare.
+P2_LOW_BAND_SWEEP_GAPS = (0, 1)
+P2_LOW_BAND_EXCLUSION_REASON = (
+    "DMA command never completes at legal hysteresis 0 and 1 when "
+    "dma_cg_en=1: the 0..8 hysteresis band is UNPROVEN and must not be counted "
+    "as covered by any closure report. Swept and exactly asserted here, but "
+    "not booked."
+)
+
 P2_NUM_RANDOM_GAPS = 3
+# Bound derivations (a bound with no derivation is an unqualified magic number).
+# Worst-case sweep observation window: max hysteresis 63 clk_smc_i cycles of
+# countdown + the CSR-read activity pulse and its gater-busy tail, rounded up.
 P2_SWEEP_MAX_CYCLES = 130
+# Trailing cycles scanned after the last activity de-assert, >= max hysteresis
+# 63 plus margin, so the deassert edge is always inside the captured timeline.
 P2_SWEEP_TRAIL_MARGIN = 90
+# Idle-settle bound: max hysteresis 63 + the DMA frontend/backend drain, with
+# ~3x margin so a slow drain fails loudly instead of racing the next step.
 P2_SETTLE_TIMEOUT_SMC = 200
 P2_RACE_HYST_DEFAULT = 40
 P2_RACE_EARLY_OFFSET_DEFAULT = 4
 P2_RACE_B2B_OFFSET_DEFAULT = 1
 P2_RACE_LATE_MARGIN_DEFAULT = 5
+# Extra cycles beyond the programmed hysteresis allowed for the final
+# countdown to expire after the last re-assert (countdown restart + settle).
 P2_RACE_FINAL_MARGIN = 20
+# Bound on waiting for a single activity pulse to be observed on the gater;
+# an activity pulse that never appears within this many cycles is a failure.
 P2_RACE_PULSE_BOUND = 200
 
 
@@ -168,11 +218,12 @@ def _p2_seeded_knobs(seed: int) -> tuple[tuple[int, ...], int, int, int, int]:
     """Return (sweep_gaps, race_hyst, early_off, b2b_off, late_margin)."""
     rng = random.Random(seed ^ 0x0DAC_C6A7)
     extras: list[int] = []
+    anchors = tuple(P2_LOW_BAND_SWEEP_GAPS) + tuple(P2_REQUIRED_SWEEP_GAPS)
     while len(extras) < P2_NUM_RANDOM_GAPS:
         gap = rng.randint(2, 62)
-        if gap not in P2_REQUIRED_SWEEP_GAPS and gap not in extras:
+        if gap not in anchors and gap not in extras:
             extras.append(gap)
-    sweep = tuple(list(P2_REQUIRED_SWEEP_GAPS) + extras)
+    sweep = tuple(list(anchors) + extras)
     race_hyst = rng.randint(24, 55)
     early = rng.randint(2, 8)
     b2b = rng.randint(1, 3)
@@ -195,17 +246,17 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         return cocotb.top
 
     def _log_step(self, step_id: str, msg: str) -> None:
-        _LOG.info("STEP %s: %s", step_id, msg)
+        cocotb.log.info("STEP %s: %s", step_id, msg)
 
     def _emit_chk(self, name: str, line: str) -> None:
         # One substantive checker → exactly one greppable evidence line.
-        _LOG.info("%s", line)
+        cocotb.log.info("%s", line)
         self.chk_seen[name] = line
 
     def _mark_fence(self, term: str) -> None:
         t = int(get_sim_time(units="ns"))
         self.fence.append((term, t))
-        _LOG.info("FENCE %s @ %dns", term, t)
+        cocotb.log.info("FENCE %s @ %dns", term, t)
 
     def _sample_bit(self, name: str) -> int:
         handle = getattr(self._dut(), name)
@@ -334,11 +385,11 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
     async def _observe_backend_only_keep_enabled(self, window: int) -> dict:
         """Prove keep-enabled under backend-only after a free-running wake.
 
-        Card r2 S3 / CHK-DMA-WAKEUP-BACKEND:
+        S3 / CHK-DMA-WAKEUP-BACKEND:
           1) prior activity wake leaves the shared DMA clock free-running
           2) establish backend_busy=1 && frontend_busy=0
           3) gated clock toggles every cycle for the entire observed window
-        Not gated-off→resume (superseded r1 / (B) path).
+        Not gated-off→resume.
         """
         dut = self._dut()
         state = {
@@ -486,7 +537,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
 
     async def _program_cg_field(self, *, enable: bool, hyst_value: int) -> int:
         """Program DMA_CG_EN / CG_HYSTERESIS via the generated field mask/shift
-        (never a hand literal -- guardrail CHK-NO-TAUTOLOGY / policy
+        (never a hand literal -- policy
         [ADDRESS-FROM-AUTHORITATIVE-MAP]). `hyst_value` may exceed the field's
         own width (e.g. 64 against the 6-bit CG_HYSTERESIS_W field); the write
         is masked through CG_HYST_MASK exactly as firmware computing the same
@@ -688,7 +739,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         required-cell hysteresis sweep + seed-driven extras + reassert race."""
         seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         sweep_gaps, race_hyst_val, early_off, b2b_off, late_margin = _p2_seeded_knobs(seed)
-        _LOG.info(
+        cocotb.log.info(
             "SEED: %d P2 knobs sweep=%s race_hyst=%d early=%d b2b=%d late_margin=%d",
             seed,
             sweep_gaps,
@@ -729,22 +780,40 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             label = f"gap={gap}(hyst_field={actual_hyst})"
             t0 = self._find_last_deassert(timeline, 0, label)
             observed = self._count_consecutive_edges(timeline, t0, label)
-            if gap > 63:
-                assert observed <= 63, (
-                    f"{label}: clock-enable deasserted at cycle {observed} > 63 (declared maximum)"
+            # One exact expectation for every gap, over-max included:
+            # CG_HYSTERESIS is a 6-bit field, so gap=64 truncates to
+            # `actual_hyst == 0` and `observed <= 63` could not be violated by
+            # any RTL. The truncated value IS the expectation, so a wrap or a
+            # clamp defect fails this cell ([NO-ALWAYS-PASS-CHECKER]).
+            assert observed == actual_hyst, (
+                f"{label}: expected clock-enable deassert exactly "
+                f"{actual_hyst} cycles after the last activity de-assert, "
+                f"observed {observed}"
+                + (
+                    f" (programmed gap {gap} truncates to {actual_hyst} in the "
+                    f"6-bit CG_HYSTERESIS field)"
+                    if gap > 63
+                    else ""
                 )
-            else:
-                assert observed == actual_hyst, (
-                    f"{label}: expected clock-enable deassert exactly "
-                    f"{actual_hyst} cycles after the last activity de-assert, "
-                    f"observed {observed}"
-                )
+            )
+            # Recorded ONLY after the exact compare passed above.
             sweep_results[gap] = (actual_hyst, observed)
         missing_required = [g for g in P2_REQUIRED_SWEEP_GAPS if g not in sweep_results]
         assert not missing_required, f"sweep required cells not observed: {missing_required}"
-        # Coverage artifact still grades the FL required_cells only.
-        cells_hit = [f"hyst-gap={g}" for g in P2_REQUIRED_SWEEP_GAPS]
-        cov_path = _emit_p2_hyst_sweep_coverage_report(cells_hit)
+        # Coverage artifact books the required_cells, and books a cell only
+        # from a measurement that passed its exact compare -- not from a
+        # restatement of the required list. The 0..8 band is swept above but
+        # excluded from the booking per P2_LOW_BAND_EXCLUSION_REASON.
+        cells_hit = [f"hyst-gap={g}" for g in P2_REQUIRED_SWEEP_GAPS if g in sweep_results]
+        cell_measurements = {
+            f"hyst-gap={g}": {
+                "programmed_gap": g,
+                "hyst_field": sweep_results[g][0],
+                "observed_deassert_cycle": sweep_results[g][1],
+            }
+            for g in sweep_results
+        }
+        cov_path = _emit_p2_hyst_sweep_coverage_report(cells_hit, cell_measurements)
         self._emit_chk(
             "CHK-DMA-HYST-SWEEP",
             "CHK-DMA-HYST-SWEEP: "
@@ -753,9 +822,11 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
                 for g in sweep_gaps
             )
             + f" coverage_artifact={cov_path.name} cells={','.join(cells_hit)}"
+            + " excluded="
+            + ",".join(f"hyst-gap={g}" for g in P2_LOW_BAND_SWEEP_GAPS)
             + f" seed={seed}",
         )
-        self._mark_fence("SWEEP-COMPLETE(5-cells)")
+        self._mark_fence(f"SWEEP-COMPLETE({len(cells_hit)}-cells)")
 
         self._log_step(
             "P2-S3",
@@ -807,23 +878,41 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             ),
         )
 
+        # OBSERVED side: the cells actually booked by the sweep, each appended
+        # only after its exact deassert-cycle compare passed. EXPECTED side:
+        # the independent literal P2_GRADED_CELL_NAMES. The two are never
+        # derived from each other, so this compare is not equal by
+        # construction ([NO-ALWAYS-PASS-CHECKER]).
+        sweep_fence = f"SWEEP-COMPLETE({len(cells_hit)}-cells)"
+        assert cells_hit == list(P2_GRADED_CELL_NAMES), (
+            f"P2 sweep booked {cells_hit}, expected exactly "
+            f"{list(P2_GRADED_CELL_NAMES)} (independent literal, not derived "
+            f"from P2_REQUIRED_SWEEP_GAPS or from cells_hit)"
+        )
         fence_terms = [t for t, _ in self.fence[-5:]]
         expected_p2_pre_pass = [
             "SETUP",
             "ACTIVITY-BASELINE",
-            "SWEEP-COMPLETE(5-cells)",
+            # Literal-derived count, so the emitted fence term (built from
+            # len(cells_hit) in `sweep_fence`) is compared against a number this
+            # sequence states independently of what it booked.
+            f"SWEEP-COMPLETE({len(P2_GRADED_CELL_NAMES)}-cells)",
             "RACE-REASSERT-EARLY",
             "RACE-REASSERT-LAST",
         ]
         assert fence_terms == expected_p2_pre_pass, f"P2 NONVAC fence order wrong: {fence_terms}"
+        # The token is written under the SAME name the testcase gate requires
+        # (`CHK-NONVAC-P2`), so each required name resolves to exactly one
+        # greppable line in the kept log and the P1 and P2 fences do not share a
+        # spelling ([EVIDENCE-TOKEN-CONDITIONAL]).
         p2_nonvac_line = (
-            "CHK-NONVAC: SETUP < ACTIVITY-BASELINE < SWEEP-COMPLETE(5-cells) < "
+            f"CHK-NONVAC-P2: SETUP < ACTIVITY-BASELINE < {sweep_fence} < "
             "RACE-REASSERT-EARLY < RACE-REASSERT-LAST < PASS"
         )
-        _LOG.info("%s", p2_nonvac_line)
+        cocotb.log.info("%s", p2_nonvac_line)
         self.chk_seen["CHK-NONVAC-P2"] = p2_nonvac_line
         self._mark_fence("PASS")
-        _LOG.info("smc_dma_cg_activity_test_seq P2 extension PASS")
+        cocotb.log.info("smc_dma_cg_activity_test_seq P2 extension PASS")
 
     async def body(self) -> None:
         dut = self._dut()
@@ -858,7 +947,8 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
                 f"last toggle not within hyst window: last_toggle={last_toggle} "
                 f"quiet_at={quiet_at} hyst={HYST_CYCLES}"
             )
-        # Print the measured last_toggle (FIND-005); -1 means already gated at enable.
+        # Carry the measured last_toggle, not the bound it was compared against;
+        # -1 means the clock was already gated when CG was enabled.
         self._emit_chk(
             "CHK-DMA-GATE-OFF",
             f"CHK-DMA-GATE-OFF: last_toggle_within_hyst={last_toggle} "
@@ -906,21 +996,33 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         assert resume_after_busy <= 1, (
             f"resume not within 1 cycle of frontend wakeup: delta={resume_after_busy}"
         )
-        edges = await self._count_gated_rising(4)
-        assert edges >= 2, f"clock not continuously toggling after frontend wakeup: {edges}"
+        # Free-running claim, graded at the same strength as the other three
+        # activity windows in this testcase (`edges == 0` over 16 idle cycles,
+        # per-cycle over the backend-only window, `>= IDLE_OBSERVE - 1` with
+        # gating disabled). One edge of slack covers clk_smc_i/gated-clk phase
+        # alignment at the window boundary; anything looser -- `>= 2 of 4` --
+        # is also satisfied by a clock resuming at half rate or re-gating inside
+        # the window, which is not what this token claims ([EXACT-EXPECTATION]).
+        wakeup_window = 4
+        edges = await self._count_gated_rising(wakeup_window)
+        assert edges >= wakeup_window - 1, (
+            f"clock not continuously toggling after frontend wakeup: "
+            f"{edges} rising edge(s) in a {wakeup_window}-cycle window"
+        )
         self._emit_chk(
             "CHK-DMA-WAKEUP-FRONTEND",
-            f"CHK-DMA-WAKEUP-FRONTEND: resume_within_1cyc=1 resume_cyc={resume_after_busy} "
+            f"CHK-DMA-WAKEUP-FRONTEND: resume_cyc={resume_after_busy} "
+            f"(bound 1) then edges={edges}/{wakeup_window} free-running "
             f"start_id={start_task_id}",
         )
         self._mark_fence("frontend-wakeup-observed")
         await self._wait_dma_done(baseline_done)
 
-        # ---- S3: keep-enabled under backend-only (card r2) ----
+        # ---- S3: keep-enabled under backend-only ----
         # After a prior activity wake leaves the shared DMA clock free-running,
         # establish backend_busy=1 && frontend_busy=0 and prove the gated clock
         # toggles every cycle for the entire observed window.
-        # Do NOT re-settle to gated-off or measure gated-off→resume (r1/(B) path).
+        # Do NOT re-settle to gated-off or measure gated-off→resume.
         self._log_step(
             "S3",
             "gating enabled; after activity wake free-running, observe backend-only "
@@ -930,7 +1032,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         baseline_done = await self.csr_read("DMA_DONE_0_BASELINE2", DMA_CTRL_DONE_0)
         await self._program_dma_descriptors(len(DMA_PAYLOAD_S3))
         # START is the prior activity wake that leaves the shared clock free-running.
-        # Do not wait for gated-off before START — that is the superseded r1 SETUP.
+        # Do not wait for gated-off before START.
         await self._start_dma()
         obs = await self._observe_backend_only_keep_enabled(S3_MEASURE_WINDOW)
         self._emit_chk(
@@ -960,7 +1062,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         )
         self._mark_fence("gating-disabled-observed")
 
-        # ---- CHK-NONVAC ordered fence (card r2 term names) ----
+        # ---- CHK-NONVAC ordered fence ----
         order = [t for t, _ in self.fence]
         expected = [
             "gate-off-observed",
@@ -975,7 +1077,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             "backend-only-keep-enabled-observed < gating-disabled-observed < PASS",
         )
         self._mark_fence("PASS")
-        _LOG.info("smc_dma_cg_activity_test_seq PASS")
+        cocotb.log.info("smc_dma_cg_activity_test_seq PASS")
 
-        # ---- P2 (SMC_CG_P2_001) extension: additive, P1 evidence above unchanged ----
+        # ---- P2 (SMC_CG_P2_001) extension ----
         await self._p2_extension()

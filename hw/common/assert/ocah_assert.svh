@@ -5,8 +5,8 @@
 `define OCAH_ASSERT_SV
 
 // Default clock and reset signals for assertion macros
-`define OCAH_ASSERT_DEFAULT_CLK i_clk
-`define OCAH_ASSERT_DEFAULT_RST !i_reset_n
+`define OCAH_ASSERT_DEFAULT_CLK clk_i
+`define OCAH_ASSERT_DEFAULT_RST !rst_ni
 
 // Helper macro to convert a block of code into a Verilog string
 `define OCAH_STRINGIFY(__x) `"__x`"
@@ -48,7 +48,7 @@
 `ifndef VERILATOR
 `ifndef TARGET_VERILATOR
 `ifndef NO_OCAH_ASSERT
-  `define OCAH_INC_ASSERT
+`define OCAH_INC_ASSERT
 `endif
 `endif
 `endif
@@ -58,6 +58,8 @@
 // Complex assertion macros //
 //////////////////////////////
 
+// Keep macro headers on one physical line for synthesis elaboration.
+// verilog_format: off
 // Assert that signal is an active-high pulse with pulse length of 1 clock cycle
 `define OCAH_ASSERT_PULSE(__name, __sig, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT(__name, $rose(__sig) |=> !(__sig), __clk, __rst)
@@ -70,5 +72,6 @@
 `define OCAH_ASSERT_KNOWN_IF(__name, __sig, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT_KNOWN(__name``KnownEnable, __enable, __clk, __rst)                                                     \
   `OCAH_ASSERT_IF(__name, !$isunknown(__sig), __enable, __clk, __rst)
+// verilog_format: on
 
 `endif  // OCAH_ASSERT_SV

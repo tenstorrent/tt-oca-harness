@@ -29,7 +29,7 @@ This project incorporates code from the following third-party sources:
    Copyright (c) ETH Zurich, University of Bologna and contributors
    Licensed under the Apache License, Version 2.0 and/or Solderpad Hardware License v0.51
    Packages: axi, apb, axi_stream, common_cells, common_verification, idma, obi,
-   register_interface
+   register_interface, unbent
    Vendored under vendor/pulp-platform/
 
 3. VeeR-EL2 (CHIPS Alliance)
@@ -43,15 +43,97 @@ This project incorporates code from the following third-party sources:
    Licensed under the ISC License
    Vendored under vendor/tenstorrent/tt-picorv32/upstream/
 
-5. AXI-over-UCIe (AoU) Bridge RTL
-   Copyright (c) BOS Semiconductors and Tenstorrent USA, Inc.
-   Licensed under the Apache License, Version 2.0
-   Project: https://github.com/tenstorrent/aou-rtl
-   Vendored under vendor/tenstorrent/aou-rtl/upstream/
-
-6. slang_to_rdjson.py
+5. slang_to_rdjson.py
    Copyright 2026 ETH Zurich and University of Bologna (Nils Wistoff)
    Licensed under the Apache License, Version 2.0
    Project: https://github.com/pulp-platform/pulp-actions (slang/slang_to_rdjson.py)
    Vendored under scripts/ci/slang_to_rdjson.py
 
+6. Adams Bridge
+   Copyright CHIPS Alliance contributors
+   Licensed under the Apache License, Version 2.0
+   Project: https://github.com/chipsalliance/adams-bridge
+   Vendored under vendor/chipsalliance/adams-bridge/upstream/
+
+7. Caliptra RTL
+   Copyright CHIPS Alliance contributors
+   Licensed under the Apache License, Version 2.0
+   Project: https://github.com/chipsalliance/caliptra-rtl
+   Vendored under vendor/chipsalliance/caliptra-rtl/upstream/ and
+   vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/
+
+8. I3C Core
+   Copyright CHIPS Alliance and Antmicro contributors
+   Licensed under the Apache License, Version 2.0
+   Project: https://github.com/chipsalliance/i3c-core
+   Vendored under vendor/chipsalliance/i3c-core/upstream/
+
+9. cocotbext-i3c
+   Copyright Antmicro contributors
+   Licensed under the Apache License, Version 2.0
+   Project: https://github.com/antmicro/cocotbext-i3c
+   Vendored under
+   vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/
+
+10. axi-vip
+    Copyright (C) 2020 The Symbiflow Authors
+    Licensed under the ISC License
+    Project: https://github.com/antmicro/axi-vip
+    Vendored under
+    vendor/chipsalliance/i3c-core/upstream/third_party/axi-vip/
+
+11. Freedom Metal
+    Copyright (c) 2017-2018 SiFive Inc.
+    Distributed under the FreeBSD License terms retained in the source file.
+    Sources: hw/sys/smc/dv/fw/include/metal/,
+    hw/sys/smc/dv/fw/drivers/, hw/sys/smc/dv/fw/startup/, and
+    hw/sys/smc/bootrom/prod/
+
+12. EEMBC CoreMark
+    Copyright (c) 2018 Embedded Microprocessor Benchmark Consortium (EEMBC)
+    Licensed under the Apache License, Version 2.0
+    Source: hw/sys/smc/dv/fw/tests/coremark/
+
+13. Rocket Chip plusarg reader
+    Copyright 2016-2017 SiFive, Inc.
+    Licensed under the Apache License, Version 2.0
+    Project: https://github.com/chipsalliance/rocket-chip
+    Source:
+    hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/plusarg_reader.v
+
+14. Antora default UI and Antora Lunr Extension
+    Copyright their respective contributors
+    Licensed under the Mozilla Public License, Version 2.0
+    Projects: https://gitlab.com/antora/antora-ui-default and
+    https://gitlab.com/antora/antora-lunr-extension
+    The default UI is used to build the documentation site. A bundled Lunr UI
+    source file is retained at doc/ui-supplemental/js/search-ui.js.
+
+15. axe-core and @axe-core/playwright
+    Copyright Deque Systems, Inc. and contributors
+    Licensed under the Mozilla Public License, Version 2.0
+    Project: https://github.com/dequelabs/axe-core
+    Development-only dependencies declared under tools/a11y/.
+
+16. Apache ECharts
+    Copyright 2017-2026 The Apache Software Foundation
+    Licensed under the Apache License, Version 2.0
+    Project: https://github.com/apache/echarts
+    Vendored under doc/ui-supplemental/js/vendor/echarts/
+    The minified bundle also includes zrender (BSD-3-Clause),
+    d3.js excerpts (BSD-3-Clause, Copyright 2010-2016 Mike Bostock),
+    and tslib (0BSD, Copyright (c) Microsoft Corporation).
+
+17. Viewer.js 1.11.7
+   Copyright 2015-present Chen Fengyuan
+   Licensed under the MIT License
+   Project: https://github.com/fengyuanchen/viewerjs
+   Vendored under doc/ui-supplemental/js/vendor/ and
+   doc/ui-supplemental/css/vendor/
+
+18. MathJax 3.2.2
+    Copyright 2009-2023 The MathJax Consortium
+    Licensed under the Apache License, Version 2.0
+    Project: https://github.com/mathjax/MathJax
+    The unmodified es5/tex-svg.js bundle and LICENSE from mathjax@3.2.2
+    are vendored under doc/ui-supplemental/js/vendor/mathjax/.

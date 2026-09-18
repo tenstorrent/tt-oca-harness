@@ -12,10 +12,6 @@
  * - FIFO depth monitoring and backpressure handling
  * - Multi-block SHA processing
  * - Proper message length bit counting
- *
- * Execution:
- * make test-sep TEST_NAME=sep_hmac_long_message_test STACK=sim
- *
  */
 
 #include <stdint.h>

@@ -4,7 +4,7 @@ import pathlib
 import re
 
 root = pathlib.Path(__file__).resolve().parents[5]
-f = root / "hw/sys/sep/doc/rom.adoc"
+f = root / "hw/sys/sep/bootrom/prod/doc/rom.adoc"
 lines = f.read_text().split("\n")
 i = 0
 ntab = 0

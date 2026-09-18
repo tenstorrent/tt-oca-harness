@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// OCH SEP ROM - DMA copy implementation (secure_dma)
+// OCAH SEP ROM - DMA copy implementation (secure_dma)
 //
 // References:
 // - bootcode DMA API and behavior
@@ -15,7 +15,7 @@
 
 #include "rom_mmio.h"
 
-// Generated absolute register map for OCH SEP.
+// Generated absolute register map for OCAH SEP.
 #include "sep.h"
 
 #include "sep_dma.h"
@@ -28,7 +28,7 @@
 #define BIT(n) (1u << (n))
 #endif
 
-// Cadence xSPI direct flash access / XIP window (OCH address map):
+// Cadence xSPI direct flash access / XIP window (OCAH address map):
 //   0x3000_0000 - 0x3FFF_FFFF (256 MiB).
 #ifndef SEP_SPI_BASE
 #define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
@@ -37,7 +37,7 @@
 #define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
 
-// For OCH, the "SEP EXT SRAM" equivalent is `sep_sram` in the address map.
+// For OCAH, the "SEP EXT SRAM" equivalent is `sep_sram` in the address map.
 #define SEP_EXT_SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
 #define SEP_SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)
 
@@ -82,9 +82,10 @@ static inline int dest_is_iccm(uint32_t dest, uint32_t n) {
     return contains_range_u32(OCH_SEP_TOP_SEP_ICCM_BASE_ADDR, OCH_SEP_TOP_SEP_ICCM_SIZE, dest, n);
 }
 
-uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
-    const uint32_t n = (uint32_t)len;
-
+// One secure_dma transfer.  With src_increment clear the engine re-reads the
+// same source word for every beat, which turns the copy into a fill -- that is
+// how sep_dma_zero() writes a constant without needing a buffer of it.
+static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_increment) {
     // Destination can be in SEP SRAM, SMC SRAM, or ICCM (for BL1 handoff).
     const uint32_t smc_sram = sep_get_smc_sram_base();
     if (!contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, dest, n) &&
@@ -92,10 +93,12 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
         return SEP_MSG_OUT_OF_RANGE_ERROR;
     }
 
-    // Source can be in SPI window, SMC SRAM, or SEP SRAM.
-    if (!contains_range_u32(SEP_SPI_BASE, SEP_SPI_MAX_SIZE, src, n) &&
-        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, src, n) &&
-        !contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, src, n)) {
+    // Source can be in SPI window, SMC SRAM, or SEP SRAM.  A non-incrementing
+    // source is only ever read one word wide, so that is what is range-checked.
+    const uint32_t src_span = src_increment ? n : 4u;
+    if (!contains_range_u32(SEP_SPI_BASE, SEP_SPI_MAX_SIZE, src, src_span) &&
+        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, src, src_span) &&
+        !contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, src, src_span)) {
         return SEP_MSG_OUT_OF_RANGE_ERROR;
     }
 
@@ -139,7 +142,7 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
     // - transfer width: 4 bytes (FOUR_BYTE = 0x2) as used in dma_test.
     // - src/dst increment enabled.
     dma_write(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0x2u);
-    dma_write(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x1u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_increment ? 0x1u : 0x0u);
     dma_write(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x1u);
 
     dma_write(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, n);
@@ -173,4 +176,19 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
     }
 
     return result;
+}
+
+uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
+    return dma_transfer(dest, src, (uint32_t)len, 1);
+}
+
+uint32_t sep_dma_zero(uint32_t dest, size_t len) {
+    // The engine needs a source address even for a fill, so one word of SEP SRAM
+    // is zeroed by the CPU and then read back for every beat.  SRAM is chosen
+    // because it is CPU-writable and already an allowed DMA source; the word is
+    // consumed before any payload is staged there.
+    const uint32_t zero_word = (uint32_t)SEP_EXT_SRAM_BASE;
+    *(volatile uint32_t *)(uintptr_t)zero_word = 0u;
+
+    return dma_transfer(dest, zero_word, (uint32_t)len, 0);
 }

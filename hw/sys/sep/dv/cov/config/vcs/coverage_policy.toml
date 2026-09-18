@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SEP VCS coverage policy: scope only -- which hierarchy the code-coverage report
+# grades -- with no [[thresholds]] and no [[holes]]: a threshold without an agreed
+# score target would fail runs without saying anything true.
+#
+# Scope is NOT owned here. `-cm_hier` + `-cm_common_hier` at compile time decide
+# what enters the database and therefore what the number means; the entry below
+# is the report-time half, which only keeps the pages aligned with that scope.
+# `--run-dir <dir> --stage cov_report` re-renders the pages from the same merged
+# database, but it cannot widen or narrow the score. `--run-dir <dir> --waive`
+# re-grades the rendered report against this file's [[holes]] and
+# [[thresholds]] without running urg; it exits 2 when this [[native_files]]
+# entry's digest differs from the one the report recorded.
+
+schema_version = 1
+dut = "sep"
+scope_epoch = "sep-code-cov-v1"
+
+# Report-page pruning only. `urg -hier` drops rows from the report but scores
+# the whole database regardless, so this entry keeps the pages aligned with the
+# instrumented scope and records the file's hash in the manifest; it does not
+# produce the number. The number's scope comes from `-cm_hier` at compile time.
+[[native_files]]
+tool = "vcs"
+role = "scope"
+path = "sep_cov_scope.hier"
+apply_phase = "report"
+# `-cm_common_hier` is the report-time half of the compile-time pairing: it makes
+# `-hier` prune assertion pages as well as code pages, so the report matches the
+# instrumented scope instead of showing assertion rows for excluded hierarchy.
+args = ["-hier", "{path}", "-cm_common_hier"]

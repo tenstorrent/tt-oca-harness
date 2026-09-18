@@ -54,6 +54,14 @@ const uint8_t *rom_oca_body(void);
 const uint8_t *rom_oca_payload(void);
 size_t rom_oca_payload_len(void);
 
+// The manifest_hash field of the staged manifest: 32 bytes, NULL before a
+// successful rom_manifest_boot(). The validator checked this field against the
+// body it covers (oca_check_manifest_hash) during validation, so it is the
+// digest of what was actually authenticated -- which is what a boot measurement
+// has to commit to, as opposed to a digest recomputed over bytes nothing
+// vouched for.
+const uint8_t *rom_oca_manifest_hash(void);
+
 // demotion_control (manifest offset 172, u16). Bits, vendor-defined:
 //   0 BL1_DEMOTION_VALID   1 BL1_DEMOTION_ENABLE
 //   2 BL2_DEMOTION_VALID   3 BL2_DEMOTION_ENABLE
@@ -64,11 +72,16 @@ size_t rom_oca_payload_len(void);
 #define OCA_DEMOTE_BL2_ENABLE (1u << 3)
 uint32_t rom_oca_demotion_control(void);
 
+// Check that the staged payload carries a BL1 this device can load: present,
+// correctly typed, placed in a permitted region, with entry_point inside it.
+// Called per slot by rom_manifest_boot(), before the fuse-secret lock, so a
+// slot whose BL1 cannot be loaded fails over to the backup.
+uint32_t rom_bl1_check(void);
+
 // Find BL1 in the staged payload TOC, copy it to its load address and jump.
 // Does not return on success.
 uint32_t rom_handoff_bl1(void);
 
 // Zero SEP EXT SRAM before any manifest is staged into it (src/rom_mem_clear.c).
-// Declared here because this is the header that owns the SRAM staging area now;
-// it previously rode along in manifest.h.
+// Declared here because this header owns the SRAM staging area.
 void rom_clear_ext_sram(void);

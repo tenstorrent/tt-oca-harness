@@ -5,7 +5,7 @@
 Snoops a top-level AXI bus directly (by signal prefix) -- independent of the
 cocotbext-axi master, which resolves X/Z away in ``int.from_bytes(resp.data)``.
 This is the in-testbench substitute for the RTL SVA assertions, which the OSS
-Verilator build cannot run (gated off by ``DISABLE_ASSERT``/``SYNTHESIS``). It
+Verilator build cannot run (gated off by ``VERILATOR``). It
 checks, per accepted bus beat:
 
   * **read-data integrity** -- an accepted R beat (``rvalid && rready``) that
@@ -21,13 +21,19 @@ checks, per accepted bus beat:
     expected count via ``arm_expected_decerr(n)``: the next ``n`` DECERR beats are
     then tallied as expected instead of failing, while an UNEXPECTED DECERR still
     fails -- so the monitor stays a real decode-bug guard on the CPU-LSU bus.
+  * **slave ready wait** -- a held ``VALID`` with ``READY`` low is legal AXI
+    (IHI 0022 does not bound READY) and satisfies X-known, so a permanent
+    ``1'b0`` has no protocol net. The monitor counts consecutive
+    ``valid && !ready`` cycles on AW, W and AR (slave readys) and fails
+    when the run reaches the same time budget as ``cfg.axi_timeout_ns``.
+    Master-side B/R READY is not this check.
 
 Configuration (set by the env after construction, like the agent's ``axi_prefix``):
   * ``bus_prefix`` -- AXI signal prefix to snoop (default ``s_axi``, the CPU-LSU
     master). Set to ``m_axi`` for the external SMN-inbound master.
   * ``fail_decerr`` -- whether a DECERR beat fails the test. True for the CPU-LSU
     bus (no inbound filter, a DECERR is a real decode bug); False for the external
-    bus, whose inbound filter *intentionally* routes blocked accesses to
+    bus, whose inbound filter routes blocked accesses to
     axi_err_slv with DECERR (the inbound-filter-gating test asserts that).
 
 It tallies beats + response codes so a clean run reports positive evidence.
@@ -99,6 +105,11 @@ class SepAxiMonitor(uvm_component):
         self.last_write_stim: str | None = None
         self.last_write_hs: str | None = None
         self.expected_decerr_seen = 0
+        # Consecutive slave-ready-low cycles while the matching VALID is held.
+        self._ready_wait = {"aw": 0, "w": 0, "ar": 0}
+        self.max_ready_wait = {"aw": 0, "w": 0, "ar": 0}
+        period = max(1, int(self.cfg.sys_clk_period_ns))
+        self.max_ready_wait_cycles = max(1, int(self.cfg.axi_timeout_ns) // period)
 
     def start_beat_capture(self) -> None:
         """Record the ordered RRESP of every following R beat until taken.
@@ -173,6 +184,20 @@ class SepAxiMonitor(uvm_component):
         else:
             self._fail(f"{chan} beat returned DECERR (address decode error)")
 
+    def _tick_ready_wait(self, chan: str, waiting: bool) -> None:
+        """Count a slave-ready-low cycle, or clear the run on handshake/idle."""
+        run = self._ready_wait[chan] + 1 if waiting else 0
+        self._ready_wait[chan] = run
+        if run > self.max_ready_wait[chan]:
+            self.max_ready_wait[chan] = run
+        if run == self.max_ready_wait_cycles:
+            self._fail(
+                f"{chan} valid held with {chan}ready low for "
+                f"{run} cycles (bound {self.max_ready_wait_cycles}, "
+                f"{self.cfg.axi_timeout_ns} ns) -- a stable 1'b0 on "
+                f"READY is legal AXI and not X, so this is the liveness net"
+            )
+
     def _fail(self, msg: str) -> None:
         self.errors.append(msg)
         self.logger.error("AXI MONITOR [%s] FAIL: %s", self.bus_prefix, msg)
@@ -195,20 +220,33 @@ class SepAxiMonitor(uvm_component):
                 "awready",
                 "wvalid",
                 "wready",
+                "arvalid",
+                "arready",
             )
         }
         if any(sig[n] is None for n in ("rvalid", "rready", "rdata")):
             self.logger.info("%s read channel not found; AXI monitor idle", p)
             return
         await self.cfg.reset_done.wait()
-        self.logger.info("SEP AXI monitor active on %s bus (fail_decerr=%s)", p, self.fail_decerr)
+        self.logger.info(
+            "SEP AXI monitor active on %s bus (fail_decerr=%s, max slave ready-wait %d cycles)",
+            p,
+            self.fail_decerr,
+            self.max_ready_wait_cycles,
+        )
         has_b = sig["bvalid"] is not None and sig["bready"] is not None
 
         has_aw = all(sig[n] is not None for n in ("awvalid", "awready", "wvalid", "wready"))
+        has_ar = sig["arvalid"] is not None and sig["arready"] is not None
 
         while True:
             await RisingEdge(dut.clk_i)
             self.cycles += 1
+            if has_aw:
+                self._tick_ready_wait("aw", _hi(sig["awvalid"]) and not _hi(sig["awready"]))
+                self._tick_ready_wait("w", _hi(sig["wvalid"]) and not _hi(sig["wready"]))
+            if has_ar:
+                self._tick_ready_wait("ar", _hi(sig["arvalid"]) and not _hi(sig["arready"]))
             if has_aw:
                 if _hi(sig["awvalid"]) and self._aw_valid_cycle is None:
                     self._aw_valid_cycle = self.cycles
@@ -249,10 +287,15 @@ class SepAxiMonitor(uvm_component):
         )
         self.logger.info(
             "SEP AXI monitor [%s]: %d R beats, %d B resps; R-resp tally %s; "
-            "%d expected DECERR; 0 errors",
+            "%d expected DECERR; max slave ready-wait aw=%d w=%d ar=%d "
+            "(bound %d); 0 errors",
             self.bus_prefix,
             self.r_beats,
             self.b_resps,
             ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.resp_tally.items() if v),
             self.expected_decerr_seen,
+            self.max_ready_wait["aw"],
+            self.max_ready_wait["w"],
+            self.max_ready_wait["ar"],
+            self.max_ready_wait_cycles,
         )

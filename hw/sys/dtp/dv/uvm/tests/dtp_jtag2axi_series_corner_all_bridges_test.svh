@@ -9,19 +9,19 @@
 // and the settled SERIES_CTRL address/status capture.
 
 class dtp_jtag2axi_series_corner_all_bridges_test extends dtp_jtag2axi_robustness_base_test;
-    `uvm_component_utils(dtp_jtag2axi_series_corner_all_bridges_test)
+  `uvm_component_utils(dtp_jtag2axi_series_corner_all_bridges_test)
 
-    function new(string name = "dtp_jtag2axi_series_corner_all_bridges_test",
-                 uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "dtp_jtag2axi_series_corner_all_bridges_test",
+               uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    virtual function string scenario_name();
-        return "series_corner_all_bridges";
-    endfunction
+  virtual function string scenario_name();
+    return "series_corner_all_bridges";
+  endfunction
 
-    virtual function string specific_loops_plusarg();
-        return "DTP_JTAG2AXI_SERIES_CORNER_ALL_BRIDGES_TEST_LOOPS";
-    endfunction
+  virtual function string specific_loops_knob();
+    return "DTP_JTAG2AXI_SERIES_CORNER_ALL_BRIDGES_TEST_LOOPS";
+  endfunction
 
 endclass : dtp_jtag2axi_series_corner_all_bridges_test

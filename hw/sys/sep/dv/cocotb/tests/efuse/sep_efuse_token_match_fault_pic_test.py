@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PIC source 39 claim + mask for the token-comparator redundancy fault.
+"""PIC source 40 claim + mask for the token-comparator redundancy fault.
 
-cpu mode. Firmware arms PIC source 39 and presents a SEC_DISABLE token.
+cpu mode. Firmware arms PIC source 40 and presents a SEC_DISABLE token.
 The host injects a collapse on that comparator after READY (tb port; no
 LSU conflict). Firmware proves the ISR claim id, the SEC_DISABLE sticky
-bit, and that masking meie[39] stops re-entry. TOKEN_MATCH_FAULT is sw=r;
+bit, and that masking meie[40] stops re-entry. TOKEN_MATCH_FAULT is sw=r;
 there is no W1C.
 
 +skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
@@ -21,6 +21,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_CMP_INJECT_COLLAPSE,
     TOKEN_CMP_INJECT_OFF,
@@ -32,18 +33,18 @@ _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "token_match_fault_pic_
 _ITCM_HEX = os.path.join(_FW_DIR, "token_match_fault_pic_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "token_match_fault_pic_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
 _BANNER = "SEP token-match fault PIC test"
-_READY = 0xE9050039
+_READY = 0xE9050040
 _READY_POLL = 200_000
 
 
 @pyuvm.test()
 class sep_efuse_token_match_fault_pic_test(sep_base_test):
-    """Boot EL2; inject SEC_DISABLE collapse; firmware claims and masks PIC 39."""
+    """Boot EL2; inject SEC_DISABLE collapse; firmware claims and masks PIC 40."""
 
     build_env = False
 
@@ -85,4 +86,10 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         ):
             if needle not in console:
                 raise AssertionError(f"firmware missing {needle!r}")
-        self.logger.info("CHK-PIC-39 PASS: claim id 39, SEC_DISABLE sticky, mask stopped re-entry")
+        # The needles show the firmware reached each check; the magic is what
+        # says it passed. Require both before logging a PASS summary.
+        assert self.sb.fw_done and self.sb.fw_pass, (
+            "firmware did not signal a PASS verdict; the console needles are not "
+            "a verdict on their own"
+        )
+        self.logger.info("CHK-PIC-40 PASS: claim id 40, SEC_DISABLE sticky, mask stopped re-entry")

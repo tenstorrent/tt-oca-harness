@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_ext_axi_global_addr_smoke_test — SMU Tier A LOCAL↔GLOBAL equivalence."""
+"""smu_ext_axi_global_addr_smoke_test — SMU Tier A LOCAL↔GLOBAL equivalence.
+
+The OSS `s_axi` is a LOCAL aperture (`0xC000_xxxx`), so `GLOBAL_BASE + offset`
+returns DECERR; the GLOBAL leg needs a system-view master or the remap path.
+"""
 
 from __future__ import annotations
 

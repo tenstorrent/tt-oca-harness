@@ -3,7 +3,7 @@
 """Generic AXI access sequence on a SEP master bus.
 
 A thin reusable wrapper so higher-level drivers (KM mailbox, OTBN exec) can issue
-one register read/write through the SEP AXI agent without re-declaring a sequence
+one register read/write through the SEP AXI agent without redeclaring a sequence
 each time. The result (``rdata`` / ``resp_ok``) is published on the sequence
 object after ``start_seq``.
 """
@@ -48,7 +48,7 @@ class SepAxiAccessSeq(uvm_sequence):
         self._expect_error = expect_error
         # Packed AWUSER/ARUSER (inbound FILTER_CONFIG.src_id matches user[3:0]).
         self._user = user
-        # AXI AxBURST. None = VIP default (single-beat callers stay unchanged).
+        # AXI AxBURST. None = VIP default (single beat).
         self._burst = burst
         self.rdata: int = 0
         self.resp_ok: bool = False

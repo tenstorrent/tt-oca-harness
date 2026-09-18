@@ -51,7 +51,7 @@ The table below lists the design's input and output ports.
 | `clk_i`   | 1     | Input     | Rising | System clock.
 | `rst_ni`  | 1     | Input     | Low    | System reset. Asynchronous assertion and synchronous
 deassertion.
-5+| *_APB4 or AXI4-Lite Register (CSR) Interface_*
+5+| *_APB4 or AXI4-Lite CSR interface_*
 | Address   | 10    | Input        | High | Control and status register (CSR) address.
 | Data      | 32    | Input/Output | High | Control and status register (CSR) data.
 5+| *_AXI4-Lite Log Fetch Interface_*

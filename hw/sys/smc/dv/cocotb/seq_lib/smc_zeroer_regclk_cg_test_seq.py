@@ -5,19 +5,16 @@ DV-CARD: SMC_ZEROER_REGCLK_CG_TEST ANCHOR: smc_zeroer_regclk_cg_test
 
 DV-CARD: SMC_CG_P2_003 ANCHOR: smc_zeroer_regclk_cg_test
 
-The P2 card extends this same anchor (additive): the P1 steps/checkers above
-are UNCHANGED (their evidence tokens must keep appearing verbatim for the
-closed P1 grade); the P2 extension below (_p2_extension) sweeps the
+The P2 card shares this anchor: the P1 steps and checkers run first and emit
+their evidence tokens verbatim; `_p2_extension` sweeps the
 pending-access-while-gated race across 3 required cells (immediately after
-gate, long after gate, back-to-back across the gate boundary), per SF-004
-(answered): register_activity asserts on any AXI4-Lite access; pending-access
-service must complete within the card's own declared bounded wait (there is
-no separate SPEC max-wait constant).
+gate, long after gate, back-to-back across the gate boundary), per SF-004:
+register_activity asserts on any AXI4-Lite access; pending-access service must
+complete within the card's own declared bounded wait (there is no separate SPEC
+max-wait constant).
 """
 
 from __future__ import annotations
-
-import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
@@ -25,8 +22,6 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from . import smc_addr_map as _addr
 from . import smc_cg_obs_utils as cg
 from .smc_csr_seq_utils import SmcCsrSeq
-
-_LOG = logging.getLogger(__name__)
 
 # hyst=0 so card within-1-cycle idle gate-off matches axi_cg_snoop (DenyDelay=1).
 HYST = 0
@@ -41,7 +36,7 @@ CG_HYST_SHIFT = _addr.CG_HYST_SHIFT
 CG_HYST_MASK = _addr.CG_HYST_MASK
 ZEROER_CTRL_DEST_ADDR = _addr.ZEROER_CTRL_DEST_ADDR
 
-# P2 (SMC_CG_P2_003) additions: pending-access-while-gated race sweep.
+# P2 (SMC_CG_P2_003) cells: pending-access-while-gated race sweep.
 P2_LONG_IDLE_CYCLES = 40
 P2_UNGATE_BOUND_SMC = 32
 P2_SERVICE_BOUND_SMC = 128
@@ -132,12 +127,17 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         technique as `_measure_access_window`, generalised over an
         arbitrary access so it can be scheduled at each of the 3 required
         gate-boundary timings. Returns the resume delta (bus_active to
-        reg_clk_enable) and whether reg_clk_enable ever dropped again
-        before the access's own bus_active window cleared."""
+        reg_clk_enable), the per-SMC-rise enable count over the access's own
+        post-resume window, and whether reg_clk_enable ever dropped again
+        before the access's own bus_active window cleared. The verdict on
+        those last two is applied once, at the `CHK-NONVAC-P2` site, over all
+        the swept cells together."""
         dut = self._dut()
         state = {
             "active_at": -1,
             "resume_at": -1,
+            "post_resume_cycles": 0,
+            "enabled_hits": 0,
             "smc": 0,
             "seen_active": False,
             "done": False,
@@ -160,6 +160,15 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
                     state["seen_active"] = True
                 if state["active_at"] >= 0 and state["resume_at"] < 0 and gated_on:
                     state["resume_at"] = state["smc"]
+                elif state["resume_at"] >= 0 and not state["done"]:
+                    # Post-resume continuity window: one sample per clk_smc_i
+                    # rise from the cycle after reg_clk resumed until this
+                    # access's own bus_active clears. `enabled_hits` counts the
+                    # samples on which reg_clk was still enabled, so the pair is
+                    # the in-access half of the gated-versus-running contrast.
+                    state["post_resume_cycles"] += 1
+                    if gated_on:
+                        state["enabled_hits"] += 1
                 if state["resume_at"] >= 0 and not gated_on and not state["done"]:
                     glitch["seen"] = True
                     glitch["idx"] = state["smc"]
@@ -179,8 +188,37 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
                 f"TIMEOUT: access never drove bus_active/reg_clk resume "
                 f"(active_at={state['active_at']} resume_at={state['resume_at']})"
             )
+        # ENFORCE the service bound that CHK-TIMEOUT-PATHS advertises
+        # ([TIMEOUT-MUST-FAIL]). The wait loop above only *caps* `smc` at
+        # P2_SERVICE_BOUND_SMC, so expiry alone is indistinguishable from a
+        # completed access unless `done` is checked: an access whose bus_active
+        # never cleared inside the bound would otherwise report `service_cycles`
+        # pinned at the bound and make `service_cycles <= P2_SERVICE_BOUND_SMC`
+        # unfalsifiable. The P1 twin `_measure_access_window` asserts the same
+        # property (see its `assert state["done"]`).
+        if not state["done"]:
+            raise AssertionError(
+                f"TIMEOUT: pending access was not serviced within the declared "
+                f"P2_SERVICE_BOUND_SMC={P2_SERVICE_BOUND_SMC} clk_smc_i cycles "
+                f"(bus_active never cleared after reg_clk resumed; "
+                f"active_at={state['active_at']} resume_at={state['resume_at']} "
+                f"sampled_cycles={state['smc']} "
+                f"last_reg_clk_enable={int(dut.tb_zeroer_gated_reg_clk.value)} "
+                f"last_bus_active={cg.sample_bit(dut, 'tb_zeroer_bus_active')})"
+            )
         delta = max(0, state["resume_at"] - state["active_at"])
-        return {"delta": delta, "glitch": glitch["seen"], "glitch_at": glitch["idx"]}
+        # `smc` is the number of clk_smc_i cycles this access actually consumed
+        # before bus_active cleared -- the MEASURED margin against
+        # P2_SERVICE_BOUND_SMC, enforced by the `done` check above and
+        # reported in CHK-TIMEOUT-PATHS.
+        return {
+            "delta": delta,
+            "service_cycles": state["smc"],
+            "post_resume_cycles": state["post_resume_cycles"],
+            "enabled_hits": state["enabled_hits"],
+            "glitch": glitch["seen"],
+            "glitch_at": glitch["idx"],
+        }
 
     async def _p2_extension(self) -> None:
         """P2 extension (SMC_CG_P2_003), additive after the P1 flow in
@@ -201,8 +239,13 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             timeout_smc=GATE_OFF_TIMEOUT_SMC,
             diag_names=("tb_zeroer_cg_en",),
         )
-        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", 4)
-        assert edges == 0, f"P2 setup: reg_clk not gated at baseline: edges={edges}"
+        baseline_window = 4
+        p2_baseline_enabled = await cg.count_enabled_at_smc_rise(
+            dut, "tb_zeroer_gated_reg_clk", baseline_window
+        )
+        assert p2_baseline_enabled == 0, (
+            f"P2 setup: reg_clk not gated at baseline: edges={p2_baseline_enabled}"
+        )
         cg.mark_fence(self.fence, "REG_CLK-GATED-BASELINE")
 
         cg.log_step(
@@ -218,13 +261,28 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         meas = await self._p2_timed_access(
             self.csr_write("P2_ZREG_IMM_WR", ZEROER_CTRL_DEST_ADDR, val, length=8)
         )
-        rb = await self.csr_read("P2_ZREG_IMM_RB", ZEROER_CTRL_DEST_ADDR, length=8)
+        rb = await self.csr_read(
+            "P2_ZREG_IMM_RB", ZEROER_CTRL_DEST_ADDR, expected=val, length=8
+        )  # The `expected=` is what enforces the compare that
+        # CHK-ZEROER-REGCLK-ACCESS-COMPLETE reports as `match=`: the scoreboard
+        # applies an exact 64-bit comparison and raises on mismatch, so the
+        # printed field describes a verdict that was actually applied
+        # ([NO-ALWAYS-PASS-CHECKER]).
         assert meas["delta"] <= P2_UNGATE_BOUND_SMC, (
             f"{label}: reg_clk_enable did not rise within {P2_UNGATE_BOUND_SMC} "
             f"cycles of the access: delta={meas['delta']}"
         )
         assert rb == val, f"{label}: write not reflected: wrote {val:#x} read {rb:#x}"
-        results[label] = {"resume_delta": meas["delta"], "written": val, "readback": rb}
+        results[label] = {
+            "resume_delta": meas["delta"],
+            "service_cycles": meas["service_cycles"],
+            "post_resume_cycles": meas["post_resume_cycles"],
+            "enabled_hits": meas["enabled_hits"],
+            "glitch": int(meas["glitch"]),
+            "glitch_at": meas["glitch_at"],
+            "written": val,
+            "readback": rb,
+        }
 
         # Re-settle idle+gated before the next cell.
         await cg.wait_gated_off(
@@ -240,12 +298,12 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         label = "access-long-after-reg_clk-gates"
         val = P2_ACCESS_VALUES[label]
         await ClockCycles(dut.clk_smc_i, P2_LONG_IDLE_CYCLES)
-        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", 4)
+        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", baseline_window)
         assert edges == 0, f"{label}: reg_clk unexpectedly active during long-idle wait"
         meas = await self._p2_timed_access(
             self.csr_write("P2_ZREG_LONG_WR", ZEROER_CTRL_DEST_ADDR, val, length=8)
         )
-        rb = await self.csr_read("P2_ZREG_LONG_RB", ZEROER_CTRL_DEST_ADDR, length=8)
+        rb = await self.csr_read("P2_ZREG_LONG_RB", ZEROER_CTRL_DEST_ADDR, expected=val, length=8)
         assert meas["delta"] <= P2_UNGATE_BOUND_SMC, (
             f"{label}: reg_clk_enable did not rise within {P2_UNGATE_BOUND_SMC} "
             f"cycles of the access: delta={meas['delta']}"
@@ -253,6 +311,11 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         assert rb == val, f"{label}: write not reflected: wrote {val:#x} read {rb:#x}"
         results[label] = {
             "resume_delta": meas["delta"],
+            "service_cycles": meas["service_cycles"],
+            "post_resume_cycles": meas["post_resume_cycles"],
+            "enabled_hits": meas["enabled_hits"],
+            "glitch": int(meas["glitch"]),
+            "glitch_at": meas["glitch_at"],
             "written": val,
             "readback": rb,
             "idle_cycles": P2_LONG_IDLE_CYCLES,
@@ -280,7 +343,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         meas_b = await self._p2_timed_access(
             self.csr_write("P2_ZREG_B2B_B_WR", ZEROER_CTRL_DEST_ADDR, val_b, length=8)
         )
-        rb = await self.csr_read("P2_ZREG_B2B_RB", ZEROER_CTRL_DEST_ADDR, length=8)
+        # Back-to-back: the LAST write wins, so the readback must equal val_b.
+        rb = await self.csr_read("P2_ZREG_B2B_RB", ZEROER_CTRL_DEST_ADDR, expected=val_b, length=8)
         assert meas_b["delta"] <= P2_UNGATE_BOUND_SMC, (
             f"{label}: second (back-to-back) access did not resume reg_clk "
             f"within {P2_UNGATE_BOUND_SMC} cycles: delta={meas_b['delta']}"
@@ -289,6 +353,14 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         results[label] = {
             "resume_delta_a": meas_a["delta"],
             "resume_delta_b": meas_b["delta"],
+            "service_cycles_a": meas_a["service_cycles"],
+            "service_cycles_b": meas_b["service_cycles"],
+            "post_resume_cycles_a": meas_a["post_resume_cycles"],
+            "post_resume_cycles_b": meas_b["post_resume_cycles"],
+            "enabled_hits_a": meas_a["enabled_hits"],
+            "enabled_hits_b": meas_b["enabled_hits"],
+            "glitch": int(meas_a["glitch"] or meas_b["glitch"]),
+            "glitch_at": max(meas_a["glitch_at"], meas_b["glitch_at"]),
             "written_a": P2_B2B_FIRST_VALUE,
             "written_b": val_b,
             "readback": rb,
@@ -343,12 +415,39 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             "pending access to be serviced has a finite bound, a "
             "fail-on-expiry path, and a last-state diagnostic",
         )
+        # Measured margins, not a restatement of the configuration: each cell's
+        # observed ungate delta against the bound that governed it, plus the
+        # observed service cycles against the service bound.
+        ungate_used = [
+            v for r in results.values() for k, v in r.items() if k.startswith("resume_delta")
+        ]
+        service_used = [
+            v for r in results.values() for k, v in r.items() if k.startswith("service_cycles")
+        ]
+        # The service bound the token reports is enforced here, over the same
+        # numbers the token prints. `_p2_timed_access` raises when an access is
+        # never serviced at all, but its monitor is allowed to run to
+        # `P2_SERVICE_BOUND_SMC * 4` so a late completion is still diagnosed
+        # rather than silently truncated -- which means the reported
+        # `service_cycles` can exceed `P2_SERVICE_BOUND_SMC` and only this
+        # assert makes the denominator a real bound ([TIMEOUT-MUST-FAIL]).
+        assert service_used and max(service_used) <= P2_SERVICE_BOUND_SMC, (
+            f"P2 pending-access service exceeded the declared bound: "
+            f"service_cycles={service_used} bound={P2_SERVICE_BOUND_SMC} "
+            f"smc cycles"
+        )
         cg.emit_chk(
             self.chk_seen,
             "CHK-TIMEOUT-PATHS",
-            "CHK-TIMEOUT-PATHS: ungate_bound_smc_cycles={} service_bound_smc_cycles={} "
-            "long_idle_cycles={} expired=0 last_reg_clk_enable={} last_bus_active={}".format(
+            "CHK-TIMEOUT-PATHS: ungate_cycles_used={} max={}/{} bound "
+            "(enforced per cell); service_cycles_used={} max={}/{} bound "
+            "(enforced over all cells here); long_idle_cycles={} "
+            "last_reg_clk_enable={} last_bus_active={}".format(
+                ",".join(str(v) for v in ungate_used),
+                max(ungate_used) if ungate_used else -1,
                 P2_UNGATE_BOUND_SMC,
+                ",".join(str(v) for v in service_used),
+                max(service_used) if service_used else -1,
                 P2_SERVICE_BOUND_SMC,
                 P2_LONG_IDLE_CYCLES,
                 int(dut.tb_zeroer_gated_reg_clk.value),
@@ -357,13 +456,75 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         )
 
         expected_p2_pre_pass = ["SETUP", "REG_CLK-GATED-BASELINE", "ACCESS-SWEEP(3-cells)"]
-        p2_terms = [t for t, _ in self.fence if t in expected_p2_pre_pass]
-        assert p2_terms == expected_p2_pre_pass, f"P2 NONVAC fence order wrong: {p2_terms}"
-        p2_nonvac_line = "CHK-NONVAC: SETUP < REG_CLK-GATED-BASELINE < ACCESS-SWEEP(3-cells) < PASS"
-        _LOG.info("%s", p2_nonvac_line)
-        self.chk_seen["CHK-NONVAC-P2"] = p2_nonvac_line
+        p2_fence = [(t, ts) for t, ts in self.fence if t in expected_p2_pre_pass]
+        # `assert_fence_progress` requires strictly increasing simulation
+        # timestamps, so a P2 phase that consumed no DUT time fails here.
+        p2_times = cg.assert_fence_progress(p2_fence, expected_p2_pre_pass)
+        # Loop-integrity guards: `len(results) == 3` and a non-empty
+        # `resume_deltas` hold by construction over three straight-line cells
+        # and catch an edit that drops a cell ([NO-ALWAYS-PASS-CHECKER]). The
+        # DUT-sensitive content is the per-cell `delta <= P2_UNGATE_BOUND_SMC`
+        # asserts, the three `expected=` readbacks (cell-unique values, last
+        # write wins for back-to-back), the service-bound assert above, and the
+        # gated-baseline versus in-access contrast below.
+        assert len(results) == 3, f"P2 sweep observed {len(results)}/3 cells"
+        resume_deltas = [
+            v for r in results.values() for k, v in r.items() if k.startswith("resume_delta")
+        ]
+        assert resume_deltas, "P2 sweep recorded no reg_clk resume measurement"
+
+        # Contrast measured on one probe (`tb_zeroer_gated_reg_clk`) across two
+        # windows of the same sweep:
+        #   * gated baseline -- `p2_baseline_enabled` enabled samples over a
+        #     `baseline_window`-cycle window with the bus idle;
+        #   * in-access -- `enabled_hits` over `post_resume_cycles` samples,
+        #     from the cycle after reg_clk resumed until each access's own
+        #     bus_active cleared.
+        # A gater that never gates makes the baseline non-zero; a clock that
+        # resumes and then re-gates mid-access makes `enabled_hits` fall short
+        # of `post_resume_cycles` (and sets the `glitch` flag with the cycle
+        # index).
+        post_resume = [
+            v for r in results.values() for k, v in r.items() if k.startswith("post_resume_cycles")
+        ]
+        enabled_hits = [
+            v for r in results.values() for k, v in r.items() if k.startswith("enabled_hits")
+        ]
+        glitching = {label: r["glitch_at"] for label, r in results.items() if r["glitch"]}
+        assert (
+            p2_baseline_enabled == 0
+            and not glitching
+            and all(h == c and c > 0 for h, c in zip(enabled_hits, post_resume))
+        ), (
+            f"NONVAC-P2 contrast absent on tb_zeroer_gated_reg_clk: gated "
+            f"baseline {p2_baseline_enabled}/{baseline_window} enabled, "
+            f"in-access enabled_hits={enabled_hits} over "
+            f"post_resume_cycles={post_resume}; mid-access re-gate at "
+            f"{glitching or 'none'}"
+        )
+        p2_nonvac_line = (
+            "CHK-NONVAC-P2: SETUP@{}ns < REG_CLK-GATED-BASELINE@{}ns < "
+            "ACCESS-SWEEP(3-cells)@{}ns < PASS cells={} "
+            "gated_baseline_enabled={}/{} in_access_enabled_hits={} over "
+            "post_resume_cycles={} mid_access_regate={} "
+            "resume_deltas={} max_resume_delta={}/{} bound".format(
+                p2_times[0],
+                p2_times[1],
+                p2_times[2],
+                len(results),
+                p2_baseline_enabled,
+                baseline_window,
+                ",".join(str(v) for v in enabled_hits),
+                ",".join(str(v) for v in post_resume),
+                glitching or "none",
+                ",".join(str(d) for d in resume_deltas),
+                max(resume_deltas),
+                P2_UNGATE_BOUND_SMC,
+            )
+        )
+        cg.emit_chk(self.chk_seen, "CHK-NONVAC-P2", p2_nonvac_line)
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_zeroer_regclk_cg_test_seq P2 extension PASS")
+        cocotb.log.info("smc_zeroer_regclk_cg_test_seq P2 extension PASS")
 
     async def body(self) -> None:
         dut = self._dut()
@@ -396,7 +557,10 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         assert gate_off_lat <= 1, (
             f"reg_clk gate-off not within 1 cycle of idle: latency={gate_off_lat}"
         )
-        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
+        idle_enabled = await cg.count_enabled_at_smc_rise(
+            dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
+        )
+        edges = idle_enabled
         assert edges == 0, f"reg_clk still toggling idle: {edges}"
         within_1 = int(gate_off_lat <= 1)
         cg.emit_chk(
@@ -445,7 +609,10 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         cg.log_step("S3", "zeroer_cg_en=0; idle reg_clk stays enabled")
         await self._program_cg(zeroer_en=False)
         await ClockCycles(dut.clk_smc_i, 4)
-        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
+        disable_cg_enabled = await cg.count_enabled_at_smc_rise(
+            dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
+        )
+        edges = disable_cg_enabled
         assert edges == IDLE_OBSERVE, (
             f"reg_clk gated while disable_cg=1: edges={edges} window={IDLE_OBSERVE}"
         )
@@ -478,22 +645,44 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             raise AssertionError("TIMEOUT waiting rst_primary_smc_clk_no assert")
         edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, f"reg_clk gated during reset: edges={edges}"
-        toggles_rst = int(edges == IDLE_OBSERVE)
+        # The token carries the two measured edge counts: S4 with reset
+        # asserted against S1's gated idle window, under the same cg_en=1 /
+        # bus-idle programming. The fail-capable compare is the exact
+        # `edges == IDLE_OBSERVE` above: a DUT that kept reg_clk gated through
+        # reset returns 0 there ([NO-ALWAYS-PASS-CHECKER]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-ZREG-RESET-OVERRIDE",
-            f"CHK-ZREG-RESET-OVERRIDE: toggles_during_reset={toggles_rst} "
-            f"edges={edges} window={IDLE_OBSERVE}",
+            f"CHK-ZREG-RESET-OVERRIDE: reg_clk enabled edges during reset "
+            f"={edges}/{IDLE_OBSERVE} (free-running), vs {idle_enabled}"
+            f"/{IDLE_OBSERVE} measured in S1's gated idle window under the same "
+            f"cg_en=1 / bus-idle programming -- reset assertion is the only "
+            f"difference between the two windows",
         )
         cg.mark_fence(self.fence, "reset-override-observed")
         dut.rst_cool_ni.value = 1
+        # Bounded AND fail-on-expiry, matching the assert twin above: a reset
+        # that never deasserts must fail at the wait that expired, not later in
+        # some other phase running against a DUT still held in reset
+        # ([TIMEOUT-MUST-FAIL]).
+        last_primary = None
         for _ in range(BUSY_TIMEOUT_SMC):
-            if int(dut.rst_primary_smc_clk_no.value) == 1:
+            last_primary = int(dut.rst_primary_smc_clk_no.value)
+            if last_primary == 1:
                 break
             await RisingEdge(dut.clk_smc_i)
+        else:
+            raise AssertionError(
+                f"TIMEOUT waiting rst_primary_smc_clk_no to deassert after "
+                f"rst_cool_ni was released: last={last_primary} bound="
+                f"{BUSY_TIMEOUT_SMC} smc cycles"
+            )
         await ClockCycles(dut.clk_smc_i, 32)
 
-        cg.assert_fence_order(
+        # `assert_fence_progress` requires strictly increasing simulation
+        # timestamps across the listed phases (order alone holds by
+        # construction) and returns them for the token below.
+        fence_times = cg.assert_fence_progress(
             self.fence,
             [
                 "idle-gate-off-observed",
@@ -502,14 +691,46 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
                 "reset-override-observed",
             ],
         )
+        # Refactor guards: `idle_enabled == 0` restates S1's assert,
+        # `disable_cg_enabled == IDLE_OBSERVE` restates S3's, and
+        # `post_resume > 0` / `enabled_hits == post_resume` restate S2's. They
+        # fail if a refactor drops an upstream assert; the non-vacuity claim
+        # rests on the measured contrast those values carry into the token:
+        # idle 0/IDLE_OBSERVE against disable_cg IDLE_OBSERVE/IDLE_OBSERVE on
+        # one probe.
+        assert idle_enabled == 0 and disable_cg_enabled == IDLE_OBSERVE, (
+            f"NONVAC contrast absent on tb_zeroer_gated_reg_clk: "
+            f"idle_enabled={idle_enabled}/{IDLE_OBSERVE} "
+            f"disable_cg_enabled={disable_cg_enabled}/{IDLE_OBSERVE}"
+        )
+        assert post_resume > 0 and enabled_hits == post_resume, (
+            f"NONVAC activity-window measurement vacuous: enabled_hits="
+            f"{enabled_hits} post_resume_cycles={post_resume}"
+        )
         cg.emit_chk(
             self.chk_seen,
             "CHK-NONVAC",
-            "CHK-NONVAC: idle-gate-off-observed < activity-enable-observed < "
-            "disable-cg-observed < reset-override-observed < PASS",
+            "CHK-NONVAC: idle-gate-off-observed@{}ns < "
+            "activity-enable-observed@{}ns < disable-cg-observed@{}ns < "
+            "reset-override-observed@{}ns < PASS "
+            "idle_enabled={}/{} activity_enabled={}/{} disable_cg_enabled={}/{} "
+            "reset_override_enabled={}/{}".format(
+                fence_times[0],
+                fence_times[1],
+                fence_times[2],
+                fence_times[3],
+                idle_enabled,
+                IDLE_OBSERVE,
+                enabled_hits,
+                post_resume,
+                disable_cg_enabled,
+                IDLE_OBSERVE,
+                edges,
+                IDLE_OBSERVE,
+            ),
         )
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_zeroer_regclk_cg_test_seq PASS")
+        cocotb.log.info("smc_zeroer_regclk_cg_test_seq PASS")
 
-        # ---- P2 (SMC_CG_P2_003) extension: additive, P1 evidence above unchanged ----
+        # ---- P2 (SMC_CG_P2_003) extension ----
         await self._p2_extension()

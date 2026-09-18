@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[gpio-programming]]
-===== Programming
+== Programming
 
-====== Basic GPIO Configuration
+=== Basic GPIO Configuration
 
 Setting up GPIO for simple output operation:
 
@@ -24,7 +24,7 @@ Setting up GPIO for simple output operation:
    - Read pad2core for input feedback
 ....
 
-====== Configuration Strap Capture
+=== Configuration Strap Capture
 
 Reading configuration straps captured during reset:
 
@@ -38,7 +38,7 @@ Reading configuration straps captured during reset:
 Note: Strap capture only occurs if GPIO is configured as input by
 default (INPUT_BY_DEFAULT parameter = 1).
 
-====== Interrupt Configuration
+=== Interrupt Configuration
 
 Setting up GPIO interrupt generation:
 
@@ -59,33 +59,68 @@ Setting up GPIO interrupt generation:
 4. Handle interrupts in software interrupt service routine
 ....
 
-====== LSIO Interface Operation
+=== LSIO Interface Operation
 
 Configuring GPIO for LSIO hardware control:
+
+Pad ownership is ranked in three levels. Software does not need to give the
+pad up for a hardware LSIO peripheral to take it:
+
+....
+1. Hardware LSIO (lsio_interface_select_i asserted, lsio_disable = 0)
+2. Register interface (interface_enable, or a DATA_CTRL_ENABLE.use_reg_* override)
+3. Software-forced LSIO (DATA_CTRL.lsio_select)
+....
+
+Letting a hardware LSIO peripheral drive the pad:
+
+....
+1. Ensure DATA_CTRL.lsio_disable = 0
+
+2. Nothing else is required. Once the peripheral asserts its select line it
+   takes the pad, whatever DATA_CTRL.interface_enable is set to.
+
+3. Monitor LSIO operation:
+   - Check DATA_CTRL.lsio_enable for LSIO request status
+   - Note this field reports the hardware select line, not which plane
+     currently owns the pad; the two differ when lsio_disable = 1
+....
+
+Forcing LSIO from software, with no hardware request on the pad:
 
 ....
 1. Disable register interface:
    - Set DATA_CTRL.interface_enable = 0
+   - Clear any DATA_CTRL_ENABLE.use_reg_* overrides
 
-2. Enable LSIO interface:
-   - Set DATA_CTRL.lsio_select = 1 (if forcing LSIO)
-   - Ensure DATA_CTRL.lsio_disable = 0
+2. Set DATA_CTRL.lsio_select = 1 and ensure DATA_CTRL.lsio_disable = 0
 
-3. Monitor LSIO operation:
-   - Check DATA_CTRL.lsio_enable for active status
-   - Hardware LSIO interface controls pad directly
-
-4. LSIO interface has priority over register control when active
+Unlike the hardware select line, this bit ranks *below* interface_enable, so
+the register interface must be off for it to take effect.
 ....
 
-====== Security Configuration
+Reclaiming a pad from LSIO:
+
+....
+1. Set DATA_CTRL.lsio_disable = 1
+   This gates both the hardware select line and lsio_select.
+
+2. Set DATA_CTRL.interface_enable = 1 and program core2pad / enable_rx_tx
+....
+
+Some pads have their select line tied permanently asserted in the integration
+(the I3C pads, and the isolate-request, boot-stall and cool-reset-out pads).
+On those, step 1 above is mandatory: interface_enable alone will not take the
+pad, because the hardware request outranks it.
+
+=== Security Configuration
 
 The GPIO controller implements protection-based access filtering to
 enforce security policies. The filter examines AXI protection bits
 (`aw.prot` for writes, `ar.prot` for reads) and compares them against
 configurable requirement values.
 
-===== Protection Bit Encoding
+== Protection Bit Encoding
 
 AXI protection bits are 3-bit fields encoding transaction attributes:
 
@@ -99,7 +134,7 @@ Common protection values:
 * `0x2` (010): Data, Non-Secure, User
 * `0x3` (011): Data, Non-Secure, Privileged
 
-===== Filter Configuration
+== Filter Configuration
 
 Setting up access control filtering:
 
@@ -124,7 +159,7 @@ Setting up access control filtering:
    - Transactions with non-matching protection: blocked (DECERR)
 ....
 
-===== Filter Behavior
+== Filter Behavior
 
 When protection filtering is enabled:
 * Transactions with protection bits matching the requirement are allowed
@@ -136,7 +171,7 @@ When protection filtering is enabled:
 The filter operates on every transaction, providing real-time security
 enforcement without impacting performance for legitimate accesses.
 
-====== Bidirectional Operation
+=== Bidirectional Operation
 
 Configuring GPIO for bidirectional communication:
 

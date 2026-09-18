@@ -97,18 +97,19 @@ module tlul_socket_1n #(
     .spare_req_i (dev_select_i),
     .spare_req_o (dev_select_t),
     .spare_rsp_i (1'b0),
-    .spare_rsp_o ());
+    .spare_rsp_o ()
+  );
 
 
   // We need to keep track of how many requests are outstanding,
   // and to which device. New requests are compared to this and
   // stall until that number is zero.
-  localparam int MaxOutstanding = 2**top_pkg::TL_AIW; // Up to 256 outstanding
-  localparam int OutstandingW = $clog2(MaxOutstanding+1);
+  localparam int MaxOutstanding = 2 ** top_pkg::TL_AIW;  // Up to 256 outstanding
+  localparam int OutstandingW = $clog2(MaxOutstanding + 1);
   logic [OutstandingW-1:0] num_req_outstanding;
   logic [NWD-1:0]          dev_select_outstanding;
   logic                    hold_all_requests;
-  logic                    accept_t_req, accept_t_rsp;
+  logic accept_t_req, accept_t_rsp;
 
   assign  accept_t_req = tl_t_o.a_valid & tl_t_i.a_ready;
   assign  accept_t_rsp = tl_t_i.d_valid & tl_t_o.d_ready;
@@ -128,11 +129,9 @@ module tlul_socket_1n #(
   end
 
   `OCAH_OT_ASSERT(NotOverflowed_A,
-          accept_t_req && !accept_t_rsp -> num_req_outstanding <= MaxOutstanding)
+                  accept_t_req && !accept_t_rsp -> num_req_outstanding <= MaxOutstanding)
 
-  assign hold_all_requests =
-      (num_req_outstanding != '0) &
-      (dev_select_t != dev_select_outstanding);
+  assign hold_all_requests = (num_req_outstanding != '0) & (dev_select_t != dev_select_outstanding);
 
   // Make N copies of 't' request side with modified reqvalid, call
   // them 'u[0]' .. 'u[n-1]'.
@@ -144,14 +143,14 @@ module tlul_socket_1n #(
   // data integrity can never match
   tlul_pkg::tl_a_user_t blanked_auser;
   assign blanked_auser = '{
-    rsvd: tl_t_o.a_user.rsvd,
-    instr_type: tl_t_o.a_user.instr_type,
-    cmd_intg: tlul_pkg::get_bad_cmd_intg(tl_t_o),
-    data_intg: tlul_pkg::get_bad_data_intg(tlul_pkg::BlankedAData)
-  };
+          rsvd: tl_t_o.a_user.rsvd,
+          instr_type: tl_t_o.a_user.instr_type,
+          cmd_intg: tlul_pkg::get_bad_cmd_intg(tl_t_o),
+          data_intg: tlul_pkg::get_bad_data_intg(tlul_pkg::BlankedAData)
+      };
 
   // if a host is not selected, or if requests are held off, blank the bus
-  for (genvar i = 0 ; i < N ; i++) begin : gen_u_o
+  for (genvar i = 0; i < N; i++) begin : gen_u_o
     logic dev_select;
     assign dev_select = dev_select_t == NWD'(i) & ~hold_all_requests;
 
@@ -178,8 +177,8 @@ module tlul_socket_1n #(
   // for the returning reqready, only look at the device we're addressing
   logic hfifo_reqready;
   always_comb begin
-    hfifo_reqready = tl_u_i[N].a_ready; // default to error
-    for (int idx = 0 ; idx < N ; idx++) begin
+    hfifo_reqready = tl_u_i[N].a_ready;  // default to error
+    for (int idx = 0; idx < N; idx++) begin
       //if (dev_select_outstanding == NWD'(idx)) hfifo_reqready = tl_u_i[idx].a_ready;
       if (dev_select_t == NWD'(idx)) hfifo_reqready = tl_u_i[idx].a_ready;
     end
@@ -191,7 +190,7 @@ module tlul_socket_1n #(
 
   always_comb begin
     tl_t_p = tl_u_i[N];
-    for (int idx = 0 ; idx < N ; idx++) begin
+    for (int idx = 0; idx < N; idx++) begin
       if (dev_select_outstanding == NWD'(idx)) tl_t_p = tl_u_i[idx];
     end
   end
@@ -206,7 +205,7 @@ module tlul_socket_1n #(
   assign tl_t_i.d_error  = tl_t_p.d_error ;
 
   // Instantiate all the device FIFOs
-  for (genvar i = 0 ; i < N ; i++) begin : gen_dfifo
+  for (genvar i = 0; i < N; i++) begin : gen_dfifo
     tlul_fifo_sync #(
       .ReqPass(DReqPass[i]),
       .RspPass(DRspPass[i]),
@@ -222,12 +221,13 @@ module tlul_socket_1n #(
       .spare_req_i (1'b0),
       .spare_req_o (),
       .spare_rsp_i (1'b0),
-      .spare_rsp_o ());
+      .spare_rsp_o ()
+    );
   end
 
   // Instantiate the error responder. It's only needed if a value greater than
   // N-1 is actually representable in NWD bits.
-  if ($clog2(N+1) <= NWD) begin : gen_err_resp
+  if ($clog2(N + 1) <= NWD) begin : gen_err_resp
     assign tl_u_o[N].d_ready     = tl_t_o.d_ready;
     assign tl_u_o[N].a_valid     = tl_t_o.a_valid &
                                    (dev_select_t >= NWD'(N)) &
@@ -246,7 +246,7 @@ module tlul_socket_1n #(
       .tl_h_i     (tl_u_o[N]),
       .tl_h_o     (tl_u_i[N])
     );
-  end else begin : gen_no_err_resp // block: gen_err_resp
+  end else begin : gen_no_err_resp  // block: gen_err_resp
     assign tl_u_o[N] = '0;
     assign tl_u_i[N] = '0;
     logic unused_sig;

@@ -34,7 +34,7 @@ _OCTS_COUNT_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADD
 _OCTS_COUNT_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR")
 _OCTS_TIMER_GPIO_ENABLE = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR")
 
-# CTRL: CREDIT_VAL=0x10, PULSE_WIDTH=0x02, STEP=0x01 (matches legacy FW).
+# CTRL: CREDIT_VAL=0x10, PULSE_WIDTH=0x02, STEP=0x01.
 _OCTS_CTRL_VAL = 0x0001_0210
 _OCTS_CREDIT_VAL = 0x10
 _OCTS_PULSE_WIDTH = 0x02
@@ -42,6 +42,10 @@ _OCTS_PRESET_VAL = 0x1000
 _OCTS_STATUS_MODE = 0x1
 _OCTS_STATUS_RUNNING = 0x10
 _OCTS_PRIMARY_WAIT = 256
+# COUNT lands a few ticks past PRESET by the time the reload read returns.
+_OCTS_RELOAD_SLACK = 0x100
+# STEP=1, so the advance over the edge-count window is bounded by it.
+_OCTS_MAX_ADVANCE = 4 * _OCTS_PRIMARY_WAIT
 
 
 class smc_octs_dual_sync_test_seq(SmcCsrSeq):
@@ -131,7 +135,12 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         edge_task_credit = cocotb.start_soon(
             count_rising_edges(dut.tb_octs_cnt_credit_from_dut, clk, _OCTS_PRIMARY_WAIT)
         )
+        # COUNT is already running above PRESET here, left there by the
+        # secondary phase. TIMER_START reloads it, so the reload -- not the
+        # absolute value -- is what this write can be shown to have caused.
+        count_before_start = await self._read_count()
         await self.csr_write("OCTS_TIMER_START", _OCTS_TIMER_START, 1)
+        count_reloaded = await self._read_count()
 
         sync_edges = await edge_task_sync
         credit_edges = await edge_task_credit
@@ -139,7 +148,23 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         assert credit_edges >= 2, f"OCTS primary pad56 cnt_credit edges={credit_edges}, need >= 2"
 
         count_pri = await self._read_count()
-        assert count_pri > _OCTS_PRESET_VAL, f"OCTS primary COUNT did not advance: 0x{count_pri:x}"
+        # Anchored to values this run measured, not to the PRESET this sequence
+        # programmed: COUNT enters this phase above PRESET, so an absolute
+        # comparison against PRESET would hold with or without the TIMER_START
+        # write.
+        assert count_reloaded < count_before_start, (
+            f"OCTS TIMER_START did not reload COUNT: 0x{count_before_start:x} -> "
+            f"0x{count_reloaded:x} (a free-running counter only increases)"
+        )
+        assert count_reloaded - _OCTS_PRESET_VAL <= _OCTS_RELOAD_SLACK, (
+            f"OCTS COUNT reloaded to 0x{count_reloaded:x}, not to PRESET "
+            f"0x{_OCTS_PRESET_VAL:x} (+{_OCTS_RELOAD_SLACK} read latency)"
+        )
+        advance = count_pri - count_reloaded
+        assert 1 <= advance <= _OCTS_MAX_ADVANCE, (
+            f"OCTS COUNT advanced {advance} from 0x{count_reloaded:x} over "
+            f"{_OCTS_PRIMARY_WAIT} clk_smc_i, expected 1..{_OCTS_MAX_ADVANCE}"
+        )
         cocotb.log.info(
             "OCTS dual-sync PASS: secondary COUNT=0x%x primary "
             "sync_edges=%d credit_edges=%d COUNT=0x%x",

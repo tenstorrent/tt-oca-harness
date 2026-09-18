@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_xfer.c
- * @brief T047 - Key transfer success test
+ * @brief Key transfer success test
  *
  * Boots the KM firmware, generates a key with dest_valid = AES|HMAC,
  * then transfers it to each engine individually.  Verifies:
@@ -125,9 +125,8 @@ int main(void) {
     /*=================================================================
      * Generate key: 256-bit → AES|HMAC
      *
-     * payload[0] = (AES | HMAC) << 8 | 8
-     *   key_size   = 8  (8 × 32 = 256 bits)
-     *   dest_valid = AES|HMAC (0x05)
+     * payload[0] = req_size   = 7 (words minus one: 8 × 32 = 256 bits)
+     * payload[1] = dest_valid = AES|HMAC bitmask
      *=================================================================*/
     uint8_t handle;
 

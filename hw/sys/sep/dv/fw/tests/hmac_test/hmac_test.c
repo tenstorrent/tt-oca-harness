@@ -20,8 +20,7 @@
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
 #include "sep_hmac.h"
-// All register addresses, bit field masks, and shifts are now provided by sep.h / sep_addr.h
-// No need for hardcoded offsets or bit positions!
+// Register addresses, bit-field masks and shifts come from sep.h / sep_addr.h.
 
 static inline uint32_t bswap32(uint32_t x) {
     return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |

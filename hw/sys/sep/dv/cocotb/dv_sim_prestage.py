@@ -84,6 +84,17 @@ def _locked_field_irq_fixed(seed: int) -> dict[str, int]:
     return mod.SepLockedFieldIrqCfg(seed).image_fixed()
 
 
+def _lc_transition_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_lcc_lc_state_transition_matrix_test``'s ``cfg.image_fixed()``.
+
+    ``_load_env_module`` returns ``Any``; the annotated local keeps this return out
+    of mypy's ``no-any-return`` check.
+    """
+    mod = _load_env_module("sep_lc_transition", "sep_lc_transition.py")
+    fixed: dict[str, int] = mod.SepLcTransitionCfg(seed).image_fixed()
+    return fixed
+
+
 def _set_only_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
     mod = _load_env_module("sep_efuse_set_only", "sep_efuse_set_only.py")
@@ -98,9 +109,9 @@ _SIP_SYS_DIS_PINS = {
 
 # sep_lcc_uvm_inbound_filter_gating_test needs DBG_1 bits 0/1 left enabled, because a
 # PROD demotion only relaxes its group to these vectors rather than forcing it open.
-# Kept separate rather than changing the shared dict: the other two entries want the
-# fully-disabled vectors, and this file must mirror each test's own
-# select_efuse_image(fixed=...) or the staged image and the golden disagree.
+# A separate dict: the other entries need the fully-disabled vectors, and each entry
+# must mirror its test's own select_efuse_image(fixed=...) or the staged image and
+# the golden disagree.
 _SIP_SYS_DIS_PINS_DBG_OPEN = {
     "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0C,
     "SYS_DIS": 0x00FF_00FF_00FF_00FC,
@@ -169,6 +180,11 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "rma_token",
     },
+    "sep_efuse_digest_latch_fault_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "rma_token",
+    },
     # Set-only shadow OR-merge. Sensed ones come from SepEfuseSetOnlyCfg(seed);
     # see _set_only_fixed() so the t=0 hex matches the test golden.
     "sep_efuse_set_only_monotonicity_test": {
@@ -176,9 +192,54 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x0,
         "fixed_from": "set_only",
     },
+    # LC_STATE shadow-write next-state walk. The OTP image is a t=0 deposit that
+    # survives reset, so each sensed starting state is its own leaf and the
+    # +lc_start on the leaf's args must agree with lc_raw here -- the test reads
+    # the sensed nibble off the DUT and fails loudly if they disagree. Token
+    # digests and SIP/SYS pins come from SepLcTransitionCfg(seed); see
+    # _lc_transition_fixed().
+    "sep_lcc_lc_state_w1s_prod_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_prod_demote_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_rma_sip_test": {
+        "mode": "random",
+        "lc_raw": 0x2,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_rma_chiplet_test": {
+        "mode": "random",
+        "lc_raw": 0x6,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_prod_end_test": {
+        "mode": "random",
+        "lc_raw": 0x8,
+        "fixed_from": "lc_transition",
+    },
+    # The transient-RMA leaf senses TRANSIENT_RMA_EN=1, which the test re-pins in
+    # its own select_efuse_image call.
+    "sep_lcc_lc_state_w1s_transient_test": {
+        "mode": "random",
+        "lc_raw": 0x8,
+        "fixed_from": "lc_transition",
+        "fixed_extra": {"TRANSIENT_RMA_EN": 1},
+    },
     # Locked-field shadow IRQ. SPARE lock bits and patterns come from
     # SepLockedFieldIrqCfg(seed); see _locked_field_irq_fixed().
     "sep_locked_field_access_irq_path_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "locked_field_irq",
+    },
+    # SECURE_TM leaf of the same module: same image pins, same seed derivation.
+    "sep_efuse_secure_tm_write_lock_test": {
         "mode": "random",
         "lc_raw": 0x1,
         "fixed_from": "locked_field_irq",
@@ -259,8 +320,13 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _rma_token_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "set_only":
             fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "lc_transition":
+            fixed = _lc_transition_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
+        extra = spec.get("fixed_extra")
+        if extra:
+            fixed = {**(fixed or {}), **extra}
         image.randomize(
             seed + int(spec.get("seed_offset", 0)),
             lc_raw=spec.get("lc_raw"),

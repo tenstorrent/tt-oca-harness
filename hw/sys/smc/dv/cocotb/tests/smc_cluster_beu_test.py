@@ -1,29 +1,59 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap Round 4: per-core BEU sweep."""
+"""SEP_IN sweep of the documented BEU window, which folds onto SMC_BASE_CONFIG."""
 
 from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
+from seq_lib.smc_addr_map import CLOCK_GATE_CONTROL_RESET
 from seq_lib.smc_cluster_beu_test_seq import smc_cluster_beu_test_seq
 from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_cluster_beu_test(smc_base_test):
-    """P1 coverage-gap depth: 4 per-core Bus Error Units (0xC801_0000+)."""
+    """Locks the 0xC801_0000 -> 0xC001_0000 local-fabric address fold.
+
+    No access in this testcase reaches a Bus Error Unit; see the sequence
+    docstring for the RTL site and for what is proven instead.
+    """
+
+    required_evidence = ("CHK-BEU-WINDOW-ALIASED",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         seq = smc_cluster_beu_test_seq("smc_cluster_beu_test_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
+        # Byte golden. `expected_bytes` is CLOCK_GATE_CONTROL's reset word
+        # composed from the generated RDL field symbols; `observed_bytes` is what
+        # the folded address held after the co-residency probe was restored. The
+        # scoreboard compares them, so the record carries a fail-capable payload
+        # instead of resting on `csr_accesses >= min_csr_accesses`, which is
+        # `29 >= 29` on every run: `seq.accesses` is the sequence's own counter
+        # and `assert_all_reachable` already pinned it to exactly that number.
+        assert seq.coresidency_word is not None, "co-residency probe never ran"
+        assert seq.restored_word is not None, "co-residency probe was not restored"
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
+            # Directed stimulus floor: 12 (core, register) pairs read at both
+            # addresses, plus the 5-access write co-residency probe. Literal
+            # here, not read from `seq.accesses`.
+            min_csr_accesses=29,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,
-            details="P1 coverage-gap R4: cluster BEU 0..3 bounded sweep",
+            expected_bytes=(CLOCK_GATE_CONTROL_RESET & 0xFFFF_FFFF).to_bytes(4, "big"),
+            observed_bytes=seq.restored_word.to_bytes(4, "big"),
+            details=(
+                "Documented BEU window 0xC801_0000+ folds onto SMC_BASE_CONFIG "
+                f"/ the remap tables: {len(seq.alias_pairs)} address pairs "
+                f"returned the same word ({len(seq.discriminating_pairs)} of "
+                f"them non-zero) and a write via the BEU address read back as "
+                f"0x{seq.coresidency_word:08x} at the folded address. No BEU "
+                "property is covered by this testcase."
+            ),
         )

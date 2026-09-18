@@ -4,7 +4,7 @@
 
 OSS port combining the reference suite ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
 Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
-  * verifies SW_RESET_N default 0x3E and that pulsing each crypto/TRNG reset bit
+  * verifies SW_RESET_N default 0x7E and that pulsing each crypto/TRNG/ABR reset bit
     clears the corresponding probe CSRs;
   * proves a write + a read to an unmapped fabric gap each raise a D-bus-error
     NMI (count == 2);
@@ -35,13 +35,14 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "reset_wdt_sanity_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "reset_wdt_sanity_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "reset_wdt_sanity_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000

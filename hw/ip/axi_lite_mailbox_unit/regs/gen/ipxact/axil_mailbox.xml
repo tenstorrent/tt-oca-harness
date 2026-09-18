@@ -80,7 +80,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -92,7 +92,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

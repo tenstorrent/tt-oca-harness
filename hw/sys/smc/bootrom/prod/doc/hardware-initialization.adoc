@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[hardware-initialization]]
+== Hardware initialization
+
+=== Straps and eFuses
+
+Early assembly reads strap registers at `0xC0405800` and `0xC0405804`.
+The C strap driver later caches the fields used for reporting or policy.
+
+.ROM strap use
+[cols="2,1,4",options="header"]
+|===
+|Strap |Bit |ROM use
+
+|`MEM_REPAIR_BYPASS`
+|13
+|Skips the assembly memory-repair result check and records the bypass status.
+
+|`TEST_EN`
+|14
+|Cached by the strap driver; no later ROM behavior depends on it.
+
+|`BOOT_STALL`
+|17
+|Reported in the POST word. CPU stalling occurs before ROM execution in hardware.
+
+|`BOOT_I2C`
+|18
+|Reported in the POST word; it does not alter the interface map.
+
+|`BOOT_RECOVERY`
+|19
+|Reported as a warning and in the POST word; it does not select a different ROM flow.
+
+|`BL0_PLLCLK`
+|20
+|Controls whether the ROM calls the optional `smc_pll_init` hook.
+
+|`STATUS_RPT_DISABLE`
+|21
+|Causes `GetStatus` to return `Unsupported_StatusID`.
+
+|`SPI_USE_FUSED_CONFIG`
+|22
+|Cached by the strap driver; no later ROM behavior depends on it.
+
+|`PRIMARY_CHIPLET`
+|25
+|Reported in status and POST state; it does not select a different boot algorithm.
+
+|`SRAM_AUTO_ZERO_DISABLE`
+|26
+|Requests explicit SRAM clearing with the AXI zeroer.
+
+|`MEM_BIST_BYPASS`
+|54
+|Skips the assembly MBIST result check and records the bypass status.
+
+|`ROTATE_UPDATE`
+|58
+|Cached by the strap driver; no later ROM behavior depends on it.
+|===
+
+The four chip-ID strap bits are read from `STRAPS_LO` bits 11, 12, 15, and 23.
+They contribute to the I2C/I3C identifier fallback described in <<interface-addressing>>.
+
+The eFuse driver reads I2C/I3C identifier slots 0, 1, 3, 6, and 7 and the `RESERVED_1` transport timeout.
+Early assembly additionally reads:
+
+* `RESERVED_0[6]`, which requests explicit SRAM clearing; and
+* `RESERVED_2[0]`, which permits boot to continue after an MBIST or memory-repair failure while preserving the failure code in scratch register 15.
+
+=== SRAM initialization
+
+Hardware auto-zero is assumed unless either `SRAM_AUTO_ZERO_DISABLE` or eFuse `RESERVED_0[6]` is set.
+When explicit clearing is requested, `__metal_sram_init_early`:
+
+. disables machine interrupts while configuring the operation;
+. writes SRAM base `0xC0060000` to zeroer destination register `0xC0038200`;
+. writes size `0x00100000` to zeroer size register `0xC0038208`;
+. writes zero to control/status register `0xC0038210` to start the operation;
+. waits while busy bit 32 is set; and
+. restores the previous `mstatus`.
+
+The ROM does not perform a DMA-reset step.
+
+=== MBIST and memory repair
+
+The production ROM FW image links strong overrides for both early checks, so
+the weak no-op definitions in `mbist_check.S` are not used.
+Both checks read the SMU DFX status register at `0xC000B800`.
+They run after SRAM initialization and before stack setup.
+
+The MBIST check uses:
+
+* bit 4, `mbist_done`;
+* bit 8, `mbist_pass`; and
+* bit 12, `mbist_abort`.
+
+If MBIST was not run, the ROM continues.
+If it passed, the ROM continues.
+An abort records `0xDEADC0DE` and halts.
+A failure records `0xDEADBEEF` and halts unless eFuse `RESERVED_2[0]` permits continuation.
+Scratch register 15 contains `0x12345678` while the MBIST result check is in
+progress.
+`MEM_BIST_BYPASS` records `0x12340002` and skips the check.
+
+The memory-repair check uses:
+
+* bit 0, `mem_repair_done`; and
+* bit 1, `mem_repair_success`.
+
+If repair was not run or succeeded, the final status is normally `0x600DCAFE`.
+A failure records `0xBADC0FFE` and halts unless eFuse `RESERVED_2[0]` permits continuation.
+`MEM_REPAIR_BYPASS` records `0x12340001` and skips the check.
+On its normal completion path, the repair check preserves a preceding MBIST failure, timeout, or bypass status.
+If both bypass straps are asserted, the memory-repair check runs second and
+replaces the MBIST-bypass value with `0x12340001`.
+
+=== Clock hook
+
+The C flow calls `smc_pll_init` only when `BL0_PLLCLK` is asserted.
+The open implementation is weak and its internal configuration function performs no register writes, so the default behavior is a successful no-op.
+An adopter ROM FW build may provide a strong implementation through the
+build's additional driver-source hook.
+If that implementation returns any value other than `SMC_PLL_SUCCESS`, the
+ROM records an interface error and remains in `wfi`.

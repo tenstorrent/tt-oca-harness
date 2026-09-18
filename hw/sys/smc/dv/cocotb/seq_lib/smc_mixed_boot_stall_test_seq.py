@@ -75,10 +75,29 @@ class smc_mixed_boot_stall_test_seq(SmcCsrSeq):
         self.ovrd_release_ok = True
         cocotb.log.info("CHK-MIXED-BOOT-STALL-OVRD: ovrd=1 val=0 combined=0 pad57 held")
 
+        # What this leg does and does not prove. Probed on this bench, with pad57
+        # held throughout:
+        #
+        #     ovrd=0 val=0 -> combined=1   (GPIO alone)
+        #     ovrd=1 val=1 -> combined=1   (GPIO still holding; val not isolated)
+        #     ovrd=1 val=0 -> combined=0   (the release)
+        #     ovrd=0 val=0 -> combined=0   (sticky: stays released)
+        #
+        # There is no state on this bench where `val=1` can be shown to CAUSE
+        # combined to rise: before the release the GPIO already holds it, and
+        # after the release the sticky lockout keeps it at 0 permanently. This
+        # leg is therefore a lockout claim -- once released, nothing re-stalls
+        # -- and not a claim about val's polarity, which a val input that is
+        # ignored entirely would satisfy identically.
         dut.tb_boot_stall_jtag_val_i.value = 1
         await self._stay(dut, combined_expect=0, label="VAL1")
         self.val1_lockout_ok = True
-        cocotb.log.info("CHK-MIXED-BOOT-STALL-VAL1: ovrd=1 val=1 did not re-stall (sticky stays 0)")
+        cocotb.log.info(
+            "CHK-MIXED-BOOT-STALL-VAL1: after the ovrd release, driving val=1 for "
+            "%d cycles did not re-stall -- the release is sticky. This does NOT "
+            "claim val=1 asserts a stall; that direction is unreachable here.",
+            _LOCKOUT_CYCLES,
+        )
 
         dut.tb_boot_stall_jtag_val_i.value = 0
         dut.tb_boot_stall_jtag_ovrd_i.value = 0

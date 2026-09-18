@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -10,7 +10,7 @@
 | 0x8 | NDMRESET_CLUSTER_COUNT | R a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .NDMRESET_REQUEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -18,7 +18,7 @@
 Connected from ndmreset_request_i input port. Also connected to SMC interrupts. Supports up to 32 CPU Clusters
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .NDMRESET_PROCESS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -26,7 +26,7 @@ Connected from ndmreset_request_i input port. Also connected to SMC interrupts. 
 Connected to ndmreset_process_o output port. Supports up to 32 CPU Clusters
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .NDMRESET_CLUSTER_COUNT Register
 |===
 | Bits | Field | Access | Reset | Description

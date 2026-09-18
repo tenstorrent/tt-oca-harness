@@ -22,7 +22,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>init_time</ipxact:name>
-            <ipxact:description>Most OTP have a initalization time before sensing can be done</ipxact:description>
+            <ipxact:description>Most OTP have a initialization time before sensing can be done</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

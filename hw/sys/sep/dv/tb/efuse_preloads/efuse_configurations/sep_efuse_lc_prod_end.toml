@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD_END lifecycle, everything else at zero.
+#
+# The only preload here that selects PROD_END; it exists for one ROM
+# path: rom_main.c, where the demotion decision short-circuits before the
+# manifest's selector bit or either demotion flag is read, and BL0 writes DEMOTE_2
+# -- the only case in which it touches that register at all (rom_main.c).
+# Used by all three PROD_END members of the [S25] demotion group:
+# sep_firmware_demotion_decision_auth_flag_0_prod_end_test, and
+# sep_firmware_demotion_decision_no_flag_prod_end_test plus
+# sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test.
+# All three produce the SAME outcome, because rom_main.c returns before any
+# manifest demotion input is read; they differ only in the stimulus they plant
+# and therefore in what a failure would mean. See rom_fw/sep_demotion_prod_end_base.py.
+#
+# 0x78 is the differential encoding {~raw[3:0], raw[3:0]} of raw state 0x8. The
+# authority for both halves is the register map and the RTL, not the ROM's own
+# header: sep_efuse_map.rdl:565-566 gives the encoding rule and
+# hw/ip/efuse/rtl/efuse_pkg.sv:51-59 gives LC_PROD_END = 4'b1000. The shadow
+# regenerates {~raw, raw} from the sensed nibble itself
+# (hw/ip/efuse/rtl/efuse_shadow_regs.sv:538-544), so only [3:0] reaches the DUT;
+# the full byte is written here to match the convention of every sibling file.
+#
+# Secure boot is ENFORCED in PROD_END exactly as in PROD (lifecycle.c), so a
+# test using this preload runs the full crypto chain and needs
+# +sep_crypto_edn_force if its manifest is meant to verify.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0x78   # PROD_END (raw=0x8)

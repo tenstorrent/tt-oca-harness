@@ -1,16 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Build bl1_pass_test as a single flat binary for SRAM execution.
+# Build bl1_pass_test as a single flat binary for ICCM execution.
 #
 # Produces:
-#   build/bl1_pass_test.bin  — flat binary for SRAM (code + data)
+#   build/bl1_pass_test.bin  — flat binary for ICCM (.text + .data's load image)
 #
-# IFU and LSU both access SRAM via the AXI system bus, so all sections
-# (.text, .rodata, .data, .bss) are linked into a single SRAM region.
+# .text runs from ICCM; .rodata/.data/.bss run from DCCM because the EL2 DMA
+# port rejects sub-word ICCM accesses.  The blob therefore holds .text followed
+# by .data's ICCM load image, and _start copies that down to DCCM.  See bl1.ld.
 #
 # Self-contained: no RV_ROOT / OCH_ROOT / picolibc dependencies.
-# No crt0 needed — BL1 inherits CPU state (SP, PMA, mtvec) from the ROM.
+# No crt0 needed — BL1 inherits CPU state (SP, PMA, mtvec) from the ROM, and
+# does its own .data copy and .bss clear at the top of _start.
 #
 # Usage:
 #   make                              # uses riscv64-elf prefix
@@ -29,7 +31,9 @@ MABI   = ilp32
 
 BUILD_DIR = build
 
-CFLAGS  = -Os -ffreestanding -fno-builtin \
+# -MMD/-MP: bl1_pass_test.c reads bl0_state from the address and layout the
+# ROM's include/bl0_state.h defines, so a change there must force a rebuild.
+CFLAGS  = -Os -ffreestanding -fno-builtin -MMD -MP \
           -fdata-sections -ffunction-sections \
           -mno-relax -march=$(MARCH) -mabi=$(MABI)
 
@@ -63,3 +67,5 @@ $(BIN): $(ELF)
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+-include $(OBJS:.o=.d)

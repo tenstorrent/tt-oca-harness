@@ -8,7 +8,7 @@
  * simulation: SMC firmware initiates Phase A requests to SEP, then SEP
  * initiates Phase B requests to SMC, repeated for N_ROUNDS rounds.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — the KM→SEP path
+ * Spec basis: OCAH Specification §Crypto Key Manager — the KM→SEP path
  * (key requests) and SEP→KM path (status / crypto results) must coexist
  * without state corruption; this test forces both paths to exercise the same
  * shared scratch bus in strict alternation.
@@ -188,5 +188,5 @@ int main(void) {
     return 0;
 }
 
-/* secondary_main intentionally not defined — crt0 default routes only
- * the boot hart to main(), non-boot harts spin in WFI. */
+/* secondary_main is not defined here: the crt0 weak default routes only the
+ * boot hart to main() and parks the other harts in WFI. */

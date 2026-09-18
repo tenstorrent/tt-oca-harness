@@ -51,7 +51,7 @@ SIM_8192_BW   = obj_dir_8192_bw/tb_scrambler_8192x32_bw
 ALL_SIMS    = $(SIM_512)    $(SIM_1024)    $(SIM_2048)    $(SIM_4096)    $(SIM_8192)
 ALL_SIMS_BW = $(SIM_512_BW) $(SIM_1024_BW) $(SIM_2048_BW) $(SIM_4096_BW) $(SIM_8192_BW)
 
-.PHONY: all all_bw clean run_all run_all_bw
+.PHONY: all all_bw clean run run_all run_all_bw
 .PHONY: run_512  run_1024  run_2048  run_4096  run_8192
 .PHONY: run_512_bw run_1024_bw run_2048_bw run_4096_bw run_8192_bw
 .DEFAULT_GOAL := help
@@ -207,7 +207,7 @@ run_all_bw: run_512_bw run_1024_bw run_2048_bw run_4096_bw run_8192_bw
 	@echo "All BYTE_WISE=1 simulations complete"
 	@echo "=========================================="
 
-# Backward compatibility
+# Default run target (512x32 word mode).
 run: run_512
 
 
@@ -226,7 +226,7 @@ help:
 	@echo "Scrambler Testbench Makefile (Verilator)"
 	@echo ""
 	@echo "Build targets:"
-	@echo "  all           - Build all 10 testbenches (word-mode + byte-wise)"
+	@echo "  all           - Build every word-mode and byte-wise testbench"
 	@echo "  all_bw        - Build BYTE_WISE=1 testbenches only"
 	@echo ""
 	@echo "Run targets:"

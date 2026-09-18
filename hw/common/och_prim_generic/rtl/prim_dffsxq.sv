@@ -6,19 +6,17 @@
 //
 //--------------------------------------------------
 module prim_dffsxq (
-  input i_CK,
-  input i_D,
-  input i_SN,
-  output wire o_Q
+  input clk_i,
+  input d_i,
+  input set_ni,
+  output wire q_o
 );
 
-logic q_d;
-always_ff @(posedge i_CK or negedge i_SN) begin
-  q_d <= ~i_SN ? 1'b1 : i_D;
-end
+  logic q_d;
+  always_ff @(posedge clk_i or negedge set_ni) begin
+    q_d <= ~set_ni ? 1'b1 : d_i;
+  end
 
-assign o_Q = q_d;
+  assign q_o = q_d;
 
 endmodule
-
-

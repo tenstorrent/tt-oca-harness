@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i2c-architecture]]
-===== Architecture
+== Architecture
 
 The I2C Interface Component is a dual-mode I2C/SMBus/PMBus communication
 controller supporting both controller (master) and target (slave)
@@ -11,11 +11,11 @@ https://github.com/lowRISC/opentitan/tree/master/hw/ip/i2c[OpenTitan I2C
 controller]. The architecture provides high reliability with
 configurable timing, robust error handling, and AXI4-Lite integration.
 
-====== Block Diagram
+=== Block Diagram
 
 image::i2c_block_diagram.svg[I2C Block Diagram,width=100%]
 
-====== Functional Description
+=== Functional Description
 
 I2C IP is a controller-target combo that can function as an I2C controller and/or an I2C target.
 These functional modules are enabled at runtime by setting the register fields `CTRL.ENABLEHOST` and `CTRL.ENABLETARGET`.
@@ -32,9 +32,9 @@ The RTL parameter `InputDelayCycles` must be set to the maximum number of cycles
 The reference point for `InputDelayCycles` is the clock edge after the launch clock edge.
 In other words, a value of 0 means that the IP's 2-flop synchronizer would sample the IP's own outputs within one clock cycle (if the external pad driver could switch instantaneously).
 
-====== Functional Blocks
+=== Functional Blocks
 
-====== Control and Status Registers (CSRs)
+=== Control and Status Registers (CSRs)
 
 32-bit AXI4-Lite interface with 8-bit address space:
 
@@ -48,7 +48,7 @@ target modes
 * *Timing Registers*: Configurable parameters for I2C speed modes
 (Standard, Fast, Fast-Plus)
 
-====== I2C Core Processing Engine
+=== I2C Core Processing Engine
 
 The core engine manages all I2C protocol operations through integrated
 state machines:
@@ -105,7 +105,7 @@ Note that a full RX FIFO does not stop command processing.
 Ensure the RX FIFO has enough space, else overflows can occur.
 
 [[controller-nack-handling]]
-===== Controller NACK Handling
+== Controller NACK Handling
 
 If the Controller Module transmits a byte and the 9th bit is a NACK from the Target/Bus, the `controller_halt` interrupt is usually asserted (modulo the effect of `FDATA.NAKOK`).
 If the `controller_halt` interrupt is asserted, the Controller FSM will halt until the interrupt condition has been cleared in the `CONTROLLER_EVENTS.NACK` register.
@@ -129,7 +129,7 @@ The Controller Module stops immediately following the (N)ACK bit's hold time aft
 If a NACK handling timeout occurs or `CTRL.ENABLEHOST` is cleared, then the FSM will halt again after the STOP condition is sent.
 The STOP condition terminates the transaction, leaving the FSM halted in the "bus idle" state, with SDA and SCL released.
 
-===== Bus Arbitration
+== Bus Arbitration
 
 In a multi-controller configuration, the Controller Module may begin transmitting at the same time as another controller.
 The Bus Monitor will detect when the Controller Module loses arbitration, such as when it attempts to transmit a logic high, but another device is pulling SDA low.
@@ -153,7 +153,7 @@ Address bytes may be configured to be always ACK'd, and the Target ACK Control f
 The Target Module can also be configured to observe SMBus's maximum cumulative target clock extension time.
 There is no hardware support for calculating or checking the Packet Error Code, however; these values would need to be handled in software.
 
-===== Target Address Registers
+== Target Address Registers
 
 Every transfer involving the I2C Target Module begins with an address.
 The I2C Target Module supports up to two 7-bit address and 7-bit mask pairs.
@@ -168,7 +168,7 @@ If the user wishes to have the target respond to *all* addresses, then this can 
 
 The assigned address and mask pairs are set in registers `TARGET_ID.ADDRESS0`, `TARGET_ID.MASK0`, `TARGET_ID.ADDRESS1`, and `TARGET_ID.MASK1`.
 
-===== Target Transfers
+== Target Transfers
 
 When the Target Module accepts a transfer, it acquires the transfer address, read/write bit, and START signal sent by the controller and inserts them into ACQ FIFO, where they can be accessed by software.
 `ACQDATA` represents the ACQ FIFO output.
@@ -204,7 +204,7 @@ The following diagram shows consecutive entries inserted into ACQ FIFO during a 
 
 image::i2c_acq_fifo_read.svg[ACQ FIFO Read Operation,width=100%]
 
-===== Target Clock Stretching
+== Target Clock Stretching
 [[stretching-during-read]]
 
 As described in the I2C specification, a target device can pause a transaction by holding SCL low.
@@ -213,13 +213,13 @@ There are 3 cases in which this design stretches the clock:
 * Before the (N)ACK bit completes transmission during a write transfer
 * After the ACK bit is sent by the controller-transmitter during a read transfer
 
-===== Stretching after address read
+== Stretching after address read
 
 When a target device receives a start, the address and R/W bit are written into the ACQ FIFO.
 If there is no space in the ACQ FIFO to receive such a write, the target stretches the clock after the ACK bit and waits for software to make space.
 The `acq_stretch` interrupt is generated to alert software to such a situation.
 
-===== Stretching during write
+== Stretching during write
 
 If the controller tries to write a data byte into the ACQ FIFO when there is no available space, the clock is stretched before the rising edge of SCL on the ACK bit.
 In addition, the Target Module may stretch if Target ACK Control Mode is enabled and the Auto ACK Counter has reached 0.
@@ -227,7 +227,7 @@ See the <<target-ack-control-mode>> section for more about it.
 
 The `acq_stretch` interrupt is generated to alert software to these situations.
 
-===== Stretching during read
+== Stretching during read
 
 When a target device receives a start and read command, it may stretch the clock for any of the following reasons:
 * If there is no data available to be sent back (TX FIFO empty case), the target stretches the clock until data is made available by software.
@@ -238,7 +238,7 @@ When a target device receives a start and read command, it may stretch the clock
 The `tx_stretch` interrupt is generated to alert software to such a situation.
 
 [[target-nacks]]
-===== Target NACKs
+== Target NACKs
 
 When the Target Module replies with a NACK during the (N)ACK phase, it indicates that it is unable to accept the byte or command.
 The NACK response is sticky until the end of the transaction.
@@ -263,7 +263,7 @@ The decision to NACK the transaction can occur for any of the following reasons:
   Software has some control if ACK Control Mode is enabled
 
 [[target-ack-control-mode]]
-===== Target ACK Control Mode
+== Target ACK Control Mode
 
 ACK Control Mode is a feature that allows software to take control of ACK/NACK decisions during a Write transfer.
 When ACK Control Mode is disabled in `CTRL.ACK_CTRL_EN`, the Target module will automatically ACK any incoming data byte, so long as there is sufficient space in the ACQ FIFO.
@@ -288,7 +288,7 @@ Note that after software indicates its decision, this pending byte will still en
 
 This feature is intended to support protocols that require mid-transfer NACK decisions based on the current data transferred (e.g. as in SMBus).
 
-====== FIFO Management System
+=== FIFO Management System
 
 [width="100%",cols="25%,35%,40%",options="header",]
 |=====================================================================================
@@ -304,9 +304,9 @@ overflow/underflow protection |Configurable depth, threshold interrupts,
 DMA ready signals, overflow/underflow protection
 |=====================================================================================
 
-====== Data Flow and Control Path
+=== Data Flow and Control Path
 
-====== Data Flow Architecture
+=== Data Flow Architecture
 
 *Controller Mode Data Flow*:
 
@@ -330,7 +330,7 @@ FIFO
 4.  *Flow Control*: Automatic clock stretching manages timing
 constraints
 
-====== Control Path Architecture
+=== Control Path Architecture
 
 The control path coordinates operation between multiple state machines:
 
@@ -342,9 +342,9 @@ control signals
 * *Error Handling*: Detects and reports protocol violations and timeout
 conditions
 
-====== State Machine Architecture
+=== State Machine Architecture
 
-====== Controller State Machine
+=== Controller State Machine
 
 The controller FSM implements the complete I2C controller protocol:
 
@@ -374,9 +374,9 @@ transmission
 |*ARBITRATION* |Handling multi-controller arbitration scenarios
 |=====================================================================================
 
-====== Signal Conditioning and Synchronization
+=== Signal Conditioning and Synchronization
 
-====== Input Signal Processing
+=== Input Signal Processing
 
 To ensure reliable and noise-immune operation, all external I2C signals
 are conditioned through a multi-stage process. Incoming signals first
@@ -391,9 +391,9 @@ handling. Together, these mechanisms provide robust debouncing, level
 detection with hysteresis, and stable sampling in noisy environments,
 with the ability to configure delay compensation from 0 to 255 cycles.
 
-====== Timing Control and Configuration
+=== Timing Control and Configuration
 
-====== Timing Parameter Management
+=== Timing Parameter Management
 
 For Standard-mode, Fast-mode and Fast-mode Plus, the timing requirements for each transaction are detailed in Table 10 of the I2C specification (rev. 6).
 To claim complete compatibility at each mode, the state machine timings need to be adapted to whether there are Standard-mode, Fast-mode and Fast-mode Plus targets on the bus.
@@ -472,9 +472,9 @@ The component supports complete I2C timing parameter configuration:
 |*NACK Timeout* |Target response timeout
 |==================================================================
 
-====== Timeout Controls
+=== Timeout Controls
 
-===== Bus Timeout or Stretch Timeout
+== Bus Timeout or Stretch Timeout
 
 A malfunctioning (or otherwise very slow) target device can hold SCL low indefinitely, stalling the bus.
 In addition, in an SMBus context, a controller can purposefully hold SCL low for an extended period of time (tTIMEOUT:MIN) to force a bus timeout.
@@ -494,7 +494,7 @@ In addition, if the last command byte addressing the module issued a read operat
 
 For both cases, the counter resets when SCL goes high, so this count only accumulates during a single bit transfer.
 
-===== SCL Idle Timeout
+== SCL Idle Timeout
 
 The I2C IP provisions a counter for detecting when SCL has remained high for too long during an active transaction.
 `HOST_TIMEOUT_CTRL` is optionally enabled, determined by whether the register value is nonzero.
@@ -509,12 +509,12 @@ Instead, the interrupt is merely informative.
 However, a START condition from any device will terminate the transfer, and that includes the Controller Module.
 Note that this behavior could cause transaction boundaries to be lost; the Target Module will report that this next START condition is a repeated START.
 
-===== Target Module Stretch Timeout
+== Target Module Stretch Timeout
 
 If enabled with `TARGET_TIMEOUT_CTRL.EN`, the Target Module will automatically NACK transactions if it stretches the clock for more cycles than `TARGET_TIMEOUT_CTRL.VAL`.
 This counter accumulates across an entire transaction, and with the correct choice of timeout value, it complies with SMBus's specified maximum cumulative clock extension time for the target.
 
-====== Memory and FIFO Architecture
+=== Memory and FIFO Architecture
 
 The I2C interface uses flexible, configurable memory blocks to implement
 its FIFOs, allowing the choice of memory type (SRAM, register, or
@@ -528,7 +528,7 @@ almost-empty indicators, robust protection against overflow and
 underflow, as well as reset and flush mechanisms for reliable and
 efficient data handling.
 
-====== Error Handling and Diagnostics
+=== Error Handling and Diagnostics
 
 The I2C component provides comprehensive automatic detection and
 protection against protocol and system-level errors, including:
@@ -549,11 +549,11 @@ error events to aid debugging and performance tuning. SCL and SDA line
 status can be monitored to quickly identify electrical or protocol-level
 problems.
 
-====== Interrupts
+=== Interrupts
 
 The I2C module has a few interrupts including general data flow interrupts and unexpected event interrupts.
 
-===== Controller Module
+== Controller Module
 
 Whenever the RX FIFO exceeds the designated number of entries, the interrupt `rx_threshold` is asserted to inform firmware.
 Firmware can configure the threshold value via the register `HOST_FIFO_CONFIG.RX_THRESH`.
@@ -592,7 +592,7 @@ When a transfer completes, the `cmd_complete` interrupt is asserted, in the begi
 This interrupt is overloaded and represents the full IP's participation in any bus transactions.
 The Target Module's transfers also signal `cmd_complete`.
 
-===== Target Module
+== Target Module
 
 As mentioned above, the interrupt `cmd_complete` is asserted whenever a RESTART or a STOP bit is observed by the target, for a transfer that addressed the Target Module.
 
@@ -622,14 +622,14 @@ A controller sending an address and R/W bit to all target devices, writing to th
 The time period is counted from the last low-to-high SCL transition and continues counting until SCL goes low.
 Firmware can configure the timeout value via the register `HOST_TIMEOUT_CTRL`.
 
-====== SMBus and PMBus Protocol Support
+=== SMBus and PMBus Protocol Support
 
 The I2C component provides comprehensive hardware support for SMBus
 (System Management Bus) and PMBus (Power Management Bus) protocols,
 which build upon the I2C physical layer with additional timing,
 electrical, and protocol requirements.
 
-====== SMBus Physical Interface
+=== SMBus Physical Interface
 
 The component includes dedicated SMBus signal pins beyond standard I2C:
 
@@ -645,10 +645,10 @@ target-initiated communication
 attention request
 ** Controller Mode: Status monitored via `SMBUS_STATUS.SMBALERT`
 register, interrupt via `INTR_STATE.SMBALERT`
-** Supports SMBus Alert Response Address (ARA) protocol for multi-target
+** Alert Response Address (ARA) protocol for multi-target SMBus
 systems
 
-====== SMBus Timeout Management
+=== SMBus Timeout Management
 
 SMBus protocols enforce strict timing requirements with cumulative
 timeout tracking:
@@ -671,7 +671,7 @@ timeout tracking:
 * Monitor mode: Required for proper bus state tracking
 * Ensures detection of hung or failed controllers
 
-====== SMBus ACK/NACK Control
+=== SMBus ACK/NACK Control
 
 SMBus protocols require sophisticated mid-transaction NACK capability
 for flow control and error handling:
@@ -694,7 +694,7 @@ decision-making
 * Target ACKs while ACQ FIFO has available space
 * Automatic NACK when FIFO full
 
-====== SMBus Packet Error Checking (PEC)
+=== SMBus Packet Error Checking (PEC)
 
 While the I2C hardware does not implement CRC-8 calculation in hardware,
 it provides the necessary software control points:
@@ -706,7 +706,7 @@ calculation
 * `ACQ_FIFO_NEXT_DATA` preview enables PEC verification before
 acceptance
 
-====== PMBus Protocol Extensions
+=== PMBus Protocol Extensions
 
 PMBus builds on SMBus with power management specific features, all
 supported by the underlying I2C/SMBus implementation:
@@ -721,7 +721,7 @@ threshold management
 address support
 * *Zone Read/Write*: Sequential register access via FIFO streaming
 
-====== Hybrid Mode Support
+=== Hybrid Mode Support
 
 The I2C component supports SMBus hybrid mode operation:
 
@@ -731,7 +731,7 @@ The I2C component supports SMBus hybrid mode operation:
 * Automatic arbitration and collision detection
 * Independent timeout monitoring for each mode
 
-====== Implementation Details: Format Flag Parsing
+=== Implementation Details: Format Flag Parsing
 
 To illustrate the behavior induced by various flags added to the formatting queue, the following figure shows a simplified version of the `I2C_Controller` state machine.
 In this simplified view, many sequential states have been collapsed into four sub-sequences of states (shown in square brackets) or have their names abbreviated:
@@ -779,9 +779,9 @@ Similarly, the Target FSM operates as follows:
 * From Tx or Rx state, transitions to WaitForStop
 * From WaitForStop, returns to IdleStart
 
-====== Application Notes
+=== Application Notes
 
-===== Virtual Open Drain
+== Virtual Open Drain
 
 In devices which lack a true open drain buffer functionality, this IP implements a "virtual Open Drain" functionality.
 The SDA and SCL outputs are assumed to be connected to a tri-state buffer, with independent enable outputs for both signals.
@@ -792,12 +792,12 @@ This arrangement allows the output pins to float high if there is no conflict fr
 
 This arrangement is necessary for FPGA builds.
 
-===== Glitch Filter
+== Glitch Filter
 
 The IP does not currently implement the specification's required 50 ns glitch filter.
 For full spec compliance, the glitch filter must be added to the system design.
 
-===== Override Mode for Direct Pin Access
+== Override Mode for Direct Pin Access
 
 The I2C hardware interface consists of two external pins, SCL and SDA, whose behavior is described in the I2C specification (rev. 6).
 These pins are typically controlled by an internal state machine.
@@ -809,7 +809,7 @@ In this state the output drivers `scl_tx_o` and `sda_tx_o` are controlled direct
 When `OVRD.SCLVAL` and `OVRD.SDAVAL` are set high, the virtual open drain configuration will leave the output resistively pulled high, and controllable by remote targets.
 In this state, with SCL or SDA asserted high, the register fields `VAL.SCL_RX` and `VAL.SDA_RX` can be used to receive inputs (including remote acknowledgments) from target devices.
 
-===== FSM control of SCL and SDA
+== FSM control of SCL and SDA
 
 SCL and SDA are generated through the internal state machine of the controller and target modules.
 Since SCL is directly decoded from the states, it can have short glitches during transition which the external target may be sensitive to if it is not using an over-sampling scheme.

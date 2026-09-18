@@ -14,17 +14,17 @@
 // and pick up SE through `.*`, so scan enable reaches the ICG test-enable pin -
 // which upstream's example cell, lacking an SE port, silently dropped.
 module user_clock_gate (
-    input  logic SE,
-    input  logic EN,
-    input  logic CK,
-    output logic Q
+  input  logic SE,
+  input  logic EN,
+  input  logic CK,
+  output logic Q
 );
 
   prim_clkgater u_clkgater (
-      .i_clk(CK),
-      .i_en (EN),
-      .i_te (SE),
-      .o_clk(Q)
+    .clk_i(CK),
+    .en_i (EN),
+    .te_i (SE),
+    .clk_o(Q)
   );
 
 endmodule

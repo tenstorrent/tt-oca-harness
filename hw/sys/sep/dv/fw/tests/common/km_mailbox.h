@@ -13,8 +13,8 @@
  *
  * The last word of every frame is flagged by writing the WRITE_SEPARATOR CSR
  * before the data word; inbound frames are delimited by the STATUS separator
- * bit. This client mirrors the proven sequence from sep_cpu_sram_aes_sram_test
- * (#565) and is extracted here so ABR/ML-KEM sideload tests can reuse it.
+ * bit. This client mirrors the frame sequence sep_cpu_sram_aes_sram_test drives
+ * inline and is shared by the KM sideload tests.
  *
  * Command / destination encodings match hw/ip/key_manager/dv/fw
  * (rom_defs.h rom_km_cmd_id_t / rom_km_dest_bits_t).

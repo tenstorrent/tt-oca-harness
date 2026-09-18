@@ -14,6 +14,6 @@ class dtp_xtrig_axi_channel_skew_read_decode_backpressure_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "axi_channel_skew_read_decode_backpressure",
             scenario="axi_channel_skew_read_decode_backpressure",
-            specific_env="DTP_XTRIG_AXI_CHANNEL_SKEW_READ_DECODE_BACKPRESSURE_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_XTRIG_AXI_CHANNEL_SKEW_READ_DECODE_BACKPRESSURE_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

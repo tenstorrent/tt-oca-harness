@@ -1,51 +1,107 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Cross-Trigger Network
+:description: CTN — inter-chiplet and on-chip cross-trigger routing, wire-OR/P2P modes, clock stop aggregation and register map.
+
 [[cross-trigger-network]]
-=== Cross Trigger Network
 
-==== Overview
+The Cross-Trigger Network (CTN) implements inter-chiplet and on-chip
+cross-trigger routing per the Open Chiplet Cross Triggering (OCCT)
+specification. It combines a configurable set of Cross Trigger Ports (CTPs)
+facing the I/O pads with a Cross Trigger Matrix (CTM) that routes trigger
+pulses between all sources and sinks under AXI-Lite CSR control.
 
-OCH supports generating and sinking cross triggers between chiplets in a SiP as
-specified in the Open Chiplet Cross Triggering (OCCT) specification. A Cross
-Trigger Port (CTP) module serves as the signaling interface between the chiplet
-core logic and the I/O pads, while a Cross Trigger Matrix (CTM) module
-statically routes cross triggers between CTPs and the on-chip resources
-generating and sinking cross trigger pulses.
+== Overview
 
-The CTPs support two different inter-chiplet cross trigger signalling schemes,
-wire-OR and point-to-point. Wire-OR supports a wider range of existing chiplet
-implementations and is very resource efficient, while point-to-point is faster,
-more reliable, and simpler to configure.
+The CTN serves four purposes:
 
-==== Purpose
+. *Die-to-die cross triggering* — trigger pulses propagate between chiplets
+  in a multi-die SiP through the CTP GPIO pads.
+. *On-chip cross triggering* — internal CLAs and other logic exchange trigger
+  pulses without leaving the chiplet.
+. *Unified management* — a single AXI-Lite interface configures all CTP and
+  CTM settings through a contiguous address window.
+. *Clock stop coordination* — the CTN OR-reduces CLA `xtrig_clk_stop_req_i`
+  inputs and combines the result with the JTAG `jtag_clock_stop` bit to
+  produce the registered `stop_clks_o` output.
 
-The primary purposes of the CTN are:
+== Configuration Parameters
 
-1. *Die-to-Die Cross Triggering*: Enable debug triggers to propagate between
-   chiplets in a multi-die package
-2. *On-Chip Cross Triggering*: Route cross trigger signals between internal
-   debug modules (e.g., CLAs)
-3. *Unified Management*: Provide a single AXI-Lite interface for configuring all
-   cross trigger functionality
-4. *Clock Stop Coordination*: Aggregate clock stop requests from multiple
-   sources
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTN configuration parameters" tabindex="0">
+++++
+endif::backend-html5[]
 
-==== Configuration Parameters
-
-[cols="<,<,<,<",options="header"]
+[cols="<28,<12,<12,<48",options="header",role="port-reference"]
 |===
 |Parameter |Range |Default |Description
-|NUM_CTP |1-32 |16 |Number of external Cross Trigger Ports
-|NUM_INT_CT |0-32 |10 |Number of internal cross triggers
-|NUM_CLK_STOP_REQ |1-32 |9 |Number of clock stop request inputs
-|INT_CT_MODE |bit vector |'0 |Mode per internal CTP (0=pulse, 1=handshake)
+
+|`NUM_CTP`
+|1–32
+|16
+|Number of external Cross Trigger Ports.
+
+|`NUM_INT_CT`
+|0–32
+|10
+|Number of internal cross triggers.
+
+|`NUM_CLK_STOP_REQ`
+|1–32
+|9
+|Number of clock-stop request inputs (`xtrig_clk_stop_req_i` width).
+
+|`INT_CT_MODE`
+|bit vector
+|`'0`
+|Operating mode per internal CTP: 0 = pulse/wire-OR, 1 = handshake/P2P.
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+The DTP passes these counts through as `XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, and
+`XTRIG_NUM_CLK_STOP_REQ`. The elaborated `NUM_CTP + NUM_INT_CT` must equal the
+generated Cross-Trigger Matrix `NUM_CT_SRC` and `NUM_CT_DST`; see
+ifdef::backend-html5[]
+xref:ip:cross_trigger_matrix/doc/index.adoc[Cross-Trigger Matrix].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<cross-trigger-matrix,Cross-Trigger Matrix>>.
+endif::backend-pdf[]
 
 ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]
 
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$cross_trigger_network/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+
+== Interface
+
+ifdef::backend-html5[]
+include::partial$cross_trigger_network/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+
+== Memory Map
+
+ifdef::backend-html5[]
+include::partial$cross_trigger_network/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]

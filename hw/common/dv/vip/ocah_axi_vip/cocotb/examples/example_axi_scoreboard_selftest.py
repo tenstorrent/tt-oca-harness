@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Simulator-free self-test for the AXI reference model and scoreboard.
 
-Runs the positive evidence flow plus the negative suite below (cases A-R in
-the output), proving fail-closed finalization per ``vip-checker-model.adoc``
-§"Prove Failure Is Retained":
+Runs the positive evidence flow plus the negative suite below (each case
+labelled in the output), proving fail-closed finalization per
+``vip-checker-model.adoc`` §"Prove Failure Is Retained":
 
 1. wrong model expectation is rejected;
 2. an unexpected (un-armed) DECERR is rejected;

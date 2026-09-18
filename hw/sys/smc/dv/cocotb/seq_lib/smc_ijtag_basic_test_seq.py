@@ -1,24 +1,40 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_ijtag_basic_test (Batch C).
+"""Sequence for smc_ijtag_basic_test.
 
-The public OSS TB does not yet include an active JTAG/iJTAG VIP. This active
-precheck keeps the planned test runnable by proving the surrounding CSR/AXI
-environment is healthy. The real JTAG/iJTAG transaction remains blocked on VIP
-integration; do not probe the DFT window over SEP_IN AXI because it does not
-return in the current public Verilator model.
+The bench has no iJTAG (IEEE 1687) VIP; this sequence checks the CSR/AXI path
+around the DFT window, and the test module drives the CPU JTAG TAP through
+``smc_jtag_vip_utils``. The DFT window is not probed over SEP_IN AXI: that
+access does not return on the Verilator model.
 """
 
 from __future__ import annotations
 
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr
+# ``_REPO`` / ``_field_mask`` come from the authoritative-map module:
+# it is the single place that knows the repo layout and how to read a generated
+# PeakRDL C header, and the chip_config block resets live in a block header
+# (misc_wrap.h) that ``smc_addr_map`` exposes no named accessor for.
+from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_indexed_addr
 from .smc_base_test_seq import smc_base_test_seq
 
-CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
-CHIP_CONFIG_VERSION_LO_VALUE = 0x0001_00A0
-SCRATCH_COLD_1 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR") + 0x4
+_MISC_WRAP_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "misc_wrap.h"
+
+# Addressed by the PER-REGISTER generated symbol, not the enclosing CHIP_CONFIG
+# block base: a block base makes the register identity printed in the log
+# depend on VERSION_LO staying at block offset 0
+# ([ADDRESS-FROM-AUTHORITATIVE-MAP], log-name/symbol agreement clause).
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
+# Expected value from the generated block header rather than a hand literal, so
+# the address and the value come from one regenerated source.
+CHIP_CONFIG_VERSION_LO_VALUE = _field_mask(
+    _MISC_WRAP_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset"
+)
+# Addressed by the generated PeakRDL indexed symbol (smc_addr.h) instead of a
+# hand ``+ 0x4`` off the array base, so the register identity in the log cannot
+# rot away from the map when SCRATCH_COLD is regenerated.
+SCRATCH_COLD_1 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 1)
 SCRATCH_PATTERN = 0x1A7A_0001
 
 

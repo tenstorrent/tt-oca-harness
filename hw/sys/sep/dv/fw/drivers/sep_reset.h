@@ -4,10 +4,12 @@
 // SEP reset-control driver (EL2 host side).
 //
 // The SEP reset controller holds the Key Manager (KM) PicoRV32 second core in
-// warm reset out of cold reset: SW_RESET_N resets to 0x3E, i.e. km_sw_rst_n
-// (bit 0) = 0 while the crypto cores and internal TRNG come up released.
-// The EL2 firmware writes km_sw_rst_n = 1 to release the KM so it boots from its
-// ROM responder. (Addresses are SEP fabric facts; hw/sys/sep/regs sep_reset_ctrl.)
+// warm reset out of cold reset: SW_RESET_N resets with km_sw_rst_n (bit 0) = 0
+// while the crypto cores, Adams Bridge and the internal TRNG come up released.
+// The EL2 firmware writes km_sw_rst_n = 1 to release the KM so it boots from
+// its ROM responder.
+// Addresses and field masks come from generated sep_addr.h / sep_reset_ctrl.h
+// (via sep.h).
 
 #ifndef SEP_RESET_H
 #define SEP_RESET_H
@@ -15,16 +17,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SEP_RESET_CTRL_SW_RESET_N 0x10803000u // SW_RESET_N register
-#define SEP_SW_RESET_N_DEFAULT \
-    0x0000003Eu                         // reset value: km held (bit0=0),
-                                        // otbn/aes/hmac/kmac/trng released
-#define SEP_SW_RESET_N_KM_BIT (1u << 0) // km_sw_rst_n: 1 = KM released
-#define SEP_SW_RESET_N_OTBN_BIT (1u << 1)
-#define SEP_SW_RESET_N_AES_BIT (1u << 2)
-#define SEP_SW_RESET_N_HMAC_BIT (1u << 3)
-#define SEP_SW_RESET_N_KMAC_BIT (1u << 4)
-#define SEP_SW_RESET_N_TRNG_BIT (1u << 5)
+#include "sep.h"
+
+#define SEP_RESET_CTRL_SW_RESET_N OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR
+#define SEP_SW_RESET_N_DEFAULT SEP_RESET_CTRL__SW_RESET_N_reset
+#define SEP_SW_RESET_N_KM_BIT SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm
+#define SEP_SW_RESET_N_OTBN_BIT SEP_RESET_CTRL__SW_RESET_N__OTBN_SW_RST_N_bm
+#define SEP_SW_RESET_N_AES_BIT SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm
+#define SEP_SW_RESET_N_HMAC_BIT SEP_RESET_CTRL__SW_RESET_N__HMAC_SW_RST_N_bm
+#define SEP_SW_RESET_N_KMAC_BIT SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_bm
+#define SEP_SW_RESET_N_TRNG_BIT SEP_RESET_CTRL__SW_RESET_N__TRNG_SW_RST_N_bm
+#define SEP_SW_RESET_N_ABR_BIT SEP_RESET_CTRL__SW_RESET_N__ABR_SW_RST_N_bm
 
 static inline uint32_t sep_reset_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;
@@ -54,7 +57,7 @@ static inline void sep_reset_release_trng(void) {
 }
 
 // Begin alarm recovery by holding all native-EDN consumers in reset before the
-// TRNG request. HMAC is intentionally absent because it has no EDN input.
+// TRNG request. HMAC is absent: it has no EDN input.
 // Set reset_km when mux leg 0 selects the internal DRBG and KM is not known idle.
 // The returned value is restored only after ESRC/CSRNG/EDN reinitialization and
 // an observation of fresh endpoint/pool progress.
@@ -65,8 +68,7 @@ static inline uint32_t sep_reset_begin_trng_recovery(bool reset_km) {
     if (reset_km) consumer_bits |= SEP_SW_RESET_N_KM_BIT;
 
     sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, saved & ~consumer_bits);
-    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N,
-                 saved & ~consumer_bits & ~SEP_SW_RESET_N_TRNG_BIT);
+    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, saved & ~consumer_bits & ~SEP_SW_RESET_N_TRNG_BIT);
     return saved;
 }
 

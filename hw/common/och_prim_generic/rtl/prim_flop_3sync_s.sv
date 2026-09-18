@@ -6,17 +6,17 @@
 //
 //--------------------------------------------------
 module prim_flop_3sync_s (
-    input i_CK,
-    i_D,
-    i_SN,
-    output wire o_Q
+  input clk_i,
+  d_i,
+  set_ni,
+  output wire q_o
 );
 
   logic q_d_inv, q_dd_inv, q_ddd_inv;
   logic D_inv;
-  assign D_inv = ~i_D;
-  always_ff @(posedge i_CK or negedge i_SN) begin
-    if (i_SN == 1'b0) begin
+  assign D_inv = ~d_i;
+  always_ff @(posedge clk_i or negedge set_ni) begin
+    if (set_ni == 1'b0) begin
       q_d_inv <= 1'b0;
       q_dd_inv <= 1'b0;
       q_ddd_inv <= 1'b0;
@@ -26,6 +26,6 @@ module prim_flop_3sync_s (
       q_ddd_inv <= q_dd_inv;
     end
   end
-  assign o_Q = ~q_ddd_inv;
+  assign q_o = ~q_ddd_inv;
 
 endmodule

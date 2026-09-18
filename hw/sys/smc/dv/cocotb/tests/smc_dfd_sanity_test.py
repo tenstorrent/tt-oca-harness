@@ -15,6 +15,19 @@ from smc_base_test import smc_base_test
 class smc_dfd_sanity_test(smc_base_test):
     """Run diagnostic CSR reads as the public DFD bounded checker."""
 
+    required_evidence = (
+        "CHK-DIAG-AXIL-ACTIVE",
+        "CHK-DIAG-AXIL-IDLE",
+        "CHK-DIAG-CSR-COUNT",
+        "CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX",
+        "CHK-DIAG-CSR-DFX_DEBUG_CTRL",
+        "CHK-DIAG-CSR-NDMRESET_PROCESS",
+        "CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS",
+        "CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO",
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+    )
+    min_evidence = 9
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -24,6 +37,9 @@ class smc_dfd_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.DIAGNOSTIC,
             type(self).__name__,
+            # Directed stimulus floor: 6 SEP_IN AXI DFD diagnostic CSR reads.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=6,
             csr_accesses=seq.accesses,
             proxy=True,
             details="DFD diagnostic CSR surface and bounded fault observability checked",

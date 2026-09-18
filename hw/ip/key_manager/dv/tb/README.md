@@ -21,7 +21,6 @@ hw/ip/key_manager/dv/
 │   ├── rtl.f                 # RTL file list (generated)
 │   ├── tb_key_manager.sv     # Top-level testbench wrapper
 │   ├── test_firmware.py      # Generic firmware test runner
-│   ├── cycle_counts/         # Recorded per-test cycle counts (orders the regression)
 │   └── README.md             # This file
 ├── fw/                       # Firmware under test
 │   ├── fw.mk                 # Sources, includes and link modes for the shared build engine
@@ -86,6 +85,7 @@ make run TEST=test_rom_parity WAVES=1 FSDB=1   # FSDB instead of VCD
 ### View Results
 
 Test results are saved in `sim/logs/<test_name>/`:
+
 - `vcs.log` - Compilation and simulation log
 - `cocotb_<test_name>.log` - cocotb log
 - `sim_output_<test_name>.log` - **Complete simulation output** (all stdout/stderr from test run)
@@ -180,7 +180,7 @@ test_halt()            // Halt CPU (called by TEST_PASS/FAIL)
 
 ### Interrupt Support (irq_common.h)
 
-The `irq_common.h` header in `hw/ip/key_manager/dv/fw/include/` defines KMCSR and mailbox IRQ register accessors. Most tests include it through `test_common.h`; the firmware Makefile adds `-I$(KM_FIRMWARE_DIR)/include` if you include `irq_common.h` directly.
+The `irq_common.h` header in `hw/ip/key_manager/dv/fw/include/` defines KMCSR and mailbox IRQ register accessors. Most tests include it through `test_common.h`; `dv/fw/fw.mk` adds `-I$(FW_DIR)/include`, so a test can also include `irq_common.h` directly.
 
 ```c
 #include "irq_common.h"
@@ -209,10 +209,11 @@ PICORV32_IRQ_BUSERR  // Bus error IRQ (bit 2)
 `rom_kmcsr.h` / `rom_kmcsr.c` expose `rom_kmcsr_irq_entry_addr_read`, `rom_kmcsr_irq_entry_addr_write`, `rom_kmcsr_irq_entry_lock_read`, and `rom_kmcsr_irq_entry_lock_set` for `IRQ_ENTRY_ADDR` and `IRQ_ENTRY_LOCK` (see KMCSR register definitions). Firmware test: `test_rom_kmcsr_irq_entry`.
 
 **Interrupt Architecture Notes:**
+
 - The PicoRV32 uses a custom interrupt controller with `maskirq`/`retirq` instructions
 - Bits 0-2 are latched (edge-triggered) for internal CPU interrupts
-- Bit 3 (KMCSR): aggregated sticky error sources, non-latched (level-sensitive)
-- Bit 4 (Mailbox): direct from mailbox hardware, non-latched (level-sensitive)
+- Bit 3, KMCSR: aggregated sticky error sources, non-latched (level-sensitive)
+- Bit 4, mailbox: direct from mailbox hardware, non-latched (level-sensitive)
 - Non-latched bits track the live level; the CPU re-enters the ISR after `retirq` if the level is still high
 
 ### Printf Support (vuart.h)
@@ -242,7 +243,8 @@ make run_fw FW_TEST=test_vuart
 ```
 
 **Performance Impact:**
-- With printing **disabled** (default): Tests run ~5-6x faster
+
+- With printing **disabled** (default): no VUART traffic, so simulations run faster
 - With printing **enabled**: Full printf output available for debugging
 
 The `PRINT_ENABLE` bit in `VUART_STATUS` register (bit 2) controls whether firmware actually sends characters. When disabled, `printf()` return immediately without processing, saving significant CPU cycles.
@@ -275,17 +277,19 @@ SLVERR, which `test_km_addr_alias` sweeps the map to confirm.
 The testbench includes a behavioral AXI-Lite register-file model wired to the DUT's `efuse_req_o` / `efuse_resp_i` ports (the OTP/eFuse crossbar master port, index 8).
 
 **Behavior:**
+
 - Decodes addresses in `[OTP_EFUSE_REMAP_BASE : OTP_EFUSE_REMAP_BASE+0xFFF]` (the *remapped* SEP eFuse absolute window). The responder derives this window directly from the DUT's `OTP_EFUSE_REMAP_BASE` parameter, so overriding the parameter at elaboration time is automatically reflected.
 - Responds `OKAY` with a 1 KB word array, using `addr[11:2]` as the index. Writes are stored and read back.
 - Returns `SLVERR` for any address outside the `0x1093_0xxx` window — a broken address remap would land outside the window and fail the test.
 
-**Test:** `test_efuse_axil` exercises this path (see test table below).
+**Test:** `test_efuse_axil` exercises this path.
 
 ### Virtual ROM (VROM)
 
 The **Virtual ROM (VROM)** is a testbench-only memory region used for main program code (`.text`) and read-only data (`.rodata`). The physical 16KB ROM holds only a small bootstrap (reset, IRQ vector, IRQ handler); the `vrom` link mode (`dv/fw/link/modes/vrom.ld`) places the rest in VROM so test images are not limited by ROM size.
 
 **Key Features:**
+
 - **Address Range**: 0x1000_0000 - 0x1000_FFFF (64KB)
 - **Testbench Only**: Not available in real hardware - only exists in simulation
 - **Purpose**: Stores `.text` and `.rodata` (main code, string constants, const arrays, etc.)
@@ -293,12 +297,14 @@ The **Virtual ROM (VROM)** is a testbench-only memory region used for main progr
 - **Always used**: All firmware tests use VROM; build always generates a non-empty VROM hex file
 
 **Firmware Build Process:**
+
 1. Linker script (`link/modes/vrom.ld`) places `.text` and `.rodata` in VROM at 0x1000_0000
-2. Build process generates `firmware/build/<test>/<test>.vrom.hex` containing code and rodata
+2. Build process generates `dv/fw/build/tests/<test>/<test>.vrom.hex` containing code and rodata
 3. Testbench automatically loads VROM hex file if present (via `+VROM_HEX_FILE` plusarg)
 4. If VROM hex file is missing or empty, testbench initializes VROM with zeros
 
 **Usage in Firmware:**
+
 ```c
 // String constants automatically go to VROM
 const char *msg = "Hello, World!";  // Stored in VROM at 0x1000_0000+
@@ -311,6 +317,7 @@ uint32_t counter = 0;  // Stored in SRAM at 0x0000_8000+
 ```
 
 **Testbench Loading:**
+
 - VROM hex file is automatically passed to simulation via `+VROM_HEX_FILE=<path>` plusarg
 - If file is missing, testbench prints: `"No VROM_HEX_FILE provided, using default zero pattern"`
 - VROM is initialized with zeros if hex file is not provided or is empty
@@ -320,7 +327,7 @@ uint32_t counter = 0;  // Stored in SRAM at 0x0000_8000+
 | Address | Register | Description |
 |---------|----------|-------------|
 | 0x14000 | VERSION | IP version (read-only, 0x0001_0000 = 1.0.0) |
-| 0x14004 | CTRL | Control register (currently reserved) |
+| 0x14004 | CTRL | Control register (reserved) |
 | 0x14008 | SOFT_RST_CODE | Write `0x53525354` (`SRST`) to trigger soft reset |
 | 0x1400C | IRQ_STATUS | Interrupt status (sticky error bits) |
 | 0x14010 | IRQ_ENABLE | Interrupt enable mask |
@@ -382,7 +389,7 @@ they remain set until firmware writes 1 to clear them (W1C = write-1-to-clear).
 The IRQ_SET register allows firmware to manually trigger interrupts for testing.
 Sticky bits (parity errors, ROM write error, SRAM write-lock, AXI errors, DRBG, wipe, exec_violation) remain set until cleared via IRQ_STATUS W1C.
 
-### Test Protocol Registers (KMCSR)
+### KMCSR test protocol registers
 
 The test framework uses dedicated KMCSR registers for firmware-testbench communication:
 
@@ -435,7 +442,7 @@ Firmware can send commands to the testbench to control error injection and other
 | TB_CMD_OTP_WRITE_CHANGED | 0x2D | Drive `otp_data_i` with a *different* dual-rail pattern (triggers `OTP_CHANGE` IRQ) |
 | TB_CMD_OTP_WRITE_SIGINT | 0x2E | Drive `otp_data_i` with a *corrupted* dual-rail on `chiplet_uid` (triggers `OTP_SIGINT` IRQ) |
 
-The full command codes and C macro names are in `firmware/common/test_common.h`. This table uses descriptive names; the headers use short names (for example `TB_CMD_ROM_PARITY_EN` instead of `TB_CMD_ROM_PARITY_ENABLE`).
+The full command codes and C macro names are in `dv/fw/tests/common/test_common.h`. This table uses descriptive names; the headers use short names (for example `TB_CMD_ROM_PARITY_EN` instead of `TB_CMD_ROM_PARITY_ENABLE`).
 
 ### Testbench Command Helper Functions
 
@@ -493,6 +500,9 @@ tb_sep_mbox_status_write(status_value, timeout_cycles);
 
 // Write SEP mailbox CTRL register
 tb_sep_mbox_ctrl_write(ctrl_value, timeout_cycles);
+
+// Overlap a KM READ_DATA AR with SEP CTRL.FLUSH (R must complete)
+tb_km_mbox_read_during_sep_flush(timeout_cycles);
 ```
 
 #### KM Mailbox Operations
@@ -538,9 +548,8 @@ cycle totals are visible in the simulation log:
 make run_fw FW_TEST=test_rom_crc_pcpi_bench VUART_PRINT=1
 ```
 
-The unrecoverable-fault watcher is armed explicitly from firmware with
-`tb_set_unrecoverable_watch(...)` instead of relying on test-name-specific behavior in
-the Python testbench.
+Firmware arms the unrecoverable-fault watcher itself with
+`tb_set_unrecoverable_watch(...)`.
 
 #### Generic Command Interface
 
@@ -578,8 +587,8 @@ Tests under `dv/fw/tests/` are auto-discovered by the KM regression and must fol
 `test_common.h` protocol (call `TEST_INIT()`, report pass/fail via KMCSR registers). They
 run inside the KM block-level cocotb testbench (`tb_key_manager.sv`).
 
-Files under `dv/fw/sep_images/` are KM ROM images intended for the **SEP UVM testbench**
-(in the `nonfree/` companion), which loads them with `+KM_ROM_HEX_FILE`. They report to the
+Files under `dv/fw/sep_images/` are KM ROM images intended for the **SEP UVM testbench**,
+which loads them with `+KM_ROM_HEX_FILE`. They report to the
 SEP host over the hardware mailbox rather than through KMCSR registers, and they need a live
 SEP host (a UVM sequence driving the EL2 CPU) to drive or drain them — each one free-runs or
 parks in an infinite loop rather than ending on its own. That is why they sit outside
@@ -627,12 +636,11 @@ make regression
 
 Each full run does the following in order:
 
-1. `clean` - Remove prior build outputs so RDL regeneration and simulation do not race stale files.
-2. `build_all_fw` - Discover tests, order them using `cycle_counts/` when present, then build ROM/VROM hex for each test in parallel (`FW_BUILD_JOBS`, default 16).
-3. `compile_first` - Build firmware for the first test in the ordered list (or `test_rom_crc` if none), then compile the VCS `test_firmware` image once so `simv` exists.
-4. `run_regression_<name>` - One target per test, in parallel up to `PARALLEL_JOBS` (default 16). Each run depends on `compile_first` and `build_fw_for_<name>`, invokes `run_no_compile`, and logs to `sim/logs/<name>/regression_run.log`. A test passes if that log contains `PASSED` or a cocotb line with `PASS=1` and `FAIL=0` (see the `grep` in `tb/Makefile`).
-5. Record `Cycles:` from `regression_run.log` into `cycle_counts/<name>.txt` when possible.
-6. Print a summary from `regression_result.txt` per test; exit with failure if any test failed.
+1. `clean` - Remove prior simulation outputs and filelists.
+2. `build_all_fw` - Build every firmware image through the shared DV firmware dispatcher.
+3. `compile_first` - Compile the VCS `test_firmware` image once into `sim/build/test_firmware/` so every test shares one `simv`.
+4. `regression-run-<name>` - One target per test, in parallel up to `PARALLEL_JOBS` (default 16). Each invokes `run_no_compile` against the shared `simv` and logs to `sim/logs/<name>/regression_run.log`. A test passes if that log contains `PASSED` or a cocotb line with `PASS=1` and `FAIL=0` (see the `grep` in `tb/Makefile`).
+5. Print a summary from the `PASSED`/`FAILED` markers in `sim/regression_status/`; exit with failure if any test failed.
 
 This tree has no standalone firmware `Makefile`: `dv/fw/fw.mk` and `dv/fw/toolchain.mk` are consumed by the shared build engine in `hw/common/dv/fw/`, which links the ELF and post-processes it into the ROM and VROM hex images. See `dv/fw/README.md` for that flow.
 
@@ -640,7 +648,7 @@ This tree has no standalone firmware `Makefile`: `dv/fw/fw.mk` and `dv/fw/toolch
 
 ```bash
 make regression DEBUG=1
-make regression PARALLEL_JOBS=12 FW_BUILD_JOBS=6
+make regression PARALLEL_JOBS=12
 ```
 
 Waveform dumps are not supported during full regression (`WAVES=1` / `FSDB=1` are rejected) because all jobs share one `simv`. Run individual tests with `make run_fw FW_TEST=<name> WAVES=1` when you need waves.
@@ -648,24 +656,21 @@ Waveform dumps are not supported during full regression (`WAVES=1` / `FSDB=1` ar
 #### Regression Output
 
 Regression output includes:
+
 - Test configuration (SIM, WAVES, DEBUG settings)
 - List of discovered tests
 - Per-test status (✓ PASSED or ✗ FAILED)
 - Final summary with pass/fail counts
 
 Individual test logs are stored in `sim/logs/<test_name>/`:
-- `fw_build.log` - Firmware build output for that test
+
 - `regression_run.log` - Full regression sub-make output for that test
-- `regression_result.txt` - PASS/FAIL marker consumed by summary
 - `sim_output_<test_name>.log` - Complete simulation output
 - `vcs.log` - Compilation log
 - `cocotb_<test_name>.log` - cocotb log
 - `results_<test_name>.xml` - JUnit test results
 - `tb_key_manager.vcd` - VCD waveform file (if WAVES=1)
 - `tb_key_manager.fsdb` - FSDB waveform file (if WAVES=1 FSDB=1)
-
-Cycle-count cache files are stored under `cycle_counts/` as one file per test
-(for example `cycle_counts/test_kmcsr_access.txt`).
 
 ## Filelist Generation
 
@@ -684,20 +689,23 @@ make filelist
 ### Compilation Errors
 
 If you see compilation errors about missing files:
+
 1. Ensure Bender dependencies are updated: `bender update`
 2. Check RTL files exist: `ls hw/ip/key_manager/rtl/`
-3. Regenerate registers: `cd hw/ip/key_manager/regs && make all_rtl`
+3. Regenerate registers from the repository root: `make -f ocah.mk ocah-regen-regs`
 
 ### Firmware Build Errors
 
 If firmware fails to compile:
+
 1. Ensure RISC-V toolchain is in PATH
 2. Check for syntax errors in your test
-3. Verify headers are present: `firmware/common/test_common.h`, `firmware/common/vuart.h` for tests; `irq_common.h`, `rom_memcpy` (and memcpy alias), and startup come from `hw/ip/key_manager/dv/fw/` (see that directory’s README.md).
+3. Verify headers are present: `dv/fw/tests/common/test_common.h`, `dv/fw/tests/common/vuart.h` for tests; `irq_common.h`, `rom_memcpy` (and memcpy alias), and startup come from `hw/ip/key_manager/dv/fw/` (see that directory’s README.md).
 
 ### Test Timeout
 
 If tests timeout waiting for completion:
+
 1. Check firmware compiles without errors
 2. Verify ROM hex file is loaded (check for `[KM TB] ROM loaded` message)
 3. Increase timeout: `SIM_ARGS="+TIMEOUT_CYCLES=500000"`
@@ -706,10 +714,13 @@ If tests timeout waiting for completion:
 ### No VUART Output
 
 If printf output doesn't appear:
+
 1. **Check if VUART printing is enabled**: By default, VUART printing is disabled to save simulation time. Enable it with `VUART_PRINT=1`:
+
    ```bash
    make run_fw FW_TEST=test_vuart VUART_PRINT=1
    ```
+
 2. Ensure `#include "test_common.h"` is present
 3. Check firmware is actually running (not stuck)
 4. Verify VUART registers are accessible (run `test_kmcsr_access`)

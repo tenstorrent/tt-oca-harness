@@ -45,8 +45,8 @@ OTBN_APP_MK     := $(FW_DIR)/tests/common_otbn/otbn_app.mk
 OTBN_BUILD_ROOT := $(FW_BUILD_DIR)/otbn
 
 # Per app: the test directory whose otbn_src/ holds the sources, and the
-# sources themselves. Sources present in otbn_src/ but absent here are
-# deliberately not linked (the p256 SCA variants, the RSA keygen entry points).
+# sources themselves. Sources present in otbn_src/ but absent here are not
+# linked (the p256 SCA variants, the RSA keygen entry points).
 OTBN_APP_DIR_otbn_smoke            := otbn_smoke_test
 OTBN_APP_SRCS_otbn_smoke           := otbn_smoke.s
 OTBN_APP_DIR_otbn_loops            := otbn_loops_test
@@ -89,8 +89,8 @@ ocah_otbn_app_src = $(addprefix $(FW_DIR)/tests/$(OTBN_APP_DIR_$(1))/otbn_src/,$
 $(foreach t,$(OTBN_TESTS), \
   $(eval FW_TEST_EXTRA_SRCS_$(t) := $(foreach a,$(OTBN_TEST_APPS_$(t)),$(call ocah_otbn_app_c,$(a)))))
 FW_TEST_INCLUDES += $(foreach a,$(OTBN_APPS),-I$(OTBN_BUILD_ROOT)/$(a))
-# Test sources predate strict prototypes / native register headers; keep these
-# relaxations so they compile unchanged.
+# Test sources call unprototyped functions and mix register pointer types;
+# these relaxations let them compile.
 FW_TEST_EXTRA_CFLAGS += \
   -Wno-implicit-function-declaration \
   -Wno-incompatible-pointer-types \
@@ -158,8 +158,7 @@ $(if $(filter rom_only,$(3)),
 )
 endef
 
-# A full SEP compile also needs the external VeeR EL2 snapshot (see toolchain.mk).
-# Until then `all` just builds libsep.a.
+# `all` builds libsep.a; the test images are built through compile.mk.
 
 include $(FW_DIR)/toolchain.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/compile.mk

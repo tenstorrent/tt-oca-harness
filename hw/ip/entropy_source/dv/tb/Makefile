@@ -13,14 +13,22 @@ SURFER = surfer
 VERILATOR = verilator
 
 # Common source files
-RTL_DIR = ../rtl
-COMMON_RTL = $(RTL_DIR)/gcells.sv
+RTL_DIR = ../../rtl
+PRIM_RTL_DIR = ../../../../common/och_prim_generic/rtl
+COMMON_RTL = $(PRIM_RTL_DIR)/prim_clock_nand2.sv \
+             $(PRIM_RTL_DIR)/prim_dffrxq.sv \
+             $(PRIM_RTL_DIR)/prim_inv.sv \
+             $(PRIM_RTL_DIR)/prim_stdbuf.sv \
+             $(PRIM_RTL_DIR)/prim_stdmux2.sv \
+             $(RTL_DIR)/entropy_ring_stage_wrappers.sv
 
 # Ring Oscillator test configuration
 RING_SOURCES = $(COMMON_RTL) $(RTL_DIR)/entropy_ring_oscillator.sv $(RTL_DIR)/entropy_noise_source.sv
 RING_TESTBENCH = tb_ring_oscillator.v
 RING_SIM_OUT = tb_ring_oscillator
 RING_VCD_FILE = ring_oscillator.vcd
+RING_SMOKE_TESTBENCH = tb_ring_smoke.sv
+RING_SMOKE_SIM_OUT = tb_ring_smoke
 
 # Debug Monitor test configuration
 DEBUG_SOURCES = $(COMMON_RTL) $(RTL_DIR)/entropy_ripple_divider.sv $(RTL_DIR)/entropy_debug_monitor.sv
@@ -62,6 +70,7 @@ HEALTH_VCD_FILE = health_test.vcd
 SCLKDIV_SOURCES = $(COMMON_RTL) $(RTL_DIR)/entropy_ripple_divider.sv $(RTL_DIR)/entropy_sampler_clocks.sv $(RTL_DIR)/entropy_generator.sv $(RTL_DIR)/entropy_noise_source.sv $(RTL_DIR)/entropy_ring_oscillator.sv $(RTL_DIR)/entropy_decorrelator.sv $(RTL_DIR)/entropy_health_test.sv $(RTL_DIR)/entropy_repetition_test.sv $(RTL_DIR)/entropy_adaptive_proportion_test.sv $(RTL_DIR)/entropy_markov_test.sv $(RTL_DIR)/entropy_rosc_tune_fsm.sv $(RTL_DIR)/gf_muladd.sv entropy_generator_test_wrapper.sv
 SCLKDIV_TESTBENCH = tb_sample_clk_divider.v
 SCLKDIV_SIM_OUT = tb_sample_clk_divider
+SCLKDIV_FULL_SIM_OUT = tb_sample_clk_divider_full
 SCLKDIV_VCD_FILE = sample_clk_divider.vcd
 
 # Entropy FIFO Test configuration
@@ -71,7 +80,7 @@ FIFO_SIM_OUT = tb_entropy_fifo
 FIFO_VCD_FILE = entropy_fifo.vcd
 
 # AXI4-Lite Register Interface Test configuration (Verilator)
-AXI4LITE_INTF = ../../../common/axi/axi4lite_intf.sv
+AXI4LITE_INTF = ../../../../common/axi/axi4lite_intf.sv
 AXI4LITE_SOURCES = $(AXI4LITE_INTF) \
                    $(REG_RTL_DIR)/entropy_source_reg_pkg.sv $(RTL_DIR)/entropy_source_pkg.sv \
                    $(COMMON_RTL) $(RTL_DIR)/entropy_ring_oscillator.sv \
@@ -90,7 +99,7 @@ AXI4LITE_EXECUTABLE = $(AXI4LITE_OBJ_DIR)/Ventropy_source
 AXI4LITE_VCD_FILE = entropy_source_axi4lite.vcd
 
 # Verilator Lint configuration
-REG_RTL_DIR = ../data/registers/rtl
+REG_RTL_DIR = ../../regs/gen/sv
 VERILATOR_BUILD_DIR = verilator_lint
 VERILATOR_FILELIST = $(VERILATOR_BUILD_DIR)/entropy_source_complete.f
 VERILATOR_FLAGS = --lint-only --no-timing -Wall -Wno-fatal --top-module entropy_source
@@ -108,10 +117,18 @@ ring: $(RING_SIM_OUT)
 	@echo "=== Running Ring Oscillator Test ==="
 	$(VVP) $(RING_SIM_OUT)
 
+ring-smoke: $(RING_SMOKE_SIM_OUT)
+	@echo "=== Running Ring Oscillator Smoke Test ==="
+	$(VVP) $(RING_SMOKE_SIM_OUT)
+
 # Compile ring oscillator testbench
 $(RING_SIM_OUT): $(RING_SOURCES) $(RING_TESTBENCH)
 	@echo "=== Compiling Ring Oscillator Test ==="
 	$(IVERILOG) -g2012 -DSIMULATION -o $(RING_SIM_OUT) $(RING_SOURCES) $(RING_TESTBENCH)
+
+$(RING_SMOKE_SIM_OUT): $(RING_SOURCES) $(RING_SMOKE_TESTBENCH)
+	@echo "=== Compiling Ring Oscillator Smoke Test ==="
+	$(IVERILOG) -g2012 -DSIMULATION -o $(RING_SMOKE_SIM_OUT) $(RING_SOURCES) $(RING_SMOKE_TESTBENCH)
 
 # View ring oscillator waveforms
 ring-waves: $(RING_VCD_FILE)
@@ -121,7 +138,7 @@ ring-waves: $(RING_VCD_FILE)
 # Clean ring oscillator files
 ring-clean:
 	@echo "=== Cleaning Ring Oscillator Files ==="
-	rm -f $(RING_SIM_OUT) $(RING_VCD_FILE)
+	rm -f $(RING_SIM_OUT) $(RING_SMOKE_SIM_OUT) $(RING_VCD_FILE)
 
 #==============================================================================
 # DEBUG MONITOR TARGETS
@@ -157,7 +174,7 @@ TUNE_FSM_CORRECT_TESTBENCH = tb_rosc_tune_fsm_correct.v
 TUNE_FSM_CORRECT_SIM_OUT = tb_rosc_tune_fsm_correct
 TUNE_FSM_CORRECT_VCD_FILE = rosc_tune_fsm_correct.vcd
 
-# Tune FSM correct version verification test
+# Tune FSM rising-edge-only toggle test
 tune-fsm-correct: $(TUNE_FSM_CORRECT_SIM_OUT)
 	@echo "=== Running Tune FSM Correct Behavior Test ==="
 	$(VVP) $(TUNE_FSM_CORRECT_SIM_OUT)
@@ -326,7 +343,7 @@ markov-window-clean:
 # DECORRELATOR DISABLE TEST TARGETS
 #==============================================================================
 
-# Decorrelator disable bug fix test configuration
+# Decorrelator disable test configuration
 DECORR_DISABLE_SOURCES = $(RTL_DIR)/entropy_decorrelator.sv
 DECORR_DISABLE_TESTBENCH = tb_decorrelator_disable.v
 DECORR_DISABLE_SIM_OUT = tb_decorrelator_disable
@@ -390,10 +407,15 @@ $(SCLKDIV_SIM_OUT): $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 	@echo "=== Compiling Sample Clock Divider Test ==="
 	$(IVERILOG) -g2012 -DSIMULATION -o $(SCLKDIV_SIM_OUT) $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 
-# Run full test (all 12 generators)
-sclkdiv-full: $(SCLKDIV_SIM_OUT)
+# Full test compiles a second image: `ifdef FULL_TEST is a preprocessor gate, so
+# the name has to reach iverilog as -D, not vvp as a plusarg.
+sclkdiv-full: $(SCLKDIV_FULL_SIM_OUT)
 	@echo "=== Running Full Sample Clock Divider Test (All 12 Generators) ==="
-	$(VVP) $(SCLKDIV_SIM_OUT) +define+FULL_TEST
+	$(VVP) $(SCLKDIV_FULL_SIM_OUT)
+
+$(SCLKDIV_FULL_SIM_OUT): $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
+	@echo "=== Compiling Full Sample Clock Divider Test ==="
+	$(IVERILOG) -g2012 -DSIMULATION -DFULL_TEST -o $(SCLKDIV_FULL_SIM_OUT) $(SCLKDIV_SOURCES) $(SCLKDIV_TESTBENCH)
 
 # View sample clock divider waveforms
 sclkdiv-waves: $(SCLKDIV_VCD_FILE)
@@ -403,7 +425,7 @@ sclkdiv-waves: $(SCLKDIV_VCD_FILE)
 # Clean sample clock divider test files
 sclkdiv-clean:
 	@echo "=== Cleaning Sample Clock Divider Test Files ==="
-	rm -f $(SCLKDIV_SIM_OUT) $(SCLKDIV_VCD_FILE)
+	rm -f $(SCLKDIV_SIM_OUT) $(SCLKDIV_FULL_SIM_OUT) $(SCLKDIV_VCD_FILE)
 
 #==============================================================================
 # ENTROPY FIFO TEST TARGETS
@@ -523,7 +545,7 @@ $(VERILATOR_FILELIST): | $(VERILATOR_BUILD_DIR)
 	@echo "$(RTL_DIR)/entropy_source_pkg.sv" >> $@
 	@echo "" >> $@
 	@echo "// Generic cells (primitives)" >> $@
-	@echo "$(RTL_DIR)/gcells.sv" >> $@
+	@printf "%s\n" $(COMMON_RTL) >> $@
 	@echo "" >> $@
 	@echo "// RTL modules (in dependency order)" >> $@
 	@echo "$(RTL_DIR)/entropy_ring_oscillator.sv" >> $@
@@ -611,6 +633,7 @@ help:
 	@echo ""
 	@echo "QUICK START:"
 	@echo "  make ring             - Test ring oscillator and noise source"
+	@echo "  make ring-smoke       - Check that ring oscillation advances simulation time"
 	@echo "  make debug            - Test debug monitor"
 	@echo "  make sclkdiv          - Test sample clock divider (3 generators, quick)"
 	@echo "  make sclkdiv-full     - Test sample clock divider (all 12 generators)"
@@ -666,7 +689,7 @@ help:
 	@echo ""
 	@echo "================================================================================"
 
-.PHONY: all ring debug tune-fsm-correct repetition markov markov-window health fifo axi4lite test test-bs waves clean help
+.PHONY: all ring ring-smoke debug tune-fsm-correct repetition markov markov-window health fifo axi4lite test test-bs waves clean help
 .PHONY: ring-waves ring-clean debug-waves debug-clean tune-fsm-correct-waves tune-fsm-correct-clean
 .PHONY: repetition-waves repetition-clean markov-waves markov-clean markov-window-waves markov-window-clean
 .PHONY: health-waves health-clean fifo-waves fifo-clean axi4lite-waves axi4lite-clean verilator-lint verilator-cpp verilator-verify verilator-clean

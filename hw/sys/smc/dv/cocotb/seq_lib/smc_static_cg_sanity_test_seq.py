@@ -2,12 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_002 ANCHOR: smc_static_cg_sanity_test
-# Also preserves P1 CHK-MODULE-GATING / CHK-ENABLE-THRESHOLD evidence for closed P1 grade.
 """
 
 from __future__ import annotations
-
-import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -18,10 +15,16 @@ from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
 
-_LOG = logging.getLogger(__name__)
+# Every record this sequence emits goes through `cocotb.log`: a module-level
+# `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
+# the STEP/CHK/FENCE evidence written through one never reaches the kept log
+# ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 # SF-002: Enable Threshold == Hysteresis Control (same programmable field).
-THRESH_MIN = 8
+# Lowest hysteresis whose DMA completion survives the gater with the SYS_OUT
+# slave agent's one-cycle response latency; 8 and below drop the transfer
+# (smc_clk_multi_window_test_seq.HYST_LOW_EXCLUSION records the band).
+THRESH_MIN = 9
 THRESH_MAX = 63
 HYST_IDLE = 8
 IDLE_OBSERVE = 16
@@ -74,6 +77,11 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         self.chk_seen: dict[str, str] = {}
         self.required_cells_hit: list[str] = []
         self.measured: dict[str, int] = {}
+        # One entry per bounded wait this sequence actually entered:
+        # (label, smc cycles the wait consumed, the bound it was given). Each
+        # wait raises on expiry, so the margin recorded here is what the run
+        # measured.
+        self.bounded_waits: list[tuple[str, int, int]] = []
 
     def _dut(self):
         return cocotb.top
@@ -149,13 +157,30 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         assert start_id != 0, "DMA command was not accepted"
         return start_id
 
-    async def _wait_dma_done(self, baseline_done: int) -> None:
+    async def _gate_off(self, label: str, hyst: int) -> None:
+        """Bounded wait for tb_dma_gated_clk to go quiet, margin recorded."""
         dut = self._dut()
-        for _ in range(80):
+        used, _last_toggle = await cg.wait_gated_off(
+            dut,
+            "tb_dma_gated_clk",
+            hyst=hyst,
+            idle_observe=4,
+            timeout_smc=GATE_OFF_TIMEOUT_SMC,
+            diag_names=("tb_dma_gater_busy", "tb_dma_cg_en"),
+        )
+        self.bounded_waits.append((label, used, GATE_OFF_TIMEOUT_SMC))
+
+    async def _wait_dma_done(self, baseline_done: int, label: str) -> None:
+        dut = self._dut()
+        for polls in range(1, 81):
             done = await self.csr_read("DMA_DONE_0_POLL", DMA_CTRL_DONE_0)
             if done > baseline_done:
-                for _ in range(GATE_OFF_TIMEOUT_SMC):
+                self.bounded_waits.append((f"{label}/done-poll", polls, 80))
+                for busy_cyc in range(GATE_OFF_TIMEOUT_SMC):
                     if cg.sample_bit(dut, "tb_dma_gater_busy") == 0:
+                        self.bounded_waits.append(
+                            (f"{label}/busy-clear", busy_cyc, GATE_OFF_TIMEOUT_SMC)
+                        )
                         return
                     await RisingEdge(dut.clk_smc_i)
                 raise AssertionError("TIMEOUT waiting gater busy clear after DONE")
@@ -169,24 +194,10 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         dut = self._dut()
         cg.log_step(step_id, f"enable-threshold/hyst={hyst}; measure re-gate delay")
         await self._program_cg(dma_en=True, zeroer_en=False, hyst=hyst)
-        await cg.wait_gated_off(
-            dut,
-            "tb_dma_gated_clk",
-            hyst=hyst,
-            idle_observe=4,
-            timeout_smc=GATE_OFF_TIMEOUT_SMC,
-            diag_names=("tb_dma_gater_busy", "tb_dma_cg_en"),
-        )
+        await self._gate_off(f"{step_id}/gate-off-pre", hyst)
         baseline = await self.csr_read(f"DMA_DONE_BASE_{step_id}", DMA_CTRL_DONE_0)
         await self._program_dma_descriptors()
-        await cg.wait_gated_off(
-            dut,
-            "tb_dma_gated_clk",
-            hyst=hyst,
-            idle_observe=4,
-            timeout_smc=GATE_OFF_TIMEOUT_SMC,
-            diag_names=("tb_dma_gater_busy", "tb_dma_cg_en"),
-        )
+        await self._gate_off(f"{step_id}/gate-off-armed", hyst)
 
         state = {"busy_seen": False, "busy_fall_at": -1, "last_edge_at": -1, "smc": 0}
         stop = {"done": False}
@@ -211,8 +222,10 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         meter = cocotb.start_soon(_meter())
         edges = cocotb.start_soon(_edge_watch())
         await self._start_dma()
-        await self._wait_dma_done(baseline)
+        await self._wait_dma_done(baseline, step_id)
+        quiet_used = 0
         for _ in range(GATE_OFF_TIMEOUT_SMC):
+            quiet_used += 1
             if (
                 state["busy_fall_at"] >= 0
                 and state["last_edge_at"] >= state["busy_fall_at"]
@@ -231,6 +244,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         stop["done"] = True
         meter.kill()
         edges.kill()
+        self.bounded_waits.append((f"{step_id}/threshold-quiet", quiet_used, GATE_OFF_TIMEOUT_SMC))
         assert state["busy_seen"] and state["busy_fall_at"] >= 0
         delay = max(0, state["last_edge_at"] - state["busy_fall_at"] + 1)
         assert abs(delay - hyst) <= 1, f"threshold delay {delay} != programmed {hyst} (±1)"
@@ -271,12 +285,16 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         assert dma_edges_s1 == IDLE_OBSERVE, (
             f"DMA gated off while cg disabled: edges={dma_edges_s1} window={IDLE_OBSERVE}"
         )
+        # The two enables and the busy bit are re-read off the DUT at emission
+        # time, so the token reports the sampled window ([EXACT-EXPECTATION]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-DMA-GATE-DISABLED-FREE-RUN",
             "CHK-DMA-GATE-DISABLED-FREE-RUN: "
-            f"toggles_every_cycle=1 dma_edges={dma_edges_s1} window={IDLE_OBSERVE} "
-            "dma_cg_en=0 activity=0",
+            f"dma_edges={dma_edges_s1}/{IDLE_OBSERVE} "
+            f"dma_cg_en={cg.sample_bit(dut, 'tb_dma_cg_en')} "
+            f"zeroer_cg_en={cg.sample_bit(dut, 'tb_zeroer_cg_en')} "
+            f"dma_gater_busy={cg.sample_bit(dut, 'tb_dma_gater_busy')}",
         )
         cg.mark_fence(self.fence, "dma-gate-disabled-free-run")
 
@@ -288,14 +306,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         await self._program_cg(dma_en=True, zeroer_en=False, hyst=HYST_IDLE)
         assert cg.sample_bit(dut, "tb_dma_cg_en") == 1
         assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 0
-        await cg.wait_gated_off(
-            dut,
-            "tb_dma_gated_clk",
-            hyst=HYST_IDLE,
-            idle_observe=4,
-            timeout_smc=GATE_OFF_TIMEOUT_SMC,
-            diag_names=("tb_dma_gater_busy", "tb_dma_cg_en"),
-        )
+        await self._gate_off("S3/gate-off", HYST_IDLE)
         cg.log_step(
             "S4",
             "sample zeroer axi_clk + reg_clk free-run with disable_cg / cg off",
@@ -315,38 +326,44 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
             f"Zeroer reg should stay enabled (cg disabled): edges={zreg_n}"
         )
         self.required_cells_hit.extend(["module_gating_disabled", "module_gating_enabled"])
-        continuous = int(dma_edges_s1 == IDLE_OBSERVE)
-        independent = int(dma_n == 0 and zaxi_n == IDLE_OBSERVE)
         cg.emit_chk(
             self.chk_seen,
             "CHK-ZEROER-GATE-DISABLED-FREE-RUN",
             "CHK-ZEROER-GATE-DISABLED-FREE-RUN: "
-            f"toggles_every_cycle=1 zeroer_axi_edges={zaxi_n} "
-            f"zeroer_reg_edges={zreg_n} window={IDLE_OBSERVE} zeroer_cg_en=0",
+            f"zeroer_axi_edges={zaxi_n}/{IDLE_OBSERVE} "
+            f"zeroer_reg_edges={zreg_n}/{IDLE_OBSERVE} "
+            f"dma_edges={dma_n}/{IDLE_OBSERVE} "
+            f"dma_cg_en={cg.sample_bit(dut, 'tb_dma_cg_en')} "
+            f"zeroer_cg_en={cg.sample_bit(dut, 'tb_zeroer_cg_en')} "
+            f"zeroer_busy={cg.sample_bit(dut, 'tb_zeroer_busy')}",
         )
         cg.mark_fence(self.fence, "zeroer-gate-disabled-free-run")
-        # Legacy P1 module-gating token (closed P1 grade).
+        # P1 module-gating token: the raw per-module edge counts of the two
+        # windows above ([EXACT-EXPECTATION]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-MODULE-GATING",
             "CHK-MODULE-GATING: disabled_module=DMA "
-            f"continuous_idle_toggles={continuous} dma_edges_s1={dma_edges_s1} "
-            f"independent={independent} dma_gated_edges={dma_n} "
-            f"zeroer_ungated_edges={zaxi_n} window={IDLE_OBSERVE}",
+            f"dma_edges_s1={dma_edges_s1}/{IDLE_OBSERVE} "
+            f"dma_gated_edges={dma_n}/{IDLE_OBSERVE} "
+            f"zeroer_ungated_edges={zaxi_n}/{IDLE_OBSERVE}",
         )
-        cg.mark_fence(self.fence, "module-gating-observed")
 
-        # ---- P1 enable-threshold (=hyst) min/max (kept for closed P1 grade) ----
+        # ---- P1 enable-threshold (=hyst) sweep points ----
+        # The cells are named after the hysteresis value each one measures.
+        # CG_HYSTERESIS is a 6-bit field whose true minimum is 0; THRESH_MIN is
+        # the lowest point this sequence exercises, not the field's floor, and
+        # the 0..8 band is unproven.
         d_min = await self._measure_threshold(
             "S3b",
             THRESH_MIN,
-            "enable_threshold_delay_min",
+            f"enable_threshold_delay_hyst{THRESH_MIN}",
             "enable-threshold-min-measured",
         )
         d_max = await self._measure_threshold(
             "S4b",
             THRESH_MAX,
-            "enable_threshold_delay_max",
+            f"enable_threshold_delay_hyst{THRESH_MAX}",
             "enable-threshold-max-measured",
         )
         assert d_max >= d_min
@@ -354,31 +371,50 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         cg.emit_chk(
             self.chk_seen,
             "CHK-ENABLE-THRESHOLD",
-            "CHK-ENABLE-THRESHOLD: min/max within_1cyc "
-            f"min={d_min}/{THRESH_MIN} max={d_max}/{THRESH_MAX} "
-            f"cells={','.join(c for c in self.required_cells_hit if 'threshold' in c)}",
+            "CHK-ENABLE-THRESHOLD: re-gate delay tracks CG_HYSTERESIS within "
+            f"1 cycle at the two swept points: hyst={THRESH_MIN} -> delay="
+            f"{d_min}, hyst={THRESH_MAX} -> delay={d_max}. CG_HYSTERESIS 0..8 "
+            f"is NOT swept here",
         )
+        # Each bounded wait raises on expiry; the token reports the cycles each
+        # one consumed against the bound it was given.
+        worst = max(self.bounded_waits, key=lambda w: w[1] / w[2])
         cg.emit_chk(
             self.chk_seen,
             "CHK-TIMEOUT-PATHS",
-            "CHK-TIMEOUT-PATHS: gate_off/done/threshold waits bounded "
-            f"timeout_smc={GATE_OFF_TIMEOUT_SMC} fail_on_expiry=1",
+            f"CHK-TIMEOUT-PATHS: {len(self.bounded_waits)} bounded waits "
+            f"entered, 0 expired (expiry raises); tightest margin "
+            f"{worst[0]} used {worst[1]}/{worst[2]} smc cycles; "
+            f"all: {','.join(f'{n}={u}/{b}' for n, u, b in self.bounded_waits)}",
         )
-        # P0 NONVAC is the contract for SMCCGP0_002; P0 fence terms must lead.
-        cg.assert_fence_order(
-            self.fence,
-            [
-                "dma-gate-disabled-free-run",
-                "zeroer-gate-disabled-free-run",
-                "module-gating-observed",
-                "enable-threshold-min-measured",
-                "enable-threshold-max-measured",
-            ],
-        )
+        # P0 NONVAC is the contract for SMCCGP0_002; P0 fence terms lead.
+        # `assert_fence_progress` requires every listed phase to have consumed
+        # simulation time; order alone holds by construction in a straight-line
+        # body ([NO-ALWAYS-PASS-CHECKER]). The strong content of this testcase
+        # is the gated-clock edge counts and the hysteresis measurement in
+        # `_measure_threshold`.
+        #
+        # Every term listed below is separated from its predecessor by at least
+        # one multi-cycle DUT wait: a `count_enabled_at_smc_rise` window between
+        # the two free-run phases, and a full program/gate-off/DMA cycle before
+        # each threshold measurement. Only phases with that property belong in
+        # the list; a mark placed after an `emit_chk` alone would share its
+        # predecessor's timestamp and fail here.
+        _PHASES = [
+            "dma-gate-disabled-free-run",
+            "zeroer-gate-disabled-free-run",
+            "enable-threshold-min-measured",
+            "enable-threshold-max-measured",
+        ]
+        fence_times = cg.assert_fence_progress(self.fence, _PHASES)
         cg.emit_chk(
             self.chk_seen,
             "CHK-NONVAC",
-            "CHK-NONVAC: dma-gate-disabled-free-run < zeroer-gate-disabled-free-run < PASS",
+            "CHK-NONVAC: all %d phases in order with strictly increasing DUT "
+            "timestamps %s ns (order alone is true by construction; the "
+            "timestamps are what this leg adds). Fail-capable content of the "
+            "testcase is elsewhere: the per-module gated-clock edge counts and "
+            "the hysteresis measurement." % (len(_PHASES), ",".join(str(t) for t in fence_times)),
         )
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_static_cg_sanity_test_seq PASS")
+        cocotb.log.info("smc_static_cg_sanity_test_seq PASS")

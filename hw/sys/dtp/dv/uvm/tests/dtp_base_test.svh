@@ -1,177 +1,165 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Base test: environment construction, the looped-scenario runner, and the
-// pass-banner contract. "UVM TEST PASSED" is emitted only from report_phase
-// and only when the global UVM_ERROR/UVM_FATAL counts are both zero (uvm-log
-// parser contract); never from sequence or scoreboard code mid-run.
+// DTP base test (ocah_test realization): builds the two configuration
+// levels and the environment, walks the reset ladder, and runs every
+// scenario as a virtual sequence on the environment's virtual sequencer
+// through the library's looped-scenario runner.
 //
-// Looped-scenario contract (cocotb start_looped_seq parity):
-// every looped scenario runs at least MinDefaultLoops passes, each pass with
-// its own scenario seed (+ntb_random_seed base + loop index) so directed
-// scenarios re-prove back-to-back recovery and randomized scenarios add
-// stimulus diversity. Loop counts resolve from plusargs without touching
-// test code, mirroring the cocotb environment knobs:
-//   +<specific>=N (per test, e.g. +DTP_JTAG_EXTEST_TEST_LOOPS=1)
-//   +<group>=N    (per group, e.g. +DTP_BASIC_JTAG_TEST_LOOPS=32)
-//   +DTP_TEST_LOOPS=N (suite-wide)
-//   +DTP_RANDOM_COUNT=N (random patterns per pass, default 5)
-// Looped tests override create_scenario_seq() (+ the plusarg name hooks) and
-// inherit run_phase(); tests with bespoke flows override run_phase() as
-// before.
+//   1. build dtp_test_cfg: seed and random volume from the library
+//      accessors, the knob-derived controls, the downstream STAP attach
+//      mask, then the test's configure_test_cfg() hook (required scoreboard
+//      features, evidence policy); srandom(seed) + randomize() draws the
+//      system-clock and TCK periods;
+//   2. derive dtp_env_cfg from it and publish both through uvm_config_db;
+//      build dtp_env;
+//   3. bring_up(): route the downstream STAP TAPs, then sequence power-on
+//      and system reset through dtp_tb_if in clock cycles of the randomized
+//      period; run_looped_scenario() (ocah_test) then starts
+//      create_scenario_seq() on m_env.m_vseqr once per pass with
+//      scenario_seed = seed + pass.
+//
+// Knobs (plusargs here, environment variables in the cocotb twin
+// tests/dtp_base_test.py): +<specific>=N per test, +<group>=N per group,
+// +DTP_TEST_LOOPS=N suite-wide, +DTP_RANDOM_COUNT=N random volume per
+// pass; the scenario knobs and negative-validation switches are read into
+// dtp_test_cfg (read_knobs). The pass banner comes from ocah_test.
 
-class dtp_base_test extends uvm_test;
-    `uvm_component_utils(dtp_base_test)
+class dtp_base_test extends ocah_test;
+  `uvm_component_utils(dtp_base_test)
 
-    // Every looped scenario runs at least this many passes by default.
-    localparam int unsigned MinDefaultLoops = 16;
+  dtp_test_cfg test_cfg;
+  dtp_env_cfg  env_cfg;
+  dtp_env      m_env;
 
-    dtp_env m_env;
+  function new(string name = "dtp_base_test", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    function new(string name = "dtp_base_test", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    test_cfg = dtp_test_cfg::type_id::create("test_cfg");
+    test_cfg.seed         = base_seed();
+    test_cfg.random_count = random_count();
+    test_cfg.read_knobs();
+    test_cfg.stap_ds_attach_mask = stap_ds_attach_mask();
+    configure_test_cfg(test_cfg);
+    // The one draw before run_phase: the bench-level dimensions (clock
+    // and TCK periods) come from the runner seed through srandom(), so a
+    // run replays from the seed alone.
+    test_cfg.srandom(test_cfg.seed);
+    if (!test_cfg.randomize()) `uvm_fatal(get_type_name(), "dtp_test_cfg randomize() failed")
+    `uvm_info(get_type_name(), {"test cfg: ", test_cfg.convert2string()}, UVM_LOW)
+    env_cfg = dtp_env_cfg::from_test_cfg(test_cfg);
+    uvm_config_db#(dtp_test_cfg)::set(this, "*", "test_cfg", test_cfg);
+    uvm_config_db#(dtp_env_cfg)::set(this, "*", "env_cfg", env_cfg);
+    m_env = dtp_env::type_id::create("m_env", this);
+  endfunction
 
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        m_env = dtp_env::type_id::create("m_env", this);
-    endfunction
+  // ------------------------------------------------------------------
+  // Configuration hooks.
+  // ------------------------------------------------------------------
 
-    // ------------------------------------------------------------------
-    // Runner-facing knobs (plusargs; the cocotb flow reads the same names
-    // as environment variables).
-    // ------------------------------------------------------------------
+  // Scenario tests add their required scoreboard features and the
+  // required evidence IDs of the recorders they exercise.
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+  endfunction
 
-    // Runner-provided seed (+ntb_random_seed, appended by run_dv.py).
-    static function int unsigned base_seed();
-        int unsigned seed;
-        if (!$value$plusargs("ntb_random_seed=%d", seed))
-            seed = 1;
-        return seed;
-    endfunction
+  // Downstream STAP TAP attachment (cocotb dtp_base_test.stap_ds_attach
+  // parity): bit i selects the STAP host port in dtp_stap_ds_name() order
+  // (io, smc, sep, extra0) that gets the shared ocah_jtag_vip slave device
+  // spliced behind it for this test. Default: every port keeps its wire
+  // loopback; the STAP-selection scenarios attach all four.
+  virtual function bit [DtpStapCount-1:0] stap_ds_attach_mask();
+    return '0;
+  endfunction
 
-    // Random patterns/operations per pass (+DTP_RANDOM_COUNT, default 5).
-    static function int unsigned random_count();
-        int unsigned count;
-        if (!$value$plusargs("DTP_RANDOM_COUNT=%d", count))
-            count = 5;
-        return count;
-    endfunction
+  virtual function string suite_loops_knob();
+    return "DTP_TEST_LOOPS";
+  endfunction
 
-    // Loop-count resolution: the specific per-test knob wins, then the group
-    // knob, then the suite-wide +DTP_TEST_LOOPS, then the default (floored at
-    // MinDefaultLoops). An explicit 0 is a configuration defect.
-    function int unsigned loop_count(
-        string       specific_plusarg,
-        string       group_plusarg,
-        int unsigned default_loops = MinDefaultLoops
-    );
-        int unsigned count;
-        string sources[$] = {specific_plusarg, group_plusarg, "DTP_TEST_LOOPS"};
-        foreach (sources[i]) begin
-            if (sources[i].len() == 0)
-                continue;
-            if ($value$plusargs({sources[i], "=%d"}, count)) begin
-                if (count == 0)
-                    `uvm_fatal(get_type_name(), $sformatf(
-                        "+%s must be >= 1, got 0", sources[i]))
-                return count;
-            end
-        end
-        return (default_loops > MinDefaultLoops) ? default_loops : MinDefaultLoops;
-    endfunction
+  virtual function string random_count_knob();
+    return "DTP_RANDOM_COUNT";
+  endfunction
 
-    // ------------------------------------------------------------------
-    // Looped-scenario hooks. A looped test overrides create_scenario_seq()
-    // and the plusarg name hooks; run_phase() then runs loop_count() passes
-    // with per-pass seeds and the standard env handle plumbing.
-    // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  // Looped-scenario hooks.
+  // ------------------------------------------------------------------
 
-    // Build one pass's scenario sequence (factory-created, unconfigured).
-    virtual function dtp_jtag_base_test_seq create_scenario_seq();
-        return null;
-    endfunction
+  virtual function uvm_sequencer_base scenario_sequencer();
+    return m_env.m_vseqr;
+  endfunction
 
-    // Per-test and per-group loop-count plusarg names.
-    virtual function string specific_loops_plusarg();
-        return "";
-    endfunction
+  // Standard handle plumbing for every scenario pass; scenario-specific
+  // handles are added by the thin tests, which call super first.
+  virtual function void plumb_scenario_seq(ocah_sequence seq);
+    dtp_base_test_seq dtp_seq;
+    dtp_scan_base_test_seq scan_seq;
+    if (!$cast(dtp_seq, seq))
+      `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_base_test_seq")
+    dtp_seq.tb_vif       = m_env.tb_vif;
+    dtp_seq.scan_vif     = m_env.scan_vif;
+    dtp_seq.xtrig_vif    = m_env.xtrig_vif;
+    dtp_seq.jtag_vif     = m_env.m_jtag_cfg.vif;
+    dtp_seq.test_cfg     = test_cfg;
+    dtp_seq.evidence     = m_env.m_jtag_checker;
+    dtp_seq.scan_builder = m_env.m_scan_builder;
+    dtp_seq.scan_window  = m_env.m_scan_window;
+    if ($cast(scan_seq, seq)) plumb_stap_ds(scan_seq);
+  endfunction
 
-    virtual function string group_loops_plusarg();
-        return "";
-    endfunction
+  // Hand a scan sequence the downstream device configurations the scan
+  // reference model is seeded from and which ports are attached; the
+  // responder sequences come from the virtual sequencer.
+  virtual function void plumb_stap_ds(dtp_scan_base_test_seq seq);
+    for (int unsigned i = 0; i < DtpStapCount; i++) begin
+      seq.stap_ds_cfg[i]      = m_env.m_stap_ds_cfg[i];
+      seq.stap_ds_attached[i] = test_cfg.stap_ds_attach_mask[i];
+    end
+  endfunction
 
-    virtual function int unsigned default_loops();
-        return MinDefaultLoops;
-    endfunction
+  // Fresh scan-reconstruction window per pass: the builder's bounded
+  // history would otherwise saturate across the 16-pass floor and freeze
+  // the newest-scan-length evidence on a stale item (the cocotb flow
+  // likewise starts a fresh monitor per pass).
+  virtual function void pre_scenario_pass(int unsigned idx);
+    m_env.m_scan_builder.clear_history();
+  endfunction
 
-    // Standard env handle plumbing for every scenario pass; looped tests
-    // override to add scenario-specific handles (AXI cfg, slave sequences)
-    // and must call super.plumb_scenario_seq().
-    virtual function void plumb_scenario_seq(dtp_jtag_base_test_seq seq);
-        seq.tb_vif       = m_env.tb_vif;
-        seq.jtag_vif     = m_env.m_jtag_cfg.vif;
-        seq.evidence     = m_env.m_jtag_checker;
-        seq.scan_builder = m_env.m_scan_builder;
-    endfunction
+  // Clock/reset bring-up (cocotb bring_up parity): route the downstream
+  // STAP TAPs, then sequence POR and system reset through dtp_tb_if with
+  // the startup dbg_disable vector cleared while POR is still asserted, so
+  // scenario passes begin with full debug access and assert the disables
+  // they gate explicitly. The reset ladder holds the only wall-clock waits
+  // in test code, derived from the randomized clock period.
+  virtual task bring_up();
+    attach_stap_ds();
+    m_env.tb_vif.drive_dbg_disable('0);
+    m_env.tb_vif.por_rst_n   <= 1'b0;
+    m_env.tb_vif.sys_rst_n   <= 1'b0;
+    wait_clk_cycles(dtp_base_test_seq::PorHoldCycles);
+    m_env.tb_vif.por_rst_n <= 1'b1;
+    wait_clk_cycles(dtp_base_test_seq::SysResetHoldCycles);
+    m_env.tb_vif.sys_rst_n <= 1'b1;
+    wait_clk_cycles(dtp_base_test_seq::PostResetCycles);
+  endtask
 
-    // Clock/reset bring-up (cocotb _bring_up parity): sequence POR and
-    // system reset through dtp_tb_if with the startup dbg_disable vector
-    // cleared while POR is still asserted, so scenario passes begin with
-    // full debug access and assert the disables they gate explicitly.
-    task bring_up();
-        m_env.tb_vif.dbg_disable <= '0;
-        m_env.tb_vif.por_rst_n   <= 1'b0;
-        m_env.tb_vif.sys_rst_n   <= 1'b0;
-        #200ns;
-        m_env.tb_vif.por_rst_n <= 1'b1;
-        #100ns;
-        m_env.tb_vif.sys_rst_n <= 1'b1;
-        #100ns;
-    endtask
+  // Route each selected STAP host port to its downstream device (the
+  // dtp_scan_if enables feed the tb_top host-TDI muxes) before bring-up, so
+  // the attachment is static for the whole run.
+  protected function void attach_stap_ds();
+    bit [DtpStapCount-1:0] mask = test_cfg.stap_ds_attach_mask;
+    m_env.scan_vif.stap_io_ds_en     = mask[0];
+    m_env.scan_vif.stap_smc_ds_en    = mask[1];
+    m_env.scan_vif.stap_sep_ds_en    = mask[2];
+    m_env.scan_vif.stap_extra0_ds_en = mask[3];
+    if (mask != '0)
+      `uvm_info(get_type_name(), $sformatf(
+                "downstream STAP TAPs attached: mask=0b%04b (io,smc,sep,extra0)", mask), UVM_LOW)
+  endfunction
 
-    task run_looped_scenario();
-        int unsigned loops = loop_count(specific_loops_plusarg(),
-                                        group_loops_plusarg(), default_loops());
-        int unsigned seed   = base_seed();
-        int unsigned rcount = random_count();
-        bring_up();
-        for (int unsigned idx = 0; idx < loops; idx++) begin
-            dtp_jtag_base_test_seq seq = create_scenario_seq();
-            if (seq == null)
-                `uvm_fatal(get_type_name(),
-                    "looped test must override create_scenario_seq() (or run_phase())")
-            seq.scenario_seed = seed + idx;
-            seq.random_count  = rcount;
-            seq.loop_index    = idx;
-            // Fresh scan-reconstruction window per pass: the builder's
-            // bounded history would otherwise saturate across the 16-pass
-            // floor and freeze the newest-scan-length evidence on a stale
-            // item (the cocotb flow likewise starts a fresh monitor per pass).
-            m_env.m_scan_builder.clear_history();
-            plumb_scenario_seq(seq);
-            `uvm_info(get_type_name(), $sformatf(
-                "scenario pass %0d/%0d: %s scenario_seed=%0d random_count=%0d",
-                idx + 1, loops, seq.get_type_name(), seq.scenario_seed, rcount),
-                UVM_LOW)
-            seq.start(m_env.m_jtag_env.m_sequencer);
-        end
-    endtask
-
-    // Default run flow for looped tests; bespoke tests override run_phase().
-    task run_phase(uvm_phase phase);
-        phase.raise_objection(this, {get_type_name(), " running"});
-        run_looped_scenario();
-        phase.drop_objection(this, {get_type_name(), " done"});
-    endtask
-
-    function void report_phase(uvm_phase phase);
-        uvm_report_server svr = uvm_report_server::get_server();
-        super.report_phase(phase);
-        if (svr.get_severity_count(UVM_FATAL) == 0 && svr.get_severity_count(UVM_ERROR) == 0)
-            `uvm_info(get_type_name(), "UVM TEST PASSED", UVM_NONE)
-        else
-            `uvm_info(get_type_name(), "UVM TEST FAILED", UVM_NONE)
-    endfunction
+  protected task wait_clk_cycles(int unsigned cycles);
+    #(cycles * env_cfg.clk_period_ns * 1ns);
+  endtask
 
 endclass : dtp_base_test

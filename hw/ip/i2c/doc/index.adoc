@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i2c-controller]]
-==== I2C Controller
+= I2C Controller
 
-===== Overview
+== Overview
 
 The OCA I2C Interface Component is a comprehensive I2C/SMBus/PMBus
 communication controller that provides full-featured support for both
@@ -13,7 +13,7 @@ industry standards and featuring robust error handling, configurable
 FIFOs, and extensive interrupt support, this component enables reliable
 inter-chip communication in complex system-on-chip designs.
 
-===== Description and Features
+== Description and Features
 
 * *Multi-Protocol Support*: Full compliance with I2C Rev. 7.0, SMBus
 Rev. 3.2, and PMBus Rev. 1.4 specifications
@@ -32,7 +32,27 @@ ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]
 
+ifdef::backend-html5[]
+include::partial$i2c/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$i2c/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$i2c/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$i2c/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::programming.adoc[]
+endif::backend-pdf[]

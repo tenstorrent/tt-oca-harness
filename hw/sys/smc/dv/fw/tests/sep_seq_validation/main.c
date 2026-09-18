@@ -9,7 +9,7 @@
  * STATUS_SEQ_ERROR sentinel, while continuing to handle subsequent correctly-
  * sequenced requests.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — the KM command message
+ * Spec basis: OCAH Specification §Crypto Key Manager — the KM command message
  * format encodes a sequence_number[7:0] in the header, enabling detection of
  * replayed or lost messages.  This test exercises analogous sequence-number
  * enforcement on the SMC side using scratch registers as the transport.
@@ -160,5 +160,5 @@ int main(void) {
     return 0;
 }
 
-/* secondary_main intentionally not defined — crt0 default routes only
- * the boot hart to main(), non-boot harts spin in WFI. */
+/* secondary_main is not defined here: the crt0 weak default routes only the
+ * boot hart to main() and parks the other harts in WFI. */

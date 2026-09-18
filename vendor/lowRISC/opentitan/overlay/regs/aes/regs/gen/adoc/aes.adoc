@@ -27,7 +27,7 @@
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -45,7 +45,7 @@
 | 0x88 | CTRL_GCM_SHADOWED | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -54,7 +54,7 @@
 | 0 | `recov_ctrl_update_err` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KEY_SHARE0[8] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -73,7 +73,7 @@ registers are ignored.
 Upon reset, these registers are cleared with pseudo-random data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KEY_SHARE1[8] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -92,7 +92,7 @@ registers are ignored.  Upon reset, these registers are
 cleared with pseudo-random data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IV[4] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -114,7 +114,7 @@ configured.  Upon reset, these registers are cleared with
 pseudo-random data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DATA_IN[4] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -131,7 +131,7 @@ registers (See INPUT_READY field of Status Register).  Upon
 reset, these registers are cleared with pseudo-random data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DATA_OUT[4] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -146,7 +146,7 @@ order in which the registers are read does not matter.  Upon
 reset, these registers are cleared with pseudo-random data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL_SHADOWED Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -188,7 +188,7 @@ unit.  Invalid input values, i.e., values with multiple
 bits set and value 2'b00, are mapped to AES_ENC (2'b01).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL_AUX_SHADOWED Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -207,7 +207,7 @@ of internal pseudo-random number generators used for clearing and
 masking (1) or not (0).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL_AUX_REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -217,7 +217,7 @@ bit.  If this is cleared to 0, the Auxiliary Control
 Register cannot be written anymore.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TRIGGER Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -241,7 +241,7 @@ is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE
 (see Control Register).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -284,7 +284,7 @@ encryption/decryption is running but the AES unit is
 stalled.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL_GCM_SHADOWED Register
 |===
 | Bits | Field | Access | Reset | Description

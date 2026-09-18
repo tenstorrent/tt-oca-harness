@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Feature Overview
 
 OCAH provides the non-application-specific framework logic that is common
-across chiplets built to the Open Chiplet Architecture (OCA) standard.
+across chiplets built to the Open Chiplet Atlas (OCA) standard.
 
 == Architecture
 

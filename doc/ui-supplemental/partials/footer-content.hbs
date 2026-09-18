@@ -1,11 +1,13 @@
+{{!-- SPDX-License-Identifier: Apache-2.0 --}}
+{{!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. --}}
 <footer class="footer">
   <div class="footer-inner">
-    <img src="{{{uiRootPath}}}/img/oca-footer.png" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <img src="{{{uiRootPath}}}/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
     <div class="footer-main">
       <p class="oca-footer-text">
         The Open Chiplet Atlas&#174; has been developed by
         <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
-          <img src="{{{uiRootPath}}}/img/02_tt_logo_standard_teal_white.png" alt="Tenstorrent" class="footer-tt-icon">
+          <img src="{{{uiRootPath}}}/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
         </a>
         as an open standard.
       </p>
@@ -15,3 +17,9 @@
 </footer>
 <script src="{{{uiRootPath}}}/js/keyboard-shortcuts.js"></script>
 <script src="{{{uiRootPath}}}/js/a11y-patches.js"></script>
+<script src="{{{uiRootPath}}}/js/vendor/viewer.min.js"></script>
+<script src="{{{uiRootPath}}}/js/image-zoom.js"></script>
+{{#if (has-math page.contents)}}
+<script src="{{{uiRootPath}}}/js/math.js"></script>
+<script defer src="{{{uiRootPath}}}/js/vendor/mathjax/tex-svg.js"></script>
+{{/if}}

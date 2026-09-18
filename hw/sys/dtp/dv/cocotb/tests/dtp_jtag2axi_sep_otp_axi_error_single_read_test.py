@@ -23,6 +23,7 @@ class dtp_jtag2axi_sep_otp_axi_error_single_read_test(dtp_base_test):
         "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
+        "CHK-J2A-ERR-RDATA",
     )
     axi_checker_stream_minimums = {"sep_otp": 2}
 
@@ -30,9 +31,9 @@ class dtp_jtag2axi_sep_otp_axi_error_single_read_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_error_test_seq,
             "sep_otp_error_single_read",
-            specific_env="DTP_JTAG2AXI_SEP_OTP_AXI_ERROR_SINGLE_READ_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SEP_OTP_AXI_ERROR_SINGLE_READ_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             target="sep_otp",
             scenario="error_single_read",
         )

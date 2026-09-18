@@ -7,7 +7,7 @@ This directory contains the `memory_interface` module - a reusable AXI-to-memory
 
 ## Overview
 
-The `memory_interface` module provides a standardized bridge between AXI4/AXI4-Lite bus interfaces and a generic memory interface protocol. This allows designers to easily integrate memory controllers into their systems without dealing with AXI protocol details. It is to be used along with an "Interface Shim" module that contains the CSRs and the memory interface to the memory macro, and a memory macro module. Examples of the Interface Shim and memory macro are provided in the `rtl/examples` directory. See the image below for a diagram of the components for a complete implementation of memory (note the seperation between OCH and adopter implemented components).
+The `memory_interface` module provides a standardized bridge between AXI4/AXI4-Lite bus interfaces and a generic memory interface protocol. This allows designers to easily integrate memory controllers into their systems without dealing with AXI protocol details. It is to be used along with an "Interface Shim" module that contains the CSRs and the memory interface to the memory macro, and a memory macro module. Examples of the Interface Shim and memory macro are provided in the `rtl/examples` directory. See the image below for a diagram of the components for a complete implementation of memory (note the separation between OCAH and adopter implemented components).
 
 image::memory_macros_wrapper.png[width=600,align=center]
 

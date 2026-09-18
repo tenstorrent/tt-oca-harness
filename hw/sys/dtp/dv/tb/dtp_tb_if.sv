@@ -1,136 +1,166 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP-local TB interface for the SV-UVM flow: system/power-on resets
-// (sequenced by the test) and the DUT-produced one-hot IEEE 1149.1 TAP state
-// used by the FSM reference-model checks. Deliberately separate from the
-// shared ocah_jtag_if, which carries generic JTAG pins only.
+// DTP control-domain TB interface, shared by the cocotb and SV-UVM flows:
+// the system clock and its period, the test-sequenced resets and their
+// assertion counters, the lifecycle debug disables, the TAP-state and
+// debug-TDR observables the checkers read, the request-activity pulse
+// counters tb_top derives from the bus pins, and the SVA enables.
+// The scan-network observables live in dtp_scan_if and the cross-trigger
+// pins in dtp_xtrig_if; the primary TAP pins are on the shared ocah_jtag_if.
 //
-// The JTAG2AXI additions carry the test-drivable lifecycle
-// debug disables, the SVA suppress knobs, and mirrors of the tb_top
-// request-activity pulse counters, so sequences never reach into tb_top
-// hierarchy directly. Both AXI responders are shared ocah_axi_vip UVM slave
-// agents; error injection is programmed through their slave sequences, not
-// TB error ports.
+// cocotb deposits the clock, the resets, and the stimulus members through
+// hierarchical handles (env/dtp_tb_if.py); SV-UVM sequences reach the same
+// members through the virtual interface, and the harness block in tb_top
+// generates the clock from clk_period_ns.
 
 interface dtp_tb_if;
 
-    // Driven by the TB (reset sequencing owned by the test/sequence).
-    logic por_rst_n;
-    logic sys_rst_n;
+  // System-clock period the harness clock generator reads, set by the env
+  // from dtp_env_cfg (the test cfg randomizes it from the runner seed).
+  int unsigned clk_period_ns = 10;
 
-    // Driven by the DUT top (jtag_tap_pkg::tap_state_e, one-hot).
-    logic [15:0] tap_state;
+  // System clock: cocotb drives it with Clock(); the SV-UVM harness toggles
+  // it every half period.
+  logic clk = 1'b0;
 
-    // Driven by the DUT top: decoded-IR one-hot observable
-    // (jtag_inst_reg_pkg::jtag_instruction_decoded_e) for CHK-IR-DECODE.
-    jtag_inst_reg_pkg::jtag_instruction_decoded_e inst_decoded;
+  // Driven by the TB (reset sequencing owned by the test/sequence).
+  logic por_rst_n;
+  logic sys_rst_n;
 
-    // Driven by the DUT top: boundary-scan chain control observables for the
-    // basic-JTAG instruction checks.
-    logic jtag_bsr_select;
-    logic jtag_bsr_shift_en;
-    logic jtag_bsr_capture_en;
-    logic jtag_bsr_update_en;
+  // Reset-assertion counters (driven by tb_top): the scoreboard predictors
+  // re-baseline the CSR shadow and the TAP instruction on them.
+  logic [31:0] sys_rst_assert_count;
+  logic [31:0] por_assert_count;
 
-    // Lifecycle debug disables (sep_lifecycle_ctrl_pkg::dbg_disable_t,
-    // active-high: 1 = interface disabled). Init '1 = fail-closed, matching
-    // the DUT synchronizers' reset value; JTAG2AXI sequences must clear the
-    // target's disable first.
-    sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable = '1;
+  // Driven by the DUT top (jtag_tap_pkg::tap_state_e, one-hot).
+  logic [15:0] tap_state;
 
-    // Runtime enable for the shared AXI protocol SVA checkers.
-    logic axi_sva_en = 1'b1;
+  // Driven by the DUT top: decoded-IR one-hot observable
+  // (jtag_inst_reg_pkg::jtag_instruction_decoded_e) for CHK-IR-DECODE.
+  jtag_inst_reg_pkg::jtag_instruction_decoded_e inst_decoded;
 
-    // Runtime enable for the shared JTAG protocol SVA checker.
-    logic jtag_sva_en = 1'b1;
+  // Lifecycle debug disables, one named member per dbg_disable_i path
+  // (active-high: 1 = path disabled). Init 1 = fail-closed, matching the
+  // DUT synchronizers' reset value; JTAG2AXI sequences must clear the
+  // target's disable first. cocotb deposits the members by name; SV-UVM
+  // writes them through drive_dbg_disable.
+  logic dbg_disable_stap_io          = 1'b1;
+  logic dbg_disable_stap_smc         = 1'b1;
+  logic dbg_disable_stap_sep         = 1'b1;
+  logic dbg_disable_stap_extra       = 1'b1;
+  logic dbg_disable_stap_host        = 1'b1;
+  logic dbg_disable_dft_secure       = 1'b1;
+  logic dbg_disable_dft_nonsecure    = 1'b1;
+  logic dbg_disable_dfd              = 1'b1;
+  logic dbg_disable_smc_jtag2axi     = 1'b1;
+  logic dbg_disable_smc_otp_jtag2axi = 1'b1;
+  logic dbg_disable_sep_otp_jtag2axi = 1'b1;
 
-    // Request-activity pulse-counter mirrors (driven by tb_top).
-    logic [31:0] smc_axi_awvalid_count;
-    logic [31:0] smc_axi_wvalid_count;
-    logic [31:0] smc_axi_arvalid_count;
-    logic [31:0] smc_otp_axil_awvalid_count;
-    logic [31:0] smc_otp_axil_wvalid_count;
-    logic [31:0] smc_otp_axil_arvalid_count;
-    logic [31:0] sep_otp_axil_awvalid_count;
-    logic [31:0] sep_otp_axil_wvalid_count;
-    logic [31:0] sep_otp_axil_arvalid_count;
+  // The dbg_disable_i struct tb_top forwards to the DUT, bound to the
+  // members above by field name.
+  sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable;
 
-    // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
-    // boot-stall outputs and the flattened IC_RESET slice outputs.
-    logic stop_clks;
-    logic cla_clock_stop_en;
-    logic jtag_boot_stall;
-    logic jtag_boot_stall_ovrd;
-    logic jtag_ic_reset_smc_ovrd;
-    logic jtag_ic_reset_smc_ctrl_n;
-    logic jtag_ic_reset_sep_ovrd;
-    logic jtag_ic_reset_sep_ctrl_n;
-    logic jtag_ic_reset_ext_ovrd;
-    logic jtag_ic_reset_ext_ctrl_n;
+  always_comb begin
+    dbg_disable = '{
+        stap_io: dbg_disable_stap_io,
+        stap_smc: dbg_disable_stap_smc,
+        stap_sep: dbg_disable_stap_sep,
+        stap_extra: dbg_disable_stap_extra,
+        stap_host: dbg_disable_stap_host,
+        dft_secure: dbg_disable_dft_secure,
+        dft_nonsecure: dbg_disable_dft_nonsecure,
+        dfd: dbg_disable_dfd,
+        smc_jtag2axi: dbg_disable_smc_jtag2axi,
+        smc_otp_jtag2axi: dbg_disable_smc_otp_jtag2axi,
+        sep_otp_jtag2axi: dbg_disable_sep_otp_jtag2axi
+    };
+  end
 
-    // CLA clock-stop request vector (driven by debug-TDR sequences; init
-    // quiescent so unrelated tests see no requests).
-    logic [dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req = '0;
+  function automatic void drive_dbg_disable(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+    dbg_disable_stap_io          = d.stap_io;
+    dbg_disable_stap_smc         = d.stap_smc;
+    dbg_disable_stap_sep         = d.stap_sep;
+    dbg_disable_stap_extra       = d.stap_extra;
+    dbg_disable_stap_host        = d.stap_host;
+    dbg_disable_dft_secure       = d.dft_secure;
+    dbg_disable_dft_nonsecure    = d.dft_nonsecure;
+    dbg_disable_dfd              = d.dfd;
+    dbg_disable_smc_jtag2axi     = d.smc_jtag2axi;
+    dbg_disable_smc_otp_jtag2axi = d.smc_otp_jtag2axi;
+    dbg_disable_sep_otp_jtag2axi = d.sep_otp_jtag2axi;
+  endfunction
 
-    // Scan-network observables (driven by tb_top): iJTAG SIB scan controls,
-    // STAP forwarding pins, and the extended STAP host scan controls for
-    // the scan-scenario temporal windows.
-    logic jtag_dft_secure_select;
-    logic jtag_dft_secure_shift_en;
-    logic jtag_dft_secure_capture_en;
-    logic jtag_dft_secure_update_en;
-    logic jtag_dft_select;
-    logic jtag_dft_shift_en;
-    logic jtag_dft_capture_en;
-    logic jtag_dft_update_en;
-    logic jtag_dfd_select;
-    logic jtag_dfd_shift_en;
-    logic jtag_dfd_capture_en;
-    logic jtag_dfd_update_en;
-    logic jtag_stap_io_tms;
-    logic jtag_stap_io_tdo_oen;
-    logic jtag_stap_smc_tms;
-    logic jtag_stap_smc_tdo_oen;
-    logic jtag_stap_sep_tms;
-    logic jtag_stap_sep_tdo_oen;
-    logic jtag_stap_extra0_tms;
-    logic jtag_stap_extra0_tdo_oen;
-    logic jtag_stap_host_select;
-    logic jtag_stap_host_shift_en;
-    logic jtag_stap_host_capture_en;
-    logic jtag_stap_host_update_en;
+  // Runtime enable for the shared AXI protocol SVA checkers.
+  logic axi_sva_en = 1'b1;
 
-    // Cross-trigger CTM/CTP pin surface. Request-side vectors are driven by
-    // the XTRIG sequences (init '0 = quiescent, matching the cocotb agent's
-    // idle state); the remaining vectors are DUT-driven observables. The
-    // internal-CT ports use the src/dst req-ack pairs; the external CTPs use
-    // the pad-cell din/dout/en quartets.
-    logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_ack = '0;
-    logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_req = '0;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din = '0;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din  = '0;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din  = '0;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din = '0;
+  // Runtime enable for the shared JTAG protocol SVA checker.
+  logic jtag_sva_en = 1'b1;
 
-    logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
-    logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_ack;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout_en;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din_en;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout_en;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din_en;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout_en;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din_en;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout_en;
-    logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din_en;
+  // Request-activity pulse-counter mirrors (driven by tb_top): no-activity
+  // security evidence sampled from the bus pins.
+  logic [31:0] smc_axi_awvalid_count;
+  logic [31:0] smc_axi_wvalid_count;
+  logic [31:0] smc_axi_arvalid_count;
+  logic [31:0] smc_otp_axil_awvalid_count;
+  logic [31:0] smc_otp_axil_wvalid_count;
+  logic [31:0] smc_otp_axil_arvalid_count;
+  logic [31:0] sep_otp_axil_awvalid_count;
+  logic [31:0] sep_otp_axil_wvalid_count;
+  logic [31:0] sep_otp_axil_arvalid_count;
+  logic [31:0] xtrig_axil_awvalid_count;
+  logic [31:0] xtrig_axil_wvalid_count;
+  logic [31:0] xtrig_axil_arvalid_count;
+  // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID
+  // and ARVALID held while the crossbar keeps the matching READY low.
+  logic [31:0] xtrig_axil_aw_stall_count;
+  logic [31:0] xtrig_axil_ar_stall_count;
 
-    // XTRIG CSR request-activity pulse-counter mirrors (driven by tb_top).
-    logic [31:0] xtrig_axil_awvalid_count;
-    logic [31:0] xtrig_axil_wvalid_count;
-    logic [31:0] xtrig_axil_arvalid_count;
+  // XTRIG crossbar demux state behind the CSR port (driven by tb_top from
+  // the AXI-Lite demux of the cross-trigger network): the AW lock flag,
+  // which holds an AW presented to a master port whose AWREADY was low,
+  // and the W-pending flag, high from an accepted AW until its W beat
+  // passes the demux.
+  logic xtrig_demux_aw_lock;
+  logic xtrig_demux_w_pending;
+
+  // Registered BUSY of every external cross-trigger port (driven by tb_top
+  // from the CTP busy outputs); STATUS.BUSY reads the same flop.
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_busy;
+
+  // JTAG2AXI bridge state per target for the reset-abort scenarios, sampled
+  // by tb_top from the bridges' TCK-domain registers: the AXI FSM state
+  // (jtag2axi.sv axi_state_e: 0 IDLE, 1 SEND_ADDR_W, 2 SEND_DATA_W,
+  // 3 WAIT_BRESP, 4 SEND_ADDR_R, 5 WAIT_RDATA, 6 UPDATE_STATUS), the
+  // single-op pending flag, and a sticky flag set once the bridge's CDC has
+  // run its TCK-side isolate-and-clear; cdc_clear_seen_clear = 1 clears the
+  // sticky flags.
+  logic [2:0] smc_axi_fsm_state;
+  logic       smc_axi_op_pending;
+  logic       smc_axi_cdc_clear_seen;
+  logic [2:0] smc_otp_fsm_state;
+  logic       smc_otp_op_pending;
+  logic       smc_otp_cdc_clear_seen;
+  logic [2:0] sep_otp_fsm_state;
+  logic       sep_otp_op_pending;
+  logic       sep_otp_cdc_clear_seen;
+  logic       cdc_clear_seen_clear = 1'b0;
+
+  // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
+  // boot-stall outputs and the flattened IC_RESET slice outputs.
+  logic stop_clks;
+  logic cla_clock_stop_en;
+  logic jtag_boot_stall;
+  logic jtag_boot_stall_ovrd;
+  logic jtag_ic_reset_smc_ovrd;
+  logic jtag_ic_reset_smc_ctrl_n;
+  logic jtag_ic_reset_sep_ovrd;
+  logic jtag_ic_reset_sep_ctrl_n;
+  logic jtag_ic_reset_ext_ovrd;
+  logic jtag_ic_reset_ext_ctrl_n;
+
+  // CLA clock-stop request vector (driven by debug-TDR sequences; init
+  // quiescent so unrelated tests see no requests).
+  logic [dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req = '0;
 
 endinterface : dtp_tb_if

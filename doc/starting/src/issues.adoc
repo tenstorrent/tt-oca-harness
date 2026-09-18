@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Filing issues
+
+Open a new issue from
+https://github.com/tenstorrent/tt-oca-harness/issues/new/choose[New issue]
+and pick **Bug**, **Task**, or **Feature**. Blank issues are off.
+Allowed values live in `.github/issue-taxonomy.yml`.
+
+Required: *Workstream*, *Subsystem*, *Component* (General if unsure),
+*Priority* (P2 if unsure), and *Target release* (`Future` if unscheduled).
+Description is optional. Do not pick a GitHub milestone.
+
+Do not pick labels. The form picks feed
+https://github.com/orgs/tenstorrent/projects/291[Project 291]
+(Component *General* does not get a label).
+
+Security reports must not be public issues. Use
+https://github.com/tenstorrent/tt-oca-harness/security/advisories/new[private vulnerability reporting].

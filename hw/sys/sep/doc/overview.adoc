@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Hardware Overview
+:description: Major SEP hardware blocks and their relationships.
+
 [[hardware-overview]]
-=== Hardware Overview
 
 The diagram below shows the top level SEP architecture.
 
@@ -34,8 +36,8 @@ IMEM, OTBN DMEM
 * Scratch Register Bank x 2
 * DMA Engine
 * Watchdog Timer (WDT)
-* _Alarm aggregation processor (AGP) with Reliability and Service (RAS)
-port - deferred to the next generation_
+* _Alarm aggregation processor (AGP) with Reliability, Availability, and
+Serviceability (RAS) port - deferred to the next generation_
 * Cryptographic subsystem
 ** Cryptographic accelerators: Public Key Engine, AES, HMAC-SHA2,
 KMAC-SHA3
@@ -55,4 +57,3 @@ Technology and vendor specific macro blocks such as SRAM, ROM etc. are
 instantiated outside of SEP and have dedicated SEP interfaces. The goal
 is to cleanly separate the generic SEP IP from technology specific
 components in order to make integration and migration easier.
-

@@ -23,7 +23,7 @@ package:
 
 # Path dependencies on the vendored trees (transitive pins in Bender.local).
 dependencies:
-  aou: { path: "vendor/tenstorrent/aou-rtl" }
+  aou: { path: "vendor/tenstorrent/aou" }
   tt_dfd: { path: "vendor/tenstorrent/tt-hw-debug" }
   el2: { path: "vendor/chipsalliance/Cores-VeeR-EL2" }
   idma: { path: "vendor/pulp-platform/idma" }
@@ -75,6 +75,14 @@ vendor_package:
       - "hw/ip/kmac/data/kmac.hjson"
       - "hw/ip/entropy_src/rtl"
       - "hw/ip/entropy_src/data/entropy_src.hjson"
+      # Package-only imports: OCAH does not instantiate these IPs.
+      # Vendored OT blocks still import the package names.
+      - "hw/ip/lc_ctrl/rtl/lc_ctrl_pkg.sv"
+      - "hw/ip/lc_ctrl/rtl/lc_ctrl_state_pkg.sv"
+      - "hw/ip/lc_ctrl/rtl/lc_ctrl_reg_pkg.sv"
+      - "hw/ip/keymgr/rtl/keymgr_pkg.sv"
+      - "hw/ip/keymgr/rtl/keymgr_reg_pkg.sv"
+      - "hw/ip/otp_ctrl/rtl/otp_ctrl_pkg.sv"
       # reggen + mubi modules used to export <ip>.hjson to SystemRDL.
       - "util/reggen/access.py"
       - "util/reggen/alert.py"
@@ -146,7 +154,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "66ce4f176e812900e34f874caa0ea0b0d3928f65" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "c27b1f2efd04ec464b89cedacc4c0df0452772e9" }
     include_from_upstream:
       - "src"
       - "include"
@@ -166,6 +174,7 @@ vendor_package:
     target_dir: "vendor/pulp-platform/unbent/upstream"
     upstream: { git: "https://github.com/tenstorrent-forks/unbent.git", rev: "2df7a3f0307739d3813cf77db8228720b39a94f8" }
     include_from_upstream:
+      - "LICENSE"
       - "src/bus_err_unit_reg_pkg.sv"
       - "src/bus_err_unit_bare.sv"
       - "src/bus_err_unit_reg_top.sv"
@@ -210,6 +219,7 @@ vendor_package:
     target_dir: "vendor/chipsalliance/adams-bridge/upstream"
     upstream: { git: "https://github.com/chipsalliance/adams-bridge.git", rev: "e59eba955eac2a1adcb059f250641ede78e304be" }
     include_from_upstream:
+      - "LICENSE"
       - "src/abr_top/rtl"
       - "src/abr_libs/rtl"
       - "src/abr_prim/rtl"
@@ -244,6 +254,7 @@ vendor_package:
     target_dir: "vendor/chipsalliance/caliptra-rtl/upstream"
     upstream: { git: "https://github.com/chipsalliance/caliptra-rtl.git", rev: "ec349a89a0fe7bbe24f16c6bb05f9779d5a3d4c6" }
     include_from_upstream:
+      - "LICENSE"
       - "src/keyvault/rtl/kv_macros.svh"
       - "src/keyvault/rtl/kv_defines_pkg.sv"
       - "src/keyvault/rtl/kv_fsm.sv"
@@ -285,7 +296,7 @@ vendor_package:
       - "picorv32_wb.sv"
     patch_dir: "vendor/tenstorrent/tt-picorv32/patches"
 
-  # Tenstorrent DFD (debug-for-design) IP: CLA + DST + trace sink.
+  # Tenstorrent DFD (Design-for-Debug) IP: CLA + DST + trace sink.
   # TODO: enable once the tt_hw_debug GitLab remote is reachable from CI. Until
   # then vendor/tenstorrent/tt-hw-debug/upstream/ is a hand-mirrored subset -
   # see that package's Bender.yml. Keep include_from_upstream in sync with it.
@@ -297,14 +308,16 @@ vendor_package:
   #     - "dependencies/common"
   #   patch_dir: "vendor/tenstorrent/tt-hw-debug/patches"
 
-  # AXI-over-UCIe (AoU) bridge IP: RTL design + csr SystemRDL.
+  # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
   - name: aou
-    target_dir: "vendor/tenstorrent/aou-rtl/upstream"
-    upstream: { git: "https://github.com/tenstorrent/aou-rtl.git", rev: "28716da1c1e588636f88410d47846714c63058eb" }
+    target_dir: "vendor/tenstorrent/aou/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "08863921a328579bc96f3141b05113c11d7ac84c" }
     include_from_upstream:
       - "RTL"
       - "csr"
-    patch_dir: "vendor/tenstorrent/aou-rtl/patches"
+      - "DOC/MAS"
+      - "DOC/integration_guide"
+    patch_dir: "vendor/tenstorrent/aou/patches"
 
   # I3C controller/target core. The wrapper and memory primitives are left out;
   # this tree supplies its own through i3ccore_wrap.
@@ -312,6 +325,7 @@ vendor_package:
     target_dir: "vendor/chipsalliance/i3c-core/upstream"
     upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "a6361105cd3432699da636f1f5e6f1eb4df09ed2" }
     include_from_upstream:
+      - "LICENSE"
       - "src"
     exclude_from_upstream:
       - "src/i3c_wrapper.sv"
@@ -322,17 +336,29 @@ vendor_package:
   - name: i3c-core-caliptra-rtl
     target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl"
     upstream: { git: "https://github.com/tenstorrent/caliptra-rtl-fork.git", rev: "8bd654eba57cfaa0688f9c4804b23253d0235dfc" }
+    include_from_upstream:
+      - "LICENSE"
+      - "src/axi/rtl/axi_addr.v"
+      - "src/axi/rtl/axi_if.sv"
+      - "src/axi/rtl/i3ccore_axi_pkg.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_dummy_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_sec_cm.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_yosys_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_flop_macros.sv"
+      - "src/libs/rtl/caliptra_sva.svh"
+      - "src/libs/rtl/skidbuffer.v"
     patch_dir: "vendor/chipsalliance/i3c-core/patches/caliptra-rtl"
 
   - name: i3c-core-cocotbext-i3c
     target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c"
     upstream: { git: "https://github.com/antmicro/cocotbext-i3c.git", rev: "6456315697d980ba59ff09448b89941346a3ce16" }
+    include_from_upstream:
+      - "LICENSE"
+      - "pyproject.toml"
+      - "src"
     patch_dir: "vendor/chipsalliance/i3c-core/patches/cocotbext-i3c"
-
-  - name: i3c-core-axi-vip
-    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/axi-vip"
-    upstream: { git: "https://github.com/antmicro/axi-vip.git", rev: "6aeb0a5ba7810dafd96145f0e569db6996464b0e" }
-    patch_dir: "vendor/chipsalliance/i3c-core/patches/axi-vip"
 
 # RTL sources are partitioned by composable subsystem targets.
 sources:
@@ -361,10 +387,10 @@ sources:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
   - target: sep
     files:
-      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_addrmap_pkg.sv
@@ -374,7 +400,7 @@ sources:
   - target: any(sep, smc)
     files:
       - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
-      - hw/ip/efuse/regs/gen/sv/efuse_bank_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
   - target: sep
@@ -407,7 +433,7 @@ sources:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
   - target: sep
     files:
-      - hw/common/axi/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
+      - hw/ip/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
   - target: smc
     files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
@@ -432,13 +458,15 @@ sources:
     files:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg_pkg.sv
       - hw/ip/avsbus_controller/rtl/avsbus_controller_pkg.sv
-      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
-      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
-      - hw/common/axi/axi_filter/rtl/axi_filter_pkg.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
+      - hw/ip/axi_filter/rtl/axi_filter_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
-  - target: dtp
+  # The cross_trigger family compiles inside the DTP DUT and standalone in the
+  # per-IP benches under hw/ip/cross_trigger/*/dv (target `cross_trigger`).
+  - target: any(dtp, cross_trigger)
     files:
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
@@ -451,7 +479,7 @@ sources:
       - hw/ip/drbg/rtl/drbg_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/regs/gen/sv/efuse_bank_reg_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
       - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
@@ -502,7 +530,7 @@ sources:
       - hw/ip/memory_interface/rtl/examples/sram/example_sram_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
+      - hw/ip/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
   - target: any(sep, key_manager)
     files:
       - hw/ip/scrambler/rtl/scrambler_pkg.sv
@@ -549,6 +577,7 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
       - hw/sys/smc/rtl/smc_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
@@ -556,8 +585,6 @@ sources:
       - hw/sys/smc/rtl/smc_config_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_4core_mem_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu_pkg.sv
-      - hw/sys/smc/rtl/smc_cpu/chipyard_1core_mem_pkg.sv
-      - hw/sys/smc/rtl/smc_cpu/smc_1core_cpu_pkg.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/pkg/smc_padring_pkg.sv
@@ -685,22 +712,24 @@ sources:
       - hw/ip/avsbus_controller/rtl/avsbus_controller.sv
       - hw/ip/avsbus_controller/rtl/submodules/avsbus_async_fifo.sv
       - hw/ip/avsbus_controller/rtl/submodules/avsbus_crc3.sv
-      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv
-      - hw/common/axi/axi_alias_remap/rtl/axi_alias_remap.sv
-      - hw/common/axi/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
-      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
-      - hw/common/axi/axi_filter/rtl/axi_filter_wrap.sv
-      - hw/common/axi/axi_filter/rtl/traffic_filter.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv
+      - hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv
+      - hw/ip/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
+      - hw/ip/axi_filter/rtl/axi_filter_wrap.sv
+      - hw/ip/axi_filter/rtl/traffic_filter.sv
   - target: smc
     files:
-      - hw/common/axi/axi_hang_detector/rtl/axi_hang_detector.sv
+      - hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
   - target: any(sep, smc)
     files:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
-  - target: dtp
+  # See the cross_trigger package group above: shared by the DTP DUT and the
+  # per-IP benches (target `cross_trigger`).
+  - target: any(dtp, cross_trigger)
     files:
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
@@ -723,7 +752,7 @@ sources:
       - hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
       - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv
@@ -749,6 +778,7 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_generator_complex.sv
       - hw/ip/entropy_source/rtl/entropy_health_test.sv
       - hw/ip/entropy_source/rtl/entropy_noise_source.sv
+      - hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
       - hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
       - hw/ip/entropy_source/rtl/entropy_ripple_divider.sv
       - hw/ip/entropy_source/rtl/entropy_rosc_tune_fsm.sv
@@ -756,7 +786,6 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
       - hw/ip/entropy_source/rtl/entropy_source.sv
       - hw/ip/entropy_source/rtl/entropy_source_rec_thresh_lut.sv
-      - hw/ip/entropy_source/rtl/gcells.sv
       - hw/ip/entropy_source/rtl/gf_muladd.sv
   - target: smc
     files:
@@ -889,7 +918,7 @@ sources:
       - hw/ip/key_manager/rtl/picorv32_wrapper.sv
   - target: sep
     files:
-      - hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
+      - hw/ip/axi_window_remap/rtl/axi_window_remap.sv
   - target: smc
     files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
@@ -899,8 +928,8 @@ sources:
       - hw/ip/memory_interface/rtl/memory_interface.sv
   - target: any(sep, smc)
     files:
-      - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg.sv
-      - hw/common/axi/output_remap/rtl/output_remap.sv
+      - hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv
+      - hw/ip/output_remap/rtl/output_remap.sv
   - target: any(sep, key_manager)
     files:
       - hw/ip/scrambler/rtl/scrambler.sv
@@ -948,6 +977,8 @@ sources:
       - hw/sys/sep/rtl/kmac_wrapper.sv
       - hw/sys/sep/rtl/sep.sv
       - hw/sys/sep/rtl/sep_cpu.sv
+      - hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv
+      - hw/sys/sep/rtl/sep_trng.sv
       - hw/sys/sep/rtl/sep_crypto.sv
       - hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv
       - hw/sys/sep/rtl/sep_dma_wrap.sv
@@ -956,6 +987,7 @@ sources:
       - hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
       - hw/sys/sep/rtl/sep_local_axi_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_ot_spi_wrap.sv
+      - hw/sys/sep/rtl/sep_isolate_rst_seq.sv
       - hw/sys/sep/rtl/sep_reset_ctrl.sv
       - hw/sys/sep/rtl/sep_rom_interface_shim.sv
       - hw/sys/sep/rtl/sep_sram.sv
@@ -965,10 +997,6 @@ sources:
       - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_tcm_wrapper.sv
       - hw/sys/sep/rtl/sep_wdt_wrap.sv
-      - hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv
-      - hw/sys/sep/rtl/sep_crypto_axi_isolate.sv
-      - hw/sys/sep/rtl/sep_crypto_trng_axi_isolate.sv
-      - hw/sys/sep/rtl/sep_trng.sv
       # =====================================================================
       # Adams Bridge PQC (ML-DSA-87 / ML-KEM-1024) + Caliptra KV client helpers
       #   vendor/chipsalliance/adams-bridge : chipsalliance/adams-bridge @ e59eba9
@@ -979,7 +1007,7 @@ sources:
       #                Key-Vault ports and the kv_* client helpers. Do not use it
       #                as a feature switch in OCAH code.
       #   SEP_ABR_EN - OCAH's own switch for "is the Adams Bridge block present in
-      #                this SEP build". Used by hw/sys/sep/rtl/sep_crypto.sv and
+      #                this SEP build". Used by SEP crypto RTL and
       #                hw/top/sep_ip_integration.sv (engine + SRAMs). Enabling ABR
       #                therefore always brings CALIPTRA along; sep_crypto.sv also
       #                carries an elaboration check that rejects the mismatch.
@@ -1182,8 +1210,6 @@ sources:
           # --- SEP integration: KV shim + crypto wrapper ---
           - hw/sys/sep/rtl/sep_abr_kv_shim.sv
           - hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv
-          - hw/sys/sep/rtl/sep_abr_mem_1r1w.sv
-          - hw/sys/sep/rtl/sep_abr_mem_1r1w_be.sv
   - target: smc
     files:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
@@ -1194,6 +1220,7 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv
@@ -1479,6 +1506,7 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/OCAH4CORECluster_mems.sv
       - hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/tilelink_to_rom_mem.sv
       - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu.sv
+      - hw/sys/smc/rtl/smc_cpu/smc_cpu_ctrl_wrap.sv
       - hw/sys/smc/rtl/smc_cpu/smc_cpu_wrapper.sv
       - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0.sv
       - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0.sv
@@ -1492,7 +1520,6 @@ sources:
       - hw/sys/smc/rtl/smc_fabric/smc_output_fabric/rtl/smc_output_fabric.sv
       - hw/sys/smc/rtl/smc_internal_regs.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_base_config_wrap.sv
-      - hw/sys/smc/rtl/smc_misc/rtl/smc_cpu_ctrl_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
@@ -1513,6 +1540,7 @@ sources:
   - target: any(smc_wrapper, smu_wrapper)
     files:
       - hw/common/och_prim_generic/rtl/prim_pad_shim.sv
+      - hw/sys/smc/dv/models/axil_okay_slv.sv
       - hw/sys/smc/dv/models/pll_wrap.sv
       - hw/sys/smc/dv/models/pvt_wrap.sv
   - target: any(sep_wrapper, smu_wrapper)
@@ -1523,7 +1551,6 @@ sources:
       - hw/top/sep_wrapper.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:
-      - hw/top/smc_ijtag_net.sv
       - hw/top/smc_ip_integration.sv
   - target: smc_wrapper
     files:

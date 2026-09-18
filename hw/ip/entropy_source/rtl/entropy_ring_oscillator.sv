@@ -19,46 +19,46 @@
  */
 
 module entropy_ring_oscillator #(
-    parameter int unsigned TOTAL_LENGTH  = 17,
-    parameter int unsigned TAPPED_LENGTH = 13
+  parameter int unsigned TOTAL_LENGTH  = 17,
+  parameter int unsigned TAPPED_LENGTH = 13
 ) (
-    input  logic enable_i, // program with config register
-    input  logic detune_i, // program with config register
-    output logic noise_o
+  input  logic enable_i, // program with config register
+  input  logic detune_i, // program with config register
+  output logic noise_o
 );
 
-    logic [TOTAL_LENGTH-1:0] stage_o;
-    logic                    feedback;
+  logic [TOTAL_LENGTH-1:0] stage_o;
+  logic                    feedback;
 
-    // first delay cell is inverting and has enable input
-    gnand2 u_en (
-        .a_i (enable_i),
-        .b_i (feedback),
-        .z_o (stage_o[0])
-    );
+  // first delay cell is inverting and has enable input
+  entropy_ring_nand2_wrapper u_en (
+    .a1_i (enable_i),
+    .a2_i (feedback),
+    .y_o  (stage_o[0])
+  );
 
-    // remaining buffer delay chain TOTAL_LENGTH-1
-    generate
-        for (genvar i = 1; i < TOTAL_LENGTH; i++) begin : g_dly
-            gbuff u_bf (
-                .d_i (stage_o[i-1]),
-                .z_o (stage_o[i])
-            );
-        end
-    endgenerate
+  // remaining buffer delay chain TOTAL_LENGTH-1
+  generate
+    for (genvar i = 1; i < TOTAL_LENGTH; i++) begin : gen_dly
+      entropy_ring_buf_wrapper u_bf (
+        .a_i (stage_o[i-1]),
+        .y_o (stage_o[i])
+      );
+    end
+  endgenerate
 
-    // select full length or tapped length for feedback
-    gmux2 u_tap (
-        .i0_i (stage_o[TAPPED_LENGTH-1]),
-        .i1_i (stage_o[TOTAL_LENGTH-1]),
-        .s_i  (detune_i),
-        .z_o  (feedback)
-    );
+  // select full length or tapped length for feedback
+  entropy_ring_mux2_wrapper u_tap (
+    .i0_i  (stage_o[TAPPED_LENGTH-1]),
+    .i1_i  (stage_o[TOTAL_LENGTH-1]),
+    .sel_i (detune_i),
+    .y_o   (feedback)
+  );
 
-    // buffer ring output to manage load
-    gbuff u_fbf (
-        .d_i (feedback),
-        .z_o (noise_o)
-    );
+  // buffer ring output to manage load
+  entropy_ring_buf_wrapper u_fbf (
+    .a_i (feedback),
+    .y_o (noise_o)
+  );
 
 endmodule

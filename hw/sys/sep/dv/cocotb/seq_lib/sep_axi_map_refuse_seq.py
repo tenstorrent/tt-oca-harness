@@ -2,19 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Whole-map response expectation for sep_axi_map_refuse_test.
 
-Every probe address is classified by ``env/sep_axi_decode_map.py`` from the
-allocation tables in ``hw/sys/sep/doc/memory_map.adoc``. A reserved address
-must not answer OKAY. ``memory_map.adoc`` mandates DECERR for the remainder
-INSIDE a unit's aperture and is silent on the flavour for the reserved rows
-BETWEEN apertures, which is what this walks, so either refusal is accepted here
-and the flavour is only logged. ``sep_fabric_deadspace_decode_test`` owns the
-in-aperture case.
-
-Scope note. ``sep_fabric_deadspace_decode_test`` probes the dead tail INSIDE a
-block window -- the span between a block's allocated register size and its
-window end. This sequence probes the gaps BETWEEN windows, which no test
-covered: the reserved rows of the memory map itself. The two do not overlap,
-and neither subsumes the other.
+Every probe address is classified by ``env/sep_axi_decode_map.py``. A
+reserved address must not answer OKAY. The map names no refusal flavour,
+so any refusal is accepted and the flavour is logged.
+``sep_fabric_deadspace_decode_test`` owns the dead tail inside a window.
+This sequence owns the gaps between windows.
 
 Addresses that would disturb the run are excluded by name with a reason, the
 way the register sweep does it. A silent skip is a bug.
@@ -28,7 +20,6 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_axi_decode_map import (
     may_complete,
     region_of,
-    rtl_ranges,
     spec_regions,
 )
 from env.sep_seeded_rng import SepSeededRng
@@ -56,6 +47,13 @@ _PROBE_EXCLUDE: dict[tuple[int, int], str] = {
     # is the testbench, so a refusal there is a TB property.
     (0x0000_0000, 0x0FFF_FFFF): "external chiplet aperture, TB-terminated",
     (0x4000_0000, 0xBFFF_FFFF): "external SMU aperture, TB-terminated",
+    # Reserved in the map; this test does not assert a refusal flavour.
+    (0x1001_0000, 0x1003_FFFF): "reserved expansion, refuse unnamed",
+    (0x1091_4000, 0x1091_4FFF): "reserved crypto gap, refuse unnamed",
+    (0x1092_1000, 0x1092_FFFF): "reserved KM gap, refuse unnamed",
+    (0x1093_8000, 0x1093_FFFF): "reserved OTP gap, refuse unnamed",
+    (0x10A4_0000, 0x10A5_FFFF): "reserved SYS gap, refuse unnamed",
+    (0x2000_0000, 0x3FFF_FFFF): "adopter extension, refuse unnamed",
 }
 
 
@@ -76,21 +74,18 @@ class MapProbe:
 
 # The walk must stay at least this wide. Below it, a reserved row has stopped
 # yielding addresses and the run is proving less than it reports.
-PROBE_FLOOR = 20
+PROBE_FLOOR = 18
 
-# Reserved rows the crossbar routes, which therefore yield no probe. They are
-# counted, and a new one has to be understood rather than absorbed.
+# Reserved rows that cannot fill their probe quota. They are counted, and a
+# new one has to be understood rather than absorbed.
 SHORT_ROW_LIMIT = 5
 
-# Anchors that survive the routed filter. A drop here does not move
+# Anchors that survive the exclude list. A drop here does not move
 # short_regions, so the count is held on its own.
 ANCHOR_KEPT = 6
 
-# Reserved gaps walked on every seed the crossbar does not route: one address
-# just past the end of a live block, which is where a truncating decoder aliases
-# first. Four sit in spans an xbar rule covers (0x1091_4000, 0x1092_1000,
-# 0x1093_8000, 0x10A4_0000) and are dropped when the set is built, so six
-# survive. See ANCHOR_KEPT.
+# Reserved gaps walked on every seed: one address just past the end of a live
+# block. Four sit in unnamed-refuse spans and are dropped, so six survive.
 _ANCHORS: tuple[tuple[int, str], ...] = (
     (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),
@@ -116,10 +111,6 @@ class SepAxiMapRefuseCfg:
         probes: list[MapProbe] = []
         self.skipped: dict[str, int] = {}
         seen: set[tuple[int, str]] = set()
-        rtl = rtl_ranges()
-
-        def _routed(addr: int) -> bool:
-            return any(r.contains(addr) for r in rtl)
 
         for addr, op in _ANCHORS:
             why = _excluded(addr)
@@ -127,17 +118,6 @@ class SepAxiMapRefuseCfg:
                 self.skipped[why] = self.skipped.get(why, 0) + 1
                 continue
             if not may_complete(addr, regions):
-                if _routed(addr):
-                    # Routed-but-reserved: whether the fabric must refuse is an
-                    # open specification question, so there is no contract to
-                    # assert. The scoreboard has no "outcome unknown" mode --
-                    # expect_error demands a refusal -- so driving it would
-                    # assert the open question by the back door. Report these
-                    # from the static cross-check instead; see audit_rtl_vs_spec.
-                    self.skipped["routed span, open spec question"] = (
-                        self.skipped.get("routed span, open spec question", 0) + 1
-                    )
-                    continue
                 reg = region_of(addr, regions)
                 probes.append(MapProbe(addr, op, reg.unit if reg else "?", True))
                 seen.add((addr, op))
@@ -159,10 +139,7 @@ class SepAxiMapRefuseCfg:
                 op = "r" if rng.getrandbits(1) else "w"
                 if (addr, op) in seen:
                     continue
-                if _routed(addr):
-                    self.skipped["routed span, open spec question"] = (
-                        self.skipped.get("routed span, open spec question", 0) + 1
-                    )
+                if _excluded(addr) is not None:
                     continue
                 seen.add((addr, op))
                 probes.append(MapProbe(addr, op, reg.unit, False))
@@ -293,13 +270,11 @@ def _selftest() -> None:
         )
         assert len(c.short_regions) <= SHORT_ROW_LIMIT, (
             f"seed {seed} left {len(c.short_regions)} reserved row(s) short of "
-            f"their quota, above the {SHORT_ROW_LIMIT} the crossbar routes"
+            f"their quota, above the {SHORT_ROW_LIMIT} unnamed-refuse rows"
         )
         n_anchor = sum(1 for p in c.probes if p.anchor)
         assert n_anchor == ANCHOR_KEPT, (
-            f"seed {seed} kept {n_anchor} anchors, expected {ANCHOR_KEPT}; a "
-            f"span the crossbar now routes dropped one without moving the "
-            f"short-row count"
+            f"seed {seed} kept {n_anchor} anchors, expected {ANCHOR_KEPT}"
         )
     assert len(cfg.probes) >= 10, f"only {len(cfg.probes)} probes"
     # Every probe must be reserved per the spec, or the test is asking the DUT

@@ -6,7 +6,7 @@
 package och_sep_top_addrmap_pkg;
 
 localparam longint unsigned OCH_SEP_TOP_BASE_ADDR = 64'h0;
-localparam longint unsigned OCH_SEP_TOP_SIZE = 64'hC0085084;
+localparam longint unsigned OCH_SEP_TOP_SIZE = 64'hC0085400;
 
 localparam longint unsigned OCH_SEP_TOP_SEP_SRAM_BASE_ADDR = 64'h10000000;
 localparam longint unsigned OCH_SEP_TOP_SEP_SRAM_SIZE = 64'h40000;
@@ -217,7 +217,7 @@ localparam longint unsigned OCH_SEP_TOP_SEP_DCCM_BASE_ADDR = 64'hC0040000;
 localparam longint unsigned OCH_SEP_TOP_SEP_DCCM_SIZE = 64'h20000;
 
 localparam longint unsigned OCH_SEP_TOP_PIC_BASE_ADDR = 64'hC0080000;
-localparam longint unsigned OCH_SEP_TOP_PIC_SIZE = 64'h5084;
+localparam longint unsigned OCH_SEP_TOP_PIC_SIZE = 64'h5400;
 
 localparam longint unsigned OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR = 64'h10800000;
 localparam longint unsigned OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR = 64'h10800004;
@@ -503,36 +503,29 @@ localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR = 
 localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR = 64'h1093014C;
 localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR = 64'h1093016C;
 localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_ROM_CTL_BASE_ADDR = 64'h10930170;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR = 64'h10930174;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_BASE_ADDR = 64'h10930178;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_BASE_ADDR = 64'h1093017C;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_BASE_ADDR = 64'h10930180;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_BASE_ADDR = 64'h10930184;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_BASE_ADDR = 64'h10930188;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_BASE_ADDR = 64'h1093018C;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPI_PHY_MISC_BASE_ADDR = 64'h10930190;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPI_RB_VALID_TIME_BASE_ADDR = 64'h10930194;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR = 64'h10930198;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR = 64'h109301B8;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_BASE_ADDR = 64'h109301D8;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_REQUIRED_ALGS_BASE_ADDR = 64'h109301DC;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_BASE_ADDR = 64'h109301E0;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_BASE_ADDR = 64'h10930200;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_BASE_ADDR = 64'h10930220;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_BASE_ADDR = 64'h10930240;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_BASE_ADDR = 64'h10930260;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_BASE_ADDR = 64'h10930280;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_BASE_ADDR = 64'h109302A0;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SIP_ID_BASE_ADDR = 64'h109302C0;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SYS_ID_BASE_ADDR = 64'h109302E0;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR = 64'h10930300;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE1_BASE_ADDR = 64'h10930320;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE2_BASE_ADDR = 64'h10930340;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE3_BASE_ADDR = 64'h10930360;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE4_BASE_ADDR = 64'h10930380;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE5_BASE_ADDR = 64'h109303A0;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE6_BASE_ADDR = 64'h109303C0;
-localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR = 64'h109303E0;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR = 64'h10930174;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR = 64'h10930178;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR = 64'h10930198;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_BASE_ADDR = 64'h109301B8;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_REQUIRED_ALGS_BASE_ADDR = 64'h109301BC;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_BASE_ADDR = 64'h109301C0;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_BASE_ADDR = 64'h109301E0;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_BASE_ADDR = 64'h10930200;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_BASE_ADDR = 64'h10930220;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_BASE_ADDR = 64'h10930240;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_BASE_ADDR = 64'h10930260;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_BASE_ADDR = 64'h10930280;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SIP_ID_BASE_ADDR = 64'h109302A0;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SYS_ID_BASE_ADDR = 64'h109302C0;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR = 64'h109302E0;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE1_BASE_ADDR = 64'h10930300;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE2_BASE_ADDR = 64'h10930320;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE3_BASE_ADDR = 64'h10930340;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE4_BASE_ADDR = 64'h10930360;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE5_BASE_ADDR = 64'h10930380;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE6_BASE_ADDR = 64'h109303A0;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR = 64'h109303C0;
+localparam longint unsigned OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE8_BASE_ADDR = 64'h109303E0;
 localparam longint unsigned OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR = 64'h10930400;
 localparam longint unsigned OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR = 64'h10930404;
 localparam longint unsigned OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR = 64'h10930408;
@@ -784,8 +777,6 @@ localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_BASE_A
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SMU_REGION_SIZE_BASE_ADDR = 64'h10A30110;
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR = 64'h10A30140;
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_BASE_ADDR = 64'h10A30150;
-localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SEP_STRAPS_BASE_ADDR = 64'h10A30160;
-localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_RAS_BANK_INFO_BASE_ADDR = 64'h10A30170;
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SEP_SW_DEBUG_BASE_ADDR = 64'h10A30178;
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR = 64'h10A30180;
 localparam longint unsigned OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR = 64'h10A30188;
@@ -812,26 +803,26 @@ localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR = 
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR = 64'h10B00034;
 localparam longint unsigned OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR = 64'h20000000;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIPL_BASE_ADDR(input int unsigned meipl_idx);
-    return 64'hC0080004 + (meipl_idx * 64'h4);
+    return 64'hC0080000 + (meipl_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIPL_NUM = 64'h20;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIPL_NUM = 64'h100;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIP_BASE_ADDR(input int unsigned meip_idx);
     return 64'hC0081000 + (meip_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIP_NUM = 64'h2;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIP_NUM = 64'h8;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(input int unsigned meie_idx);
-    return 64'hC0082004 + (meie_idx * 64'h4);
+    return 64'hC0082000 + (meie_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIE_NUM = 64'h20;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIE_NUM = 64'h100;
 localparam longint unsigned OCH_SEP_TOP_PIC_MPICCFG_BASE_ADDR = 64'hC0083000;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIGWCTRL_BASE_ADDR(input int unsigned meigwctrl_idx);
-    return 64'hC0084004 + (meigwctrl_idx * 64'h4);
+    return 64'hC0084000 + (meigwctrl_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCTRL_NUM = 64'h20;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCTRL_NUM = 64'h100;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_BASE_ADDR(input int unsigned meigwclr_idx);
-    return 64'hC0085004 + (meigwclr_idx * 64'h4);
+    return 64'hC0085000 + (meigwclr_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_NUM = 64'h20;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_NUM = 64'h100;
 
 
 typedef enum logic [3:0] {

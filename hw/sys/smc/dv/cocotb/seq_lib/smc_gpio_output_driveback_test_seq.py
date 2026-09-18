@@ -14,7 +14,7 @@ so exactly one output-enable bit must change, and that bit's value must track
 the register. This is self-locating (no hard-coded pad index) and does not
 depend on the OR aggregates.
 
-DATA_CTRL field encoding (hw/periph/gpio/data/registers/rdl/gpio_intf.rdl):
+DATA_CTRL field encoding (hw/ip/gpio/regs/gpio_intf.rdl):
   * bit0      core2pad          register-driven value to the pad
   * bit[5:4]  enable_rx_tx      2'b01 = TX enabled (drive pad)
   * bit16     interface_enable  select register values to drive the pad
@@ -114,7 +114,13 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
             f"GPIO wrap0 pad[{pad_idx}] output-enable did not release after disable"
         )
 
-        assert self.accesses == 3, "GPIO output driveback access count mismatch"
+        # `self.accesses` is incremented by every csr_* call in
+        # smc_csr_seq_utils.py, so `self.accesses == <literal>` restates the
+        # loop above and cannot fail on anything the DUT did
+        # ([NO-ZERO-ACTIVITY-PASS]). `assert_all_reachable` cross-checks the
+        # same count against the scoreboard, which a mis-bound analysis path
+        # or a dead port fails.
+        self.assert_all_reachable(3, "GPIO_OUTPUT_DRIVEBACK")
         cocotb.log.info(
             "GPIO wrap0 output driveback verified on pad[%d] (core2pad + core2pad_en)",
             pad_idx,

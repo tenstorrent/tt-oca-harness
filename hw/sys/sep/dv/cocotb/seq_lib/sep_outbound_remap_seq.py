@@ -7,16 +7,17 @@ to a seed-selected outbound address, then programs one outbound-filter entry
 to allow only that remapped beat. A second region is left at offset 0 so its
 translated address misses the allow window (block-by-default DECERR).
 
-Address rewrite (``hw/common/axi/output_remap/rtl/output_remap.sv``):
-``{offset[55:IdxStart], adjusted[IdxStart-1:0]}`` with IdxStart=19
-(``sep_pkg`` 512 KiB regions). Region bases are
-``OCH_SEP_TOP_AP_REGION_BASE_ADDR`` / ``STEE_REGION_BASE_ADDR``.
+Address rewrite: ``{offset[55:IdxStart], adjusted[IdxStart-1:0]}``.
+IdxStart is log2(AP window / region count) from the generated map
+and fabric.adoc. Region bases are ``AP_REGION_MEM_BASE_ADDR`` /
+``STEE_REGION_MEM_BASE_ADDR``.
 """
 
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import fabric_output_remap_regions
 from sep_reg_meta import indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -29,6 +30,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_SRC_ID_LSB,
     F_WRITE_ALLOWED,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
+    FILTER_START_ADDR,
     FILTER_STRIDE,
     OUTFILT_BASE,
     REMAP_STRIDE,
@@ -36,11 +39,24 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 )
 
 # och_sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
-AP_REGION_BASE = 0x1100_0000
-STEE_REGION_BASE = 0x1180_0000
-# sep_pkg::NUM_*_OUTPUT_REMAP_IDX_START / NUM_*_OUTPUT_REMAP_REGIONS
-IDX_START = 19
-N_REGIONS = 16
+AP_REGION_BASE = sym("AP_REGION_MEM_BASE_ADDR")
+STEE_REGION_BASE = sym("STEE_REGION_MEM_BASE_ADDR")
+# Region count from fabric.adoc ("Sixteen remap regions") and the RDL array.
+# IdxStart is log2(AP window / N), so a size or count change fails import.
+N_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL")
+_AP_WINDOW = sym("AP_REGION_MEM_SIZE")
+if _AP_WINDOW % N_REGIONS:
+    raise RuntimeError(
+        f"AP_REGION_MEM_SIZE 0x{_AP_WINDOW:x} is not divisible by {N_REGIONS} regions"
+    )
+_REGION_SPAN = _AP_WINDOW // N_REGIONS
+if _REGION_SPAN.bit_count() != 1:
+    raise RuntimeError(f"output-remap region span 0x{_REGION_SPAN:x} is not a power of two")
+IDX_START = _REGION_SPAN.bit_length() - 1
+if N_REGIONS != fabric_output_remap_regions():
+    raise RuntimeError(
+        f"RDL has {N_REGIONS} AP remap regions; fabric.adoc states {fabric_output_remap_regions()}"
+    )
 # `outbound_filter_ctrl[32]`; the count comes from the export so a seed can
 # select any entry the bank actually has.
 OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
@@ -48,8 +64,6 @@ OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 # sep_outbound_mbx STDOUT window: always-ready OKAY responder on smn_outbound.
 REMAP_TARGET_BASE = 0x8000_0000
 
-FILTER_START_ADDR = 0x08
-FILTER_END_ADDR = 0x10
 RESP_OKAY = 0
 RESP_DECERR = 3
 

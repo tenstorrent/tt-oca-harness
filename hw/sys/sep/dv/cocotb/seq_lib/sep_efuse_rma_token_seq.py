@@ -24,14 +24,13 @@ from env.sep_rma_token import SepRmaTokenCfg as SepRmaTokenCfg
 from pyuvm import uvm_sequence
 from sep_reg_meta import sym
 
-_EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
-_RMA_SIP_TOKEN_I = _EFUSE_MMR_BASE + 0x00
-_RMA_CHIPLET_TOKEN_I = _EFUSE_MMR_BASE + 0x20
-_SEC_DISABLE_TOKEN_I = _EFUSE_MMR_BASE + 0x40
-_TOKEN_EOP = _EFUSE_MMR_BASE + 0x60
-_RMA_SIP_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x64
-_RMA_CHIPLET_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x68
-_SEC_DISABLE_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x6C
+_RMA_SIP_TOKEN_I = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR")
+_RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
+_SEC_DISABLE_TOKEN_I = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
+_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+_RMA_SIP_TOKEN_MATCH = sym("EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR")
+_RMA_CHIPLET_TOKEN_MATCH = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR")
+_SEC_DISABLE_TOKEN_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 _TOKEN_MATCH_FAULT = sym("EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR")
 _TOKEN_MATCH = 0x15
 _TOKEN_MISMATCH = 0x2A
@@ -53,7 +52,7 @@ TOKEN_CMP_INJECT_COMMON_MATCH = 4
 TOKEN_CMP_SEL_SIP = 0
 TOKEN_CMP_SEL_CHIPLET = 1
 TOKEN_CMP_SEL_SEC = 2
-IRQ_TOKEN_MATCH_FAULT = 38
+IRQ_TOKEN_MATCH_FAULT = 39
 
 TOKEN_RMA_SIP = 0
 TOKEN_RMA_CHIPLET = 1
@@ -79,6 +78,7 @@ class SepRmaTokenMatchSeq(uvm_sequence):
         self.token = token
         self.matched: bool | None = None
         self.match_code: int | None = None
+        self.timed_out = False
 
     async def _write(self, addr: int, data: int, label: str) -> None:
         item = SepAxiItem(f"{label}_0x{addr:08x}")
@@ -136,11 +136,15 @@ class SepRmaTokenMatchSeq(uvm_sequence):
                     self.matched,
                 )
                 return
-        self.matched = False
-        cocotb.log.info(
-            "[rma] %s token did not settle (last code=0x%02x)",
-            token_name,
-            self.match_code,
+        # Never settling is a DUT failure, not a mismatch. Recording it as
+        # matched=False would make a token block that answers nothing
+        # indistinguishable from one that correctly rejected a wrong token, so
+        # every "mismatch" check in every caller would pass on a dead comparator.
+        raise AssertionError(
+            f"{token_name} token match status never settled after {_POLL_CYCLES} "
+            f"cycles (last code=0x{self.match_code:02x}; expected one of "
+            f"match 0x{_TOKEN_MATCH:02x}, mismatch 0x{_TOKEN_MISMATCH:02x}, "
+            f"error 0x{_TOKEN_ERROR:02x})"
         )
 
 

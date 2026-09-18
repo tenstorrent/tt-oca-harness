@@ -13,27 +13,27 @@
 // the driver must settle rst0_ni and rst1_ni before moving sel_i.
 //--------------------------------------------------
 module prim_rst_mux2_hf_n (
-    input  logic rst0_ni,
-    input  logic rst1_ni,
-    input  logic sel_i,
-    output logic rst_no
+  input  logic rst0_ni,
+  input  logic rst1_ni,
+  input  logic sel_i,
+  output logic rst_no
 );
 
   logic sel_n;
 
   prim_inv u_sel_inv (
-      .in_i (sel_i),
-      .out_o(sel_n)
+    .in_i (sel_i),
+    .out_o(sel_n)
   );
 
   prim_ao222 u_mux (
-      .a0_i (rst1_ni),
-      .a1_i (sel_i),
-      .b0_i (rst0_ni),
-      .b1_i (sel_n),
-      .c0_i (rst0_ni),
-      .c1_i (rst1_ni),
-      .out_o(rst_no)
+    .a0_i (rst1_ni),
+    .a1_i (sel_i),
+    .b0_i (rst0_ni),
+    .b1_i (sel_n),
+    .c0_i (rst0_ni),
+    .c1_i (rst1_ni),
+    .out_o(rst_no)
   );
 
 endmodule

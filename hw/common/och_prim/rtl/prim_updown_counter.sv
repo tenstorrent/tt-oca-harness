@@ -6,26 +6,26 @@
 //
 //--------------------------------------------------
 module prim_updown_counter #(
-    parameter int               Width      = 16,
-    // Can be used to reset the counter to a different value than 0, for example when
-    // the counter is used as a down-counter.
-    parameter logic [Width-1:0] ResetValue = '0,
+  parameter int               Width      = 16,
+  // Can be used to reset the counter to a different value than 0, for example when
+  // the counter is used as a down-counter.
+  parameter logic [Width-1:0] ResetValue = '0,
 
-    localparam type ctr_t = logic [Width-1:0]
-  ) (
-    input        clk_i,
-    input        reset_n_i,
-    input        clear_i,
-    input        set_i,
-    input  ctr_t set_cnt_i,           // Set value for the counter.
-    input        incr_en_i,
-    input        decr_en_i,
-    input  ctr_t step_i,              // Increment/decrement step when enabled.
-    input        commit_i,
-    output ctr_t count_o,             // Current counter state
-    output ctr_t cnt_after_commit_o,  // Next counter state if committed
-    output logic err_o
-  );
+  localparam type ctr_t = logic [Width-1:0]
+) (
+  input        clk_i,
+  input        rst_ni,
+  input        clear_i,
+  input        set_i,
+  input  ctr_t set_cnt_i,           // Set value for the counter.
+  input        incr_en_i,
+  input        decr_en_i,
+  input  ctr_t step_i,              // Increment/decrement step when enabled.
+  input        commit_i,
+  output ctr_t count_o,             // Current counter state
+  output ctr_t cnt_after_commit_o,  // Next counter state if committed
+  output logic err_o
+);
 
   ///////////////////
   // Counter logic //
@@ -59,7 +59,7 @@ module prim_updown_counter #(
 
   logic [Width-1:0] cnt_unforced_q;
   always_ff @(posedge clk_i) begin
-    if (!reset_n_i) begin
+    if (!rst_ni) begin
       cnt_unforced_q <= ResetValue;
     end else begin
       cnt_unforced_q <= cnt_d_committed;

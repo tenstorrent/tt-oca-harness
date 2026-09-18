@@ -14,6 +14,13 @@ from smc_base_test import smc_base_test
 class smc_ecc_fault_inject_test(smc_base_test):
     """SBE inject fires during scratch FW boot; inject clear recovers."""
 
+    required_evidence = (
+        "CHK-ECC-INJECT",
+        "CHK-ECC-INJECT-NO-DUT-SECDED",
+        "CHK-ECC-INJECT-RECOVERY",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -22,6 +29,9 @@ class smc_ecc_fault_inject_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
+            # Directed stimulus floor: 7 SEP_IN AXI scratch-inject/fetch
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=7,
             csr_accesses=seq.accesses,
             proxy=False,
             details=("DUT scratch0_inject_fire scored via live scratch fetch (SBE/recovery/DBE)"),

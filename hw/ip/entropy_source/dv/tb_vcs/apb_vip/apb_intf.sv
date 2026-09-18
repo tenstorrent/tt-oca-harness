@@ -21,14 +21,14 @@ interface apb_intf #(
   logic                  pslverr;
 
   // Optional modports for readability
-  modport master (
-    input  pclk, presetn,
-    output paddr, psel, penable, pwrite, pwdata,
-    input  prdata, pready, pslverr
+  modport master(
+      input pclk, presetn,
+      output paddr, psel, penable, pwrite, pwdata,
+      input prdata, pready, pslverr
   );
 
-  modport slave (
-    input  pclk, presetn, paddr, psel, penable, pwrite, pwdata,
-    output prdata, pready, pslverr
+  modport slave(
+      input pclk, presetn, paddr, psel, penable, pwrite, pwdata,
+      output prdata, pready, pslverr
   );
 endinterface

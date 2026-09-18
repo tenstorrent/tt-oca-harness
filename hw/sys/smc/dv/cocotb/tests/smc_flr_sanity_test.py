@@ -1,9 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS PyUVM FLR-like recovery sanity test (Batch D).
+"""SMC OSS PyUVM FLR recovery-half sanity test.
 
-Uses the public cool-reset control as the current OSS FLR-like stimulus, then
-checks reset stability and real SEP_IN AXI CSR recovery.
+This test covers only the *downstream* half of an FLR -- the cool reset itself
+and the SEP_IN AXI CSR path across it -- and drives it from the ``rst_cool_ni``
+pin, asserting ``tb_cfg_flr_pf_active`` stays inactive so the observed cool
+reset is attributable to that pin. The FLR *trigger* path
+(``cfg_flr_pf_active_i`` -> isolate-req CSR -> FLR delay/hold counters ->
+``rst_cool_no``) is driven by the sibling ``smc_cool_reset_from_pcie_test``.
+
+Proof: bounded assert/release handshakes on the cool reset, then
+``SCRATCH_COLD_WARM_0`` read before any rewrite must equal its mapped reset
+value, with the following write/read-back as the positive control that the CSR
+path is alive again. See ``seq_lib/smc_flr_sanity_test_seq.py``.
 """
 
 from __future__ import annotations

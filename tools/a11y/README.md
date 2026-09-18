@@ -18,9 +18,11 @@ npm run install-browsers
 1. Build the docs site first (however you normally do — e.g. `docker-run.sh`
    from the repo root), so `doc/_build/html_antora/` exists and is current.
 2. From this folder, run:
+
    ```
    npm run scan
    ```
+
    This runs two steps: `generate-sample.js` first discovers every built
    `.html` page and randomly samples 15 of them (override with
    `SAMPLE_SIZE=20 npm run scan`) into `report/sample.json`, then
@@ -29,14 +31,16 @@ npm run install-browsers
    one chained command, rather than two separate `npm` scripts, matters —
    see "Design note" below.
 3. Then:
+
    ```
    npm run summarize
    ```
+
    Prints a summary to the console and writes `report/a11y-summary.md`.
 
 ## Design note: why sampling isn't done inside the test file
 
-Playwright loads spec files more than once per run — once to discover/list 
+Playwright loads spec files more than once per run — once to discover/list
 the tests, and again inside the worker process that executes them.
 
 `generate-sample.js` runs once, before Playwright starts, and

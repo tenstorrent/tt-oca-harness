@@ -530,14 +530,14 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>OUTPUT_COUNT</ipxact:name>
-            <ipxact:description>Number of 32-bit digest words remaining for output.</ipxact:description>
+            <ipxact:description>Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>3</ipxact:bitWidth>
+            <ipxact:bitWidth>4</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>

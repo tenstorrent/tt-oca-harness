@@ -5,7 +5,7 @@
  * Software Reset Test
  *
  * Verifies KMAC software reset via SEP Reset Controller (0x10A50000).
- * Per OCH spec: KMAC starts in reset (kmac_sw_rst_n=0 by default);
+ * Per OCAH spec: KMAC starts in reset (kmac_sw_rst_n=0 by default);
  * firmware must write 1 to bit[4] to release before use.
  *
  * Steps:
@@ -38,11 +38,12 @@ static uint32_t byte_swap(uint32_t x) {
 #define RST_HMAC SEP_RESET_CTRL__SW_RESET_N__HMAC_SW_RST_N_bm
 #define RST_KMAC SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_bm
 #define RST_TRNG SEP_RESET_CTRL__SW_RESET_N__TRNG_SW_RST_N_bm
+#define RST_ABR SEP_RESET_CTRL__SW_RESET_N__ABR_SW_RST_N_bm
 
-/* Post-TB bring-up: KM held (bit0=0), otbn/aes/hmac/kmac/trng released (0x3E). */
-#define RST_POST_TB_EXPECTED (RST_OTBN | RST_AES | RST_HMAC | RST_KMAC | RST_TRNG)
+/* Post-TB bring-up: KM held (bit0=0), otbn/aes/hmac/kmac/trng/abr released. */
+#define RST_POST_TB_EXPECTED (RST_OTBN | RST_AES | RST_HMAC | RST_KMAC | RST_TRNG | RST_ABR)
 /* Explicit full release mask used when this test releases KMAC (and KM). */
-#define RST_ALL_RELEASE (RST_KM | RST_OTBN | RST_AES | RST_HMAC | RST_KMAC | RST_TRNG)
+#define RST_ALL_RELEASE (RST_KM | RST_OTBN | RST_AES | RST_HMAC | RST_KMAC | RST_TRNG | RST_ABR)
 
 static int test_errors = 0;
 
@@ -123,7 +124,7 @@ static int test_sw_reset(void) {
     uint32_t rst = READ_REG(RST_CTRL_ADDR);
     printf("  SW_RESET_N default = 0x%08x (expect 0x%08x: KM held, others released)\n", rst,
            RST_POST_TB_EXPECTED);
-    /* Fail hard if TB precondition unmet (matches sep_reset_ctrl reset value 0x3E). */
+    /* Fail hard if TB precondition unmet (matches the composed SW_RESET_N reset). */
     if (rst != RST_POST_TB_EXPECTED) {
         printf("FAIL: SW_RESET_N=0x%08x expected=0x%08x (TB precondition unmet)\n", rst,
                RST_POST_TB_EXPECTED);

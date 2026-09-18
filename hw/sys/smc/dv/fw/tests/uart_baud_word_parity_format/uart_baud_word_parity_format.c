@@ -12,9 +12,8 @@
 // controllers: UART index 0,1
 // targets    : UART index 3,2
 //
-// This test sweeps multiple divisors and WLS/STB/parity combinations,
-// using a simplified structure first; it can later be extended with actual Tbit measurements and a
-// full combination matrix.
+// This test sweeps the divisors in g_divisors and the WLS/STB/parity combinations in
+// g_frame_cfgs, checking the received data of one byte per combination.
 #
 typedef struct {
     uint8_t wls;   // word length select (5..8 bits, per actual IP definition)
@@ -24,30 +23,25 @@ typedef struct {
     uint8_t stick; // stick parity control (if the IP supports it)
 } uart_frame_cfg_t;
 
-// v006: parametric sweep closing the 138 cond + 21 branch holes in
-// uart_core.sv / uart_rx.sv / uart_tx.sv baud / parity / framing paths.
-// Sweep dimensions:
-//   - 2 divisors (fast/medium) — exercises the baud counter reload branch
-//     with two distinct values. divisor=16 was tried but pushed the sim
-//     past the cocotb watchdog at iter ~79/96; the (count==divisor-1)
-//     cond branch is hit by ANY divisor, so {1, 8} is sufficient coverage.
-//   - 4 word_length values (5,6,7,8 bits) covers wls = 2'b00..11
-//   - 3 parity modes (none, odd, even) — stick parity is intentionally
-//     excluded; v005 Phase 2 classified it as waiver-func / cost-prohibitive.
-//   - 2 stop-bit configs (1 stop, 2 stops) — note the 5-bit case uses
-//     1.5 stops per LCR semantics, but the RTL treats stb=1 uniformly.
+// Sweep dimensions over the uart_core.sv / uart_rx.sv / uart_tx.sv baud, parity
+// and framing paths:
+//   - 2 divisors {1, 8}: the baud counter reload branch (count==divisor-1) is
+//     taken for any divisor; larger divisors only lengthen the run.
+//   - 4 word_length values (5,6,7,8 bits) cover wls = 2'b00..11.
+//   - 3 parity modes (none, odd, even); stick parity is not swept (see
+//     g_frame_cfgs).
+//   - 2 stop-bit configs (1 stop, 2 stops); the 5-bit case uses 1.5 stops per
+//     LCR semantics, but the RTL treats stb=1 uniformly.
 // Total = 4 wls × 4 parity-stop combos = 16 combos (per ctrl/tgt pair, per
-// divisor). 1 byte per combo to keep wall-time bounded; each combo's main
-// purpose is to *toggle the LCR config* and clock at least one frame end-to-end.
+// divisor). 1 byte per combo keeps wall-time bounded; each combo toggles the
+// LCR config and clocks at least one frame end-to-end.
 static const uint32_t g_divisors[] = {1, 8};
 
 static const uart_frame_cfg_t g_frame_cfgs[] = {
     // wls, stb, pen, eps, stick
-    // Stick-parity configs are deliberately excluded: v005 Phase 2 classified
-    // `uart_stick_parity_rare_config` as waiver-func / cost-prohibitive
-    // (6 holes, dead-code-by-config). Exercising it here hangs the busy-wait
-    // RX-ready loop (RTL framing-error path doesn't pulse IIR[3:0]==0x4),
-    // which is exactly why it's waived rather than covered.
+    // No stick-parity configs: with stick parity the RX-ready poll
+    // (IIR[3:0]==0x4) never completes because the RTL framing-error path does
+    // not raise it.
     // wls=0 (5-bit)
     {0, 0, 0, 0, 0}, // 5N1
     {0, 1, 0, 0, 0}, // 5N2
@@ -191,12 +185,9 @@ static int uart_loopback_exchange(uint32_t ctrl_idx, uint32_t tgt_idx, uint32_t 
     uart_program_divisor_and_format(ctrl_base, divisor, cfg);
     uart_program_divisor_and_format(tgt_base, divisor, cfg);
 
-    // v006: mask TX byte to the configured word length before compare.
-    // wls=0..3 → 5/6/7/8 data bits; the UART only shifts that many LSBs, so
-    // the receiver legitimately returns (tx & word_mask). Without this mask,
-    // 0x5A under wls=0 (5-bit) arrives as 0x1A and the rx==tx check fails
-    // mid-loop (this was the v004 regression that took COND/BRANCH/TOGGLE
-    // backwards — see COVERAGE_REPORT_v5.md "v6 plan" item 1).
+    // Mask the TX byte to the configured word length before compare: wls=0..3
+    // is 5/6/7/8 data bits and the UART shifts only that many LSBs, so the
+    // receiver returns (tx & word_mask) (0x5A under wls=0 arrives as 0x1A).
     uint8_t word_mask = (uint8_t)((1u << (5 + cfg->wls)) - 1);
 
     for (uint32_t i = 0; i < sizeof(g_test_pattern); i++) {
@@ -208,18 +199,14 @@ static int uart_loopback_exchange(uint32_t ctrl_idx, uint32_t tgt_idx, uint32_t 
                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
                   tx);
 
-        // Wait until the target RX is ready (IIR[3:0] == 0x4). Bounded
-        // poll prevents an infinite spin if a future cfg combo exposes a
-        // framing path that never raises the Data Available interrupt.
+        // Wait (bounded) until the target RX is ready (IIR[3:0] == 0x4).
         uint32_t poll = 0;
         do {
             IIR_status = read_reg(
                 tgt_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
                             SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
             if (++poll > 200000) {
-                // Treat as data-not-arrived; surface as a test failure so
-                // the offending cfg is visible in the log instead of hanging
-                // until cocotb watchdog.
+                // Data did not arrive within the poll bound.
                 return -2;
             }
         } while ((IIR_status & 0xF) != 0x4);
@@ -236,7 +223,6 @@ static int uart_loopback_exchange(uint32_t ctrl_idx, uint32_t tgt_idx, uint32_t 
         }
     }
 
-    // TODO: later add parity / framing error-flag checks and Tbit measurements here.
     return 0;
 }
 
@@ -247,8 +233,6 @@ int main(void) {
     uint32_t uart_tgts[] = {3, 2};
     uint32_t num_tgts = sizeof(uart_ctrlrs) / sizeof(uart_ctrlrs[0]);
     uint32_t num_uarts = num_ctrlrs + num_tgts;
-
-    // peripherals_out_of_reset();
 
     // Enable all UART instances under test.
     uart_enable_all(num_uarts);

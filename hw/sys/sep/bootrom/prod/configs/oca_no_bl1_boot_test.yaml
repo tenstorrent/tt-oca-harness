@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # OCA-classic RSA-3072 signed boot image for the SEP boot ROM.
 #
 # Same path rules as oca_non_secure_boot_test.yaml: relative to
@@ -33,5 +35,5 @@ payload_images:
   # A perfectly valid manifest carrying no bootable stage. Everything verifies;
   # the handoff has nothing to jump to, which must be a clean refusal rather
   # than booting whatever happens to be first.
-  - type: "TT_SEP  BLMEMMAP"
+  - type: "OCAHSEP BLMEMMAP"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"

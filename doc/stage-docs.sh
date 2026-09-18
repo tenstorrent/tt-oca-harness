@@ -6,11 +6,13 @@
 # Stage Antora module sources for one OCAH documentation product from the hw
 # tree. Product makefrags pass OCAH_DOC_PRODUCT_* paths. All staged output is
 # gitignored throwaway build input: the single source of truth stays in each
-# product's src/meta tree plus hw/**/doc and hw/**/regs/gen.
+# product's src/meta tree, hw/**/doc and hw/**/regs/gen, plus explicitly staged
+# vendored documentation.
 #
-# Module topology (5 modules): ROOT, smc, sep, dtp, ip.
+# Modules: ROOT, smc, sep, dtp, aou, ip; SMU is enabled by the TRM product.
 #   - ROOT: product src/*.adoc + meta tables + subsystem port_table partials.
-#   - smc/sep/dtp: pages from hw/sys/<sys>/doc, reg partials from its regs/gen.
+#   - subsystem modules: hw/sys/<sys>/doc pages and regs/gen partials.
+#   - aou: selected content from the vendored AXI-over-UCIe specification.
 #   - ip: every hw/ip/<ip>/doc collapsed under <ip>/doc, reg partials per IP.
 # Register docs use generated .html partials for Antora HTML and generated .adoc
 # partials for PDF.
@@ -25,16 +27,27 @@ META="${OCAH_DOC_PRODUCT_META:-$PRODUCT/meta}"
 MOD="${OCAH_DOC_PRODUCT_MODULES:-$PRODUCT/modules}"
 ASSETS="${OCAH_DOC_PRODUCT_ASSETS:-$PRODUCT/assets}"
 COMMON_ASSETS="$DOC/trm/assets"
+AOU_DOC="$ROOT/vendor/tenstorrent/aou/upstream/DOC/MAS"
+AOU_INTEGRATION_GUIDE="$ROOT/vendor/tenstorrent/aou/upstream/DOC/integration_guide"
 
 SUBSYSTEMS="smc sep dtp"
+# The SMU chapter links into the TRM's ROOT module. Other products retain
+# their existing subsystem pages and the independent ROOT SMU port partial.
+if [ "${OCAH_DOC_PRODUCT_INCLUDE_SMU:-0}" = "1" ]; then
+  SUBSYSTEMS="$SUBSYSTEMS smu"
+else
+  # Remove stale SMU pages/assets from builds predating product scoping.
+  rm -rf "${MOD:?}/smu"
+fi
 PORT_TABLE_SYS="smc sep dtp smu"
-MODULES="ROOT smc sep dtp ip"
+MODULES="ROOT $SUBSYSTEMS aou ip"
 
 clean() {
   rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/assets"
-  for m in smc sep dtp ip; do
+  for m in smc sep dtp smu aou ip; do
     rm -rf "${MOD:?}/$m"
   done
+  rm -f "$ASSETS"/aou-*
   # Remove only the gitignored image copies staged into product assets.
   git -C "$ROOT" clean -fdX "$ASSETS" >/dev/null 2>&1 || true
 }
@@ -88,9 +101,9 @@ strip_drawio_switch_fallback() {
   find "$dir" -name '*.svg' -type f -print0 | while IFS= read -r -d '' svg; do
     local tmp
     tmp="$(mktemp)"
-    tr '\n' ' ' < "$svg" \
-      | sed 's#<switch><g requiredFeatures="[^"]*\#Extensibility"[^/]*/> *<a[^>]*xlink:href="https://www\.drawio\.com/doc/faq/svg-export-text-problems"[^>]*> *<text[^>]*>.*</text></a></switch>##' \
-      > "$tmp" 2>/dev/null && mv -f "$tmp" "$svg" || rm -f "$tmp"
+    tr '\n' ' ' <"$svg" |
+      sed 's#<switch><g requiredFeatures="[^"]*\#Extensibility"[^/]*/> *<a[^>]*xlink:href="https://www\.drawio\.com/doc/faq/svg-export-text-problems"[^>]*> *<text[^>]*>.*</text></a></switch>##' \
+        >"$tmp" 2>/dev/null && mv -f "$tmp" "$svg" || rm -f "$tmp"
   done
 }
 
@@ -128,23 +141,80 @@ for s in $SUBSYSTEMS; do
   stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
   stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
 done
+# DTP and SMU port tables are private ROOT partials included by their owning pages.
+rm -f "$MOD/dtp/pages/port_table.adoc" "$MOD/smu/pages/port_table.adoc"
+
+# --- aou: each product stages only the section it publishes ---
+rm -rf "$MOD/aou"
+mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
+case "$(basename "$PRODUCT")" in
+trm)
+  aou_pages="overview architecture interrupts-errors ppa-appendices"
+  for page in $aou_pages; do
+    cp -f "$AOU_DOC/$page.adoc" "$MOD/aou/partials/"
+    # Published fragments land beside the link to their owning topic page.
+    {
+      echo '++++'
+      sed -nE 's/^\[\[([^],]+)\]\]$/<span id="\1"><\/span>/p' "$AOU_DOC/$page.adoc"
+      echo '++++'
+    } >"$MOD/aou/partials/$page-anchors.adoc"
+  done
+  # Antora topics need page-qualified links; the PDF uses the upstream include tree.
+  sed -i -f <(
+    for page in $aou_pages; do
+      sed -nE "s/^\[\[([^],]+)\]\]$/s@xref:\1\\\\[@xref:ROOT:aou-$page.adoc#\1[@g/p" \
+        "$AOU_DOC/$page.adoc"
+    done
+  ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices}.adoc
+  ;;
+integrator)
+  cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"
+  ;;
+programmer)
+  cp -f "$AOU_DOC/software-operation.adoc" "$MOD/aou/partials/"
+  ;;
+esac
+
+# DTP: exclude defines.adoc (DV content, not for publication).
+rm -f "$MOD/dtp/pages/defines.adoc"
 
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register
 #     partials are staged for every IP (even register-only IPs with no doc/ dir,
 #     e.g. zeroer referenced by SMC). AXI network/monitor elements live under
-#     hw/common/axi/<name> but are register-only from the doc perspective, so they
-#     are staged into the same ip module namespace (e.g. axi_alias_remap,
+#     hw/ip/<name> and are staged into the ip module namespace (e.g. axi_alias_remap,
 #     axi_filter, output_remap referenced by SMC fabric). Family-grouped IPs live
 #     one level deeper (hw/ip/<family>/<ip>, e.g. jtag/uart/cross_trigger); the
 #     hw/ip/*/*/ glob picks them up by basename (=<ip>), and the flat-IP subdirs it
 #     also enumerates (rtl/regs/dv/doc) have no doc/ or regs/gen so they stage nothing. ---
-for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/ "$ROOT"/hw/common/axi/*/; do
+for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/; do
   ip="$(basename "$ipdir")"
   [ -d "$ipdir/doc" ] && stage_adoc_tree "$ipdir/doc" "$MOD/ip/pages/$ip/doc"
   stage_gen_adoc "$ipdir/regs/gen/adoc" "$MOD/ip/partials/$ip/regs/gen/adoc"
   stage_gen_html "$ipdir/regs/gen/html" "$MOD/ip/partials/$ip/regs/gen/html"
   stage_gen_adoc "$ipdir/dv/models/regs/gen/adoc" "$MOD/ip/partials/$ip/dv/models/regs/gen/adoc"
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
+done
+
+# --- ip: every IP in IP_PAGE_OWNERS publishes exactly one page (doc/index.adoc);
+#     the topic fragments listed in IP_FRAGMENTS move out of pages/ and into
+#     partials/ so they are private (no standalone URL). The owning index page
+#     includes them via the partial$ prefix for HTML or a relative path for PDF.
+#     CTN memmap.adoc also moves to partials/; it owns CTM and CTP register maps.
+IP_PAGE_OWNERS="jtag_intf_unit jtag_ptap jtag_stap
+cross_trigger_network cross_trigger_port cross_trigger_matrix
+avsbus_controller axi_lite_mailbox_unit efuse gpio i2c system_timer_octs
+telemetry_receiver uart_16550 log_engine i3ccore_wrap
+drbg entropy_source key_manager scrambler"
+IP_FRAGMENTS="architecture.adoc interface.adoc memmap.adoc programming.adoc firmware.adoc"
+for ip in $IP_PAGE_OWNERS; do
+  src="$MOD/ip/pages/$ip/doc"
+  dst="$MOD/ip/partials/$ip/doc"
+  for frag in $IP_FRAGMENTS; do
+    if [ -f "$src/$frag" ]; then
+      mkdir -p "$dst"
+      mv "$src/$frag" "$dst/$frag"
+    fi
+  done
 done
 
 # --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
@@ -172,13 +242,14 @@ stage_gen_html "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/html" "$MOD/ip/p
 while IFS= read -r img; do
   mkdir -p "$ASSETS"
   cp -f "$img" "$ASSETS/" 2>/dev/null || true
-done < <(find "$ROOT"/hw/ip/*/doc "$ROOT"/hw/ip/*/*/doc "$ROOT"/hw/sys/*/doc -type f \
+done < <(find -L "$ROOT"/hw/ip/*/doc "$ROOT"/hw/ip/*/*/doc "$ROOT"/hw/sys/*/doc -type f \
   \( -name '*.png' -o -name '*.svg' -o -name '*.jpg' -o -name '*.jpeg' \) 2>/dev/null)
 
 stage_module_assets() {
   local src="$1"
+  local modules="${2:-$MODULES}"
   [ -d "$src" ] || return 0
-  for m in $MODULES; do
+  for m in $modules; do
     for ext in png svg jpg jpeg; do
       cp -f "$src"/*.$ext "$MOD/$m/assets/images/" 2>/dev/null || true
     done
@@ -187,9 +258,15 @@ stage_module_assets() {
 
 stage_module_assets "$COMMON_ASSETS"
 stage_module_assets "$ASSETS"
+# Antora resolves an unqualified image target in an included partial
+# against the *including* page's own module, not the partial's origin
+# module, so the images must also land in ROOT (every product includes the
+# AOU partial from a ROOT page).
+stage_module_assets "$AOU_DOC/assets" "aou ROOT"
+stage_module_assets "$AOU_INTEGRATION_GUIDE/assets" "aou ROOT"
 
 # Postprocess every location that ends up holding a copy of these images --
-# after all copying above is done. 
+# after all copying above is done.
 strip_drawio_switch_fallback "$ASSETS"
 strip_drawio_switch_fallback "$COMMON_ASSETS"
 for m in $MODULES; do

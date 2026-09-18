@@ -34,9 +34,9 @@ class dtp_jtag2axi_smc_axi_error_single_write_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_error_test_seq,
             "smc_axi_error_single_write",
-            specific_env="DTP_JTAG2AXI_SMC_AXI_ERROR_SINGLE_WRITE_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SMC_AXI_ERROR_SINGLE_WRITE_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             target="smc_axi",
             scenario="error_single_write",
         )

@@ -150,14 +150,9 @@ int main(void) {
     uint32_t digest_a[8], digest_b[8], digest_c[8], digest_d[8];
 
     /*
-     * Messages:
-     * msg_a = "msg_a" (5 bytes): 0x67 0x5f 0x67 0x73 0x6d → LE word = 0x675f6d73 + byte 0x67
-     * msg_b = "msg_b" (5 bytes): same but last char 'b'=0x62 instead of 'a'=0x61
-     * For simplicity, write as 32-bit words (5 bytes = 1 word + 1 byte packed):
-     * word0: 0x5F67736D = "_gsm" (LE) — doesn't matter, just needs to be distinct
-     * Actually let's use simple distinct patterns:
-     * msg_a_words = {0xAAAAAAAA, 0x55555555}  (8 bytes)
-     * msg_b_words = {0xBBBBBBBB, 0x44444444}  (8 bytes, distinct)
+     * Messages (two 32-bit words each, distinct between A and B):
+     * msg_a = {0xAAAAAAAA, 0x55555555}  (8 bytes)
+     * msg_b = {0xBBBBBBBB, 0x44444444}  (8 bytes)
      */
     static const uint32_t msg_a[2] = {0xAAAAAAAAU, 0x55555555U};
     static const uint32_t msg_b[2] = {0xBBBBBBBBU, 0x44444444U};

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_cpu_firmware_boot_test (DV Skill 1.5 / SMC_002 rev 3).
+"""Sequence for smc_cpu_firmware_boot_test (SMC_002).
 
 Emits exact STEP/CHK evidence for reset-vector fetch, ROM-as-target,
 clk_smc LIVE consumer advance, and eFuse sense completion.
@@ -23,6 +23,23 @@ from .smc_cpu_vip_utils import (
     check_cpu_firmware_boot_contract,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
+
+
+def _pc_snapshot(signal) -> int | None:
+    """Retired-PC value, or None while the CPU has retired nothing.
+
+    `tb_cpu_wb_pc0` is a writeback-stage register with no reset, so before the
+    first instruction retires it holds no defined value. A two-state simulator
+    shows that as 0 and a four-state one as X, and forcing the X to an int
+    raises out of the sequence. None keeps the two cases the same shape and
+    lets the progress check below say what it actually knows.
+    """
+    value = signal.value
+    return int(value) if value.is_resolvable else None
+
+
+def _pc_text(value: int | None) -> str:
+    return "undefined" if value is None else f"{value:#x}"
 
 
 class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
@@ -58,6 +75,11 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             )
             return
 
+        # `is_resolvable` here and in the loop below is a 4-state precondition,
+        # not a check: under Verilator (2-state) it is constant-true, so the
+        # `-1` / `continue` branches are unreachable there. The fail-capable
+        # part of this helper is the 0->1 transition requirement and the
+        # bounded expiry raise below ([NO-DUMMY-DEAD-CODE]).
         val = (
             int(dut.tb_fuse_sense_done.value) if dut.tb_fuse_sense_done.value.is_resolvable else -1
         )
@@ -99,6 +121,10 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         self._mark_step("S1", "SETUP clocks/resets; CPU BFM observability")
         await check_cpu_bfm_observability()
         assert int(dut.powergood_stable_o.value) == 1
+        # PRECONDITION, not a check: under Verilator (2-state) `is_resolvable`
+        # cannot be False, so this line has no FAIL-ON path there; it serves
+        # the 4-state simulators. The verdict-bearing compares on this path are
+        # the value compares in S2 and S3 below ([NO-DUMMY-DEAD-CODE]).
         assert dut.rst_primary_smc_clk_no.value.is_resolvable
 
         # S2 — eFuse sense completion (before vector release)
@@ -126,10 +152,13 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         baseline_rom = int(dut.tb_cpu_rom_read_count.value)
         baseline_scratch = int(dut.tb_cpu_scratch_read_count.value)
         baseline_dcache = int(dut.tb_cpu_dcache_write_count.value)
-        baseline_pc = int(dut.tb_cpu_wb_pc0.value)
+        baseline_pc = _pc_snapshot(dut.tb_cpu_wb_pc0)
 
         self.boot = await check_cpu_firmware_boot_contract(self, require_image=True)
-        self.accesses = getattr(self, "accesses", 0) or 4
+        # `self.accesses` is initialised to 0 in __init__ and bumped by the
+        # SmcCsrSeq helpers, so it is a measured count: a silent sequence
+        # reports 0 and fails the testcase's stimulus floor
+        # ([NO-DUMMY-DEAD-CODE]).
 
         assert self.boot.get("boot_checked"), self.boot
         rom_reads = int(self.boot["rom_reads"])
@@ -143,7 +172,12 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         assert vec0 == expected_vec, f"vector readback {vec0:#x} != {expected_vec:#x}"
 
         dcache_now = int(dut.tb_cpu_dcache_write_count.value)
-        pc_now = int(dut.tb_cpu_wb_pc0.value)
+        pc_now = _pc_snapshot(dut.tb_cpu_wb_pc0)
+        # A PC that has become readable is itself retire evidence: it can only
+        # resolve once the writeback stage has held a real instruction. While it
+        # is still undefined nothing has retired, so it proves nothing either way
+        # and the dcache counter has to carry the check.
+        pc_advanced = pc_now is not None and pc_now != baseline_pc
 
         if boot_from_scratch:
             assert scratch_reads > baseline_scratch, "no scratch fetch evidence"
@@ -177,14 +211,14 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             f"tb_cpu_rom_read_count {baseline_rom}->{rom_reads} before PASS"
         )
 
-        assert (dcache_now > baseline_dcache) or (pc_now != baseline_pc), (
+        assert (dcache_now > baseline_dcache) or pc_advanced, (
             f"clk_smc LIVE counters static dcache {baseline_dcache}->{dcache_now} "
-            f"wb_pc0 {baseline_pc:#x}->{pc_now:#x}"
+            f"wb_pc0 {_pc_text(baseline_pc)}->{_pc_text(pc_now)}"
         )
         self._log(
             "CHK-CLK-SMC-LIVE: across clk_smc_i release window "
             f"tb_cpu_dcache_write_count {baseline_dcache}->{dcache_now} and "
-            f"tb_cpu_wb_pc0 {baseline_pc:#x}->{pc_now:#x} advanced (S1); "
+            f"tb_cpu_wb_pc0 {_pc_text(baseline_pc)}->{_pc_text(pc_now)} advanced (S1); "
             "CPU_CTRL_RESET_VECTOR_*/RESET_CTRL/SCRATCH_0 AXI-Lite CSR "
             "writes/reads completed through local fabric (S2) while clk_smc_i toggles"
         )
@@ -198,7 +232,7 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             f"last_csr={self.boot.get('mailbox_csr')} "
             f"tb_mbox={self.boot.get('mailbox_tb')} "
             f"rom_reads={rom_reads} scratch_reads={scratch_reads} "
-            f"dcache_writes={dcache_now} wb_pc0={pc_now:#x}"
+            f"dcache_writes={dcache_now} wb_pc0={_pc_text(pc_now)}"
         )
 
         order = ["S1", "S2", "S3"]

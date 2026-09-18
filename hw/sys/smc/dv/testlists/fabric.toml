@@ -1,0 +1,171 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "smc_i3c_to_fabric_test"
+module = "smc_i3c_to_fabric_test"
+seed = 1
+timeout_sec = 1800
+tags = [
+    "i3c_decode", "pyuvm"
+]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_input_output_fabric_wr_rd_test"
+module = "smc_input_output_fabric_wr_rd_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_input_fabric_axi_wr_rd_test"
+module = "smc_input_fabric_axi_wr_rd_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "functional", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_local_fabric_csr_depth_test"
+module = "smc_local_fabric_csr_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_output_filter_remap_security_test"
+module = "smc_output_filter_remap_security_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sys_out_aw_w_split_test"
+module = "smc_sys_out_aw_w_split_test"
+seed = 1
+timeout_sec = 1800
+tags = ["diag", "dut_defect_suspect", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_multi_entry_test"
+module = "smc_filter_multi_entry_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_field_sweep_test"
+module = "smc_filter_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_xvisor_remap_test"
+module = "smc_xvisor_remap_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_address_map_region_decode_test"
+module = "smc_address_map_region_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_peripheral_instance_decode_test"
+module = "smc_peripheral_instance_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sys_axi_in_port_test"
+module = "smc_sys_axi_in_port_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_in_axi_flow_control_test"
+module = "smc_sep_in_axi_flow_control_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_in_axi_shape_test"
+module = "smc_sep_in_axi_shape_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dual_base_addressing_test"
+module = "smc_dual_base_addressing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_region_size_plic_clint_beu_decode_test"
+module = "smc_region_size_plic_clint_beu_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_address_window_top_decode_test"
+module = "smc_address_window_top_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_spare_block_decode_test"
+module = "smc_alias_remap_spare_block_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_remap_cla_test"
+module = "smc_remap_cla_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "i3c_depth"
+tests = [
+    "smc_i3c_to_fabric_test",
+]
+
+[[groups]]
+name = "depth_fabric"
+tests = [
+    "smc_local_fabric_csr_depth_test",
+    "smc_output_filter_remap_security_test",
+]

@@ -4,12 +4,17 @@
 
 For each ``COUNT_EDGES`` transaction, the driver waits a configurable number
 of ``clk_ref_i`` rising edges and concurrently counts edges on each of the
-three SMC clocks (ref / smc / periph). The result item is broadcast to the
-scoreboard so it can sanity-check the relative ratios match the configured
-clock periods.
+three SMC clocks (ref / smc / periph) plus one DUT-generated gated clock.
 
-This is a pure observation agent (no DUT drives). It demonstrates a new
-agent slot in the SMC env on top of the existing reset / i2c agents.
+IMPORTANT: ``clk_ref_i`` / ``clk_smc_i`` / ``clk_periph_i`` are DUT *inputs*
+that ``smc_base_test._bring_up`` drives with cocotb ``Clock(...)``. Their
+counts measure the TB clock generators and can never fail because of DUT RTL,
+so the scoreboard books them as a **SETUP self-check**, not DUT evidence. The
+DUT-side leg is ``gated_clk_probe`` / ``gated_cg_en_probe`` (a passive tb_top
+read of a clock-gater output and its enable), which a sequence turns into a
+real check via ``expect_gated_clk_running`` / ``expect_gated_cg_en``.
+
+This is a pure observation agent (no DUT drives).
 """
 
 from __future__ import annotations
@@ -68,6 +73,15 @@ class SmcClkDriver(uvm_driver):
         smc_task = cocotb.start_soon(_count_one(dut.clk_smc_i, smc_count))
         periph_task = cocotb.start_soon(_count_one(dut.clk_periph_i, periph_count))
 
+        # DUT-generated gated clock over the same window. Passive read only, and
+        # the only leg of this item that can fail because of DUT RTL -- the three
+        # counts above are TB-driven inputs (see SmcClkItem).
+        gated_count = [0]
+        gated_task = None
+        gated_sig = getattr(dut, item.gated_clk_probe, None)
+        if gated_sig is not None:
+            gated_task = cocotb.start_soon(_count_one(gated_sig, gated_count))
+
         # Window: drive by ref-clock cycles; we drop one cycle because the
         # first edge we wait for here also increments ref_count.
         for _ in range(item.window_ref_cycles):
@@ -80,6 +94,13 @@ class SmcClkDriver(uvm_driver):
         item.ref_rising_edges = ref_count[0]
         item.smc_rising_edges = smc_count[0]
         item.periph_rising_edges = periph_count[0]
+        if gated_task is not None:
+            await gated_task
+            item.gated_clk_rising_edges = gated_count[0]
+            en_sig = getattr(dut, item.gated_cg_en_probe, None)
+            en_val = None if en_sig is None else en_sig.value
+            item.gated_cg_en = int(en_val) if en_val is not None and en_val.is_resolvable else -1
+            item.gated_probe_resolvable = item.gated_cg_en >= 0
         self.logger.info("Counted %s", item)
 
 

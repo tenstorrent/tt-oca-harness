@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Token Processing
+:description: SEP token generation, matching, and fault handling.
+
 [[token-processing]]
-==== Token Processing
 
 Maintaining a known, measurable state of the SEP system is a core
 requirement to ensure trust and security. Consequently, changing the
@@ -26,7 +28,7 @@ following important properties:
 * Non-resetable
 
 [[token-generation-storage-and-provisioning]]
-===== Token Generation, Storage and Provisioning
+== Token Generation, Storage and Provisioning
 
 All token processing besides final provisioning takes place within the
 confines of an HSM, a very high security environment. RTL constant
@@ -48,7 +50,7 @@ purpose tokens, granting special TBD privileges on a per device basis.
 Processing at the device level can handle each scenario.
 
 [[token-matching-mechanism-and-attack-countermeasures]]
-===== Token Matching Mechanism and Attack Countermeasures
+== Token Matching Mechanism and Attack Countermeasures
 
 The tokens are 256-bit values which are processed in an analogous manner
 as passwords. We have tokens:
@@ -100,7 +102,7 @@ still need to unlock the chip. If we were to rely on the non-functioning
 OTP, we would be unable to unlock the chip.
 
 [[token-match-sequence]]
-===== Token Match Sequence
+== Token Match Sequence
 
 Each token has its own eight-word array in the eFuse MMR block, its own
 SHA256 engine and its own set of comparators. JTAG:
@@ -121,7 +123,7 @@ gates. That is what lets SEC_DIS unlock a part whose fuse sensing is
 broken.
 
 [[token-matching-countermeasures]]
-===== Matching Logic Countermeasures
+== Matching Logic Countermeasures
 
 The actual matching logic is a vulnerable attack point via FIB or fault
 injection. We protect this by using triple-redundant matching logic on
@@ -143,7 +145,7 @@ Either one raises a redundancy fault, which may indicate a tampering
 attack. The fault forces the error code onto all six output bits, so
 every downstream feature gate fails closed, and it sets the sticky bit
 for that token in the `TOKEN_MATCH_FAULT` register. The three sticky bits are
-combined into a single interrupt to the SEP CPU on PIC source 39; see
+combined into a single interrupt to the SEP CPU on PIC source 40; see
 ifdef::backend-html5[]
 xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
 endif::backend-html5[]
@@ -153,7 +155,7 @@ endif::backend-pdf[]
 for the full slot map. Firmware reads the register to identify which
 comparators faulted. The fault bits are software-read-only and clear only on
 reset, so a fault cannot be hidden by retrying with a valid token and the PIC
-source stays asserted. Firmware must mask PIC source 39 after it has observed
+source stays asserted. Firmware must mask PIC source 40 after it has observed
 the fault; there is no write-one-to-clear that drops the line, and an unmasked
 handler re-enters.
 
@@ -176,8 +178,8 @@ Mismatch = 6’b101010
 Error = 6’b111111
 
 [[post-token-matching-handling]]
-===== Post Token Matching Handling
+== Post Token Matching Handling
 
 A token match does not by itself change the life cycle state. It
 authorizes a change, and the state is then updated by one of two paths
-described in _Fuse Controller (OTP)_ in this chapter.
+described in _OTP fuse controller_ in this chapter.

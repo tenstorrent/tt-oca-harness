@@ -14,7 +14,9 @@
  * tlul read transaction is generated out first.  If not required, the
  * incoming tlul transaction is directly muxed out.
  */
-module tlul_sram_byte import tlul_pkg::*; #(
+module tlul_sram_byte
+  import tlul_pkg::*;
+#(
   parameter bit EnableIntg     = 0, // Enable integrity handling at byte level,
   parameter int Outstanding    = 1,
   parameter bit EnableReadback = 0  // Enable readback checks on all transactions must have
@@ -120,7 +122,7 @@ module tlul_sram_byte import tlul_pkg::*; #(
     logic byte_req_ack;
     logic hold_tx_data;
 
-    localparam int unsigned PendingTxnCntW = prim_util_pkg::vbits(Outstanding+1);
+    localparam int unsigned PendingTxnCntW = prim_util_pkg::vbits(Outstanding + 1);
     logic [PendingTxnCntW-1:0] pending_txn_cnt;
 
     // prim fifo for capturing info
@@ -145,10 +147,10 @@ module tlul_sram_byte import tlul_pkg::*; #(
     assign byte_req_ack = byte_wr_txn & a_ack & ~error_i;
     assign byte_wr_txn = tl_i.a_valid & ~&tl_i.a_mask & wr_txn;
 
-    logic                     rdback_chk_ok;
-    mubi4_t                   rdback_check_q, rdback_check_d;
-    mubi4_t                   rdback_en_q, rdback_en_d;
-    logic [31:0]              rdback_data_exp_q, rdback_data_exp_d;
+    logic rdback_chk_ok;
+    mubi4_t rdback_check_q, rdback_check_d;
+    mubi4_t rdback_en_q, rdback_en_d;
+    logic [31:0] rdback_data_exp_q, rdback_data_exp_d;
     logic [DataIntgWidth-1:0] rdback_data_exp_intg_q, rdback_data_exp_intg_d;
 
     if (EnableReadback) begin : gen_readback_logic
@@ -207,23 +209,25 @@ module tlul_sram_byte import tlul_pkg::*; #(
         .q_o(rdback_data_exp_intg_q)
       );
 
-    // If the readback feature is enabled and we are currently in the readback phase,
-    // no address collision should happen inside prim_ram_1p_scr. If this would be the
-    // case, we would read from the holding register inside prim_ram_1p_scr instead of
-    // actually performing the readback from the memory.
-    `OCAH_OT_ASSERT(WRCollisionDuringReadBack_A, (rdback_phase | rdback_phase_wrreadback) &
-        mubi4_test_true_loose(rdback_en_q) |-> !wr_collision_i)
+      // If the readback feature is enabled and we are currently in the readback phase,
+      // no address collision should happen inside prim_ram_1p_scr. If this would be the
+      // case, we would read from the holding register inside prim_ram_1p_scr instead of
+      // actually performing the readback from the memory.
+      `OCAH_OT_ASSERT(WRCollisionDuringReadBack_A,
+                      (rdback_phase | rdback_phase_wrreadback) & mubi4_test_true_loose(
+                          rdback_en_q
+                      ) |-> !wr_collision_i)
 
 
-    // If the readback feature is enabled, we assume that the write phase takes one extra cycle
-    // due to the underlying scrambling mechanism. If this additional cycle is not needed anymore
-    // in the future (e.g. due to the removal of the scrambling mechanism), the readback does not
-    // need to be delayed by one cycle in the FSM below.
-    `OCAH_OT_ASSERT(NoPendingWriteAfterWrite_A, wr_phase & mubi4_test_true_loose(rdback_en_q)
-        |=> write_pending_i)
+      // If the readback feature is enabled, we assume that the write phase takes one extra cycle
+      // due to the underlying scrambling mechanism. If this additional cycle is not needed anymore
+      // in the future (e.g. due to the removal of the scrambling mechanism), the readback does not
+      // need to be delayed by one cycle in the FSM below.
+      `OCAH_OT_ASSERT(NoPendingWriteAfterWrite_A,
+                      wr_phase & mubi4_test_true_loose(rdback_en_q) |=> write_pending_i)
 
 
-    end else begin: gen_no_readback_logic
+    end else begin : gen_no_readback_logic
       assign rdback_chk_ok          = 1'b0;
       assign rdback_check_q         = MuBi4False;
       assign rdback_en_q            = MuBi4False;
@@ -283,8 +287,7 @@ module tlul_sram_byte import tlul_pkg::*; #(
             state_d      = wr_txn ? StWrReadBackInit : StRdReadBack;
           end
 
-          if (!tl_sram_o.a_valid && !tl_o.d_valid &&
-              mubi4_test_false_strict(rdback_check_q)) begin
+          if (!tl_sram_o.a_valid && !tl_o.d_valid && mubi4_test_false_strict(rdback_check_q)) begin
             // Store readback enable into register when bus is idle and no readback is processed.
             rdback_en_d = readback_en_i;
           end
@@ -340,7 +343,7 @@ module tlul_sram_byte import tlul_pkg::*; #(
               // Got an immediate TL-UL write response. Wait for one cycle until the holding
               // register is flushed and then perform the readback.
               state_d = StWrReadBack;
-            end else  begin
+            end else begin
               // No response yet to the initial write.
               state_d = StWrReadBackDWait;
             end
@@ -464,14 +467,14 @@ module tlul_sram_byte import tlul_pkg::*; #(
               rdback_check_d         = mubi4_test_true_loose(rdback_en_q) ? MuBi4True : MuBi4False;
               rdback_data_exp_d      = tl_o.d_data;
               rdback_data_exp_intg_d = tl_o.d_user.data_intg;
-            end else  begin
+            end else begin
               // No response yet to the initial read, so go wait for it.
               state_d = StRdReadBackDWait;
             end
           end
         end
 
-        StRdReadBackDWait : begin
+        StRdReadBackDWait: begin
           if (EnableReadback == 0) begin : gen_inv_state_StRdReadBackDWait
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
@@ -493,7 +496,7 @@ module tlul_sram_byte import tlul_pkg::*; #(
         default: begin
           alert_o = 1'b1;
         end
-      endcase // unique case (state_q)
+      endcase  // unique case (state_q)
 
     end
 
@@ -551,9 +554,7 @@ module tlul_sram_byte import tlul_pkg::*; #(
     logic [top_pkg::TL_DW-1:0] combined_data, unused_data;
     always_comb begin
       for (int i = 0; i < top_pkg::TL_DBW; i++) begin
-        combined_data[i*8 +: 8] = held_data.a_mask[i] ?
-                                  held_data.a_data[i*8 +: 8] :
-                                  rsp_data[i*8 +: 8];
+        combined_data[i*8+:8] = held_data.a_mask[i] ? held_data.a_data[i*8+:8] : rsp_data[i*8+:8];
       end
     end
 
@@ -606,7 +607,7 @@ module tlul_sram_byte import tlul_pkg::*; #(
         tl_sram_o.a_param   = held_data.a_param;
         tl_sram_o.a_data    = wr_phase ? combined_data : '0;
         tl_sram_o.a_user    = wr_phase ? combined_user : '0;
-      // Read transactions for RMW.
+        // Read transactions for RMW.
       end else if (rd_phase) begin
         // need to use word aligned addresses here.
         tl_sram_o.a_address[AccessSize-1:0] = '0;
@@ -669,7 +670,7 @@ module tlul_sram_byte import tlul_pkg::*; #(
       // transaction size in cases where a read modify write operation is
       // performed. Hence, we always return the registered size here.
       tl_o.d_size  = a_size;
-    end // always_comb
+    end  // always_comb
 
     // unused info from tl_sram_i
     // see explanation in above block
@@ -677,10 +678,11 @@ module tlul_sram_byte import tlul_pkg::*; #(
     assign unused_tl = |tl_sram_i.d_size;
 
     // when byte access detected, go to wait read
-    `OCAH_OT_ASSERT(ByteAccessStateChange_A, a_ack & wr_txn & ~&tl_i.a_mask & ~error_i |=>
-      state_q inside {StWaitRd})
+    `OCAH_OT_ASSERT(ByteAccessStateChange_A,
+                    a_ack & wr_txn & ~&tl_i.a_mask & ~error_i |=> state_q inside {StWaitRd})
     // when in wait for read, a successful response should move to write phase
-    `OCAH_OT_ASSERT(ReadCompleteStateChange_A,
+    `OCAH_OT_ASSERT(
+        ReadCompleteStateChange_A,
         (state_q == StWaitRd) && (pending_txn_cnt == 1) && sram_d_ack |=> state_q == StWriteCmd)
     // The readback logic assumes that any request on the readback channel will be instantly granted
     // (i.e. after the initial SRAM read or write request from the external requester has been
@@ -688,20 +690,23 @@ module tlul_sram_byte import tlul_pkg::*; #(
     // produces no back pressure. When connected to a scrambled SRAM the key going invalid will
     // cause a_ready to drop. The `compound_txn_in_progress_o` output is provided for this scenario.
     // When asserted SRAM should not drop `a_ready` even if there is an invalid scrambling key.
-    `OCAH_OT_ASSERT(ReadbackAccessAlwaysGranted_A, (rdback_phase | rdback_phase_wrreadback) && !error_i
-      |-> tl_sram_i.a_ready)
+    `OCAH_OT_ASSERT(ReadbackAccessAlwaysGranted_A,
+                    (rdback_phase | rdback_phase_wrreadback) && !error_i |-> tl_sram_i.a_ready)
 
     // The readback logic assumes the result of a read transaction issues for the readback will get
     // an immediate response. This can be guaranteed when connected to a SRAM, see above comment.
-    `OCAH_OT_ASSERT(ReadbackDataImmediatelyAvailable_A, (state_q == StPassThru) &&
-      mubi4_test_true_loose(rdback_en_q) && mubi4_test_true_loose(rdback_check_q) &&
-      !error_i|-> tl_sram_i.d_valid)
+    `OCAH_OT_ASSERT(ReadbackDataImmediatelyAvailable_A,
+                    (state_q == StPassThru) && mubi4_test_true_loose(
+                        rdback_en_q
+                    ) && mubi4_test_true_loose(
+                        rdback_check_q
+                    ) && !error_i |-> tl_sram_i.d_valid)
 
     // When in the StByteWrReadbackInit state, pending_txn_cnt (the depth of a FIFO)
     // will always be 1. We will have seen StWaitRd -> StWriteCmd -> StByteWrReadBackInit
     // to get to this FSM state and the FIFO cannot be pushed or popped along that path.
     `OCAH_OT_ASSERT(WrReadBackInitPendingTxn_A,
-      (state_q == StByteWrReadBackInit) |-> pending_txn_cnt == PendingTxnCntW'(1))
+                    (state_q == StByteWrReadBackInit) |-> pending_txn_cnt == PendingTxnCntW'(1))
 
     assign compound_txn_in_progress_o = wr_phase | rdback_phase | rdback_phase_wrreadback;
   end else begin : gen_no_integ_handling
@@ -725,6 +730,7 @@ module tlul_sram_byte import tlul_pkg::*; #(
 
   // EnableReadback requires that EnableIntg is on.
   // EnableIntg can be used without EnableReadback.
-  `OCAH_OT_ASSERT_INIT(SramReadbackAndIntg,
+  `OCAH_OT_ASSERT_INIT(
+      SramReadbackAndIntg,
       (EnableReadback && EnableIntg) || (!EnableReadback && (EnableIntg || !EnableIntg)))
-endmodule // tlul_adapter_sram
+endmodule  // tlul_adapter_sram

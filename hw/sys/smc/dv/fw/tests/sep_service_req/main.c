@@ -8,7 +8,7 @@
  * a structured request containing an operation code and operand data.  SMC
  * firmware dispatches on the operation code and returns the computed result.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — the KM command message
+ * Spec basis: OCAH Specification §Crypto Key Manager — the KM command message
  * format encodes a function_id[15:8] alongside data, enabling a firmware-
  * defined dispatch table.  This test exercises an analogous dispatch table on
  * the SMC side using scratch registers as the transport.
@@ -85,13 +85,9 @@ static uint32_t popcount(uint32_t x) {
 
 int main(void) {
     for (uint32_t req = 0; req < NUM_REQUESTS; req++) {
-        /* Signal ready for the next request.
-         * NOTE: DATA_SCRATCH_NUM is NOT cleared here.  With all CPU cores
-         * executing this loop concurrently, a lagging core clearing
-         * DATA_SCRATCH_NUM after the testbench has already written operand
-         * data would clobber that data before any core reads it.  The
-         * testbench always writes fresh data before writing the CMD scratch,
-         * so the DATA scratch does not need pre-clearing. */
+        /* Signal ready for the next request. DATA_SCRATCH_NUM is not cleared:
+         * the testbench writes fresh operand data before writing the CMD
+         * scratch. */
         write_scratch(CMD_SCRATCH_NUM, 0U);
         write_scratch(RESULT_SCRATCH_NUM, 0U);
         write_scratch(STATUS_SCRATCH_NUM, 0U);
@@ -156,7 +152,6 @@ int main(void) {
     return 0;
 }
 
-/* secondary_main is intentionally not defined here.
- * The weak default in crt0.S routes the boot hart to main() and
- * spins non-boot harts, preventing multi-core write races on the
- * shared scratch registers used by the test protocol. */
+/* secondary_main is not defined here: the weak default in crt0.S routes the
+ * boot hart to main() and spins non-boot harts, so no second core can write
+ * the shared scratch registers used by the test protocol. */

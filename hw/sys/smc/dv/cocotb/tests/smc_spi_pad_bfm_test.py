@@ -29,6 +29,12 @@ class smc_spi_pad_bfm_test(smc_base_test):
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
             csr_accesses=0,
+            # This scenario issues no CSR traffic (pad-attached SPI flash JEDEC
+            # over tb_spi_*), so it has no CSR-access floor. Its fail-capability
+            # comes from the byte golden below (expected vs observed JEDEC ID).
+            # min_csr_accesses=0 is legal only together with such a golden (see
+            # smc_base_test.record_protocol_vip).
+            min_csr_accesses=0,
             proxy=False,
             details=(
                 "pad-attached OcahSepSpiFlash JEDEC via tb_spi_* host and "

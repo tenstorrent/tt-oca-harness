@@ -14,6 +14,13 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_fifo_test(smc_base_test):
     """ACQ / TX FIFO threshold interrupt proof."""
 
+    required_evidence = (
+        "CHK-I2C-P0-FIFO",
+        "CHK-I2C-P0-FIFO-ACQ",
+        "CHK-I2C-P0-FIFO-TX",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -23,6 +30,9 @@ class smc_i2c_p0_fifo_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the ACQ/TX threshold IRQ polls are timing-dependent.
+            min_csr_accesses=36,
             csr_accesses=seq.accesses,
             proxy=False,
             details=f"ACQ+TX threshold IRQs acq={seq.acq_ok} tx={seq.tx_ok}",

@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[log-engine-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 The Log Engine provides a comprehensive register interface for
 configuration, control, and status monitoring. All registers are
@@ -12,7 +12,7 @@ accessible via a 32-bit AXI4-Lite interface and follow standard
 read/write access patterns. The register map is organized into logical
 groups for ease of use and programming.
 
-====== Register Address Map
+=== Register Address Map
 
 .Register Address Map
 [width="100%",cols="10%,20%,10%,60%",options="header",]
@@ -26,8 +26,8 @@ size in bytes
 |0x08 |LOG_REGION_ADDR (Low) |RW |Log Region Address Register (64-bit, low
 word)
 
-|0x0C |LOG_REGION_ADDR (High) |RW |Log Region Address Register (64-bit, high
-word)
+|0x0C |LOG_REGION_ADDR (High) |RW |Log Region Address Register (high word,
+bits [55:32] of the address; register bits [63:56] are reserved and read as 0)
 
 |0x10 |LOG_WRITE_ADDR |RW |Log Write Address Register - UART target
 address
@@ -51,7 +51,7 @@ testing
 control
 |=====================================================================================
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= System Management Network (SMN)
+:description: The internal management fabric connecting the SMU, user logic and D2D interfaces.
+
 [[system-management-network]]
-System Management Network
--------------------------
 
 The SMN components are described in this document.
 

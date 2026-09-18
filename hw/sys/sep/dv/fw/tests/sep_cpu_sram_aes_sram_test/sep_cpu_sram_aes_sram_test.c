@@ -2,14 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * CPU SRAM-AES-SRAM integration test (#565).
+ * CPU SRAM-AES-SRAM integration test.
  *
  * The real SEP CPU provisions a known AES-128 key through production Key
  * Manager mailbox commands, selects the AES sideload key, and copies a
  * runtime-sized payload from one SEP SRAM region to another through AES.
  *
- * AES has no completion interrupt in the current SEP integration. This V1
- * therefore uses bounded OUTPUT_VALID polling and does not claim IRQ coverage.
+ * AES has no completion interrupt in the SEP integration, so the test uses
+ * bounded OUTPUT_VALID polling and claims no IRQ coverage.
  */
 
 #include <stdint.h>
@@ -44,8 +44,8 @@
 
 /*
  * Leave room for immediate guard words at the maximum payload size. The
- * destination is offset by 0x10 from the proposed +0x20000 so a 64-KiB source
- * payload and its trailing guard cannot overlap it.
+ * destination sits at +0x20010 rather than +0x20000 so a 64-KiB source payload
+ * and its trailing guard cannot overlap it.
  */
 #define SRAM_SRC_BASE (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x00010000u)
 #define SRAM_DST_BASE (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x00020010u)
@@ -373,7 +373,7 @@ int main(void) {
     int rc = 0;
 
     sep_outbound_filter_init();
-    printf("\n=== CPU SRAM-AES-SRAM integration test (#565) ===\n");
+    printf("\n=== CPU SRAM-AES-SRAM integration test ===\n");
 
     if (get_config(&operation, &blocks) != 0) rc = -1;
     if (rc == 0 && sep_aes_sw_reset_release() != 0) rc = -1;

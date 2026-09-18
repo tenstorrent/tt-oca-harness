@@ -11,6 +11,7 @@ import cocotb
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_output_fabric_vip_utils import (
+    BLOCKED_WRITE_HOLD_CYCLES,
     OUTPUT_FABRIC_ADDR,
     OUTPUT_FABRIC_ALT_DATA,
     OUTPUT_FABRIC_DATA,
@@ -19,18 +20,43 @@ from seq_lib.smc_output_fabric_vip_utils import (
     READ_ONLY_CONFIG,
     RESP_DECERR,
     check_output_responder_delta,
+    hold_output_responder_writes,
     jtag_axi_read,
     jtag_axi_write,
     output_fabric_block_write_cfg_seq,
     output_fabric_model,
     output_fabric_pass_all_cfg_seq,
+    output_responder_counts,
 )
 from smc_base_test import smc_base_test
+
+# Fail-capable stimulus floors, written out here rather than derived from the
+# two config sequences' own counters: a floor that shrinks with the sequence
+# cannot catch a sequence that silently stops short.
+# Composition (both directed, no polling):
+#   output_fabric_pass_all_cfg_seq       6 filter CSR writes
+# + output_fabric_block_write_cfg_seq    6 filter CSR writes
+OUTPUT_FILTER_MIN_CSR_ACCESSES = 12
+# Independent literal floor for the non-CSR fabric traffic: pass-phase JTAG-AXI
+# write + read, block-phase blocked JTAG-AXI write + follow-up read. The OBSERVED
+# count is measured by the scoreboard's per-bus tally inside record_protocol_vip
+# (driver-stamped, one per completed access), never passed in from here -- a
+# constant used as both the observation and the floor would make the scoreboard
+# assert `4 >= 4` ([NO-ALWAYS-PASS-CHECKER]).
+OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES = 4
 
 
 @pyuvm.test()
 class smc_output_filter_remap_security_test(smc_base_test):
     """Verify output filter allows reads and blocks writes at protocol level."""
+
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-NONVAC-PHASE-FENCE",
+        "CHK-OUTBOUND-BLOCK-WRITE",
+        "CHK-OUTBOUND-PASS-ALL",
+    )
+    min_evidence = 4
 
     auto_protocol_vip = False
 
@@ -76,8 +102,22 @@ class smc_output_filter_remap_security_test(smc_base_test):
             f"last_addr/last_wdata match"
         )
 
-        mid_writes = int(dut.tb_output_axi_write_count.value)
-        mid_reads = int(dut.tb_output_axi_read_count.value)
+        # Phase-boundary snapshot, X-aware. This is the LEFT-hand side of the
+        # block-phase fence below, not a decoration: the pass-phase write is
+        # required to have advanced the responder write counter by exactly one
+        # here, which is the positive control for the "blocked write produces no
+        # beat" negative leg that follows.
+        mid_writes, mid_reads = output_responder_counts()
+        assert mid_writes == start_writes + 1, (
+            f"pass-phase output-fabric write did not advance the SYS_OUT "
+            f"responder write counter by exactly one: {start_writes} -> "
+            f"{mid_writes}. Without that advance the block-phase 'counter did "
+            f"not move' leg below would have no positive control"
+        )
+        assert mid_reads > start_reads, (
+            f"pass-phase output-fabric read did not advance the SYS_OUT "
+            f"responder read counter: {start_reads} -> {mid_reads}"
+        )
         cocotb.log.info(
             "STEP S3: SMC-OUTBOUND-FILTER.S2 READ_ONLY_CONFIG "
             f"{READ_ONLY_CONFIG:#x} block write {OUTPUT_FABRIC_ALT_DATA:#x}"
@@ -94,6 +134,14 @@ class smc_output_filter_remap_security_test(smc_base_test):
         )
         assert blocked_write.resp_code == RESP_DECERR, (
             f"blocked output-fabric write resp {blocked_write.resp_code}, expected DECERR"
+        )
+        # The blocked write must not produce an output-fabric write beat. Held
+        # against the phase-boundary snapshot for a bounded window, sampled every
+        # cycle; the pass-phase advance asserted above is this leg's positive
+        # control.
+        blocked_writes = await hold_output_responder_writes(
+            expected_writes=mid_writes,
+            label="output_filter_blocked_write",
         )
         await jtag_axi_read(
             self,
@@ -124,18 +172,47 @@ class smc_output_filter_remap_security_test(smc_base_test):
             dut.tb_output_axi_last_wdata,
         ):
             assert sig.value.is_resolvable, f"{sig._name} X/Z"
+        end_writes, end_reads = output_responder_counts()
         cocotb.log.info(
-            "CHK-NONVAC: output_fabric_model region registered; "
-            f"tb_output counters resolvable "
-            f"(writes={int(dut.tb_output_axi_write_count.value)} "
-            f"reads={int(dut.tb_output_axi_read_count.value)}; "
-            f"mid={mid_writes}/{mid_reads})"
+            "CHK-NONVAC-PHASE-FENCE: ordered SETUP<ACTION<EFFECT fence on the "
+            f"SYS_OUT responder write counter: start={start_writes} -> "
+            f"mid={mid_writes} (pass-phase write advanced it by exactly one: the "
+            f"positive control) -> {blocked_writes} held for "
+            f"{BLOCKED_WRITE_HOLD_CYCLES} clk_smc_i cycles across the "
+            f"FILTER_CONFIG={READ_ONLY_CONFIG:#x} blocked write (no beat "
+            f"reached the output fabric) -> end={end_writes}; reads "
+            f"{start_reads} -> {mid_reads} -> {end_reads}; the four tb_output "
+            f"observability nets are resolvable and output_fabric_model region "
+            f"registered"
         )
         cocotb.log.info("SMC_005 scenario PASS")
         await self.record_protocol_vip(
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
-            csr_accesses=pass_seq.accesses + block_seq.accesses + 4,
+            csr_accesses=pass_seq.accesses + block_seq.accesses,
+            min_csr_accesses=OUTPUT_FILTER_MIN_CSR_ACCESSES,
+            # The four JTAG-AXI accesses are reported in their own field rather
+            # than folded into csr_accesses, which would label fabric traffic as
+            # CSR traffic. The observed count is MEASURED by
+            # record_protocol_vip from the scoreboard's JTAG AXI tally; only the
+            # floor is written here.
+            min_fabric_accesses=OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES,
+            fabric_access_label="jtag_axi_accesses",
+            fabric_bus="JTAG AXI",
+            # No access on this path runs with allow_timeout, so an expiry raises
+            # in SmcSysAxiAgent._timed_event and control cannot reach this record
+            # with a timeout counted: nothing here measures timeouts, and `None`
+            # renders `n/a` instead of an unmeasured 0 ([EXACT-EXPECTATION]).
+            timeouts=None,
             proxy=False,
             details="Output filter pass/read-only behavior checked with responder counters",
+        )
+        cocotb.log.info(
+            "CHK-NONVAC: protocol-VIP record accepted with csr_accesses=%d against "
+            "floor %d and jtag_axi_accesses=%d against floor %d; the scoreboard "
+            "rejects the record, and the run fails, below either floor",
+            pass_seq.accesses + block_seq.accesses,
+            OUTPUT_FILTER_MIN_CSR_ACCESSES,
+            self.env.scoreboard.axi_accesses_by_bus.get("JTAG AXI", 0),
+            OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES,
         )

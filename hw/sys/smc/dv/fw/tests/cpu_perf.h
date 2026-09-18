@@ -119,7 +119,7 @@ static inline uint32_t read_branch_target_miss_counter(void) {
 /* COCOTB API */
 /**************/
 
-// These functions sync with cocotb testbench, specifically smc_cycle_counter.py
+// Scratch-register handshake tokens consumed by the cocotb testbench.
 static inline void start_counter(void) {
     icache_miss_counter = 0;
     dcache_miss_counter = 0;

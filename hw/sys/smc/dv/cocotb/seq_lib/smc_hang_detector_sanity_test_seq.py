@@ -35,9 +35,8 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_hang_detector_sanity_test_seq") -> None:
         super().__init__(name)
-        self.poison_ok = False
-        self.per_source_ok = False
-        self.or_ok = False
+        # Counted by _await_irqs on each handshake that actually completed.
+        self.irq_legs_handshaked = 0
 
     async def _await_irqs(self, dut, expect: dict[str, int], label: str) -> None:
         """Handshake each lifted irq to ``expect``; expiry fails with last state.
@@ -62,8 +61,10 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
                     )
             if want_high:
                 if all(last[n].is_resolvable and int(last[n]) == 1 for n in want_high):
+                    self.irq_legs_handshaked += 1
                     return
             elif cycle + 1 == _IRQ_BOUND:
+                self.irq_legs_handshaked += 1
                 return
         raise AssertionError(
             f"{label}: irq handshake expired after {_IRQ_BOUND} smc clocks "
@@ -88,7 +89,6 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0}, "POISON_NO_IRQ_EN")
         await self.csr_write("HANG_SYS_CLEAR_POISON", HANG_DET_SYS_AXI_CTRL, 0)
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0}, "POISON_CLR")
-        self.poison_ok = True
         cocotb.log.info("CHK-HANG-POISON: irq_test gated by enable+irq_en")
 
         # Per-detector: fire one, others off, then clear.
@@ -102,7 +102,6 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             await self.csr_write(f"HANG_{label}_CLR", addr, 0)
             await self._await_irqs(dut, {pin: 0, "tb_axi_hang_irq": 0}, f"{label}_CLR")
             cocotb.log.info("CHK-HANG-%s-CLR: source=0 OR=0", label)
-        self.per_source_ok = True
 
         # OR: all three fire, then drop SYS+SEP, DATA keeps OR, then last clear.
         for label, addr, _pin in _DETECTORS:
@@ -135,11 +134,8 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
 
         await self.csr_write("HANG_DATA_OR_DROP", HANG_DET_DATA_ACCEL_CTRL, 0)
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0, "tb_axi_hang_irq_data": 0}, "OR_CLR")
-        self.or_ok = True
         cocotb.log.info("CHK-HANG-OR-CLR: OR=0 after last detector clear")
         cocotb.log.info(
-            "CHK-HANG-BASIC: poison=%s per_source=%s or=%s",
-            self.poison_ok,
-            self.per_source_ok,
-            self.or_ok,
+            "CHK-HANG-BASIC: %d irq handshakes completed across the poison, per-source and OR legs",
+            self.irq_legs_handshaked,
         )

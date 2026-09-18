@@ -67,9 +67,10 @@ module prim_jtag_scan_reg
     if (USE_CHRST) begin : gen_chrst_n_reset
         prim_flop #(
             .Width(WIDTH),
-            .ResetValue(RESET_VAL)
+            .ResetValue(RESET_VAL),
+            .Negedge(1'b1)
         ) u_update_flop (
-            .clk_i  (~scan_ctrl_i.tck),
+            .clk_i  (scan_ctrl_i.tck),
             .rst_ni (scan_ctrl_i.chrst_n),
             .d_i    (update_selected ? scan_data : update_data),
             .q_o    (update_data)
@@ -77,9 +78,10 @@ module prim_jtag_scan_reg
     end else begin : gen_rst_n_reset
         prim_flop #(
             .Width(WIDTH),
-            .ResetValue(RESET_VAL)
+            .ResetValue(RESET_VAL),
+            .Negedge(1'b1)
         ) u_update_flop (
-            .clk_i  (~scan_ctrl_i.tck),
+            .clk_i  (scan_ctrl_i.tck),
             .rst_ni (scan_ctrl_i.rst_n),
             .d_i    (update_selected ? scan_data : update_data),
             .q_o    (update_data)

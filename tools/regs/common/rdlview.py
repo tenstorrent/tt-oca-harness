@@ -31,12 +31,32 @@ class Reg:
     fields: list[Field]
 
 
-def compile_root(rdl: str, udp: str | None, incdirs: Iterable[str] | None, top: str | None = None):
+def parse_rdl_params(raw: Iterable[str] | None) -> dict[str, int]:
+    """Parse PeakRDL-style NAME=VALUE addrmap parameter overrides."""
+    params: dict[str, int] = {}
+    for item in raw or []:
+        name, sep, value = item.partition("=")
+        if not sep or not name:
+            raise ValueError(f"RDL parameter {item!r} is not NAME=VALUE")
+        params[name] = int(value, 0)
+    return params
+
+
+def compile_root(
+    rdl: str,
+    udp: str | None,
+    incdirs: Iterable[str] | None,
+    top: str | None = None,
+    parameters: dict[str, int] | None = None,
+):
     c = RDLCompiler()
     if udp:
         c.compile_file(udp)
     c.compile_file(rdl, incl_search_paths=list(incdirs or []))
-    return c.elaborate(top) if top else c.elaborate()
+    kwargs: dict = {}
+    if parameters:
+        kwargs["parameters"] = parameters
+    return c.elaborate(top, **kwargs) if top else c.elaborate(**kwargs)
 
 
 def first_addrmap_name(root) -> str:
@@ -206,7 +226,7 @@ def write_adoc(root, out: str):
             lines.append("")
         lines.append("======\n")
     lines += [
-        '[cols="1,1,1,3", options="header"]',
+        '[cols="1,4,1,6", options="header"]',
         ".Register Map",
         "|===",
         "| Address | Name | Access | Description",
@@ -215,7 +235,7 @@ def write_adoc(root, out: str):
     lines.append("|===\n")
     for r in data.regs:
         lines += [
-            '[cols="1,1,1,1,3", options="header"]',
+            '[cols="1,3,1,1,6", options="header"]',
             f".{r.name} Register",
             "|===",
             "| Bits | Field | Access | Reset | Description",

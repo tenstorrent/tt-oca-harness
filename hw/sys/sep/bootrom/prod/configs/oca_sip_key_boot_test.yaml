@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # OCA-classic RSA-3072 signed boot image for the SEP boot ROM.
 #
 # Same path rules as oca_non_secure_boot_test.yaml: relative to
@@ -20,9 +22,9 @@ signature_type: 0x01                 # RSA-3072 PKCS#1 v1.5 / SHA-256
 signing_authority: local
 signing_key_name: "test_rom_key_0"
 signing_key_file: "tests/signing_keys/rsa_private_key.rom_key0.pem"
-public_key_select_classic: 0x1000000 # bit 24 = SIP_PUBK_HASH1 (an OTP anchor)
-public_key_encoding: 0x02            # RAW (388 B: 384-byte modulus + 4-byte exponent)
-signature_encoding: 0x02             # RAW (384 B, big-endian)
+public_key_select_classic: 0x1000000  # bit 24 = SIP_PUBK_HASH1 (an OTP anchor)
+public_key_encoding: 0x02             # RAW (388 B: 384-byte modulus + 4-byte exponent)
+signature_encoding: 0x02              # RAW (384 B, big-endian)
 
 timestamp: 1764633600
 manifest_content_version:
@@ -30,9 +32,14 @@ manifest_content_version:
   minor: 0
   patch: 0
 payload_images:
-  - type: "TT_SEP  BLSTAGE1"
+  - type: "OCAHSEP BLSTAGE1"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
-    load_addr: 0x10020000
+    # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
+    # LMA of its .rodata/.data straight after, which _start copies down to DCCM --
+    # so it only runs correctly when loaded there. The ROM honours whichever region
+    # this names (SEP-ROM-MAN-060 permits SRAM or ICCM) and copies via the DMA,
+    # which is mandatory for an ICCM destination: the LSU cannot store to ICCM.
+    load_addr: 0xC0000000
 
 # The second OTP anchor family. Bit 24 is SIP_PUBK_HASH1 per CHIPLET_PUBK_REVOKE's
 # bit map, a bank that only became reachable when the VP eFuse model was

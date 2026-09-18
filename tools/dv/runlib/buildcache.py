@@ -3,10 +3,10 @@
 
 """Build acceleration knobs, object cache, and a fingerprinted build cache.
 
-All behavior here is opt-in via the DUT `[build.options]` and `[build.cache]` config tables so a
-contributor controls the full stack:
+All behavior here is opt-in via the DUT `[build.options]` config table so a contributor controls
+the full stack:
 
-`[build.options]` carries simulator-neutral knobs (OD-19 folded the former `[build.cache]` in here):
+`[build.options]` carries simulator-neutral knobs:
 
 - build acceleration — parallel build (`build_jobs`) and dev-time `cflags` (e.g. ``-O0``).
   Tool-specific acceleration, such as Verilator `output_split` and `ccache`, lives under
@@ -14,14 +14,10 @@ contributor controls the full stack:
 - fingerprinted build cache — `cache_enabled` partitions the build directory by an input
   fingerprint so different configs do not clobber each other and an unchanged config reuses its
   build; `rebuild` forces a clean build; `cache_key_extra` folds extra strings into the
-  fingerprint. Within one fingerprint dir, the tool's own dependency tracking handles incremental
-  source edits. Verilator re-verilates from ``Vtop__ver.d``. VCS cocotb ``make compile`` has no
-  filelist deps (sources arrive via ``-f``), so the runner adds ``[build].top_file`` plus
-  ``[build].sources``, ``[build].stubs`` and every header under ``[build].incdirs`` to
-  ``CUSTOM_COMPILE_DEPS``, and ``--rebuild`` wipes that ``sim_build`` tree. The RTL the
-  bender filelist names is still NOT tracked -- it arrives as one ``-f`` line and the
-  fingerprint hashes the filelist text, not the files' content, so editing it needs
-  ``--rebuild``. See `vcs_simv_compile_deps`.
+  fingerprint. The fingerprint covers the build arguments, the filelist text and a content
+  digest over the sources the bender filelist names, so an RTL or testbench edit moves the
+  build into a fresh directory; `rebuild` (``--rebuild``) forces a clean build of the current
+  one through the cocotb runner's ``always`` flag on every simulator.
 """
 
 from __future__ import annotations
@@ -29,9 +25,8 @@ from __future__ import annotations
 import hashlib
 import shutil
 import subprocess
-import threading
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from .config import as_int, as_str_list, config_section
 
@@ -131,20 +126,26 @@ def xcelium_build_args(
 ) -> list[str]:
     """Translate `[build.options]` + `[build.xcelium]` into Xcelium elaboration (xmelab/xrun) flags.
 
-    - ``build_jobs`` -> ``-mce -mce_build_thread_count <N>`` (multi-core build)  [Verilator: --build-jobs; VCS: -j]
     - ``cflags``     -> ``-Wcxx,<flag>``                                          [Verilator/VCS: -CFLAGS]
-    - ``ccache`` / ``output_split`` -> ignored; Xcelium uses multi-core + incremental elaboration
+    - ``ccache`` / ``output_split`` -> ignored; Xcelium uses incremental elaboration
     Xcelium-only (`[build.xcelium]`):
-    - ``mce`` (bool)        -> force ``-mce`` even without a thread count
+    - ``mce`` (bool)        -> ``-mce``, and ``build_jobs`` then sets its thread count
     - ``opt_level``         -> raw optimization flag passthrough
     - ``extra_args``        -> appended verbatim
+
+    ``build_jobs`` does not reach Xcelium on its own. On Verilator and VCS it is
+    a build-time knob (``--build-jobs`` / ``-j``); the nearest Xcelium option is
+    ``-mce``, which turns on the Multi-Core Engine for the *simulation* and so
+    makes ``xmsim`` check out an ``Xcelium_Multi_Core`` feature instead of
+    ``Xcelium_Single_Core``. A single-core entitlement cannot run under ``-mce``,
+    so only ``[build.xcelium] mce`` requests it.
     """
     extra: list[str] = []
-    build_jobs = effective_build_jobs(options, jobs)
-    if build_jobs > 0:
-        extra += ["-mce", "-mce_build_thread_count", str(build_jobs)]
-    elif bool(xcelium_cfg.get("mce", False)):
+    if bool(xcelium_cfg.get("mce", False)):
         extra.append("-mce")
+        build_jobs = effective_build_jobs(options, jobs)
+        if build_jobs > 0:
+            extra += ["-mce_build_thread_count", str(build_jobs)]
 
     opt = str(xcelium_cfg.get("opt_level", "")).strip()
     if opt:
@@ -192,61 +193,6 @@ def vcs_version(root: Path) -> str:
 
 def xcelium_version(root: Path) -> str:
     return binary_version("xrun", ["-version"], root)
-
-
-def vcs_simv_compile_deps(top_file: Path | None, local_sources: Sequence[Path] = ()) -> list[str]:
-    """Makefile lines that make ``$(SIM_BUILD)/simv`` depend on the repo-local build inputs.
-
-    Cocotb's VCS recipe is ``$(SIM_BUILD)/simv: $(VERILOG_SOURCES) ... $(CUSTOM_COMPILE_DEPS)``.
-    ``VERILOG_SOURCES`` is empty when the DUT is passed via ``COMPILE_ARGS += -f <filelist>``,
-    so without these extra deps ``make compile`` is existence-only and an edit to a file the
-    filelist names is ignored. Verilator does not need this: ``Vtop__ver.d`` lists them already.
-
-    ``build_fingerprint`` hashes the combined filelist TEXT plus a content digest over the
-    files the bender filelist names, and the deps here cover content edits of the repo-local
-    sources for ``make``.
-
-    Covered: ``[build].top_file`` plus everything ``_vcs_local_sources`` collects --
-    ``[build].sources`` and ``[build].stubs`` (the repo-local override/additive sources:
-    ``tb_top.sv``, the mem responders, the protocol SVA), the headers globbed from
-    ``[build].incdirs`` (an ``+incdir+`` has no file list of its own, and an assertion-macro
-    header is edited far more often than the RTL that includes it), and the RTL the
-    bender-generated filelist names, which otherwise arrives as a single ``-f`` line.
-    """
-    deps = [] if top_file is None else [top_file]
-    deps.extend(local_sources)
-    return [f"CUSTOM_COMPILE_DEPS += {path}" for path in deps]
-
-
-# One VCS ``sim_build`` is shared by every leaf of a target, and leaves run on a
-# thread pool -- see vcs_force_rebuild().
-_FORCE_REBUILD_LOCK = threading.Lock()
-_FORCE_REBUILT: set[str] = set()
-
-
-def vcs_force_rebuild(sim_build: Path) -> None:
-    """Drop a VCS ``sim_build`` tree so ``make compile`` cannot treat ``simv`` as up to date.
-
-    This is what ``--rebuild`` means for the VCS cocotb flow. Verilator and Xcelium go through
-    cocotb's Python runner and get the same effect from ``runner.build(always=rebuild)``; VCS
-    shells out to ``make``, which has no such knob, so the tree is removed instead.
-
-    Serialised and once-only, because every leaf of a target SHARES one ``sim_build``.
-    Leaves run on a thread pool, so without this ``--stage sim --rebuild -j8`` lets one
-    leaf delete ``csrc/`` while another is mid-compile in it, or remove a ``simv`` a third
-    is about to exec. The intent is "this invocation compiles from scratch", not "every
-    leaf wipes the tree", so the first caller removes it and the rest no-op.
-
-    A concurrent delete is tolerated rather than fatal: raising here would abort the whole
-    run instead of failing one leaf.
-    """
-    with _FORCE_REBUILD_LOCK:
-        key = str(sim_build)
-        if key in _FORCE_REBUILT:
-            return
-        _FORCE_REBUILT.add(key)
-        if sim_build.is_dir():
-            shutil.rmtree(sim_build, ignore_errors=True)
 
 
 def build_fingerprint(

@@ -16,6 +16,9 @@ from smc_base_test import smc_base_test
 class smc_ecc_codeword_ded_test(smc_base_test):
     """Two flipped codeword bits: the CPU raises cluster_ded_o."""
 
+    required_evidence = ("CHK-ECC-CODEWORD-DED",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -27,6 +30,11 @@ class smc_ecc_codeword_ded_test(smc_base_test):
             SmcProtocolVipKind.CPU,
             type(self).__name__,
             csr_accesses=seq.accesses,
+            # No CSR stimulus: the codeword is poked backdoor and the
+            # property is read from tb_cluster_ded_seen, asserted in the
+            # sequence. Booked as an activity stamp so it is not counted
+            # as a protocol VIP check it cannot be.
+            auto_evidence=True,
             proxy=False,
             details="scratch bank0 codeword ^= 2 bits before boot; cluster_ded_o asserts on the reset-vector fetch",
         )

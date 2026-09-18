@@ -5,17 +5,17 @@
 // Active-Low Latch
 //
 //--------------------------------------------------
- module prim_latch_n (
-    input  i_D,
-    input  i_Gn,
-    output o_Q
+module prim_latch_n (
+  input  d_i,
+  input  g_ni,
+  output q_o
 );
   logic Q_int;
   always_latch begin : capture_strap
-    if (!i_Gn) begin
-      Q_int <= i_D;
+    if (!g_ni) begin
+      Q_int <= d_i;
     end
   end
-  assign o_Q = Q_int;
+  assign q_o = Q_int;
 
 endmodule

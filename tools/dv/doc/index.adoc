@@ -17,15 +17,16 @@ into static reports:
 * `tools/dv/run_dashboard.py` collects completed run results, renders reports,
   aggregates history, and publishes static output.
 
-The guide documents behavior implemented in the current source tree. Features
-described as roadmap items are not available unless explicitly stated.
+The guide documents the behavior of the tools in this source tree. The
+interfaces page maps how the tools, the shared configuration, the hosted
+workflows, and the contributor environment connect.
 
 ifdef::backend-html5[]
 == Building This Guide
 
 `tools/dv/doc` is a standalone documentation source and is not staged by the
-TRM/Antora build or documentation CI. Render all three HTML pages together so
-the landing-page links resolve:
+TRM/Antora build or documentation CI. Render every HTML page together so the
+landing-page links resolve:
 
 [source,bash]
 ----
@@ -34,7 +35,8 @@ out=$(mktemp -d "${TMPDIR:-/tmp}/ocah-dv-doc.XXXXXX")
 asciidoctor -a data-uri -D "$out" \
   tools/dv/doc/index.adoc \
   tools/dv/doc/run-dv.adoc \
-  tools/dv/doc/run-dashboard.adoc
+  tools/dv/doc/run-dashboard.adoc \
+  tools/dv/doc/interfaces.adoc
 
 asciidoctor-pdf \
   -o "$out/ocah-dv-tooling-guide.pdf" \
@@ -49,9 +51,14 @@ ifdef::backend-html5[]
   native verification runs.
 * xref:run-dashboard.adoc[DV and FV Dashboard] -- normalize, render, aggregate,
   and publish completed-run results.
+* xref:interfaces.adoc[DV Infrastructure Interfaces] -- the files and
+  command lines where the runner, the dashboard, the configuration, the
+  coverage policies, the workflows, and the environment meet, and the check
+  behind each contract.
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 include::run-dv.adoc[leveloffset=+1]
 include::run-dashboard.adoc[leveloffset=+1]
+include::interfaces.adoc[leveloffset=+1]
 endif::backend-pdf[]

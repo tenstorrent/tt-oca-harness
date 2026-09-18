@@ -4,11 +4,11 @@
 
 sep_cpu_ctrl.rdl implements one bit (pka_cg_enable[0:0]); RTL sinks it into an
 unused net. This test is the iconic clock-gate vehicle: it proves the
-implemented bit stores, and that AES / HMAC / OTBN / SW_DEBUG CSRs read the
-same value with the bit set and clear. That is decode / stub-const, not a live
-per-IP gate -- no bit in this map clocks an IP off. Completing OKAY on both
-polarities is not the contract: a witness that moved with the enable would
-still answer.
+implemented bit stores, that the register's unimplemented bits do not store,
+and that AES / HMAC / OTBN / SW_DEBUG CSRs read the same value with the bit
+set and clear. That is decode / stub-const, not a live per-IP gate -- no bit
+in this map clocks an IP off. Completing OKAY on both polarities is not the
+contract: a witness that moved with the enable would still answer.
 
 no_cpu / +skip_fuse_sense. Distinct from sep_crypto_per_ip_reset_isolation_test
 (SW_RESET_N isolation) and from the address-map CLOCK_GATE_CTRL storage poke.
@@ -19,7 +19,10 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_clock_gate_seq import (
+    CLOCK_GATE_CTRL,
+    CLOCK_GATE_CTRL_HI,
     CLOCK_GATE_MASK,
+    CLOCK_GATE_STORAGE_MASK,
     SepClockGate,
     SepClockGateCfg,
 )
@@ -49,11 +52,35 @@ class sep_clock_gate_control_test(sep_base_test):
             CLOCK_GATE_MASK,
         )
 
+        # CHK-RSVD-RAZWI: CLOCK_GATE_CTRL is a 64-bit register with one implemented
+        # bit (pka_cg_enable[0:0], sep_cpu_ctrl.rdl). Drive all ones into both 32-bit
+        # halves: the readback must expose only the implemented bit, so an
+        # unimplemented bit that silently stores (a wider field, or a neighbouring
+        # register aliased onto the upper half) fails here.
+        await gate.write_raw(CLOCK_GATE_CTRL, 0xFFFF_FFFF)
+        await gate.write_raw(CLOCK_GATE_CTRL_HI, 0xFFFF_FFFF)
+        lo = await gate.read_raw(CLOCK_GATE_CTRL)
+        hi = await gate.read_raw(CLOCK_GATE_CTRL_HI)
+        assert lo == CLOCK_GATE_STORAGE_MASK, (
+            f"CHK-RSVD-RAZWI FAIL: CLOCK_GATE_CTRL[31:0] wrote all ones, read 0x{lo:08x}, "
+            f"expected only the implemented bits 0x{CLOCK_GATE_STORAGE_MASK:08x}"
+        )
+        assert hi == 0, (
+            f"CHK-RSVD-RAZWI FAIL: CLOCK_GATE_CTRL[63:32] wrote all ones, read 0x{hi:08x}, "
+            f"expected 0x0 (no implemented bit above 31)"
+        )
+        await gate.write_raw(CLOCK_GATE_CTRL, 0)
+        await gate.write_raw(CLOCK_GATE_CTRL_HI, 0)
+        self.logger.info(
+            "CHK-RSVD-RAZWI PASS: an all-ones write to both halves of CLOCK_GATE_CTRL "
+            "reads back 0x%08x / 0x%08x -- unimplemented bits do not store",
+            lo,
+            hi,
+        )
+
         # The claim is that pka_cg_enable gates nothing, so each witness must
-        # read the SAME value with the bit set and clear. Reading it once per
-        # cell and logging the value asserts nothing: a witness that did change
-        # with the enable would still print PASS. Keep the first read per
-        # witness and compare the second against it.
+        # read the SAME value with the bit set and clear: the second read of a
+        # witness is compared against its first.
         seen: dict[str, int] = {}
         for enable, name, addr in cfg.cells():
             await gate.write_enable(enable)

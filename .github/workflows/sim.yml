@@ -3,39 +3,22 @@
 
 name: sim
 
-# Label scheduled and manually dispatched runs in the Actions list; PR and
-# push runs yield an empty run-name, which falls back to the default
-# event-specific title (PR title / commit message).
-run-name: ${{ github.event_name == 'schedule' && 'sim nightly (scheduled) - per-DUT nightly groups x3 seeds' || github.event_name == 'workflow_dispatch' && format('sim {0} (manual dispatch)', inputs.tier) || '' }}
+# Pull-request and push gate: each CI-qualified DUT's `smoke` group on
+# Verilator. The scheduled regression tiers live in regress.yml. Both run
+# the DV job through .github/actions/dv-run, so this file carries no tier
+# policy and a regression-tier change can never alter the gate.
 
 on:
   pull_request:
   workflow_dispatch:
-    inputs:
-      tier:
-        description: "Test tier: smoke (PR gate) or nightly (all group x3 random seeds)"
-        type: choice
-        options: [smoke, nightly]
-        default: smoke
   push:
     branches: [main]
-  schedule:
-    # 18:00 UTC == 02:00 UTC+8 the next day; runs the nightly tier on main.
-    - cron: "0 18 * * *"
 
 # Superseded PR runs are cancelled; sim jobs are too heavy to let stale PR
-# pushes pile up. The event name and tier are part of the group so a push to
-# main can never cancel an in-flight scheduled nightly run, and only PR runs
-# are ever auto-cancelled.
+# pushes pile up. Only PR runs are ever auto-cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 'nightly' || 'smoke' }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-env:
-  # Pinned Verilator release. cocotb 2.x (locked in uv.lock) requires a newer
-  # Verilator than Ubuntu's apt package, so CI builds this tag from source and
-  # caches the install prefix.
-  VERILATOR_VERSION: v5.050
 
 jobs:
   diff-class:
@@ -63,22 +46,13 @@ jobs:
   verilator-smoke:
     # Explicit name keeps the main-protection contexts
     # `verilator-smoke (dtp)` / `verilator-smoke (sep)` stable if the matrix
-    # gains another axis, while nightly runs remain visibly labeled.
-    # (The env context is unavailable here, so the tier expression is inlined.)
-    name: verilator-smoke (${{ matrix.dut }})${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && ' nightly' || '' }}
-    # Per-DUT runner size (matrix.runner). DTP stays on the 4-vCPU standard
-    # runner; SEP builds a ~1.7 GB Verilator model (VeeR EL2 + OTBN + full
-    # crypto) and gets a 16-vCPU larger runner, which --build-jobs "$(nproc)"
-    # picks up automatically.
+    # gains another axis.
+    name: verilator-smoke (${{ matrix.dut }})
     runs-on: ${{ matrix.runner }}
     needs: [diff-class]
-    # The nightly budget is per DUT (matrix.nightly_timeout): the tier gets
-    # headroom for a Verilator cache miss (from-source build) plus each DUT's
-    # nightly group at --sim-jobs 4. SEP's is larger because its `no_cpu`
-    # group carries several half-hour KM/DRBG simulations per seed on top of
-    # the coverage-instrumented model build, and the run must reach cov_merge/
-    # cov_report so the coverage record and artifact survive even a red run.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && matrix.nightly_timeout || 60 }}
+    # Budget per DUT: a Verilator cache miss (from-source build) plus the
+    # model build and the smoke group at --sim-jobs 2.
+    timeout-minutes: 60
     permissions: { contents: read }
     strategy:
       fail-fast: false
@@ -87,15 +61,15 @@ jobs:
         # pair. Extend this list only with combinations proven Verilator-clean
         # at head; see "Continuous integration" in tools/dv/doc/run-dv.adoc.
         #
-        # Entries omit `--framework`, so each DUT runs its default framework
-        # (cocotb). Licensed SV-UVM jobs live outside hosted CI; enumerate
-        # (DUT, framework) pairs with `run_dv.py --list --json` instead of
-        # hardcoding names (see "Framework-aware CI matrices" in the same doc).
+        # The composite action omits `--framework`, so each DUT runs its
+        # default framework (cocotb). Licensed SV-UVM jobs live outside hosted
+        # CI; enumerate (DUT, framework) pairs with `run_dv.py --list --json`
+        # instead of hardcoding names (see "Framework-aware CI matrices" in
+        # the same doc).
         #
-        # nightly_items selects the nightly-tier group per DUT. It is NOT always
-        # `all`: hosted runners have no RISC-V toolchain, so any DUT whose `all`
-        # group contains firmware tests (a `c_compile` stage) must name a
-        # CPU-free group instead, or every nightly run fails at build.
+        # The cross_trigger IP benches are not in the gate: their smoke cost
+        # is one job of runner setup each for seconds of simulation, and none
+        # is a required context. regress.yml runs their full groups nightly.
         #
         # runner: the label this DUT's job runs on, and the only knob that sets
         # build parallelism (--build-jobs "$(nproc)" follows it).
@@ -103,56 +77,34 @@ jobs:
         # SEP wants a 16-vCPU larger runner for its ~1.7 GB Verilator model, but
         # a label with no matching runner does NOT fail fast -- the job queues
         # until it times out, and everything with `needs:` on it stalls too. So
-        # the default stays the always-present 4-vCPU standard runner, and repo
-        # variable SEP_CI_RUNNER promotes it once the larger-runner label is
-        # confirmed in the org's runner settings:
+        # the default stays the always-present 4-vCPU standard runner, and the
+        # repository variable DV_LARGE_RUNNER promotes it once the larger-runner
+        # label is confirmed in the org's runner settings:
         #
-        #   gh variable set SEP_CI_RUNNER --body ubuntu-latest-16-cores
+        #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
         #
-        # No workflow edit needed to flip it, or to roll back.
+        # No workflow edit needed to flip it, or to roll back. regress.yml
+        # promotes its regression rows with the same variable.
         include:
           - dut: dtp
-            tool: verilator
             runner: ubuntu-latest
-            nightly_items: all
-            nightly_coverage: true
-            nightly_timeout: 90
           - dut: sep
-            tool: verilator
-            runner: ${{ vars.SEP_CI_RUNNER || 'ubuntu-latest' }}
-            # SEP's `all` mixes cpu firmware tests; `no_cpu` is the toolchain-free
-            # subset. The smoke tier is unaffected (sep_axi_smoke_test is no_cpu).
-            nightly_items: no_cpu
-            nightly_coverage: true
-            nightly_timeout: 270
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+          # `smu` carries the SMU regression (smu_wrapper.sv, one compile
+          # profile with the real SEP); `smu_block` is the bare smu #(.SEP(0))
+          # bench with the SEP=0 composition proofs and the leaves that cannot
+          # run on `smu`. Both are gated here so neither rots. `items` defaults
+          # to `smoke` below; `smu` overrides it because its own `smoke` group
+          # reaches the firmware tests, and this runner has Verilator and
+          # nothing else -- `hosted_smoke` is the toolchain-free equivalent.
           - dut: smu
-            tool: verilator
             runner: ubuntu-latest
-            # SMU has no `all` group; `sep0_all` is the enrolled SEP=0 release set
-            # (no c_compile / RISC-V toolchain stage on hosted runners).
-            nightly_items: sep0_all
-            nightly_coverage: true
-            nightly_timeout: 180
+            items: hosted_smoke
+          - dut: smu_block
+            runner: ubuntu-latest
           - dut: smc
-            tool: verilator
             runner: ubuntu-latest
-            # SMC has no `all` group; `smoke` is the enrolled CI set and has no
-            # firmware c_compile stage (cpu boot lives in other groups).
-            # nightly_coverage stays false: the SMC simulation completes without
-            # writing the native Verilator coverage database, so a coverage run
-            # cannot produce the native evidence the result gate requires.
-            nightly_items: smoke
-            nightly_coverage: false
-            nightly_timeout: 90
     env:
-      # smoke: pull_request, push, and default manual dispatch.
-      # nightly: daily schedule, or manual dispatch with tier=nightly.
-      TIER: ${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 'nightly' || 'smoke' }}
-      # The run id keeps the recorded native run_dir unique per run: the
-      # dashboard trend-point identity hashes it, so a repeated path would
-      # make consecutive nightly points replace each other whenever main has
-      # not moved. (env cannot reference env, hence the inlined tier.)
-      RUN_DIR: build/ci/runs/${{ matrix.dut }}/${{ matrix.tool }}/${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 'nightly' || 'smoke' }}/${{ github.run_id }}
       # Required check names (verilator-smoke (dtp/sep)) must still report,
       # so this job always runs; RUN_HARDWARE_CI=false skips the sim work.
       RUN_HARDWARE_CI: ${{ needs.diff-class.outputs.run_hardware_ci }}
@@ -165,147 +117,49 @@ jobs:
         if: env.RUN_HARDWARE_CI == 'true'
         uses: actions/checkout@v4
 
-      - name: Install uv
-        if: env.RUN_HARDWARE_CI == 'true'
-        uses: astral-sh/setup-uv@v6
-        with:
-          python-version: "3.11"
-
-      - name: Install bender
-        if: env.RUN_HARDWARE_CI == 'true'
-        uses: pulp-platform/pulp-actions/bender-install@v2.5.1
-
-      - name: Cache Verilator
-        if: env.RUN_HARDWARE_CI == 'true'
-        id: cache-verilator
-        uses: actions/cache@v4
-        with:
-          path: ~/verilator
-          key: verilator-${{ env.VERILATOR_VERSION }}-${{ runner.os }}-${{ runner.arch }}
-
-      - name: Build Verilator
-        if: env.RUN_HARDWARE_CI == 'true' && steps.cache-verilator.outputs.cache-hit != 'true'
-        timeout-minutes: 30
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
+      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
+      # as the authority for the OCA manifest layout, so without it 54 of 162
+      # test modules fail to import and the run dies before any simulation.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
+      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
+      # submodule at all, died on the repo checkout itself with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses the submodule over SSH, which a hosted runner has
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
+      # rewrite is undone afterwards so the credential does not outlive the
+      # step.
+      - name: Check out the tt-oca-manifest submodule
+        if: env.RUN_HARDWARE_CI == 'true' && matrix.dut == 'sep'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
         run: |
-          # Acquire options: the hosted-runner mirror list falls back from
-          # azure.archive.ubuntu.com to archive.ubuntu.com, but apt only fails
-          # over on a connection *error* -- a silently stalled mirror otherwise
-          # hangs apt until the job timeout. The Timeout option turns a stall
-          # into an error so the retry/failover machinery actually runs; the
-          # step timeout-minutes is the backstop for both mirrors being down.
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
-            install -y --no-install-recommends \
-            autoconf bison flex g++ help2man libfl-dev make perl python3 zlib1g-dev
-          git clone --depth 1 --branch "$VERILATOR_VERSION" \
-            https://github.com/verilator/verilator.git "$RUNNER_TEMP/verilator-src"
-          cd "$RUNNER_TEMP/verilator-src"
-          autoconf
-          ./configure --prefix "$HOME/verilator"
-          make -j "$(nproc)"
-          make install
-
-      - name: Add Verilator to PATH
-        if: env.RUN_HARDWARE_CI == 'true'
-        timeout-minutes: 10
-        run: |
-          echo "$HOME/verilator/bin" >> "$GITHUB_PATH"
-          # libfl2: runtime dependency of the verilator binary; not preinstalled
-          # on hosted runners and skipped when the Verilator cache hits.
-          #
-          # ccache: required by any DUT setting [build.verilator] ccache = true
-          # (sep does). Verilator then emits `ccache g++` as the compiler, and
-          # without the binary the very first C++ compile dies with
-          # "ccache: No such file or directory" / make Error 127 -- after a full
-          # verilation, so it is slow to discover. Installed unconditionally so
-          # the runner never depends on which DUT the matrix is running.
-          #
-          # Acquire options: same stall-into-error rationale as the Verilator
-          # build step above.
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
-            install -y --no-install-recommends libfl2 ccache
-
-      - name: Check environment
-        if: env.RUN_HARDWARE_CI == 'true'
-        run: |
-          verilator --version
-          python3 tools/dv/run_dv.py --validate-configs
-          python3 tools/dv/run_dv.py --doctor --dut ${{ matrix.dut }} --tool ${{ matrix.tool }}
-
-      # smoke gates PRs with each DUT's `smoke` group; nightly regresses that
-      # DUT's matrix.nightly_items group with 3 random seeds per test (~450
-      # recorded, replayable scheduler leaves for dtp's `all`) on the 4-vCPU
-      # hosted runner. The explicit --run-dir keeps every tier's tree separate
-      # and means run_dv.py never creates a `latest` symlink.
-      - name: Run DV tests
-        if: env.RUN_HARDWARE_CI == 'true'
-        run: |
-          if [ "$TIER" = "nightly" ]; then
-            items=${{ matrix.nightly_items }}
-            sim_jobs=4
-            tier_args=(--reseed 3)
-            if [ "${{ matrix.nightly_coverage }}" = "true" ]; then
-              tier_args+=(--cov)
-            fi
-          else
-            items=smoke
-            sim_jobs=2
-            tier_args=()
+          set -euo pipefail
+          if [ -z "${OCA_PAT:-}" ]; then
+            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
+            exit 1
           fi
-          # Build parallelism is independent of sim fan-out, but run_dv.py falls
-          # back to --sim-jobs when --build-jobs is absent (effective_build_jobs in
-          # runlib/buildcache.py) -- which silently compiled the C++ model with just
-          # -j2 on the smoke tier. Pin it to the runner's core count so the model
-          # build uses the whole machine, and so it scales automatically if this job
-          # ever moves to a larger runner.
-          exec python3 tools/dv/run_dv.py \
-            --dut ${{ matrix.dut }} \
-            --items "$items" \
-            --tool ${{ matrix.tool }} \
-            --sim-jobs "$sim_jobs" \
-            --build-jobs "$(nproc)" \
-            --run-dir "$RUN_DIR" \
-            "${tier_args[@]}"
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
 
-      # run_dv.py already exits nonzero on FAIL/ERROR/TIMEOUT/UNKNOWN; this
-      # gate is defense-in-depth so the job can never go green without a
-      # native schema-v1 PASS record matching this exact invocation.
-      - name: Gate on native result
+      # The run id keeps the recorded native run_dir unique per run; the
+      # tier segment keeps every tier's tree separate.
+      - name: Run smoke tier
         if: env.RUN_HARDWARE_CI == 'true'
-        run: |
-          require_coverage=false
-          if [ "$TIER" = "nightly" ] && [ "${{ matrix.nightly_coverage }}" = "true" ]; then
-            require_coverage=true
-          fi
-          jq -e \
-            --arg flow "${{ matrix.dut }}" \
-            --arg tool "${{ matrix.tool }}" \
-            --argjson require_coverage "$require_coverage" \
-            '.schema_version == 1
-             and .flow == $flow
-             and .tool == $tool
-             and .status == "PASS"
-             and (($require_coverage | not) or (
-               .coverage.enabled == true
-               and (.coverage.total_percent | type == "number")
-               and (.coverage.report | type == "string" and length > 0)
-               and (.coverage.summary | type == "string" and length > 0)
-             ))' \
-            "$RUN_DIR/result.json"
-
-      # Logs and result.json for every test in the run; result.json is the
-      # schema-v1 record that tools/dv/run_dashboard.py collect consumes. The
-      # reference-only merged coverage report stays in the artifact, while
-      # per-leaf native databases are excluded after merge to keep the nightly
-      # artifact bounded.
-      - name: Upload run artifacts
-        if: always() && env.RUN_HARDWARE_CI == 'true'
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/dv-run
         with:
-          name: dv-run-${{ matrix.dut }}-${{ matrix.tool }}-${{ env.TIER }}
-          path: |
-            ${{ env.RUN_DIR }}
-            !${{ env.RUN_DIR }}/**/coverage/coverage.dat
-          retention-days: 14
-          if-no-files-found: ignore
+          dut: ${{ matrix.dut }}
+          tool: verilator
+          tier: smoke
+          items: ${{ matrix.items || 'smoke' }}
+          sim-jobs: 2
+          run-dir: build/ci/runs/${{ matrix.dut }}/verilator/smoke/${{ github.run_id }}

@@ -129,7 +129,7 @@ addrmap telemetry_receiver #(
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Last Packet Missing Interrupt Enable.";
         } MISSING_LAST[0:0] = 0x0;
 
@@ -171,14 +171,6 @@ addrmap telemetry_receiver #(
     TELEMETRY_PROBE_ID        TELEMETRY_PROBE_ID                           @0x14;
     TELEMETRY_COUNTER_VLDS    TELEMETRY_COUNTER_VLDS                       @0x18;
     TELEMETRY_COUNTER         TELEMETRY_COUNTER     [NUM_COUNTER_REGS]     @0x80;
-
-
-    /////////////////////////
-    // Property Assignment //
-    /////////////////////////
-
-    // TODO: Uncomment after PeakRDL bug fix
-    // TODO // INTR_STATUS.MISSING_LAST->hwenable = INTR_ENABLE.MISSING_LAST;
 
 };
 

@@ -274,7 +274,7 @@ def discover_coverage_inputs(
     tool: str,
     fallback_glob: str,
 ) -> CoverageDiscovery:
-    """Select final non-debug leaf artifacts, with a legacy glob fallback."""
+    """Select final non-debug leaf artifacts, falling back to a glob when no leaf records exist."""
 
     candidates: list[CoverageInput] = []
     rejected: list[dict[str, Any]] = []
@@ -329,7 +329,7 @@ def discover_coverage_inputs(
         selected = list(by_leaf.values())
         selection_source = "result_json"
     else:
-        # Compatibility for run directories produced before leaf artifacts were recorded.
+        # Run directories without leaf result.json records: fall back to the glob.
         seen: set[Path] = set()
         for path in sorted(run_dir.glob(fallback_glob)):
             try:
@@ -617,14 +617,21 @@ def parse_coverage_report(
     }, round(overall, 4)
 
 
-def write_json(path: Path, payload: dict[str, Any]) -> None:
+def json_text(payload: dict[str, Any]) -> str:
+    """The exact bytes `write_json` puts on disk for `payload`."""
+
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+
+def write_json_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    temporary.write_text(text, encoding="utf-8")
     temporary.replace(path)
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    write_json_text(path, json_text(payload))
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -653,7 +660,6 @@ def new_manifest(
     merged: Path,
     root: Path,
     exclude_files: list[str],
-    waiver_files: list[str],
 ) -> dict[str, Any]:
     first = discovery.inputs[0] if discovery.inputs else None
     return {
@@ -668,7 +674,8 @@ def new_manifest(
         "build_fingerprint": first.build_fingerprint if first else None,
         **discovery_payload(discovery),
         "exclusions": exclude_files,
-        "waivers": waiver_files,
+        # The coverage.json key set is fixed; no config key feeds "waivers".
+        "waivers": [],
         "artifacts": {
             "merged": repo_rel(root, merged),
             "report": None,

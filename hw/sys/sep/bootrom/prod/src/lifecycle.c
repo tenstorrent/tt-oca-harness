@@ -31,9 +31,8 @@
 
 uint32_t lc_read_state(void) {
     uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
-    // reference suite efuse field is 8-bit (diff encoded by RTL).
-    // Extract low 4 bits = raw LC state.
-    // The low nibble carries the decoded lifecycle state.
+    // The eFuse field is 8 bits, differentially encoded by the RTL; the low
+    // nibble carries the decoded lifecycle state.
     return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &
            0xFu;
 }
@@ -104,7 +103,7 @@ void lc_write_demotion_2(bool demote, bool lock) {
 }
 
 // ---------------------------------------------------------------------------
-// Full lifecycle policy (Task C6)
+// Full lifecycle policy ([S11])
 // ---------------------------------------------------------------------------
 
 // Error code for lifecycle validation failure.

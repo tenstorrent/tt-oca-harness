@@ -6,10 +6,11 @@
 //
 // Open-source reference models for the technology-specific IP SMC exposes
 // at this boundary: the shared eFuse bank/shim model (IsSmcInstance=1), the
-// PLL/PVT AXI-Lite models (pll_wrap.sv / pvt_wrap.sv), and one
-// prim_pad_shim.sv instance per GPIO pin standing in for the physical
-// padring. The GPIO-shim per-pin CSR and adopter peripheral extension
-// AXI-Lite buses are terminated with prim_axi_lite_err_slv (DECERR).
+// PLL/PVT AXI-Lite models (pll_wrap.sv / pvt_wrap.sv), the I3C DAT/DCT/RLT
+// table memories, and one prim_pad_shim.sv instance per GPIO pin standing
+// in for the physical padring. The GPIO-shim per-pin CSR and adopter
+// peripheral extension AXI-Lite buses are terminated with
+// prim_axi_lite_err_slv (DECERR).
 //
 // smc_wrapper.sv instantiates this module alongside the bare smc.sv core
 // and wires the two together (smu_wrapper.sv does the same directly
@@ -17,13 +18,15 @@
 // (doc/integrator/modules/ROOT/pages/index.adoc, "Module Variants and IP
 // Integration") and hw/top/README.md.
 //
-// The Chipyard CPU ROM/scratch/L1$ macros live here too, so both wrappers
-// pick them up from the one module they already instantiate.
+// The I3C table memories live here because smc.sv and smu.sv export the same
+// macro interfaces, so both wrappers need the same reference integration.
+// The Chipyard CPU ROM/scratch/L1$ macros and the trace sink RAM banks live
+// here too, so both wrappers pick them up from the one module they already
+// instantiate.
 //
-// Every other technology-specific interface smc.sv exposes (I3C DAT/DCT
-// memory macros, ATB telemetry, DFD/trace, SPI-over-GPIO muxing, etc.) is
-// passed straight through by smc_wrapper.sv, left for a full-chip
-// integration to wire up.
+// Every other technology-specific interface smc.sv exposes (ATB telemetry,
+// SPI-over-GPIO muxing, etc.) is passed straight through by
+// smc_wrapper.sv, left for a full-chip integration to wire up.
 //
 // This is a reference integration example, provided for adopters to
 // substitute with their own vendor IP/macros.
@@ -32,6 +35,11 @@
 module smc_ip_integration (
     input logic clk_smc_i,
     input logic rst_primary_smc_clk_ni,
+
+    // The I3C table memories are the one block here that does not run on
+    // clk_smc: the core drives them from the gated I3C peripheral clock.
+    input logic gated_clk_periph_i3c_i,
+    input logic rst_primary_periph_clk_ni,
 
     // Adopter external window (from smc.sv). One AXI-Lite port carrying the
     // whole smc_external map; the blocks behind it are decoded below.
@@ -71,6 +79,10 @@ module smc_ip_integration (
     output chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_intf_rsp
         [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
 
+    // Trace sink memory macros (from smc.sv's trace network)
+    input  trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req,
+    output trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp,
+
     // GPIO pad-facing signals (from smc.sv's padring)
     output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_o,
     input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_i,
@@ -79,6 +91,14 @@ module smc_ip_integration (
 
     // Physical GPIO pad bus, one prim_pad_shim.sv instance per pin
     inout wire [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_io,
+
+    // I3C table memory macro interfaces (from smc.sv / smu.sv)
+    input  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_i,
+    output i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src_o,
+    input  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_i,
+    output i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src_o,
+    input  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink_i,
+    output i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src_o,
 
     // eFuse debug bus (internal shim state, surfaced for DV visibility)
     output logic [15:0] efuse_debug_bus_o
@@ -156,15 +176,18 @@ module smc_ip_integration (
     localparam int unsigned ExtGpioCtrlNum    = 65;
     localparam int unsigned ExtPllBase        = 'h2000;
     localparam int unsigned ExtPvtBase        = 'h3000;
-    localparam int unsigned ExtWindowSize     = 'h4000;
+    localparam int unsigned ExtStrapsBase     = 'h5800;
+    localparam int unsigned ExtWindowSize     =
+        32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE);
 
     // Targets, in demux port order. Anything unclaimed lands on ExtUnmapped,
     // which answers DECERR.
     localparam int unsigned ExtPll      = 0;
     localparam int unsigned ExtPvt      = 1;
     localparam int unsigned ExtGpioCtrl = 2;
-    localparam int unsigned ExtUnmapped = 3;
-    localparam int unsigned ExtNumPorts = 4;
+    localparam int unsigned ExtStraps   = 3;
+    localparam int unsigned ExtUnmapped = 4;
+    localparam int unsigned ExtNumPorts = 5;
 
     smc_pkg::smc_axil_32_32_req_t  [ExtNumPorts-1:0] ext_req;
     smc_pkg::smc_axil_32_32_resp_t [ExtNumPorts-1:0] ext_resp;
@@ -174,30 +197,19 @@ module smc_ip_integration (
         input logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] addr
     );
         automatic logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] off = addr % ExtWindowSize;
-        if (off >= ExtPvtBase)                              return ExtUnmapped;
-        else if (off >= ExtPllBase + pll_wrap_addrmap_pkg::PLL_WRAP_SIZE) return ExtUnmapped;
-        else if (off >= ExtPllBase)                         return ExtPll;
-        else if (off >= ExtGpioCtrlBase + ExtGpioCtrlNum * ExtGpioCtrlStride) return ExtUnmapped;
-        else if (off >= ExtGpioCtrlBase)                    return ExtGpioCtrl;
-        else                                                return ExtUnmapped;
+        if (off >= ExtStrapsBase &&
+            off < ExtStrapsBase + straps_reg_pkg::STRAPS_REG_SIZE) return ExtStraps;
+        else if (off >= ExtPvtBase &&
+                 off < ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) return ExtPvt;
+        else if (off >= ExtPllBase &&
+                 off < ExtPllBase + pll_wrap_addrmap_pkg::PLL_WRAP_SIZE) return ExtPll;
+        else if (off >= ExtGpioCtrlBase &&
+                 off < ExtGpioCtrlBase + ExtGpioCtrlNum * ExtGpioCtrlStride) return ExtGpioCtrl;
+        else                                                                 return ExtUnmapped;
     endfunction
 
-    always_comb begin
-        ext_aw_select = ext_decode(smc_external_req_i.aw.addr);
-        ext_ar_select = ext_decode(smc_external_req_i.ar.addr);
-        // The PVT window sits above the PLL one; fold it in separately so the
-        // chain above stays a simple descending compare.
-        if (smc_external_req_i.aw.addr % ExtWindowSize >= ExtPvtBase &&
-            smc_external_req_i.aw.addr % ExtWindowSize <
-                ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) begin
-            ext_aw_select = ExtPvt;
-        end
-        if (smc_external_req_i.ar.addr % ExtWindowSize >= ExtPvtBase &&
-            smc_external_req_i.ar.addr % ExtWindowSize <
-                ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) begin
-            ext_ar_select = ExtPvt;
-        end
-    end
+    assign ext_aw_select = ext_decode(smc_external_req_i.aw.addr);
+    assign ext_ar_select = ext_decode(smc_external_req_i.ar.addr);
 
     axi_lite_demux #(
         .aw_chan_t   (smc_pkg::smc_axil_32_32_aw_chan_t),
@@ -247,6 +259,49 @@ module smc_ip_integration (
         .rst_ni     (rst_primary_smc_clk_ni),
         .axil_req_i (ext_req[ExtPvt]),
         .axil_resp_o(ext_resp[ExtPvt])
+    );
+
+    //////////////////////////////
+    // Captured GPIO straps     //
+    //////////////////////////////
+    // These rom_straps are intentionally undriven in RTL. They are to be driven/configured in DV/FW (cocotb)
+
+    logic [smc_pkg::NUM_BONDED_GPIO-1:0] rom_straps;
+    assign rom_straps = '0;
+
+    straps_reg_pkg::straps__in_t straps_hwif_in;
+
+    always_comb begin
+        straps_hwif_in.STRAPS_LO.straps.next = rom_straps[31:0];
+        straps_hwif_in.STRAPS_HI.straps.next = rom_straps[smc_pkg::NUM_BONDED_GPIO-1:32];
+    end
+
+    straps_reg u_straps_reg (
+        .clk    (clk_smc_i),
+        .arst_n (rst_primary_smc_clk_ni),
+
+        .s_axil_awvalid (ext_req[ExtStraps].aw_valid),
+        .s_axil_awaddr  (ext_req[ExtStraps].aw.addr[straps_reg_pkg::STRAPS_REG_MIN_ADDR_WIDTH-1:0]),
+        .s_axil_awprot  (ext_req[ExtStraps].aw.prot),
+        .s_axil_wvalid  (ext_req[ExtStraps].w_valid),
+        .s_axil_wdata   (ext_req[ExtStraps].w.data),
+        .s_axil_wstrb   (ext_req[ExtStraps].w.strb),
+        .s_axil_bready  (ext_req[ExtStraps].b_ready),
+        .s_axil_arvalid (ext_req[ExtStraps].ar_valid),
+        .s_axil_araddr  (ext_req[ExtStraps].ar.addr[straps_reg_pkg::STRAPS_REG_MIN_ADDR_WIDTH-1:0]),
+        .s_axil_arprot  (ext_req[ExtStraps].ar.prot),
+        .s_axil_rready  (ext_req[ExtStraps].r_ready),
+
+        .s_axil_awready (ext_resp[ExtStraps].aw_ready),
+        .s_axil_wready  (ext_resp[ExtStraps].w_ready),
+        .s_axil_bvalid  (ext_resp[ExtStraps].b_valid),
+        .s_axil_bresp   (ext_resp[ExtStraps].b.resp),
+        .s_axil_arready (ext_resp[ExtStraps].ar_ready),
+        .s_axil_rvalid  (ext_resp[ExtStraps].r_valid),
+        .s_axil_rdata   (ext_resp[ExtStraps].r.data),
+        .s_axil_rresp   (ext_resp[ExtStraps].r.resp),
+
+        .hwif_in        (straps_hwif_in)
     );
 
     //////////////////////////////////
@@ -306,6 +361,44 @@ module smc_ip_integration (
         .scratch_ram_cfg_i (scratch_ram_cfg),
         .rom_cfg_i         (rom_cfg)
     );
+
+    /////////////////////////
+    // Trace Sink Memories //
+    /////////////////////////
+
+    // One single-port macro per trace sink bank. Depth/width come from the
+    // packet structs so they cannot drift from what smc.sv's trace network
+    // drives.
+    localparam int unsigned TraceMemBankDepth = trace_mem_pkg::TRC_RAM_INDEX;
+    localparam int unsigned TraceMemBankWidth = tn_pkg::TRC_RAM_DATA_WIDTH;
+
+    for (genvar i = 0; i < tn_pkg::TRC_RAM_INSTANCES; i++) begin : gen_trace_mem_bank
+        logic [TraceMemBankWidth-1:0] macro_rdata;
+
+        assign trace_mem_resp[i].mem_rd_data = macro_rdata;
+
+        // The sink writes whole words; mem_wr_mask_en is unused, so the macro
+        // mask is held all-ones.
+        prim_ram_1p_adv #(
+            .Depth       (TraceMemBankDepth),
+            .Width       (TraceMemBankWidth),
+            .MemInitFile ("")
+        ) u_trace_mem_bank (
+            .clk_i     (clk_smc_i),
+            .rst_ni    (rst_primary_smc_clk_ni),
+            .req_i     (trace_mem_req[i].mem_chip_en),
+            .write_i   (trace_mem_req[i].mem_wr_en),
+            .addr_i    (trace_mem_req[i].mem_wr_addr),
+            .wdata_i   (trace_mem_req[i].mem_wr_data),
+            .wmask_i   ({TraceMemBankWidth{1'b1}}),
+            .rdata_o   (macro_rdata),
+            .rvalid_o  (),
+            .rerror_o  (),
+            .alert_o   (),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
+        );
+    end
 
     //////////////////////////////
     // GPIO pad primitives     //
@@ -372,5 +465,144 @@ module smc_ip_integration (
         .axil_req_i (ext_req[ExtUnmapped]),
         .axil_resp_o(ext_resp[ExtUnmapped])
     );
+
+    //=========================================================================
+    // I3C DAT/DCT/RLT table memories
+    //
+    // smc.sv / smu.sv export the I3C controller's three table memories as
+    // macro interfaces rather than instantiating them, so an adopter can drop
+    // in vendor SRAMs. These are the reference macros, one set per instance:
+    //
+    //   DAT  Device Address Table            64 b x 2**DatAw, single port
+    //   DCT  Device Characteristic Table    128 b x 2**DctAw, single port
+    //   RLT  dynamic address -> DAT index    DatAw b x 128,   dual port
+    //
+    // Sizing and the 32-bit write granularity mirror the I3C core's own
+    // bring-up testbench (hw/ip/i3ccore_wrap/dv/tb/tb_i3ccore.sv), which
+    // drives the identical interface. The core reads combinationally one cycle
+    // after asserting req, which is exactly prim_ram_*'s latency.
+    //
+    // rvalid/rerror are outputs of the macro interface that the vendored I3C
+    // core never reads (only rdata is consumed). They are still driven
+    // honestly rather than tied off, so a waveform or a future consumer sees a
+    // truthful interface.
+    //=========================================================================
+
+    // Address widths are the core's; depths follow from them so the arrays
+    // always cover every address the core can present.
+    localparam int unsigned DatDepth = 1 << i3c_pkg::DatAw;
+    localparam int unsigned DctDepth = 1 << i3c_pkg::DctAw;
+    // Fixed by the core: RLT is indexed by the 7-bit dynamic address
+    // (vendor/chipsalliance/i3c-core/upstream/src/ctrl/flow_active.sv).
+    localparam int unsigned RltDepth = 128;
+    localparam int unsigned RltWidth = i3c_pkg::DatAw;
+
+    // CSR writes reach DAT/DCT one 32-bit word at a time, so the macros need
+    // 32-bit write granularity (dxt.sv builds {32{1'b1}}/{32{1'b0}} masks).
+    localparam int unsigned I3cMaskGranularity = 32;
+
+    for (genvar i = 0; i < smc_config_pkg::NUM_I3C; i++) begin : gen_i3c_mem
+
+        ///////////
+        // DAT   //
+        ///////////
+
+        logic dat_rvalid_q;
+
+        prim_ram_1p #(
+            .Width           (64),
+            .Depth           (DatDepth),
+            .DataBitsPerMask (I3cMaskGranularity)
+        ) u_dat_mem (
+            .clk_i     (gated_clk_periph_i3c_i),
+            .rst_ni    (rst_primary_periph_clk_ni),
+            .req_i     (i3c_dat_mem_sink_i[i].req),
+            .write_i   (i3c_dat_mem_sink_i[i].write),
+            .addr_i    (i3c_dat_mem_sink_i[i].addr),
+            .wdata_i   (i3c_dat_mem_sink_i[i].wdata),
+            .wmask_i   (i3c_dat_mem_sink_i[i].wmask),
+            .rdata_o   (i3c_dat_mem_src_o[i].rdata),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
+        );
+
+        always_ff @(posedge gated_clk_periph_i3c_i or negedge rst_primary_periph_clk_ni) begin
+            if (!rst_primary_periph_clk_ni) begin
+                dat_rvalid_q <= 1'b0;
+            end else begin
+                dat_rvalid_q <= i3c_dat_mem_sink_i[i].req & ~i3c_dat_mem_sink_i[i].write;
+            end
+        end
+
+        assign i3c_dat_mem_src_o[i].rvalid = dat_rvalid_q;
+        assign i3c_dat_mem_src_o[i].rerror = '0;
+
+        ///////////
+        // DCT   //
+        ///////////
+
+        logic dct_rvalid_q;
+
+        prim_ram_1p #(
+            .Width           (128),
+            .Depth           (DctDepth),
+            .DataBitsPerMask (I3cMaskGranularity)
+        ) u_dct_mem (
+            .clk_i     (gated_clk_periph_i3c_i),
+            .rst_ni    (rst_primary_periph_clk_ni),
+            .req_i     (i3c_dct_mem_sink_i[i].req),
+            .write_i   (i3c_dct_mem_sink_i[i].write),
+            .addr_i    (i3c_dct_mem_sink_i[i].addr),
+            .wdata_i   (i3c_dct_mem_sink_i[i].wdata),
+            .wmask_i   (i3c_dct_mem_sink_i[i].wmask),
+            .rdata_o   (i3c_dct_mem_src_o[i].rdata),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
+        );
+
+        always_ff @(posedge gated_clk_periph_i3c_i or negedge rst_primary_periph_clk_ni) begin
+            if (!rst_primary_periph_clk_ni) begin
+                dct_rvalid_q <= 1'b0;
+            end else begin
+                dct_rvalid_q <= i3c_dct_mem_sink_i[i].req & ~i3c_dct_mem_sink_i[i].write;
+            end
+        end
+
+        assign i3c_dct_mem_src_o[i].rvalid = dct_rvalid_q;
+        assign i3c_dct_mem_src_o[i].rerror = '0;
+
+        ///////////
+        // RLT   //
+        ///////////
+
+        // Port A is write-only (ENTDAA installs dynamic address -> DAT index),
+        // port B is read-only (reverse lookup). Both live on the same clock.
+        prim_ram_2p #(
+            .Width           (RltWidth),
+            .Depth           (RltDepth),
+            .DataBitsPerMask (1)
+        ) u_rlt_mem (
+            .clk_a_i   (gated_clk_periph_i3c_i),
+            .clk_b_i   (gated_clk_periph_i3c_i),
+
+            .a_req_i   (i3c_rlt_mem_sink_i[i].a_req),
+            .a_write_i (i3c_rlt_mem_sink_i[i].a_write),
+            .a_addr_i  (i3c_rlt_mem_sink_i[i].a_addr),
+            .a_wdata_i (i3c_rlt_mem_sink_i[i].a_wdata),
+            .a_wmask_i (i3c_rlt_mem_sink_i[i].a_wmask),
+            .a_rdata_o (i3c_rlt_mem_src_o[i].a_rdata),
+
+            .b_req_i   (i3c_rlt_mem_sink_i[i].b_req),
+            .b_write_i (i3c_rlt_mem_sink_i[i].b_write),
+            .b_addr_i  (i3c_rlt_mem_sink_i[i].b_addr),
+            .b_wdata_i (i3c_rlt_mem_sink_i[i].b_wdata),
+            .b_wmask_i (i3c_rlt_mem_sink_i[i].b_wmask),
+            .b_rdata_o (i3c_rlt_mem_src_o[i].b_rdata),
+
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
+        );
+
+    end : gen_i3c_mem
 
 endmodule

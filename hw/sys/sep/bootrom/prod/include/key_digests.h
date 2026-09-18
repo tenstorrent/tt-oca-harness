@@ -44,7 +44,7 @@ typedef struct {
 // ROM key digest table.
 // Index 0..5 are ROM key slots 0..5, matching public_key_select_classic
 // bits [7:0] and the same bit numbering in CHIPLET_PUBK_REVOKE. The slot
-// number is the whole identity: the old dev*/prod* names implied a trust
-// distinction the ROM does not make when resolving them.
+// number is the whole identity: the ROM draws no trust distinction between
+// slots when resolving them.
 // Entries with digest == NULL are considered empty/unused.
 extern public_key_info_t public_key_digests[NUM_PUBLIC_KEY_DIGESTS];

@@ -25,6 +25,8 @@
 
 #include "oca_boot.h"
 
+#include "oca_layout.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -34,6 +36,7 @@
 #include "errors.h"
 #include "oca_platform.h"
 #include "oca_validator.h"
+#include "oca_variant.h"
 #include "rom_virt_console.h"
 #include "sep.h"
 #include "sep_dma.h"
@@ -61,6 +64,24 @@ const uint8_t *rom_oca_payload(void) {
 }
 size_t rom_oca_payload_len(void) {
     return g_payload_len;
+}
+
+const uint8_t *rom_oca_manifest_hash(void) {
+    if (g_body == NULL) {
+        return NULL;
+    }
+
+    // Located through the library's own variant descriptor rather than a literal
+    // offset: manifest_hash sits at a different place in an OCA-classic body than
+    // in an OCA-PQC one, and both move with the format revision. Asking the
+    // library keeps this correct across a submodule uprev instead of silently
+    // measuring the wrong 32 bytes.
+    oca_result_t st = OCA_OK;
+    const oca_variant_t *v = oca_variant_for_body(g_body, &st);
+    if (v == NULL) {
+        return NULL;
+    }
+    return g_body + v->off_manifest_hash;
 }
 
 uint32_t rom_oca_demotion_control(void) {
@@ -133,12 +154,8 @@ static void clear_sram_region(uint32_t addr, uint32_t size) {
 // Reporting
 // ---------------------------------------------------------------------------
 
-// Map a library verdict onto the ROM's production status stream.
-//
-// Most of these SEP_MSG_* codes were declared but never emitted under the old
-// loader, which collapsed nearly every failure into MANIFEST_LOAD_FAILED. The
-// OCA result codes are finer-grained than the old checks were, so wiring them
-// up is what finally makes the status word say which check refused the image.
+// Map a library verdict onto the ROM's production status stream, so the status
+// word names which check refused the image rather than that one did.
 static uint16_t status_for_result(oca_result_t r) {
     switch (r) {
     case OCA_FAIL_MAGIC:
@@ -243,6 +260,16 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
         return OCA_BOOT_ERR_DMA;
     }
 
+    // The manifest's CLAIMED security-version flags, before anything has
+    // authenticated them. Echoed here rather than beside the device's own value
+    // because rom_oca_body() deliberately means "the accepted slot's body" and is
+    // still NULL at this point; the pair is recoverable from the order, and every
+    // slot that reaches the comparison prints both.
+    simputshex32("MFST_VER=", (uint32_t)body[OCA_OFF_MANIFEST_SECURITY_VERSION] |
+                                  ((uint32_t)body[OCA_OFF_MANIFEST_SECURITY_VERSION + 1] << 8) |
+                                  ((uint32_t)body[OCA_OFF_MANIFEST_SECURITY_VERSION + 2] << 16) |
+                                  ((uint32_t)body[OCA_OFF_MANIFEST_SECURITY_VERSION + 3] << 24));
+
     // One context spans the whole staged sequence: authentication happens here,
     // the payload check happens further down, and the second needs to know what
     // the first established about secure-boot state.
@@ -328,6 +355,21 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     g_body = body;
     g_payload = payload;
     g_payload_len = payload_span;
+
+    // A slot is only usable if its BL1 can actually be loaded, so the check
+    // belongs here, inside the retry, rather than at hand-off: a missing or
+    // unplaceable BL1 in the primary then fails over to the backup instead of
+    // ending the boot after [S25] has locked the fuse secrets. Needs the
+    // globals above, which is why it follows them; they are cleared again on
+    // rejection so a failed slot leaves nothing staged.
+    uint32_t bl1_err = rom_bl1_check();
+    if (bl1_err != 0u) {
+        g_body = NULL;
+        g_payload = NULL;
+        g_payload_len = 0u;
+        return bl1_err;
+    }
+
     get_bl0_state()->sep_sram_manifest_addr = (uint32_t)(uintptr_t)body;
     return 0u;
 }

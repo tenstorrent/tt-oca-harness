@@ -125,44 +125,108 @@ module sep_local_axi_xbar
   // Address Map Configuration
   // ===========================================================================
   localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
-    // cpu_tcm.iccm: 0xc0000000 - 0xc0040000
-    '{idx: 0, start_addr: 32'hc0000000, end_addr: 33'hc0040000},
-    // cpu_tcm.dccm: 0xc0040000 - 0xc0060000
-    '{idx: 0, start_addr: 32'hc0040000, end_addr: 33'hc0060000},
-    // sram.main: 0x10000000 - 0x10040000
-    '{idx: 1, start_addr: 32'h10000000, end_addr: 33'h10040000},
-    // dma_csr.main: secure_dma register extent, not the 4 kB spec aperture --
-    // secure_dma_reg_top decodes 9 bits, so a wider window aliases.
-    '{idx: 2,
-      start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
-      end_addr:   33'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR +
-                      och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE)},
-    // sep_wdt.main: wdt_timer register extent, not the 4 kB spec aperture --
-    // aon_timer_reg_top decodes 6 bits, so a wider window aliases.
-    '{idx: 3,
-      start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR),
-      end_addr:   33'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR +
-                      och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE)},
-    // sep_reset_ctrl.main: 0x10803000 - 0x10803008
-    '{idx: 4, start_addr: 32'h10803000, end_addr: 33'h10803008},
-    // sep_crypto.main: 0x10900000 - 0x10950000
-    '{idx: 5, start_addr: 32'h10900000, end_addr: 33'h10950000},
-    // sep_system_peripherals.scratch_region: 0x10802000 - 0x10802100
-    '{idx: 6, start_addr: 32'h10802000, end_addr: 33'h10802100},
-    // sep_system_peripherals.csr_region: 0x10a00000 - 0x10a60000
-    '{idx: 6, start_addr: 32'h10a00000, end_addr: 33'h10a60000},
-    // sep_system_peripherals.remap_region: 0x11000000 - 0x12000000
-    '{idx: 6, start_addr: 32'h11000000, end_addr: 33'h12000000},
-    // sep_system_peripherals.external_chiplet: 0x00000000 - 0x10000000
-    '{idx: 6, start_addr: 32'h0, end_addr: 33'h10000000},
-    // sep_system_peripherals.external_smu: 0x40000000 - 0xc0000000
-    '{idx: 6, start_addr: 32'h40000000, end_addr: 33'hc0000000},
-    // sep_io.main: 0x10b00000 - 0x10bfffff
-    '{idx: 7, start_addr: 32'h10b00000, end_addr: 33'h10bfffff},
-    // entropy_fifo.main: 0x10950000 - 0x10960000
-    '{idx: 8, start_addr: 32'h10950000, end_addr: 33'h10960000},
-    // sep_external.main: 0x20000000 - 0x40000000
-    '{idx: 9, start_addr: 32'h20000000, end_addr: 33'h40000000}
+      // cpu_tcm.iccm: 0xc0000000 - 0xc0040000
+      '{
+          idx: 0,
+          start_addr: 32'hc0000000,
+          end_addr: 33'hc0040000
+      },
+      // cpu_tcm.dccm: 0xc0040000 - 0xc0060000
+      '{
+          idx: 0,
+          start_addr: 32'hc0040000,
+          end_addr: 33'hc0060000
+      },
+      // sram.main: 0x10000000 - 0x10040000
+      '{
+          idx: 1,
+          start_addr: 32'h10000000,
+          end_addr: 33'h10040000
+      },
+      // dma_csr.main: secure_dma register extent, not the 4 kB spec aperture --
+      // secure_dma_reg_top decodes 9 bits, so a wider window aliases.
+      '{
+          idx: 2,
+          start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
+          end_addr:
+          33'(
+          och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR
+          +
+          och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE
+          )
+      },
+      // sep_wdt.main: wdt_timer register extent, not the 4 kB spec aperture --
+      // aon_timer_reg_top decodes 6 bits, so a wider window aliases.
+      '{
+          idx: 3,
+          start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR),
+          end_addr:
+          33'(
+          och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR
+          +
+          och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE
+          )
+      },
+      // sep_reset_ctrl.main: 0x10803000 - 0x10803008
+      '{
+          idx: 4,
+          start_addr: 32'h10803000,
+          end_addr: 33'h10803008
+      },
+      // sep_crypto.main: 0x10900000 - 0x10950000
+      '{
+          idx: 5,
+          start_addr: 32'h10900000,
+          end_addr: 33'h10950000
+      },
+      // sep_system_peripherals.scratch_region: 0x10802000 - 0x10802100
+      '{
+          idx: 6,
+          start_addr: 32'h10802000,
+          end_addr: 33'h10802100
+      },
+      // sep_system_peripherals.csr_region: 0x10a00000 - 0x10a60000
+      '{
+          idx: 6,
+          start_addr: 32'h10a00000,
+          end_addr: 33'h10a60000
+      },
+      // sep_system_peripherals.remap_region: 0x11000000 - 0x12000000
+      '{
+          idx: 6,
+          start_addr: 32'h11000000,
+          end_addr: 33'h12000000
+      },
+      // sep_system_peripherals.external_chiplet: 0x00000000 - 0x10000000
+      '{
+          idx: 6,
+          start_addr: 32'h0,
+          end_addr: 33'h10000000
+      },
+      // sep_system_peripherals.external_smu: 0x40000000 - 0xc0000000
+      '{
+          idx: 6,
+          start_addr: 32'h40000000,
+          end_addr: 33'hc0000000
+      },
+      // sep_io.main: 0x10b00000 - 0x10bfffff
+      '{
+          idx: 7,
+          start_addr: 32'h10b00000,
+          end_addr: 33'h10bfffff
+      },
+      // entropy_fifo.main: 0x10950000 - 0x10960000
+      '{
+          idx: 8,
+          start_addr: 32'h10950000,
+          end_addr: 33'h10960000
+      },
+      // sep_external.main: 0x20000000 - 0x40000000
+      '{
+          idx: 9,
+          start_addr: 32'h20000000,
+          end_addr: 33'h40000000
+      }
   };
 
   // ===========================================================================

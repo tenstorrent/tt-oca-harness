@@ -34,7 +34,7 @@ content:
       edit_url: false
     - url: .
       branches: HEAD
-      start_path: doc/contributing
+      start_path: doc/starting
       edit_url: false
 asciidoc:
   attributes:
@@ -42,6 +42,13 @@ asciidoc:
     kroki-fetch-diagram: true
   extensions:
     - asciidoctor-kroki
+runtime:
+  log:
+    # A broken xref or a missing include target is logged at ERROR, but
+    # Antora's own default (failure_level: fatal) still exits 0 on it, so
+    # the site builds and ships with the break silently rendered as dead
+    # text. Raise the threshold so doc.yml's build step fails instead.
+    failure_level: error
 ui:
   bundle:
     # Pinned 2026-07-24 to the latest antora-ui-default commit at the time

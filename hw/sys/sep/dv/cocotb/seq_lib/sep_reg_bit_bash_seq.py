@@ -13,8 +13,7 @@ Inbound-filter START/END stay in the write sweep under the full export
 mask. ``axi_filter_wrap`` rewrites a same-beat window only
 (``START[2:0]->0``, ``END[2:0]->1``; END reset ``0x7``). Solo bash keeps
 the peer at reset, so the checker compares readback to that wrap model
-rather than stripping ``[2:0]`` from the mask. Skipping those 32
-registers is a coverage hole, not a fix.
+rather than stripping ``[2:0]`` from the mask.
 
 Full complement bash stays on no-side-effect blocks. The masked storage
 touch is wider: every register the safety gate admits gets a seed-derived
@@ -35,7 +34,9 @@ from collections import defaultdict
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import AXI_BUS_BYTES
 from sep_reg_meta import (
+    INBOUND_FILTER_CTRL_0,
     RegInfo,
     iter_register_walk,
     reg_hw_updating,
@@ -58,9 +59,10 @@ RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("SEP_CPU_CTRL", "SEP_TEST_CTRL"): "hw-driven straps",
     ("SEP_CPU_CTRL", "SEP_FUSE_SENSE_STATUS"): "hw-driven fuse-sense status",
     ("SEP_CPU_CTRL", "SMC_FUSE_SENSE_STATUS"): "hw-driven fuse-sense status",
-    ("SEP_CPU_CTRL", "SEP_STRAPS"): "hw-driven straps",
     ("SEP_CPU_CTRL", "TIMEOUT_CLEAR"): "write-only",
     ("SEP_CPU_CTRL", "TIMEOUT_MODE"): "write-only",
+    ("SEP_CPU_CTRL", "DMA_BUS_ERR_CLEAR"): "write-only",
+    ("SEP_CPU_CTRL", "PERIPH_BUS_ERR_CLEAR"): "write-only",
     ("WDT_TIMER", "WKUP_COUNT_HI"): "hw-driven timer",
     ("WDT_TIMER", "WKUP_COUNT_LO"): "hw-driven timer",
     ("WDT_TIMER", "WDOG_COUNT"): "hw-driven timer",
@@ -97,6 +99,7 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     # INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Reading one to check
     # a reset value therefore destroys the state it is checking.
     "RDATA": "FIFO",
+    "ERROR_FLAGS": "read-clear",
     "GENBITS": "FIFO",
     "CMD": "trigger",
     "CMD_REQ": "trigger",
@@ -220,7 +223,7 @@ _TOUCH_DENY_PREFIX_HW: dict[str, str] = {
 # export-rw but do not behave as plain storage under a random ``x``.
 _TOUCH_DENY_NAME: dict[str, str] = {
     "FIPS_LOCK": "sticky lock; setting it freezes the block for the rest of the run",
-    # Both refuse a random mask-legal value by design, and both are documented.
+    # Both refuse a random mask-legal value:
     # HT_WATERMARK_NUM.WATERMARK_NUM carries `encode = WATERMARK_TEST`:
     # "Unsupported values are sanitized to REPCNT_HI", so a legal encoding lands
     # and any other reads back 0. NOISE_OBS_CTRL holds FLUSH[1:1], `sw = w` and
@@ -236,6 +239,7 @@ _TOUCH_DENY_NAME: dict[str, str] = {
     "IRQP": "W1C status",
     "ERR_CODE": "W1C status",
     "ERROR_CODE": "W1C status",
+    "ERROR_FLAGS": "read-clear status",
     "WKUP_CAUSE": "W1C status",
     "RANGE_VALID": "arms the range",
     # Thresholds clamp to FIFO depth; export mask is wider than storage.
@@ -264,11 +268,18 @@ WRITE_EXCLUDE_PREFIXES: dict[str, str] = {
     "AXIL_MAILBOX_": "FIFO",
 }
 
-# Beat granule (DataBusWidthLog2=3). END_ADDR reset is 0x7.
-_GRANULE = 0x7
+# Beat granule. hw/ip/axi_filter/doc/index.adoc (Address Range Granule): with
+# allow_burst = 0 the granule is the data bus width and address bits [2:0] are
+# ignored, so the mask is one less than the bus width in bytes.
+_GRANULE = AXI_BUS_BYTES - 1
 _INBOUND_ADDR = frozenset({"START_ADDR", "END_ADDR"})
-# Peer at reset during solo bash (each bash restores before the next reg).
-_INBOUND_PEER_RESET = {"START_ADDR": 0x7, "END_ADDR": 0x0}
+# Peer at reset during solo bash (each bash restores before the next reg), taken
+# from the generated export rather than transcribed: the value for START_ADDR is
+# the peer END_ADDR's reset, and vice versa.
+_INBOUND_PEER_RESET = {
+    "START_ADDR": INBOUND_FILTER_CTRL_0.reset("END_ADDR"),
+    "END_ADDR": INBOUND_FILTER_CTRL_0.reset("START_ADDR"),
+}
 
 
 def write_mask(info: RegInfo) -> int:
@@ -280,7 +291,7 @@ def inbound_addr_expected(name: str, written: int) -> int:
     """Readback after a solo START/END write with the peer at reset.
 
     ``allow_burst`` reset is 0, so the granule is 8 bytes
-    (``hw/common/axi/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
+    (``hw/ip/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
     when START and END share a beat, START[2:0] clears and END[2:0] sets;
     otherwise the write lands. The 4 KB granule is CHK-PAGE-WIDEN.
     """

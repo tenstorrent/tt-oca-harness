@@ -5,43 +5,43 @@
 ======
 *Register Arrays:* This register map contains the following register arrays:
 
-* *meipl[32]*: 32 registers
-  ** Base Address: 0x4
+* *meipl[256]*: 256 registers
+  ** Base Address: 0x0
   ** Address Increment: 0x4 per register
 
-* *meip[2]*: 2 registers
+* *meip[8]*: 8 registers
   ** Base Address: 0x1000
   ** Address Increment: 0x4 per register
 
-* *meie[32]*: 32 registers
-  ** Base Address: 0x2004
+* *meie[256]*: 256 registers
+  ** Base Address: 0x2000
   ** Address Increment: 0x4 per register
 
-* *meigwctrl[32]*: 32 registers
-  ** Base Address: 0x4004
+* *meigwctrl[256]*: 256 registers
+  ** Base Address: 0x4000
   ** Address Increment: 0x4 per register
 
-* *meigwclr[32]*: 32 registers
-  ** Base Address: 0x5004
+* *meigwclr[256]*: 256 registers
+  ** Base Address: 0x5000
   ** Address Increment: 0x4 per register
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
-| 0x4 - 0x80 | meipl[32] | RW a| External Interrupt Priority Level Register. Sets the priority level for an interrupt source.
-| 0x1000 - 0x1004 | meip[2] | R a| External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.
-| 0x2004 - 0x2080 | meie[32] | RW a| External Interrupt Enable Register. Controls interrupt enable for a single source.
+| 0x0 - 0x3FC | meipl[256] | RW a| External Interrupt Priority Level Register. Sets the priority level for an interrupt source.
+| 0x1000 - 0x101C | meip[8] | R a| External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.
+| 0x2000 - 0x23FC | meie[256] | RW a| External Interrupt Enable Register. Controls interrupt enable for a single source.
 | 0x3000 | mpiccfg | RW a| PIC Configuration Register. Used to select the operational parameters of the PIC.
-| 0x4004 - 0x4080 | meigwctrl[32] | RW a| External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.
-| 0x5004 - 0x5080 | meigwclr[32] | W a| External Interrupt Gateway Clear Register. Writing any value clears the gateway's
+| 0x4000 - 0x43FC | meigwctrl[256] | RW a| External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.
+| 0x5000 - 0x53FC | meigwclr[256] | W a| External Interrupt Gateway Clear Register. Writing any value clears the gateway's
 interrupt pending (IP) bit for edge-triggered interrupts.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.meipl[32] Register
+[cols="1,3,1,1,6", options="header"]
+.meipl[256] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
@@ -50,8 +50,8 @@ RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)
 Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.meip[2] Register
+[cols="1,3,1,1,6", options="header"]
+.meip[8] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `intpend` | R | 0x0 a| External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.
@@ -59,8 +59,8 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)
 1: Interrupt pending
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.meie[32] Register
+[cols="1,3,1,1,6", options="header"]
+.meie[256] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
@@ -69,7 +69,7 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)
 1: Interrupt enabled
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .mpiccfg Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -79,8 +79,8 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)
 1: Reverse priority order (15=lowest to 0=highest)
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.meigwctrl[32] Register
+[cols="1,3,1,1,6", options="header"]
+.meigwctrl[256] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -92,8 +92,8 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)
 1: Active-low interrupt
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.meigwclr[32] Register
+[cols="1,3,1,1,6", options="header"]
+.meigwclr[256] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved

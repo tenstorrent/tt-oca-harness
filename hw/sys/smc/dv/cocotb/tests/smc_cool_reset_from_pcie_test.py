@@ -15,6 +15,16 @@ from smc_base_test import smc_base_test
 class smc_cool_reset_from_pcie_test(smc_base_test):
     """FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o."""
 
+    required_evidence = (
+        "CHK-FLR-BASIC",
+        "CHK-FLR-COOL",
+        "CHK-FLR-IDLE",
+        "CHK-FLR-ISO",
+        "CHK-FLR-WARM",
+        "CHK-FLR-ZERO-CNT",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

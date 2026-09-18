@@ -4,7 +4,7 @@
 //-----------------------------------------------------------------------------
 // File: test_jtag_stap_tb.cpp
 // Description: Verilator C++ driver for JTAG STAP testbench
-//              Simplified driver for --timing mode - test logic is in SystemVerilog
+//              Clock driver for --timing mode; the test logic is in SystemVerilog
 //-----------------------------------------------------------------------------
 
 #include "Vjtag_stap_tb.h"

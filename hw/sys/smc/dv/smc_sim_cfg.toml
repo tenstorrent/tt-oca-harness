@@ -6,10 +6,14 @@ schema_version = 1
 # Launch entry: `--dut smc` (discovered by the directory convention).
 # tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration,
 # which carries the CPU memory macros); the bare DUT name selects that
-# wrapper-based TB.
+# wrapper-based TB. Two frameworks share this config and one tb_top:
+# cocotb/PyUVM (default) and SV-UVM (`--framework uvm`, VCS; see the
+# [frameworks.uvm] overlay at the bottom). Shared stage graph + tool list
+# come from profile = "native".
 name = "smc"
 profile = "native"
-description = "SMC OSS cocotb: smc_wrapper under tb_top"
+description = "SMC OSS DV flow (cocotb/PyUVM default, SV-UVM via --framework uvm)"
+default_framework = "cocotb"
 default_tool = "verilator"
 tools = ["vcs", "verilator", "xcelium"]
 
@@ -17,9 +21,43 @@ tools = ["vcs", "verilator", "xcelium"]
 path = "testlists/all.toml"
 format = "toml_list"
 
+# The PeakRDL register blocks cpu_ctrl_reg, reset_unit_reg and
+# system_timer_octs_reg each carry two immediate assertions on
+# external_wr_ack / external_rd_ack (assert_bad_ext_wr_ack /
+# assert_bad_ext_rd_ack). On VCS they fire once at t=0 fs, before reset is
+# applied, because the ack strobes and external_pending are still X and an X
+# fails `assert(!ack || ...)`. Benign X-init in generated code; the SEP flow
+# waives the same class for abr_reg.
+#
+# They live in the POST-reset branch of an always_ff, so they are REAL runtime
+# protocol checks -- waiving them by file or by name alone would also hide a
+# genuine runtime violation. The two patterns therefore work as a pair:
+#
+#   ignore    -- drops the "Error:" line of exactly these six assertions, and
+#                only when it reads "at time 0 fs".
+#   hard-fail -- the companion line carries the timestamp ("...: started at
+#                0fs failed at 0fs"). Matching "failed at <non-zero>" turns any
+#                post-time-0 firing of those exact assertions into a hard
+#                failure.
+#
+# So the t=0 X-init noise is waived and nothing else is: a later firing of the
+# same assertion still fails the run, loudly, on the timestamped line. No other
+# assertion is touched; `prim_ag_clk_mux` CheckMutualExclusionClk1 in
+# particular still fails the leaf that fires it.
+#
+# ($assertoff in the TB does not work here -- it races the always_ff's own
+# time-0 evaluation and the assertion fires first.)
+[pass_fail]
+extra_ignore_patterns = [
+  '(cpu_ctrl_reg|reset_unit_reg|system_timer_octs_reg)\.sv", \d+: \S+\.assert_bad_ext_(wr|rd)_ack: at time 0 fs',
+]
+extra_hard_fail_patterns = [
+  '(cpu_ctrl_reg|reset_unit_reg|system_timer_octs_reg)\.sv", \d+: \S+\.assert_bad_ext_(wr|rd)_ack: started at \d+fs failed at [1-9]',
+]
+
 [native.stages.clean]
 kind = "clean"
-paths = ["{run_dir}", "hw/sys/smc/dv/build"]
+paths = ["{run_dir}", "hw/sys/smc/dv/build", "hw/sys/smc/dv/build_dual"]
 
 [build]
 top_module = "smc_uvm_top"
@@ -40,8 +78,9 @@ common_bender_targets = [
 # smc_wrapper Bender target pulls hw/top/smc_wrapper.sv.
 bender_targets = ["smc", "smc_wrapper"]
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smc/dv/tb",
+  # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
+  "hw/common/assert",
 ]
 exclude_files = [
   "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
@@ -49,20 +88,90 @@ exclude_files = [
   "hw/oss-example/wrapper/sep/sep_ip_integration.sv",
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv",
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
-  "deps/i3c-core",
 ]
 stubs = [
-  # Tooling shims only (OSS prim port / X-init). No product-module overrides.
+  # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks them on Verilator. On
+  # VCS only, the runner drops any stub whose basename the Bender graph
+  # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
+  # receives both files like Verilator does. The leaves that read a
+  # signal behind one, and the VCS control that keeps those claims honest, are
+  # in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc (Bench stand-ins).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
-  # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # SYS_OUT boundary: the shared AXI VIP interface the slave agent binds and
+  # the bridge that places the wrapper's struct port on it.
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
+  # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
+  #   prim_fifo_async <- hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv:79
+  #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
+  #   prim_rst_sync   <- hw/ip/efuse/rtl/efuse_interface_controller.sv:159
+  #                      (Bender.yml:64,  target any(opentitan_smu, sep, smu, key_manager))
+  # Without them both cells elaborate as unresolved: VCS/Xcelium refuse the
+  # build outright, and Verilator only proceeds because `-Wno-fatal` demotes
+  # the missing-module error to a warning and black-boxes them, leaving a CDC
+  # FIFO and a reset synchronizer silently absent. Bender.yml carries them only
+  # under the targets above, so this DV-local source entry supplies them to all
+  # three simulators without editing vendor/.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
+  # prim_flop_2sync instantiates prim_cdc_rand_delay when SIMULATION is defined
+  # (it is, see targets.default.tools.*). Bender.yml:38-42 closes exactly this
+  # gap for `dtp` with `target: all(dtp, simulation)`; `smc` has no equivalent
+  # entry, so this file is listed here.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
+  # prim_ram_1p backs the CPU cluster memory macros
+  # (smc_cpu/mem_swaps/4core/OCAH4CORECluster_mem_swaps.sv:95, reached via
+  # smc_cpu_mem_integration -> prim_ram_1p_adv_ext). Bender.yml:81,197 carry it
+  # only for any(sep_wrapper, smu_wrapper) / any(opentitan_smu, sep, smu); the
+  # smc/smc_wrapper targets get prim_ram_1p_adv_ext but not the macro it wraps,
+  # so without this entry every CPU icache/dcache tag+data array elaborates as a black box.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv",
+  # prim_ram_1p_adv backs the trace-mem banks in smc_ip_integration
+  # (gen_trace_mem_bank). Bender.yml:80-83 carries it only for
+  # any(sep_wrapper, smu_wrapper); VCS refuses the missing cell (Verilator
+  # -Wno-fatal black-boxes it). Same hole class as prim_ram_1p above.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv",
+  # prim_subreg/prim_subreg_ext back idma_reg64_2d_reg_top (the iDMA register
+  # file); prim_arbiter_tree backs log_engine. All three sit in Bender.yml under
+  # any(opentitan_smu, sep, smu) only, so without them the DMA CSR subregs and
+  # the log-engine arbiter elaborate as black boxes under smc/smc_wrapper.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_ext.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv",
   # DV collateral for the CPU memory macros: counters, FW mailbox, the ECC
   # inject hook and the image backdoors, bound into smc_ip_integration.
-  # Not in the Bender wrapper target -- only this TB binds it.
+  # Not in the Bender wrapper target -- only this TB binds it. The map package
+  # holds the scratch bank/entry decode both it and tb_top.sv use.
+  "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
+  # this list feeds the cocotb/Verilator filelist, and the
+  # [frameworks.uvm.build] sources list (which replaces this one) repeats the
+  # entries. Instantiated in tb/tb_top.sv, single-instance body only.
+  "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
+  # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
+  "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Spec-derived P0 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  # Spec-derived P1 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_iso_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_filt_fcov.sv",
 ]
 
 [build.verilator]
@@ -73,6 +182,66 @@ ccache = true
 
 [build.options]
 build_jobs = 8
+
+[coverage.vcs]
+# Commercial signoff path, mirroring hw/sys/sep/dv/sep_sim_cfg.toml [coverage.vcs];
+# the VCS bring-up checklist is in cov/config/vcs/README.md.
+#
+# Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table
+# replaces the list rather than appending to it, then add the scope file.
+#
+# Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
+# but still computes the headline score over the whole database, so the only
+# way to keep the CPU cluster and the vendored blocks out of the number is to
+# keep them out of the database: `-cm_hier` limits what gets instrumented.
+# Edit `smc_cov_scope.hier` then `--rebuild` -- the file is not fingerprinted.
+#
+# `-cm_common_hier` extends the SAME scope file from code coverage to assertion
+# coverage; `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without
+# it the excluded hierarchy leaves the code metrics but is still graded for
+# assertions. It is a Limited Customer Availability feature, so VCS refuses the
+# compile without `-lca` -- an opt-in switch, not a separate licence.
+#
+# The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
+# (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
+# list is a deprecated duplicate and the runner refuses the config.
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_hier",
+  "{repo_root}/hw/sys/smc/dv/cov/config/vcs/smc_cov_scope.hier",
+  "-lca",
+  "-cm_common_hier",
+]
+
+[coverage.verilator]
+# Instrument line/branch (--coverage-line) and SVL user coverage; toggle
+# stays off because a toggle-instrumented native database per test leaf does
+# not fit a reseeded regression on standard CI runner disk before merge.
+#
+# --output-groups 0 disables Verilator's default concatenation of the
+# generated .cpp files into --build-jobs groups. Grouping is by file count,
+# so on the coverage-instrumented model one group becomes a translation unit
+# too large to compile in CI time; per-file compilation keeps every unit and
+# every compiler process bounded.
+#
+# --coverage-expr matches the sep and dtp configs; without it the `expression`
+# metric family is absent from every SMC run.
+#
+# smc_cov_scope.vlt applies the coverage scope at COMPILE time, so what it
+# drops never enters the database. See cov/config/vcs/README.md for what the
+# scoped number is and why; the sibling .hier file carries the same intent for
+# VCS and has to be kept in step by hand.
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/smc/dv/cov/config/verilator/smc_cov_scope.vlt",
+]
 
 [frameworks.cocotb]
 python_root = "hw/sys/smc/dv/cocotb"
@@ -86,15 +255,127 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 [c_build.default]
 # Build the selected SMC C test and declare every time-zero preload consumed by
 # the firmware boot test. run_dv stages these basenames into the simulator cwd.
+#
+# The DV test images need a picolibc-enabled RISC-V toolchain. Use an explicit
+# $RISCV_TOOLCHAIN, else scripts/docker-run.sh run-here. No site or PATH probe.
+# Same contract as [c_build.bootrom], [c_build.dual_occp] and
+# [c_build.occp_sanity] below. Without it, every `firmware = "<name>"` test
+# fails at c_compile on any host that does not carry the toolchain.
+#
+# NOTE: argv goes through str.format() and the runlib rejects every placeholder
+# except {fw_target} -- braces of any kind, including shell ${...} expansion,
+# are unavailable here. Use "$VAR" and $(...) instead.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "make ocah-dv-fw-tests TARGET=smc TEST={fw_target} && cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the SMC DV test image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf-; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
 ]
 outputs = [
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.sram.bin",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.sram.sym",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/default_efuse_shadow_reg.preload",
+]
+
+[c_build.bootrom]
+# Build the real SMC production boot ROM (hw/sys/smc/bootrom/prod) instead of a
+# DV C test. Selected by `firmware = { name = "prod_rom", mode = "bootrom" }`.
+#
+# I3C_CORE=swap defines I3C_USE_HCI_CORE, which is what
+# selects drivers/src/i3c_hci_driver.c -- the target-side driver for the OCA
+# i3c-core this tree actually instantiates -- over the ROM's default I3C driver.
+#
+# ENABLE_RELEASE_PRINTS=1 affects debuggability only, not function.
+# The ROM's simputs() virtual console is wrapped in `#ifdef DEBUG`
+# (bootrom/prod/lib/src/virt_console.c), and a release build only defines
+# DEBUG when this knob is set (bootrom/prod/Makefile; it
+# defaults to 0). Without it the target half of every dual test is a black box:
+# every gate still passes, because they read CSRs, POST codes and the retired
+# PC rather than the console. A ROM built without this knob emits no
+# `[target-fw]` lines. Leave it on.
+#
+# The ROM's Makefile chooses its own toolchain: `all` runs `toolchain-images`,
+# which uses $RISCV_TOOLCHAIN when set and otherwise re-enters itself through
+# scripts/docker-run.sh with an explicit target, then packs the images. So it
+# is invoked plainly here.
+#
+# Do not wrap it in a container from this side. Inside one, the same Makefile
+# takes the same unset-$RISCV_TOOLCHAIN branch, tries to containerise again and
+# fails with "error: podman or docker is required" -- there is no container
+# engine in the toolchain image.
+#
+# NOTE: as in [c_build.default], argv goes through str.format() and the runlib
+# rejects every placeholder except {fw_target} -- braces of any kind, including
+# shell ${...} expansion, are unavailable here. Use "$VAR" and $(...) instead.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1",
+]
+# prod_rom.bin64 is exactly 16384 64-bit lines, matching the CPU ROM array
+# (prim_rom Width=64 Depth=16384 in OCAH4CORECluster_rom_ext), so it loads via
+# +rom_bin64 / $readmemb with no truncation. The .preload.hex form is staged
+# alongside it for inspection.
+outputs = [
+  "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.preload.hex",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+]
+
+[c_build.dual_occp]
+# All three images the dual OCCP boot needs, in one stage, because the test
+# needs them together:
+#   prod_rom                -> u_dut  (target, real production boot ROM)
+#   occp_unsecure_boot_test -> u_bfm  (controller, rom-mode DV image)
+#   hello_world             -> transferred over I3C by the controller. An
+#                              ordinary sram-mode image from the shared test
+#                              engine, matching the reference environment's
+#                              +ROM_FW_TEST=hello_world. cocotb writes it into
+#                              the controller's SRAM over AXI, so nothing has to
+#                              embed it in a ROM image.
+#
+# {fw_target} is the only placeholder the runlib allows, so the DV test names
+# are spelled out rather than interpolated. Same host-toolchain-vs-container
+# split as [c_build.default] above; see there for why it exists and for the
+# no-braces constraint on argv.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_TOOLCHAIN=\"$RV_TC\" && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the dual-OCCP images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_PREFIX=riscv64-unknown-elf- && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+  "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.hex",
+  "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.sym",
+  "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.bin",
+  "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.sym",
+]
+
+[c_build.occp_sanity]
+# Two images for the rom-only OCCP family: the production boot ROM for the
+# target, and one rom-mode DV controller image. No payload -- these tests never
+# transfer one, which is what separates them from [c_build.dual_occp].
+#
+# Same host-toolchain-vs-container split as [c_build.default] above; see there
+# for why it exists and for the no-braces constraint on argv.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OCCP sanity image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+  "hw/sys/smc/dv/fw/build/tests/occp_sanity/occp_sanity.rom.hex",
+  "hw/sys/smc/dv/fw/build/tests/occp_sanity/occp_sanity.rom.sym",
 ]
 
 [run_modes.smoke]
@@ -105,12 +386,48 @@ args = [
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 
+[run_modes.prod_rom]
+# Production boot ROM runs. Carries NO +rom_hex.
+#
+# `smoke` is the default run mode for any test that does not name one, and its
+# +rom_hex points at assets/smc_rom_default.hex -- 16 lines of zeros. Two
+# separate loaders consume it: OCAH4CORECluster_rom_ext at #0.1 (which prefers
+# +rom_bin64, so the production image wins there) and
+# smc_cpu_mem_integration's backdoor at #0.2 (which only knows +smc_rom_hex /
+# +rom_hex). The later one would therefore zero ROM words 0-15 -- the reset
+# vector and first instructions -- on top of a correctly loaded production ROM,
+# leaving the CPU to fetch all-zero opcodes. Keeping +rom_hex out of this mode
+# is what makes +rom_bin64 the single ROM image for these tests.
+description = "SMC boot from the real production ROM (+rom_bin64 only)"
+timeout_sec = 3600
+args = [
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+]
+
+[run_modes.dual]
+# No +rom_hex here, for the same reason [run_modes.prod_rom] above omits it:
+# smc_cpu_mem_integration's #0.2 backdoor would apply it on top of the
+# production ROM loaded at #0.1 and zero its entry point.
+description = "Dual-SMC OCCP boot (+rom_bin64 target, +bfm_rom_hex controller)"
+timeout_sec = 7200
+args = [
+  # Generated by hw/sys/smc/dv/efuse_preload/generate_efuse_preload.py in the
+  # c_build stage, from configurations/default_efuse.toml. The single-instance
+  # run modes above use the hand-maintained assets/smc_efuse_default.hex, so
+  # fuse sense delivers different contents in the two targets.
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
+]
+
 [targets.default]
 description = "OSS SMC cocotb target"
 build_dir = "hw/sys/smc/dv/build/cocotb"
-defines = [
-  "SYNTHESIS",
-]
+# SYNTHESIS is not set on any tool (same as SEP). It no-ops every
+# `ifndef SYNTHESIS` block (OpenTitan ASSERT macros, PeakRDL register
+# checks, Chipyard sim-only `$error` / plusargs). Verilator still compiles
+# those macros out because prim_assert.sv / ocah_assert.svh gate on
+# VERILATOR; VCS and Xcelium run them. The shared native profile keeps
+# COMMON_CELLS_ASSERTS_OFF, so PULP common_cells inline asserts stay off
+# on every backend. Verilator also keeps +define+ASSERTS_OFF below.
 
 [targets.default.tools.verilator]
 flags = [
@@ -118,3 +435,146 @@ flags = [
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
 ]
+
+# Dual-SMC OCCP boot model. Same tb_top.sv, same smc_uvm_top; `SMC_DUAL` selects
+# the second instance and the shared I3C bus (see the header of tb_top.sv).
+#
+# Every build path is de-conflicted from [targets.default] -- its own filelist,
+# bender_filelist, work_dir and build_dir -- because concurrent --rebuild runs
+# race on bender filelist generation (docs/SMC_TB_ARCH.adoc, Build Caching). The two
+# models therefore coexist on disk and a dual run never invalidates the
+# single-instance model, or the reverse.
+#
+# The second instance doubles per-instance state and simulation time; hdl_compile
+# does not grow because the module code is generated once. It is a separate
+# target so single-instance runs do not pay for it.
+[targets.dual]
+description = "OSS dual-SMC cocotb target: OCCP controller + target on a shared I3C bus"
+build_dir = "hw/sys/smc/dv/build_dual/cocotb"
+work_dir = "hw/sys/smc/dv/build_dual"
+filelist = "hw/sys/smc/dv/build_dual/smc_dual_dut_compile.f"
+bender_filelist = "hw/sys/smc/dv/build_dual/smc_dual_bender.f"
+defines = [
+  "SYNTHESIS",
+  "SMC_DUAL",
+]
+
+[targets.dual.tools.verilator]
+flags = [
+  # An undeclared net in the dual harness silently becomes a constant-0 wire
+  # under -Wno-fatal; a port that nothing drives must stop the build instead.
+  "-Werror-IMPLICIT",
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+  "+define+ASSERTS_OFF",
+]
+
+# --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
+# profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
+# for both frameworks: +define+UVM (from the profile's [frameworks.uvm] overlay) switches
+# tb/tb_top.sv from the ported cocotb shape to the self-contained SV-UVM shape, which
+# `include`s uvm/tests/smc_tests.sv.
+[frameworks.uvm]
+description = "SMC SV-UVM smoke flow (VCS)"
+# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on the
+# commercial simulators only (Verilator has no SV-UVM support), so the overlay restates them.
+default_tool = "vcs"
+tools = ["vcs"]
+
+[frameworks.uvm.build]
+# The shared framework library and the AXI VIP SV-UVM layer come from their owned ordered
+# manifests, expanded in listed order AHEAD of this table's own incdirs/sources (dedup-merge)
+# — never hand-copy library or VIP paths here. Compile order stays load-bearing and explicit:
+# the generated filelist emits the expanded `sources` AFTER the bender filelist (DUT packages
+# visible), then `top_file` last:
+#   ocah_lib manifest -> ocah_axi_vip manifest
+#   (each: evidence base -> interface -> collateral -> UVM pkg)
+#   -> library-resolved DUT primitives -> TB collateral -> smc_tb_if -> smc_env_pkg
+#   -> smc_seq_lib_pkg -> tb_top.sv
+# The generated SMC address map (smc_top_addrmap_pkg) the ref model and the CSR sequences
+# read arrives through the bender filelist (Bender.yml target `smc`); listing it here would
+# compile the package twice.
+# smc_env_pkg compiles before smc_seq_lib_pkg: the scenario virtual sequences run on the
+# smc_virtual_sequencer the env package declares.
+source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/sys/smc/dv/build/uvm/smc_uvm_compile.f"
+bender_filelist = "hw/sys/smc/dv/build/uvm/smc_uvm_bender.f"
+work_dir = "hw/sys/smc/dv/build/uvm"
+incdirs = [
+  "hw/sys/smc/dv/tb",
+  "hw/common/assert",
+  "hw/sys/smc/dv/uvm/env",
+  "hw/sys/smc/dv/uvm/seq_lib",
+  "hw/sys/smc/dv/uvm/tests",
+]
+# This list REPLACES the cocotb [build].sources list, so the TB collateral both flows compile
+# (the CPU memory DV binding) is repeated here; the AXI VIP interface and struct bridge
+# arrive through the ocah_axi_vip manifest.
+sources = [
+  # DUT-support primitives the Bender `smc` targets reach only through their exported +incdir
+  # paths: Verilator searches include directories for unresolved modules, VCS compiles only
+  # what a filelist names. This is the set Verilator's dependency file records for the cocotb
+  # build, minus the primitives the Bender filelist names itself (a module listed in both
+  # places is a duplicate declaration on VCS); macro headers arrive through +incdir in both
+  # flows. prim_cipher_pkg leads: prim_prince and prim_subst_perm import it, and VCS resolves
+  # package scopes at analysis time (Verilator never elaborates those two, so it never loaded
+  # the package).
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_encode.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_dec.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_enc.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_39_32_dec.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_39_32_enc.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subst_perm.sv",
+  "vendor/tenstorrent/tt-hw-debug/upstream/dependencies/common/generic_mem_model.sv",
+  "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem.sv",
+  "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem_sink.sv",
+  # The JTAG protocol SVA on the CPU TAP pins: the SMC bench carries no JTAG VIP
+  # agent, so the module comes from the package file directly.
+  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
+  # TB collateral shared with the cocotb flow.
+  "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
+  "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  # Flow-shared functional-coverage modules; the same entries the [build]
+  # sources list carries for the cocotb/Verilator flow.
+  "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
+  # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
+  "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Spec-derived P0 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  # Spec-derived P1 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_iso_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_filt_fcov.sv",
+  "hw/sys/smc/dv/tb/smc_tb_if.sv",
+  "hw/sys/smc/dv/uvm/env/smc_env_pkg.sv",
+  "hw/sys/smc/dv/uvm/seq_lib/smc_seq_lib_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+[frameworks.uvm.targets.default]
+description = "SMC SV-UVM default target"
+build_dir = "hw/sys/smc/dv/build/uvm"
+# The bare `UVM` define (selects the SV-UVM shape of the shared tb_top.sv) comes from the
+# native profile's [frameworks.uvm] overlay — no per-DUT copy.

@@ -19,7 +19,7 @@ For detailed instructions on privately reporting a security vulnerability, see [
 
 ### Questions or Discussion
 
-If you have questions about the vulnerability or need to start a conversation about it, please contact **ospo@tenstorrent.com** directly.
+If you have questions about the vulnerability or need to start a conversation about it, please contact **<ospo@tenstorrent.com>** directly.
 
 ## Our Security Process
 

@@ -17,8 +17,12 @@
  * Re-run Phase 2; digest must match Phase 2 and the fixed SW-key vector.
  *
  * Phase 4 — Optional ENV note (no security claim without keymgr allow-path):
- * If sideload=1 START raises ErrKeyNotValid, log INFO only. RTL-KMAC-005
- * recovery is tracked in kmac_bug.md, not soft-passed here.
+ * If sideload=1 START raises ErrKeyNotValid, log INFO only, then recover
+ * through CMD.err_processed so Phase 5 can run.
+ *
+ * Phase 5 — Error recovery:
+ * Repeat the Phase 2 SW-key operation after the error. The digest must match
+ * Phase 2; a wiped or partial STATE means the engine was read before Squeeze.
  *
  * Checker summary:
  * [1] default sideload = 1 (typed CFG.sideload)
@@ -27,6 +31,7 @@
  * [4] Phase 2 KMAC completes
  * [5] Phase 2 digest matches fixed SW-key vector
  * [9] Phase 3 digest matches Phase 2 (determinism)
+ * [10] Phase 5 digest matches Phase 2 after error recovery
  *
  */
 
@@ -60,29 +65,72 @@ static int wait_idle(void) {
     return -1;
 }
 
-static int wait_done(void) {
+/* Clear every KMAC interrupt status bit (all are W1C). */
+static void clear_intr_state(void) {
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+}
+
+/*
+ * Wait until the digest is readable.
+ *
+ * STATE is driven only while the SHA3 FSM is in Squeeze; outside that state the
+ * STATE window reads back as zero. INTR_STATE.kmac_done is a sticky event bit
+ * and cannot be used as the gate: the error-recovery path raises it again on
+ * its own, so a leftover done makes the next operation read STATE far too early.
+ */
+static int wait_squeeze(void) {
     int t = 2000000;
     while (t-- > 0) {
         uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & KMAC__INTR_STATE__KMAC_ERR_bm) {
             uint32_t err = READ_REG(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
-            printf("  ERROR: kmac_err while waiting done (ERR_CODE=0x%08x code=0x%02x)\n", err,
+            printf("  ERROR: kmac_err while waiting squeeze (ERR_CODE=0x%08x code=0x%02x)\n", err,
                    SEP_KMAC_ERR_CODE_BYTE(err));
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_ERR_bm);
             return -2;
         }
-        if (intr & KMAC__INTR_STATE__KMAC_DONE_bm) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-                      KMAC__INTR_STATE__KMAC_DONE_bm); /* W1C */
-            return 0;
-        }
+        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        if (s.f.sha3_squeeze) return 0;
     }
-    printf("  ERROR: KMAC done timeout\n");
+    printf("  ERROR: KMAC squeeze timeout\n");
     return -1;
 }
 
-/* Configure KMAC-128 with given sideload setting using software entropy. */
+/*
+ * Recover from a reported KMAC error.
+ *
+ * CMD.err_processed only starts recovery: kmac_app issues an internal
+ * CmdProcess and raises kmac_done once that throwaway digest is absorbed.
+ * INTR_STATE must therefore be cleared after the engine reaches idle, not
+ * before. Reaching idle also reopens CFG_REGWEN, which kmac_configure() checks.
+ */
+static int kmac_recover_from_error(void) {
+    kmac__CMD_t ec = {.w = 0};
+    ec.f.err_processed = 1;
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, ec.w);
+
+    if (wait_idle() != 0) return -1;
+
+    clear_intr_state();
+    return 0;
+}
+
+/*
+ * Configure KMAC-128 with given sideload setting using software entropy.
+ *
+ * CFG_REGWEN is hardware-driven off sha3_fsm == StIdle. CFG_SHADOWED and
+ * KEY_SHARE writes issued while it is low are dropped with no bus error and no
+ * ERR_CODE, so the miss stays invisible until a later digest mismatch. Refuse
+ * to configure rather than let that happen.
+ */
 static int kmac_configure(int sideload) {
+    kmac__CFG_REGWEN_t regwen = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
+    if (!regwen.f.en) {
+        printf("  ERROR: CFG_REGWEN=0, CFG_SHADOWED write would be dropped silently\n");
+        return -1;
+    }
+
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 1;
     cfg.f.mode = SEP_KMAC_MODE_CSHAKE;
@@ -124,6 +172,8 @@ static void write_kmac_prefix(void) {
 static int run_kmac_op(uint32_t out[8]) {
     kmac__CMD_t cmd = {.w = 0};
 
+    clear_intr_state();
+
     /* START */
     cmd.f.cmd = SEP_KMAC_CMD_START; /* CmdStart */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
@@ -137,7 +187,7 @@ static int run_kmac_op(uint32_t out[8]) {
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS; /* CmdProcess */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    if (wait_done() != 0) return -1;
+    if (wait_squeeze() != 0) return -1;
 
     /* Read digest: XOR two masked shares */
     for (int i = 0; i < 8; i++)
@@ -172,8 +222,10 @@ int main(void) {
     }
 
     int errors = 0;
+    int injected_err = 0;
     uint32_t digest_sw[8];
     uint32_t digest_retry[8];
+    uint32_t digest_recover[8];
 
     /* ----------------------------------------------------------------
      * Phase 1: Register control — verify sideload field R/W
@@ -227,11 +279,10 @@ int main(void) {
      * -------------------------------------------------------------- */
     printf("\n=== Phase 2: KMAC-128 with SW key (sideload=0) ===\n");
 
-    if (wait_idle() != 0) {
+    if (wait_idle() != 0 || kmac_configure(0) != 0) { /* sideload=0 */
         errors++;
         goto done;
     }
-    kmac_configure(0); /* sideload=0 */
     write_sw_key();
     write_kmac_prefix();
 
@@ -262,11 +313,10 @@ int main(void) {
      * -------------------------------------------------------------- */
     printf("\n=== Phase 3: Determinism check (sideload=0, same SW key) ===\n");
 
-    if (wait_idle() != 0) {
+    if (wait_idle() != 0 || kmac_configure(0) != 0) {
         errors++;
         goto done;
     }
-    kmac_configure(0);
     write_sw_key();
     write_kmac_prefix();
 
@@ -299,11 +349,10 @@ int main(void) {
 
     /* ----------------------------------------------------------------
      * Phase 4: ENV note only — no fail-closed claim without keymgr allow-path.
-     * RTL-KMAC-005 (post-KeyNotValid STATE wipe) tracked in kmac_bug.md.
+     * The error is still injected so Phase 5 can exercise recovery.
      * -------------------------------------------------------------- */
     printf("\n=== Phase 4: ENV note (sideload=1, no keymgr) ===\n");
-    if (wait_idle() == 0) {
-        kmac_configure(1);
+    if (wait_idle() == 0 && kmac_configure(1) == 0) {
         write_kmac_prefix();
         kmac__CMD_t cmd = {.w = 0};
         cmd.f.cmd = SEP_KMAC_CMD_START;
@@ -316,13 +365,56 @@ int main(void) {
         uint32_t err = READ_REG(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
         printf("  INFO: sideload START ERR_CODE=0x%08x code=0x%02x kmac_err=%d (ENV)\n", err,
                SEP_KMAC_ERR_CODE_BYTE(err), saw_err);
-        kmac__CMD_t ec = {.w = 0};
-        ec.f.err_processed = 1;
-        WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, ec.w);
-        WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                             KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                             KMAC__INTR_STATE__KMAC_ERR_bm);
-        (void)wait_idle();
+        injected_err = saw_err;
+        if (kmac_recover_from_error() != 0) {
+            printf("  CHK[10] FAIL: KMAC did not return to idle after err_processed\n");
+            errors++;
+            goto done;
+        }
+    }
+
+    /* ----------------------------------------------------------------
+     * Phase 5: SW-key operation after error recovery.
+     * A fresh sideload=0 run must produce the same digest as Phase 2.
+     * -------------------------------------------------------------- */
+    printf("\n=== Phase 5: SW-key KMAC after error recovery ===\n");
+    if (!injected_err) {
+        printf("  INFO: no sideload error raised in Phase 4; recovery path not exercised\n");
+        goto done;
+    }
+
+    if (kmac_configure(0) != 0) {
+        printf("  CHK[10] FAIL: CFG_SHADOWED not writable after recovery\n");
+        errors++;
+        goto done;
+    }
+    write_sw_key();
+    write_kmac_prefix();
+
+    if (run_kmac_op(digest_recover) != 0) {
+        printf("  CHK[10] FAIL: KMAC did not complete after error recovery\n");
+        errors++;
+        goto done;
+    }
+
+    {
+        int mismatch = 0;
+        for (int i = 0; i < 8; i++)
+            if (digest_recover[i] != digest_sw[i]) {
+                mismatch = 1;
+                break;
+            }
+        if (!mismatch) {
+            printf("  CHK[10] PASS: post-recovery digest matches Phase 2\n");
+        } else {
+            printf("  CHK[10] FAIL: post-recovery digest differs from Phase 2\n");
+            printf("    Phase 2: ");
+            for (int i = 0; i < 8; i++) printf("%08x ", digest_sw[i]);
+            printf("\n    Recover: ");
+            for (int i = 0; i < 8; i++) printf("%08x ", digest_recover[i]);
+            printf("\n");
+            errors++;
+        }
     }
 
 done:

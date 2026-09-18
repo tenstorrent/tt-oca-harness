@@ -19,7 +19,7 @@
 #include "sha256_vectors.h"
 #include "hmac_sha256_vectors.h"
 
-/* Skip boot/unrecoverable wipe so the test boots quickly (see test_rom_crc.c). */
+/* Skip boot/unrecoverable wipe so the test boots quickly. */
 int rom_boot_wipe_enabled(void) {
     return 0;
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -17,7 +17,7 @@
 | 0x24 | ITR | RW a| Interrupt Test Register
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RBR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -27,7 +27,7 @@ points to the bottom of the RX FIFO. Otherwise, this field points to a single-
 byte Receiver Buffer Register.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IER Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -40,7 +40,7 @@ Interrupt.
 | 0 | `ERBFI` | RW | 0x0 a| Enable Receiver Buffer Full (Received Data Ready) Interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IIR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -59,7 +59,7 @@ Interrupt.
 | 0 | `INTERRUPT_PENDING` | R | 0x1 a| Interrupt Pending. Active-low.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LCR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -85,7 +85,7 @@ even parity is selected and `1` if odd parity is selected.
 * `0x3` - 8 bits per character
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MCR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -104,7 +104,7 @@ polarity.
 opposite polarity.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LSR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -137,7 +137,7 @@ This bit triggers the Receiver Line Status Interrupt.
 mode) contains data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MSR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -163,7 +163,7 @@ the last time this register was read. This bit triggers the Modem Status
 Interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SCR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -171,7 +171,7 @@ Interrupt.
 | 7:0 | `SCR` | RW | 0x0 a| Scratch. Holds user data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ECR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -193,7 +193,7 @@ configurations for the trigger levels are:
 * `0xB` - 4096 characters
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ITR Register
 |===
 | Bits | Field | Access | Reset | Description

@@ -72,7 +72,7 @@ static int test_alias_hit_miss_comprehensive(void) {
             uint32_t miss_addr =
                 ALIAS_SRC_BASE + 0x1000000 + miss_test * 0x100000; // beyond all alias ranges
 
-            test_axi_transaction(miss_addr, 4, AXI_READ); // expect miss
+            test_axi_transaction(miss_addr, 4, AXI_READ);           // expect miss
             test_axi_transaction(miss_addr + 0x1000, 4, AXI_WRITE); // expect miss
         }
     }
@@ -97,7 +97,8 @@ static int test_overlapping_priority_scenarios(void) {
             if (setup_output_remap_region_extended(priority, region_start, dest_addr,
                                                    1, // enable
                                                    priority % 2,
-                                                   0xFFE00000 | (priority << 16), // different mask modes
+                                                   0xFFE00000 |
+                                                       (priority << 16), // different mask modes
                                                    CACHE_ATTR_NORMAL_NC + priority) != 0) {
                 return -1;
             }
@@ -223,10 +224,8 @@ static int test_axi_signal_comprehensive_toggle(void) {
             uint32_t test_addr = test_base + 0x1000;
             uint32_t access_size = 1 << axi_size;
 
-            // Read transaction with specific AXI attributes
             test_axi_transaction(test_addr, access_size, AXI_READ);
 
-            // Write transaction with specific AXI attributes
             test_axi_transaction(test_addr + access_size, access_size, AXI_WRITE);
 
             // Burst transactions
@@ -244,7 +243,6 @@ int main(void) {
     printf("Alias Remap Datapath Test\n");
     printf("Strategy: Local-master alias hit/miss/boundary cases; full AXI datapath coverage\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_alias_remap_datapath_p3_test");
         return TEST_FAIL;

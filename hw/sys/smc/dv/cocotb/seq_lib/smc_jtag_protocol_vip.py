@@ -7,7 +7,7 @@ as ``tb_cpu_jtag_*``:
 
 * ``OcahJtagMasterDriver`` / ``OcahJtagDevice`` provide bus bind + register map.
 * Active-high ``tb_cpu_jtag_reset`` is driven only by this wrapper — it is
-  intentionally NOT exposed as bus ``trst`` because ``cocotbext-jtag`` assumes
+  NOT exposed as bus ``trst`` because ``cocotbext-jtag`` assumes
   IEEE active-low TRST polarity.
 * Runtime IR/DR scans use ``OcahJtagMasterDriver`` bit-bang only (no ``JTAGDriver``).
   cocotbext-jtag's GatedClock + RX FSM desyncs after long DMI idle sequences
@@ -33,7 +33,6 @@ _DMI_DR_WIDTH = 41
 # `tb_top.sv` JEP106 + part-number + version composition.
 EXPECTED_CPU_TAP_IDCODE = 0x10CA0555
 
-# Keep historical SMC error name.
 SmcJtagTapError = OcahJtagMasterDriverError
 
 
@@ -319,21 +318,39 @@ class SmcJtagTap:
                 int(cocotb.top.tb_cpu_debug_dmactive.value),
                 int(cocotb.top.tb_cpu_debug_dmactive_ack.value),
             )
-        except Exception:  # noqa: BLE001 - probe optional on older elaborations
+        except Exception:  # noqa: BLE001 - tb_cpu_debug_dmactive* probes are optional
             pass
+        # Both polls below raise on expiry: a debug module that never leaves
+        # reset, or is absent, must fail the smoke test rather than be logged
+        # as a pass ([TIMEOUT-MUST-FAIL]).
+        _DM_POLLS = 16
         dmcontrol = 0
-        for _ in range(16):
+        for _ in range(_DM_POLLS):
             dmcontrol = await self.dmi_read(0x10, abits=abits, idle=idle)
             if dmcontrol & 0x1:
                 break
             await self._idle_tck(idle * 20)
+        else:
+            raise AssertionError(
+                f"{self.name}: DMCONTROL.dmactive never set after {_DM_POLLS} "
+                f"DMI reads of 0x10 (last readback 0x{dmcontrol:08X}). The "
+                f"debug module is not active, so every later DMI result in "
+                f"this scenario is meaningless."
+            )
         cocotb.log.info("%s: dmcontrol readback=0x%08X", self.name, dmcontrol)
         dmstatus = 0
-        for _ in range(16):
+        for _ in range(_DM_POLLS):
             dmstatus = await self.dmi_read(0x11, abits=abits, idle=idle)
             if (dmstatus & 0xF) != 0:
                 break
             await self._idle_tck(idle * 20)
+        else:
+            raise AssertionError(
+                f"{self.name}: DMSTATUS.version stayed 0 after {_DM_POLLS} DMI "
+                f"reads of 0x11 (last readback 0x{dmstatus:08X}). Version 0 is "
+                f"'no debug module present' in the RISC-V debug spec, so this "
+                f"is not a slow bring-up -- there is nothing answering."
+            )
         version = dmstatus & 0xF
         cocotb.log.info(
             "%s: dmstatus=0x%08X (version=%d authenticated=%d abits=%d idle=%d)",

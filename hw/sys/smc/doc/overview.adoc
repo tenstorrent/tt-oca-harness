@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Overview
+:description: SMC responsibilities, architecture, and top-level organization.
+
 [[overview]]
-=== Overview
 
 The System Management Controller (SMC) is a subsystem in a chiplet that
 takes on the system management tasks, including managing
@@ -61,5 +63,5 @@ image::smc_top.png[SMC Top-Level Block Diagram,scaledwidth=90.0%]
 
 The rest of this documentation describes architectural requirements and
 microarchitectural implementation of SMC's components in OCAH. A
-consolidated description of OCAH use cases is available in the top-level
-<<use-cases>> section.
+consolidated description of OCAH use cases is available in
+xref:ocah-home::use-cases.adoc[Use Cases].

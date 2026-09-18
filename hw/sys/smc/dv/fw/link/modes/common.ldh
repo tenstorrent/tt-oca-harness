@@ -3,11 +3,11 @@
 /*
  * SMC boot-image SECTIONS body, shared by every link mode. Caller must
  * REGION_ALIAS "BOOT_REGION" (init/rodata/text) and "RAM_REGION"
- * (data/bss/stack/heap) before INCLUDEing this inside SECTIONS{}.
+ * (data/bss/stack/heap) before including this inside SECTIONS{}.
  */
 
 /* Each hart is allocated its own stack of size __stack_size. This value
- * can be overriden at build-time by adding the following to CFLAGS:
+ * can be overridden at build-time by adding the following to CFLAGS:
  *
  *     -Xlinker --defsym=__stack_size=0xf00
  *
@@ -20,7 +20,7 @@
 __stack_size = DEFINED(__stack_size) ? __stack_size : 0x400;
 PROVIDE(__stack_size = __stack_size);
 
-/* The size of the heap can be overriden at build-time by adding the
+/* The size of the heap can be overridden at build-time by adding the
  * following to CFLAGS:
  *
  *     -Xlinker --defsym=__heap_size=0xf00

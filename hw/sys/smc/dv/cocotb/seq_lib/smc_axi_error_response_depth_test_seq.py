@@ -4,9 +4,16 @@
 
 from __future__ import annotations
 
+import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import external_gpio_ctrl_addr, smc_addr
+from .smc_addr_map import (
+    LOCAL_BASE_RESET,
+    LOCAL_FABRIC_KEEP_MASK,
+    external_gpio_ctrl_addr,
+    local_fabric_masked_addr,
+    smc_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_DECERR = 3
@@ -14,23 +21,62 @@ AXI_RESP_DECERR = 3
 # Alive sentinel: always-OKAY local CSR (before/after fabric-alive proof).
 ALIVE_SENTINEL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
-# Intentional unmapped holes — SPEC: hw/sys/smc/doc/memmap.adoc
-# "SMC Address Space Layout". Offsets are not decoded CSR windows; fabric
-# default slave returns DECERR.
-_SMC_TOP_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
-_UNMAPPED_LOW = _SMC_TOP_BASE + 0x00FF_F000
-_UNMAPPED_HIGH = _SMC_TOP_BASE + 0x0FFF_F000
+# DECERR probes, each named for the region the authoritative map puts it in and
+# each address built from generated symbols rather than a hand-computed offset
+# ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+#
+# Neither probe is an address-decode hole. `smc.rdl` declares three
+# `external remapped_region` blocks of 0x80_0000 each -- ecam_region,
+# mmode_region, xvisor_region -- and `smc_addr.h` resolves them to
+# 0xC080_0000, 0xC100_0000 and 0xC180_0000. What the two probes demonstrate is
+# that an `external` region with no implementation behind it on this bench
+# answers DECERR with the err_slv signature, once reached at its own address
+# and once through the local-alias fold. Genuinely unmapped offsets are
+# `smc_deadspace_decode_test`'s subject, not this one's.
+#
+# Last page of ecam_region at its own address. It lies inside the local-alias
+# aperture (LOCAL_BASE .. LOCAL_BASE + REGION_SIZE at the generated resets), so
+# the fold is the identity and the request arrives where it was written.
+_UNIMPL_ECAM = (
+    smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
+)
+# The same page reached only THROUGH the fold: the address on the wire carries
+# an out-of-aperture prefix, so it differs from the one the decoder sees.
+# mmode_region and xvisor_region lie above the reset aperture, so no SEP_IN
+# wire address reaches them; the fold target has to be a page inside it. The
+# two asserts fail if the generated map moves the region or resizes the
+# aperture such that the probe stops demonstrating the fold.
+_OUT_OF_APERTURE_PREFIX = LOCAL_BASE_RESET + 14 * (LOCAL_FABRIC_KEEP_MASK + 1)
+_UNIMPL_ECAM_VIA_FOLD = _OUT_OF_APERTURE_PREFIX | (_UNIMPL_ECAM & LOCAL_FABRIC_KEEP_MASK)
+assert _UNIMPL_ECAM_VIA_FOLD != _UNIMPL_ECAM, (
+    "the high probe must be written OUTSIDE the local aperture so it reaches "
+    "ecam_region only through the local-alias fold"
+)
+assert local_fabric_masked_addr(_UNIMPL_ECAM_VIA_FOLD) == _UNIMPL_ECAM, (
+    f"0x{_UNIMPL_ECAM_VIA_FOLD:08x} folds to "
+    f"0x{local_fabric_masked_addr(_UNIMPL_ECAM_VIA_FOLD):08x}, not to the "
+    f"ecam_region top page 0x{_UNIMPL_ECAM:08x}"
+)
 
-# EXTERNAL_MANDATORY GPIO_CTRL is terminated with DECERR on the OSS DUT path
-# (smc_ip_integration err_slv). Replaces the obsolete I3C-stub SLVERR probe —
-# OCA_I3C_WRAP is a real core (OKAY) after open-source integration.
+# EXTERNAL_MANDATORY GPIO_CTRL is a DECERR probe: the OSS tree carries no GPIO
+# pad block behind that window (memmap.adoc lists it as technology-specific).
+# OCA_I3C_WRAP is a real core and answers OKAY, so it is not a DECERR probe.
 _GPIO_CTRL0 = external_gpio_ctrl_addr(0)
 
-# (name, addr, expected AXI resp)
-ERROR_PROBES: list[tuple[str, int, int]] = [
-    ("UNMAPPED_LOW", _UNMAPPED_LOW, AXI_RESP_DECERR),
-    ("UNMAPPED_HIGH", _UNMAPPED_HIGH, AXI_RESP_DECERR),
-    ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR),
+# Data expected alongside the error response. ``ERR_SLAVE_SIGNATURE`` is the
+# word the eFuse architecture document states for a blocked request, applied to
+# the two remap-region probes under the DV-owned assumption ``SmcCsrSeq``
+# declares; the GPIO_CTRL probe expects the all-zero word
+# ``csr_read_decerr_zero`` also expects, a DV-owned expectation that the
+# terminator returns no payload.
+ERR_SLAVE_SIGNATURE = SmcCsrSeq.ERR_SLAVE_SIGNATURE
+_GPIO_CTRL_ERR_DATA = 0x0
+
+# (name, addr, expected AXI resp, expected rdata)
+ERROR_PROBES: list[tuple[str, int, int, int]] = [
+    ("UNIMPL_ECAM_REGION", _UNIMPL_ECAM, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
+    ("UNIMPL_ECAM_REGION_VIA_FOLD", _UNIMPL_ECAM_VIA_FOLD, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
+    ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR, _GPIO_CTRL_ERR_DATA),
 ]
 
 
@@ -40,48 +86,93 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_axi_error_response_depth_test_seq") -> None:
         super().__init__(name)
         self.error_responses = 0
+        #: Sentinel word read before the probes, re-pinned after them.
+        self.sentinel_word: int | None = None
 
-    async def _error_probe(self, name: str, addr: int, expected_resp: int) -> None:
+    async def _error_probe(
+        self, name: str, addr: int, expected_resp: int, expected_rdata: int
+    ) -> None:
         item = SmcSysAxiItem(f"err_rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
         item.allow_error = True
         item.expected_resp = expected_resp
-        # Timeout must fail: a claimed error response cannot soft-pass on wedge.
+        # `allow_timeout` False is what enforces [TIMEOUT-MUST-FAIL] here: on
+        # expiry `SmcSysAxiDriver._timed_event` (env/smc_sys_axi_agent.py:159-173)
+        # RAISES instead of returning, so a wedged probe fails the testcase in
+        # the driver and no `not item.timed_out` assert downstream of this await
+        # is reachable with `timed_out` set.
         item.allow_timeout = False
         item.timeout_ns = 500
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
 
-        assert not item.timed_out, (
-            f"{name} @ 0x{addr:08x}: timed out (expected AXI resp={expected_resp}, not a hang)"
-        )
         assert item.resp_code == expected_resp, (
             f"{name} @ 0x{addr:08x}: resp={item.resp_code}, expected {expected_resp}"
+        )
+        got = item.rdata & 0xFFFF_FFFF
+        assert got == expected_rdata, (
+            f"{name} @ 0x{addr:08x}: error-slave data 0x{got:08x}, expected "
+            f"0x{expected_rdata:08x} (resp={item.resp_code})"
         )
         self.error_responses += 1
 
     async def body(self) -> None:
         # Tell the passive AXI monitor which DECERR addresses are by-design so
-        # they are tallied rather than flagged as hard protocol errors.
+        # they are tallied rather than flagged as hard protocol errors. `env` is
+        # assigned by `smc_base_test.start_seq` before `seq.start`, and `SmcEnv`
+        # always builds `axi_monitor`, so a missing monitor is a bench-wiring
+        # error and is asserted rather than skipped.
         monitor = getattr(getattr(self, "env", None), "axi_monitor", None)
-        if monitor is not None:
-            monitor.expected_decerr_addrs.update(
-                addr for _name, addr, resp in ERROR_PROBES if resp == AXI_RESP_DECERR
-            )
-
-        await self.csr_read("ALIVE_SENTINEL_BASELINE", ALIVE_SENTINEL)
-
-        for name, addr, expected_resp in ERROR_PROBES:
-            await self._error_probe(name, addr, expected_resp)
-
-        await self.csr_read("ALIVE_SENTINEL_RECOVERY", ALIVE_SENTINEL)
-
-        assert self.timeouts == 0, (
-            f"AXI error-response probes must not time out (timeouts={self.timeouts})"
+        assert monitor is not None, (
+            "no axi_monitor on this sequence's env; the by-design DECERR "
+            "addresses cannot be registered and every probe below would be "
+            "flagged as a protocol error"
         )
-        assert self.error_responses == len(ERROR_PROBES), (
-            f"expected {len(ERROR_PROBES)} error responses, got {self.error_responses}"
+        decerr_addrs = [
+            addr for _name, addr, resp, _data in ERROR_PROBES if resp == AXI_RESP_DECERR
+        ]
+        monitor.expected_decerr_addrs.update(decerr_addrs)
+        cocotb.log.info(
+            "AXI monitor: registered %d by-design DECERR address(es): %s",
+            len(decerr_addrs),
+            ", ".join(f"0x{a:08x}" for a in decerr_addrs),
+        )
+
+        baseline = await self.csr_read("ALIVE_SENTINEL_BASELINE", ALIVE_SENTINEL)
+        self.sentinel_word = baseline
+
+        for name, addr, expected_resp, expected_rdata in ERROR_PROBES:
+            await self._error_probe(name, addr, expected_resp, expected_rdata)
+
+        # Recovery is pinned against the word the SAME register returned before
+        # the probes, so "the fabric recovered" means "returns the same content",
+        # not merely "still answers OKAY". The compare is booked by the
+        # scoreboard (env/smc_scoreboard.py:711-718) because `expected` is set.
+        await self.csr_read("ALIVE_SENTINEL_RECOVERY", ALIVE_SENTINEL, expected=baseline)
+
+        # Reachability against the scoreboard's own tally rather than against
+        # `self.error_responses`, which this sequence increments once per loop
+        # iteration and so restates the loop ([NO-ZERO-ACTIVITY-PASS]). The
+        # error probes bypass `csr_read`, so `sys_axi_checks_seen` advancing to
+        # cover all five accesses is what shows the analysis path is bound.
+        self.assert_all_reachable(len(ERROR_PROBES) + 2, "AXI_ERROR_RESPONSE_DEPTH")
+        sb = self.env.scoreboard
+        assert sb.sys_axi_value_checks_seen >= 1, (
+            "the recovery read booked no scoreboard value check, so the "
+            "baseline/recovery compare never ran"
+        )
+        cocotb.log.info(
+            "CHK-AXI-ERR-DEPTH: %d probe(s) answered resp=%d with the exact "
+            "err-slave data (%s); ALIVE_SENTINEL @ 0x%08x returned 0x%08x "
+            "before the probes and the same word after (value-checked); "
+            "scoreboard value_checks=%d",
+            len(ERROR_PROBES),
+            AXI_RESP_DECERR,
+            ", ".join(f"{n}@0x{a:08x}=0x{d:08x}" for n, a, _r, d in ERROR_PROBES),
+            ALIVE_SENTINEL,
+            baseline,
+            sb.sys_axi_value_checks_seen,
         )

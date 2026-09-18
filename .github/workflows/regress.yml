@@ -1,0 +1,332 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: regress
+
+# Scheduled regression tiers. The pull-request gate lives in sim.yml; both
+# run the DV job through .github/actions/dv-run. Policy is structural here:
+# each tier is its own job with its own matrix, so what a tier runs (group,
+# seeds, coverage, fan-out, runner, budget) is read off that job, never
+# computed from the triggering event.
+#
+# Tier purposes:
+#   nightly  one random seed per test of each DUT's regression group, no
+#            coverage, sized to fit the standard 4-vCPU runner; a red
+#            nightly is a triage signal, not a merge gate.
+#   weekly   the regression the dashboard publishes (dashboard.yml listens
+#            for `dv-run-<dut>-<tool>-weekly`); one random seed per test,
+#            promoted to a larger runner by the DV_LARGE_RUNNER variable.
+#
+# Neither tier collects coverage: the coverage regression runs on the
+# licensed simulator flow outside hosted CI, and the coverage-instrumented
+# Verilator models of dtp, sep, and smu do not fit a hosted job.
+
+run-name: ${{ format('regress {0} ({1})', (github.event.schedule == '0 18 * * 6' && 'weekly') || inputs.tier || 'nightly', github.event_name == 'schedule' && 'scheduled' || 'manual dispatch') }}
+
+on:
+  schedule:
+    # 18:00 UTC == 02:00 UTC+8 the next day. Sunday to Friday run the
+    # nightly tier; Saturday runs the weekly tier instead, so exactly one
+    # tier runs per day. The `tier` job maps the cron string to the tier.
+    - cron: "0 18 * * 0-5"
+    - cron: "0 18 * * 6"
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Regression tier to run"
+        type: choice
+        options: [nightly, weekly]
+        default: nightly
+
+# Scheduled tiers are never cancelled; a dispatch of the same tier queues
+# behind the one in flight. The two crons are distinct groups.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.schedule || inputs.tier }}
+  cancel-in-progress: false
+
+jobs:
+  tier:
+    runs-on: ubuntu-latest
+    outputs:
+      tier: ${{ steps.pick.outputs.tier }}
+    steps:
+      - name: Map the trigger to a tier
+        id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          CRON: ${{ github.event.schedule }}
+          DISPATCH_TIER: ${{ inputs.tier }}
+        run: |
+          case "$EVENT" in
+            workflow_dispatch) tier="$DISPATCH_TIER" ;;
+            schedule)
+              case "$CRON" in
+                "0 18 * * 6") tier=weekly ;;
+                *) tier=nightly ;;
+              esac
+              ;;
+            *) echo "unsupported event: $EVENT" >&2; exit 1 ;;
+          esac
+          echo "tier=$tier" >> "$GITHUB_OUTPUT"
+          echo "Tier: $tier" >> "$GITHUB_STEP_SUMMARY"
+
+  verilator-nightly:
+    name: verilator-nightly (${{ matrix.dut }})
+    needs: [tier]
+    if: needs.tier.outputs.tier == 'nightly'
+    runs-on: ${{ matrix.runner }}
+    # Every row runs under the hosted runner's six-hour cap, the largest
+    # budget a hosted job can have. A job the runner cancels at the cap
+    # still publishes its interruption checkpoint and its artifact.
+    timeout-minutes: 360
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        # items is NOT always `all`: hosted runners have no RISC-V toolchain,
+        # so any DUT whose `all` group contains firmware tests (a `c_compile`
+        # stage) must name a CPU-free group instead, or every run fails at
+        # build.
+        include:
+          - dut: dtp
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: sep
+            # SEP's `all` mixes cpu firmware tests; `cpu_stub` is the
+            # toolchain-free subset and carries several half-hour KM/DRBG
+            # simulations per seed.
+            items: cpu_stub
+            reseed: 1
+            coverage: false
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+          - dut: smu
+            # `hosted` is the enrolled toolchain-free release set: every leaf
+            # uses `elaboration` firmware, whose only products are zero-filled
+            # preload images written in Python, so there is no RISC-V toolchain
+            # stage on hosted runners. `smu` is the wrapper DUT on its single
+            # compile profile (real SEP); the bare block bench is `smu_block`
+            # (hw/sys/smu/dv/testlists/all.toml). `smu`'s own `all` is not
+            # usable here -- it carries the SEP firmware set, which needs the
+            # toolchain container.
+            items: hosted
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: smu_block
+            # The bare `smu #(.SEP(0))` bench. `all` is its cocotb leaves --
+            # the SEP=0 composition proofs plus the two JTAG leaves that cannot
+            # run on the wrapper -- with no firmware stage, so it runs on the
+            # hosted runner; sim.yml gates only the `smoke` leaf, so the
+            # scheduled tiers are where the abort-mid-op leaf executes.
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: smc
+            # SMC `all` is 171 leaves; the 14 in testlists/fw.toml need a
+            # RISC-V toolchain and three need an SMC_DUAL elaboration.
+            # `hosted` is that group minus those 17, so the scheduled tier
+            # keeps the former smoke leaves.
+            items: hosted
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          # Cross-trigger IP-level benches: small single-IP DUTs, seconds per
+          # full group; nightly is their only scheduled enrollment besides
+          # the weekly.
+          - dut: cross_trigger_port
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: cross_trigger_matrix
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: cross_trigger_network
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
+      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
+      # as the authority for the OCA manifest layout, so without it 54 of 162
+      # test modules fail to import and the run dies before any simulation.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
+      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
+      # submodule at all, died on the repo checkout itself with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses the submodule over SSH, which a hosted runner has
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
+      # rewrite is undone afterwards so the credential does not outlive the
+      # step.
+      - name: Check out the tt-oca-manifest submodule
+        if: matrix.dut == 'sep'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OCA_PAT:-}" ]; then
+            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
+            exit 1
+          fi
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
+
+      # The run id keeps the recorded native run_dir unique per run: the
+      # dashboard trend-point identity hashes it, so a repeated path would
+      # make consecutive points replace each other whenever main has not
+      # moved.
+      - name: Run nightly tier
+        uses: ./.github/actions/dv-run
+        with:
+          dut: ${{ matrix.dut }}
+          tool: verilator
+          tier: nightly
+          items: ${{ matrix.items }}
+          reseed: ${{ matrix.reseed }}
+          coverage: ${{ matrix.coverage }}
+          sim-jobs: 4
+          run-dir: build/ci/runs/${{ matrix.dut }}/verilator/nightly/${{ github.run_id }}
+
+  verilator-weekly:
+    # A row may carry `label` to run a second group of the same DUT; it reaches
+    # the job name and the artifact name so the two rows never collide.
+    name: verilator-weekly (${{ matrix.dut }}${{ matrix.label && format(' {0}', matrix.label) || '' }})
+    needs: [tier]
+    if: needs.tier.outputs.tier == 'weekly'
+    runs-on: ${{ matrix.runner }}
+    # Every row runs under the hosted runner's six-hour cap, the largest
+    # budget a hosted job can have. A job the runner cancels at the cap
+    # still publishes its interruption checkpoint and its artifact.
+    timeout-minutes: 360
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        # Runner-size promotion: the repository variable DV_LARGE_RUNNER names
+        # a 16-vCPU label that exists in the org's runner settings
+        # (see sim.yml for why a missing label must not be the default);
+        # sim-jobs follows the runner core count (the action's `nproc`).
+        include:
+          - dut: dtp
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+          - dut: sep
+            items: cpu_stub
+            reseed: 1
+            coverage: false
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+          - dut: smu
+            items: hosted
+            reseed: 1
+            coverage: false
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+          - dut: smu_block
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+          - dut: smc
+            items: hosted
+            reseed: 1
+            coverage: false
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+          - dut: smc
+            # The `rtl_issue` reproducers: every leaf carries `expect_fail`, so
+            # the row is green while the filed defects stand and goes red the
+            # week one is fixed and its test has to move. Its own row because
+            # `hosted` feeds the dashboard and a graded expected failure must
+            # not count there.
+            items: rtl_issue
+            label: rtl_issue
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: cross_trigger_port
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: cross_trigger_matrix
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: cross_trigger_network
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
+      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
+      # as the authority for the OCA manifest layout, so without it 54 of 162
+      # test modules fail to import and the run dies before any simulation.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
+      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
+      # submodule at all, died on the repo checkout itself with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses the submodule over SSH, which a hosted runner has
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
+      # rewrite is undone afterwards so the credential does not outlive the
+      # step.
+      - name: Check out the tt-oca-manifest submodule
+        if: matrix.dut == 'sep'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OCA_PAT:-}" ]; then
+            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
+            exit 1
+          fi
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
+
+      # Artifact name dv-run-<dut>-verilator-weekly and the run-dir shape are
+      # the dashboard contract (dashboard.yml, tools/dv/run_dashboard.py); a
+      # labelled row's artifact ends in -<label> and falls outside it.
+      - name: Run weekly tier
+        uses: ./.github/actions/dv-run
+        with:
+          dut: ${{ matrix.dut }}
+          tool: verilator
+          tier: weekly
+          label: ${{ matrix.label || '' }}
+          items: ${{ matrix.items }}
+          reseed: ${{ matrix.reseed }}
+          coverage: ${{ matrix.coverage }}
+          sim-jobs: nproc
+          run-dir: build/ci/runs/${{ matrix.dut }}/verilator/weekly/${{ github.run_id }}
+          retention-days: 30

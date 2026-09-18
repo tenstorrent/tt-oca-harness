@@ -3,4 +3,4 @@
 //
 // Standard sequencer over ocah_axi_item; no custom arbitration.
 
-typedef uvm_sequencer #(ocah_axi_item) ocah_axi_master_sequencer;
+typedef uvm_sequencer#(ocah_axi_item) ocah_axi_master_sequencer;

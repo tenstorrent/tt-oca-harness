@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext
-#(
+module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
+) (
   input  [7:0]   RW0_addr,
   input          RW0_clk,
   input  [143:0] RW0_wdata,
@@ -37,10 +36,9 @@ module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext
 
 endmodule
 
-module OCAH4CORECluster_rockettile_dcache_tag_array_ext
-#(
+module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
+) (
   input  [4:0]   RW0_addr,
   input          RW0_clk,
   input  [107:0] RW0_wdata,
@@ -73,10 +71,9 @@ module OCAH4CORECluster_rockettile_dcache_tag_array_ext
 
 endmodule
 
-module OCAH4CORECluster_rockettile_icache_tag_array_ext
-#(
+module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
+) (
   input  [4:0]   RW0_addr,
   input          RW0_clk,
   input  [93:0]  RW0_wdata,
@@ -109,10 +106,9 @@ module OCAH4CORECluster_rockettile_icache_tag_array_ext
 
 endmodule
 
-module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext
-#(
+module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
+) (
   input  [7:0]  RW0_addr,
   input         RW0_clk,
   input  [65:0] RW0_wdata,
@@ -145,10 +141,9 @@ module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext
 
 endmodule
 
-module OCAH4CORECluster_mem_0_ext
-#(
+module OCAH4CORECluster_mem_0_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
+) (
   input  [11:0] RW0_addr,
   input         RW0_clk,
   input  [71:0] RW0_wdata,
@@ -180,10 +175,9 @@ module OCAH4CORECluster_mem_0_ext
 
 endmodule
 
-module OCAH4CORECluster_rom_ext
-#(
+module OCAH4CORECluster_rom_ext #(
   parameter int MEM_CFG_WIDTH = 11
-)(
+) (
   input  [13:0] R0_addr,
   input         R0_clk,
   input         R0_en,
@@ -230,7 +224,8 @@ module OCAH4CORECluster_rom_ext
 
     // Check for rom_bin64 first (binary format, 64-bit-per-line)
     if ($value$plusargs("rom_bin64=%s", rom_mem_path)) begin
-      $display("INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_bin64 plusarg: %s", rom_mem_path);
+      $display("INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_bin64 plusarg: %s",
+               rom_mem_path);
 
       // Check if file exists before trying to load
       file_handle = $fopen(rom_mem_path, "r");
@@ -238,13 +233,15 @@ module OCAH4CORECluster_rom_ext
         $fclose(file_handle);
         $readmemb(rom_mem_path, mem.mem);
         file_loaded = 1;
-        $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from bin64 file: %s", rom_mem_path);
+        $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from bin64 file: %s",
+                 rom_mem_path);
       end else begin
         $error("ERROR: [OCAH4CORECluster_rom_ext] ROM file not found: %s", rom_mem_path);
       end
-    // Fall back to rom_hex (hexadecimal format)
+      // Fall back to rom_hex (hexadecimal format)
     end else if ($value$plusargs("rom_hex=%s", rom_mem_path)) begin
-      $display("INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_hex plusarg: %s", rom_mem_path);
+      $display("INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_hex plusarg: %s",
+               rom_mem_path);
 
       // Check if file exists before trying to load
       file_handle = $fopen(rom_mem_path, "r");
@@ -252,12 +249,14 @@ module OCAH4CORECluster_rom_ext
         $fclose(file_handle);
         $readmemh(rom_mem_path, mem.mem);
         file_loaded = 1;
-        $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from hex file: %s", rom_mem_path);
+        $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from hex file: %s",
+                 rom_mem_path);
       end else begin
         $error("ERROR: [OCAH4CORECluster_rom_ext] ROM file not found: %s", rom_mem_path);
       end
     end else begin
-      $error("ERROR: [OCAH4CORECluster_rom_ext] No +rom_bin64 or +rom_hex plusarg provided - ROM will contain X's");
+      $error(
+          "ERROR: [OCAH4CORECluster_rom_ext] No +rom_bin64 or +rom_hex plusarg provided - ROM will contain X's");
     end
 
     if (!file_loaded) begin

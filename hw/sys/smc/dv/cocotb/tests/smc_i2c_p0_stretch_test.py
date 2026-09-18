@@ -12,7 +12,15 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_i2c_p0_stretch_test(smc_base_test):
-    """TX stretch recover + RSTART read/write on shared I2C pads."""
+    """I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1
+    host READ stalls on the target's TX_PENDING until TXDATA is supplied, then
+    completes with that byte and returns to host idle."""
+
+    required_evidence = (
+        "CHK-I2C-P0-HOST-SETTLED",
+        "CHK-I2C-P0-STRETCH",
+    )
+    min_evidence = 2
 
     auto_protocol_vip = False
 
@@ -25,7 +33,15 @@ class smc_i2c_p0_stretch_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # The straight-line count the body must reach: every unconditional
+            # access plus one iteration of each of the three polling loops
+            # (TX_PENDING, RX_STATUS, HOST_IDLE); anything above it is poll
+            # iterations that vary with timing.
+            min_csr_accesses=30,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(f"TX_PENDING stretch={seq.stretch_ok} read={seq.read_ok}"),
+            details=(
+                f"I2C0 target stretched TX_PENDING until the host read it back; "
+                f"host received 0x{seq.rx_byte:02X} over {seq.accesses} accesses"
+            ),
         )

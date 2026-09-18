@@ -2,65 +2,35 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[mailbox-unit-interface]]
-===== Interface
+== Interface
 
-The Mailbox Unit provides both struct-based and flattened AXI4-Lite
-interfaces (selectable via generation template).
+The Mailbox Unit exposes a single struct-based AXI4-Lite slave port. All
+mailbox apertures are decoded from this one port by an internal demux.
 
-====== AXI4-Lite Interface
-
-[source,sourceCode,systemverilog]
-----
-input  mailbox_axil_req_t  mailbox_axi_req_i,
-output mailbox_axil_resp_t mailbox_axi_resp_o
-----
-
-====== Flattened Interface
+=== AXI4-Lite Interface
 
 [source,sourceCode,systemverilog]
 ----
-// Write Address Channel
-input  logic            awvalid_i,
-output logic            awready_o,
-input  addr_t           awaddr_i,
-input  axi_pkg::prot_t  awprot_i,
-
-// Write Data Channel
-input  logic            wvalid_i,
-output logic            wready_o,
-input  data_t           wdata_i,
-input  strb_t           wstrb_i,
-
-// Write Response Channel
-output logic            bvalid_o,
-input  logic            bready_i,
-output axi_pkg::resp_t  bresp_o,
-
-// Read Address Channel
-input  logic            arvalid_i,
-output logic            arready_o,
-input  addr_t           araddr_i,
-input  axi_pkg::prot_t  arprot_i,
-
-// Read Data Channel
-output logic            rvalid_o,
-input  logic            rready_i,
-output data_t           rdata_o,
-output axi_pkg::resp_t  rresp_o
+input  axi_req_t  mailbox_axi_req_i,
+output axi_resp_t mailbox_axi_resp_o
 ----
+
+The request and response struct types are supplied by the integrator through
+the `axi_req_t`/`axi_resp_t` parameters, together with the per-channel types
+`aw_chan_t`, `w_chan_t`, `b_chan_t`, `ar_chan_t` and `r_chan_t`.
 
 .Interface Characteristics
 [width="100%",cols="30%,70%",options="header",]
 |==============================================================
 |Parameter |Value
-|Address Width |18 bits (s_axil_araddr[17:0])
-|Data Width |64 bits
-|Strobe Width |8 bits
-|Total Address Space |0x20008 bytes (up to 32 mailbox pairs)
+|Address Width |`ADDR_WIDTH` parameter
+|Data Width |`DATA_WIDTH` parameter
+|Strobe Width |`DATA_WIDTH`/8
+|Total Address Space |2 × `MAILBOX_SIZE` × `NUM_MAILBOXES`
 |Protocol |Standard AXI4-Lite with separate read/write channels
 |==============================================================
 
-====== Interrupt Outputs
+=== Interrupt Outputs
 
 [source,sourceCode,systemverilog]
 ----
@@ -72,12 +42,13 @@ output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o
 [width="100%",cols="30%,70%",options="header",]
 |=============================================================
 |Parameter |Value
-|Type |Configurable (default: level-triggered)
+|Type |Level-triggered (the unit ties the underlying `IrqEdgeTrig` to 0)
 |Polarity |Active high
-|Sources |Write threshold, read threshold, overflow, underflow
+|Sources |Write threshold, read threshold, and a single shared error bit
+(read from empty or write to full)
 |=============================================================
 
-====== Control Signals
+=== Control Signals
 
 [source,sourceCode,systemverilog]
 ----
@@ -95,32 +66,49 @@ input logic test_en_i    // Test enable for DFT
 |`test_en_i` |Test enable for design-for-test (DFT) functionality
 |=====================================================================
 
-====== Timing Characteristics
+=== Timing Characteristics
 
 [width="100%",cols="30%,70%",options="header",]
 |========================================================
 |Parameter |Value
-|Latency |Single-cycle FIFO access (when not full/empty)
+|Latency |One clock cycle; the R and B responses pass through spill registers
 |Throughput |One 64-bit transfer per clock cycle
-|Pipeline Depth |Configurable via MAX_TRANS (default: 32)
+|Outstanding Transactions |`MAX_TRANS` per demux port (default: 32)
 |========================================================
 
-====== Error Handling
+=== Error Handling
 
 [width="100%",cols="30%,70%",options="header",]
 |===================================================================
 |Error Condition |Behavior
-|Read from empty FIFO |Sets `read_error` flag, returns previous data
-|Write to full FIFO |Sets `write_error` flag, discards new data
+|Read from empty FIFO (`READ_DATA`) |Sets `read_error` in ERROR_FLAGS and the
+error bit in IRQS; returns `0xFEEDDEAD` with SLVERR
+
+|Write to full FIFO (`WRITE_DATA`) |Sets `write_error` in ERROR_FLAGS and the
+error bit in IRQS; discards the data and responds SLVERR
+
+|Read from write-only `WRITE_DATA` |Returns `0xFEEDC0DE` with OKAY; no FIFO
+access and no error flag
+
+|Write to a read-only register (`READ_DATA`, `STATUS`, `ERROR_FLAGS`, `IRQP`)
+|Write is ignored, responds SLVERR
+
+|Access to an unmapped offset inside an aperture (0x50 and above) |Read returns
+0 with SLVERR; write is ignored with SLVERR
+
+|Read of ERROR_FLAGS |Both flags clear on read; an error raised in the same cycle as
+the clearing read is retained
+
 |Interrupt Generation |Triggered if enabled via IRQEN register
 |===================================================================
 
-====== Integration Requirements
+=== Integration Requirements
 
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Requirement |Description
-|*Address Space* |4KB per mailbox pair; Total = 4KB × NUM_MAILBOXES × 2
+|*Address Space* |`MAILBOX_SIZE` (2KB) per aperture, 4KB per mailbox pair;
+Total = 4KB × NUM_MAILBOXES
 
 |*Software* |Poll STATUS or use interrupts for data availability;
 configure WIRQT/RIRQT thresholds; check ERROR register

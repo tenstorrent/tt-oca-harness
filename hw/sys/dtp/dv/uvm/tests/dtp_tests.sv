@@ -1,24 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP SV-UVM test include manifest. Tests are non-reusable by definition, so
-// they are NOT packaged: this file is `include`d in module scope by
-// tb/tb_top.sv under `ifdef UVM and compiles as part of the top. One test
-// class per file, named exactly like its cocotb twin (file = class =
-// scenario name); this manifest only lists them so tb_top keeps a single
-// stable hook as tests grow. Test classes stay thin — scenario content lives
-// in dtp_seq_lib_pkg sequences; shared infrastructure lives in dtp_env_pkg.
+// DTP SV-UVM test include manifest, `include`d in module scope by
+// tb/tb_top.sv under `ifdef UVM; the tests compile as part of the top and
+// are not packaged. One test class per file, named exactly like its cocotb
+// twin (file = class = scenario name). Test classes stay thin — scenario
+// content lives in dtp_seq_lib_pkg sequences; shared infrastructure lives in
+// dtp_env_pkg.
 //
 // Testlist mapping: logical item names are framework-neutral VPLAN scenario
 // names; the `module` binding map's `uvm` entry equals the scenario name and
 // drives +UVM_TESTNAME.
 
 `include "uvm_macros.svh"
+import ocah_lib_pkg::*;  // ocah_test base and the ocah_sequence hook type
 import dtp_env_pkg::*;
 import dtp_seq_lib_pkg::*;
-// Shared AXI VIP types referenced by test-class signatures (e.g. the
-// robustness tests' add_required_axi_ids(ocah_axi_config) hook).
-import ocah_axi_uvm_pkg::*;
 
 `include "dtp_base_test.svh"
 `include "dtp_sanity_test.svh"

@@ -3,10 +3,9 @@
 /*
  * sep_interop  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SMC producer main.c + SEP consumer sep_smc_interop.c) and
- * parsed by the cocotb checker so the DUT stimulus and the DV expectations can never drift
- * (AGENTS.md one-source rule). Keep every value a plain integer/hex #define so the Python
- * parser can read it -- no expressions the parser cannot evaluate.
+ * Included by BOTH firmwares (SMC producer main.c + SEP consumer sep_smc_interop.c).
+ * Python goldens derive mailbox CSR facts independently from PeakRDL; they do
+ * not parse this header.
  *
  * Topology -- the SMC CPU and the real SEP CPU exchange 32-bit words over the two ports of
  * the SEP AXI-lite mailbox pair (sep.h AXIL_MAILBOX_*):
@@ -40,32 +39,59 @@
                  * value; NOT 0xFFFFFFFF, which collides with an \
                  * uninitialised scratch read)                 */
 
-/* Mailbox port bases (sep.h AXIL_MAILBOX_{OUTBOUND,INBOUND}_MAILBOX_0). */
-#define SEP_LOCAL_MBOX_BASE 0x10A00000   /* OUTBOUND_MAILBOX_0 : SEP-local port          */
-#define SMC_INBOUND_MBOX_BASE 0x10A00800 /* INBOUND_MAILBOX_0  : SMC-facing port         */
-
-/* Per-port register offsets (identical layout on both ports). */
-#define MBOX_WRITE_DATA_OFFSET 0x00 /* push a word into this port's TX FIFO         */
-#define MBOX_READ_DATA_OFFSET 0x08  /* pop a word from this port's RX FIFO          */
-#define MBOX_STATUS_OFFSET 0x10     /* bit0 = RX FIFO empty                         */
-#define MBOX_RIRQT_OFFSET 0x28      /* read-data IRQ threshold                      */
-#define MBOX_IRQS_OFFSET 0x30       /* IRQ status (write-1-to-clear)                */
-#define MBOX_IRQEN_OFFSET 0x38      /* IRQ enable                                   */
-#define MBOX_IRQP_OFFSET 0x40       /* IRQ pending (= IRQS & IRQEN)                 */
-#define MBOX_STATUS_EMPTY_MASK 0x1  /* STATUS.empty                                 */
-#define MBOX_IRQ_READ_MASK 0x2      /* IRQS/IRQEN/IRQP read-data-available bit      */
-/* W1C ALL three IRQ status bits (write[0] | read[1] | error[2]). The write-threshold status
- * (bit0) is LEVEL-latched and STICKY: it self-sets whenever this side's TX FIFO is non-empty
+#ifdef OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
+#define SEP_LOCAL_MBOX_BASE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
+#define SMC_INBOUND_MBOX_BASE OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR
+#define MBOX_WRITE_DATA_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_READ_DATA_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_STATUS_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_RIRQT_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_IRQS_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_IRQEN_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_IRQP_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_STATUS_EMPTY_MASK AXIL_MAILBOX__STATUS__EMPTY_bm
+#define MBOX_IRQ_READ_MASK AXIL_MAILBOX__IRQS__RTIRQ_bm
+#define MBOX_IRQ_ALL \
+    (AXIL_MAILBOX__IRQS__WTIRQ_bm | AXIL_MAILBOX__IRQS__RTIRQ_bm | AXIL_MAILBOX__IRQS__EIRQ_bm)
+#else
+#define SEP_LOCAL_MBOX_BASE 0x10A00000
+#define SMC_INBOUND_MBOX_BASE 0x10A00800
+#define MBOX_WRITE_DATA_OFFSET 0x00
+#define MBOX_READ_DATA_OFFSET 0x08
+#define MBOX_STATUS_OFFSET 0x10
+#define MBOX_RIRQT_OFFSET 0x28
+#define MBOX_IRQS_OFFSET 0x30
+#define MBOX_IRQEN_OFFSET 0x38
+#define MBOX_IRQP_OFFSET 0x40
+#define MBOX_STATUS_EMPTY_MASK 0x1
+#define MBOX_IRQ_READ_MASK 0x2
+#define MBOX_IRQ_ALL 0x7
+#endif
+/* W1C ALL three IRQ status bits (write | read | error). The write-threshold status
+ * is LEVEL-latched and STICKY: it self-sets whenever this side's TX FIFO is non-empty
  * (wirqt defaults to 0), i.e. as a side effect of pushing TOKEN/RESPONSE/ACK/SEP_PASS. A pop
  * only needs to clear the read bit, but the full-clear readback (IRQS==0) then trips on the
  * still-set write bit -- so W1C ALL after each pop. Safe from re-latch: request/response
  * ordering guarantees the peer has already popped this side's TX word (TX FIFO empty) before we
  * pop its reply, so bit0 does not immediately re-assert. Mirrors sep_mailbox_plic_test. */
-#define MBOX_IRQ_ALL 0x7 /* write | read | error status bits             */
 
 /* Firmware poll bound (loop iterations) shared by both sides -- mirrors
- * smu_smc_stall_sep's SMU_STALL_FW_POLL_LIMIT. Bounded so a missing peer times out to a fail marker instead
- * of hanging the simulation. */
+ * smu_smc_stall_sep's SMU_STALL_FW_POLL_LIMIT. Bounded so a missing peer times out to a fail marker
+ * instead of hanging the simulation. */
 #define SEP_INTEROP_POLL_LIMIT 4000000
 
 /*

@@ -2,8 +2,7 @@
 
 SPDX-License-Identifier: Apache-2.0
 
-This manual describes the released OCAH IEEE 1149.1 JTAG TAP VIP for OSS
-cocotb tests.
+This manual describes the OCAH IEEE 1149.1 JTAG TAP VIP for cocotb tests.
 
 ## Design Boundary
 
@@ -61,6 +60,15 @@ least five TCK cycles. It leaves the tracked state at `TEST_LOGIC_RESET`.
 await tap.reset_tap()
 await tap.step_tms(0)  # enter RUN_TEST_IDLE
 ```
+
+`assert_trst(tck_cycles=1)` asserts the bound TRST net and holds TMS high for
+`tck_cycles`, re-baselining the tracked state to `TEST_LOGIC_RESET`.
+`release_trst(tck_cycles=0)` releases the net.
+After a reset applied outside the TAP pins (a power-on reset, a reset pin
+that is not bound as TRST), declare the resulting state with
+`sync_model(OcahJtagState.TEST_LOGIC_RESET)` so `goto_state()` plans from the
+true controller state. `step(tms, tdi)` drives one TCK cycle with both bits
+for bit-serial shifting under the tracked state.
 
 Use `goto_state()` for deterministic shortest-path navigation:
 
@@ -178,7 +186,8 @@ seq.finalize()
 `OcahJtagMasterSequence` is the VIP's test-facing stimulus surface: tests drive the
 TAP through it (or a DUT sequence layer built on it), never through the raw
 driver. Besides the checked operations above it exposes the pass-through scan
-API (`step_tms`, `goto_state`, `shift_ir`, `shift_dr`); missing operations
+API (`step`, `step_tms`, `goto_state`, `shift_ir`, `shift_dr`, `assert_trst`,
+`release_trst`, `sync_model`); missing operations
 get added here first, never inlined in tests. The checker argument is
 optional — one is constructed when omitted.
 
@@ -261,7 +270,7 @@ stay meaningful.
 
 The DTP `dtp_jtag_base_test_seq.attach_tap_checker()` hook wires these checks
 into TAP navigation automatically; `DTP_JTAG_TAP_CHECKER_NEGATIVE=1` runs the
-documented negative validation (a deliberately desynced model must FAIL the
+documented negative validation (a desynced model must FAIL the
 `dtp_jtag_tlr_reset_test` run).
 
 ## SystemVerilog Layer (interface / sva / cov / uvm)
@@ -270,22 +279,42 @@ The SV side of this package compiles through the VIP-owned ordered manifest
 `uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
 its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
 the DUT's own sources — never hand-copy these paths into a DUT sim config, and
-never add them to Bender or Verilator filelists. Its contents:
+never add them to Bender filelists. The one entry a cocotb/Verilator build
+lists directly in its `[build].sources` is `sva/ocah_jtag_sva.sv`, whose
+two-state rules run there. The package's own `dv/` harness binds it in both
+shapes: the cocotb shape mirrors the reactive device's TAP state onto the
+one-hot input so the state rules run; the SV-UVM shape ties that input off
+and runs the pin rules. Its contents:
 
 - `interface/ocah_jtag_if.sv` — shared pin-level IEEE 1149.1 interface
   (JTAG pins only; reused by any DUT).
 - `cov/ocah_jtag_cov.sv` — commercial-simulator-only functional-coverage
   collateral.
 - `sva/ocah_jtag_sva.sv` — clean-room SVA protocol rules for the TAP pins.
+  Two trees by simulator capability: the TDO-timing and TAP-state rules use
+  `OCAH_SVA_RULE` (`hw/common/assert/ocah_sva_macros.svh`) and run on every
+  simulator, Verilator included under `--assert`, and on licensed formal
+  backends under `FORMAL`; the X-hygiene rules and the covers use
+  `OCAH_RULE` / `OCAH_COVER` and run on four-state simulators and licensed
+  backends only. Each rule belongs to the side that drives its signals, the
+  host (TMS, TDI) or the TAP (TDO, its enable, the state), and
+  `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
+  assumptions; both default to assertions.
+- `sva/ocah_jtag_fv.sv` — the TAP state, TDO and phase rules written in the
+  boolean subset the open-source formal frontend reads (`OCAH_FV_RULE`,
+  `hw/common/assert/ocah_fv_macros.svh`), with the port list of
+  `ocah_jtag_sva` and the same two side parameters; the DTP's formal
+  environment binds it on the primary TAP
+  (`hw/common/dv/docs/formal-property-style.adoc`, Shared protocol checkers).
 - `uvm/ocah_jtag_uvm_pkg.sv` — the SV-UVM VIP: item/config/driver/monitor/
   sequencer/agent plus the encoding-agnostic TAP reference model;
   `ocah_jtag_master_env` is the commercial-overridable unit that DUT envs
-  instantiate (see the DTP SV-UVM flow for the first consumer).
+  instantiate (see the DTP SV-UVM flow for a consuming integration).
 
 ## UVM Env Surface Convention
 
-Both shipped OCAH VIPs (`ocah_jtag_vip`, `ocah_axi_vip`) follow one surface
-convention, with the JTAG master env as the reference template:
+The OCAH VIPs with an SV-UVM layer (`ocah_jtag_vip`, `ocah_axi_vip`) follow one
+surface convention, with the JTAG master env as the reference template:
 
 - **Side tokens.** Side-specific components — config, driver, sequencer,
   sequence, agent, env, and agent-attached monitors — carry the side token
@@ -300,21 +329,20 @@ convention, with the JTAG master env as the reference template:
 - **Payload-named analysis ports.** An observation port is named
   `<kind>_ap` after the class it streams, mirroring the cocotb monitor
   callback names: `event_ap` (`ocah_jtag_event`), `scan_ap`
-  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names are
-  deliberately not unified across VIPs — the payloads genuinely differ,
-  and the name tells a DUT env what it is subscribing to.
+  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names differ
+  across VIPs because the payloads differ, and the name tells a DUT env what
+  it is subscribing to.
 - **Frozen surface is env-top-level handles only.** Everything a DUT env,
   test, or sequence may depend on is a direct member of the VIP env — the
   env promotes child handles (`m_sequencer` on `ocah_jtag_master_env` and
   `ocah_axi_master_env`, `m_checker` on `ocah_axi_env`) rather than
   letting consumers reach through its children.
 
-## Backend And License Status
+## Backend Boundary
 
-The package depends on `cocotbext-jtag>=0.4.0,<0.5`. The installed 0.4.0 package
-metadata reports license `MIT`. The active OCAH driver does not expose backend
-transaction objects; advanced users may inspect `backend_bus` or call
-`create_backend_driver()`, but those are debug-only escape hatches.
+The package depends on `cocotbext-jtag>=0.4.0,<0.5`. The active OCAH driver
+does not expose backend transaction objects; `backend_bus` and
+`create_backend_driver()` are debug-only escape hatches.
 
 ## DTP Validation
 
@@ -333,3 +361,10 @@ For broader coverage, run the full `basic_jtag` group:
 ```bash
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator
 ```
+
+`DTP_JTAG_TAP_CHECKER_NEGATIVE` is the must-fail hook of both flows: as an
+environment variable it desynchronizes the cocotb TAP reference model so
+`CHK-TAP-STATE` fails; as a plusarg (`--plusarg=+DTP_JTAG_TAP_CHECKER_NEGATIVE`)
+it arms a wrong expected IDCODE in the SV-UVM `dtp_jtag_tlr_reset_test` and
+`dtp_sanity_test` so `CHK-TAP-TLR-IDCODE` fails. `cocotb/examples/example_slave_selftest.py`
+judges the reactive slave device by the master-side model with no simulator.

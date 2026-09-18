@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MPL-2.0
+// Source: https://gitlab.com/antora/antora-lunr-extension
+
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :

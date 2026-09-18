@@ -3,8 +3,8 @@
 """Register metadata accessor over the generated SystemRDL Python header.
 
 Tests and sequences must NOT keep their own copies of register offsets, reset
-values, or field masks. House rule: prefer source-derived expected values over
-hardcoded literals). ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
+values, or field masks: expected values are source-derived, never hardcoded
+literals. ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
 machine-readable export of ``hw/sys/sep/regs/**/*.rdl``, so this module wraps it
 and hands out three things per register:
 
@@ -16,10 +16,10 @@ and hands out three things per register:
 
 The mask matters because a write/readback check must compare against
 ``pattern & mask``: RDL placeholder registers (``TIMEOUT_COUNT``,
-``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single bit today, so a
+``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single implemented bit, so a
 32-bit pattern reads back as just that bit.
 
-Two masks, deliberately distinct:
+Two masks:
   ``mask()``     — software-usable fields only; RDL ``reserved`` fields excluded.
   ``mask_all()`` — every field bit, reserved included: the STORAGE mask.
 They differ wherever a placeholder field is declared ``sw=rw`` yet named
@@ -55,7 +55,7 @@ import sep_reg  # noqa: E402  (path bootstrap must precede the import)
 
 # RDL reserved-field names as emitted by the generator: `rsvd`, `rsvd_<n>`,
 # `reserved`, `reserved_<n>`. Anchored so real fields that merely contain the
-# word (`test_reserved`, `spi_control_field_en_rsvd`) are NOT excluded.
+# word (`test_reserved`) are NOT excluded.
 _RESERVED_FIELD_RE = re.compile(r"^(?:rsvd|reserved)(?:_\d+)?$")
 
 # Registers whose OFFSET is emitted per instance but whose DEFAULT/struct is
@@ -71,6 +71,18 @@ _TYPE_ALIAS = {
     "TIMEOUT_COUNT_ENTROPY_READ": "TIMEOUT_COUNT",
     "TIMEOUT_COUNT_FILTER_OUT": "TIMEOUT_COUNT",
     "TIMEOUT_COUNT_ALIAS_REMAP": "TIMEOUT_COUNT",
+    # km_mailbox_sep.rdl declares SEP_STATUS with the typedef `status_reg`, so
+    # PeakRDL emits KM_MAILBOX_SEP_STATUS_REG_* and the <block>_<reg> walk misses
+    # it. The register is in the RDL and the block is in the SEP addrmap; only the
+    # generated name differs.
+    "SEP_STATUS": "STATUS_REG",
+}
+
+# PeakRDL type name when it is not ``<block>_<reg>`` and the suffix walk is
+# ambiguous (more than one ``*_REG_DEFAULT`` ends with the register name).
+_TYPE_KEY_OVERRIDE = {
+    ("AXIL_MAILBOX_OUTBOUND_MAILBOX_0", "ERROR_FLAGS"): "AXIL_MAILBOX_ERROR",
+    ("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): ("REMAP_REGION_REGION_ATTRS"),
 }
 
 
@@ -107,6 +119,9 @@ class RegBlock:
         exact = f"{self.block}_{name}"
         if hasattr(sep_reg, f"{exact}_REG_DEFAULT"):
             return exact
+        override = _TYPE_KEY_OVERRIDE.get((self.block, name))
+        if override is not None and hasattr(sep_reg, f"{override}_REG_DEFAULT"):
+            return override
         if name in _TYPE_ALIAS:
             alias = f"{self.block}_{_TYPE_ALIAS[name]}"
             if hasattr(sep_reg, f"{alias}_REG_DEFAULT"):
@@ -167,8 +182,7 @@ class RegBlock:
         correctly masks to 0, which callers must treat as "nothing to prove"
         rather than as a passing check.
 
-        Matched by exact name, not substring: `test_reserved` and
-        `spi_control_field_en_rsvd` are real, software-visible fields.
+        Matched by exact name, not substring: `test_reserved` is a real, software-visible field.
         """
         struct = self._sym(name, "reg_t", alias_ok=True)
         union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))
@@ -195,6 +209,13 @@ class RegBlock:
         view.val = 0
         setattr(view.f, field_name, (1 << fields[field_name]) - 1)
         return int(view.val)
+
+    def field_lsb(self, name: str, field_name: str) -> int:
+        """Least-significant bit of one named generated bitfield."""
+        mask = self.field_mask(name, field_name)
+        if mask == 0:
+            raise KeyError(f"{self.block}.{name}.{field_name} has an empty mask")
+        return (mask & -mask).bit_length() - 1
 
     def mask_all(self, name: str) -> int:
         """Union of EVERY field bit, reserved included -- the storage mask.
@@ -335,6 +356,23 @@ def sym(name: str) -> int:
 def ip_c_header(ip: str) -> Path:
     """Path to hw/ip/<ip>/regs/gen/c/<ip>.h (the generated C register header)."""
     return _HW_ROOT / "ip" / ip / "regs" / "gen" / "c" / f"{ip}.h"
+
+
+def ot_c_header(ip: str) -> Path:
+    """Path to the OpenTitan overlay C header for ``ip`` (CSRNG, EDN, AES, …)."""
+    return (
+        _REPO_ROOT
+        / "vendor"
+        / "lowRISC"
+        / "opentitan"
+        / "overlay"
+        / "regs"
+        / ip
+        / "regs"
+        / "gen"
+        / "c"
+        / f"{ip}.h"
+    )
 
 
 _HW_ROOT = Path(__file__).resolve().parents[5]
@@ -557,10 +595,10 @@ def iter_register_walk() -> RegisterWalk:
 
     * ``no_default``    -- no ``_REG_DEFAULT`` or field struct, even after
       ``_TYPE_ALIAS``, so there is no source-derived reset to check.
-    * ``unknown_block`` -- the stem matches no known block prefix. Zero today;
-      a new top-level RDL that is not in ``block_names()`` would land here.
-    * ``duplicate``     -- the ``(block, register)`` pair was already walked.
-      Zero today; a generator that emits an instance twice would land here.
+    * ``unknown_block`` -- the stem matches no known block prefix: a top-level
+      RDL that is not in ``block_names()`` lands here.
+    * ``duplicate``     -- the ``(block, register)`` pair was already walked: a
+      generator that emits an instance twice lands here.
 
     Reporting one figure would let a change of cause pass unnoticed, so the
     three are kept apart and ``nometa`` sums them.
@@ -696,12 +734,21 @@ def iter_addrs() -> list[tuple[str, str, int]]:
 
 SEP_CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 ENTROPY_SOURCE = CHeaderRegBlock("ENTROPY_SOURCE", ip_c_header("entropy_source"))
-# Blocks the fabric walk value-checks. Others (CSRNG/EDN/AES/entropy/mailbox/…)
-# are not exported by this header and stay explicit in the sequence.
 SEP_RESET_CTRL = RegBlock("SEP_RESET_CTRL")
 OTBN = RegBlock("OTBN")
 HMAC = RegBlock("HMAC")
 KMAC = RegBlock("KMAC")
+AES = RegBlock("AES")
+WDT_TIMER = RegBlock("WDT_TIMER")
+SPI_CONTROLLER = RegBlock("SPI_CONTROLLER")
+CSRNG = CHeaderRegBlock("CSRNG", ot_c_header("csrng"))
+EDN = CHeaderRegBlock("EDN", ot_c_header("edn"))
+EFUSE_INTERFACE_CTRL = RegBlock("EFUSE_INTERFACE_CTRL")
+AXIL_MAILBOX_OUTBOUND_0 = RegBlock("AXIL_MAILBOX_OUTBOUND_MAILBOX_0")
+SEP_LIFECYCLE_CTRL = RegBlock("SEP_LIFECYCLE_CTRL")
+KM_MAILBOX_SEP = RegBlock("KM_MAILBOX_SEP")
+INBOUND_FILTER_CTRL_0 = RegBlock("INBOUND_FILTER_CTRL_0_")
+LOCAL_MASTER_ALIAS_REMAP_CTRL_0 = RegBlock("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_")
 
 
 def _selftest() -> int:
@@ -722,7 +769,6 @@ def _selftest() -> int:
         ("TIMEOUT_ENABLE", 0x068, 0x0, 0x0),
         ("SEP_LOCAL_BASE_ADDR", 0x0C8, 0xD000_0000, 0xFFFF_FFFF),
         ("SEP_REGION_SIZE", 0x0D0, 0x0100_0000, 0xFFFF_FFFF),
-        ("RAS_BANK_INFO", 0x170, 0x0, 0xFF),  # bank_chip[3:0] + bank_instance[7:4]
         ("SEP_NMI_VEC", 0x180, 0xC000_0100, 0xFFFF_FFFE),  # bit 0 is rsvd
         ("EXT_TRNG_SRC_SEL", 0x190, 0x7, 0x7),  # sel[2:0] = 0x7
         ("EXT_TRNG_SRC_SEL_LOCK", 0x198, 0x0, 0x1),  # distinct type, must NOT alias to _SEL
@@ -739,12 +785,14 @@ def _selftest() -> int:
 
     # Every TIMEOUT_COUNT_* instance must resolve its own offset but share the
     # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
-    # makes this a tripwire for the reserved-field exclusion itself rather than a
-    # re-baselined constant: the lone field is declared `sw=rw; hw=r` yet named
+    # makes this a tripwire for the reserved-field exclusion itself: the lone field
+    # is declared `sw=rw; hw=r` but named
     # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
     # that is NOT software-usable (mask 0x0). If the generator ever renames the
     # field, or the exclusion regex stops matching it, these disagree and fail.
-    for name in _TYPE_ALIAS:
+    # The alias table also carries entries for other blocks, so this walk takes
+    # the SEP_CPU_CTRL instances by their shared type rather than the whole table.
+    for name in (n for n, t in _TYPE_ALIAS.items() if t == "TIMEOUT_COUNT"):
         if cpu.mask32(name) != 0x0:
             failures.append(f"{name}: implemented mask {hex(cpu.mask32(name))} != 0x0")
         if cpu.mask32_all(name) != 0x1:
@@ -767,10 +815,16 @@ def _selftest() -> int:
 
     # Fabric-walk blocks the sequence value-checks.
     block_checks = [
-        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_003E),
+        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_007E),
         (OTBN, "INTR_STATE", 0x1090_0000, 0x0),
         (HMAC, "INTR_STATE", 0x1091_1000, 0x0),
         (KMAC, "INTR_STATE", 0x1091_3000, 0x0),
+        (AES, "CTRL_SHADOWED", 0x1091_0074, 0x0000_11FD),
+        (WDT_TIMER, "WKUP_CTRL", 0x1080_1004, 0x0),
+        (SPI_CONTROLLER, "CTRL", 0x10B0_0010, 0x0000_007F),
+        (EFUSE_INTERFACE_CTRL, "EFUSE_PROGRAM_CTRL", 0x1093_0404, 0x0),
+        (AXIL_MAILBOX_OUTBOUND_0, "WRITE_DATA", 0x10A0_0000, 0x0),
+        (SEP_LIFECYCLE_CTRL, "FEAT_CTRL", 0x1091_8000, 0x0),
     ]
     for block, name, addr, reset in block_checks:
         got = (block.addr(name), block.reset32(name))
@@ -789,6 +843,7 @@ def _selftest() -> int:
         "hmac_sw_rst_n": 0x08,
         "kmac_sw_rst_n": 0x10,
         "trng_sw_rst_n": 0x20,
+        "abr_sw_rst_n": 0x40,
     }
     for field, expected in sw_reset_field_masks.items():
         got = SEP_RESET_CTRL.field_mask("SW_RESET_N", field)
@@ -806,17 +861,17 @@ def _selftest() -> int:
     walk = iter_register_walk()
     regs = list(walk.regs)
     # Only registers with OFFSET+ADDR+DEFAULT (and a field struct) are
-    # sweepable. Array instances without a per-index DEFAULT are skipped
-    # on purpose rather than guessed; the walk must count those drops.
+    # sweepable. Array instances without a per-index DEFAULT are skipped rather
+    # than guessed; the walk must count those drops.
     if walk.export != walk.inventory + walk.nometa:
         failures.append(
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (1028, 869, 159):
+    if (walk.export, walk.inventory, walk.nometa) != (1921, 1764, 157):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 1028/869/159"
+            f"{walk.nometa} != 1921/1764/157"
         )
     if walk.inventory < 100:
         failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")
@@ -835,6 +890,14 @@ def _selftest() -> int:
     filt = by_key.get(("INBOUND_FILTER_CTRL_0_", "FILTER_CONFIG"))
     if filt is None or (filt.reset & 0xFFFF) != 0x3000:
         failures.append(f"iter_registers missed inbound filter config: {filt}")
+    if INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed") != 0x1:
+        failures.append("inbound filter read_allowed mask is not bit 0")
+    if AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "empty") != 0x1:
+        failures.append("mailbox STATUS.empty mask is not bit 0")
+    if AXIL_MAILBOX_OUTBOUND_0.field_mask("ERROR_FLAGS", "read_error") != 0x1:
+        failures.append("mailbox ERROR_FLAGS.read_error mask is not bit 0")
+    if LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") != 63:
+        failures.append("alias-remap REGION_ATTRS.valid is not bit 63")
     if block_size("KM_MAILBOX_SEP") != 0x1C:
         failures.append(f"KM_MAILBOX_SEP size {hex(block_size('KM_MAILBOX_SEP'))} != 0x1c")
     if ot_reg_map_size("csrng") != 0x60:

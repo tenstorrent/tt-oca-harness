@@ -7,7 +7,9 @@
  * Data integrity decoder for bus integrity scheme
  */
 
-module tlul_data_integ_dec import tlul_pkg::*; (
+module tlul_data_integ_dec
+  import tlul_pkg::*;
+(
   // TL-UL interface
   input        [DataMaxWidth+DataIntgWidth-1:0] data_intg_i,
   output logic                                  data_err_o

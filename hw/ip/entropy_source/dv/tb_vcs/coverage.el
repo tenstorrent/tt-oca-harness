@@ -13,12 +13,3 @@ module { Entropy_Compressor_RefModel }
 // Exclude checkers (verification components, not DUT)
 module { Decorrelator_Checker }
 module { Compressor_Checker }
-
-// Exclude APB VIP (third-party verification IP)
-// module { apb_master }
-// module { apb_monitor }
-
-// Add any specific paths or instances to exclude:
-// instance { tb_entropy_top.u_ro_model }
-// instance { tb_entropy_top.u_decorrelator_ref }
-// instance { tb_entropy_top.u_compressor_ref }

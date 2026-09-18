@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap: I2C_1/2 + I2C_CTRL CSR sweep."""
+"""SMC OSS I2C_1/2 + I2C_CTRL CSR sweep."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_i2c_multi_instance_test(smc_base_test):
-    """P1 coverage-gap depth: I2C_1/2 + I2C_CTRL CSR sweep."""
+    """I2C_1/2 + I2C_CTRL CSR sweep."""
 
     auto_protocol_vip = False
 
@@ -22,7 +22,10 @@ class smc_i2c_multi_instance_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # Directed stimulus floor: 3 SEP_IN AXI I2C_1/I2C_2/I2C_CTRL CSR
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=3,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="P1 coverage-gap: I2C_1/2 + I2C_CTRL CSR sweep",
+            details="I2C_1/2 + I2C_CTRL CSR sweep",
         )

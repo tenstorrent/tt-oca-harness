@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle, CHIPLET fused key 0 programmed, ROM development key 0 revoked, CHIPLET fused key 0 REVOKED.
+#
+# Stimulus for sep_firmware_chiplet_pubkey_0_revoke_test.
+#
+# THREE THINGS ARE PROGRAMMED, AND EACH ONE CLOSES A DIFFERENT HOLE.
+#
+# 1. CHIPLET_PUBK_HASH0 holds SHA-256 of the dev0 RSA-3072 modulus -- the same
+#    digest the ROM has compiled in at key_digests.c for ROM slot 0 -- because
+#    that is the key the manifest this testcase boots is signed with
+#    (bootrom/prod/tests/signing_keys/rsa_private_key.rom_key0.pem). The tree
+#    ships rom_key0 through rom_key5, so a dedicated fused key is available if
+#    this member is ever tightened. The reference generates a DEDICATED
+#    key per fused slot (generate_rsa3072_key.sh) and signs
+#    with it, so its fused digest differs from its ROM-slot digest. Here they are
+#    equal, and the consequence is stated in the testcase docstring: the digest
+#    comparison alone cannot prove which arm of validate_signature ran. Items 2 and
+#    3 are what close that.
+#
+#    The value is the LITTLE-ENDIAN serialisation of the digest, because
+#    read_fuse_key() (manifest_crypto.c) rebuilds the 32-byte key from
+#    eight mmio_read32() results, byte 0 first, and SepEfuseImage.set_int()
+#    (sep_efuse_image.py) fills word i from bits [32i+31:32i].
+#
+# 2. CHIPLET_PUBK_HASH1 holds a DECOY: the same digest with bit 0 of byte 0
+#    flipped. It is non-zero, so a ROM that addressed the WRONG chiplet fuse would
+#    pass read_fuse_key()'s non-zero test and fail check_pubkey_hash() with
+#    PUBK_HASH_MISMATCH instead of booting. That is a live regression guard, not a
+#    hypothetical: manifest_crypto.c records that this ROM once derived the
+#    digest addresses as CHIPLET_PUBK_REVOKE + 0x100/0x120 and read the wrong words.
+#
+# 3. CHIPLET_PUBK_REVOKE bit 0 revokes ROM key slot 0. On the correct ROM this is
+#    INERT -- the manifest selects a fused key, so the ROM-key arm
+#    (manifest_crypto.c) is never entered and bit 0 is never tested. It is
+#    a counterfactual: a ROM that ignored public_key_sel.selection and took the
+#    ROM-key arm with index 0 would print KEY_REVOKED idx=0x00000000 and refuse the
+#    image, which every member of this family forbids. It is also the
+#    architecturally intended configuration for a fused-key part --
+#    sep_efuse_map.rdl:727 says "Before the chiplet owner transfers a part to the
+#    customer, the development-key bits shall be set (revoked)."
+#
+# Bits 16 and 17 revoke CHIPLET_PUBK_HASH0 and HASH1 (sep_efuse_map.rdl:727). They
+# are disjoint from the ROM-slot bits [7:0]; nothing here is derived by counting
+# past ROM slot 5. The reference uses bits 6 and 7, which are unused ROM-slot
+# bits in THIS map -- do not copy them.
+#
+# BL1_VERSION and SBOOT_DIS stay 0: the rollback check runs before key selection
+# (manifest_crypto.c) and SBOOT_DIS would skip the crypto chain
+# altogether, so either one would preempt the path under test.
+#
+# THE REVOKING MEMBER. Bit 16 refuses CHIPLET fused key 0
+# (manifest_crypto.c) at manifest_crypto.c, which runs BEFORE
+# read_fuse_key() (:232) and before rsa_3072_verify() (:244). The image this
+# preload is paired with is re-signed and provably bootable, so revocation is the
+# sole cause of the rejection -- and because BOTH manifest slots select the same
+# fused key, one bit refuses both and the run is terminal.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[CHIPLET_PUBK_HASH0]
+  [CHIPLET_PUBK_HASH0.fields.key_hash]
+  # SHA-256(dev0 RSA-3072 modulus) = a771ca6337a8f5c21a6ec994647e3aa09cfda7d2037d61bbecdf032b848250f6, little-endian
+  value = 0xf65082842b03dfecbb617d03d2a7fd9ca03a7e6494c96e1ac2f5a83763ca71a7
+
+[CHIPLET_PUBK_HASH1]
+  [CHIPLET_PUBK_HASH1.fields.key_hash]
+  # Decoy: the same digest with byte 0 bit 0 flipped. Non-zero on purpose.
+  value = 0xf65082842b03dfecbb617d03d2a7fd9ca03a7e6494c96e1ac2f5a83763ca71a6
+
+[CHIPLET_PUBK_REVOKE]
+  [CHIPLET_PUBK_REVOKE.fields.select]
+  value = 0x00010001   # bit 0 = ROM dev key 0; bit 16 = CHIPLET_PUBK_HASH0

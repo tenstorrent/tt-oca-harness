@@ -8,402 +8,398 @@
 
 
 module telemetry_receiver
-    import telemetry_receiver_pkg::*;
+  import telemetry_receiver_pkg::*;
 #(
-    parameter int unsigned BUFFER_DEPTH                 = 8, // Must be greater than or equal to 2
-    parameter int unsigned MAX_NUM_COUNTERS_PER_MESSAGE = 4,
+  parameter int unsigned BUFFER_DEPTH                 = 8, // Must be greater than or equal to 2
+  parameter int unsigned MAX_NUM_COUNTERS_PER_MESSAGE = 4,
 
-    // Dependent Parameters
-    localparam int unsigned MAX_NUM_BLOCKS_PER_MESSAGE =
+  // Dependent Parameters
+  localparam int unsigned MAX_NUM_BLOCKS_PER_MESSAGE =
         1 + (TELEMETRY_COUNTER_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_COUNTERS_PER_MESSAGE,
-    localparam int unsigned MAX_NUM_PACKETS_PER_MESSAGE =
+  localparam int unsigned MAX_NUM_PACKETS_PER_MESSAGE =
         MAX_NUM_BLOCKS_PER_MESSAGE % NUM_BLOCKS_PER_PACKET == 0 ?
         MAX_NUM_BLOCKS_PER_MESSAGE / NUM_BLOCKS_PER_PACKET :
         MAX_NUM_BLOCKS_PER_MESSAGE / NUM_BLOCKS_PER_PACKET + 1,
 
-    // Decode loop index widths
-    localparam int unsigned PACKET_INDEX_WIDTH = $clog2(MAX_NUM_PACKETS_PER_MESSAGE),
-    localparam int unsigned BLOCK_INDEX_WIDTH  = $clog2(NUM_BLOCKS_PER_PACKET),
+  // Decode loop index widths
+  localparam int unsigned PACKET_INDEX_WIDTH = $clog2(MAX_NUM_PACKETS_PER_MESSAGE),
+  localparam int unsigned BLOCK_INDEX_WIDTH  = $clog2(NUM_BLOCKS_PER_PACKET),
 
-    // Assembly Buffer
-    localparam int unsigned ASSEMBLY_BUFFER_DEPTH =
+  // Assembly Buffer
+  localparam int unsigned ASSEMBLY_BUFFER_DEPTH =
         (TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_PACKETS_PER_MESSAGE,
-    localparam int unsigned ASSEMBLY_BUFFER_PTR_WIDTH = $clog2(ASSEMBLY_BUFFER_DEPTH),
-    localparam type assembly_buffer_ptr_t = logic [ASSEMBLY_BUFFER_PTR_WIDTH-1:0],
+  localparam int unsigned ASSEMBLY_BUFFER_PTR_WIDTH = $clog2(ASSEMBLY_BUFFER_DEPTH),
+  localparam type assembly_buffer_ptr_t = logic [ASSEMBLY_BUFFER_PTR_WIDTH-1:0],
 
-    // Telemetry Message Buffer
-    localparam int unsigned MESSAGE_BUFFER_PTR_WIDTH = $clog2(BUFFER_DEPTH) + 1,
-    localparam type message_buffer_ptr_t = logic [MESSAGE_BUFFER_PTR_WIDTH-1:0]
+  // Telemetry Message Buffer
+  localparam int unsigned MESSAGE_BUFFER_PTR_WIDTH = $clog2(BUFFER_DEPTH) + 1,
+  localparam type message_buffer_ptr_t = logic [MESSAGE_BUFFER_PTR_WIDTH-1:0]
 ) (
-    // Global Interface
-    input  logic            clk_i,
-    input  logic            rst_ni,
+  // Global Interface
+  input  logic            clk_i,
+  input  logic            rst_ni,
 
-    // AXI4-Lite Register Interface
-    input  axil_req_t       axil_req_i,
-    output axil_resp_t      axil_resp_o,
+  // AXI4-Lite Register Interface
+  input  axil_req_t       axil_req_i,
+  output axil_resp_t      axil_resp_o,
 
-    // ATB Telemetry Interface
-    input  telemetry_data_t atdata_i,
-    input  atb_id_t         atid_i,
-    output logic            atready_o,
-    input  logic            atvalid_i,
-    output logic            afvalid_o,
-    input  logic            afready_i,
+  // ATB Telemetry Interface
+  input  telemetry_data_t atdata_i,
+  input  atb_id_t         atid_i,
+  output logic            atready_o,
+  input  logic            atvalid_i,
+  output logic            afvalid_o,
+  input  logic            afready_i,
 
-    // Interrupt Interface
-    output logic            irq_o,
+  // Interrupt Interface
+  output logic            irq_o,
 
-    // Debug Interface
-    // [0]: missing_last_event      - assembly buffer filled without last_packet marker
-    // [1]: message_buffer_full     - message buffer overflow (dropping oldest entry)
-    // [2]: message_buffer_empty    - no messages available to read
-    // [3]: assembly_buffer_full    - assembly buffer at capacity
-    output logic [3:0]      debug_o
+  // Debug Interface
+  // [0]: missing_last_event      - assembly buffer filled without last_packet marker
+  // [1]: message_buffer_full     - message buffer overflow (dropping oldest entry)
+  // [2]: message_buffer_empty    - no messages available to read
+  // [3]: assembly_buffer_full    - assembly buffer at capacity
+  output logic [3:0]      debug_o
 );
 
-    `include "prim_assert.sv"
+  `include "prim_assert.sv"
 
-    /////////////////
-    // Definitions //
-    /////////////////
+  /////////////////
+  // Definitions //
+  /////////////////
 
-    // Telemetry message decoding
-    typedef struct packed {
-        telemetry_probe_id_t                                   probe_id;
-        telemetry_counter_t [MAX_NUM_COUNTERS_PER_MESSAGE-1:0] counters;
-    } telemetry_message_t;
+  // Telemetry message decoding
+  typedef struct packed {
+    telemetry_probe_id_t                                   probe_id;
+    telemetry_counter_t [MAX_NUM_COUNTERS_PER_MESSAGE-1:0] counters;
+  } telemetry_message_t;
 
-    function automatic telemetry_probe_id_t get_telemetry_probe_id(
-        telemetry_packet_t [MAX_NUM_PACKETS_PER_MESSAGE-1:0] telemetry_packets
-    );
-        return telemetry_packets[0][60:56];
-    endfunction
-
-
-    /////////////////////////
-    // Signal Declarations //
-    /////////////////////////
-
-    logic telemetry_receiver_flush;
-
-    logic last_packet_received;
-
-    telemetry_packet_t [MAX_NUM_PACKETS_PER_MESSAGE-1:0] received_telemetry_packets;
-    telemetry_message_t                                  received_telemetry_message;
-
-    logic message_buffer_pop;
-    logic message_buffer_full, message_buffer_empty;
-    telemetry_message_t message_buffer_rd_data;
-
-    message_buffer_ptr_t buffer_threshold;
-
-    logic missing_last_event, missing_last_intr_test, missing_last_intr_req;
-    logic buffer_threshold_intr_test, buffer_threshold_intr_en, buffer_threshold_intr_req;
+  function automatic telemetry_probe_id_t get_telemetry_probe_id(
+      telemetry_packet_t [MAX_NUM_PACKETS_PER_MESSAGE-1:0] telemetry_packets);
+    return telemetry_packets[0][60:56];
+  endfunction
 
 
-    ///////////////////////////////
-    // Telemetry Interface Logic //
-    ///////////////////////////////
+  /////////////////////////
+  // Signal Declarations //
+  /////////////////////////
 
-    assign atready_o = !telemetry_receiver_flush;
+  logic telemetry_receiver_flush;
+
+  logic last_packet_received;
+
+  telemetry_packet_t [MAX_NUM_PACKETS_PER_MESSAGE-1:0] received_telemetry_packets;
+  telemetry_message_t                                  received_telemetry_message;
+
+  logic message_buffer_pop;
+  logic message_buffer_full, message_buffer_empty;
+  telemetry_message_t message_buffer_rd_data;
+
+  message_buffer_ptr_t buffer_threshold;
+
+  logic missing_last_event, missing_last_intr_test;
+  logic buffer_threshold_intr_test, buffer_threshold_intr_req;
 
 
-    /////////////////////
-    // Assembly Buffer //
-    /////////////////////
+  ///////////////////////////////
+  // Telemetry Interface Logic //
+  ///////////////////////////////
 
-    logic telemetry_beat_received;
+  assign atready_o = !telemetry_receiver_flush;
 
-    assign telemetry_beat_received = atready_o && atvalid_i;
 
-    assembly_buffer_ptr_t assembly_buffer_wr_ptr_q, assembly_buffer_wr_ptr, assembly_buffer_wr_ptr_next;
+  /////////////////////
+  // Assembly Buffer //
+  /////////////////////
 
-    telemetry_data_t [ASSEMBLY_BUFFER_DEPTH-1:0] assembly_buffer, assembly_buffer_next;
+  logic telemetry_beat_received;
 
-    logic assembly_buffer_full, assembly_buffer_full_q;
+  assign telemetry_beat_received = atready_o && atvalid_i;
 
-    assign assembly_buffer_full =
+  assembly_buffer_ptr_t
+      assembly_buffer_wr_ptr_q, assembly_buffer_wr_ptr, assembly_buffer_wr_ptr_next;
+
+  telemetry_data_t [ASSEMBLY_BUFFER_DEPTH-1:0] assembly_buffer, assembly_buffer_next;
+
+  logic assembly_buffer_full, assembly_buffer_full_q;
+
+  assign assembly_buffer_full =
         assembly_buffer_wr_ptr == assembly_buffer_ptr_t'(ASSEMBLY_BUFFER_DEPTH - 1) &&
         telemetry_beat_received;
 
-    assign received_telemetry_packets = assembly_buffer;
+  assign received_telemetry_packets = assembly_buffer;
 
-    logic end_of_packet, end_of_packet_q;
+  logic end_of_packet, end_of_packet_q;
 
-    assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(NUM_BEATS_PER_PACKET)-1:0] &&
+  assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(NUM_BEATS_PER_PACKET)-1:0] &&
                            telemetry_beat_received;
 
-    assign last_packet_received =
+  assign last_packet_received =
         end_of_packet_q &&
         received_telemetry_packets[(assembly_buffer_wr_ptr_q) / NUM_BEATS_PER_PACKET].last_packet;
 
-    assign missing_last_event = assembly_buffer_full_q && !last_packet_received;
+  assign missing_last_event = assembly_buffer_full_q && !last_packet_received;
 
-    always_comb begin
-        assembly_buffer_next = assembly_buffer;
+  always_comb begin
+    assembly_buffer_next = assembly_buffer;
 
-        // Always write the current beat when valid, regardless of reset conditions
-        if (telemetry_beat_received) begin
-            assembly_buffer_next[assembly_buffer_wr_ptr] = atdata_i;
-        end
-
-        // Handle pointer updates and resets
-        if (last_packet_received || assembly_buffer_full || telemetry_receiver_flush) begin
-            assembly_buffer_wr_ptr_next = assembly_buffer_ptr_t'(0);
-        end else if (telemetry_beat_received) begin
-            assembly_buffer_wr_ptr_next = assembly_buffer_wr_ptr + assembly_buffer_ptr_t'(1);
-        end else begin
-            assembly_buffer_wr_ptr_next = assembly_buffer_wr_ptr;
-        end
+    // Always write the current beat when valid, regardless of reset conditions
+    if (telemetry_beat_received) begin
+      assembly_buffer_next[assembly_buffer_wr_ptr] = atdata_i;
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (~rst_ni) begin
-            assembly_buffer <= '0;
-            assembly_buffer_wr_ptr <= assembly_buffer_ptr_t'(0);
-            assembly_buffer_wr_ptr_q <= assembly_buffer_ptr_t'(0);
-            end_of_packet_q <= 1'b0;
-            assembly_buffer_full_q <= 1'b0;
-        end else begin
-            assembly_buffer <= assembly_buffer_next;
-            assembly_buffer_wr_ptr <= assembly_buffer_wr_ptr_next;
-            assembly_buffer_wr_ptr_q <= assembly_buffer_wr_ptr;
-            end_of_packet_q <= end_of_packet;
-            assembly_buffer_full_q <= assembly_buffer_full;
-        end
+    // Handle pointer updates and resets
+    if (last_packet_received || assembly_buffer_full || telemetry_receiver_flush) begin
+      assembly_buffer_wr_ptr_next = assembly_buffer_ptr_t'(0);
+    end else if (telemetry_beat_received) begin
+      assembly_buffer_wr_ptr_next = assembly_buffer_wr_ptr + assembly_buffer_ptr_t'(1);
+    end else begin
+      assembly_buffer_wr_ptr_next = assembly_buffer_wr_ptr;
     end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni) begin
+      assembly_buffer <= '0;
+      assembly_buffer_wr_ptr <= assembly_buffer_ptr_t'(0);
+      assembly_buffer_wr_ptr_q <= assembly_buffer_ptr_t'(0);
+      end_of_packet_q <= 1'b0;
+      assembly_buffer_full_q <= 1'b0;
+    end else begin
+      assembly_buffer <= assembly_buffer_next;
+      assembly_buffer_wr_ptr <= assembly_buffer_wr_ptr_next;
+      assembly_buffer_wr_ptr_q <= assembly_buffer_wr_ptr;
+      end_of_packet_q <= end_of_packet;
+      assembly_buffer_full_q <= assembly_buffer_full;
+    end
+  end
 
 
-    ////////////////////////////////////
-    // Telemetry Message Decode Logic //
-    ////////////////////////////////////
+  ////////////////////////////////////
+  // Telemetry Message Decode Logic //
+  ////////////////////////////////////
 
-    assign received_telemetry_message.probe_id =
-        get_telemetry_probe_id(received_telemetry_packets);
+  assign received_telemetry_message.probe_id = get_telemetry_probe_id(received_telemetry_packets);
 
-    logic [PACKET_INDEX_WIDTH-1:0] packet_index;
-    logic [BLOCK_INDEX_WIDTH-1:0]  block_index;
+  logic [PACKET_INDEX_WIDTH-1:0] packet_index;
+  logic [BLOCK_INDEX_WIDTH-1:0]  block_index;
 
-    always_comb begin
-        packet_index = 0;
-        block_index = 1;
+  always_comb begin
+    packet_index = 0;
+    block_index = 1;
 
-        for (int i = 0; i < MAX_NUM_COUNTERS_PER_MESSAGE; i++) begin
-            received_telemetry_message.counters[i].vld = 1'b1;
+    for (int i = 0; i < MAX_NUM_COUNTERS_PER_MESSAGE; i++) begin
+      received_telemetry_message.counters[i].vld = 1'b1;
 
-            // Counter data is stored MSB first
-            for (int j = TELEMETRY_COUNTER_WIDTH / 8 - 1; j >= 0; j--) begin
-                received_telemetry_message.counters[i].vld &=
+      // Counter data is stored MSB first
+      for (int j = TELEMETRY_COUNTER_WIDTH / 8 - 1; j >= 0; j--) begin
+        received_telemetry_message.counters[i].vld &=
                 received_telemetry_packets[packet_index]
                     .blocks[block_index]
                     .vld;
-                received_telemetry_message.counters[i].value[j * 8 +: 8] =
+        received_telemetry_message.counters[i].value[j * 8 +: 8] =
                     received_telemetry_packets[packet_index]
                     .blocks[block_index]
                     .counter_val_partial;
 
-                if (block_index == NUM_BLOCKS_PER_PACKET - 1) begin
-                    packet_index++;
-                    block_index = 0;
-                end else begin
-                    block_index++;
-                end
-            end
-            if (!received_telemetry_message.counters[i].vld) begin
-                received_telemetry_message.counters[i].value = telemetry_counter_val_t'(0);
-            end
+        if (block_index == NUM_BLOCKS_PER_PACKET - 1) begin
+          packet_index++;
+          block_index = 0;
+        end else begin
+          block_index++;
         end
+      end
+      if (!received_telemetry_message.counters[i].vld) begin
+        received_telemetry_message.counters[i].value = telemetry_counter_val_t'(0);
+      end
     end
+  end
 
 
-    ////////////////////
-    // Message Buffer //
-    ////////////////////
+  ////////////////////
+  // Message Buffer //
+  ////////////////////
 
-    // NOTE: When this circular buffer overflows, the oldest entry is dropped, and the read pointer
-    //       is incremented by 1
+  // NOTE: When this circular buffer overflows, the oldest entry is dropped, and the read pointer
+  //       is incremented by 1
 
-    logic message_buffer_push;
+  logic message_buffer_push;
 
-    message_buffer_ptr_t message_buffer_wr_ptr, message_buffer_wr_ptr_next;
-    message_buffer_ptr_t message_buffer_rd_ptr, message_buffer_rd_ptr_next;
-    telemetry_message_t [BUFFER_DEPTH-1:0] message_buffer, message_buffer_next;
+  message_buffer_ptr_t message_buffer_wr_ptr, message_buffer_wr_ptr_next;
+  message_buffer_ptr_t message_buffer_rd_ptr, message_buffer_rd_ptr_next;
+  telemetry_message_t [BUFFER_DEPTH-1:0] message_buffer, message_buffer_next;
 
-    message_buffer_ptr_t message_buffer_fill_level;
+  message_buffer_ptr_t message_buffer_fill_level;
 
-    assign message_buffer_push = last_packet_received;
+  assign message_buffer_push = last_packet_received;
 
-    assign message_buffer_full  =
+  assign message_buffer_full  =
         message_buffer_wr_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0] ==
         message_buffer_rd_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0] &&
         message_buffer_wr_ptr[MESSAGE_BUFFER_PTR_WIDTH-1] !=
         message_buffer_rd_ptr[MESSAGE_BUFFER_PTR_WIDTH-1];
-    assign message_buffer_empty = message_buffer_wr_ptr == message_buffer_rd_ptr;
+  assign message_buffer_empty = message_buffer_wr_ptr == message_buffer_rd_ptr;
 
-    assign message_buffer_fill_level = message_buffer_ptr_t'(message_buffer_wr_ptr - message_buffer_rd_ptr);
+  assign message_buffer_fill_level = message_buffer_ptr_t'(message_buffer_wr_ptr - message_buffer_rd_ptr);
 
-    assign message_buffer_rd_data =
+  assign message_buffer_rd_data =
         message_buffer_empty ?
         telemetry_message_t'(0) :
         message_buffer[message_buffer_rd_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0]];
 
-    always_comb begin
-        message_buffer_wr_ptr_next = message_buffer_wr_ptr;
-        message_buffer_rd_ptr_next = message_buffer_rd_ptr;
-        message_buffer_next = message_buffer;
+  always_comb begin
+    message_buffer_wr_ptr_next = message_buffer_wr_ptr;
+    message_buffer_rd_ptr_next = message_buffer_rd_ptr;
+    message_buffer_next = message_buffer;
 
-        if (telemetry_receiver_flush) begin
-            message_buffer_wr_ptr_next = message_buffer_ptr_t'(0);
-            message_buffer_rd_ptr_next = message_buffer_ptr_t'(0);
-        end else begin
-            if (message_buffer_push) begin // Write
-                message_buffer_next[message_buffer_wr_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0]] =
+    if (telemetry_receiver_flush) begin
+      message_buffer_wr_ptr_next = message_buffer_ptr_t'(0);
+      message_buffer_rd_ptr_next = message_buffer_ptr_t'(0);
+    end else begin
+      if (message_buffer_push) begin  // Write
+        message_buffer_next[message_buffer_wr_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0]] =
                     received_telemetry_message;
-                message_buffer_wr_ptr_next = message_buffer_wr_ptr + message_buffer_ptr_t'(1);
-            end
-            if (!message_buffer_empty && message_buffer_pop ||
+        message_buffer_wr_ptr_next = message_buffer_wr_ptr + message_buffer_ptr_t'(1);
+      end
+      if (!message_buffer_empty && message_buffer_pop ||
                 message_buffer_full && message_buffer_push) begin // Read
-                message_buffer_rd_ptr_next = message_buffer_rd_ptr + message_buffer_ptr_t'(1);
-            end else begin
-                message_buffer_rd_ptr_next = message_buffer_rd_ptr;
-            end
-        end
+        message_buffer_rd_ptr_next = message_buffer_rd_ptr + message_buffer_ptr_t'(1);
+      end else begin
+        message_buffer_rd_ptr_next = message_buffer_rd_ptr;
+      end
     end
+  end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (~rst_ni) begin
-            message_buffer_wr_ptr <= message_buffer_ptr_t'(0);
-            message_buffer_rd_ptr <= message_buffer_ptr_t'(0);
-        end else begin
-            message_buffer_wr_ptr <= message_buffer_wr_ptr_next;
-            message_buffer_rd_ptr <= message_buffer_rd_ptr_next;
-            message_buffer <= message_buffer_next;
-        end
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni) begin
+      message_buffer_wr_ptr <= message_buffer_ptr_t'(0);
+      message_buffer_rd_ptr <= message_buffer_ptr_t'(0);
+    end else begin
+      message_buffer_wr_ptr <= message_buffer_wr_ptr_next;
+      message_buffer_rd_ptr <= message_buffer_rd_ptr_next;
+      message_buffer <= message_buffer_next;
     end
+  end
 
 
-    /////////////////////
-    // Interrupt Logic //
-    /////////////////////
+  /////////////////////
+  // Interrupt Logic //
+  /////////////////////
 
-    assign buffer_threshold_intr_req =
-        (message_buffer_fill_level > buffer_threshold || buffer_threshold_intr_test) &&
-        buffer_threshold_intr_en;
-    assign irq_o = missing_last_intr_req || buffer_threshold_intr_req;
+  assign buffer_threshold_intr_req =
+        message_buffer_fill_level > buffer_threshold || buffer_threshold_intr_test;
+  // MISSING_LAST latches whether or not the interrupt is enabled
+  // Clears only on W1C; INTR_ENABLE masks the output only
+  assign irq_o =
+        (reg_out.INTR_STATUS.MISSING_LAST.value && reg_out.INTR_ENABLE.MISSING_LAST.value) ||
+        (buffer_threshold_intr_req               && reg_out.INTR_ENABLE.BUFFER_THRESHOLD.value);
 
 
-    //////////
-    // CSRs //
-    //////////
+  //////////
+  // CSRs //
+  //////////
 
-    logic                   [NUM_COUNTER_REGS-1:0] counter_reg_vlds;
-    telemetry_counter_val_t [NUM_COUNTER_REGS-1:0] counter_reg_vals;
+  logic                   [NUM_COUNTER_REGS-1:0] counter_reg_vlds;
+  telemetry_counter_val_t [NUM_COUNTER_REGS-1:0] counter_reg_vals;
 
-    always_comb begin
-        for (int i = 0; i < NUM_COUNTER_REGS; i++) begin
-            if (i < MAX_NUM_COUNTERS_PER_MESSAGE) begin
-                counter_reg_vlds[i] = message_buffer_rd_data.counters[i].vld;
-                counter_reg_vals[i] = message_buffer_rd_data.counters[i].value;
-            end else begin
-                counter_reg_vlds[i] = 1'b0;
-                counter_reg_vals[i] = reg_data_t'(0);
-            end
-        end
+  always_comb begin
+    for (int i = 0; i < NUM_COUNTER_REGS; i++) begin
+      if (i < MAX_NUM_COUNTERS_PER_MESSAGE) begin
+        counter_reg_vlds[i] = message_buffer_rd_data.counters[i].vld;
+        counter_reg_vals[i] = message_buffer_rd_data.counters[i].value;
+      end else begin
+        counter_reg_vlds[i] = 1'b0;
+        counter_reg_vals[i] = reg_data_t'(0);
+      end
     end
+  end
 
-    telemetry_receiver_reg_pkg::telemetry_receiver__in_t  reg_in;
-    telemetry_receiver_reg_pkg::telemetry_receiver__out_t reg_out;
+  telemetry_receiver_reg_pkg::telemetry_receiver__in_t  reg_in;
+  telemetry_receiver_reg_pkg::telemetry_receiver__out_t reg_out;
 
-    telemetry_receiver_reg telemetry_receiver_reg (
-        .clk            (clk_i),
-        .arst_n         (rst_ni),
+  telemetry_receiver_reg telemetry_receiver_reg (
+    .clk            (clk_i),
+    .arst_n         (rst_ni),
 
-        .s_axil_awready (axil_resp_o.aw_ready),
-        .s_axil_awvalid (axil_req_i.aw_valid),
-        .s_axil_awaddr  (axil_req_i.aw.addr),
-        .s_axil_awprot  (axil_req_i.aw.prot),
-        .s_axil_wready  (axil_resp_o.w_ready),
-        .s_axil_wvalid  (axil_req_i.w_valid),
-        .s_axil_wdata   (axil_req_i.w.data),
-        .s_axil_wstrb   (axil_req_i.w.strb),
-        .s_axil_bready  (axil_req_i.b_ready),
-        .s_axil_bvalid  (axil_resp_o.b_valid),
-        .s_axil_bresp   (axil_resp_o.b.resp),
-        .s_axil_arready (axil_resp_o.ar_ready),
-        .s_axil_arvalid (axil_req_i.ar_valid),
-        .s_axil_araddr  (axil_req_i.ar.addr),
-        .s_axil_arprot  (axil_req_i.ar.prot),
-        .s_axil_rready  (axil_req_i.r_ready),
-        .s_axil_rvalid  (axil_resp_o.r_valid),
-        .s_axil_rdata   (axil_resp_o.r.data),
-        .s_axil_rresp   (axil_resp_o.r.resp),
+    .s_axil_awready (axil_resp_o.aw_ready),
+    .s_axil_awvalid (axil_req_i.aw_valid),
+    .s_axil_awaddr  (axil_req_i.aw.addr),
+    .s_axil_awprot  (axil_req_i.aw.prot),
+    .s_axil_wready  (axil_resp_o.w_ready),
+    .s_axil_wvalid  (axil_req_i.w_valid),
+    .s_axil_wdata   (axil_req_i.w.data),
+    .s_axil_wstrb   (axil_req_i.w.strb),
+    .s_axil_bready  (axil_req_i.b_ready),
+    .s_axil_bvalid  (axil_resp_o.b_valid),
+    .s_axil_bresp   (axil_resp_o.b.resp),
+    .s_axil_arready (axil_resp_o.ar_ready),
+    .s_axil_arvalid (axil_req_i.ar_valid),
+    .s_axil_araddr  (axil_req_i.ar.addr),
+    .s_axil_arprot  (axil_req_i.ar.prot),
+    .s_axil_rready  (axil_req_i.r_ready),
+    .s_axil_rvalid  (axil_resp_o.r_valid),
+    .s_axil_rdata   (axil_resp_o.r.data),
+    .s_axil_rresp   (axil_resp_o.r.resp),
 
-        .hwif_in        (reg_in),
-        .hwif_out       (reg_out)
-    );
+    .hwif_in        (reg_in),
+    .hwif_out       (reg_out)
+  );
 
-    // CTRL Register
-    assign message_buffer_pop       = reg_out.CTRL.BUFFER_POP.value;
-    assign telemetry_receiver_flush = reg_out.CTRL.TELEMETRY_RX_FLUSH.value;
+  // CTRL Register
+  assign message_buffer_pop       = reg_out.CTRL.BUFFER_POP.value;
+  assign telemetry_receiver_flush = reg_out.CTRL.TELEMETRY_RX_FLUSH.value;
 
-    assign afvalid_o = reg_out.CTRL.TELEMETRY_TX_FLUSH.value;
-    assign reg_in.CTRL.TELEMETRY_TX_FLUSH.hwclr = afready_i && afvalid_o;
+  assign afvalid_o = reg_out.CTRL.TELEMETRY_TX_FLUSH.value;
+  assign reg_in.CTRL.TELEMETRY_TX_FLUSH.hwclr = afready_i && afvalid_o;
 
-    assign buffer_threshold = message_buffer_ptr_t'(reg_out.CTRL.BUFFER_THRESHOLD.value);
+  assign buffer_threshold = message_buffer_ptr_t'(reg_out.CTRL.BUFFER_THRESHOLD.value);
 
-    // STATUS Register
-    assign reg_in.STATUS.BUFFER_EMPTY.next = message_buffer_empty;
-    assign reg_in.STATUS.BUFFER_FULL.next  = message_buffer_full;
+  // STATUS Register
+  assign reg_in.STATUS.BUFFER_EMPTY.next = message_buffer_empty;
+  assign reg_in.STATUS.BUFFER_FULL.next  = message_buffer_full;
 
-    // INTR_STATE Register
-    assign reg_in.INTR_STATUS.MISSING_LAST.next =
-        (missing_last_event || missing_last_intr_test) && reg_out.INTR_ENABLE.MISSING_LAST.value;
-    assign reg_in.INTR_STATUS.BUFFER_THRESHOLD.next = buffer_threshold_intr_req;
+  // INTR_STATE Register
+  assign reg_in.INTR_STATUS.MISSING_LAST.next     = missing_last_event || missing_last_intr_test;
+  assign reg_in.INTR_STATUS.BUFFER_THRESHOLD.next = buffer_threshold_intr_req;
 
-    assign missing_last_intr_req = reg_out.INTR_STATUS.MISSING_LAST.value;
 
-    // INTR_ENABLE Register
-    assign buffer_threshold_intr_en = reg_out.INTR_ENABLE.BUFFER_THRESHOLD.value;
+  // INTR_TEST Register
+  assign missing_last_intr_test     = reg_out.INTR_TEST.MISSING_LAST.value;
+  assign buffer_threshold_intr_test = reg_out.INTR_TEST.BUFFER_THRESHOLD.value;
 
-    // INTR_TEST Register
-    assign missing_last_intr_test     = reg_out.INTR_TEST.MISSING_LAST.value;
-    assign buffer_threshold_intr_test = reg_out.INTR_TEST.BUFFER_THRESHOLD.value;
+  // TELEMETRY_PROBE_ID Register
+  assign reg_in.TELEMETRY_PROBE_ID.PROBE_ID.next = message_buffer_rd_data.probe_id;
 
-    // TELEMETRY_PROBE_ID Register
-    assign reg_in.TELEMETRY_PROBE_ID.PROBE_ID.next = message_buffer_rd_data.probe_id;
+  // TELEMETRY_COUNTER_VLDS Register
+  assign reg_in.TELEMETRY_COUNTER_VLDS.COUNTER_VLDS.next = counter_reg_vlds;
 
-    // TELEMETRY_COUNTER_VLDS Register
-    assign reg_in.TELEMETRY_COUNTER_VLDS.COUNTER_VLDS.next = counter_reg_vlds;
-
-    // TELEMETRY_COUNTER Registers
-    always_comb begin
-        for (int i = 0; i < NUM_COUNTER_REGS; i++) begin
-            reg_in.TELEMETRY_COUNTER[i].COUNTER.next = counter_reg_vals[i];
-        end
+  // TELEMETRY_COUNTER Registers
+  always_comb begin
+    for (int i = 0; i < NUM_COUNTER_REGS; i++) begin
+      reg_in.TELEMETRY_COUNTER[i].COUNTER.next = counter_reg_vals[i];
     end
+  end
 
 
-    ///////////
-    // Debug //
-    ///////////
+  ///////////
+  // Debug //
+  ///////////
 
-    assign debug_o = {assembly_buffer_full,
-                      message_buffer_empty,
-                      message_buffer_full,
-                      missing_last_event};
+  assign debug_o = {
+    assembly_buffer_full, message_buffer_empty, message_buffer_full, missing_last_event
+  };
 
 
-    ////////////////
-    // Assertions //
-    ////////////////
+  ////////////////
+  // Assertions //
+  ////////////////
 
-    `OCAH_OT_ASSERT_INIT(paramCheckBufferDepth, BUFFER_DEPTH >= 2)
+  `OCAH_OT_ASSERT_INIT(paramCheckBufferDepth, BUFFER_DEPTH >= 2)
 
-    `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
-    `OCAH_OT_ASSERT_KNOWN(AtreadyKnownO_A, atready_o)
-    `OCAH_OT_ASSERT_KNOWN(AfvalidKnownO_A, afvalid_o)
-    `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
-    `OCAH_OT_ASSERT_KNOWN(DebugKnownO_A, debug_o)
+  `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+  `OCAH_OT_ASSERT_KNOWN(AtreadyKnownO_A, atready_o)
+  `OCAH_OT_ASSERT_KNOWN(AfvalidKnownO_A, afvalid_o)
+  `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
+  `OCAH_OT_ASSERT_KNOWN(DebugKnownO_A, debug_o)
 
 endmodule

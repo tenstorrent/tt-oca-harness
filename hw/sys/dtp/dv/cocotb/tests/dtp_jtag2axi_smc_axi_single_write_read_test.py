@@ -30,9 +30,9 @@ class dtp_jtag2axi_smc_axi_single_write_read_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_smc_axi_rd_test_seq,
             "single_write_read",
-            specific_env="DTP_JTAG2AXI_SMC_AXI_SINGLE_WRITE_READ_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SMC_AXI_SINGLE_WRITE_READ_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="single_write_read",
         )
         for seq in sequences:

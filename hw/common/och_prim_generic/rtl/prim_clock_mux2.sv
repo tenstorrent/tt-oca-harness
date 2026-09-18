@@ -4,7 +4,7 @@
 
 
 module prim_clock_mux2 #(
-  parameter bit NoFpgaBufG = 1'b0 // this parameter serves no function in the generic model
+  parameter bit NoFpgaBufG = 1'b0  // this parameter serves no function in the generic model
 ) (
   input        clk0_i,
   input        clk1_i,

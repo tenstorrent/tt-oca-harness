@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap: inbound mailbox 0 CSR precheck (TC_SMC_P1CG_01).
+"""Inbound mailbox 0 CSR precheck (TC_SMC_P1CG_01).
 
-The existing mailbox tests (P0/P1 P1-5) only touch outbound mailbox 0
-at smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR"). RTL exposes 30 outbound + 30 inbound mailboxes; this
-test covers the inbound-mailbox 0 STATUS/ERROR/IRQ CSR surface after
-enabling the mailbox clock-gate.
+Reads the inbound-mailbox 0 STATUS/ERROR/IRQ CSR surface after enabling the
+mailbox clock-gate.
 """
 
 from __future__ import annotations
@@ -13,9 +11,7 @@ from __future__ import annotations
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 MAILBOX_CG_EN = 1 << 1
 
 MAILBOX0_INBOUND_STATUS = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR") + 0x10

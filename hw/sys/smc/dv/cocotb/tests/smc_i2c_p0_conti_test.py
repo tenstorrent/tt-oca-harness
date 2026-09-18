@@ -14,6 +14,14 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_conti_test(smc_base_test):
     """Alternating I2C write/read pairs on shared pads."""
 
+    required_evidence = (
+        "CHK-I2C-P0-CONTI",
+        "CHK-I2C-P0-CONTI-P0",
+        "CHK-I2C-P0-CONTI-P1",
+        "CHK-I2C-P0-CONTI-P2",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -23,6 +31,9 @@ class smc_i2c_p0_conti_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the I2C status polls are timing-dependent.
+            min_csr_accesses=80,
             csr_accesses=seq.accesses,
             proxy=False,
             details=f"alternating pairs_ok={seq.pairs_ok}",

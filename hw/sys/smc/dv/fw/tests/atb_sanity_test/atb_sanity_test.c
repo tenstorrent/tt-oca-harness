@@ -40,6 +40,25 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
+/* Compare a register read against the generated reset default and fail on
+ * mismatch. Expectations come from the generated reset constants in
+ * smc_top_regs.h, reached through smc_io.h, so the golden is the generated map.
+ */
+static void expect_field(const char *name, uint32_t got, uint32_t bm, uint32_t bp, uint32_t want) {
+    uint32_t val = (got & bm) >> bp;
+    simputs("  ");
+    simputs(name);
+    simputshex32(" = ", val);
+    if (val != want) {
+        simputshex32("  MISMATCH: expected ", want);
+        simputs("\n");
+        write_scratch(0, 0xBAD00010u);
+        test_fail(0); /* noreturn */
+    }
+    simputshex32("  == generated reset ", want);
+    simputs("\n");
+}
+
 int main(void) {
     uint32_t test_step = 0;
 
@@ -61,9 +80,9 @@ int main(void) {
     simputs("Step 2: Read CTRL register\n");
     uint32_t ctrl_val =
         read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR(0));
-    simputs("  CTRL: 0x");
-    simputshex32("", ctrl_val);
-    simputs("\n");
+    expect_field("CTRL.BUFFER_THRESHOLD", ctrl_val, TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bm,
+                 TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp,
+                 TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_reset);
 
     // Step 3: Read STATUS register
     test_step = 3;
@@ -71,9 +90,9 @@ int main(void) {
     simputs("Step 3: Read STATUS register\n");
     uint32_t status_val =
         read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR(0));
-    simputs("  STATUS: 0x");
-    simputshex32("", status_val);
-    simputs("\n");
+    expect_field("STATUS.BUFFER_EMPTY", status_val, TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm,
+                 TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bp,
+                 TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_reset);
 
     // Step 4: Read TELEMETRY_PROBE_ID register
     test_step = 4;
@@ -81,9 +100,10 @@ int main(void) {
     simputs("Step 4: Read TELEMETRY_PROBE_ID register\n");
     uint32_t probe_id_val = read_reg(
         SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR(0));
-    simputs("  TELEMETRY_PROBE_ID: 0x");
-    simputshex32("", probe_id_val);
-    simputs("\n");
+    expect_field("TELEMETRY_PROBE_ID.PROBE_ID", probe_id_val,
+                 TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm,
+                 TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bp,
+                 TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_reset);
 
     // Step 5: Read TELEMETRY_COUNTER_VLDS register
     test_step = 5;
@@ -91,9 +111,10 @@ int main(void) {
     simputs("Step 5: Read TELEMETRY_COUNTER_VLDS register\n");
     uint32_t counter_vlds_val = read_reg(
         SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR(0));
-    simputs("  TELEMETRY_COUNTER_VLDS: 0x");
-    simputshex32("", counter_vlds_val);
-    simputs("\n");
+    expect_field("TELEMETRY_COUNTER_VLDS.COUNTER_VLDS", counter_vlds_val,
+                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bm,
+                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bp,
+                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_reset);
 
     // Step 6: Read telemetry counter values
     test_step = 6;
@@ -107,11 +128,12 @@ int main(void) {
         uint32_t counter_val = read_reg(counter_addr);
         simputs("  TELEMETRY_COUNTER[");
         simputshex32("", i);
-        simputs("] @ 0x");
+        simputs("] @ ");
         simputshex32("", counter_addr);
-        simputs(" = 0x");
-        simputshex32("", counter_val);
-        simputs("\n");
+        expect_field("TELEMETRY_COUNTER.COUNTER", counter_val,
+                     TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_bm,
+                     TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_bp,
+                     TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_reset);
     }
 
     // Step 7: Test complete - all register reads done
@@ -129,9 +151,10 @@ int main(void) {
     simputs("  TELEMETRY_PROBE_ID:    0x");
     simputshex32("", probe_id_val);
     simputs("\n");
-    simputs("  TELEMETRY_COUNTER_VLDS: 0x");
-    simputshex32("", counter_vlds_val);
-    simputs("\n");
+    expect_field("TELEMETRY_COUNTER_VLDS.COUNTER_VLDS", counter_vlds_val,
+                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bm,
+                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bp,
+                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_reset);
     simputs("  ========================================\n");
 
     // Signal test completion

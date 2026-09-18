@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i3ccore-wrap-architecture]]
-===== Architecture
+== Architecture
 
 The I3C Core Controller is a MIPI I3C v1.0/v1.1.1 and HCI v1.2 compliant
 communication controller supporting both active controller (master) and target
@@ -10,7 +10,7 @@ communication controller supporting both active controller (master) and target
 high reliability with hardware-managed queue operations, threshold-based
 interrupts, and AXI4-Lite integration.
 
-====== System Overview
+=== System Overview
 
 The I3C controller is organized as a three-level wrapper hierarchy:
 
@@ -28,7 +28,7 @@ interface.
 This document goes over the i3c controller on a high level. For detailed
 i3c controller fsm overview, look at the i3c-core-fork repo, under:
 doc/i3c_controller_fsm_specification.adoc
-====== Block Diagram
+=== Block Diagram
 
 The I3C controller consists of the following major functional blocks:
 
@@ -57,7 +57,7 @@ The I3C controller consists of the following major functional blocks:
                       |  (Main Controller)  |
                       +---------------------+
                       |                     |
-                      |   I3CCSR (Regist)   |
+                      |  I3CCSR (Register)  |
                       |                     |
                       +----------+----------+
                                  |
@@ -78,9 +78,9 @@ The I3C controller consists of the following major functional blocks:
                         +-----------------+
 ....
 
-====== Functional Blocks
+=== Functional Blocks
 
-====== Control and Status Registers (I3CCSR)
+=== Control and Status Registers (I3CCSR)
 
 The I3CCSR module provides a comprehensive register interface organized into
 hierarchical sections:
@@ -101,7 +101,7 @@ Controller Config (0x398-0x39C), and Termination (0x3A0)
 All registers are 32-bit aligned and accessed via a 12-bit address interface
 from the AXI4-Lite slave.
 
-====== HCI Queue Management
+=== HCI Queue Management
 
 The Host Controller Interface implements five independent FIFO structures
 for descriptor-based transaction management:
@@ -134,7 +134,7 @@ enabled, TX and RX queues are shared between controller and target modes to
 reduce area. The OPERATION_MODE register selects which mode can access the
 queues at runtime.
 
-====== I3C Controller Processing Engine
+=== I3C Controller Processing Engine
 
 The controller processing engine manages all I3C protocol operations through
 integrated state machines coordinating byte-level (flow_active.sv) and
@@ -173,14 +173,14 @@ Open-Drain mode uses slower timing compatible with I2C and multi-controller
 arbitration. Push-Pull mode achieves 12.5 MHz operation with near-zero
 rise/fall times for maximum I3C performance.
 
-====== High-Level Transaction Flows
+=== High-Level Transaction Flows
 
 All I3C transactions follow a common initialization sequence before diverging
 into transaction-specific operations. The flows below trace data movement
 from software commands through HCI queues, flow control FSM, physical layer
 FSM, and finally to the I3C bus.
 
-====== Overall Architecture Data Flow
+=== Overall Architecture Data Flow
 
 ....
  +-----------+
@@ -259,7 +259,7 @@ i3c_controller_fsm for bit-level bus control. Device characteristics are
 looked up from DAT/DCT tables. Responses and received data flow back through
 queues to software via interrupt-driven or polled access.
 
-====== Transaction Initialization Flow
+=== Transaction Initialization Flow
 
 Every controller-initiated transaction begins with a common initialization
 sequence:
@@ -313,7 +313,7 @@ controller-initiated I3C transactions.
 5. Transition to transaction-specific phase based on command type (private
 write/read, CCC, or IBI detection during broadcast).
 
-====== Controller Write Transaction Flow
+=== Controller Write Transaction Flow
 
 ....
   From BroadcastAddr
@@ -390,7 +390,7 @@ threshold interrupts, hardware (consumer) fetches data during transmission.
 Threshold-based operation prevents FIFO underflow while minimizing interrupt
 overhead.
 
-====== Controller Read Transaction Flow
+=== Controller Read Transaction Flow
 
 ....
   From BroadcastAddr
@@ -464,7 +464,7 @@ Response Queue
 accumulates and pushes to RX FIFO, software (consumer) drains FIFO triggered
 by threshold interrupts.
 
-====== In-Band Interrupt (IBI) Flow
+=== In-Band Interrupt (IBI) Flow
 
 I3C In-Band Interrupts enable targets to asynchronously notify the controller
 without requiring a separate interrupt pin. The OCA implementation supports
@@ -577,7 +577,7 @@ idle, reducing IBI response latency by up to milliseconds in active systems.
 8. Software reads IBI descriptor from IBI_PORT and determines appropriate
 response (query target, send CCC, etc.)
 
-====== Common Command Code (CCC) Flow
+=== Common Command Codes (CCC) Flow
 
 Common Command Codes enable the controller to configure targets, query device
 information, and manage bus topology. CCCs are classified as broadcast
@@ -711,7 +711,7 @@ from HC_CAPABILITIES register)
 selection (e.g., ENEC/DISEC with event type mask). Most CCCs proceed directly
 to target addressing or broadcast without defining byte.
 
-====== Target Mode Operation
+=== Target Mode Operation
 
 When TARGET_SUPPORT=1, the I3C controller can operate as a target device
 responding to controller commands. Target functionality includes:
@@ -734,7 +734,7 @@ controller mode queue architecture.
 to bus available timer or immediate transmission capability during controller
 broadcast.
 
-====== Device Address Table (DAT) and Device Characteristic Table (DCT)
+=== Device Address Table (DAT) and Device Characteristic Table (DCT)
 
 *DAT (Device Address Table)*: 64-bit entries mapping device indexes to dynamic
 addresses. Each entry contains:
@@ -763,7 +763,7 @@ DCT_SECTION_OFFSET advertise TABLE_SIZE=127, but the physical memories are
 `DAT_DEPTH`/`DCT_DEPTH` = 16 entries deep (i3c_defines.svh). Only indexes 0-15
 are backed by storage.
 
-====== PHY Layer and Clock Domain Crossing
+=== PHY Layer and Clock Domain Crossing
 
 *i3c_phy.sv*: Provides dual flip-flop CDC synchronization for SCL/SDA inputs
 crossing from I3C bus clock domain to controller system clock domain. Implements
@@ -775,9 +775,9 @@ across arbitrary system clock frequencies. Controller FSM generates precise
 SCL/SDA edges by counting system clock cycles derived from configured timing
 values.
 
-====== Recovery Mechanism (TCRI)
+=== Transfer Command Response Interface (TCRI)
 
-The MIPI TCRI v1.0 compliant recovery subsystem enables secure firmware download
+The MIPI TCRI v1.0 recovery subsystem enables secure firmware download
 and device recovery:
 
 *recovery_handler.sv*: Coordinates recovery flow state machine
@@ -789,7 +789,7 @@ Recovery interface signals (recovery_payload_available_o, recovery_image_activat
 peripheral_reset_o, escalate_reset_o) connect to system-level reset and
 firmware management infrastructure.
 
-====== Error Handling
+=== Error Handling
 
 The controller detects and reports multiple error conditions via response
 descriptors and interrupt flags:
@@ -802,7 +802,7 @@ descriptors and interrupt flags:
 Error codes in response descriptors enable software to implement retry logic,
 device blacklisting, or system-level error escalation.
 
-====== Interrupt System
+=== Interrupt System
 
 The controller generates interrupts from multiple sources:
 

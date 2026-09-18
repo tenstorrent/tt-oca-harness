@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 The UART 16550 register map follows the industry-standard 16550 UART
 layout with additional extended registers. The register space spans 64
@@ -17,13 +17,13 @@ addresses map to different registers based on the DLAB bit setting,
 maintaining compatibility with the original 16550 UART while providing
 access to baud rate configuration registers.
 
-====== Address Map Summary
+=== Address Map Summary
 
 .Register Address Map
 [width="100%",cols="15%,15%,15%,55%",options="header",]
 |=======================================================================
 |Offset |Register Name |Access |Description
-|0x00 |RBR/THR |R/W |Receiver Buffer Register (Read) / Transmitter
+|0x00 |RBR/THR |RW |Receiver Buffer Register (Read) / Transmitter
 Holding Register (Write) when DLAB=0
 
 |0x00 |DLL |RW |Divisor Latch Low Register when DLAB=1
@@ -32,7 +32,7 @@ Holding Register (Write) when DLAB=0
 
 |0x04 |DLM |RW |Divisor Latch High Register when DLAB=1
 
-|0x08 |IIR/FCR |R/W |Interrupt Identification Register (Read) / FIFO
+|0x08 |IIR/FCR |RW |Interrupt Identification Register (Read) / FIFO
 Control Register (Write)
 
 |0x0C |LCR |RW |Line Control Register
@@ -50,7 +50,7 @@ Control Register (Write)
 |0x24 |ITR |RW |Interrupt Test Register
 |=======================================================================
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

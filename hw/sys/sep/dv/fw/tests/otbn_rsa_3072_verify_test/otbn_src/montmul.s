@@ -481,7 +481,7 @@ mont_loop:
      Two carry words are required between the cycles. Those are c_xy and c_m.
      Assume that the variable j runs from 1 to N-1 in the explanations below.
      A cycle 0 is omitted, since the results from the computations above are
-     re-used */
+     reused */
   loop      x31, 14
     /* Step 1: First multiplication takes a limb of each of the operands and
        computes the product. The carry word from the previous cycle c_xy and

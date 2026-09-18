@@ -2,13 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // VeeR EL2 PIC (programmable interrupt controller) firmware driver for the SEP
-// OSS tests. Header-only (static inline), self-contained: the PIC register
-// addresses are SEP fabric facts (no generated-header dependency), matching
-// och_sep_top_reg / el2_pic.rdl.
+// OSS tests. Header-only (static inline). PIC register addresses come from
+// generated sep_addr.h (via sep.h).
 //
 // VeeR EL2 is built with fast_interrupt_redirect: on an external interrupt the
 // hardware reads the handler address from the meivt-based vector table and
-// jumps straight to it. start.S sets meivt and pre-fills the 256-entry table
+// jumps straight to it. crt0.s sets meivt and pre-fills the 256-entry table
 // (in DCCM) with a dummy handler; pic_register_handler() overrides one entry.
 // Handlers must be declared __attribute__((interrupt("machine"))).
 
@@ -17,13 +16,9 @@
 
 #include <stdint.h>
 
-// Per-source PIC register file bases (entry for source 1; source N is base +
-// (N-1)*4). VeeR EL2 source 0 is the tied "no interrupt" source.
-#define SEP_PIC_MEIPL_0 0xC0080004u     // priority (4-bit), 0 disables the source
-#define SEP_PIC_MEIE_0 0xC0082004u      // per-source enable
-#define SEP_PIC_MEIGWCTRL_0 0xC0084004u // gateway: [0]=polarity, [1]=irq_type
-#define SEP_PIC_MEIGWCLR_0 0xC0085004u  // write 1 to clear edge gateway
-#define SEP_PIC_MEIP_0 0xC0081000u      // pending words, 32 sources each
+#include "sep.h"
+
+#define SEP_PIC_MEIP_0 OCH_SEP_TOP_PIC_MEIP_BASE_ADDR(0)
 
 // The vector table base symbol from the linker script (1024-byte aligned, 256
 // 32-bit entries in DCCM).
@@ -46,43 +41,64 @@ static inline void pic_register_handler(uint32_t source_id, pic_handler_t handle
     __asm__ volatile("fence" ::: "memory");
 }
 
+// PeakRDL ``OCH_SEP_TOP_PIC_*_BASE_ADDR(idx)`` expands ``idx * stride`` without
+// parenthesizing idx, so only an atomic argument is safe to pass.
+static inline uint32_t _pic_meipl_addr(uint32_t source_id) {
+    return OCH_SEP_TOP_PIC_MEIPL_BASE_ADDR(source_id);
+}
+
+static inline uint32_t _pic_meie_addr(uint32_t source_id) {
+    return OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(source_id);
+}
+
+static inline uint32_t _pic_meigwctrl_addr(uint32_t source_id) {
+    return OCH_SEP_TOP_PIC_MEIGWCTRL_BASE_ADDR(source_id);
+}
+
+static inline uint32_t _pic_meigwclr_addr(uint32_t source_id) {
+    return OCH_SEP_TOP_PIC_MEIGWCLR_BASE_ADDR(source_id);
+}
+
 // Priority 0 disables; 1..15 enable at that level.
 static inline void pic_set_priority(uint32_t source_id, uint32_t priority) {
-    _pic_wr(SEP_PIC_MEIPL_0 + (source_id - 1) * 4, priority & 0xF);
+    _pic_wr(_pic_meipl_addr(source_id), priority & EL2_PIC__MEIPL__INTPRIORITY_bm);
 }
 
 // type: 0=level, 1=edge. polarity: 0=active-high, 1=active-low.
 static inline void pic_set_gateway(uint32_t source_id, uint32_t type, uint32_t polarity) {
-    _pic_wr(SEP_PIC_MEIGWCTRL_0 + (source_id - 1) * 4, (polarity & 0x1) | ((type & 0x1) << 1));
+    uint32_t val = (polarity & EL2_PIC__MEIGWCTRL__POLARITY_bm) |
+                   ((type << EL2_PIC__MEIGWCTRL__IRQ_TYPE_bp) & EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm);
+    _pic_wr(_pic_meigwctrl_addr(source_id), val);
 }
 
 static inline void pic_enable_source(uint32_t source_id) {
-    _pic_wr(SEP_PIC_MEIE_0 + (source_id - 1) * 4, 1);
+    _pic_wr(_pic_meie_addr(source_id), EL2_PIC__MEIE__INTEN_bm);
 }
 
 static inline void pic_disable_source(uint32_t source_id) {
-    _pic_wr(SEP_PIC_MEIE_0 + (source_id - 1) * 4, 0);
+    _pic_wr(_pic_meie_addr(source_id), 0);
 }
 
 static inline uint32_t pic_read_source_enable(uint32_t source_id) {
-    return *(volatile uint32_t *)(SEP_PIC_MEIE_0 + (source_id - 1) * 4);
+    return *(volatile uint32_t *)_pic_meie_addr(source_id);
 }
 
 static inline uint32_t pic_read_priority(uint32_t source_id) {
-    return *(volatile uint32_t *)(SEP_PIC_MEIPL_0 + (source_id - 1) * 4);
+    return *(volatile uint32_t *)_pic_meipl_addr(source_id);
 }
 
 static inline uint32_t pic_read_gateway(uint32_t source_id) {
-    return *(volatile uint32_t *)(SEP_PIC_MEIGWCTRL_0 + (source_id - 1) * 4);
+    return *(volatile uint32_t *)_pic_meigwctrl_addr(source_id);
 }
 
 static inline void pic_clear_gateway(uint32_t source_id) {
-    _pic_wr(SEP_PIC_MEIGWCLR_0 + (source_id - 1) * 4, 1);
+    _pic_wr(_pic_meigwclr_addr(source_id), 1);
 }
 
 static inline uint32_t pic_source_pending(uint32_t source_id) {
     /* meip bitmap is indexed by raw source_id (bit0 unused); neighbours use source_id-1. */
-    uint32_t word = *(volatile uint32_t *)(SEP_PIC_MEIP_0 + (source_id / 32u) * 4u);
+    uint32_t word =
+        *(volatile uint32_t *)(OCH_SEP_TOP_PIC_MEIP_BASE_ADDR(0) + (source_id / 32u) * 4u);
     return (word >> (source_id % 32u)) & 1u;
 }
 

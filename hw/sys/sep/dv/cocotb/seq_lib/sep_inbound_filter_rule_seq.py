@@ -16,9 +16,10 @@ sep_debug skip gate). The filter CSR layout is defined in sep_fabric_csr_bank_se
 SepInboundFilterMatrixCfg is the single source of truth for the walked cells
 (entry x window x R/W-allow x src-id class).
 
-FILTER_CONFIG.src_id=0 is match-all (traffic_filter.sv). A non-zero src_id
-matches only the external master's ar/awuser[3:0]. allow_ns=1 matches the
-master's NONSECURE prot.
+FILTER_CONFIG.src_id=0 is match-all (`filter_ctrl.rdl` src_id wildcard;
+`hw/ip/axi_filter/doc/index.adoc`). A non-zero src_id matches only the
+external master's ar/awuser[3:0]. allow_ns=1 matches the master's
+NONSECURE prot.
 
 FILTER_CONFIG.allow_burst (bit 24) is walked on both filter instances
 (AR and AW). A 2-beat INCR (AxLEN=1) makes traffic_filter.sv pass_burst
@@ -29,20 +30,21 @@ SepInboundFilterWidenCfg covers the widen itself: with allow_burst=1 and
 START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
 whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
-is a write-once-set bit; sep_system_csr.sv routes every further write of a
-locked entry to an AXI-Lite error slave, so the frozen allow_burst keeps
-governing the granule.
+is write-once. A further write of a locked entry completes SLVERR, so the
+frozen allow_burst keeps governing the granule.
 """
 
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import indexed_block_count, sym
+from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
+    ALIAS_BASE,
+    AP_BASE,
     F_ALLOW_BURST,
     F_ALLOW_NS,
     F_ENTRY_ENABLED,
@@ -50,16 +52,17 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_SRC_ID_LSB,
     F_WRITE_ALLOWED,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
+    FILTER_START_ADDR,
     FILTER_STRIDE,
     INFILT_BASE,
+    OUTFILT_BASE,
+    STEE_BASE,
 )
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 
-# Inbound FILTER_* per-entry register offsets (64-bit START/END as lo/hi 32-bit words).
-FILTER_START_ADDR = 0x08
-FILTER_END_ADDR = 0x10
 # Same-page allow_burst=1 rewrites START down and END up to the 4 KB page
-# (hw/common/axi/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
+# (hw/ip/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
 # readback model is sep_reg_bit_bash_seq.inbound_addr_expected().
 
 # Allowed target: a pure-RW scratch CSR (SEP_SW_DEBUG @ sep_cpu_ctrl+0x178) in the
@@ -122,7 +125,7 @@ WIDEN_ADJ_BELOW = (
 # The last table entry: the write-once lock is sticky until reset, so it must not
 # land on an entry the matrix or burst walk reprograms.
 WIDEN_ENTRY = INFILT_N_ENTRIES - 1
-FILTER_LOCKED_HI_BIT = 31  # FILTER_CONFIG.locked[63] = bit 31 of the hi word
+FILTER_LOCKED_HI_BIT = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked") - 32
 
 
 class SepInboundFilterWidenCfg:
@@ -323,6 +326,38 @@ class SepInboundFilterMatrixCfg:
             )
         return addr, val, end
 
+    def ownership_targets(self, inbound_cfg_addr: int) -> list[tuple[str, int]]:
+        """CSRs that must stay outside every programmed allow window.
+
+        Inbound CFG is the primary ownership probe. The rest sit in the same
+        reachable system-CSR window. Window 0 is
+        ``SEP_SW_DEBUG``; ``SEP_GLOBAL_BASE_ADDR`` and ``SEP_REGION_SIZE`` share
+        that 4 KB page, so they prove START/END (not the page) under
+        ``allow_burst=0``.
+        """
+        win0 = self.windows[0][0]
+        global_base = SEP_CPU_CTRL.addr("SEP_GLOBAL_BASE_ADDR")
+        region_size = SEP_CPU_CTRL.addr("SEP_REGION_SIZE")
+        if (global_base >> PAGE_SHIFT) != (win0 >> PAGE_SHIFT):
+            raise RuntimeError(
+                f"SEP_GLOBAL_BASE_ADDR 0x{global_base:08x} is not on the "
+                f"window-0 page 0x{win0:08x}; same-page ownership coverage lost"
+            )
+        if (region_size >> PAGE_SHIFT) != (win0 >> PAGE_SHIFT):
+            raise RuntimeError(
+                f"SEP_REGION_SIZE 0x{region_size:08x} is not on the "
+                f"window-0 page 0x{win0:08x}; same-page ownership coverage lost"
+            )
+        return [
+            ("inbound-cfg", inbound_cfg_addr),
+            ("outbound-cfg", OUTFILT_BASE),
+            ("alias-remap", ALIAS_BASE),
+            ("ap-remap", AP_BASE),
+            ("stee-remap", STEE_BASE),
+            ("sep-global-base", global_base),
+            ("sep-region-size", region_size),
+        ]
+
     def summary(self) -> str:
         wins = " ".join(f"w{i}=0x{a:08x}/0x{v:08x}" for i, (a, v) in enumerate(self.windows))
         return (
@@ -348,8 +383,8 @@ class SepInboundFilter(SepAxiRegDriver):
     async def write_tolerant(self, addr: int, data: int) -> int:
         """Write tolerating a non-OKAY response; return the AXI resp_code.
 
-        A locked entry's further writes are demuxed to an AXI-Lite error slave
-        (sep_system_csr.sv), so the proof is the resp code plus the read-back.
+        A locked entry's further writes complete SLVERR, so the proof is
+        the resp code plus the read-back.
         """
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",
@@ -403,7 +438,7 @@ class SepInboundFilter(SepAxiRegDriver):
         START and END inside one 4 KB page. Hardware then widens the range to
         the whole page: ``START_ADDR`` rounds down, ``END_ADDR`` rounds up,
         and ``allow_burst=1`` selects the 4 KB granule
-        (``hw/common/axi/axi_filter/doc/index.adoc``). The entry grants every
+        (``hw/ip/axi_filter/doc/index.adoc``). The entry grants every
         address in that page -- in the SEP CSR region a page is a whole
         block. A caller that wants a narrow window and sets ``allow_burst``
         by habit gets the page, and the CSR readback shows the widened

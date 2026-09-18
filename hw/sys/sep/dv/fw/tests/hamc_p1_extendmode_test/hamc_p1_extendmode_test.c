@@ -8,7 +8,7 @@
  *   - HMAC-SHA384 with 512-bit and 1024-bit keys
  *   - HMAC-SHA512 with 512-bit and 1024-bit keys
  *
- * The test name intentionally preserves an upstream typo ("hamc").
+ * The directory name keeps the reference suite's spelling ("hamc").
  */
 
 #include <stdint.h>

@@ -61,7 +61,17 @@ class smc_output_fabric_wr_rd_responder_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
-            csr_accesses=cfg_seq.accesses + 2,
+            csr_accesses=cfg_seq.accesses,
+            # Directed stimulus floor: 3 inbound + 3 outbound pass-all filter
+            # CSR writes (output_fabric_pass_all_cfg_seq). Literal here, not
+            # read from `cfg_seq.accesses`.
+            min_csr_accesses=6,
+            # The two JTAG-AXI accesses are reported in their own field rather
+            # than folded into csr_accesses, which would label fabric traffic as
+            # CSR traffic.
+            fabric_accesses=2,
+            min_fabric_accesses=2,
+            fabric_access_label="jtag_axi_accesses",
             proxy=False,
             details=(
                 "JTAG AXI WR/RD + U1-3 scoreboard SmcMemoryModel golden "

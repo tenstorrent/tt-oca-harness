@@ -22,7 +22,7 @@ Standard boot-scoreboard checks (banner + firmware PASS + PC advance) apply on
 top. The firmware image is fw/build/tests/cpu_trace_diag_test/*.{itcm,dtcm}.hex,
 built by the c_compile stage (make dv-fw-tests TEST=cpu_trace_diag_test).
 
-Stimulus is deliberately deterministic: the reconstruction is auditable only
+Stimulus is deterministic: the reconstruction is auditable only
 against a known call chain and a known trap site, and the prebuilt image fixes
 both at compile time (same shape as every cpu firmware test here). The seeded
 clock-timing randomization from sep_base_test still applies on top, so the
@@ -38,6 +38,7 @@ from pathlib import Path
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "cpu_trace_diag_test")
@@ -51,7 +52,7 @@ _MIN_STACK_DEPTH = 4
 _MCAUSE_BREAKPOINT = 3
 _CHAIN_SYMBOLS = ("diag_leaf1", "diag_leaf2", "diag_leaf3", "main")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 2_000

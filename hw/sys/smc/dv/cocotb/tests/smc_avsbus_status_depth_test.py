@@ -15,6 +15,9 @@ from smc_base_test import smc_base_test
 class smc_avsbus_status_depth_test(smc_base_test):
     """Run AVSBus status-side decode checks."""
 
+    required_evidence = ("CHK-SIDEBAND-OBSERVABILITY",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -24,6 +27,9 @@ class smc_avsbus_status_depth_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,
+            # Directed stimulus floor: 5 SEP_IN AXI AVSBus status CSR reads.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=5,
             csr_accesses=seq.accesses,
             proxy=True,
             details="AVSBus status decode plus bounded IRQ/state observability",

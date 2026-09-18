@@ -14,1047 +14,1047 @@
 // independence) -- it does NOT read this table.
 
 module entropy_source_rec_thresh_lut (
-    input  logic [ 7:0] min_entropy_h_i,
-    output logic [15:0] rct_limit_o,
-    output logic [15:0] apt_limit_o
+  input  logic [7:0]  min_entropy_h_i,
+  output logic [15:0] rct_limit_o,
+  output logic [15:0] apt_limit_o
 );
 
-    logic [15:0] rct_limit, apt_limit;
+  logic [15:0] rct_limit, apt_limit;
 
-    always_comb begin
-        unique case (min_entropy_h_i)
-            8'h00: begin
-                rct_limit = 16'd65535;
-                apt_limit = 16'd1024;
-            end
-            8'h01: begin
-                rct_limit = 16'd321;
-                apt_limit = 16'd1009;
-            end
-            8'h02: begin
-                rct_limit = 16'd161;
-                apt_limit = 16'd979;
-            end
-            8'h03: begin
-                rct_limit = 16'd108;
-                apt_limit = 16'd947;
-            end
-            8'h04: begin
-                rct_limit = 16'd81;
-                apt_limit = 16'd915;
-            end
-            8'h05: begin
-                rct_limit = 16'd65;
-                apt_limit = 16'd884;
-            end
-            8'h06: begin
-                rct_limit = 16'd55;
-                apt_limit = 16'd853;
-            end
-            8'h07: begin
-                rct_limit = 16'd47;
-                apt_limit = 16'd822;
-            end
-            8'h08: begin
-                rct_limit = 16'd41;
-                apt_limit = 16'd793;
-            end
-            8'h09: begin
-                rct_limit = 16'd37;
-                apt_limit = 16'd764;
-            end
-            8'h0A: begin
-                rct_limit = 16'd33;
-                apt_limit = 16'd737;
-            end
-            8'h0B: begin
-                rct_limit = 16'd31;
-                apt_limit = 16'd710;
-            end
-            8'h0C: begin
-                rct_limit = 16'd28;
-                apt_limit = 16'd684;
-            end
-            8'h0D: begin
-                rct_limit = 16'd26;
-                apt_limit = 16'd659;
-            end
-            8'h0E: begin
-                rct_limit = 16'd24;
-                apt_limit = 16'd635;
-            end
-            8'h0F: begin
-                rct_limit = 16'd23;
-                apt_limit = 16'd612;
-            end
-            8'h10: begin
-                rct_limit = 16'd21;
-                apt_limit = 16'd589;
-            end
-            8'h11: begin
-                rct_limit = 16'd20;
-                apt_limit = 16'd567;
-            end
-            8'h12: begin
-                rct_limit = 16'd19;
-                apt_limit = 16'd547;
-            end
-            8'h13: begin
-                rct_limit = 16'd18;
-                apt_limit = 16'd527;
-            end
-            8'h14: begin
-                rct_limit = 16'd17;
-                apt_limit = 16'd507;
-            end
-            8'h15: begin
-                rct_limit = 16'd17;
-                apt_limit = 16'd489;
-            end
-            8'h16: begin
-                rct_limit = 16'd16;
-                apt_limit = 16'd471;
-            end
-            8'h17: begin
-                rct_limit = 16'd15;
-                apt_limit = 16'd453;
-            end
-            8'h18: begin
-                rct_limit = 16'd15;
-                apt_limit = 16'd437;
-            end
-            8'h19: begin
-                rct_limit = 16'd14;
-                apt_limit = 16'd421;
-            end
-            8'h1A: begin
-                rct_limit = 16'd14;
-                apt_limit = 16'd405;
-            end
-            8'h1B: begin
-                rct_limit = 16'd13;
-                apt_limit = 16'd391;
-            end
-            8'h1C: begin
-                rct_limit = 16'd13;
-                apt_limit = 16'd376;
-            end
-            8'h1D: begin
-                rct_limit = 16'd13;
-                apt_limit = 16'd363;
-            end
-            8'h1E: begin
-                rct_limit = 16'd12;
-                apt_limit = 16'd350;
-            end
-            8'h1F: begin
-                rct_limit = 16'd12;
-                apt_limit = 16'd337;
-            end
-            8'h20: begin
-                rct_limit = 16'd11;
-                apt_limit = 16'd325;
-            end
-            8'h21: begin
-                rct_limit = 16'd11;
-                apt_limit = 16'd313;
-            end
-            8'h22: begin
-                rct_limit = 16'd11;
-                apt_limit = 16'd302;
-            end
-            8'h23: begin
-                rct_limit = 16'd11;
-                apt_limit = 16'd291;
-            end
-            8'h24: begin
-                rct_limit = 16'd10;
-                apt_limit = 16'd280;
-            end
-            8'h25: begin
-                rct_limit = 16'd10;
-                apt_limit = 16'd270;
-            end
-            8'h26: begin
-                rct_limit = 16'd10;
-                apt_limit = 16'd261;
-            end
-            8'h27: begin
-                rct_limit = 16'd10;
-                apt_limit = 16'd251;
-            end
-            8'h28: begin
-                rct_limit = 16'd9;
-                apt_limit = 16'd242;
-            end
-            8'h29: begin
-                rct_limit = 16'd9;
-                apt_limit = 16'd234;
-            end
-            8'h2A: begin
-                rct_limit = 16'd9;
-                apt_limit = 16'd225;
-            end
-            8'h2B: begin
-                rct_limit = 16'd9;
-                apt_limit = 16'd217;
-            end
-            8'h2C: begin
-                rct_limit = 16'd9;
-                apt_limit = 16'd210;
-            end
-            8'h2D: begin
-                rct_limit = 16'd9;
-                apt_limit = 16'd202;
-            end
-            8'h2E: begin
-                rct_limit = 16'd8;
-                apt_limit = 16'd195;
-            end
-            8'h2F: begin
-                rct_limit = 16'd8;
-                apt_limit = 16'd189;
-            end
-            8'h30: begin
-                rct_limit = 16'd8;
-                apt_limit = 16'd182;
-            end
-            8'h31: begin
-                rct_limit = 16'd8;
-                apt_limit = 16'd176;
-            end
-            8'h32: begin
-                rct_limit = 16'd8;
-                apt_limit = 16'd170;
-            end
-            8'h33: begin
-                rct_limit = 16'd8;
-                apt_limit = 16'd164;
-            end
-            8'h34: begin
-                rct_limit = 16'd8;
-                apt_limit = 16'd158;
-            end
-            8'h35: begin
-                rct_limit = 16'd8;
-                apt_limit = 16'd153;
-            end
-            8'h36: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd147;
-            end
-            8'h37: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd142;
-            end
-            8'h38: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd138;
-            end
-            8'h39: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd133;
-            end
-            8'h3A: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd128;
-            end
-            8'h3B: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd124;
-            end
-            8'h3C: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd120;
-            end
-            8'h3D: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd116;
-            end
-            8'h3E: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd112;
-            end
-            8'h3F: begin
-                rct_limit = 16'd7;
-                apt_limit = 16'd108;
-            end
-            8'h40: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd105;
-            end
-            8'h41: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd101;
-            end
-            8'h42: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd98;
-            end
-            8'h43: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd95;
-            end
-            8'h44: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd92;
-            end
-            8'h45: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd89;
-            end
-            8'h46: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd86;
-            end
-            8'h47: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd83;
-            end
-            8'h48: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd81;
-            end
-            8'h49: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd78;
-            end
-            8'h4A: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd76;
-            end
-            8'h4B: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd73;
-            end
-            8'h4C: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd71;
-            end
-            8'h4D: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd69;
-            end
-            8'h4E: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd67;
-            end
-            8'h4F: begin
-                rct_limit = 16'd6;
-                apt_limit = 16'd65;
-            end
-            8'h50: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd63;
-            end
-            8'h51: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd61;
-            end
-            8'h52: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd59;
-            end
-            8'h53: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd57;
-            end
-            8'h54: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd55;
-            end
-            8'h55: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd54;
-            end
-            8'h56: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd52;
-            end
-            8'h57: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd51;
-            end
-            8'h58: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd49;
-            end
-            8'h59: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd48;
-            end
-            8'h5A: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd46;
-            end
-            8'h5B: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd45;
-            end
-            8'h5C: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd44;
-            end
-            8'h5D: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd43;
-            end
-            8'h5E: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd41;
-            end
-            8'h5F: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd40;
-            end
-            8'h60: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd39;
-            end
-            8'h61: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd38;
-            end
-            8'h62: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd37;
-            end
-            8'h63: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd36;
-            end
-            8'h64: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd35;
-            end
-            8'h65: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd34;
-            end
-            8'h66: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd33;
-            end
-            8'h67: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd32;
-            end
-            8'h68: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd31;
-            end
-            8'h69: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd31;
-            end
-            8'h6A: begin
-                rct_limit = 16'd5;
-                apt_limit = 16'd30;
-            end
-            8'h6B: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd29;
-            end
-            8'h6C: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd28;
-            end
-            8'h6D: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd28;
-            end
-            8'h6E: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd27;
-            end
-            8'h6F: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd26;
-            end
-            8'h70: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd26;
-            end
-            8'h71: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd25;
-            end
-            8'h72: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd24;
-            end
-            8'h73: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd24;
-            end
-            8'h74: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd23;
-            end
-            8'h75: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd23;
-            end
-            8'h76: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd22;
-            end
-            8'h77: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd22;
-            end
-            8'h78: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd21;
-            end
-            8'h79: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd21;
-            end
-            8'h7A: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd20;
-            end
-            8'h7B: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd20;
-            end
-            8'h7C: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd19;
-            end
-            8'h7D: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd19;
-            end
-            8'h7E: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd18;
-            end
-            8'h7F: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd18;
-            end
-            8'h80: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd18;
-            end
-            8'h81: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd17;
-            end
-            8'h82: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd17;
-            end
-            8'h83: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd16;
-            end
-            8'h84: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd16;
-            end
-            8'h85: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd16;
-            end
-            8'h86: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd15;
-            end
-            8'h87: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd15;
-            end
-            8'h88: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd15;
-            end
-            8'h89: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd15;
-            end
-            8'h8A: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd14;
-            end
-            8'h8B: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd14;
-            end
-            8'h8C: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd14;
-            end
-            8'h8D: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd13;
-            end
-            8'h8E: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd13;
-            end
-            8'h8F: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd13;
-            end
-            8'h90: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd13;
-            end
-            8'h91: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd12;
-            end
-            8'h92: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd12;
-            end
-            8'h93: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd12;
-            end
-            8'h94: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd12;
-            end
-            8'h95: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd12;
-            end
-            8'h96: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd11;
-            end
-            8'h97: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd11;
-            end
-            8'h98: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd11;
-            end
-            8'h99: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd11;
-            end
-            8'h9A: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd11;
-            end
-            8'h9B: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd10;
-            end
-            8'h9C: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd10;
-            end
-            8'h9D: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd10;
-            end
-            8'h9E: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd10;
-            end
-            8'h9F: begin
-                rct_limit = 16'd4;
-                apt_limit = 16'd10;
-            end
-            8'hA0: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd10;
-            end
-            8'hA1: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd9;
-            end
-            8'hA2: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd9;
-            end
-            8'hA3: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd9;
-            end
-            8'hA4: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd9;
-            end
-            8'hA5: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd9;
-            end
-            8'hA6: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd9;
-            end
-            8'hA7: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd9;
-            end
-            8'hA8: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hA9: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hAA: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hAB: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hAC: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hAD: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hAE: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hAF: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hB0: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd8;
-            end
-            8'hB1: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hB2: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hB3: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hB4: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hB5: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hB6: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hB7: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hB8: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hB9: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hBA: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd7;
-            end
-            8'hBB: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hBC: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hBD: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hBE: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hBF: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC0: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC1: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC2: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC3: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC4: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC5: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC6: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC7: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC8: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hC9: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd6;
-            end
-            8'hCA: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hCB: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hCC: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hCD: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hCE: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hCF: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD0: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD1: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD2: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD3: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD4: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD5: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD6: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD7: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD8: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hD9: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hDA: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hDB: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hDC: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hDD: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd5;
-            end
-            8'hDE: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hDF: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE0: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE1: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE2: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE3: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE4: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE5: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE6: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE7: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE8: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hE9: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hEA: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hEB: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hEC: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hED: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hEE: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hEF: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF0: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF1: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF2: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF3: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF4: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF5: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF6: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF7: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF8: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hF9: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hFA: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hFB: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hFC: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd4;
-            end
-            8'hFD: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd3;
-            end
-            8'hFE: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd3;
-            end
-            8'hFF: begin
-                rct_limit = 16'd3;
-                apt_limit = 16'd3;
-            end
-            default: begin
-                rct_limit = 16'd0;
-                apt_limit = 16'd0;
-            end
-        endcase
-    end
+  always_comb begin
+    unique case (min_entropy_h_i)
+      8'h00: begin
+        rct_limit = 16'd65535;
+        apt_limit = 16'd1024;
+      end
+      8'h01: begin
+        rct_limit = 16'd321;
+        apt_limit = 16'd1009;
+      end
+      8'h02: begin
+        rct_limit = 16'd161;
+        apt_limit = 16'd979;
+      end
+      8'h03: begin
+        rct_limit = 16'd108;
+        apt_limit = 16'd947;
+      end
+      8'h04: begin
+        rct_limit = 16'd81;
+        apt_limit = 16'd915;
+      end
+      8'h05: begin
+        rct_limit = 16'd65;
+        apt_limit = 16'd884;
+      end
+      8'h06: begin
+        rct_limit = 16'd55;
+        apt_limit = 16'd853;
+      end
+      8'h07: begin
+        rct_limit = 16'd47;
+        apt_limit = 16'd822;
+      end
+      8'h08: begin
+        rct_limit = 16'd41;
+        apt_limit = 16'd793;
+      end
+      8'h09: begin
+        rct_limit = 16'd37;
+        apt_limit = 16'd764;
+      end
+      8'h0A: begin
+        rct_limit = 16'd33;
+        apt_limit = 16'd737;
+      end
+      8'h0B: begin
+        rct_limit = 16'd31;
+        apt_limit = 16'd710;
+      end
+      8'h0C: begin
+        rct_limit = 16'd28;
+        apt_limit = 16'd684;
+      end
+      8'h0D: begin
+        rct_limit = 16'd26;
+        apt_limit = 16'd659;
+      end
+      8'h0E: begin
+        rct_limit = 16'd24;
+        apt_limit = 16'd635;
+      end
+      8'h0F: begin
+        rct_limit = 16'd23;
+        apt_limit = 16'd612;
+      end
+      8'h10: begin
+        rct_limit = 16'd21;
+        apt_limit = 16'd589;
+      end
+      8'h11: begin
+        rct_limit = 16'd20;
+        apt_limit = 16'd567;
+      end
+      8'h12: begin
+        rct_limit = 16'd19;
+        apt_limit = 16'd547;
+      end
+      8'h13: begin
+        rct_limit = 16'd18;
+        apt_limit = 16'd527;
+      end
+      8'h14: begin
+        rct_limit = 16'd17;
+        apt_limit = 16'd507;
+      end
+      8'h15: begin
+        rct_limit = 16'd17;
+        apt_limit = 16'd489;
+      end
+      8'h16: begin
+        rct_limit = 16'd16;
+        apt_limit = 16'd471;
+      end
+      8'h17: begin
+        rct_limit = 16'd15;
+        apt_limit = 16'd453;
+      end
+      8'h18: begin
+        rct_limit = 16'd15;
+        apt_limit = 16'd437;
+      end
+      8'h19: begin
+        rct_limit = 16'd14;
+        apt_limit = 16'd421;
+      end
+      8'h1A: begin
+        rct_limit = 16'd14;
+        apt_limit = 16'd405;
+      end
+      8'h1B: begin
+        rct_limit = 16'd13;
+        apt_limit = 16'd391;
+      end
+      8'h1C: begin
+        rct_limit = 16'd13;
+        apt_limit = 16'd376;
+      end
+      8'h1D: begin
+        rct_limit = 16'd13;
+        apt_limit = 16'd363;
+      end
+      8'h1E: begin
+        rct_limit = 16'd12;
+        apt_limit = 16'd350;
+      end
+      8'h1F: begin
+        rct_limit = 16'd12;
+        apt_limit = 16'd337;
+      end
+      8'h20: begin
+        rct_limit = 16'd11;
+        apt_limit = 16'd325;
+      end
+      8'h21: begin
+        rct_limit = 16'd11;
+        apt_limit = 16'd313;
+      end
+      8'h22: begin
+        rct_limit = 16'd11;
+        apt_limit = 16'd302;
+      end
+      8'h23: begin
+        rct_limit = 16'd11;
+        apt_limit = 16'd291;
+      end
+      8'h24: begin
+        rct_limit = 16'd10;
+        apt_limit = 16'd280;
+      end
+      8'h25: begin
+        rct_limit = 16'd10;
+        apt_limit = 16'd270;
+      end
+      8'h26: begin
+        rct_limit = 16'd10;
+        apt_limit = 16'd261;
+      end
+      8'h27: begin
+        rct_limit = 16'd10;
+        apt_limit = 16'd251;
+      end
+      8'h28: begin
+        rct_limit = 16'd9;
+        apt_limit = 16'd242;
+      end
+      8'h29: begin
+        rct_limit = 16'd9;
+        apt_limit = 16'd234;
+      end
+      8'h2A: begin
+        rct_limit = 16'd9;
+        apt_limit = 16'd225;
+      end
+      8'h2B: begin
+        rct_limit = 16'd9;
+        apt_limit = 16'd217;
+      end
+      8'h2C: begin
+        rct_limit = 16'd9;
+        apt_limit = 16'd210;
+      end
+      8'h2D: begin
+        rct_limit = 16'd9;
+        apt_limit = 16'd202;
+      end
+      8'h2E: begin
+        rct_limit = 16'd8;
+        apt_limit = 16'd195;
+      end
+      8'h2F: begin
+        rct_limit = 16'd8;
+        apt_limit = 16'd189;
+      end
+      8'h30: begin
+        rct_limit = 16'd8;
+        apt_limit = 16'd182;
+      end
+      8'h31: begin
+        rct_limit = 16'd8;
+        apt_limit = 16'd176;
+      end
+      8'h32: begin
+        rct_limit = 16'd8;
+        apt_limit = 16'd170;
+      end
+      8'h33: begin
+        rct_limit = 16'd8;
+        apt_limit = 16'd164;
+      end
+      8'h34: begin
+        rct_limit = 16'd8;
+        apt_limit = 16'd158;
+      end
+      8'h35: begin
+        rct_limit = 16'd8;
+        apt_limit = 16'd153;
+      end
+      8'h36: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd147;
+      end
+      8'h37: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd142;
+      end
+      8'h38: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd138;
+      end
+      8'h39: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd133;
+      end
+      8'h3A: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd128;
+      end
+      8'h3B: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd124;
+      end
+      8'h3C: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd120;
+      end
+      8'h3D: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd116;
+      end
+      8'h3E: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd112;
+      end
+      8'h3F: begin
+        rct_limit = 16'd7;
+        apt_limit = 16'd108;
+      end
+      8'h40: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd105;
+      end
+      8'h41: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd101;
+      end
+      8'h42: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd98;
+      end
+      8'h43: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd95;
+      end
+      8'h44: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd92;
+      end
+      8'h45: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd89;
+      end
+      8'h46: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd86;
+      end
+      8'h47: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd83;
+      end
+      8'h48: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd81;
+      end
+      8'h49: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd78;
+      end
+      8'h4A: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd76;
+      end
+      8'h4B: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd73;
+      end
+      8'h4C: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd71;
+      end
+      8'h4D: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd69;
+      end
+      8'h4E: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd67;
+      end
+      8'h4F: begin
+        rct_limit = 16'd6;
+        apt_limit = 16'd65;
+      end
+      8'h50: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd63;
+      end
+      8'h51: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd61;
+      end
+      8'h52: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd59;
+      end
+      8'h53: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd57;
+      end
+      8'h54: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd55;
+      end
+      8'h55: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd54;
+      end
+      8'h56: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd52;
+      end
+      8'h57: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd51;
+      end
+      8'h58: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd49;
+      end
+      8'h59: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd48;
+      end
+      8'h5A: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd46;
+      end
+      8'h5B: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd45;
+      end
+      8'h5C: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd44;
+      end
+      8'h5D: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd43;
+      end
+      8'h5E: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd41;
+      end
+      8'h5F: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd40;
+      end
+      8'h60: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd39;
+      end
+      8'h61: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd38;
+      end
+      8'h62: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd37;
+      end
+      8'h63: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd36;
+      end
+      8'h64: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd35;
+      end
+      8'h65: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd34;
+      end
+      8'h66: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd33;
+      end
+      8'h67: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd32;
+      end
+      8'h68: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd31;
+      end
+      8'h69: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd31;
+      end
+      8'h6A: begin
+        rct_limit = 16'd5;
+        apt_limit = 16'd30;
+      end
+      8'h6B: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd29;
+      end
+      8'h6C: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd28;
+      end
+      8'h6D: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd28;
+      end
+      8'h6E: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd27;
+      end
+      8'h6F: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd26;
+      end
+      8'h70: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd26;
+      end
+      8'h71: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd25;
+      end
+      8'h72: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd24;
+      end
+      8'h73: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd24;
+      end
+      8'h74: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd23;
+      end
+      8'h75: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd23;
+      end
+      8'h76: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd22;
+      end
+      8'h77: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd22;
+      end
+      8'h78: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd21;
+      end
+      8'h79: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd21;
+      end
+      8'h7A: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd20;
+      end
+      8'h7B: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd20;
+      end
+      8'h7C: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd19;
+      end
+      8'h7D: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd19;
+      end
+      8'h7E: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd18;
+      end
+      8'h7F: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd18;
+      end
+      8'h80: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd18;
+      end
+      8'h81: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd17;
+      end
+      8'h82: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd17;
+      end
+      8'h83: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd16;
+      end
+      8'h84: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd16;
+      end
+      8'h85: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd16;
+      end
+      8'h86: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd15;
+      end
+      8'h87: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd15;
+      end
+      8'h88: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd15;
+      end
+      8'h89: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd15;
+      end
+      8'h8A: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd14;
+      end
+      8'h8B: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd14;
+      end
+      8'h8C: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd14;
+      end
+      8'h8D: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd13;
+      end
+      8'h8E: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd13;
+      end
+      8'h8F: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd13;
+      end
+      8'h90: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd13;
+      end
+      8'h91: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd12;
+      end
+      8'h92: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd12;
+      end
+      8'h93: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd12;
+      end
+      8'h94: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd12;
+      end
+      8'h95: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd12;
+      end
+      8'h96: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd11;
+      end
+      8'h97: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd11;
+      end
+      8'h98: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd11;
+      end
+      8'h99: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd11;
+      end
+      8'h9A: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd11;
+      end
+      8'h9B: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd10;
+      end
+      8'h9C: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd10;
+      end
+      8'h9D: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd10;
+      end
+      8'h9E: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd10;
+      end
+      8'h9F: begin
+        rct_limit = 16'd4;
+        apt_limit = 16'd10;
+      end
+      8'hA0: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd10;
+      end
+      8'hA1: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd9;
+      end
+      8'hA2: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd9;
+      end
+      8'hA3: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd9;
+      end
+      8'hA4: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd9;
+      end
+      8'hA5: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd9;
+      end
+      8'hA6: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd9;
+      end
+      8'hA7: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd9;
+      end
+      8'hA8: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hA9: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hAA: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hAB: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hAC: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hAD: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hAE: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hAF: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hB0: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd8;
+      end
+      8'hB1: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hB2: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hB3: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hB4: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hB5: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hB6: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hB7: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hB8: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hB9: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hBA: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd7;
+      end
+      8'hBB: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hBC: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hBD: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hBE: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hBF: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC0: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC1: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC2: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC3: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC4: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC5: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC6: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC7: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC8: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hC9: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd6;
+      end
+      8'hCA: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hCB: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hCC: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hCD: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hCE: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hCF: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD0: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD1: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD2: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD3: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD4: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD5: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD6: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD7: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD8: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hD9: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hDA: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hDB: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hDC: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hDD: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd5;
+      end
+      8'hDE: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hDF: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE0: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE1: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE2: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE3: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE4: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE5: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE6: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE7: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE8: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hE9: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hEA: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hEB: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hEC: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hED: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hEE: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hEF: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF0: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF1: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF2: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF3: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF4: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF5: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF6: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF7: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF8: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hF9: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hFA: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hFB: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hFC: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd4;
+      end
+      8'hFD: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd3;
+      end
+      8'hFE: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd3;
+      end
+      8'hFF: begin
+        rct_limit = 16'd3;
+        apt_limit = 16'd3;
+      end
+      default: begin
+        rct_limit = 16'd0;
+        apt_limit = 16'd0;
+      end
+    endcase
+  end
 
-    assign rct_limit_o = rct_limit;
-    assign apt_limit_o = apt_limit;
+  assign rct_limit_o = rct_limit;
+  assign apt_limit_o = apt_limit;
 
 endmodule

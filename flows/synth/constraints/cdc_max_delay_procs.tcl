@@ -23,7 +23,7 @@
 # still bounded by the default 20 ns from that same call - these procs are for
 # tightening the ones that matter.
 #
-# Synchronizer procs target the WRAPPER's data input port (prim_sync3/i_d), not
+# Synchronizer procs target the WRAPPER's data input port (prim_sync3/d_i), not
 # the leaf flops inside it. One wrapper pin covers the whole bus, so SMC needs
 # ~365 calls rather than the ~1200 the leaf cells would take.
 ################################################################################
@@ -164,17 +164,17 @@ proc cdc_data_delay { dst_clk delay } {
 proc set_cdc_max_delay_prim_sync2 { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync2 $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/i_d" -quiet]
+        {} [get_pins "$inst/d_i" -quiet]
 }
 proc set_cdc_max_delay_prim_sync3 { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync3 $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/i_d" -quiet]
+        {} [get_pins "$inst/d_i" -quiet]
 }
 proc set_cdc_max_delay_prim_sync4 { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync4 $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/i_d" -quiet]
+        {} [get_pins "$inst/d_i" -quiet]
 }
 
 # hw/common/sync.sv, the pulp shim used by the common_cells CDC library.
@@ -184,18 +184,18 @@ proc set_cdc_max_delay_sync { inst dst_clk { delay {} } } {
         {} [get_pins "$inst/serial_i" -quiet]
 }
 
-# Reset-deassertion synchronizer; the async input is rst_n.
+# Reset-deassertion synchronizer; the async input is rst_ni.
 proc set_cdc_max_delay_prim_sync_reset { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync_reset $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/rst_n" -quiet]
+        {} [get_pins "$inst/rst_ni" -quiet]
 }
 
 # Pulse crossing: toggle in the source domain, 3-stage sync in the destination.
 proc set_cdc_max_delay_prim_sync3_pulse { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync3_pulse $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/i_dest/toggle" -quiet]
+        {} [get_pins "$inst/i_dest/toggle_i" -quiet]
 }
 
 ################################################################################
@@ -247,7 +247,7 @@ proc set_cdc_max_delay_avsbus_async_fifo { inst wr_clk rd_clk { delay {} } } {
     foreach {sync dst} [list wr_ptr_gray_sync_to_rd_clk $rd_clk \
         rd_ptr_gray_sync_to_wr_clk $wr_clk] {
         cdc_emit "$t $sync" [cdc_sync_delay $dst $delay] to \
-            {} [get_pins "$inst/$sync*/i_d" -quiet]
+            {} [get_pins "$inst/$sync*/d_i" -quiet]
     }
 }
 
@@ -297,14 +297,14 @@ proc set_cdc_max_delay_prim_sync_data_autohs { inst src_clk dst_clk { delay {} }
     set inst [cdc_inst $inst]
     set t "prim_sync_data_autohs $inst"
     cdc_emit "$t req" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/*sync_req_toggle/i_D" -quiet]
+        {} [get_pins "$inst/*sync_req_toggle/d_i" -quiet]
     cdc_emit "$t ack" [cdc_sync_delay $src_clk $delay] to \
-        {} [get_pins "$inst/*sync_ack_toggle/i_D" -quiet]
+        {} [get_pins "$inst/*sync_ack_toggle/d_i" -quiet]
     # -to the destination clock, not clk2_val_reg/D: before mapping, flop inputs
     # are GTECH `next_state` pins, so any /D pattern resolves empty here.
     cdc_emit "$t data" [cdc_data_delay $dst_clk $delay] from \
         [get_pins "$inst/clk1_val_reg*/Q*" -quiet] [get_clocks [cdc_clk $dst_clk]]
-    if { [sizeof_collection [get_cells "$inst/g_depth_2*" -quiet]] > 0 } {
+    if { [sizeof_collection [get_cells "$inst/gen_depth_2*" -quiet]] > 0 } {
         cdc_warn "$t uses a 2-stage synchronizer (DEPTH=2); 3 is recommended"
     }
 }

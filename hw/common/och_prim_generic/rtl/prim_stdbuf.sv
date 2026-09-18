@@ -6,11 +6,11 @@
 //
 //--------------------------------------------------
 module prim_stdbuf #(
-    parameter bit DONT_TOUCH = 1
+  parameter bit DONT_TOUCH = 1
 ) (
-    input  i_A,
-    output o_Y
+  input  a_i,
+  output y_o
 );
 
-  assign o_Y = i_A;
+  assign y_o = a_i;
 endmodule

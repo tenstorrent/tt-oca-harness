@@ -23,22 +23,25 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
-from sep_reg_meta import sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL
 
-# EFUSE control MMR aperture (SEP-local shadow base + 0x400).
-_EFUSE_PROGRAM_CTRL = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR") + 0x400 + 0x4
-_EFUSE_IFACE_STATUS = sym("EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR")
-# EFUSE_INTERFACE_CTRL_STATUS: efuse_req_error[4], efuse_req_error_clear[8].
-_EFUSE_REQ_ERROR_BIT = 1 << 4
-_EFUSE_REQ_ERROR_CLEAR = 1 << 8
+_EFUSE_PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
+_EFUSE_IFACE_STATUS = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
+_EFUSE_REQ_ERROR_BIT = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error"
+)
+_EFUSE_REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
+)
 
-# EFUSE_PROGRAM_CTRL field encoding.
-_EFUSE_DATA_BIT = 1 << 16  # program the addressed bit to 1 (W1S)
-_EFUSE_PROGRAM_GO_BIT = 1 << 17
-_EFUSE_PROGRAM_READ_BACK_BIT = 1 << 18
-_EFUSE_PROGRAM_ENABLE_BIT = 1 << 27
-_EFUSE_PROGRAM_DONE_BIT = 1 << 25  # status: program cycle complete
-_EFUSE_PROGRAM_ERR_BIT = 1 << 26  # status: read-back mismatch (injected/real fail)
+_EFUSE_DATA_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
+_EFUSE_PROGRAM_GO_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
+_EFUSE_PROGRAM_READ_BACK_BIT = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_PROGRAM_CTRL", "efuse_program_read_back"
+)
+_EFUSE_PROGRAM_ENABLE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
+_EFUSE_PROGRAM_DONE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
+_EFUSE_PROGRAM_ERR_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 
 _POLL_CYCLES = 200
 

@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-prod-rom-bl1-handoff]]
+== BL1 handoff
+
+The payload TOC may describe SEP and SMC images. BL0 scans it for the first
+`IMAGE_TYPE_SEP_BL1` entry and validates that the complete image lies inside
+ICCM, that its length is nonzero and no larger than ICCM, and that its entry
+offset lies inside the image. These checks run during payload validation and
+are repeated at handoff.
+
+=== ICCM copy
+
+The VeeR EL2 instruction-fetch unit can execute from ICCM, but the CPU
+load/store unit cannot read or write it. ICCM and DCCM occupy the same VeeR
+region, and load/store address checking treats ICCM addresses outside the DCCM
+offset as unmapped.
+
+BL0 therefore uses the secure DMA to copy the validated BL1 bytes from the
+payload in SEP SRAM to the entry's ICCM load address. A CPU `memcpy` cannot
+replace this transfer.
+
+BL1's binary contains executable code and the load image of its own read-only
+and writable data. Because BL1 also cannot read its ICCM copy, BL0 stores the
+payload source address in `bl0_state.bl1_image_src_addr`. BL1 startup uses that
+SRAM source when initializing DCCM.
+
+=== Transfer of control
+
+The entry address is the ICCM load address plus the TOC entry offset. After the
+DMA succeeds, BL0 writes the entry to `mepc`, executes `fence.i` and `fence`,
+and uses `mret` to transfer control. This makes the newly written instructions
+visible to the fetch unit and completes prior memory activity before BL1 runs.
+
+The handoff is non-returning. Reaching its caller again is an error. BL0 does
+not publish a success verdict before the transfer; BL1 proves successful
+execution through its own status path.
+
+=== Shared state
+
+BL1 locates `struct bl0_state` at the top of DCCM and validates its leading and
+trailing magic words and size. The structure communicates:
+
+* the validated manifest and BL1 source addresses;
+* selected boot mode and secure-boot state;
+* lifecycle and feature-control values;
+* the boot measurement and deferred BL2 demotion decision; and
+* the last BL0 error, when execution did not reach handoff.
+
+BL0 and BL1 must use the same `include/bl0_state.h` layout.
+
+=== Warm-reset return
+
+BL1 may place an ICCM handler address in SEP `cold_scratch[7]` before enabling
+the watchdog. This register bank survives the warm watchdog reset. On reset,
+BL0 reads the slot before setting a stack or touching DCCM:
+
+* zero selects a cold boot, after which BL0 poisons the slot with `-1`;
+* an address inside ICCM transfers directly to the handler and remains in the
+  slot for subsequent watchdog resets; and
+* any other nonzero value reports an invalid target and stops.
+
+The direct warm path preserves BL1 DCCM and ICCM state. The handler must
+restore any CPU state reset by the watchdog before resuming normal execution.

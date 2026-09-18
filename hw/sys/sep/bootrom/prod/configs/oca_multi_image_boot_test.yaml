@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # OCA-classic RSA-3072 signed boot image for the SEP boot ROM.
 #
 # Same path rules as oca_non_secure_boot_test.yaml: relative to
@@ -33,10 +35,15 @@ payload_images:
   # BL1 deliberately LAST. rom_handoff_bl1() must search the TOC by image type
   # rather than assuming index 0 -- taking the first entry would boot the memory
   # map here, which is not executable.
-  - type: "TT_SEP  BLMEMMAP"
+  - type: "OCAHSEP BLMEMMAP"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
-  - type: "TT_SEP  _VENDOR1"
+  - type: "OCAHSEP _VENDOR1"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
-  - type: "TT_SEP  BLSTAGE1"
+  - type: "OCAHSEP BLSTAGE1"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
-    load_addr: 0x10020000
+    # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
+    # LMA of its .rodata/.data straight after, which _start copies down to DCCM --
+    # so it only runs correctly when loaded there. The ROM honours whichever region
+    # this names (SEP-ROM-MAN-060 permits SRAM or ICCM) and copies via the DMA,
+    # which is mandatory for an ICCM destination: the LSU cannot store to ICCM.
+    load_addr: 0xC0000000

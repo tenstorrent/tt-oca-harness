@@ -18,6 +18,13 @@ from smc_base_test import smc_base_test
 class smc_cpu_sanity_test(smc_base_test):
     """Run CPU-control CSR map coverage and optional firmware boot contract."""
 
+    required_evidence = (
+        "CHK-CPU-BFM-OBSERVABILITY",
+        "CHK-CPU-CTRL-MAP-DEPTH",
+        "CHK-CPU-CTRL-MAP-LIVE",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -29,6 +36,9 @@ class smc_cpu_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
+            # Directed stimulus floor: 5 SEP_IN AXI CPU-control accesses.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=5,
             csr_accesses=seq.accesses,
             proxy=not boot_checked,
             details=(

@@ -8,12 +8,12 @@ then CMD_KEY_TRANSFER sideloads it to the OpenTitan OTBN core. A key-dump OTBN
 program reads the sideload KEY WSRs, reconstructs key = share0 ^ share1, and
 writes the 384-bit result to DMEM. The host asserts DMEM == the exact known key.
 
-This is a fully FRONTDOOR consume-proof with NO backdoor: because the host loaded
-the key value itself, the expected value is known without reading the wrapper
-shares (which are write-only / on the KM-private bus anyway). It is STRONGER than
-the reference suite, which generates a random key and reconstructs it by a read-only
-backdoor of the wrapper shares. Here the 12 distinct key words make an exact compare
-catch any truncation, word-swap, or share-defeat bug.
+This is a fully FRONTDOOR consume-proof: because the host loaded the key value
+itself, the expected value is known without reading the wrapper shares (which are
+write-only / on the KM-private bus). The reference suite generates a random key
+and reconstructs it by a read-only backdoor of the wrapper shares. Here the 12
+distinct key words make an exact compare catch any truncation, word-swap, or
+share-defeat bug.
 
 VPLAN-parity checkers (mapped to the reference suite's checker list):
   CHK0       boot KM on real DRBG -> RESP_KM_READY
@@ -106,8 +106,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # mode so this KAT also proves the crypto EDN leg delivers real beats, not only
         # the KM leg. observe = positive beat evidence, no bit-exact compare (secure-
         # wipe-driven pull order). Only OTBN-URND is scored: the key-dump program issues
-        # no BN.WSRR(RND), so crypto_edn[2] (OTBN-RND) never fires here (empirically 0
-        # beats) -- exercising RND belongs to a dedicated consumer port.
+        # no BN.WSRR(RND), so crypto_edn[2] (OTBN-RND) never fires here.
         # AES/KMAC stay disabled (parked, no entropy requests).
         await self.bring_up_entropy(
             strict=True, score_km="observe", score_sinks={"otbn_urnd": "observe"}
@@ -123,7 +122,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         self.logger.info("CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox")
 
         # --- Frontdoor consume-proof: load known key -> transfer -> dump -------
-        # CHK-A: provision the KNOWN key into a KPV handle (no backdoor needed).
+        # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_OTBN)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
@@ -164,7 +163,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         )
 
         # CHK-B: sideload the handle's key to the OTBN wrapper.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_OTBN)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_OTBN)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to OTBN)")
 

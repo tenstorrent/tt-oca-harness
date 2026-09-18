@@ -23,7 +23,14 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[5]
-DOCS = ROOT / "hw/sys/sep/doc"
+# rom.adoc lives with the ROM it documents, so the doc set is two directories.
+# Both are scanned: rom.adoc cites more registers than every other SEP doc
+# combined, and this check exists because a documented address once named the
+# wrong register.
+DOC_DIRS = (
+    ROOT / "hw/sys/sep/doc",
+    ROOT / "hw/sys/sep/bootrom/prod/doc",
+)
 HEADER = ROOT / "hw/sys/sep/regs/gen/c/sep_addr.h"
 RDL_DIR = ROOT / "hw/sys/sep/regs/blocks"
 
@@ -96,7 +103,7 @@ def check_docs(gen):
                 short.setdefault(k[len(pre) :], v)
 
     total = problems = 0
-    for f in sorted(DOCS.glob("*.adoc")):
+    for f in sorted(f for d in DOC_DIRS for f in d.glob("*.adoc")):
         for i, line in enumerate(f.read_text().split("\n"), 1):
             if not re.search(r"0x10[0-9A-Fa-f]{6}", line):
                 continue

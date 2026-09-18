@@ -82,7 +82,7 @@ class OcahAxiItem:
         source: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Python 3.9-compatible keyword-only initializer."""
+        """Keyword-only initializer coercing every field to its plain frozen type."""
         object.__setattr__(self, "protocol", protocol)
         object.__setattr__(self, "direction", direction)
         object.__setattr__(self, "address", int(address))
@@ -283,6 +283,10 @@ class OcahAxiReadResult:
     independently sampled from the live R-channel handshake on the completing
     (RLAST) beat — never a copy of the issued ID.  ``observed_id`` is ``None``
     when no ID was captured (AXI4-Lite buses, timeouts, or a capture miss).
+
+    ``hold_stable`` reports that RVALID stayed asserted with RDATA/RRESP
+    unchanged across a requested RREADY-hold window (``read_hold_result``);
+    it is ``None`` when no hold was requested.
     """
 
     address: int
@@ -295,6 +299,7 @@ class OcahAxiReadResult:
     timed_out: bool = False
     issued_id: int | None = None
     observed_id: int | None = None
+    hold_stable: bool | None = None
     raw: Any = None
 
     @property
@@ -315,5 +320,61 @@ class OcahAxiReadResult:
             source=source,
             timed_out=self.timed_out,
             transaction_id=self.issued_id,
-            metadata={"data": self.data, "observed_id": self.observed_id},
+            metadata={
+                "data": self.data,
+                "observed_id": self.observed_id,
+                "hold_stable": self.hold_stable,
+            },
         )
+
+
+@dataclass(frozen=True)
+class OcahAxiWritePairResult:
+    """Two single-beat writes issued back to back (``write_pair_skewed_result``).
+
+    ``first`` and ``second`` are the per-transaction results in issue order.
+    ``aw_stall_cycles`` counts the cycles AWVALID was held while AWREADY was
+    low across the pair, and ``aw_stable`` reports that every such stalled
+    beat kept AWVALID asserted with AWADDR unchanged until AWREADY
+    (IHI 0022 A3.2.1).
+    """
+
+    first: OcahAxiWriteResult
+    second: OcahAxiWriteResult
+    aw_stall_cycles: int
+    aw_stable: bool
+
+    @property
+    def ok(self) -> bool:
+        return self.first.ok and self.second.ok
+
+    @property
+    def timed_out(self) -> bool:
+        return self.first.timed_out or self.second.timed_out
+
+
+@dataclass(frozen=True)
+class OcahAxiReadPairResult:
+    """Two single-beat reads with the second AR presented under an RREADY hold
+    (``read_pair_hold_result``).
+
+    ``first`` and ``second`` are the per-transaction results in issue order;
+    ``first.hold_stable`` carries the hold window's RVALID/RDATA/RRESP
+    stability. ``ar_stall_cycles`` counts the cycles ARVALID was held while
+    ARREADY was low across the pair, and ``ar_stable`` reports that every such
+    stalled beat kept ARVALID asserted with ARADDR unchanged until ARREADY
+    (IHI 0022 A3.2.1).
+    """
+
+    first: OcahAxiReadResult
+    second: OcahAxiReadResult
+    ar_stall_cycles: int
+    ar_stable: bool
+
+    @property
+    def ok(self) -> bool:
+        return self.first.ok and self.second.ok
+
+    @property
+    def timed_out(self) -> bool:
+        return self.first.timed_out or self.second.timed_out

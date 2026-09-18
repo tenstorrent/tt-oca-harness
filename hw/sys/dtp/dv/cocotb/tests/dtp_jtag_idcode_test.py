@@ -3,11 +3,12 @@
 """DTP open-source JTAG IDCODE field test.
 
 Reads and verifies the IEEE 1149.1 IDCODE register on the primary TAP through
-the unified OCAH JTAG BFM.
+the shared ocah_jtag_vip BFM.
 """
 
 import pyuvm
 from dtp_base_test import dtp_base_test
+from ocah_lib import OcahKnobs
 from seq_lib.dtp_jtag_idcode_test_seq import dtp_jtag_idcode_test_seq
 
 
@@ -19,7 +20,7 @@ class dtp_jtag_idcode_test(dtp_base_test):
         await self.start_looped_seq(
             dtp_jtag_idcode_test_seq,
             "jtag_idcode_seq",
-            specific_env="DTP_IDCODE_TEST_LOOPS",
+            specific_knob="DTP_IDCODE_TEST_LOOPS",
             default_loops=16,
-            read_loops=self.env_int("DTP_IDCODE_READS_PER_LOOP", 4),
+            read_loops=OcahKnobs.get_int_min("DTP_IDCODE_READS_PER_LOOP", 4, 1),
         )

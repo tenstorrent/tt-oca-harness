@@ -23,8 +23,8 @@ int main(void) {
 
     // Register sanity test
     printf("Checking register interface connectivity...\n");
-    wr_data = rand() & 0xff;                                         // Generate random test data
-    *((volatile uint32_t *)(0x44000000 + SCR_REG_OFFSET)) = wr_data; // Write test data to SCR
+    wr_data = rand() & 0xff;
+    *((volatile uint32_t *)(0x44000000 + SCR_REG_OFFSET)) = wr_data;
     printf("Wrote data 0x%x to SCR.\n", wr_data);
     rd_data = *((volatile uint32_t *)(0x44000000 + SCR_REG_OFFSET));
     if (rd_data != wr_data) {
@@ -39,20 +39,22 @@ int main(void) {
     printf("Configuring UART...\n");
     uint32_t baud_rate = 921600;
     uint32_t uart_clk_hz = 100000000; // 100 MHz
-    uint32_t divisor = uart_clk_hz / (16 * baud_rate);
+    // The baud generator divides by (divisor + 1); round to nearest before
+    // subtracting so truncation does not cost a whole count.
+    uint32_t divisor = (uart_clk_hz + 8 * baud_rate) / (16 * baud_rate) - 1;
     printf("Setting baud rate to %d, divisor = %d...\n", baud_rate, divisor);
     *((volatile uint32_t *)(0x44000000 + LCR_REG_OFFSET)) =
         0x83; // Mux to DL address map. 8 data bits, no parity, 1 stop bit.
     *((volatile uint32_t *)(0x44000000 + DLL_REG_OFFSET)) =
-        divisor & 0xff; // Set divisor low. CPU does not support bit shifts.
-    *((volatile uint32_t *)(0x44000000 + DLM_REG_OFFSET)) = divisor >> 8 & 0xff; // Set divisor high
+        divisor & 0xff; // divisor low byte
+    *((volatile uint32_t *)(0x44000000 + DLM_REG_OFFSET)) = divisor >> 8 & 0xff; // divisor high byte
     *((volatile uint32_t *)(0x44000000 + LCR_REG_OFFSET)) = 0x03; // Return to main address map
     *((volatile uint32_t *)(0x44000000 + MCR_REG_OFFSET)) = 0x10; // Enable system loopback
     printf("Configuration complete!\n");
 
     printf("Performing UART loopback test...\n");
-    wr_data = rand() & 0xff;                                         // Generate random test data
-    *((volatile uint32_t *)(0x44000000 + THR_REG_OFFSET)) = wr_data; // Write test data to THR
+    wr_data = rand() & 0xff;
+    *((volatile uint32_t *)(0x44000000 + THR_REG_OFFSET)) = wr_data;
     printf("Wrote data 0x%x to THR.\n", wr_data);
 
     uint32_t lsr = *((volatile uint32_t *)(0x44000000 + LSR_REG_OFFSET));
@@ -65,9 +67,9 @@ int main(void) {
         for (int i = 0; i < 1000; i++) {
             *((volatile uint32_t *)(0x44000000 + SCR_REG_OFFSET)) = 0x0;
         }
-        lsr = *((volatile uint32_t *)(0x44000000 + LSR_REG_OFFSET)); // Wait for RBR to be ready
+        lsr = *((volatile uint32_t *)(0x44000000 + LSR_REG_OFFSET));
     }
-    rd_data = *((volatile uint32_t *)(0x44000000 + RBR_REG_OFFSET)); // Read data from RBR
+    rd_data = *((volatile uint32_t *)(0x44000000 + RBR_REG_OFFSET));
     printf("Data 0x%x read from RBR.\n", rd_data);
     if (rd_data != wr_data) {
         printf("UART test failed: Data does not match expected value! Expected 0x%x.\n", wr_data);

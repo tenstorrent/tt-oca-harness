@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -40,7 +40,7 @@
 | 0x80 | SMBUS_STATUS | R a| SMBus Status Register
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -92,7 +92,7 @@ is greater than `HOST_FIFO_CONFIG.RX_THRESH`.
 is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -119,7 +119,7 @@ is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
 | 0 | `FMT_THRESHOLD` | RW | 0x0 a| Enables the `FMT_THRESHOLD` interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -146,7 +146,7 @@ is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
 | 0 | `FMT_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `FMT_THRESHOLD` interrupt. Writing `0` releases it.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMBUS_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -157,7 +157,7 @@ when the controller addresses this target.
 | 0 | `SMBSUS` | RW | 0x0 a| Controller Mode control: asserts the `smbsus_no` output.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -236,7 +236,7 @@ all 1's.
 * `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -255,7 +255,7 @@ the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.
 | 0 | `FMTFULL` | R | 0x0 a| Controller Mode status: Controller TX FIFO Full.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RDATA Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -263,7 +263,7 @@ the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.
 | 7:0 | `DATA` | R | 0x0 a| Reading this register pops the Controller RX FIFO.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FDATA Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -289,7 +289,7 @@ meaning of this field depends on the value of the `READB` field:
 target. Setting this field to 0 reads 256 bytes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FIFO_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -301,7 +301,7 @@ target. Setting this field to 0 reads 256 bytes.
 | 0 | `RXRST` | W | 0x0 a| Controller Mode control: writing `1` resets the Controller RX FIFO.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HOST_FIFO_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -313,7 +313,7 @@ is less than this setting.
 is greater than this setting.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TARGET_FIFO_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -325,7 +325,7 @@ greater than this setting.
 less than this setting.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HOST_FIFO_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -335,7 +335,7 @@ less than this setting.
 | 11:0 | `FMTLVL` | R | - a| Controller TX FIFO fill level.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TARGET_FIFO_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -345,7 +345,7 @@ less than this setting.
 | 11:0 | `TXLVL` | R | 0x0 a| Target TX FIFO fill level.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OVRD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -360,7 +360,7 @@ less than this setting.
 and `SCL_VAL` fields, respectively.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .VAL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -370,7 +370,7 @@ recent.
 recent.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMING0 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -386,7 +386,7 @@ field is sized to meet the I2C Standard-mode (100 kHz)'s minimum
 `t_HIGH = 4.0 μs` requirement, assuming a 1 GHz system clock.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMING1 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -404,7 +404,7 @@ I2C Standard-mode (100 kHz)'s maximum `t_r = 1000 ns` requirement, assuming a 1
 GHz system clock.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMING2 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -420,7 +420,7 @@ details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
 `t_SU;STA = 4.7 μs` requirement, assuming a 1 GHz system clock.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMING3 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -436,7 +436,7 @@ to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
 requirement, assuming a 1 GHz system clock.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMING4 Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -452,7 +452,7 @@ field is sized to meet I2C Standard-mode (100 kHz)'s `t_SU;STO = 4.0 μs`
 minimum requirement, assuming a 1 GHz system clock.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -470,7 +470,7 @@ triggering the `TX_STRETCH` interrupt.
 of this field depends on `MODE`.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TARGET_ID Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -483,7 +483,7 @@ of this field depends on `MODE`.
 `ADDRESS0 & MASK0`. `MASK0 = 0x0` disables this address.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ACQDATA Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -511,7 +511,7 @@ address or data byte sent by the controller.
 * `SIGNAL = 0x2`, `0x6` - This field is meaningless.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TXDATA Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -520,7 +520,7 @@ address or data byte sent by the controller.
 reads data from this FIFO during a READ transaction.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HOST_TIMEOUT_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -534,7 +534,7 @@ transition out of the initial Busy state. Set this field to `0x0` to disable
 this behavior.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TARGET_TIMEOUT_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -548,7 +548,7 @@ The behavior for the address byte is configurable via
 `CTRL.NACK_ADDR_AFTER_TIMEOUT`.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TARGET_NACK_COUNT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -558,7 +558,7 @@ of this register, saturating at 255. This field can be used to track how many
 transactions were missed when the Target RX FIFO is full.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TARGET_ACK_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -573,7 +573,7 @@ Effective only when `CTRL.ACK_CTRL_EN = 1`. See `CTRL.ACK_CTRL_EN` for details.
 This control field is used to implement SMBus's mid-transfer (N)ACK responses.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ACQ_FIFO_NEXT_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -583,7 +583,7 @@ allowing software to decide whether to accept or reject it. Valid only when
 `STATUS.ACK_CTRL_STRETCH = 1`. See `CTRL.ACK_CTRL_EN` for details.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HOST_NACK_HANDLER_TIMEOUT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -592,7 +592,7 @@ allowing software to decide whether to accept or reject it. Valid only when
 automatically STOP a transaction when `CONTROLLER_EVENTS.NACK` is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CONTROLLER_EVENTS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -611,7 +611,7 @@ the target. This behavior can be disabled by writing `1` to `FDATA.NAKOK`. This
 bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TARGET_EVENTS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -634,7 +634,7 @@ TX FIFO data. Valid only if `CTRL.TX_STRETCH_CTRL_EN = 1`. See
 interrupt. Writing `1` clears this bit.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMBUS_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description

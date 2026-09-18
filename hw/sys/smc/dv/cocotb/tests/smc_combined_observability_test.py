@@ -15,37 +15,38 @@ for each agent.
 from __future__ import annotations
 
 import pyuvm
-from pyuvm import uvm_sequence
+from seq_lib._one_shot import _OneShot
 from seq_lib.smc_combined_observability_test_seq import (
     smc_combined_observability_test_seq,
 )
 from smc_base_test import smc_base_test
 
 
-class _OneShotSeq(uvm_sequence):
-    """Wrap a single item dispatch as a sequence so it can hop sequencers."""
-
-    def __init__(self, item, name: str = "one_shot") -> None:
-        super().__init__(name)
-        self._item = item
-
-    async def body(self) -> None:
-        await self.start_item(self._item)
-        await self.finish_item(self._item)
-
-
 @pyuvm.test()
 class smc_combined_observability_test(smc_base_test):
+    required_evidence = (
+        "CHK-COMBINED-COMPOSITION",
+        "CHK-COMBINED-I2C",
+        "CHK-COMBINED-RESET",
+        "CHK-PROBE-I2C-CG-EN-ALIVE",
+    )
+    min_evidence = 3
+
+    # The I2C leg's only value compare is the idle `tb_i2c_cg_en == 0`; this
+    # control proves the same probe able to read 1 in the same run and credits
+    # the liveness ledger the scoreboard consults
+    # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). The reset leg is unaffected -- its
+    # five compares are `== 1` released expectations, not idle checks.
+    probe_positive_controls = ("i2c_cg_en",)
+
     async def run_scenario(self) -> None:
         seq = smc_combined_observability_test_seq("combined_obs_seq")
 
         async def dispatch_reset(item) -> None:
-            inner = _OneShotSeq(item, "reset_oneshot")
-            await inner.start(self.env.reset_agent.sequencer)
+            await _OneShot(item, "reset_oneshot").start(self.env.reset_agent.sequencer)
 
         async def dispatch_i2c(item) -> None:
-            inner = _OneShotSeq(item, "i2c_oneshot")
-            await inner.start(self.env.i2c_agent.sequencer)
+            await _OneShot(item, "i2c_oneshot").start(self.env.i2c_agent.sequencer)
 
         seq.dispatch_reset = dispatch_reset
         seq.dispatch_i2c = dispatch_i2c

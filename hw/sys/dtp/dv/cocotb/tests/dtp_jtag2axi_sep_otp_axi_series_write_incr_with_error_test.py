@@ -17,8 +17,12 @@ class dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test(dtp_base_test):
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-RESP-EXPECTED",
         "CHK-AXI-COMPLETION",
+        "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
+        "CHK-AXI-NONVAC",
+        "CHK-J2A-STATUS-BIT",
     )
     axi_checker_stream_minimums = {"sep_otp": 2}
 
@@ -26,9 +30,9 @@ class dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_otp_axi_test_seq,
             "sep_otp_series_write_incr_with_error",
-            specific_env="DTP_JTAG2AXI_SEP_OTP_AXI_SERIES_WRITE_INCR_WITH_ERROR_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SEP_OTP_AXI_SERIES_WRITE_INCR_WITH_ERROR_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             target="sep_otp",
             scenario="series_write_incr_with_error",
         )

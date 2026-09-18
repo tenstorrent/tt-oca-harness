@@ -26,10 +26,59 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
+    # Only the dependency-manifest content check (see
+    # _dependency_change_is_reggen_relevant) needs this; everything else in this
+    # script is version-agnostic, so a stdlib gap here should degrade that one
+    # check to its previous whole-file, fail-closed behaviour, not crash the
+    # regen gate wholesale on an older interpreter.
+    tomllib = None
+
 DOCS_SUFFIXES = frozenset({".md", ".adoc", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"})
+
+REGISTER_INFRASTRUCTURE_PATHS = frozenset(
+    {
+        "hw/sys/sep/dv/cocotb/env/sep_reg_meta.py",
+        "ocah.mk",
+        "scripts/ci/check-regen-regs.sh",
+        "scripts/ci/validate-regen-regs.py",
+    }
+)
+REGISTER_INFRASTRUCTURE_DIRS = ("hw/common/regs/", "tools/regs/")
+
+# pyproject.toml and uv.lock pin the reggen toolchain (peakrdl*, systemrdl-compiler,
+# mako, hjson) alongside dozens of unrelated lint/format tools, so listing either file
+# whole above would force a full regen on e.g. a ruff-only edit. These get a content
+# check instead: see is_register_regen_required and _dependency_change_is_reggen_relevant.
+DEPENDENCY_MANIFEST_PATHS = frozenset({"pyproject.toml", "uv.lock"})
+REGGEN_DEPENDENCY_NAMES = frozenset(
+    {
+        "hjson",
+        "mako",
+        "peakrdl",
+        "peakrdl-cheader",
+        "peakrdl-html",
+        "peakrdl-ipxact",
+        "peakrdl-markdown",
+        "peakrdl-rawheader",
+        "peakrdl-regblock",
+        "peakrdl-systemrdl",
+        "systemrdl-compiler",
+    }
+)
 
 # Returned when the diff cannot be listed. Not a docs path, so hardware CI runs.
 UNCLASSIFIED = "(unclassified)"
+
+# The tools/dv unit tests check the DV runner against the per-DUT DV packages:
+# a leaf's required_evidence tuple against the SMC_VPLAN card that declares it,
+# the testlists against the configs. Either side can move on its own, and a
+# plan card is an .adoc, so this scope is deliberately not the documentation
+# classifier above.
+DV_CHECK_DIRS = ("tools/dv/",)
+DV_CHECK_SYS_SUBDIR = "dv/"
 
 DOCUMENTATION_ONLY_CHILD = """\
 # SPDX-License-Identifier: Apache-2.0
@@ -61,6 +110,133 @@ def is_docs_path(path: str) -> bool:
     ):
         return True
     return Path(normalized).suffix.lower() in DOCS_SUFFIXES
+
+
+def is_register_regen_path(path: str) -> bool:
+    """Return True when changing *path* can affect register collateral."""
+    normalized = path.replace("\\", "/").lstrip("./")
+    if normalized == UNCLASSIFIED or normalized.endswith(".rdl"):
+        return True
+    if normalized in REGISTER_INFRASTRUCTURE_PATHS or normalized.startswith(
+        REGISTER_INFRASTRUCTURE_DIRS
+    ):
+        return True
+
+    parts = normalized.split("/")
+    return any(
+        part in {"regs", "registers", "rdl"} and "gen" in parts[index + 1 :]
+        for index, part in enumerate(parts)
+    )
+
+
+def is_dv_check_path(path: str) -> bool:
+    """Return True when changing *path* can move either side of a DV check."""
+    normalized = path.replace("\\", "/").lstrip("./")
+    if normalized == UNCLASSIFIED or normalized.startswith(DV_CHECK_DIRS):
+        return True
+    parts = normalized.split("/")
+    return len(parts) > 3 and parts[:2] == ["hw", "sys"] and parts[3] == "dv"
+
+
+def is_dv_check_required(paths: list[str]) -> bool:
+    """Return True when the diff touches the DV runner or a DUT's DV package."""
+    return any(is_dv_check_path(path) for path in paths)
+
+
+def _dependency_spec_name(specifier: str) -> str:
+    """Return the bare package name from a PEP 508 dependency specifier."""
+    name = specifier
+    for sep in ("[", ";", "==", ">=", "<=", "~=", "!=", ">", "<"):
+        idx = name.find(sep)
+        if idx != -1:
+            name = name[:idx]
+    return name.strip().lower()
+
+
+def _pyproject_reggen_versions(text: str) -> dict[str, str] | None:
+    """Return {package: specifier} for the reggen-relevant project.dependencies entries."""
+    if tomllib is None:
+        return None
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return None
+    versions: dict[str, str] = {}
+    for entry in data.get("project", {}).get("dependencies", []):
+        name = _dependency_spec_name(entry)
+        if name in REGGEN_DEPENDENCY_NAMES:
+            versions[name] = entry
+    return versions
+
+
+def _uv_lock_reggen_versions(text: str) -> dict[str, str] | None:
+    """Return {package: version} for the reggen-relevant [[package]] entries."""
+    if tomllib is None:
+        return None
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return None
+    versions: dict[str, str] = {}
+    for entry in data.get("package", []):
+        name = str(entry.get("name", "")).lower()
+        if name in REGGEN_DEPENDENCY_NAMES:
+            versions[name] = str(entry.get("version", ""))
+    return versions
+
+
+def _reggen_dependency_snapshot(path: str, text: str) -> dict[str, str] | None:
+    if path == "pyproject.toml":
+        return _pyproject_reggen_versions(text)
+    if path == "uv.lock":
+        return _uv_lock_reggen_versions(text)
+    return None
+
+
+def _split_rev_range(rev_range: str) -> tuple[str, str] | None:
+    for sep in ("...", ".."):
+        if sep in rev_range:
+            left, _, right = rev_range.partition(sep)
+            return left, right
+    return None
+
+
+def _show(rev: str, path: str) -> str | None:
+    return _run_git(["show", f"{rev}:{path}"])
+
+
+def _dependency_change_is_reggen_relevant(path: str, rev_range: str | None) -> bool:
+    """Return True unless *path*'s diff is provably irrelevant to the reggen toolchain.
+
+    Fails closed (returns True, forcing the full check) whenever it cannot prove
+    otherwise: no rev_range, an unreadable revision, or unparsable TOML.
+    """
+    split = _split_rev_range(rev_range) if rev_range else None
+    if split is None:
+        return True
+    base_rev, head_rev = split
+    base_text = _show(base_rev, path)
+    head_text = _show(head_rev, path)
+    if base_text is None or head_text is None:
+        return True
+    base_versions = _reggen_dependency_snapshot(path, base_text)
+    head_versions = _reggen_dependency_snapshot(path, head_text)
+    if base_versions is None or head_versions is None:
+        return True
+    return base_versions != head_versions
+
+
+def is_register_regen_required(paths: list[str], rev_range: str | None = None) -> bool:
+    """Return True when any changed path requires a full register regeneration."""
+    for path in paths:
+        normalized = path.replace("\\", "/").lstrip("./")
+        if normalized in DEPENDENCY_MANIFEST_PATHS:
+            if _dependency_change_is_reggen_relevant(normalized, rev_range):
+                return True
+            continue
+        if is_register_regen_path(path):
+            return True
+    return False
 
 
 def parse_name_status(raw: str) -> list[str]:
@@ -106,14 +282,30 @@ def _run_git(args: list[str]) -> str | None:
             capture_output=True,
             text=True,
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except FileNotFoundError as exc:
+        print(f"diff_class: git not runnable: {exc}", file=sys.stderr)
+        return None
+    except subprocess.CalledProcessError as exc:
+        print(f"diff_class: git {' '.join(args)} failed:\n{exc.stderr}", file=sys.stderr)
         return None
     return completed.stdout
 
 
 def _fetch(ref: str) -> bool:
+    """Fetch *ref* into ``origin/<ref>``, retrying once on failure.
+
+    A single attempt is not distinguishable from a transient network error,
+    and a transient failure here silently falls back to treating the diff
+    as unclassified (see ``changed_files``), which always runs the check
+    this function exists to let skip. One retry costs one extra shallow
+    fetch and rules that out before conceding.
+    """
     remote_ref = ref.removeprefix("origin/")
-    return _run_git(["fetch", "--depth=1", "origin", remote_ref]) is not None
+    for attempt in range(2):
+        if _run_git(["fetch", "--depth=1", "origin", remote_ref]) is not None:
+            return True
+        print(f"diff_class: fetch of '{remote_ref}' attempt {attempt + 1} failed", file=sys.stderr)
+    return False
 
 
 def _diff(rev_range: str) -> list[str] | None:
@@ -140,53 +332,68 @@ def _nonzero_sha(sha: str) -> bool:
     return bool(sha) and set(sha) != {"0"}
 
 
-def changed_files() -> list[str]:
-    """List paths in the CI event's diff, or ``[UNCLASSIFIED]`` on failure."""
+def changed_files() -> tuple[list[str], str | None]:
+    """List paths in the CI event's diff, plus the rev-range that produced them.
+
+    Returns ``([UNCLASSIFIED], None)`` on failure. The rev-range lets callers that
+    need file *content* at both ends of the diff (see
+    ``_dependency_change_is_reggen_relevant``) reuse the exact same comparison this
+    function already made, rather than re-deriving it.
+    """
+
+    def _resolve(rev_range: str) -> tuple[list[str], str | None]:
+        paths = _diff(rev_range)
+        if paths is None:
+            return [UNCLASSIFIED], None
+        return paths, rev_range
+
     event = os.environ.get("GITHUB_EVENT_NAME")
     if event == "pull_request":
         base = os.environ.get("GITHUB_BASE_REF") or "main"
         _fetch(base)
-        paths = _diff(f"origin/{base}...HEAD")
-        return paths if paths is not None else [UNCLASSIFIED]
+        return _resolve(f"origin/{base}...HEAD")
     if event == "push":
         ref = os.environ.get("GITHUB_REF_NAME") or ""
         if ref == "main":
             before = _github_before_sha()
             if _nonzero_sha(before):
-                paths = _diff(f"{before}...HEAD")
-                return paths if paths is not None else [UNCLASSIFIED]
+                return _resolve(f"{before}...HEAD")
         _fetch("main")
-        paths = _diff("origin/main...HEAD")
-        return paths if paths is not None else [UNCLASSIFIED]
+        return _resolve("origin/main...HEAD")
 
     source = os.environ.get("CI_PIPELINE_SOURCE")
+    if source == "parent_pipeline":
+        # GitLab sets CI_PIPELINE_SOURCE to 'parent_pipeline' for every job in
+        # a child pipeline, masking the event that actually triggered it. The
+        # nonfree child runs in the harness project's own parent-child
+        # pipeline (not a separate downstream project), so GitLab forwards
+        # the parent's CI_MERGE_REQUEST_*/CI_COMMIT_* variables unchanged;
+        # only the pipeline-source classification itself needs recovering,
+        # which the trusted GitLab parent's `nonfree:` job does via
+        # PARENT_PIPELINE_SOURCE.
+        source = os.environ.get("PARENT_PIPELINE_SOURCE") or source
     if source == "merge_request_event":
         base = os.environ.get("CI_MERGE_REQUEST_DIFF_BASE_SHA", "")
         if _nonzero_sha(base):
-            paths = _diff(f"{base}...HEAD")
-            return paths if paths is not None else [UNCLASSIFIED]
+            return _resolve(f"{base}...HEAD")
         target = os.environ.get("CI_MERGE_REQUEST_TARGET_BRANCH_NAME") or "main"
         _fetch(target)
-        paths = _diff(f"origin/{target}...HEAD")
-        return paths if paths is not None else [UNCLASSIFIED]
+        return _resolve(f"origin/{target}...HEAD")
     if source == "external_pull_request_event":
         target = os.environ.get("CI_EXTERNAL_PULL_REQUEST_TARGET_BRANCH_NAME") or "main"
         _fetch(target)
-        paths = _diff(f"origin/{target}...HEAD")
-        return paths if paths is not None else [UNCLASSIFIED]
+        return _resolve(f"origin/{target}...HEAD")
     if source == "push":
         branch = os.environ.get("CI_COMMIT_BRANCH") or ""
         if branch == "main":
             before = os.environ.get("CI_COMMIT_BEFORE_SHA", "")
             sha = os.environ.get("CI_COMMIT_SHA", "HEAD")
             if _nonzero_sha(before):
-                paths = _diff(f"{before}...{sha}")
-                return paths if paths is not None else [UNCLASSIFIED]
+                return _resolve(f"{before}...{sha}")
         _fetch("main")
-        paths = _diff("origin/main...HEAD")
-        return paths if paths is not None else [UNCLASSIFIED]
+        return _resolve("origin/main...HEAD")
 
-    return [UNCLASSIFIED]
+    return [UNCLASSIFIED], None
 
 
 def self_test() -> None:
@@ -206,9 +413,121 @@ def self_test() -> None:
     renamed = parse_name_status("R100\0hw/sys/smc/rtl/old.sv\0README.md\0")
     assert renamed == ["hw/sys/smc/rtl/old.sv", "README.md"]
     assert not is_documentation_only(renamed)
-    assert is_documentation_only(["README.md", "doc/contributing/src/index.adoc"])
+    assert is_documentation_only(["README.md", "doc/starting/src/index.adoc"])
     assert not is_documentation_only([])
     assert not is_documentation_only([UNCLASSIFIED])
+
+    for path in (
+        "hw/sys/smc/regs/smc.rdl",
+        "hw/ip/uart/regs/gen/sv/uart_reg.sv",
+        "hw/ip/foo/registers/bar/gen/c/bar.h",
+        "vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_reg.sv",
+        "tools/regs/reggen_wrapper.py",
+        "hw/common/regs/templates/svpkg.mako",
+        "ocah.mk",
+        UNCLASSIFIED,
+    ):
+        assert is_register_regen_path(path), path
+    for path in (
+        "hw/sys/smc/rtl/smc.sv",
+        "README.md",
+        "doc/trm/src/index.adoc",
+        # Handled by is_register_regen_required's content check instead of the
+        # whole-file structural check; see the assertions below.
+        "pyproject.toml",
+        "uv.lock",
+    ):
+        assert not is_register_regen_path(path), path
+    assert is_register_regen_required(["README.md", "hw/sys/smc/regs/smc.rdl"])
+    assert not is_register_regen_required([])
+    assert not is_register_regen_required(["README.md", "hw/sys/smc/rtl/smc.sv"])
+
+    # pyproject.toml/uv.lock without a rev_range can't be proven safe: fail closed.
+    assert is_register_regen_required(["pyproject.toml"])
+    assert is_register_regen_required(["uv.lock"])
+
+    sample_ruff_only_base = """
+[project]
+dependencies = [
+  "ruff==0.16.4",
+  "peakrdl>=1.4.0",
+  "systemrdl-compiler>=1.32.2",
+]
+"""
+    sample_ruff_only_head = """
+[project]
+dependencies = [
+  "ruff==0.16.5",
+  "peakrdl>=1.4.0",
+  "systemrdl-compiler>=1.32.2",
+]
+"""
+    sample_peakrdl_bump_head = """
+[project]
+dependencies = [
+  "ruff==0.16.4",
+  "peakrdl>=1.5.0",
+  "systemrdl-compiler>=1.32.2",
+]
+"""
+    base_versions = _pyproject_reggen_versions(sample_ruff_only_base)
+    assert base_versions == {
+        "peakrdl": "peakrdl>=1.4.0",
+        "systemrdl-compiler": "systemrdl-compiler>=1.32.2",
+    }, base_versions
+    assert base_versions == _pyproject_reggen_versions(sample_ruff_only_head)
+    assert base_versions != _pyproject_reggen_versions(sample_peakrdl_bump_head)
+
+    sample_uv_lock_base = """
+[[package]]
+name = "ruff"
+version = "0.16.4"
+
+[[package]]
+name = "peakrdl-html"
+version = "2.12.2"
+"""
+    sample_uv_lock_ruff_only_head = """
+[[package]]
+name = "ruff"
+version = "0.16.5"
+
+[[package]]
+name = "peakrdl-html"
+version = "2.12.2"
+"""
+    assert _uv_lock_reggen_versions(sample_uv_lock_base) == {"peakrdl-html": "2.12.2"}
+    assert _uv_lock_reggen_versions(sample_uv_lock_base) == _uv_lock_reggen_versions(
+        sample_uv_lock_ruff_only_head
+    )
+
+    for path in (
+        "tools/dv/run_dv.py",
+        "tools/dv/tests/test_smc_required_evidence.py",
+        "hw/sys/smc/dv/cocotb/tests/smc_dbs_idle_test.py",
+        "hw/sys/smc/dv/docs/SMC_VPLAN.adoc",
+        "hw/sys/sep/dv/testlists/all.toml",
+        UNCLASSIFIED,
+    ):
+        assert is_dv_check_path(path), path
+    for path in (
+        "hw/sys/smc/rtl/smc.sv",
+        "hw/ip/uart/dv/tb/uart_tb.sv",
+        "doc/trm/src/index.adoc",
+        "README.md",
+    ):
+        assert not is_dv_check_path(path), path
+    assert is_dv_check_required(["README.md", "tools/dv/run_dv.py"])
+    assert not is_dv_check_required([])
+    assert not is_dv_check_required(["README.md", "hw/sys/smc/rtl/smc.sv"])
+
+    assert _split_rev_range("origin/main...HEAD") == ("origin/main", "HEAD")
+    assert _split_rev_range("abc123..def456") == ("abc123", "def456")
+    assert _split_rev_range("HEAD") is None
+
+    # No rev_range to fetch content from: fails closed rather than guessing.
+    assert _dependency_change_is_reggen_relevant("pyproject.toml", None)
+
     print("diff_class self-test ok")
 
 
@@ -230,6 +549,16 @@ def main(argv: list[str] | None = None) -> int:
         metavar="PATH",
         help="write a one-job child pipeline and exit 0 when documentation-only",
     )
+    mode.add_argument(
+        "--is-dv-check-required",
+        action="store_true",
+        help="exit 0 if the diff touches tools/dv or a hw/sys/<dut>/dv package, otherwise 1",
+    )
+    mode.add_argument(
+        "--is-register-regen-required",
+        action="store_true",
+        help="exit 0 if the diff can affect register collateral, otherwise 1",
+    )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
 
@@ -237,7 +566,7 @@ def main(argv: list[str] | None = None) -> int:
         self_test()
         return 0
 
-    paths = changed_files()
+    paths, rev_range = changed_files()
     documentation_only = is_documentation_only(paths)
     print(f"changed: {', '.join(paths) or '(none)'}", file=sys.stderr)
     print(f"documentation_only={str(documentation_only).lower()}", file=sys.stderr)
@@ -250,6 +579,14 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         write_documentation_only_child(Path(args.write_documentation_only_child))
         return 0
+    if args.is_dv_check_required:
+        required = is_dv_check_required(paths)
+        print(f"dv_check_required={str(required).lower()}", file=sys.stderr)
+        return 0 if required else 1
+    if args.is_register_regen_required:
+        required = is_register_regen_required(paths, rev_range)
+        print(f"register_regen_required={str(required).lower()}", file=sys.stderr)
+        return 0 if required else 1
     if args.is_documentation_only:
         return 0 if documentation_only else 1
     print("documentation" if documentation_only else "hardware")

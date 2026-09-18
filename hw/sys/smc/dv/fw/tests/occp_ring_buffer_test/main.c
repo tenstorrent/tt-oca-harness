@@ -25,12 +25,6 @@
 #define SMC_SCRATCH_STATUS_BUFFER_ADDR 11
 #define SMC_SEP_STATUS_BUFFER_READY (1U << 2)
 
-// // Status message format constants
-// #define SMC_STATUS_FW_ID_SMC_BL0 0x3
-// #define SMC_STATUS_TYPE_STATUS 0x1
-// #define SMC_STATUS_TYPE_WARNING 0x8
-// #define SMC_STATUS_TYPE_ERROR 0xF
-
 typedef struct {
     test_context_t *occp_ctx;
     uint32_t test_messages[20];

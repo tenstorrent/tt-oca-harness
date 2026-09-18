@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -16,7 +16,7 @@
 | 0x20 | TIMER_GPIO_ENABLE | RW a| System Timer GPIO Enable Register
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMER_START Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -25,7 +25,7 @@
 both primary and secondary are out of reset.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -35,7 +35,7 @@ both primary and secondary are out of reset.
 | 7:0 | `CREDIT_VAL` | RW | 0xA a| Credit value factor. WARNING: This value must be greater than PULSE_WIDTH
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -45,45 +45,45 @@ both primary and secondary are out of reset.
 | 0 | `MODE` | R | 0x0 a| Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMER_PRESET_LO Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `PRESET_LO` | RW | 0x0 a| Lower 32 bits of preset value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMER_PRESET_HI Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `PRESET_HI` | RW | 0x0 a| Upper 32 bits of preset value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMER_COUNT_LO Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `COUNT_LO` | R | 0x0 a| Lower 32 bits of current timer count
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMER_COUNT_HI Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `COUNT_HI` | R | 0x0 a| Upper 32 bits of current timer count
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CREDIT_EXPIRED Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `MAX_CYCLES_EXPIRED` | RW | 0x0 a| Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
-If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not recieved a count credit pulse in a while, and is likely not syncing properly with the primary.
+If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.
 This register can also be used to determine the clock skew between the primary and secondary.
 If PRIMARY, this field is always 0.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMER_GPIO_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description

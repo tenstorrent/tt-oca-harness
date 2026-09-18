@@ -6,10 +6,17 @@
 
 `include "registers.rdl"
 
-addrmap oca_i3c_wrap {
-    desc = "OCA I3C Controller wrapper (i3c-core-fork)";
+addrmap oca_i3c_wrap #(
+    longint unsigned NUM_I3CS = 6
+) {
+    desc = "OCA I3C Controller wrapper";
 
-    I3CCSR    i3c_csr    @0x0;
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    I3CCSR      i3c_csr     [NUM_I3CS]      @0x0    += 0x1000;
+
 };
 
 `endif

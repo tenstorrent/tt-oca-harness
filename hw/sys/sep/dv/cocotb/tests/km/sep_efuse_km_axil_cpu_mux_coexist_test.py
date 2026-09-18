@@ -22,13 +22,12 @@ This test reproduces BOTH reference suite verdicts:
      LSU bus). Plus the base test's automatic post-sense shadow compare proves the
      sensed CHIPLET_UID actually equals the staged image (0xDEADBEEF).
 
-OSS delta vs the reference suite (documented): the reference suite observer deposits an UVM_DONE marker to
-release a waiting host loop; cocotb cannot deposit an internal register without a
-force port, so the OSS host loop is a FIXED contended window and the observer is
+Delta vs the reference suite: its observer deposits a UVM_DONE marker to release a
+waiting host loop; cocotb cannot deposit an internal register without a force
+port, so here the host loop is a FIXED contended window and the observer is
 read-only. Mutual non-starvation is proven by the host completing all
 CONTENDED_LOOPS (final COUNT) AND the KM making progress (CHANGES > 0) in the same
-window -- equivalent-or-stronger evidence than a single sampled before/after
-window plus a release handshake.
+window.
 """
 
 from __future__ import annotations
@@ -40,6 +39,7 @@ import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "km_efuse_coexist")
@@ -47,7 +47,7 @@ _ITCM_HEX = os.path.join(_FW_DIR, "km_efuse_coexist.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "km_efuse_coexist.dtcm.hex")
 _KM_ROM_HEX = os.path.join(_DV_ROOT, "cocotb", "tests", "km_rom_coexist.parhex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # Real fuse-sense + EL2 boot + the dual-CPU contended window; the run loop
 # early-exits on fw_done, so this is an upper bound only.
 _MAX_RUN_CYCLES = 6_000_000
