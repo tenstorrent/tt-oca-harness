@@ -41,6 +41,15 @@ _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 4_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
+# The clauses of the firmware's single verdict line, one per card row. A stale image
+# that dropped a leg loses its clause, which fails here rather than at the PASS magic.
+_VERDICT_CLAUSES = (
+    ("overlap STATUS=0x00000001", "CHK-OVERLAP", "the DMA busy and not done at store-loop exit"),
+    ("ERROR_CODE=0", "CHK-NOERR", "the DMA completing with no error"),
+    ("DONE+RW1C clear", "CHK-RW1C", "the done status clearing on write-one-to-clear"),
+    ("dst==src", "CHK-DMA-DATA", "the DMA destination matching its source"),
+    ("cont==cpu", "CHK-CPU-DATA", "the CPU region holding exactly what the CPU wrote"),
+)
 _BANNER = "SEP DMA/CPU contention test"
 
 
@@ -67,3 +76,14 @@ class sep_dma_cpu_contention_test(sep_base_test):
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
         )
+
+        # The firmware scores five contracts into one verdict line. The PASS magic
+        # cannot say which of them ran, so gate on each clause the line carries and
+        # emit the record the VPLAN card names for it.
+        console = self.sb.console_text()
+        for needle, chk, what in _VERDICT_CLAUSES:
+            assert needle in console, (
+                f"firmware console verdict has no {needle!r}, so {what} was not "
+                f"checked. Console was:\n{console}"
+            )
+            self.logger.info("%s PASS: firmware reported %s", chk, what)

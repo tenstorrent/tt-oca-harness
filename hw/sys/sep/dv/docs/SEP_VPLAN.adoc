@@ -1310,6 +1310,8 @@ covers that rejection.
 |CHK-NONVAC
 |The comparison covered the whole image, not a sample.
 |===
+*Evidence*: CHK-NONVAC is the scope of the compares, not a record of its own: `sep_efuse_shadow_check_seq` walks every word of every field `SepEfuseImage.check_fields()` returns, and the shared scoreboard asserts a non-zero value-comparison count, so a sampled or empty compare fails.
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Model honesty*: the OTP array behind the fuse-command interface is a
@@ -1479,6 +1481,8 @@ starved it to a handful of writes fails.
 |CHK-DIGEST-SWAP
 |Every digest word produced with `DIGEST_SWAP` clear is the byte-reverse of the corresponding word produced with it set, over the same message. Every other pass in this entry sets the bit, so none of them can tell a working `DIGEST_SWAP` from a DMA that ignores it; this is the only entry that grades the bit. All-words-identical is failed explicitly, since a palindromic digest is the one way a byte-reverse comparison could be satisfied while the bit does nothing.
 |===
+
+*Evidence*: CHK-NONVAC is a property of the sources rather than a run record -- no SHA-256 digest literal exists in the firmware or the testbench, so the comparison cannot be satisfied by a constant. Every other row is logged by the test: CHK-DIGEST compares the two digests the console carries, and CHK-CFG, CHK-COMPLETE, CHK-COPY, CHK-SHA384-COPY, CHK-SHA384, CHK-MULTICHUNK and CHK-DIGEST-SWAP each gate on the firmware line that scores them.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -2301,6 +2305,8 @@ recovery. Those are listed in <<phase-3>>.
 |CHK4
 |Generated bits match the golden. Generate segmentation is `sep_drbg_gen_segmentation_test`, not this `glen=32` budget.
 |===
+
+*Evidence*: CHK-ROUTING is reported by the entropy scoreboard as `CHK5_aes` / `CHK5_km` / `CHK5_axis1`, and CHK-NONVAC is the AXI scoreboard's transaction floor; neither carries its own `CHK-` record.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 

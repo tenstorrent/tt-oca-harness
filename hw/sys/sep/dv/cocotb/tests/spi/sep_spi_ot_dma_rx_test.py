@@ -43,6 +43,7 @@ _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
+_VERDICT_LINE = "PASS: SPI RX FIFO -> DMA -> SRAM (0xA5) + RW1C verified"
 _BANNER = "SEP SPI OT DMA RX test"
 
 # Must match the firmware's RX_SIZE / RX_PATTERN (spi_ot_dma_rx_test.c). The
@@ -85,6 +86,23 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,
+            )
+            # The firmware's verdict line names both contracts it scored; gate on it
+            # so a stale image that dropped one is visible instead of hiding behind
+            # the PASS magic, and emit the records the VPLAN card names.
+            console = self.sb.console_text()
+            assert _VERDICT_LINE in console, (
+                f"firmware console has no {_VERDICT_LINE!r} line, so the SRAM pattern "
+                f"and the write-one-to-clear were not both checked. "
+                f"Console was:\n{console}"
+            )
+            self.logger.info(
+                "CHK-DATAPATH PASS: firmware reported the preloaded pattern in every "
+                "DMA-written SRAM word"
+            )
+            self.logger.info(
+                "CHK-RW1C PASS: firmware reported the DMA done status clearing on "
+                "write-one-to-clear"
             )
             # Evidence is the firmware's own value-check (gated by the boot
             # scoreboard's fw_pass magic): SRAM == 0xA5A5A5A5 can ONLY come from

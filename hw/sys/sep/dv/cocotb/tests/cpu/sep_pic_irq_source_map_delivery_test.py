@@ -140,7 +140,7 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
                 "patch was inert or the image is stale)"
             )
         # The whole-run checkers must have reported.
-        for needle in ("CHK-NONVAC PASS:", "CHK-PIC-COMPLETE PASS:"):
+        for needle in ("CHK-NONVAC PASS:", "CHK-PIC-COMPLETE PASS:", "CHK-DUMMY PASS:"):
             if needle not in console:
                 raise AssertionError(f"firmware missing {needle!r}")
         # Cardinality: one line of each per-source checker for every selected
@@ -165,5 +165,10 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
             list(cfg.must),
             list(cfg.extras),
             cfg.seed,
+            want,
+        )
+        self.logger.info(
+            "CHK-FW-REPORTED PASS: every firmware checker line is present, and the "
+            "per-source checkers appear once per selected source (%d)",
             want,
         )

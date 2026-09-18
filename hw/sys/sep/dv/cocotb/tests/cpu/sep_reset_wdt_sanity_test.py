@@ -46,6 +46,11 @@ _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
+# Console anchors. Each names a leg the firmware scores separately, so a stale image
+# that dropped one is visible here rather than hiding behind the PASS magic.
+_BADADDR_LINE = "reset_ctrl bad-address NMI count == 2 OK"
+_SWRST_DEFAULT_NEEDLE = "SW_RESET_N default"
+_RESET_WIRE_IPS = ("otbn", "aes", "hmac", "kmac", "abr", "esrc", "csrng", "edn")
 _BANNER = "SEP reset+WDT sanity test"
 # After the firmware PASSes (2nd bark), the WDT runs on to BITE. At ~5 us/tick and
 # a few ticks of bark->bite margin, give generous headroom for the reset request.
@@ -84,8 +89,34 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             after_bring_up_hook=_bite_idle,
         )
 
-        # The firmware PASS gates the reset_ctrl + WDT bark/pet/disable/re-bark
-        # checks. Now observe the BITE: the still-enabled WDT reaches BITE_THOLD
+        # The firmware scores the reset_ctrl legs into its own error count, and the
+        # PASS magic alone cannot say which of them ran: an image built before a leg
+        # existed reaches PASS with that contract never exercised. Gate on the line
+        # each leg prints, and emit the record the VPLAN card names for it.
+        console = self.sb.console_text()
+        assert _BADADDR_LINE in console, (
+            f"firmware console has no {_BADADDR_LINE!r} line, so the unmapped-gap "
+            f"bus-error count was not checked. Console was:\n{console}"
+        )
+        self.logger.info("CHK-BADADDR PASS: firmware reported the bad-address NMI count == 2")
+        wired = [ip for ip in _RESET_WIRE_IPS if f"{ip} reset wire OK" in console]
+        assert len(wired) == len(_RESET_WIRE_IPS), (
+            f"firmware console reports a reset wire for {sorted(wired)}, expected all "
+            f"{sorted(_RESET_WIRE_IPS)}; a missing domain is an unexercised reset bit. "
+            f"Console was:\n{console}"
+        )
+        self.logger.info(
+            "CHK-SWRST-WIRE PASS: %d reset domains each returned their probe and left "
+            "the neighbour untouched",
+            len(wired),
+        )
+        assert _SWRST_DEFAULT_NEEDLE in console, (
+            f"firmware console has no {_SWRST_DEFAULT_NEEDLE!r} in its verdict line, so "
+            f"the SW_RESET_N default was not checked. Console was:\n{console}"
+        )
+        self.logger.info("CHK-SWRST-DEFAULT PASS: firmware reported the SW_RESET_N default")
+
+        # Now observe the BITE: the still-enabled WDT reaches BITE_THOLD
         # and asserts the real wdt_timer_rst_req_o output.
         dut = cocotb.top
         bite_seen = self.rd_known(dut.wdt_timer_rst_req_o) == 1
