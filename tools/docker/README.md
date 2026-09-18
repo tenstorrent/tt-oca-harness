@@ -82,7 +82,7 @@ SystemVerilog lint and format Make targets (`make lint-slang-all`,
 `make lint-sv-verible`) require the corresponding native tool on `PATH`. If a
 tool is missing, Make prints an install hint and the matching container
 command, e.g. `./scripts/docker-run.sh eda-run make lint-slang`. Synthesis
-(`make synth-all`) still runs through Docker by default via
+(`make synth-yosys-all`) still runs through Docker by default via
 `./scripts/docker-run.sh eda-run` internally. The subcommand is also available
 directly, e.g. for ad-hoc debugging:
 

@@ -84,6 +84,10 @@ leaf IP does not need on its own:
 * `build/` -- local build scratch, not checked in
 * `flow.mk` -- the subsystem's entry point into the shared lint/synth flows
 
+IP RTL has no `flow.mk`. Verible still walks those files with the rest of
+`hw/`; slang and Verilator see an IP when it is in a system filelist. See
+xref:workflows.adoc#linting[Linting].
+
 == Coding Conventions
 
 === License headers
