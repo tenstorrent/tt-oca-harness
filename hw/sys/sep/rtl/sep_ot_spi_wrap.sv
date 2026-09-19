@@ -16,17 +16,15 @@
 // - irq_o           : OR of the core's two interrupt lines (error, spi_event)
 // - lsio_trigger_o  : passed through
 //
-// There is no busy output. The forked controller exported the core's `active`
-// signal on a port; upstream keeps it internal and publishes it only as
-// STATUS.ACTIVE, which software reads over this wrapper's register interface.
+// There is no busy output. The core keeps its activity state internal and
+// publishes it only as STATUS.ACTIVE, which software reads over this wrapper's
+// register interface.
 //
 // Tie-offs on the upstream core:
 // - RACL is compiled out (EnableRacl = 0); policies are driven inactive.
 // - The spi_device passthrough interface is held inactive.
 // - The single fatal alert (bus integrity) is terminated here; `sep_io` has no
-//   alert path. The forked controller carried no bus-integrity checking at
-//   all, so this is not a regression, but exposing alert_tx_o is a natural
-//   follow-up.
+//   alert path.
 //
 // Features (from the upstream core):
 // - Configurable number of chip selects (default: 1)
