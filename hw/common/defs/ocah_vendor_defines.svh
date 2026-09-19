@@ -44,19 +44,36 @@
   YOSYS, FORMAL) are the OCAH names. Mapped aliases above are omitted here.
 
   chipsalliance/i3c-core
-  - I3C_USE_AXI: header default in i3c_defines.svh selects the AXI CSR path.
-  - I3C_USE_AHB: AHB CSR alternative; not selected.
-  - I3C_USE_AXI_LITE: no vendor reader.
-  - CONTROLLER_SUPPORT / TARGET_SUPPORT: header defaults both to 1.
-  - CALIPTRA_AXI_SUB_EX_EN: extra AXI subordinate features; unset.
-  - AXI_ID_FILTERING: optional AXI ID filter ports; unset.
+  - I3C_USE_AXI: i3c_defines.svh already `define I3C_USE_AXI 1. The OCAH wrap
+    instantiates the AXI CSR ports. Do not restate (redefinition).
+  - I3C_USE_AHB: AHB CSR ports. i3c.sv is `ifdef I3C_USE_AHB `elsif I3C_USE_AXI.
+    The wrap has no AHB ports. Leave unset.
+  - I3C_USE_AXI_LITE: no vendor reader. The wrap presents AXI-Lite signalling
+    and drives AXI4 single-beat into the core; that is not this name.
+  - CONTROLLER_SUPPORT / TARGET_SUPPORT: i3c_defines.svh already defines both
+    to 1. The wrap always connects DAT/DCT/RLT (controller) and recovery
+    (target) ports. Do not restate.
+  - CALIPTRA_AXI_SUB_EX_EN: AxLOCK exclusive-access monitor in i3c_axi_sub.
+    The wrap ties awlock/arlock to 0. Leave unset.
+  - AXI_ID_FILTERING: adds disable_id_filtering_i / priv_ids_i on i3c. The wrap
+    does not have those ports. Leave unset.
 
   chipsalliance/adams-bridge
-  - CALIPTRA: Bender define; Caliptra KV / SoC ports on abr_top.
-  - TECH_SPECIFIC_ICG: skip the behavioural ICG; unset (behavioural gate).
-  - ABR_PRIM_DEFAULT_IMPL: generic prim impl; header default.
-  - ABR_INC_ASSERT: derived in abr_prim_assert.sv from VERILATOR / SYNTHESIS.
-  - ABR_ASSERT_ON: enables abr_sva helper macros; unset.
+  - CALIPTRA: Caliptra KV / SoC ports on abr_top. The Bender `sep` Adams Bridge
+    source group sets it with SEP_ABR_EN. Not a global OCAH default; this
+    header must not define it.
+  - TECH_SPECIFIC_ICG: Bender `sep` Adams Bridge source group. Skips the latch
+    in abr_icg.sv; overlay abr_clk_gate instantiates prim_clkgater with te as
+    DFT test-enable. Not derived from SYNTHESIS (lint/Yosys set that view; the
+    foundry cell is `-t synth`).
+  - ABR_PRIM_DEFAULT_IMPL: each abr_prim_* already defaults to ImplGeneric.
+    Overlay abr_prim_generic_{flop,buf,flop_en} instantiate prim_flop /
+    prim_buf / prim_flop_en. Do not restate.
+  - ABR_INC_ASSERT: derived in abr_prim_assert.sv (dummy on VERILATOR /
+    SYNTHESIS, defined otherwise). Do not restate.
+  - ABR_ASSERT_ON: opt-in concurrent SVA in abr_sva.svh and ntt_butterfly2x2.
+    Independent of ABR_INC_ASSERT; a global set would elaborate those asserts
+    on Verilator too. Leave unset.
 
   chipsalliance/caliptra-rtl (and the i3c-core third_party copy)
   - CALIPTRA_INC_ASSERT: derived in caliptra_prim_assert.sv from VERILATOR /
