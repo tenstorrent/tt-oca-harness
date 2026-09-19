@@ -8,7 +8,7 @@ This directory contains the cocotb-based testbench for the Key Manager subsystem
 - Python 3.8+
 - cocotb (`pip install cocotb`)
 - Bender dependencies updated (`bender update`)
-- RISC-V toolchain for firmware compilation
+- Docker or Podman for the firmware toolchain container (`scripts/docker-run.sh`), or `RISCV_TOOLCHAIN` pointing at a picolibc-enabled RISC-V toolchain
 
 ## Directory Structure
 
@@ -698,7 +698,7 @@ If you see compilation errors about missing files:
 
 If firmware fails to compile:
 
-1. Ensure RISC-V toolchain is in PATH
+1. Ensure a container engine (`docker` or `podman`) is available for `scripts/docker-run.sh`, or that `RISCV_TOOLCHAIN` names a picolibc-enabled RISC-V toolchain
 2. Check for syntax errors in your test
 3. Verify headers are present: `dv/fw/tests/common/test_common.h`, `dv/fw/tests/common/vuart.h` for tests; `irq_common.h`, `rom_memcpy` (and memcpy alias), and startup come from `hw/ip/key_manager/dv/fw/` (see that directory’s README.md).
 
