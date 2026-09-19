@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Run every SEP golden-model self-test and fail if any does not pass.
+"""Run every SEP and shared entropy golden-model self-test.
 
 Each ``env/sep_*_golden.py`` carries a standalone self-test (a KAT / NIST / FIPS /
 RFC vector check, or hand-computed reference vectors) in its ``__main__`` block.
@@ -17,36 +17,48 @@ Exit code 0 = all goldens self-tested clean; nonzero = at least one failed.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+_SHARED = (
+    _HERE.parents[5] / "hw" / "ip" / "entropy_source" / "dv" / "cocotb" / "entropy_source_models"
+)
 
 # The goldens with an executable self-test (KAT/NIST/FIPS/RFC or hand vectors).
 _GOLDENS = (
-    "sep_aes_golden.py",
-    "sep_hmac_golden.py",
-    "sep_ctr_drbg_golden.py",
-    "sep_compress_golden.py",
-    "sep_decor_golden.py",
-    "sep_noise_golden.py",
-    "sep_entropy_golden.py",
-    "sep_lcc_golden.py",
-    "sep_crc_golden.py",
+    _HERE / "sep_aes_golden.py",
+    _HERE / "sep_hmac_golden.py",
+    _HERE / "sep_ctr_drbg_golden.py",
+    _SHARED / "entropy_conditioning_model.py",
+    _SHARED / "entropy_decorrelator_model.py",
+    _SHARED / "entropy_noise_model.py",
+    _HERE / "sep_entropy_golden.py",
+    _HERE / "sep_lcc_golden.py",
+    _HERE / "sep_crc_golden.py",
 )
 
 
 def main() -> int:
     failures = []
-    for name in _GOLDENS:
-        path = _HERE / name
+    python_path = [str(_SHARED.parent), str(_HERE)]
+    if current := os.environ.get("PYTHONPATH"):
+        python_path.append(current)
+    child_env = {**os.environ, "PYTHONPATH": ":".join(python_path)}
+    for path in _GOLDENS:
+        name = path.name
         if not path.is_file():
             print(f"[MISS] {name}: file not found", file=sys.stderr)
             failures.append(name)
             continue
         proc = subprocess.run(
-            [sys.executable, str(path)], capture_output=True, text=True, cwd=str(_HERE)
+            [sys.executable, str(path)],
+            capture_output=True,
+            text=True,
+            cwd=str(_HERE),
+            env=child_env,
         )
         status = "PASS" if proc.returncode == 0 else "FAIL"
         print(f"[{status}] {name}")

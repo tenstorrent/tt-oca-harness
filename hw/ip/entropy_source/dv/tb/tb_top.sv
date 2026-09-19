@@ -39,9 +39,9 @@ module entropy_source_tb_top (
   input  wire [31:0]  fifo_wdata,
   input  wire         fifo_churn_enable,
   output wire [31:0]  fifo_rdata,
-  output wire [3:0]   fifo_level,
-  output wire [2:0]   fifo_wptr,
-  output wire [2:0]   fifo_rptr,
+  output wire [6:0]   fifo_level,
+  output wire [5:0]   fifo_wptr,
+  output wire [5:0]   fifo_rptr,
   output wire         fifo_overflow,
   output wire         fifo_underflow,
   output wire         fifo_parity_error,
@@ -67,16 +67,40 @@ module entropy_source_tb_top (
   output wire [7:0]   health_status,
   output wire         health_count_error,
 
-  input  wire         decor_enable,
-  input  wire         decor_noise,
-  input  wire         decor_bypass,
+  input  wire [11:0]  decor_enable,
+  input  wire [11:0]  decor_noise,
+  input  wire [11:0]  decor_bypass,
   input  wire [7:0]   decor_byte_mask,
   input  wire [7:0]   decor_sample_clk_div,
-  output wire [7:0]   decor_sample,
-  output wire         decor_valid,
+  output wire [95:0]  decor_samples,
+  output wire [11:0]  decor_valid,
+  output wire [31:0]  biw_data,
+  output wire         biw_valid,
 
-  input  wire [15:0]  debug_signals,
-  input  wire [3:0]   debug_select_signal,
+  input  wire         sha_entropy_valid,
+  input  wire [31:0]  sha_entropy_data,
+  output wire         sha_entropy_ready,
+  output wire         sha_whitened_valid,
+  output wire [31:0]  sha_whitened_data,
+  input  wire         sha_whitened_ready,
+  input  wire         sha_enable,
+  output wire         sha_busy,
+  output wire [3:0]   sha_input_count,
+  output wire [3:0]   sha_output_count,
+
+  input  wire [1:0]   sampler_select,
+  input  wire [1:0]   sampler_enable,
+  input  wire [1:0]   sampler_detune,
+  input  wire [4:0]   sampler_divide_0,
+  input  wire [4:0]   sampler_divide_1,
+  output wire [1:0]   sampler_clk,
+
+  input  wire         noise_source_enable,
+  input  wire         noise_source_detune,
+  output wire         noise_source_bit,
+
+  input  wire [255:0] debug_signals,
+  input  wire [7:0]   debug_select_signal,
   input  wire [2:0]   debug_select_div,
   output wire         debug_monitor,
 
@@ -114,7 +138,7 @@ module entropy_source_tb_top (
   );
 
   entropy_fifo #(
-    .DEPTH(8)
+    .DEPTH(64)
   ) u_fifo (
     .clk_i                  (clk),
     .rst_ni                 (rst_n),
@@ -157,23 +181,75 @@ module entropy_source_tb_top (
     .count_err_o                 (health_count_error)
   );
 
-  entropy_decorrelator #(
-    .LENGTH(29),
-    .CLKDIV_WIDTH(8)
-  ) u_decorrelator (
-    .clk_i                 (clk),
-    .rst_ni                (rst_n),
-    .enable_i              (decor_enable),
-    .noise_i               (decor_noise),
-    .bypass_i              (decor_bypass),
-    .byte_mask_i           (decor_byte_mask),
-    .sample_clk_div_i      (decor_sample_clk_div),
-    .entropy_byte_sample_o (decor_sample),
-    .entropy_byte_valid_o  (decor_valid)
+  for (genvar i = 0; i < 12; i++) begin : gen_decorrelator
+    entropy_decorrelator #(
+      .LENGTH(29),
+      .CLKDIV_WIDTH(8)
+    ) u_decorrelator (
+      .clk_i                 (clk),
+      .rst_ni                (rst_n),
+      .enable_i              (decor_enable[i]),
+      .noise_i               (decor_noise[i]),
+      .bypass_i              (decor_bypass[i]),
+      .byte_mask_i           (decor_byte_mask),
+      .sample_clk_div_i      (decor_sample_clk_div),
+      .entropy_byte_sample_o (decor_samples[i*8+:8]),
+      .entropy_byte_valid_o  (decor_valid[i])
+    );
+  end
+
+  for (genvar i = 0; i < 4; i++) begin : gen_biw
+    gf_muladd u_muladd (
+      .a_i (decor_samples[i*8+:8]),
+      .b_i (decor_samples[(i+4)*8+:8]),
+      .c_i (decor_samples[(i+8)*8+:8]),
+      .y_o (biw_data[(3-i)*8+:8])
+    );
+  end
+  assign biw_valid = |decor_valid;
+
+  entropy_sha256_whitener u_sha256 (
+    .clk_i             (clk),
+    .rst_ni            (rst_n),
+    .entropy_valid_i   (sha_entropy_valid),
+    .entropy_data_i    (sha_entropy_data),
+    .entropy_ready_o   (sha_entropy_ready),
+    .whitened_valid_o  (sha_whitened_valid),
+    .whitened_data_o   (sha_whitened_data),
+    .whitened_ready_i  (sha_whitened_ready),
+    .enable_i          (sha_enable),
+    .busy_o            (sha_busy),
+    .input_count_o     (sha_input_count),
+    .output_count_o    (sha_output_count)
+  );
+
+  entropy_sampler_clocks #(
+    .NRINGS(2)
+  ) u_sampler_clocks (
+    .clk_i                (clk),
+    .rst_ni               (rst_n),
+    .sample_clk_i         (rosc_sample_clk),
+    .sample_clk_select_i  (sampler_select),
+    .enable_i             (sampler_enable),
+    .detune_ro_i          (sampler_detune),
+    .sample_clk_divide_i  ({sampler_divide_1, sampler_divide_0}),
+    .sample_clk_o         (sampler_clk)
+  );
+
+  entropy_noise_source #(
+    .TOTAL_LENGTH(7),
+    .TAPPED_LENGTH(5)
+  ) u_noise_source (
+    .clk_i        (clk),
+    .rst_ni       (rst_n),
+    .sample_clk_i (rosc_sample_clk),
+    .enable_i     (noise_source_enable),
+    .detune_i     (noise_source_detune),
+    .noise_o      (noise_source_bit)
   );
 
   entropy_debug_monitor #(
-    .NSIGNALS(16),
+    .NSIGNALS(256),
     .FREQ_DIV_WIDTH(8)
   ) u_debug_monitor (
     .rst_ni            (rst_n),
@@ -198,6 +274,11 @@ module entropy_source_tb_top (
     $assertoff(0, u_dut);
     $assertoff(0, u_fifo);
     $assertoff(0, u_health_test);
+    // SHA-256-only prim_sha2_32 ties its internal mode flag to SHA2_None.
+    $assertoff(
+        0, u_sha256.u_sha2.gen_sha256_logic.u_prim_sha2_256.ValidDigestModeFlag_A);
+    $assertoff(
+        0, u_sha256.u_sha2.gen_sha256_logic.u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
   end
 `endif
 

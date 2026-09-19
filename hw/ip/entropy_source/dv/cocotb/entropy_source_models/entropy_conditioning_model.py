@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
 #
-# sep_compress_golden.py
-#
-# Pure-Python golden model for the SEP DRBG entropy compression / conditioning
+# Pure-Python golden model for entropy compression / conditioning
 # datapath. The architecture is ``hw/ip/entropy_source/doc/architecture.adoc``:
 # BIW compressor (GF(2^8) multiply-add) and SHA-256 conditioner.
 #
@@ -19,20 +17,19 @@
 # re-derives the digest with a fully manual FIPS-180-4 transform.
 # ----------------------------------------------------------------------------
 
-from sep_spec_tables import BIW_OUT_SHIFTS, BIW_TRIPLES
-
 GF_POLY = 0x1B  # AES reduction polynomial
 N_LANES = 12
+BIW_TRIPLES = ((0, 4, 8), (1, 5, 9), (2, 6, 10), (3, 7, 11))
+BIW_OUT_SHIFTS = (24, 16, 8, 0)
 
 
-class SepBiwCompress:
+class EntropyBiwModel:
     """BIW (Barak-Impagliazzo-Wigderson) extractor: 12 lane bytes -> 32-bit word.
 
     GF(2^8) multiply-add over the AES field with reduction value 0x1B.
     Addition in GF(2^8) is XOR.
 
-    Lane -> word mapping from the DV-owned ``BIW_TRIPLES`` / ``BIW_OUT_SHIFTS``
-    tables in ``sep_spec_tables``:
+    Lane-to-word mapping:
         out[i] = (b[i] * b[i+4]) + b[i+8], packed with out[0] as word MSB.
     """
 
@@ -55,7 +52,7 @@ class SepBiwCompress:
     @staticmethod
     def gf256_muladd(a, b, c):
         """Compute ``y = (a * b) + c``, where addition is XOR."""
-        return (SepBiwCompress.gf256_mult(a, b) ^ (c & 0xFF)) & 0xFF
+        return (EntropyBiwModel.gf256_mult(a, b) ^ (c & 0xFF)) & 0xFF
 
     @staticmethod
     def compress_from_lanes(lanes):
@@ -74,7 +71,7 @@ class SepBiwCompress:
             )
         word = 0
         for (a, b, c), shift in zip(BIW_TRIPLES, BIW_OUT_SHIFTS):
-            word |= SepBiwCompress.gf256_muladd(lanes[a], lanes[b], lanes[c]) << shift
+            word |= EntropyBiwModel.gf256_muladd(lanes[a], lanes[b], lanes[c]) << shift
         return word & 0xFFFFFFFF
 
     @staticmethod
@@ -86,10 +83,10 @@ class SepBiwCompress:
         `packed_96` is a Python int holding the 96-bit value.
         """
         lanes = [(packed_96 >> (i * 8)) & 0xFF for i in range(N_LANES)]
-        return SepBiwCompress.compress_from_lanes(lanes)
+        return EntropyBiwModel.compress_from_lanes(lanes)
 
 
-class SepSha256Conditioner:
+class EntropySha256Model:
     """SHA-256 entropy conditioner / whitener.
 
     Accumulates `block_words` 32-bit compressor words; when full, hashes the
@@ -332,14 +329,14 @@ def _selftest():
     # (1) GF(2^8) multiply KAT vs known Rijndael values.
     # 0x57 * 0x13 = 0xFE, 0x57 * 0x83 = 0xC1 in GF(2^8) (AES field).
     # ---------------------------------------------------------------------
-    assert SepBiwCompress.gf256_mult(0x57, 0x13) == 0xFE, "GF 0x57*0x13 != 0xFE"
-    assert SepBiwCompress.gf256_mult(0x57, 0x83) == 0xC1, "GF 0x57*0x83 != 0xC1"
+    assert EntropyBiwModel.gf256_mult(0x57, 0x13) == 0xFE, "GF 0x57*0x13 != 0xFE"
+    assert EntropyBiwModel.gf256_mult(0x57, 0x83) == 0xC1, "GF 0x57*0x83 != 0xC1"
     # Commutativity + identity sanity.
-    assert SepBiwCompress.gf256_mult(0x13, 0x57) == 0xFE
-    assert SepBiwCompress.gf256_mult(0x57, 0x01) == 0x57
-    assert SepBiwCompress.gf256_mult(0x57, 0x00) == 0x00
+    assert EntropyBiwModel.gf256_mult(0x13, 0x57) == 0xFE
+    assert EntropyBiwModel.gf256_mult(0x57, 0x01) == 0x57
+    assert EntropyBiwModel.gf256_mult(0x57, 0x00) == 0x00
     # 0x02 * x is the AES xtime; 0x80*0x02 = 0x1B (reduction visible).
-    assert SepBiwCompress.gf256_mult(0x80, 0x02) == 0x1B
+    assert EntropyBiwModel.gf256_mult(0x80, 0x02) == 0x1B
 
     # ---------------------------------------------------------------------
     # (2) BIW word assembly vs an independent hand-computed oracle.
@@ -373,22 +370,22 @@ def _selftest():
         list(range(0x10, 0x10 + 12)),
     ]
     for lanes in test_lanes:
-        got = SepBiwCompress.compress_from_lanes(lanes)
+        got = EntropyBiwModel.compress_from_lanes(lanes)
         exp = oracle(lanes)
         assert got == exp, "BIW mismatch lanes=%s got=%08x exp=%08x" % (lanes, got, exp)
     # Hand-checked single byte: out[0] = 0x57*0x57 + 0x00.
     # 0x57*0x57 in GF(2^8) = 0xA5 (AES field, reduction 0x1B). lanes feed
     # group0 = (b0,b4,b8), so the MSB byte of the word must be 0xA5.
     hl = [0x57, 0, 0, 0, 0x57, 0, 0, 0, 0x00, 0, 0, 0]
-    assert SepBiwCompress.gf256_mult(0x57, 0x57) == 0xA5
-    assert (SepBiwCompress.compress_from_lanes(hl) >> 24) == 0xA5
+    assert EntropyBiwModel.gf256_mult(0x57, 0x57) == 0xA5
+    assert (EntropyBiwModel.compress_from_lanes(hl) >> 24) == 0xA5
 
     # Packed-vector unpack must agree with the lane list (lane0 in [7:0]).
     lanes = test_lanes[1]
     packed = 0
     for i in range(12):
         packed |= lanes[i] << (i * 8)
-    assert SepBiwCompress.compress_from_packed(packed) == SepBiwCompress.compress_from_lanes(
+    assert EntropyBiwModel.compress_from_packed(packed) == EntropyBiwModel.compress_from_lanes(
         lanes
     ), "packed unpack mismatch"
 
@@ -396,7 +393,7 @@ def _selftest():
     # (3) SHA-256 conditioner: feed a known 16-word block and assert the
     #     digest equals an independently-computed expected value.
     # ---------------------------------------------------------------------
-    cond = SepSha256Conditioner(16)
+    cond = EntropySha256Model(16)
     block_words = [
         0x00010203,
         0x04050607,

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP DRBG noise-source golden model.
+"""Reusable entropy-source noise golden model.
 
 This model is the SINGLE SOURCE of entropy noise for the cocotb env: each
 cycle cocotb calls ``step_all()`` once, drives the returned 12-bit word into
@@ -92,7 +92,7 @@ def parse_mode(mode: str) -> _LaneCfg:
     raise ValueError(f"unknown noise mode: {mode!r}")
 
 
-class SepNoiseGolden:
+class EntropyNoiseModel:
     """Deterministic per-lane noise generator.
 
     Each lane owns a xorshift32 PRNG state and previous bit. Lane
@@ -217,8 +217,7 @@ class SepNoiseGolden:
 
 
 # ===========================================================================
-# Self-test (plain python3, no simulator):
-#   cd .../dv/cocotb/env && python3 sep_noise_golden.py
+# Self-test (plain Python; no simulator).
 # ===========================================================================
 if __name__ == "__main__":
     # (1) xorshift32 KAT — first 5 outputs from two known seeds, computed
@@ -243,7 +242,7 @@ if __name__ == "__main__":
     N = 200_000
 
     def ones_fraction(mode):
-        g = SepNoiseGolden()
+        g = EntropyNoiseModel()
         g.configure(mode)
         ones = 0
         for _ in range(N):
@@ -264,7 +263,7 @@ if __name__ == "__main__":
 
     # (3) correlation: repeat-rate = P(bit == prev_bit)
     def repeat_rate(mode):
-        g = SepNoiseGolden()
+        g = EntropyNoiseModel()
         g.configure(mode)
         c = g._cfg[0]
         prev = g.bit(0, c.p_bias, c.p_corr, c.stuck_en, c.stuck_val)
@@ -284,7 +283,7 @@ if __name__ == "__main__":
 
     # (4) stuck-at: every bit is the stuck value
     for mode, val in (("stuck0", 0), ("stuck1", 1)):
-        g = SepNoiseGolden()
+        g = EntropyNoiseModel()
         g.configure(mode)
         c = g._cfg[0]
         for _ in range(1000):
@@ -293,22 +292,22 @@ if __name__ == "__main__":
     print("  (4) stuck-at ............... PASS")
 
     # (5) reproducibility: same seed+mode -> identical step_all() stream.
-    g1 = SepNoiseGolden()
+    g1 = EntropyNoiseModel()
     g1.configure("bias80", seed_base=0xCAFEBABE)
-    g2 = SepNoiseGolden()
+    g2 = EntropyNoiseModel()
     g2.configure("bias80", seed_base=0xCAFEBABE)
     stream1 = [g1.step_all() for _ in range(5000)]
     stream2 = [g2.step_all() for _ in range(5000)]
     assert stream1 == stream2, "reproducibility: identical config produced different streams"
     # Different seed_base -> different stream (sanity that seed actually matters)
-    g3 = SepNoiseGolden()
+    g3 = EntropyNoiseModel()
     g3.configure("bias80", seed_base=0x0BADF00D)
     stream3 = [g3.step_all() for _ in range(5000)]
     assert stream1 != stream3, "seed_base had no effect on the stream"
     print("  (5) reproducibility ........ PASS")
 
     # Bonus: per-lane fault injection via dict mode (subset of lanes stuck).
-    g = SepNoiseGolden()
+    g = EntropyNoiseModel()
     g.configure({1: "stuck1", 3: "stuck0", 5: "bias80"})
     w = g.step_all()
     assert (w >> 1) & 1 == 1, "lane 1 should be stuck-1"

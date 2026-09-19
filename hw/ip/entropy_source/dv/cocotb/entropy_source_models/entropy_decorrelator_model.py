@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP DRBG entropy-decorrelator golden model.
+"""Reusable entropy-source decorrelator golden model.
 
 Independent model of the 12-lane 29-stage XOR-feedback decorrelator
 in ``hw/ip/entropy_source/doc/architecture.adoc``.
@@ -59,7 +59,7 @@ class _Lane:
         self.sample_count = 0
 
 
-class SepDecorGolden:
+class EntropyDecorrelatorModel:
     """Pure-Python golden model of the 12-lane DRBG entropy decorrelator."""
 
     def __init__(self):
@@ -194,7 +194,7 @@ class SepDecorGolden:
 
 
 # =============================================================================
-# Self-test (run with plain `python3 sep_decor_golden.py`, NO cocotb/sim).
+# Self-test (run with plain Python; no cocotb or simulator).
 # =============================================================================
 def _independent_oracle_step(
     ff_stage, clk_divider, sample_clk_div, byte_mask, bypass, noise_bit, sample_after_shift=False
@@ -242,7 +242,7 @@ def _independent_oracle_step(
 
 def _selftest():
     # --- Test 1: /8 valid cadence across all 12 lanes for a few hundred cycles ---
-    dut = SepDecorGolden()
+    dut = EntropyDecorrelatorModel()
     dut.init_all(sample_clk_div=7, bypass=0, byte_mask=0xFF)
 
     # Deterministic per-lane noise: lane i toggles on a different period.
@@ -317,7 +317,7 @@ def _selftest():
         1,
         1,
     ]  # 40 bits
-    g = SepDecorGolden()
+    g = EntropyDecorrelatorModel()
     g.init(0, sample_clk_div=7, bypass=0, byte_mask=0xFF)
 
     # Oracle state mirror
@@ -359,7 +359,7 @@ def _selftest():
     long_pattern = [(0xA5C3 >> (i % 16)) & 1 for i in range(64)]
 
     # correct ordering via class
-    gc = SepDecorGolden()
+    gc = EntropyDecorrelatorModel()
     gc.init(0, sample_clk_div=7, bypass=0, byte_mask=0xFF)
     correct_bytes = []
     for nb in long_pattern:
@@ -385,7 +385,7 @@ def _selftest():
     )
 
     # --- Test 4: get_all_outputs framing (lane0 in [7:0]) ---
-    f = SepDecorGolden()
+    f = EntropyDecorrelatorModel()
     f.init_all(sample_clk_div=7, bypass=0, byte_mask=0xFF)
     for i in range(MAX_LANES):
         f._lanes[i].output_byte = (0x10 + i) & 0xFF

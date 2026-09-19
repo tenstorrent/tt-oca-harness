@@ -56,6 +56,19 @@ class EntropySourceTb:
         dut.decor_byte_mask.value = 0xFF
         dut.decor_sample_clk_div.value = 0
 
+        dut.sha_entropy_valid.value = 0
+        dut.sha_entropy_data.value = 0
+        dut.sha_whitened_ready.value = 0
+        dut.sha_enable.value = 0
+
+        dut.sampler_select.value = 0
+        dut.sampler_enable.value = 0
+        dut.sampler_detune.value = 0
+        dut.sampler_divide_0.value = 0
+        dut.sampler_divide_1.value = 0
+        dut.noise_source_enable.value = 0
+        dut.noise_source_detune.value = 0
+
         dut.debug_signals.value = 0
         dut.debug_select_signal.value = 0
         dut.debug_select_div.value = 0

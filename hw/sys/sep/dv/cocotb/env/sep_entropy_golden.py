@@ -15,10 +15,10 @@
 #                     ->  EDN->KM slice (each 128b block -> 4x32b beats)
 #
 # This module REUSES the stage models verbatim; it does not reimplement them:
-#   sep_noise_golden.SepNoiseGolden      (standalone self-test noise source)
-#   sep_decor_golden.SepDecorGolden      (12-lane 29b SR decorrelator)
-#   sep_compress_golden.SepBiwCompress   (12 bytes -> 32b BIW word)
-#   sep_compress_golden.SepSha256Conditioner (16x32b -> 8x32b digest)
+#   EntropyNoiseModel      (standalone self-test noise source)
+#   EntropyDecorrelatorModel (12-lane 29b SR decorrelator)
+#   EntropyBiwModel        (12 bytes -> 32b BIW word)
+#   EntropySha256Model     (16x32b -> 8x32b digest)
 #   sep_ctr_drbg_golden.SepCtrDrbgGolden (AES-256 no-df CTR_DRBG)
 #
 # In simulation, SepDrbgScoreboard does not use these internal sources for the
@@ -43,10 +43,16 @@
 
 from collections import deque
 
-from sep_compress_golden import SepBiwCompress, SepSha256Conditioner
+from entropy_source_models.entropy_conditioning_model import (
+    EntropyBiwModel,
+    EntropySha256Model,
+)
+from entropy_source_models.entropy_decorrelator_model import (
+    MAX_LANES,
+    EntropyDecorrelatorModel,
+)
+from entropy_source_models.entropy_noise_model import EntropyNoiseModel
 from sep_ctr_drbg_golden import BLOCK_LEN, SEED_LEN, SepCtrDrbgGolden
-from sep_decor_golden import MAX_LANES, SepDecorGolden
-from sep_noise_golden import SepNoiseGolden
 
 SEED_WORDS = SEED_LEN // 32  # 12 compressor words make one 384b seed
 KM_BEATS_PER_BLOCK = BLOCK_LEN // 32  # 4 x 32b beats per 128b genbits block
@@ -95,15 +101,15 @@ class SepEntropyGolden:
         self.km_word_order = km_word_order
 
         # --- standalone self-test noise source ----------------------------
-        self._noise = SepNoiseGolden()
+        self._noise = EntropyNoiseModel()
         self._noise.configure(noise_model_mode, seed_base=noise_seed_base)
 
         # --- stage models -------------------------------------------------
-        self._decor = SepDecorGolden()
+        self._decor = EntropyDecorrelatorModel()
         self._decor.init_all(
             sample_clk_div=sample_clk_div, bypass=self.bypass, byte_mask=self.byte_mask
         )
-        self._sha = SepSha256Conditioner(16) if self.sha_whitening else None
+        self._sha = EntropySha256Model(16) if self.sha_whitening else None
         self._drbg = SepCtrDrbgGolden()
 
         # --- accumulators -------------------------------------------------
@@ -192,7 +198,7 @@ class SepEntropyGolden:
         self.n_decor_valid += 1
 
         # BIW compress: 12 lane-bytes -> one 32b word.
-        biw_word = SepBiwCompress.compress_from_packed(decor_word)
+        biw_word = EntropyBiwModel.compress_from_packed(decor_word)
 
         # Conditioning: whitening ON feeds BIW into SHA; the compressor-output
         # words the scoreboard sees are the post-SHA digest words (8 per block).
@@ -382,7 +388,7 @@ if __name__ == "__main__":
         recon |= (w & 0xFFFFFFFF) << (32 * i)
     assert recon == blk0, f"KM beats don't reconstruct genbits block: {recon:032x} != {blk0:032x}"
 
-    # ----- reference hexes (fixed seed = SepNoiseGolden default config) -----
+    # ----- reference hexes (fixed seed = EntropyNoiseModel default config) -----
     seed0 = g.expected_seed[0]
     print("ENTROPY GOLDEN FACADE SELFTEST PASS")
     print(

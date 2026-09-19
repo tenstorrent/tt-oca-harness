@@ -12,35 +12,91 @@ tags = ["smoke", "ci", "entropy_source", "csr"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "entropy_source_datapath_test"
-module = { cocotb = "entropy_source_datapath_test" }
+name = "register_walk"
+module = { cocotb = "test_reg_walk" }
 seed = 1
 timeout_sec = 600
-tags = ["entropy_source", "datapath", "decorrelator"]
+tags = ["entropy_source", "csr"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "entropy_source_fifo_test"
-module = { cocotb = "entropy_source_fifo_test" }
+name = "axi_random"
+module = { cocotb = "test_axi_random" }
 seed = 1
 timeout_sec = 600
-tags = ["entropy_source", "fifo"]
+tags = ["entropy_source", "csr", "axi"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "entropy_source_health_test"
-module = { cocotb = "entropy_source_health_test" }
+name = "decorrelator_modes"
+module = { cocotb = "test_decorrelator_modes" }
 seed = 1
-timeout_sec = 600
+timeout_sec = 1200
+tags = ["entropy_source", "datapath", "decorrelator", "biw"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_fifo"
+module = { cocotb = "test_entropy_fifo" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "fifo", "security"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "health_tests"
+module = { cocotb = "test_health_tests" }
+seed = 1
+timeout_sec = 1200
 tags = ["entropy_source", "health", "tuning"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "entropy_source_debug_test"
-module = { cocotb = "entropy_source_debug_test" }
+name = "health_algorithms"
+module = { cocotb = "test_health_algorithms" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "health", "window"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "debug_monitor"
+module = { cocotb = "test_debug_monitor" }
 seed = 1
 timeout_sec = 600
 tags = ["entropy_source", "debug"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "downsample_rate"
+module = { cocotb = "test_misc" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "downsample"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "pipeline_integration"
+module = { cocotb = "test_pipeline_integration" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "datapath", "sha", "fifo"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "sampling"
+module = { cocotb = "test_sampling" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "ring", "clock"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_sanity"
+module = { cocotb = "test_entropy_sanity" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "sha", "csr"]
 run_modes = ["functional"]
 
 [[groups]]
@@ -51,8 +107,15 @@ tests = ["entropy_source_sanity_test"]
 name = "all"
 tests = [
   "entropy_source_sanity_test",
-  "entropy_source_datapath_test",
-  "entropy_source_fifo_test",
-  "entropy_source_health_test",
-  "entropy_source_debug_test",
+  "register_walk",
+  "axi_random",
+  "decorrelator_modes",
+  "entropy_fifo",
+  "health_tests",
+  "health_algorithms",
+  "debug_monitor",
+  "downsample_rate",
+  "pipeline_integration",
+  "sampling",
+  "entropy_sanity",
 ]
