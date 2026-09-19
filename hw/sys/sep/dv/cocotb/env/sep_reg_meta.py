@@ -1036,9 +1036,8 @@ def _selftest() -> int:
     # access reads as read-write and a missing resets makes every read-only
     # look hardware-driven, so a sweep filtering on either one silently
     # filters the wrong set. Without these four the next generator change can
-    # walk the ten identity rows back into a reset compare against a DEFAULT
-    # the RDL never declared, or drop the 154 read-only rows that carry a real
-    # one.
+    # walk those rows back into a reset compare against a DEFAULT the RDL never
+    # declared, or drop the 154 read-only rows that carry a real one.
     shapes = iter_register_walk().regs
     hw_driven = sorted(f"{i.block}.{i.name}" for i in shapes if i.access.hw_driven)
     expect_hw_driven = [
@@ -1050,6 +1049,9 @@ def _selftest() -> int:
         "ABR.MLKEM_NAME_1_",
         "ABR.MLKEM_VERSION_0_",
         "ABR.MLKEM_VERSION_1_",
+        "CSRNG.GENBITS",
+        "CSRNG.GENBITS_VLD",
+        "CSRNG.INT_STATE_VAL",
         "ENTROPY_POOL.DATA",
         "ENTROPY_POOL.IRQ_CAUSE",
     ]
