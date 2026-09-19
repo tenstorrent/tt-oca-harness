@@ -87,13 +87,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIIN-DEPTH",
             "CHK-AXIIN-DEPTH",
-            "eight inbound reads in flight at once all return the VERSION_LO RDL "
-            "reset value with OKAY",
+            "the inbound port accepts at least two address handshakes before it returns "
+            "the first response, on the read train and on the write train, and every "
+            "read returns the VERSION_LO RDL reset value with OKAY",
         ),
         (
             "CHK-AXIIN-DEPTH-ORDER",
             "CHK-AXIIN-DEPTH-ORDER",
-            "eight inbound writes in flight under one AWID leave the last value "
+            "sixty-four inbound writes in flight under one AWID leave the last value "
             "written in SCRATCH_COLD",
         ),
         (
@@ -122,7 +123,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_axi_id_width_conversion_test": [
-        ("CHK-AXI-ID-WIDTH", "AXI_ID_WIDTH_OK", "ID width conversion completes"),
+        (
+            "CHK-AXI-ID-WIDTH",
+            "AXI_ID_WIDTH_OK",
+            "an 8-bit-ID ext_in read reaches an SMC register through the SEP=1 crossbar and "
+            "returns OKAY with RID == ARID and the RDL reset value",
+        ),
     ],
     "smu_axi_prot_encoding_decode_test": [
         (
@@ -216,7 +222,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-IJTAG-CHAIN",
             "CHK-SMU-IJTAG-CHAIN",
             "under SELECT_IJTAG the DR closed through the wrapper scan pins "
-            "returns each payload exactly IJTAG_SIB_COUNT+1 bits late, for "
+            "returns each payload exactly IJTAG_SIB_COUNT bits late, for "
             "five directed and three seeded-random nonzero payloads",
         ),
         (
@@ -439,24 +445,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-PERIPH-EXT-SHIM",
             "CHK-PERIPH-EXT-SHIM",
-            "EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME reads its RDL reset value over the "
-            "eFuse bank-control AXI-Lite port, takes a written value and is restored",
+            "EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME, at the block base the generated SMC "
+            "map gives, reads its RDL reset value over the eFuse bank-control AXI-Lite "
+            "port, takes a written value and is restored",
         ),
         (
             "CHK-PERIPH-EXT-STRAPS",
             "CHK-PERIPH-EXT-STRAPS",
-            "the straps block inside the macro AXI-Lite window answers",
+            "STRAPS_LO and STRAPS_HI at the boot-ROM documented supplementary-region "
+            "address both answer SUCCESS",
         ),
         (
             "CHK-PERIPH-EXT-UNMAPPED",
             "CHK-PERIPH-EXT-UNMAPPED",
-            "an offset above every decoded sub-window of the macro window DECERRs",
+            "the first page above every allocation the sources record, still inside "
+            "the window, DECERRs (DV rule; see the VPLAN specification gap)",
         ),
         (
             "CHK-PERIPH-EXT-APERTURE",
             "CHK-PERIPH-EXT-APERTURE",
-            "REGION_SIZE shrunk below the window sends the same read out of the "
-            "chiplet instead of to the shim",
+            "REGION_SIZE shrunk so the local aperture ends at the window sends the "
+            "same shim read out of the chiplet instead",
         ),
         (
             "CHK-PERIPH-EXT-APERTURE-ZERO",
@@ -488,21 +497,22 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-NDMRESET-REQ",
             "CHK-SMU-NDMRESET-REQ",
-            "NDM_RESET.NDMRESET_REQUEST mirrors smc_ndmreset_request_i for two "
-            "patterns and follows it back to zero, on the block whose "
-            "NDMRESET_CLUSTER_COUNT reads the elaborated cluster count",
+            "NDMRESET_CLUSTER_COUNT reads within the 1..32 clusters ndm_reset.rdl allows "
+            "and NDM_RESET.NDMRESET_REQUEST mirrors smc_ndmreset_request_i over that "
+            "many lanes for two patterns and follows it back to zero",
         ),
         (
             "CHK-SMU-NDMRESET-PROC",
             "CHK-SMU-NDMRESET-PROC",
-            "smc_ndmreset_process_o carries NDMRESET_PROCESS[CPU_CLUSTER_COUNT-1:0], "
-            "including the all-ones write that pins the port width",
+            "smc_ndmreset_process_o carries NDMRESET_PROCESS[NDMRESET_CLUSTER_COUNT-1:0], "
+            "including the all-ones write that pins the port width to the reported count",
         ),
         (
             "CHK-SMU-EXT-IRQ",
             "CHK-SMU-EXT-IRQ",
-            "smc_ext_interrupts_i lane 0 shows pending at cluster PLIC source 1 "
-            "and the level gateway drops it with the pin",
+            "smc_ext_interrupts_i lanes appear bit for bit on cpu_interrupts_o[31:0], the "
+            "external-interrupt slice of the SMC CPU interrupt vector map, and the level "
+            "inputs release with the pins; PLIC pending state is not observed",
         ),
         (
             "CHK-SMU-SS-CONFIG",
@@ -570,17 +580,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-UART-IRQ",
             "CHK-SMU-UART-IRQ",
             "with the UART clock gate read open, enabling IER.ETBEI raises "
-            "uart_interrupt_o[0] alone, IIR reports pending with the "
-            "transmitter-empty identification, and the IIR read retires it",
+            "uart_interrupt_o[0] alone, IIR reports pending with the INTERRUPT_ID "
+            "code the UART RDL assigns to Transmitter Holding Register Empty, and "
+            "the IIR read retires it",
         ),
     ],
     "smu_sep_secure_tm_test": [
         (
             "CHK-SMU-SECURE-TM",
             "CHK-SMU-SECURE-TM",
-            "secure_tm_o carries secure_tm_req_i as sampled at the SEP "
-            "fuse-sense-done edge of each of three cold resets, and ignores the "
-            "strap between those windows in both directions",
+            "across three cold resets secure_tm_o clears under the reset, stays "
+            "low from a strap change made under reset until the SEP "
+            "fuse-sense-done edge, carries the changed value after the edge "
+            "rather than the value present when the reset asserted, and ignores "
+            "the strap between those windows in both directions",
         ),
     ],
     "smu_smc_rom_boot_min_pass_test": [
@@ -699,19 +712,23 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     # it after run_phase has already run the prover, and its own zero-check
     # refusal covers the same ground.
     "smu_boundary_port_composition_test": [
-        ("CHK-SMU-EXT-SMN-S4", "CHK-SMU-EXT-SMN-S4", "SMN in/out struct widths carry 8/10-bit IDs"),
+        (
+            "CHK-SMU-EXT-SMN-S4",
+            "CHK-SMU-EXT-SMN-S4",
+            "the SMC-side ID-width converter presents the specified 6-bit subsystem ID",
+        ),
         (
             "CHK-SMU-INT-AGG-S1",
             "CHK-SMU-INT-AGG-S1",
-            "smc_ext_interrupts_i is Cfg.NUM_INT_TO_SMC wide",
+            "smc_ext_interrupts_i is 256 wide, the SMC external interrupt count",
         ),
         (
             "CHK-SMU-XTRIG-CTP-S1",
             "CHK-SMU-XTRIG-CTP-S1",
-            "all four CTP groups are XTRIG_NUM_CTP wide",
+            "all four CTP groups are 16 wide, the XTRIG_NUM_CTP default",
         ),
         ("CHK-SMU-XTRIG-CTP-S6", "CHK-SMU-XTRIG-CTP-S6", "zero-tied CTP data inputs stay static"),
-        ("CHK-SMU-LC-STATE-S1", "CHK-SMU-LC-STATE-S1", "lc_state_o is 2*LC_STATE_WIDTH wide"),
+        ("CHK-SMU-LC-STATE-S1", "CHK-SMU-LC-STATE-S1", "lc_state_o is 8 bits, 2*LC_STATE_WIDTH"),
         (
             "CHK-SMU-LC-DEMOTE-S1",
             "CHK-SMU-LC-DEMOTE-S1",
@@ -725,10 +742,18 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-FUSE-SENSE-S4",
             "CHK-SMU-FUSE-SENSE-S4",
-            "skip_mem_repair_o is one bit and driven",
+            "skip_mem_repair_o is one bit and clear with no isolation request pending",
         ),
-        ("CHK-SMU-SSRESET-S2", "CHK-SMU-SSRESET-S2", "ss_reset_ctrl_o elements share one width"),
-        ("CHK-SMU-SSRESET-S4", "CHK-SMU-SSRESET-S4", "ss_config_o is 32 bits and driven"),
+        (
+            "CHK-SMU-SSRESET-S2",
+            "CHK-SMU-SSRESET-S2",
+            "ss_reset_ctrl_o has 32 elements that share one width",
+        ),
+        (
+            "CHK-SMU-SSRESET-S4",
+            "CHK-SMU-SSRESET-S4",
+            "ss_config_o is 32 bits and presents the SS_CONFIG reset value",
+        ),
     ],
     "smu_clock_domain_composition_test": [
         (
@@ -762,17 +787,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-SEC-TOKEN-S2",
             "CHK-SMU-SEC-TOKEN-S2",
-            "SEP_SEC_DISABLE_TOKEN is 256 bits and zero",
+            "SEP_SEC_DISABLE_TOKEN is 256 bits at the wrapper and at smu and reaches smu unchanged",
         ),
         (
             "CHK-SMU-OTPAXI-SEP-S3",
             "CHK-SMU-OTPAXI-SEP-S3",
-            "DTP SEP OTP pipeline depths are the forced 3",
+            "DTP SEP OTP pipeline depths are the specified fixed 3",
         ),
         (
             "CHK-SMU-NOSEP-S4",
             "CHK-SMU-NOSEP-S4",
-            "Cfg reaches smu unchanged and each decoded field matches the width or depth elaborated from it",
+            "Cfg reaches smu unchanged and each consumer parameter is its specified default",
         ),
     ],
     "smu_reset_release_sync_test": [
@@ -820,7 +845,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-MEMINIT-S1",
             "CHK-SMU-MEMINIT-S1",
-            "smc_init_mem_done_o rises after reset release",
+            "smc_init_mem_done_o is high after the bring-up sweep, clears under "
+            "cold reset, and rises again after release after an observed zeroing "
+            "sweep",
         ),
     ],
     "smu_xbar_connectivity_matrix_test": [
@@ -834,7 +861,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-XTRIG-MODE-S1",
             "CHK-SMU-XTRIG-MODE-S1",
-            "bits [1:0] into DTP are zero and a pulse-sync lane never acknowledges",
+            "the 2 SMC-reserved mode bits into DTP are zero and a pulse-sync lane never acknowledges",
         ),
         (
             "CHK-SMU-XTRIG-MODE-S2",
@@ -850,21 +877,22 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-CTP-DEFAULT",
             "CHK-SMU-CTP-DEFAULT",
-            "CONFIG.MODE resets to wire-OR, where the request-out data input "
-            "enable is high on all sixteen lanes and every other CTP data and "
-            "enable output is idle",
+            "CONFIG.MODE reads its RDL reset value (wire-OR) and every CTP pad "
+            "control sits at the wire-OR level of the CTP signal interface table "
+            "on all CROSS_TRIGGER_NETWORK_CTP_NUM lanes",
         ),
         (
             "CHK-SMU-CTP-TIEOFF",
             "CHK-SMU-CTP-TIEOFF",
-            "the five CTP outputs the cross-trigger network ties to 1'b0 read zero in both modes",
+            "the five pad-ring controls the CTP signal interface defines no "
+            "driver for read 0 in both modes",
         ),
         (
             "CHK-SMU-CTP-P2P-MODE",
             "CHK-SMU-CTP-P2P-MODE",
-            "CONFIG.MODE=1 raises req_out_dout_en, req_in_din_en, ack_in_din_en "
-            "and ack_out_dout_en and drops req_out_din_en, on the written lane "
-            "only",
+            "CONFIG.MODE=1 moves the written lane's pad controls to the "
+            "point-to-point level of the CTP signal interface table and leaves "
+            "every other lane at its wire-OR level",
         ),
         (
             "CHK-SMU-CTP-P2P-RX",
@@ -881,9 +909,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-CTM-SRC",
             "CHK-SMU-CTM-SRC",
-            "routing lane 0's destination into the matrix port of internal "
-            "cross-trigger lane 0 raises xtrig_ctm_src_req_o[0], and a wire-OR "
-            "edge on lane 2's request-out data input does the same",
+            "routing lane 0's destination into the CTM port of the first "
+            "SMU-exposed internal lane raises xtrig_ctm_src_req_o[0], and a "
+            "wire-OR edge on lane 2's request-out data input does the same",
         ),
     ],
     "smu_xtrig_ctm_illegal_phase_test": [

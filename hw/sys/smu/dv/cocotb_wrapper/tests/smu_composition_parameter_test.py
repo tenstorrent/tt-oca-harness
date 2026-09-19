@@ -2,20 +2,24 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_composition_parameter_test - parameter and wire plumbing into the subsystems.
 
-This tree carries no SMU specification of the build configuration: the
-`smu_cfg_t` struct and its `DefaultCfg` / `NoSepCfg` presets exist only in
-`hw/sys/smu/rtl/smu_pkg.sv`. The per-field `Cfg` compares below are therefore
-drift checks on the elaborated parameters against a table that mirrors that
-package, and they carry no evidence token. What the tokens rest on is plumbing
-the design can get wrong: a parameter reaching the instance that consumes it.
+`doc/integrator/src/smu.adoc` states the SMU default parameters, the DTP
+counts the SMC reservation adds to them, the fixed SEP OTP pipeline depths and
+the extra-STAP port sizing; the SMC port table states the external interrupt
+count; `hw/sys/sep/doc/security_disable.adoc` states the token width. Those
+are the goldens the evidence tokens rest on, together with plumbing compares
+of one parameter read at the wrapper and at the instance that consumes it.
+
+No specification in this tree states the packed layout of the build
+configuration struct or the token parameter's default value. The per-field
+`Cfg` decode compares and the token-is-zero compare are drift checks on the
+elaboration and carry no evidence token.
 
 On the `--dut smu` production wrapper (compile_smu_chiplet, +expected_sep=1):
 reads the 256-bit SEP_SEC_DISABLE_TOKEN at the wrapper, at `smu` and at the
-SEP eFuse controller that consumes it, the DTP's forced SEP OTP pipeline
-depths, and the one security_disable net from the SEP consumer through the
-`smu` wire into the SMC input. It also decodes the elaborated `Cfg` struct
-field by field and checks each decoded field against the port width or
-sub-block parameter that follows it.
+SEP eFuse controller that consumes it, the DTP's fixed SEP OTP pipeline
+depths, the one security_disable net from the SEP consumer through the `smu`
+wire into the SMC input, and each DTP and port parameter the build
+configuration sizes, at the instance that consumes it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_composition_parameter_test \\

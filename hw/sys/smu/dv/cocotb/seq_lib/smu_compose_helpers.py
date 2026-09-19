@@ -2,25 +2,25 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Helpers shared by the SMU composition and bring-up sequences.
 
-The expected values every composition leaf compares against live here, with
-the source of each one named. Two kinds of source appear below and they do not
-carry the same weight:
+The expected values the composition leaves compare against live here, each
+with the specification it is transcribed from. Two kinds of constant appear
+below and they do not carry the same weight:
 
-* ``hw/sys/smu/doc/port_table.adoc`` -- the SMU Port Declaration. It states each
-  port's presence, direction, type, width expression and semantics, and it is
-  the only SMU specification in this tree a reader can open.
-* ``hw/sys/smu/rtl/smu_pkg.sv``, ``hw/sys/smu/rtl/smu_axi_xbar_pkg.sv`` and the
-  vendored ``axi_pkg`` -- the *implementation*. The numeric values the
-  port_table width expressions elaborate to, the crossbar geometry and the AXI
-  channel field widths come from there. A value taken from the implementation
-  makes a compare against it a drift check on the elaborated design, not proof
-  of a requirement, and the comment on each such constant says so.
+* A constant with a specification cite -- ``doc/integrator/src/smu.adoc``,
+  the SMU, SMC, SEP and DTP port tables, the SMC interrupt and fabric
+  documents, the SEP security-disable document, or a generated register
+  header -- is a golden. A compare against it may carry an evidence token.
+* A constant in the drift tables has no specification in this tree. It
+  records what the boundary elaborated to when it was recorded, so a compare
+  against it detects unintended change and proves no requirement. No compare
+  built on a drift constant carries an evidence token, and the plan cards say
+  which compares those are.
 
-This tree holds no SMU design specification for the crossbar topology, the AXI
-channel geometry, the clock/reset domain table or the build configuration; the
-SMU documentation directory contains ``port_table.adoc`` and nothing else. Where
-a constant has no port_table row, that absence is stated rather than filled in
-with another document.
+The sections the cites name: "SMU Default Parameters", "Cross Trigger
+Parameters", "JTAG Configuration Parameters", "Pipeline Depth Parameters",
+"AXI Interface Configuration" and "Debug & Test Ports (DTP) Integration" in
+``doc/integrator/src/smu.adoc``; the "SMU Port Declaration" table in
+``hw/sys/smu/doc/port_table.adoc``.
 """
 
 from __future__ import annotations
@@ -29,43 +29,67 @@ from typing import Any
 
 from cocotb.triggers import Timer
 
-# Ports port_table.adoc declares, at the widths it declares them. It gives
-# those widths as parameter expressions (`[2*LC_STATE_WIDTH-1:0]`,
-# `[XTRIG_NUM_CTP-1:0]`, `[Cfg.NUM_INT_TO_SMC-1:0]`, `[31:0]`); the numbers
-# below are what those expressions elaborate to in hw/sys/smu/rtl/smu_pkg.sv
-# and the dtp_pkg it imports, so a compare against one is a drift check on the
-# elaborated parameter.
-LC_STATE_O_WIDTH = 8
-LCC_DEMOTE_WIDTH = 2
-NUM_INT_TO_SMC = 256
+# doc/integrator/src/smu.adoc "SMU Default Parameters" and "Cross Trigger
+# Parameters": 16 external CTPs, 8 SMU-exposed internal CT lanes, 8 SMU-exposed
+# clock-stop requests, and a 32-bit mode vector of which the low
+# XTRIG_NUM_INT_CT bits are consumed.
 XTRIG_NUM_CTP = 16
 XTRIG_NUM_INT_CT = 8
+XTRIG_NUM_CLK_STOP_REQ = 8
+XTRIG_INT_CT_MODE_WIDTH = 32
+# doc/integrator/src/smu.adoc "Debug & Test Ports (DTP) Integration": the DTP
+# carries 10 internal CTs and 9 clock-stop requests, 8 and 8 of them exposed;
+# the lanes below the exposed ones are the SMC reservation, held in pulse-sync
+# mode with their mode bits at zero.
 XTRIG_SMC_INT_CT_LANES = 2
 XTRIG_SMC_CLK_STOP_LANES = 1
-XTRIG_NUM_CLK_STOP_REQ = 8
 DTP_NUM_INT_CT = XTRIG_NUM_INT_CT + XTRIG_SMC_INT_CT_LANES
-XTRIG_INT_CT_MODE_WIDTH = 32
+DTP_NUM_CLK_STOP_REQ = XTRIG_NUM_CLK_STOP_REQ + XTRIG_SMC_CLK_STOP_LANES
+# hw/sys/smc/doc/port_table.adoc `smc_ext_interrupts_i` ("Width is 256") and
+# hw/sys/smc/doc/interrupts.adoc (`NUM_EXT_INTERRUPTS = 256`): the SMC port that
+# the SMU `smc_ext_interrupts_i` row (`[Cfg.NUM_INT_TO_SMC-1:0]`) feeds.
+NUM_INT_TO_SMC = 256
+# hw/sys/smu/doc/port_table.adoc `lc_state_o` (`[2*LC_STATE_WIDTH-1:0]`, tie
+# value `8'hf0`); hw/sys/smc/doc/port_table.adoc `lc_state_i` "(8 bits)";
+# hw/sys/sep/doc/periphs.adoc gives the life-cycle state width as 4.
+LC_STATE_O_WIDTH = 8
+# hw/sys/smu/doc/port_table.adoc `lcc_demote_state_1_o` / `_2_o`: `[1:0]`.
+LCC_DEMOTE_WIDTH = 2
+# hw/sys/smu/doc/port_table.adoc `ss_reset_ctrl_o` and `isolate_req_o`: 32
+# subsystems.
 NUM_SUBSYSTEMS = 32
-SS_CONFIG_WIDTH = 32
-SMN_IN_ID_WIDTH = 8
-SMN_OUT_ID_WIDTH = 10
-SUBSYS_IN_ID_WIDTH = 6
-# port_table.adoc names the SMN boundary struct *types*
-# (`smu_axi_xbar_pkg::axi_56_64_req_t`, `axi_out_req_t`) but not their field
-# widths. These are the localparams those types are built from in
-# hw/sys/smu/rtl/smu_axi_xbar_pkg.sv -- implementation, with no open
-# specification to check them against.
+# doc/integrator/src/smu.adoc "AXI Interface Configuration" and
+# hw/sys/smc/doc/port_table.adoc `sys_axi_in_req_i`: 6-bit transaction IDs on
+# the SMC system AXI input, the port the crossbar's SMC leg lands on.
+SMC_SYS_IN_ID_WIDTH = 6
+# hw/sys/sep/doc/security_disable.adoc: the security-disable token is a
+# 256-bit value.
+SEP_SEC_DISABLE_TOKEN_WIDTH = 256
+# doc/integrator/src/smu.adoc "Pipeline Depth Parameters": the SEP OTP depths
+# are fixed to 2'h3 in the SMU; the SMC OTP depths default to 2'h3 and pass
+# through to the DTP.
+SEP_OTP_PL_DEPTH = 3
+SMC_OTP_PL_DEPTH = 3
+# doc/integrator/src/smu.adoc "JTAG Configuration Parameters": one extra STAP,
+# and the extra-STAP port arrays are as wide as the parameter.
+JTAG_NUM_EXTRA_STAPS = 1
+
+# Drift table: no specification in this tree states the SMN crossbar's
+# transaction-ID widths, the user sideband it carries, the SEP inbound ID
+# width, or the packed layout of the crossbar's channel structs. The address
+# and data widths match the `axi_56_64_req_t` type name port_table.adoc gives
+# the SMN inbound port; the rest is the recorded elaboration.
 XBAR_ADDR_WIDTH = 56
 XBAR_DATA_WIDTH = 64
 XBAR_USER_WIDTH = 12
-SEP_SEC_DISABLE_TOKEN_WIDTH = 256
-SEP_OTP_PL_DEPTH = 3
+SMN_IN_ID_WIDTH = 8
+SMN_OUT_ID_WIDTH = 10
+SEP_IN_ID_WIDTH = 6
 
-# AMBA AXI4 channel field widths as the vendored pulp-platform
-# `AXI_TYPEDEF_*_CHAN_T` macros lay them out, including the 6-bit
-# `axi_pkg::atop_t` the AW channel carries. Sources:
-# vendor/pulp-platform/axi/upstream/include/axi/typedef.svh and
-# vendor/pulp-platform/axi/upstream/src/axi_pkg.sv.
+# AMBA AXI4 channel field widths: AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE,
+# AxPROT, AxQOS, AxREGION, xRESP, xLAST. The 6-bit atomic-operation field on
+# the AW channel and the per-channel valid/ready and user bits are part of the
+# drift table above.
 _AXI_LEN = 8
 _AXI_SIZE = 3
 _AXI_BURST = 2
@@ -92,7 +116,7 @@ _AXI_AX_COMMON = (
 
 
 def axi_req_bits(id_width: int) -> int:
-    """Packed width of a crossbar request struct for one ID width."""
+    """Packed width of a crossbar request struct for one ID width (drift table)."""
     aw = id_width + _AXI_AX_COMMON + _AXI_ATOP
     w = XBAR_DATA_WIDTH + XBAR_DATA_WIDTH // 8 + _AXI_LAST + XBAR_USER_WIDTH
     ar = id_width + _AXI_AX_COMMON
@@ -100,19 +124,17 @@ def axi_req_bits(id_width: int) -> int:
 
 
 def axi_resp_bits(id_width: int) -> int:
-    """Packed width of a crossbar response struct for one ID width."""
+    """Packed width of a crossbar response struct for one ID width (drift table)."""
     b = id_width + _AXI_RESP + XBAR_USER_WIDTH
     r = id_width + XBAR_DATA_WIDTH + _AXI_RESP + _AXI_LAST + XBAR_USER_WIDTH
     return 1 + 1 + 1 + 1 + b + 1 + r
 
 
-# smu_pkg::smu_cfg_t in declaration order, MSB first, with each field's width
-# taken from its declared type in hw/sys/smu/rtl/smu_pkg.sv. This table and the
-# defaults below mirror the package, so decoding an elaborated `Cfg` with it and
-# comparing the fields detects unintended drift in the elaborated build
-# parameters and nothing more: there is no SMU specification of this struct to
-# check it against, and a compare of a `Cfg` field against this table cannot
-# distinguish a correct design from an incorrect one.
+# Drift table: no specification in this tree states the packed field order or
+# the field widths of the SMU build-configuration struct. Decoding an
+# elaborated `Cfg` with this layout and comparing the fields detects unintended
+# change in the elaborated build parameters and proves no requirement; no
+# compare that goes through `decode_cfg` carries an evidence token.
 CFG_LAYOUT: tuple[tuple[str, int], ...] = (
     ("NUM_INT_TO_SMC", 32),
     ("JTAG_BSR_ENABLE", 1),
@@ -145,10 +167,13 @@ CFG_LAYOUT: tuple[tuple[str, int], ...] = (
 )
 CFG_TOTAL_BITS = sum(width for _, width in CFG_LAYOUT)
 
-# smu_pkg::DefaultCfg, field for field. XTRIG_INT_CT_MODE is omitted: the
-# wrapper testbench elaborates it from +xtrig_int_ct_mode rather than taking the
-# package default, so the leaf supplies that one expectation itself.
-CFG_ELABORATION_DEFAULTS: dict[str, int] = {
+# doc/integrator/src/smu.adoc "SMU Default Parameters", field for field, with
+# NUM_INT_TO_SMC from the SMC port it sizes. XTRIG_INT_CT_MODE is absent
+# because the wrapper testbench elaborates it from +xtrig_int_ct_mode and the
+# leaf supplies that expectation; SEP_KM_LATCHED_MEM_RDATA is absent because
+# no specification states its default, so it is decoded and logged, not
+# compared.
+CFG_SPEC_DEFAULTS: dict[str, int] = {
     "NUM_INT_TO_SMC": NUM_INT_TO_SMC,
     "JTAG_BSR_ENABLE": 1,
     "JTAG_EXTEST_TRAIN_ENABLE": 1,
@@ -161,7 +186,7 @@ CFG_ELABORATION_DEFAULTS: dict[str, int] = {
     "JTAG_IC_RESET_ENABLE": 1,
     "JTAG_SMC_DBG_ENABLE": 1,
     "JTAG_STAP_IO_ENABLE": 1,
-    "JTAG_NUM_EXTRA_STAPS": 1,
+    "JTAG_NUM_EXTRA_STAPS": JTAG_NUM_EXTRA_STAPS,
     "JTAG_IDCODE_MFR_ID": 0,
     "JTAG_IDCODE_PART_NUM": 0,
     "JTAG_IDCODE_SI_REV": 0,
@@ -169,18 +194,17 @@ CFG_ELABORATION_DEFAULTS: dict[str, int] = {
     "XTRIG_NUM_CTP": XTRIG_NUM_CTP,
     "XTRIG_NUM_INT_CT": XTRIG_NUM_INT_CT,
     "XTRIG_NUM_CLK_STOP_REQ": XTRIG_NUM_CLK_STOP_REQ,
-    "SMC_OTP_RD_PL_DEPTH": 3,
-    "SMC_OTP_WR_PL_DEPTH": 3,
+    "SMC_OTP_RD_PL_DEPTH": SMC_OTP_PL_DEPTH,
+    "SMC_OTP_WR_PL_DEPTH": SMC_OTP_PL_DEPTH,
     "SMC_RD_PL_DEPTH": 3,
     "SMC_WR_PL_DEPTH": 3,
-    "SEP_KM_LATCHED_MEM_RDATA": 1,
     "SEP_ABR_MASKING_EN": 1,
     "SEP_ABR_SRAM_LATENCY": 1,
 }
 
 
 def decode_cfg(raw: int) -> dict[str, int]:
-    """Split an elaborated smu_cfg_t value into its named fields."""
+    """Split an elaborated build-configuration value into its named fields."""
     fields: dict[str, int] = {}
     shift = CFG_TOTAL_BITS
     for name, width in CFG_LAYOUT:

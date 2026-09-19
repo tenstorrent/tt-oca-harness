@@ -183,10 +183,14 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 [run_modes.smoke]
 description = "Phase-1 smoke: SMC reset/AXI, DTP JTAG IDCODE, no-SEP config"
 timeout_sec = 1800
-# Skip OTP fuse-sense FSM so primary reset can release without a real eFuse model.
+# tb_top.sv ties the eFuse shim off, so no sense can complete and primary reset
+# would never release without +skip_fuse_sense. The SMC shadow preload is read
+# only under that plusarg and supplies the image the skipped sense would have
+# earned; without it the shadow array holds all zeros.
 # +rom_hex required by real OCAH4CORECluster_mems (in smc_ip_integration).
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 
@@ -195,6 +199,7 @@ description = "Phase-1 SMC / no-SEP wrapper tests"
 timeout_sec = 1800
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 
@@ -203,6 +208,7 @@ description = "Phase-1 DTP / JTAG / boot-stall / xtrig tests"
 timeout_sec = 1800
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 
@@ -211,6 +217,7 @@ description = "Phase-1 SEP=0 fabric: SMN port, ID-width, DECERR, remap, ATOP"
 timeout_sec = 1800
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 

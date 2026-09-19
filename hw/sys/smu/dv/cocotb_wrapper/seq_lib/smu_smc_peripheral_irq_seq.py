@@ -5,27 +5,29 @@
 The two raw peripheral interrupt vectors port_table.adoc brings out of the
 wrapper, each raised through the SMC register that owns its source.
 
-S1  GPIO. ``gpio.sv`` samples the pad through ``prim_sync3r`` and only clocks
-    its interrupt flop while ``DATA_CTRL.INTERRUPT_ENABLE`` is set, and the
-    pad's input buffer is gated by ``pad2core_en``, which the LSIO owner wins
-    unless ``LSIO_DISABLE`` is set (``prim_pad_shim.sv`` ``pad2core_o = pad_in
-    & pad2core_en_i``; ``gpio.sv`` ``lsio_pin = lsio_interface_select_i &&
-    ~reg__lsio_disable``). Pin 0 is SPI-owned by default on this build
-    (``smc_padring.sv`` puts pins 0..7 on SPI and ``smu.sv`` ties
-    ``sep_spi_enable`` high), so the leaf takes the pin away from the LSIO
-    first -- which ``DATA_CTRL.LSIO_ENABLE`` reads back -- then drives the pad
-    and requires both the interrupt output and the ``DATA_CTRL.PAD2CORE``
-    mirror to follow it up and down.
+S1  GPIO. The GPIO programming guide (``hw/ip/gpio/doc/programming.adoc``,
+    "LSIO Interface Operation") gives a hardware LSIO peripheral first claim
+    on a pad while its interface select is asserted and ``DATA_CTRL.LSIO_DISABLE``
+    is clear, and the pad table (``doc/integrator/meta/ocah_gpio_table.csv``)
+    assigns pad 0 to ``SPI.DATA[0]``, so the pad starts under LSIO ownership and
+    ``DATA_CTRL.LSIO_ENABLE`` reads back that state. The interrupt is captured
+    only while ``DATA_CTRL.INTERRUPT_ENABLE`` is set and the pad level is
+    mirrored in ``DATA_CTRL.PAD2CORE`` (``gpio_intf`` RDL field descriptions).
+    The leaf takes the pin away from the LSIO first -- which
+    ``DATA_CTRL.LSIO_ENABLE`` reads back -- then drives the pad and requires
+    both the interrupt output and the ``DATA_CTRL.PAD2CORE`` mirror to follow
+    it up and down.
 
     The interrupt flop only updates while the enable is set, so the pad is
     released before the enable is cleared.
 
-S2  UART. ``uart_core.sv`` raises the transmitter-holding-register-empty
-    request as soon as ``IER.ETBEI`` is set, because the TX FIFO is empty out
+S2  UART. ``IER.ETBEI`` enables the transmitter-holding-register-empty
+    interrupt (``uart_16550_main.rdl``), and the transmitter holds nothing out
     of reset, so one register write has to raise ``uart_interrupt_o[0]``.
-    ``IIR.INTERRUPT_PENDING`` is active low and its identification field has
-    to name that source; reading IIR is also what clears the request, so the
-    read is followed by a check that the pin has fallen.
+    ``IIR.INTERRUPT_PENDING`` is active low and ``IIR.INTERRUPT_ID`` has to
+    carry the code the same RDL's field description assigns to that source;
+    reading IIR is also what clears the request, so the read is followed by a
+    check that the pin has fallen.
 """
 
 from __future__ import annotations
@@ -35,7 +37,12 @@ from cocotb.triggers import ClockCycles
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
-from seq_lib.smu_boundary_regs import gpio_intf_u32, smc_base_config_u32, uart_main_u32
+from seq_lib.smu_boundary_regs import (
+    gpio_intf_u32,
+    smc_base_config_u32,
+    uart_iir_interrupt_id,
+    uart_main_u32,
+)
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
@@ -57,9 +64,11 @@ LSIO_DISABLE_BM = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm")
 LSIO_ENABLE_BM = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
 INTERRUPT_TYPE_BM = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bm")
 PAD2CORE_BM = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
-# gpio.sv INTERRUPT_TYPE encoding: 0 = active-high level. A level, not an
-# edge: an edge type would give a one-cycle pulse a CSR poll can miss.
-GPIO_RX_ENABLE = 1 << (ENABLE_RX_TX_BP + 1)
+# gpio_intf.rdl DATA_CTRL.ENABLE_RX_TX: 2'b10 is "RX enabled".
+GPIO_RX_ENABLE = 0b10 << ENABLE_RX_TX_BP
+# gpio_intf.rdl DATA_CTRL.INTERRUPT_TYPE: 0 is an active-high level, so the
+# reset encoding stays. A level, not an edge: an edge type gives a one-cycle
+# pulse a CSR poll can miss.
 GPIO_ARM = GPIO_RX_ENABLE | INTERFACE_ENABLE_BM | INTERRUPT_ENABLE_BM | LSIO_DISABLE_BM
 
 UART_IDX = 0
@@ -70,8 +79,8 @@ IER_ETBEI_BM = uart_main_u32("UART_16550_MAIN__IER__ETBEI_bm")
 IIR_PENDING_BM = uart_main_u32("UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_ID_BM = uart_main_u32("UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_ID_BP = uart_main_u32("UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
-# uart_core.sv priority encoder: the transmitter-holding-register-empty source.
-IIR_ID_THRE = 0x1
+# uart_16550_main.rdl IIR.INTERRUPT_ID field description.
+IIR_ID_THRE = uart_iir_interrupt_id("Transmitter Holding Register Empty")
 
 SYNC_CYCLES = 32
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
