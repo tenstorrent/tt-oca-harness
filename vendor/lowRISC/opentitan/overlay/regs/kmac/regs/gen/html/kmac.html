@@ -92,7 +92,7 @@
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:4</td><td>mode</td><td>RW</td><td>0x0</td><td>Keccak hashing mode.<br><br>This module supports SHA3 main hashing algorithm and the part<br>of its derived functions, SHAKE and cSHAKE with limitations.<br>This field is to select the mode.</td></tr>
 <tr><td>3:1</td><td>kstrength</td><td>RW</td><td>0x0</td><td>Hashing Strength<br><br>3 bit field to select the security strength of SHA3 hashing<br>engine. If mode field is set to SHAKE or cSHAKE, only 128 and<br>256 strength can be selected. Other value will result error<br>when hashing starts.</td></tr>
-<tr><td>0</td><td>kmac_en</td><td>RW</td><td>0x0</td><td>KMAC datapath enable.<br><br>If this bit is 1, the incoming message is processed in KMAC<br>with the secret key.</td></tr>
+<tr><td>0</td><td>kmac_en</td><td>RW</td><td>0x0</td><td>KMAC datapath enable.<br><br>If this bit is 1, the KMAC mode is active and the secret key is prepended to the incoming message.</td></tr>
 </table>
 <h3 id="CMD">CMD</h3>
 <table>

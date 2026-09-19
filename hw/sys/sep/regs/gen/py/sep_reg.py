@@ -6213,7 +6213,8 @@ class OTBN_ERR_BITS_reg_t(Structure):
         ('key_invalid', c_uint32, 1),
         ('rnd_rep_chk_fail', c_uint32, 1),
         ('rnd_fips_chk_fail', c_uint32, 1),
-        ('rsvd_0', c_uint32, 8),
+        ('mai_software_error', c_uint32, 1),
+        ('rsvd_0', c_uint32, 7),
         ('imem_intg_violation', c_uint32, 1),
         ('dmem_intg_violation', c_uint32, 1),
         ('reg_intg_violation', c_uint32, 1),
@@ -7771,10 +7772,7 @@ class CSRNG_CTRL_reg_u(Union):
 CSRNG_CMD_REQ_REG_DEFAULT = 0x00000000
 class CSRNG_CMD_REQ_reg_t(Structure):
     _fields_ = [
-        ('acmd', c_uint32, 4),
-        ('clen', c_uint32, 4),
-        ('flag0', c_uint32, 4),
-        ('glen', c_uint32, 13),
+        ('cmd_req', c_uint32, 32),
     ]
 
 CSRNG_CMD_REQ_REG_DEFAULT = 0x00000000

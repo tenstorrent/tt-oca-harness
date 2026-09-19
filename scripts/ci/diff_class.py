@@ -46,7 +46,12 @@ REGISTER_INFRASTRUCTURE_PATHS = frozenset(
         "scripts/ci/validate-regen-regs.py",
     }
 )
-REGISTER_INFRASTRUCTURE_DIRS = ("hw/common/regs/", "tools/regs/")
+REGISTER_INFRASTRUCTURE_DIRS = (
+    "hw/common/regs/",
+    "tools/regs/",
+    "vendor/lowRISC/opentitan/patches/",
+    "vendor/lowRISC/opentitan/upstream/util/reggen/",
+)
 
 # pyproject.toml and uv.lock pin the reggen toolchain (peakrdl*, systemrdl-compiler,
 # mako, hjson) alongside dozens of unrelated lint/format tools, so listing either file
@@ -118,6 +123,10 @@ def is_register_regen_path(path: str) -> bool:
     if (
         normalized == UNCLASSIFIED
         or normalized.endswith(".rdl")
+        or (
+            normalized.startswith("vendor/lowRISC/opentitan/upstream/hw/ip/")
+            and normalized.endswith(".hjson")
+        )
         or normalized.endswith(("/doc/memmap.toml", "/regs/regdoc.toml"))
     ):
         return True
@@ -443,6 +452,9 @@ def self_test() -> None:
         "hw/ip/foo/registers/bar/gen/c/bar.h",
         "vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_reg.sv",
         "tools/regs/reggen_wrapper.py",
+        "vendor/lowRISC/opentitan/patches/0040-systemrdl_exporter_roundtrip.patch",
+        "vendor/lowRISC/opentitan/upstream/util/reggen/systemrdl_exporter.py",
+        "vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson",
         "hw/common/regs/templates/svpkg.mako",
         "ocah.mk",
         UNCLASSIFIED,
