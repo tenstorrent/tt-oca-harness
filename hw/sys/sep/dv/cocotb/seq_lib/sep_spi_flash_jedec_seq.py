@@ -8,7 +8,9 @@ ERROR_STATUS back with exact ``expected`` values (scoreboard value-checked). The
 RXDATA / opcode assertions live in the test; this sequence exposes ``rxdata``.
 
 Co-located with the SPI register-map constants so the test does not embed raw
-addresses. Offsets mirror the OpenTitan spi_host register block.
+addresses. The SEP instantiates the upstream OpenTitan spi_host register block
+(the SPI_CONTROLLER symbols are generated from spi_host.hjson), so register
+names and field packing are the OpenTitan ones.
 """
 
 from __future__ import annotations
@@ -17,13 +19,15 @@ from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 from sep_reg_meta import SPI_CONTROLLER, sym
 
-SPI_CONTROLLER_CTRL = sym("SPI_CONTROLLER_CTRL_REG_ADDR")
+SPI_CONTROLLER_CONTROL = sym("SPI_CONTROLLER_CONTROL_REG_ADDR")
 SPI_CONTROLLER_STATUS = sym("SPI_CONTROLLER_STATUS_REG_ADDR")
-SPI_CONTROLLER_CFG = sym("SPI_CONTROLLER_CFG_REG_ADDR")
+SPI_CONTROLLER_CONFIGOPTS = sym("SPI_CONTROLLER_CONFIGOPTS_REG_ADDR")
 SPI_CONTROLLER_CSID = sym("SPI_CONTROLLER_CSID_REG_ADDR")
-SPI_CONTROLLER_CMD = sym("SPI_CONTROLLER_CMD_REG_ADDR")
-SPI_CONTROLLER_RXDATA = sym("SPI_CONTROLLER_RXDATA_REG_ADDR")
-SPI_CONTROLLER_TXDATA = sym("SPI_CONTROLLER_TXDATA_REG_ADDR")
+SPI_CONTROLLER_COMMAND = sym("SPI_CONTROLLER_COMMAND_REG_ADDR")
+# RXDATA / TXDATA are single-entry windows in the upstream map, so the generated
+# symbols carry the array-instance and window suffixes.
+SPI_CONTROLLER_RXDATA = sym("SPI_CONTROLLER_RXDATA_0__MEM_BASE_ADDR")
+SPI_CONTROLLER_TXDATA = sym("SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR")
 SPI_CONTROLLER_ERROR_STATUS = sym("SPI_CONTROLLER_ERROR_STATUS_REG_ADDR")
 
 SPI_JEDEC_ID = 0x20BA18
@@ -31,22 +35,30 @@ SPI_RX_JEDEC_WORD = 0x0018BA20
 
 STATUS_ACTIVE = SPI_CONTROLLER.field_mask("STATUS", "active")
 STATUS_READY = SPI_CONTROLLER.field_mask("STATUS", "ready")
-CTRL_ENABLE = (
-    (0x7F << SPI_CONTROLLER.field_lsb("CTRL", "rx_watermark"))
-    | SPI_CONTROLLER.field_mask("CTRL", "output_en")
-    | SPI_CONTROLLER.field_mask("CTRL", "spien")
-)
-CFG_JEDEC = (
-    (0x9 << SPI_CONTROLLER.field_lsb("CFG", "clkdiv"))
-    | (0x2 << SPI_CONTROLLER.field_lsb("CFG", "csnidle"))
-    | (0x2 << SPI_CONTROLLER.field_lsb("CFG", "csntrail"))
-    | (0x2 << SPI_CONTROLLER.field_lsb("CFG", "csnlead"))
-)
-CMD_DIR_LSB = SPI_CONTROLLER.field_lsb("CMD", "direction")
-CMD_LEN_LSB = SPI_CONTROLLER.field_lsb("CMD", "len")
-CMD_CSAAT = SPI_CONTROLLER.field_mask("CMD", "csaat")
-CMD_TX_CSAAT = (2 << CMD_DIR_LSB) | CMD_CSAAT
-CMD_RX_LEN2 = (1 << CMD_DIR_LSB) | (2 << CMD_LEN_LSB)
+
+# COMMAND packing (OpenTitan spi_host): CSAAT[0], SPEED[2:1], DIRECTION[4:3],
+# LEN[24:5]. LEN is the segment length in bytes minus one.
+CMD_CSAAT = 1 << 0
+CMD_SPEED_SHIFT = 1
+CMD_DIRECTION_SHIFT = 3
+CMD_LEN_SHIFT = 5
+CMD_DIR_DUMMY = 0
+CMD_DIR_RDONLY = 1
+CMD_DIR_WRONLY = 2
+CMD_DIR_BIDIR = 3
+CMD_SPEED_STANDARD = 0
+
+
+def spi_command(
+    direction: int, nbytes: int, *, csaat: bool = False, speed: int = CMD_SPEED_STANDARD
+) -> int:
+    """Pack one COMMAND word for a ``nbytes``-byte segment."""
+    return (
+        ((nbytes - 1) << CMD_LEN_SHIFT)
+        | (direction << CMD_DIRECTION_SHIFT)
+        | (speed << CMD_SPEED_SHIFT)
+        | (CMD_CSAAT if csaat else 0)
+    )
 
 
 class sep_spi_flash_jedec_seq(uvm_sequence):
@@ -90,17 +102,19 @@ class sep_spi_flash_jedec_seq(uvm_sequence):
         raise AssertionError("SPI controller did not become idle")
 
     async def body(self) -> None:
-        await self._write(SPI_CONTROLLER_CTRL, CTRL_ENABLE)
-        await self._write(SPI_CONTROLLER_CFG, CFG_JEDEC)
+        await self._write(SPI_CONTROLLER_CONTROL, 0xA000_007F)
+        await self._write(SPI_CONTROLLER_CONFIGOPTS, 0x0222_0009)
         await self._write(SPI_CONTROLLER_CSID, 0)
         await self._write(SPI_CONTROLLER_ERROR_STATUS, 0xFFFF_FFFF)
 
         await self._wait_ready()
         await self._write(SPI_CONTROLLER_TXDATA, 0x0000_009F)
-        await self._write(SPI_CONTROLLER_CMD, CMD_TX_CSAAT)
+        # One-byte write of the JEDEC-ID opcode; hold CS# for the read segment.
+        await self._write(SPI_CONTROLLER_COMMAND, spi_command(CMD_DIR_WRONLY, 1, csaat=True))
 
         await self._wait_ready()
-        await self._write(SPI_CONTROLLER_CMD, CMD_RX_LEN2)
+        # Three-byte read of the ID; CS# deasserts when the segment ends.
+        await self._write(SPI_CONTROLLER_COMMAND, spi_command(CMD_DIR_RDONLY, 3))
         await self._wait_idle()
         self.rxdata = await self._read(SPI_CONTROLLER_RXDATA, SPI_RX_JEDEC_WORD)
         await self._read(SPI_CONTROLLER_ERROR_STATUS, 0)

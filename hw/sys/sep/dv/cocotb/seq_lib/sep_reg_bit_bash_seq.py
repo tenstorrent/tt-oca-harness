@@ -104,6 +104,9 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     "ERROR_FLAGS": "read-clear",
     "GENBITS": "FIFO",
     "CMD": "trigger",
+    # spi_host COMMAND: write-only segment trigger (swaccess wo, hwext); reads
+    # return 0, so it is neither reset-checkable nor a storage touch.
+    "COMMAND": "trigger",
     "CMD_REQ": "trigger",
 }
 

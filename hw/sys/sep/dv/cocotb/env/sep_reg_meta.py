@@ -945,7 +945,7 @@ def _selftest() -> int:
         (KMAC, "INTR_STATE", 0x1091_3000, 0x0),
         (AES, "CTRL_SHADOWED", 0x1091_0074, 0x0000_11FD),
         (WDT_TIMER, "WKUP_CTRL", 0x1080_1004, 0x0),
-        (SPI_CONTROLLER, "CTRL", 0x10B0_0010, 0x0000_007F),
+        (SPI_CONTROLLER, "CONTROL", 0x10B0_0010, 0x0000_007F),
         (EFUSE_INTERFACE_CTRL, "EFUSE_PROGRAM_CTRL", 0x1093_0404, 0x0),
         (AXIL_MAILBOX_OUTBOUND_0, "WRITE_DATA", 0x10A0_0000, 0x0),
         (SEP_LIFECYCLE_CTRL, "FEAT_CTRL", 0x1091_8000, 0x0),
@@ -992,10 +992,10 @@ def _selftest() -> int:
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (2127, 1953, 174):
+    if (walk.export, walk.inventory, walk.nometa) != (2126, 1952, 174):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 2127/1953/174"
+            f"{walk.nometa} != 2126/1952/174"
         )
     if walk.inventory < 100:
         failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")
@@ -1065,7 +1065,7 @@ def _selftest() -> int:
             "elements moved and a reset sweep would skip or admit the wrong rows"
         )
     write_only = [i for i in shapes if i.access.write_only]
-    if len(write_only) != 554:
+    if len(write_only) != 555:
         failures.append(f"write-only registers {len(write_only)} != 554")
     nonzero_wo = sorted(f"{i.block}.{i.name}" for i in write_only if i.reset != 0)
     if nonzero_wo != ["ABR.MLDSA_MSG_STROBE", "AES.TRIGGER"]:
