@@ -2568,26 +2568,28 @@ SEP_CPU_CTRL_SEP_VERSION_ID_REG_OFFSET = 0x00001000
 SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR = 0x10A31000
 SPI_CONTROLLER_REG_MAP_BASE_ADDR = 0x10B00000
 SPI_CONTROLLER_REG_MAP_SIZE = 0x00000038
-SPI_CONTROLLER_INTR_STATUS_REG_OFFSET = 0x00000000
-SPI_CONTROLLER_INTR_STATUS_REG_ADDR = 0x10B00000
+SPI_CONTROLLER_INTR_STATE_REG_OFFSET = 0x00000000
+SPI_CONTROLLER_INTR_STATE_REG_ADDR = 0x10B00000
 SPI_CONTROLLER_INTR_ENABLE_REG_OFFSET = 0x00000004
 SPI_CONTROLLER_INTR_ENABLE_REG_ADDR = 0x10B00004
 SPI_CONTROLLER_INTR_TEST_REG_OFFSET = 0x00000008
 SPI_CONTROLLER_INTR_TEST_REG_ADDR = 0x10B00008
-SPI_CONTROLLER_CTRL_REG_OFFSET = 0x00000010
-SPI_CONTROLLER_CTRL_REG_ADDR = 0x10B00010
+SPI_CONTROLLER_ALERT_TEST_REG_OFFSET = 0x0000000C
+SPI_CONTROLLER_ALERT_TEST_REG_ADDR = 0x10B0000C
+SPI_CONTROLLER_CONTROL_REG_OFFSET = 0x00000010
+SPI_CONTROLLER_CONTROL_REG_ADDR = 0x10B00010
 SPI_CONTROLLER_STATUS_REG_OFFSET = 0x00000014
 SPI_CONTROLLER_STATUS_REG_ADDR = 0x10B00014
-SPI_CONTROLLER_CFG_REG_OFFSET = 0x00000018
-SPI_CONTROLLER_CFG_REG_ADDR = 0x10B00018
+SPI_CONTROLLER_CONFIGOPTS_REG_OFFSET = 0x00000018
+SPI_CONTROLLER_CONFIGOPTS_REG_ADDR = 0x10B00018
 SPI_CONTROLLER_CSID_REG_OFFSET = 0x0000001C
 SPI_CONTROLLER_CSID_REG_ADDR = 0x10B0001C
-SPI_CONTROLLER_CMD_REG_OFFSET = 0x00000020
-SPI_CONTROLLER_CMD_REG_ADDR = 0x10B00020
-SPI_CONTROLLER_RXDATA_REG_OFFSET = 0x00000024
-SPI_CONTROLLER_RXDATA_REG_ADDR = 0x10B00024
-SPI_CONTROLLER_TXDATA_REG_OFFSET = 0x00000028
-SPI_CONTROLLER_TXDATA_REG_ADDR = 0x10B00028
+SPI_CONTROLLER_COMMAND_REG_OFFSET = 0x00000020
+SPI_CONTROLLER_COMMAND_REG_ADDR = 0x10B00020
+SPI_CONTROLLER_RXDATA_0__MEM_BASE_ADDR = 0x10B00024
+SPI_CONTROLLER_RXDATA_0__MEM_SIZE = 0x00000004
+SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR = 0x10B00028
+SPI_CONTROLLER_TXDATA_0__MEM_SIZE = 0x00000004
 SPI_CONTROLLER_ERROR_ENABLE_REG_OFFSET = 0x0000002C
 SPI_CONTROLLER_ERROR_ENABLE_REG_ADDR = 0x10B0002C
 SPI_CONTROLLER_ERROR_STATUS_REG_OFFSET = 0x00000030
@@ -6213,7 +6215,8 @@ class OTBN_ERR_BITS_reg_t(Structure):
         ('key_invalid', c_uint32, 1),
         ('rnd_rep_chk_fail', c_uint32, 1),
         ('rnd_fips_chk_fail', c_uint32, 1),
-        ('rsvd_0', c_uint32, 8),
+        ('mai_software_error', c_uint32, 1),
+        ('rsvd_0', c_uint32, 7),
         ('imem_intg_violation', c_uint32, 1),
         ('dmem_intg_violation', c_uint32, 1),
         ('reg_intg_violation', c_uint32, 1),
@@ -7771,10 +7774,7 @@ class CSRNG_CTRL_reg_u(Union):
 CSRNG_CMD_REQ_REG_DEFAULT = 0x00000000
 class CSRNG_CMD_REQ_reg_t(Structure):
     _fields_ = [
-        ('acmd', c_uint32, 4),
-        ('clen', c_uint32, 4),
-        ('flag0', c_uint32, 4),
-        ('glen', c_uint32, 13),
+        ('cmd_req', c_uint32, 32),
     ]
 
 CSRNG_CMD_REQ_REG_DEFAULT = 0x00000000
@@ -14265,25 +14265,24 @@ class SEP_CPU_CTRL_SEP_VERSION_ID_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT = 0x00000000
-class SPI_CONTROLLER_INTR_STATUS_reg_t(Structure):
+SPI_CONTROLLER_INTR_STATE_REG_DEFAULT = 0x00000000
+class SPI_CONTROLLER_INTR_STATE_reg_t(Structure):
     _fields_ = [
         ('error', c_uint8, 1),
-        ('rsvd_0', c_uint8, 3),
         ('spi_event', c_uint8, 1),
     ]
 
-SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT = 0x00000000
+SPI_CONTROLLER_INTR_STATE_REG_DEFAULT = 0x00000000
 
-class SPI_CONTROLLER_INTR_STATUS_reg_u(Union):
+class SPI_CONTROLLER_INTR_STATE_reg_u(Union):
     _fields_ = [
         ('val', c_uint32),
-        ('f', SPI_CONTROLLER_INTR_STATUS_reg_t),
+        ('f', SPI_CONTROLLER_INTR_STATE_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(SPI_CONTROLLER_INTR_STATUS_reg_u, self).__init__(*args, **kwargs)
-        self.val = SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT
+        super(SPI_CONTROLLER_INTR_STATE_reg_u, self).__init__(*args, **kwargs)
+        self.val = SPI_CONTROLLER_INTR_STATE_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -14299,7 +14298,6 @@ SPI_CONTROLLER_INTR_ENABLE_REG_DEFAULT = 0x00000000
 class SPI_CONTROLLER_INTR_ENABLE_reg_t(Structure):
     _fields_ = [
         ('error', c_uint8, 1),
-        ('rsvd_0', c_uint8, 3),
         ('spi_event', c_uint8, 1),
     ]
 
@@ -14329,7 +14327,6 @@ SPI_CONTROLLER_INTR_TEST_REG_DEFAULT = 0x00000000
 class SPI_CONTROLLER_INTR_TEST_reg_t(Structure):
     _fields_ = [
         ('error', c_uint8, 1),
-        ('rsvd_0', c_uint8, 3),
         ('spi_event', c_uint8, 1),
     ]
 
@@ -14355,8 +14352,36 @@ class SPI_CONTROLLER_INTR_TEST_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SPI_CONTROLLER_CTRL_REG_DEFAULT = 0x0000007F
-class SPI_CONTROLLER_CTRL_reg_t(Structure):
+SPI_CONTROLLER_ALERT_TEST_REG_DEFAULT = 0x00000000
+class SPI_CONTROLLER_ALERT_TEST_reg_t(Structure):
+    _fields_ = [
+        ('fatal_fault', c_uint8, 1),
+    ]
+
+SPI_CONTROLLER_ALERT_TEST_REG_DEFAULT = 0x00000000
+
+class SPI_CONTROLLER_ALERT_TEST_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', SPI_CONTROLLER_ALERT_TEST_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SPI_CONTROLLER_ALERT_TEST_reg_u, self).__init__(*args, **kwargs)
+        self.val = SPI_CONTROLLER_ALERT_TEST_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SPI_CONTROLLER_CONTROL_REG_DEFAULT = 0x0000007F
+class SPI_CONTROLLER_CONTROL_reg_t(Structure):
     _fields_ = [
         ('rx_watermark', c_uint32, 8),
         ('tx_watermark', c_uint32, 8),
@@ -14366,17 +14391,17 @@ class SPI_CONTROLLER_CTRL_reg_t(Structure):
         ('spien', c_uint32, 1),
     ]
 
-SPI_CONTROLLER_CTRL_REG_DEFAULT = 0x0000007F
+SPI_CONTROLLER_CONTROL_REG_DEFAULT = 0x0000007F
 
-class SPI_CONTROLLER_CTRL_reg_u(Union):
+class SPI_CONTROLLER_CONTROL_reg_u(Union):
     _fields_ = [
         ('val', c_uint32),
-        ('f', SPI_CONTROLLER_CTRL_reg_t),
+        ('f', SPI_CONTROLLER_CONTROL_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(SPI_CONTROLLER_CTRL_reg_u, self).__init__(*args, **kwargs)
-        self.val = SPI_CONTROLLER_CTRL_REG_DEFAULT
+        super(SPI_CONTROLLER_CONTROL_reg_u, self).__init__(*args, **kwargs)
+        self.val = SPI_CONTROLLER_CONTROL_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -14430,8 +14455,8 @@ class SPI_CONTROLLER_STATUS_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SPI_CONTROLLER_CFG_REG_DEFAULT = 0x00000000
-class SPI_CONTROLLER_CFG_reg_t(Structure):
+SPI_CONTROLLER_CONFIGOPTS_REG_DEFAULT = 0x00000000
+class SPI_CONTROLLER_CONFIGOPTS_reg_t(Structure):
     _fields_ = [
         ('clkdiv', c_uint32, 16),
         ('csnidle', c_uint32, 4),
@@ -14443,17 +14468,17 @@ class SPI_CONTROLLER_CFG_reg_t(Structure):
         ('cpol', c_uint32, 1),
     ]
 
-SPI_CONTROLLER_CFG_REG_DEFAULT = 0x00000000
+SPI_CONTROLLER_CONFIGOPTS_REG_DEFAULT = 0x00000000
 
-class SPI_CONTROLLER_CFG_reg_u(Union):
+class SPI_CONTROLLER_CONFIGOPTS_reg_u(Union):
     _fields_ = [
         ('val', c_uint32),
-        ('f', SPI_CONTROLLER_CFG_reg_t),
+        ('f', SPI_CONTROLLER_CONFIGOPTS_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(SPI_CONTROLLER_CFG_reg_u, self).__init__(*args, **kwargs)
-        self.val = SPI_CONTROLLER_CFG_REG_DEFAULT
+        super(SPI_CONTROLLER_CONFIGOPTS_reg_u, self).__init__(*args, **kwargs)
+        self.val = SPI_CONTROLLER_CONFIGOPTS_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -14493,26 +14518,26 @@ class SPI_CONTROLLER_CSID_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SPI_CONTROLLER_CMD_REG_DEFAULT = 0x00000000
-class SPI_CONTROLLER_CMD_reg_t(Structure):
+SPI_CONTROLLER_COMMAND_REG_DEFAULT = 0x00000000
+class SPI_CONTROLLER_COMMAND_reg_t(Structure):
     _fields_ = [
-        ('len', c_uint16, 9),
-        ('csaat', c_uint16, 1),
-        ('speed', c_uint16, 2),
-        ('direction', c_uint16, 2),
+        ('csaat', c_uint32, 1),
+        ('speed', c_uint32, 2),
+        ('direction', c_uint32, 2),
+        ('len', c_uint32, 20),
     ]
 
-SPI_CONTROLLER_CMD_REG_DEFAULT = 0x00000000
+SPI_CONTROLLER_COMMAND_REG_DEFAULT = 0x00000000
 
-class SPI_CONTROLLER_CMD_reg_u(Union):
+class SPI_CONTROLLER_COMMAND_reg_u(Union):
     _fields_ = [
         ('val', c_uint32),
-        ('f', SPI_CONTROLLER_CMD_reg_t),
+        ('f', SPI_CONTROLLER_COMMAND_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(SPI_CONTROLLER_CMD_reg_u, self).__init__(*args, **kwargs)
-        self.val = SPI_CONTROLLER_CMD_REG_DEFAULT
+        super(SPI_CONTROLLER_COMMAND_reg_u, self).__init__(*args, **kwargs)
+        self.val = SPI_CONTROLLER_COMMAND_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -14524,77 +14549,17 @@ class SPI_CONTROLLER_CMD_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SPI_CONTROLLER_RXDATA_REG_DEFAULT = 0x00000000
-class SPI_CONTROLLER_RXDATA_reg_t(Structure):
-    _fields_ = [
-        ('rxdata', c_uint32, 32),
-    ]
-
-SPI_CONTROLLER_RXDATA_REG_DEFAULT = 0x00000000
-
-class SPI_CONTROLLER_RXDATA_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', SPI_CONTROLLER_RXDATA_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(SPI_CONTROLLER_RXDATA_reg_u, self).__init__(*args, **kwargs)
-        self.val = SPI_CONTROLLER_RXDATA_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-SPI_CONTROLLER_TXDATA_REG_DEFAULT = 0x00000000
-class SPI_CONTROLLER_TXDATA_reg_t(Structure):
-    _fields_ = [
-        ('txdata', c_uint32, 32),
-    ]
-
-SPI_CONTROLLER_TXDATA_REG_DEFAULT = 0x00000000
-
-class SPI_CONTROLLER_TXDATA_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', SPI_CONTROLLER_TXDATA_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(SPI_CONTROLLER_TXDATA_reg_u, self).__init__(*args, **kwargs)
-        self.val = SPI_CONTROLLER_TXDATA_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT = 0x00011111
+SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT = 0x0000001F
 class SPI_CONTROLLER_ERROR_ENABLE_reg_t(Structure):
     _fields_ = [
-        ('cmdbusy', c_uint32, 1),
-        ('rsvd_0', c_uint32, 3),
-        ('overflow', c_uint32, 1),
-        ('rsvd_1', c_uint32, 3),
-        ('underflow', c_uint32, 1),
-        ('rsvd_2', c_uint32, 3),
-        ('cmdinval', c_uint32, 1),
-        ('rsvd_3', c_uint32, 3),
-        ('csidinval', c_uint32, 1),
+        ('cmdbusy', c_uint8, 1),
+        ('overflow', c_uint8, 1),
+        ('underflow', c_uint8, 1),
+        ('cmdinval', c_uint8, 1),
+        ('csidinval', c_uint8, 1),
     ]
 
-SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT = 0x00011111
+SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT = 0x0000001F
 
 class SPI_CONTROLLER_ERROR_ENABLE_reg_u(Union):
     _fields_ = [
@@ -14619,17 +14584,12 @@ class SPI_CONTROLLER_ERROR_ENABLE_reg_u(Union):
 SPI_CONTROLLER_ERROR_STATUS_REG_DEFAULT = 0x00000000
 class SPI_CONTROLLER_ERROR_STATUS_reg_t(Structure):
     _fields_ = [
-        ('cmdbusy', c_uint32, 1),
-        ('rsvd_0', c_uint32, 3),
-        ('overflow', c_uint32, 1),
-        ('rsvd_1', c_uint32, 3),
-        ('underflow', c_uint32, 1),
-        ('rsvd_2', c_uint32, 3),
-        ('cmdinval', c_uint32, 1),
-        ('rsvd_3', c_uint32, 3),
-        ('csidinval', c_uint32, 1),
-        ('rsvd_4', c_uint32, 3),
-        ('accessinval', c_uint32, 1),
+        ('cmdbusy', c_uint8, 1),
+        ('overflow', c_uint8, 1),
+        ('underflow', c_uint8, 1),
+        ('cmdinval', c_uint8, 1),
+        ('csidinval', c_uint8, 1),
+        ('accessinval', c_uint8, 1),
     ]
 
 SPI_CONTROLLER_ERROR_STATUS_REG_DEFAULT = 0x00000000
@@ -14657,17 +14617,12 @@ class SPI_CONTROLLER_ERROR_STATUS_reg_u(Union):
 SPI_CONTROLLER_EVENT_ENABLE_REG_DEFAULT = 0x00000000
 class SPI_CONTROLLER_EVENT_ENABLE_reg_t(Structure):
     _fields_ = [
-        ('rxfull', c_uint32, 1),
-        ('rsvd_0', c_uint32, 3),
-        ('txempty', c_uint32, 1),
-        ('rsvd_1', c_uint32, 3),
-        ('rxwm', c_uint32, 1),
-        ('rsvd_2', c_uint32, 3),
-        ('txwm', c_uint32, 1),
-        ('rsvd_3', c_uint32, 3),
-        ('ready', c_uint32, 1),
-        ('rsvd_4', c_uint32, 3),
-        ('idle', c_uint32, 1),
+        ('rxfull', c_uint8, 1),
+        ('txempty', c_uint8, 1),
+        ('rxwm', c_uint8, 1),
+        ('txwm', c_uint8, 1),
+        ('ready', c_uint8, 1),
+        ('idle', c_uint8, 1),
     ]
 
 SPI_CONTROLLER_EVENT_ENABLE_REG_DEFAULT = 0x00000000

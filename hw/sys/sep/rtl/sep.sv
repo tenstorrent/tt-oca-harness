@@ -1008,8 +1008,8 @@ NUM_EXT_DEMUX_PORTS
     .inbound_read_filter_hit_debug_o   (inbound_read_filter_hit_debug),
 
     // Mailbox Interface
-    .mailbox_inbound_interrupt_o      (smc_mailbox_interrupt_o),
-    .mailbox_outbound_interrupt_o     (sep_mailbox_interrupt),
+    .mailbox_inbound_interrupt_o      (sep_mailbox_interrupt),
+    .mailbox_outbound_interrupt_o     (smc_mailbox_interrupt_o),
 
     // SEP System CSR Interface
     .smc_fuse_sense_done_i            (smc_fuse_sense_done_i),

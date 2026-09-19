@@ -54,7 +54,7 @@ canonical := {
   TRNG:   ["true random number generator"], // hw/sys/sep/doc/crypto.adoc
   DRBG:   ["deterministic random bit generator"], // hw/ip/drbg/doc/architecture.adoc
   DCLS:   ["dual core lock step"], // hw/sys/sep/doc/cpu.adoc
-  AVSBus: ["adaptive voltage scaling bus"], // hw/ip/avsbus_controller/README.adoc
+  AVSBus: ["adaptive voltage scaling bus"], // hw/ip/avsbus_controller/README.md
   TTI:    ["target transaction interface"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
   DAT:    ["device address table"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
   DCT:    ["device characteristic table"], // hw/ip/i3ccore_wrap/doc/architecture.adoc

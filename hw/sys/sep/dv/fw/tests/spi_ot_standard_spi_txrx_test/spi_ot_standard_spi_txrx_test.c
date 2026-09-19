@@ -60,18 +60,18 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
+    spi_controller__CONTROL_t ctrl;
     spi_controller__STATUS_t status;
-    spi_controller__CMD_t cmd;
-    spi_controller__CFG_t cfg;
+    spi_controller__COMMAND_t cmd;
+    spi_controller__CONFIGOPTS_t cfg;
     spi_controller__ERROR_STATUS_t err_status;
     uint32_t i;
 
     /* Enable controller */
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure: freq-robust 25 MHz SCLK (spi_clkdiv), CPOL=0, CPHA=0, CS timing */
     cfg.w = 0;
@@ -81,7 +81,7 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
     /* Set CSID=0 */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
@@ -97,7 +97,7 @@ int main(void) {
     }
 
     /* Load TX data: 1 word with command byte 0x9F (JEDEC READ ID) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x9F000000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x9F000000);
 
     /* Issue CMD: TX, Standard speed, 1 byte (LEN=0 means 1 byte) */
     cmd.w = 0;
@@ -105,7 +105,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     printf("  CMD issued: DIR=TX, SPEED=Standard, LEN=0 (1 byte)\n");
 
@@ -133,14 +133,14 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x03001000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x03001000);
 
     cmd.w = 0;
     cmd.f.LEN = 3;
     cmd.f.CSAAT = 1;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD issued: DIR=TX, LEN=3 (4 bytes), CSAAT=1\n");
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -159,7 +159,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD issued: DIR=RX, LEN=3 (4 bytes), CSAAT=0\n");
 
     /* Wait for completion */
@@ -182,7 +182,7 @@ int main(void) {
     {
         /* No SPI-peer golden exists for this standard RX path, so only FIFO
          * occupancy is checked (above); the payload is logged, not compared. */
-        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         printf("  RXDATA[0]: 0x%08x (4-byte RX packed; no peer golden)\n", rxdata);
         (void)i;
     }

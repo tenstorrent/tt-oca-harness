@@ -1,24 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP OpenTitan SPI Controller Wrapper
+// SEP OpenTitan SPI Host Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
 //
-// Wrapper for the modified OpenTitan SPI Host IP (spi_controller)
-// that uses AXI4-Lite instead of TileLink.
+// Follows the crypto-accelerator pattern (see hmac_wrapper / kmac_wrapper):
+// the unmodified OpenTitan `spi_host` core is instantiated on its native
+// TL-UL register interface, and `axi_lite_to_tlul` bridges the 32-bit
+// AXI4-Lite bus that `sep_io` already presents. The register block is the
+// upstream REGGEN block, so the OpenTitan SPI Host documentation is
+// authoritative for the register map and interrupt semantics (INTR_STATE is
+// RW1C, INTR_ENABLE gates only the interrupt output, INTR_TEST is a
+// write pulse).
 //
-// This module encapsulates:
-// - spi_controller (modified OpenTitan SPI Host with AXI4-Lite interface)
+// Status and interrupt ports:
+// - irq_o           : OR of the core's two interrupt lines (error, spi_event)
+// - lsio_trigger_o  : passed through
 //
-// The spi_controller is a software-controlled SPI controller that uses
-// FIFO-based command/data transfer. It does NOT support direct
-// memory-mapped flash access.
+// There is no busy output. The core keeps its activity state internal and
+// publishes it only as STATUS.ACTIVE, which software reads over this wrapper's
+// register interface.
 //
-// Features:
+// Tie-offs on the upstream core:
+// - RACL is compiled out (EnableRacl = 0); policies are driven inactive.
+// - The spi_device passthrough interface is held inactive.
+// - The single fatal alert (bus integrity) is terminated here; `sep_io` has no
+//   alert path.
+//
+// Features (from the upstream core):
 // - Configurable number of chip selects (default: 1)
 // - Up to Quad SPI (4-bit data width)
 // - Single Transfer Rate (STR) only (no DTR/DDR support)
-// - Software-driven command sequences
-// - AXI4-Lite register interface (no TileLink)
+// - Software-driven command sequences; no memory-mapped (XIP) flash access
 
 module sep_ot_spi_wrap #(
   parameter int unsigned NUM_CS = 1  // Number of chip selects
@@ -56,105 +68,129 @@ module sep_ot_spi_wrap #(
   //=========================================================================
   // Status and Interrupt Interface
   //=========================================================================
-  output logic              irq_o,     // interrupt
-  output logic              busy_o,          // Controller busy (active transaction)
+  output logic              irq_o,            // interrupt (error | spi_event)
   output logic              lsio_trigger_o    // DMA trigger
 );
 
-  /////////////////////////////////////////////////////////////////////////////
-  // Signal Declarations
-  /////////////////////////////////////////////////////////////////////////////
-
-  // Internal AXI-Lite signals (spi_controller uses its own pkg types)
-  spi_controller_pkg::axil_req_t  spi_ctrl_axil_req;
-  spi_controller_pkg::axil_resp_t spi_ctrl_axil_resp;
+  logic unused_test_en;
+  assign unused_test_en = test_en_i;
 
   /////////////////////////////////////////////////////////////////////////////
-  // AXI-Lite Interface Conversion
-  // Convert from sep_io_pkg types to spi_controller_pkg types
+  // Address masking for the upstream register decoder
+  //
+  // spi_host_reg_top decodes BlockAw (6) address bits, covering 0x00-0x3F, so
+  // the aperture base must be BlockAw-aligned for the mask below to produce the
+  // block-relative offset. The SEP base satisfies that and has zero in those
+  // bits, which makes SpiBaseLower zero and the subtract a no-op today.
   /////////////////////////////////////////////////////////////////////////////
 
-  // The spi_controller uses a narrower address width based on its register map
-  // We need to map the wider sep_io address to the narrower spi_controller address
+  localparam int unsigned SpiBlockAw = spi_host_reg_pkg::BlockAw;
+  localparam logic [sep_io_pkg::ADDR_WIDTH-1:0] SpiAddrMask =
+      sep_io_pkg::ADDR_WIDTH'((1 << SpiBlockAw) - 1);
+  localparam logic [sep_io_pkg::ADDR_WIDTH-1:0] SpiBaseLower =
+      sep_io_pkg::ADDR_WIDTH'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR)
+      & SpiAddrMask;
+
+  sep_io_pkg::axil_req_t axil_req_masked;
 
   always_comb begin
-    // AW channel
-    spi_ctrl_axil_req.aw_valid = axil_req_i.aw_valid;
-    spi_ctrl_axil_req.aw.addr  = axil_req_i.aw.addr[spi_controller_pkg::REG_ADDR_WIDTH-1:0];
-    spi_ctrl_axil_req.aw.prot  = axil_req_i.aw.prot;
-
-    // W channel
-    spi_ctrl_axil_req.w_valid  = axil_req_i.w_valid;
-    spi_ctrl_axil_req.w.data   = axil_req_i.w.data;
-    spi_ctrl_axil_req.w.strb   = axil_req_i.w.strb;
-
-    // B channel
-    spi_ctrl_axil_req.b_ready  = axil_req_i.b_ready;
-
-    // AR channel
-    spi_ctrl_axil_req.ar_valid = axil_req_i.ar_valid;
-    spi_ctrl_axil_req.ar.addr  = axil_req_i.ar.addr[spi_controller_pkg::REG_ADDR_WIDTH-1:0];
-    spi_ctrl_axil_req.ar.prot  = axil_req_i.ar.prot;
-
-    // R channel
-    spi_ctrl_axil_req.r_ready  = axil_req_i.r_ready;
-  end
-
-  always_comb begin
-    // AW channel
-    axil_resp_o.aw_ready = spi_ctrl_axil_resp.aw_ready;
-
-    // W channel
-    axil_resp_o.w_ready  = spi_ctrl_axil_resp.w_ready;
-
-    // B channel
-    axil_resp_o.b_valid  = spi_ctrl_axil_resp.b_valid;
-    axil_resp_o.b.resp   = spi_ctrl_axil_resp.b.resp;
-
-    // AR channel
-    axil_resp_o.ar_ready = spi_ctrl_axil_resp.ar_ready;
-
-    // R channel
-    axil_resp_o.r_valid  = spi_ctrl_axil_resp.r_valid;
-    axil_resp_o.r.data   = spi_ctrl_axil_resp.r.data;
-    axil_resp_o.r.resp   = spi_ctrl_axil_resp.r.resp;
+    axil_req_masked         = axil_req_i;
+    axil_req_masked.aw.addr = (axil_req_i.aw.addr - SpiBaseLower) & SpiAddrMask;
+    axil_req_masked.ar.addr = (axil_req_i.ar.addr - SpiBaseLower) & SpiAddrMask;
   end
 
   /////////////////////////////////////////////////////////////////////////////
-  // SPI Controller (Modified OpenTitan SPI Host with AXI4-Lite)
+  // AXI-Lite to TL-UL conversion
+  //
+  // AckZeroStrobeWrite: the SEP crossbar is 64 bits wide and this block sits
+  // behind the 64-to-32 downsizer in sep_io. A master that writes a 32-bit
+  // register with a full-width (AxSIZE = 8 bytes) beat and byte strobes -- the
+  // inbound port from the SoC, the debug master, or a verification master --
+  // is split into two 32-bit writes, and the half outside the master's strobe
+  // arrives with WSTRB == 0 on the neighbouring register. Masters that issue
+  // exact-size beats are unaffected: the VeeR core does so for side-effect
+  // regions (MRAC), and the Secure DMA's upsizer passes its FIXED,
+  // non-modifiable beats through at their original size. The forked
+  // controller's register block accepted zero-strobe writes silently; upstream
+  // spi_host_reg_top returns d_error, which surfaces as SLVERR. The converter
+  // therefore completes zero-strobe writes locally with OKAY, which is their
+  // AXI meaning, and never presents them to the core.
   /////////////////////////////////////////////////////////////////////////////
 
-  spi_controller #(
-    .NUM_CS         (NUM_CS),
-    .BYTE_ORDER     (spi_controller_pkg::LITTLE_ENDIAN),
-    .TX_FIFO_DEPTH  (72),
-    .RX_FIFO_DEPTH  (64),
-    .CMD_FIFO_DEPTH (4)
-  ) u_spi_controller (
-    .clk_i,
-    .rst_ni,
+  tlul_pkg::tl_h2d_t tl_req;
+  tlul_pkg::tl_d2h_t tl_resp;
 
-    // AXI4-Lite Register Interface
-    .axil_req_i  (spi_ctrl_axil_req),
-    .axil_resp_o (spi_ctrl_axil_resp),
-
-    // SPI Interface
-    .sck_o       (spi_sck_o),
-    .sck_en_o    (spi_sck_oe_o),
-    .cs_no       (spi_cs_no),
-    .cs_en_o     (spi_cs_oe_o),
-    .io_o        (spi_sd_o),
-    .io_en_o     (spi_sd_oe_o),
-    .io_i        (spi_sd_i),
-
-    // DMA Interface
-    .lsio_trigger_o (lsio_trigger_o),
-
-    // Interrupt Interface
-    .irq_o       (irq_o),
-
-    // Status Interface
-    .busy_o      (busy_o)
+  axi_lite_to_tlul #(
+    .AXI_ADDR_WIDTH     (sep_io_pkg::ADDR_WIDTH),
+    .AXI_DATA_WIDTH     (sep_io_pkg::DATA_WIDTH),
+    .axi_lite_req_t     (sep_io_pkg::axil_req_t),
+    .axi_lite_rsp_t     (sep_io_pkg::axil_resp_t),
+    .AckZeroStrobeWrite (1'b1)
+  ) u_spi_axi_lite_to_tlul (
+    .clk_i          (clk_i),
+    .rst_ni         (rst_ni),
+    .axi_lite_req_i (axil_req_masked),
+    .axi_lite_rsp_o (axil_resp_o),
+    .tl_o           (tl_req),
+    .tl_i           (tl_resp),
+    // Sticky bridge fault. Held until reset; no consumer in sep_io today.
+    .err_o          (),
+    .err_clr_i      (1'b0)
   );
 
-endmodule
+  /////////////////////////////////////////////////////////////////////////////
+  // OpenTitan SPI Host core (unmodified upstream, TL-UL)
+  /////////////////////////////////////////////////////////////////////////////
+
+  logic intr_error;
+  logic intr_spi_event;
+
+  spi_host #(
+    .NumCS      (NUM_CS),
+    .EnableRacl (1'b0)
+  ) u_spi_host (
+    .clk_i            (clk_i),
+    .rst_ni           (rst_ni),
+
+    // Register interface
+    .tl_i             (tl_req),
+    .tl_o             (tl_resp),
+
+    // Alerts: terminated, see header
+    .alert_rx_i       ({spi_host_reg_pkg::NumAlerts{prim_alert_pkg::ALERT_RX_DEFAULT}}),
+    .alert_tx_o       (),
+
+    // RACL: compiled out
+    .racl_policies_i  ('0),
+    .racl_error_o     (),
+
+    // SPI pads
+    .cio_sck_o        (spi_sck_o),
+    .cio_sck_en_o     (spi_sck_oe_o),
+    .cio_csb_o        (spi_cs_no),
+    .cio_csb_en_o     (spi_cs_oe_o),
+    .cio_sd_o         (spi_sd_o),
+    .cio_sd_en_o      (spi_sd_oe_o),
+    .cio_sd_i         (spi_sd_i),
+
+    // spi_device passthrough: not used in SEP
+    .passthrough_i    (spi_device_pkg::PASSTHROUGH_REQ_DEFAULT),
+    .passthrough_o    (),
+
+    // DMA trigger
+    .lsio_trigger_o   (lsio_trigger_o),
+
+    // Interrupts
+    .intr_error_o     (intr_error),
+    .intr_spi_event_o (intr_spi_event)
+  );
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Outputs
+  /////////////////////////////////////////////////////////////////////////////
+
+  // One line into the SEP interrupt controller, as before. Software reads
+  // INTR_STATE to tell the two sources apart.
+  assign irq_o = intr_error | intr_spi_event;
+
+endmodule : sep_ot_spi_wrap

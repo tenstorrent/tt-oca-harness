@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # SEP lint/synth flow descriptor, shared by `make lint-slang-all BLOCK=sep`
-# and `make synth-all BLOCK=sep TECH=...`.
+# and `make synth-yosys-all BLOCK=sep TECH=...`.
 FLOW_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FLOW_DIR)/../../../flows/preamble.mk
 

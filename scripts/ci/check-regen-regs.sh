@@ -95,6 +95,11 @@ done
 # prerequisite while remaking depfiles and then again after it restarts.
 make uv-sync
 
+# Vendor RDLs are committed generator outputs, but are not prerequisites of the
+# downstream collateral target. Check their own round trip explicitly.
+OCAH_REG_SKIP_UV_SYNC=1 make ocah-regen-vendor-rdl CHECK=1
+.venv/bin/python -m unittest tools.regs.tests.test_reggen_wrapper
+
 # -B prevents checkout or filesystem timestamps from suppressing any generator.
 # Batch SPDX stamping after generation: starting one Python interpreter for
 # every output dominates this metadata-heavy check when runners are busy.

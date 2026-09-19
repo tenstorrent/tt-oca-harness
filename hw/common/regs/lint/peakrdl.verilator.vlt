@@ -9,5 +9,3 @@ lint_off -rule MULTIDRIVEN -file "*/regs/gen/sv/*_reg.sv" -match "Signal has mul
 lint_off -rule MULTIDRIVEN -file "*/regs/gen/sv/blocks/*_reg.sv" -match "Variable written to in always_comb also written by other process (IEEE 1800-2023 9.2.2.2): 'field_combo'*"
 lint_off -rule MULTIDRIVEN -file "*/regs/gen/sv/blocks/*_reg.sv" -match "Variable written to in always_ff also written by other process (IEEE 1800-2023 9.2.2.4): 'field_storage'*"
 lint_off -rule MULTIDRIVEN -file "*/regs/gen/sv/blocks/*_reg.sv" -match "Signal has multiple driving blocks with different clocking: '*.field_storage'*"
-lint_off -rule MULTIDRIVEN -file "*/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv" -match "Variable written to in always_comb also written by other process (IEEE 1800-2023 9.2.2.2): 'field_combo'*"
-lint_off -rule MULTIDRIVEN -file "*/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv" -match "Variable written to in always_ff also written by other process (IEEE 1800-2023 9.2.2.4): 'field_storage'*"

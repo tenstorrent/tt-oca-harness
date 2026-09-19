@@ -21,7 +21,7 @@ ocah_shell_root := $(if $(SHELL_PATH),$(OCAH_ROOT)/$(SHELL_PATH),$(OCAH_ROOT))
 # local uv venv (which vendors its own third-party activation scripts).
 ocah_shell_files = $(shell find $(ocah_shell_root) -name '*.sh' \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
-	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' \
+	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' -not -path '*/.cache/*' \
 	-not -path '*/.venv/*' 2>/dev/null)
 
 ocah_shell_check_files = @[ -n "$(strip $(ocah_shell_files))" ] || { echo "error: no .sh files under $(if $(SHELL_PATH),$(SHELL_PATH),repo root)" >&2; exit 1; }

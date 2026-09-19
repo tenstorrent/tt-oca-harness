@@ -181,11 +181,9 @@ typedef union {
 #define AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_bm 0x1
 #define AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_bp 0
 #define AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_bw 1
-#define AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_reset 0x0
 #define AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm 0x2
 #define AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bp 1
 #define AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bw 1
-#define AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t wkup_timer_expired :1;

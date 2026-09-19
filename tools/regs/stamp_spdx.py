@@ -26,6 +26,7 @@ HEADERS = {
     ".c": f"/* {SPDX_ID} */\n/* {SPDX_COPY} */\n\n",
     ".h": f"/* {SPDX_ID} */\n/* {SPDX_COPY} */\n\n",
     ".py": f"# {SPDX_ID}\n# {SPDX_COPY}\n\n",
+    ".rdl": f"// {SPDX_ID}\n// {SPDX_COPY}\n\n",
     ".adoc": f"// {SPDX_ID}\n// {SPDX_COPY}\n\n",
     ".html": f"<!-- {SPDX_ID} -->\n<!-- {SPDX_COPY} -->\n",
     ".xml": f"<!-- {SPDX_ID} -->\n<!-- {SPDX_COPY} -->\n",

@@ -22,6 +22,16 @@ operations
 * *JTAG AXI4-Lite Interface*: Debug access for manufacturing test and
 development
 
+=== Command-path ownership
+
+After fuse sense completes, software program and read requests share one
+command path to the OTP bank. `EFUSE_PROGRAM_CTRL.program_enable` takes
+that path in preference to `EFUSE_READ_CTRL.read_enable`, so the two
+enables must be asserted exclusively. `program_enable` is a mode-ownership
+bit: after `PROGRAM_DONE`, software deasserts `program_enable`
+before any later read. The programming sequence is in
+<<smc-dv-efuse-programming>>.
+
 === Destination Endpoints
 
 [width="100%",cols="25%,75%",options="header",]
