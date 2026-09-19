@@ -36,7 +36,6 @@ import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_deadspace_seq import (
     DEADSPACE_ANCHORS,
-    RESP_DECERR,
     RESP_OKAY,
     SepDeadspace,
     SepDeadspaceCfg,
@@ -50,6 +49,12 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
     async def run_scenario(self) -> None:
         cfg = SepDeadspaceCfg(self.random_seed())
         self.logger.info("deadspace config: %s", cfg.summary())
+        assert not cfg.short_windows, (
+            "CHK-DEADSPACE-RAND FAIL: window(s) short of the random-probe quota: "
+            + ", ".join(
+                f"{name}={got}/{want}" for name, (got, want) in sorted(cfg.short_windows.items())
+            )
+        )
         await self.bring_up_no_cpu()
         dead = SepDeadspace(self)
 
@@ -196,13 +201,15 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     f"RRESP sequence for the burst at 0x{start:08x}"
                 )
 
-            # The aggregate still fails a fabric that answers the whole burst
-            # OKAY while refusing the same address as a single beat.
+            # CHK-DEADSPACE-BURST: any non-OKAY single-beat refusal, not
+            # DECERR-only. The specification does not mandate DECERR vs SLVERR.
+            # A window whose past-extent single beat answers SLVERR must still
+            # fail an OKAY burst to the same address.
             worst = max(resps) if resps else RESP_OKAY
             for i, (sresp, sdata) in enumerate(singles):
                 addr = start + 4 * i
                 if addr >= win.dead_lo:
-                    if sresp == RESP_DECERR and worst == RESP_OKAY:
+                    if sresp != RESP_OKAY and worst == RESP_OKAY:
                         burst_fails.append(
                             f"{win.name} 0x{addr:08x} is refused as a single "
                             f"beat (resp={sresp}) but the burst beginning "

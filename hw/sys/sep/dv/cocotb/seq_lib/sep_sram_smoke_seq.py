@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import cocotb
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 from sep_reg_meta import sym
@@ -20,6 +21,12 @@ class sep_sram_smoke_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
+        if expected is not None:
+            mask = (1 << (length * 8)) - 1
+            assert item.resp_ok and (item.rdata & mask) == (expected & mask), (
+                f"CHK-SRAM-SMOKE FAIL: read 0x{addr:08x} resp_ok={item.resp_ok} "
+                f"got 0x{item.rdata & mask:x} want 0x{expected & mask:x}"
+            )
 
     async def _write(self, addr: int, data: int, length: int, size: int | None = None) -> None:
         item = SepAxiItem(f"wr_sram_0x{addr:08x}")
@@ -40,3 +47,4 @@ class sep_sram_smoke_seq(uvm_sequence):
         # nothing else in the suite exercises a narrow AxSIZE on this bus.
         await self._write(base + 4, 0xFEED_FACE, 4, size=2)
         await self._read(base, 8, expected=0xFEED_FACE_89AB_CDEF)
+        cocotb.log.info("CHK-SRAM-SMOKE PASS: 64-bit then 32-bit write/readback at 0x%08x", base)

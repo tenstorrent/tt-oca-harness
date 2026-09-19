@@ -128,19 +128,25 @@ rom_main: rom_main_stamp
 # build error instead of a silently stale constant.
 KM_REG_INC := $(OCH_ROOT)/hw/ip/key_manager/regs/gen/c
 
-# Field MASKS live in km_csr.h, a C header of structs and static_asserts an .S
-# cannot include. This target lifts the plain #define lines an image needs out
-# of it into an assembler-safe include, so a field that moves at the next RDL
-# regeneration changes the mask instead of leaving a hand-typed literal behind.
-# The grep is the trace: if a name disappears, the build fails here.
+# Field MASKS live in km_csr.h / km_kpv.h, C headers of structs and
+# static_asserts an .S cannot include. This target lifts the plain #define
+# lines an image needs into an assembler-safe include, so a field that moves
+# at the next RDL regeneration changes the mask instead of leaving a
+# hand-typed literal behind. The grep is the trace: if a name disappears,
+# the build fails here.
 KM_CSR_H := $(KM_REG_INC)/km_csr.h
-KM_FIELD_INC := km_csr_fields.inc
-KM_FIELD_DEFS := KM_CSR__IRQ_STATUS_REG__AXI_(SLVERR|DECERR)_bm
+KM_KPV_H := $(KM_REG_INC)/km_kpv.h
+KM_FIELD_INC := km_fields.inc
+KM_CSR_DEFS := KM_CSR__IRQ_STATUS_REG__(AXI_SLVERR|AXI_DECERR|SRAM_WRITE_LOCK_ERR|DRBG_ERR|ROM_PARITY_ERR|SRAM_PARITY_ERR|ROM_WRITE_ERR)_bm
+KM_KPV_DEFS := KM_KPV__CTRL_REG__(LOCK_WRITE|LOCK_USE|ERASE|SEAL)_bm
 
-$(KM_FIELD_INC): $(KM_CSR_H) Makefile
-	@printf '/* Generated from km_csr.h by km_fw/Makefile. Do not edit. */\n' > $@
-	@grep -E '^#define ($(KM_FIELD_DEFS)) ' $< >> $@ || { \
-	    echo "$<: expected field-mask defines matching $(KM_FIELD_DEFS)" >&2; \
+$(KM_FIELD_INC): $(KM_CSR_H) $(KM_KPV_H) Makefile
+	@printf '/* Generated from km_csr.h / km_kpv.h by km_fw/Makefile. Do not edit. */\n' > $@
+	@grep -E '^#define ($(KM_CSR_DEFS)) ' $(KM_CSR_H) >> $@ || { \
+	    echo "$(KM_CSR_H): expected field-mask defines matching $(KM_CSR_DEFS)" >&2; \
+	    rm -f $@; exit 1; }
+	@grep -E '^#define ($(KM_KPV_DEFS)) ' $(KM_KPV_H) >> $@ || { \
+	    echo "$(KM_KPV_H): expected field-mask defines matching $(KM_KPV_DEFS)" >&2; \
 	    rm -f $@; exit 1; }
 
 $(OUT_DIR)/%.parhex: %.S gen_parhex.py $(KM_REG_INC)/key_manager_addr.h $(KM_FIELD_INC)

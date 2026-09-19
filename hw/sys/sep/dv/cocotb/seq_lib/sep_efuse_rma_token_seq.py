@@ -21,8 +21,9 @@ from env.sep_lcc_golden import LC_RMA_CHIP_1, LC_RMA_SIP_1
 # Re-exported for sep_efuse_rma_token_rand_test, which builds its golden via
 # seq_lib rather than reaching into env directly.
 from env.sep_rma_token import SepRmaTokenCfg as SepRmaTokenCfg
+from env.sep_spec_tables import agg_from_pic
 from pyuvm import uvm_sequence
-from sep_reg_meta import sym
+from sep_reg_meta import EFUSE_MMR, sym
 
 _RMA_SIP_TOKEN_I = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR")
 _RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
@@ -41,9 +42,12 @@ TOKEN_MATCH = _TOKEN_MATCH
 TOKEN_MISMATCH = _TOKEN_MISMATCH
 TOKEN_ERROR = _TOKEN_ERROR
 TOKEN_MATCH_FAULT = _TOKEN_MATCH_FAULT
-FAULT_RMA_SIP = 0x1
-FAULT_RMA_CHIPLET = 0x100
-FAULT_SEC_DISABLE = 0x10000
+FAULT_RMA_SIP = EFUSE_MMR.field_mask("TOKEN_MATCH_FAULT", "rma_sip_token_fault")
+FAULT_RMA_CHIPLET = EFUSE_MMR.field_mask("TOKEN_MATCH_FAULT", "rma_chiplet_token_fault")
+FAULT_SEC_DISABLE = EFUSE_MMR.field_mask("TOKEN_MATCH_FAULT", "secure_disable_token_fault")
+EOP_RMA_SIP = EFUSE_MMR.field_mask("TOKEN_EOP", "rma_sip_token_go")
+EOP_RMA_CHIPLET = EFUSE_MMR.field_mask("TOKEN_EOP", "rma_chiplet_token_go")
+EOP_SEC_DISABLE = EFUSE_MMR.field_mask("TOKEN_EOP", "secure_disable_token_go")
 TOKEN_CMP_INJECT_OFF = 0
 TOKEN_CMP_INJECT_COLLAPSE = 1
 TOKEN_CMP_INJECT_DISAGREE = 2
@@ -52,7 +56,7 @@ TOKEN_CMP_INJECT_COMMON_MATCH = 4
 TOKEN_CMP_SEL_SIP = 0
 TOKEN_CMP_SEL_CHIPLET = 1
 TOKEN_CMP_SEL_SEC = 2
-IRQ_TOKEN_MATCH_FAULT = 39
+IRQ_TOKEN_MATCH_FAULT = agg_from_pic("Token match fault")
 
 TOKEN_RMA_SIP = 0
 TOKEN_RMA_CHIPLET = 1
@@ -101,17 +105,17 @@ class SepRmaTokenMatchSeq(uvm_sequence):
     async def body(self) -> None:
         if self.kind == TOKEN_RMA_SIP:
             token_base = _RMA_SIP_TOKEN_I
-            eop_value = 0x0000_0001
+            eop_value = EOP_RMA_SIP
             match_addr = _RMA_SIP_TOKEN_MATCH
             token_name = "RMA_SIP"
         elif self.kind == TOKEN_RMA_CHIPLET:
             token_base = _RMA_CHIPLET_TOKEN_I
-            eop_value = 0x0000_0100
+            eop_value = EOP_RMA_CHIPLET
             match_addr = _RMA_CHIPLET_TOKEN_MATCH
             token_name = "RMA_CHIPLET"
         else:
             token_base = _SEC_DISABLE_TOKEN_I
-            eop_value = 0x0001_0000
+            eop_value = EOP_SEC_DISABLE
             match_addr = _SEC_DISABLE_TOKEN_MATCH
             token_name = "SEC_DISABLE"
 

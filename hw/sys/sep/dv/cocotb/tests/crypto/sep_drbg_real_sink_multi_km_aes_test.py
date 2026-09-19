@@ -125,6 +125,12 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         await self.bring_up_entropy(
             strict=True, score_km="membership", score_sinks={"aes": "golden"}
         )
+        # Floors from the issued stimulus, not the shared default of 1.
+        self.drbg_sb.set_min_matches(
+            CHK4_genbits=KM_CMDS + AES_BLOCKS,
+            CHK5_km=KM_CMDS,
+            CHK5_aes=AES_BLOCKS,
+        )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
         self.logger.info("real entropy flowing; releasing KM firmware (rom_main)")

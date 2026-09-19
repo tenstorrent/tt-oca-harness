@@ -31,11 +31,12 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_lcc_golden import LCC_DEMOTE_1, LCC_DEMOTE_2, LCC_FEAT_CTRL
 from pyuvm import uvm_sequence
+from sep_reg_meta import SEP_LIFECYCLE_CTRL
 
 # SEP-local lifecycle-controller block. The LCC register map lives in
 # env.sep_lcc_golden (single source of truth).
-DEMOTE_BIT = 0x1  # DEMOTE.demote (field [0:0])
-DEMOTE_LOCK_BIT = 0x2  # DEMOTE.lock (field [1:1])
+DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
+DEMOTE_LOCK_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "lock")
 DEMOTE_FIELD_MASK = DEMOTE_BIT | DEMOTE_LOCK_BIT
 
 
@@ -121,12 +122,11 @@ class SepLccDemoteSeq(uvm_sequence):
         await self.start_item(rd)
         await self.finish_item(rd)
         self.demote = rd.rdata & DEMOTE_BIT
-        self.lock = (rd.rdata >> 1) & 0x1
+        self.lock = bool(rd.rdata & DEMOTE_LOCK_BIT)
 
 
-# AXI response codes (axi_pkg): blocked inbound traffic is routed to axi_err_slv
-# with RESP_DECERR (axi_filter_wrap.sv), so a blocked external probe must return
-# exactly this -- not a timeout (which would mean a wedge) nor SLVERR.
+# AMBA AXI4-Lite decode error (IHI 0022). A blocked inbound probe must return
+# DECERR, not a timeout and not SLVERR.
 RESP_DECERR = 3
 
 

@@ -65,8 +65,7 @@ Checkers:
               that bit set in the echo; a reserved bit returns RC_INVALID_ARG;
               a zero-length payload returns RC_INVALID_LEN
   CHK-RECOV   SEP CTRL.FLUSH raises RESP_RECOVERABLE_FAULT; CMD_STAT reports
-              the latched bit; CMD_RECOV_ACK clears it; a later key command
-              is accepted
+              the latched bit; aggregator [31] is 1; CMD_RECOV_ACK clears both
   CHK-GONE    a shredded engine refuses to start: after a final
               CMD_ENGINE_SHRED the AES produces no output within a bounded
               window, so the shred reached the key rather than merely returning
@@ -106,6 +105,7 @@ import pyuvm
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_crc_golden import crc8_rohc
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import agg_from_pic
 from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import (
@@ -156,6 +156,7 @@ _ABR_SEED_PAL = (
 
 # rom_defs.h ROM_KM_RFAULT_FLUSHED_BY_SEP.
 _RFAULT_FLUSHED_BY_SEP = -5
+_KM_RECOV = agg_from_pic("KM recoverable error")
 
 # Two DISTINCT known 256-bit keys. Every word differs between them and within
 # them, so a truncated, word-swapped or stale sideload changes the ciphertext.
@@ -603,6 +604,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self._check_alive("post-otp-lock")
 
         # --- CHK-RECOV: SEP flush raises recoverable fault, ACK clears it -----
+        await self.poll_internal_irq(_KM_RECOV, 0)
         await self.km.flush()
         self.km.reset_host_seq()
         words = await self.km.recv_unsolicited(KM_RESP_RECOVERABLE_FAULT)
@@ -616,6 +618,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"CHK-RECOV FAIL: fault code {fault}, expected {_RFAULT_FLUSHED_BY_SEP} "
             "(FLUSHED_BY_SEP)"
         )
+        await self.poll_internal_irq(_KM_RECOV, 1)
         rc, arg = await self.km.stat()
         assert rc == KM_RC_SUCCESS and (arg & 0x1) == 1, (
             f"CHK-RECOV FAIL: CMD_STAT after flush rc={rc} arg=0x{arg:08x}, "
@@ -628,10 +631,12 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"CHK-RECOV FAIL: CMD_STAT after ACK rc={rc} arg=0x{arg:08x}, "
             "expected recoverable bit clear"
         )
+        await self.poll_internal_irq(_KM_RECOV, 0)
         self.logger.info(
             "CHK-RECOV PASS: flush posted RESP_RECOVERABLE_FAULT code %d; "
-            "CMD_RECOV_ACK cleared STAT bit 0",
+            "CMD_RECOV_ACK cleared STAT bit 0 and aggregator [%d]",
             fault,
+            _KM_RECOV,
         )
 
         # --- CHK-GONE: a shredded engine will not run -------------------------

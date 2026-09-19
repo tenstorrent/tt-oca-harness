@@ -31,6 +31,7 @@ from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from sep_entropy_golden import SepEntropyGolden
 from sep_noise_golden import SepNoiseGolden
+from sep_spec_tables import CRYPTO_EDN_SINKS
 
 
 def _safe_int(sig):
@@ -90,14 +91,9 @@ class SepDrbgScoreboard:
         "otbn_urnd": "CHK5_otbn_urnd",
         "pool": "CHK5_pool",
     }
-    # crypto-EDN sink stream key -> bit/word index into the packed crypto_edn_*_o
-    # probe vectors (drbg_axis_edn_adapter client order: AES,KMAC,OTBN-RND,OTBN-URND).
-    _CRYPTO_SINK_IDX = {
-        "CHK5_aes": 0,
-        "CHK5_kmac": 1,
-        "CHK5_otbn_rnd": 2,
-        "CHK5_otbn_urnd": 3,
-    }
+    # Packed-probe index from the DV-owned sink table. Consuming tests bind
+    # each name with a single-client beat delta before any concurrent fork.
+    _CRYPTO_SINK_IDX = {f"CHK5_{name}": i for i, name in enumerate(CRYPTO_EDN_SINKS)}
 
     @staticmethod
     def _norm_mode(v, *, what):
