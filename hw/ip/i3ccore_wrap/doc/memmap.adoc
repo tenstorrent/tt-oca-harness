@@ -63,6 +63,33 @@ FIFO before a write transaction begins, drain the RX and response FIFOs promptly
 and use the queue-size and threshold fields rather than assuming a configured
 FIFO depth.
 
+Each `RESPONSE_PORT` read returns a 32-bit response descriptor. Bits `[15:0]`
+contain the transferred data length, bits `[23:16]` are reserved, bits `[27:24]`
+contain the transaction ID, and bits `[31:28]` contain one of the following error
+status codes from TCRI 6.4.1:
+
+[cols="1,2,5", options="header"]
+|===
+|Code |RTL status |Meaning
+
+|`0x0` |`Success` |Transaction completed without an error
+|`0x1` |`Crc` |CRC error
+|`0x2` |`Parity` |Parity error
+|`0x3` |`Frame` |Frame error
+|`0x4` |`AddrHeader` |Address-header error
+|`0x5` |`Nack` |Address or dynamic-address-assignment NACK
+|`0x6` |`Ovl` |Receive overflow or transmit underflow
+|`0x7` |`I3cShortReadErr` |Target returned fewer bytes than requested when a short read was not permitted
+|`0x8` |`HcAborted` |Host controller internal error or abort operation
+|`0x9` |`I2cDataNackOrI3cBusAborted` |I2C write-data NACK or I3C bus abort
+|`0xA` |`NotSupported` |Command is not supported
+|`0xB` |`AbortedWithCRC` |HDR-BT transaction aborted with a CRC error
+|`0xC` |`ErrorC` |Transfer-type-specific error
+|`0xD` |`ErrorD` |Transfer-type-specific error
+|`0xE` |`ErrorE` |Transfer-type-specific error
+|`0xF` |`ErrorF` |Transfer-type-specific error
+|===
+
 Reset bits are self-clearing. Poll a requested reset until it reads as zero, and
 do not reset a queue while a transaction is active: doing so can discard queued
 commands, completion status, or transfer data. A soft reset resets controller
