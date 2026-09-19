@@ -21,6 +21,8 @@ module smc_4core_cpu (
   // Reset-drain handshake (driven by smc_cpu_ctrl_wrap, always-on domain)
   input  logic                                            isolate_req_i,
   output logic                                            drained_o,
+  // Flush requests to the AXI isolate modules
+  input  logic                                            isolate_flush_i,
 
   // Reset vector inputs
   input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,
@@ -195,6 +197,7 @@ module smc_4core_cpu (
     .mst_req_o   (l2_frontend_axi_isolated_req),
     .mst_resp_i  (l2_frontend_axi_isolated_resp),
     .isolate_i   (cluster_boundary_isolate),
+    .flush_i     (isolate_flush_i),
     .isolated_o  (l2_frontend_isolated)
   );
 
@@ -217,6 +220,7 @@ module smc_4core_cpu (
     .mst_req_o   (mmio_axi_req_o),
     .mst_resp_i  (mmio_axi_resp_i),
     .isolate_i   (cluster_boundary_isolate),
+    .flush_i     (isolate_flush_i),
     .isolated_o  (mmio_isolated)
   );
 

@@ -179,14 +179,14 @@ module smc_efuse_wrapper
 
     .SEP_SEC_DISABLE_TOKEN       ('0), // Embedded in RTL (SEP only)
 
-    .EFUSE_MAP_REG_MAP_BASE_ADDR (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR),
-    .EFUSE_MAP_REG_MAP_SIZE      (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+    .EFUSE_MAP_REG_MAP_BASE_ADDR (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)),
+    .EFUSE_MAP_REG_MAP_SIZE      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE)),
 
     .EFUSE_MMR_REG_MAP_BASE_ADDR ('0),
     .EFUSE_MMR_REG_MAP_SIZE      ('0),
 
-    .EFUSE_CTRL_REG_MAP_BASE_ADDR(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
-    .EFUSE_CTRL_REG_MAP_SIZE     (smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE),
+    .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
+    .EFUSE_CTRL_REG_MAP_SIZE     (32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
 
     .SHADOW_REG_BITS             (smc_efuse_pkg::SHADOW_REG_BITS),
     .EFUSE_MACRO_WORD_WIDTH      (smc_efuse_pkg::NumFuseWordWidth),

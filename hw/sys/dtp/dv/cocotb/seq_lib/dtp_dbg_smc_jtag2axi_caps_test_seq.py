@@ -14,11 +14,15 @@ class dtp_dbg_smc_jtag2axi_caps_test_seq(dtp_debug_tdr_base_test_seq):
 
     async def body(self) -> None:
         self.log_banner("SMC_JTAG2AXI_CAPS")
+        await self.attach_family_checker(
+            {"CHK-TAP-RESET-TLR", "CHK-CAPS", "CHK-CAPS-RO"}, use_monitor=False
+        )
 
         self.log_step(1, "Reset TAP before reading SMC_JTAG2AXI_CAPS")
-        await self.reset_tap()
+        await self.reset_to_tlr()
 
         self.log_step(2, "Run common JTAG2AXI_CAPS checks")
         value = await self.check_jtag2axi_caps(JTAG2AXI_TARGETS["smc_axi"])
 
         self.log_summary("SMC_JTAG2AXI_CAPS complete", value=f"0x{value:04x}")
+        await self.finalize_family_checker()

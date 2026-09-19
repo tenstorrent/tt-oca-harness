@@ -45,8 +45,11 @@ When not selected, the STAP interface TMS signal is tied to the constant value
 specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
 signal.
 
-The following diagram illustrates the STAP architecture and the details of the
-3DCR register. Optional input pipeline stages are not shown: SCAN_IN_PIPE on
+The following diagram separates the serial scan path, host TDO path, and
+combinational control logic. Repeated signal names refer to the same signal;
+in particular, `stap_scan_in` feeds both the scan-in mux and the TDO lockup flop.
+The SIB inserts or bypasses the 3DCR while remaining in the client scan path.
+Optional input pipeline stages are not shown: SCAN_IN_PIPE on
 `client_scan_in_i` defaults to disabled for all DTP instances; TDI_LOCKUP on
 `host_tdi_i` defaults to disabled but is enabled for the I/O STAP
 (`gen_stap_io`) to provide timing margin for the die boundary crossing. The
@@ -55,7 +58,7 @@ security gate masks `stap_sel`, `host_tdo_o`, and `update_en` when
 independent combinational outputs derived from `stap_sel` and TAP control
 signals, not outputs of the security gate.
 
-image::stap_module_diagram.svg[STAP Module Diagram showing SIB mux, 3DCR register and lifecycle enable gating,scaledwidth=90.0%]
+image::stap_module_diagram.svg["STAP scan-in mux and SIB with a 3DCR scan loop, separate falling-edge host TDO path, and security-masked control relationships",scaledwidth=100%]
 
 === 3DCR Register
 
@@ -81,7 +84,7 @@ still being scannable for updates.
 |0
 |Config-Hold
 |0
-|Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by `trst_n AND (config_hold OR scan_reset)`, protecting configuration when `config_hold=1`. TRST assertion always resets the register regardless of this bit.
+|Preserves the 3DCR configuration across Test-Logic-Reset. The active-low register reset is `client_tap_ctrl_i.trst_n AND (config_hold_sticky OR host_sib_scan_ctrl.rst_n)`, where `config_hold_sticky` samples `config_hold` on the falling edge of TCK and resets only on TRST. TRST assertion always resets the register regardless of this bit.
 |===
 
 === STAP Types

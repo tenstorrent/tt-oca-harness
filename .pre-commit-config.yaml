@@ -75,7 +75,6 @@ repos:
         entry: uv --directory . run --locked tomllint
         language: system
         files: '\.toml$'
-        exclude: '^hw/ip/scrambler/dv/lint/scrambler\.toml$'
 
       - id: shellcheck
         name: Lint shell scripts with shellcheck

@@ -31,6 +31,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init --recursive
+
       - name: Classify the diff
         id: diff-class
         run: |
@@ -116,6 +122,11 @@ jobs:
       - name: Checkout
         if: env.RUN_HARDWARE_CI == 'true'
         uses: actions/checkout@v4
+
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init --recursive
 
       # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
       # the only one in the tree. The SEP DV env reads its src/oca/constants.py

@@ -110,7 +110,7 @@
 
         virtual function void build();
             this.regwen = uvm_reg_field::type_id::create("regwen");
-            this.regwen.configure(this, 1, 0, "W1C", 0, 'h1, 1, 1, 0);
+            this.regwen.configure(this, 1, 0, "W0C", 0, 'h1, 1, 1, 0);
         endfunction : build
     endclass : aon_timer__WDOG_REGWEN
 
@@ -207,9 +207,9 @@
 
         virtual function void build();
             this.wkup_timer_expired = uvm_reg_field::type_id::create("wkup_timer_expired");
-            this.wkup_timer_expired.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
+            this.wkup_timer_expired.configure(this, 1, 0, "WO", 0, 'h0, 0, 1, 0);
             this.wdog_timer_bark = uvm_reg_field::type_id::create("wdog_timer_bark");
-            this.wdog_timer_bark.configure(this, 1, 1, "WO", 0, 'h0, 1, 1, 0);
+            this.wdog_timer_bark.configure(this, 1, 1, "WO", 0, 'h0, 0, 1, 0);
         endfunction : build
     endclass : aon_timer__INTR_TEST
 
@@ -224,7 +224,7 @@
 
         virtual function void build();
             this.cause = uvm_reg_field::type_id::create("cause");
-            this.cause.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
+            this.cause.configure(this, 1, 0, "W0C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aon_timer__WKUP_CAUSE
 

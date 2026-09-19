@@ -41,8 +41,5 @@ clean:: # cocotb's own `clean` uses double colon
 filelist:
 	bender script flist-plus -t common_cells_rtl -t apb_rtl -t axi_rtl -t component > log_engine.f
 
-lint:
-	svlint -v ../rtl/log_engine.sv
-
 wave:
 	surfer -s log_engine.surfer dump.vcd
