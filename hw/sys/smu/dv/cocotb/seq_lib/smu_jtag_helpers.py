@@ -180,13 +180,14 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # slice (0 ports at SEP=0, SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 at SEP=1) ->
 # external slice -> reset_hold -> TDO, so with LSB-first shifting port 0 is
 # the external port and the SMC slice follows.
+# The slice widths have to match the DUT exactly: a DR shorter than the TDR by
+# 2k bits lands every packed field k ports away from the one it names.
 # "SMC slice (TDI to TDO)" lists ss_warm_reset_n[31:0], ss_cold_reset_n[31:0],
 # cold, cool, warm, fuse (nearest the SEP slice), [31] nearer TDI than [0]:
 # counted from the TDO end that is fuse, warm, cool, cold, ss_cold[0..31],
 # ss_warm[0..31]. The external slice type is adopter-defined; the SMU bench
 # elaborates one port.
 SMU_IC_RESET_NUM_SMC_PORTS = 68
-
 # The SEP slice is one port per field of sep_pkg::jtag_sep_reset_ctrl_val_t
 # (hw/sys/sep/rtl/sep_pkg.sv): abr, trng, sep_reset_n, kmac, hmac, aes, otbn,
 # km. jtag_ptap sizes it as $bits(ic_reset_sep_t)/2, so a field added to that

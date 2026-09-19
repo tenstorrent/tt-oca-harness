@@ -6,8 +6,10 @@ Boots hw/sys/sep/dv/fw/tests/sep_smu_aes: one AES-128 ECB encryption against a
 fixed vector, compared on-chip, with the alert status checked before the image
 parks. The verdict is the firmware's own.
 
-This is a second, independent vector alongside the one smu_sep_modules_test's
-AES stage runs, on a dedicated image whose only subject is AES.
+The vector is the one smu_sep_modules_test's AES stage also runs (the two
+images share the key, plaintext and expected ciphertext); what this leaf adds
+is the cipher in isolation from the HMAC and KMAC stages, on a dedicated image
+whose only subject is AES, with the alert status checked before it parks.
 
 AES masking reseeds its PRNG from crypto-EDN, so the image brings the entropy
 stack up first and parks in a distinct fail loop if that does not complete --

@@ -66,6 +66,17 @@ extend-exclude = [
   "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest",
 ]
 
+# The SMU DV `env` and `seq_lib` packages are namespace packages spanning the
+# block and wrapper framework trees (hw/sys/smu/dv/README.md), so they carry no
+# __init__.py; name them here so isort keeps treating their imports as
+# first-party.
+namespace-packages = [
+  "hw/sys/smu/dv/cocotb/env",
+  "hw/sys/smu/dv/cocotb/seq_lib",
+  "hw/sys/smu/dv/cocotb_wrapper/env",
+  "hw/sys/smu/dv/cocotb_wrapper/seq_lib",
+]
+
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 ignore = ["E501"]

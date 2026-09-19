@@ -6,13 +6,12 @@ The ext_in initiator has no route to the ext_out target: an ext_in access to an
 address outside both programmed apertures has no default master port, so the
 crossbar answers DECERR itself and nothing reaches the SMN egress boundary.
 The apertures are read live from the DUT to pick the address. The expected
-response and the expected silence at ext_out come from the `Connectivity`
-localparam and its row comments in `hw/sys/smu/rtl/smu_axi_xbar_pkg.sv` (row 2,
-`ext_in -> {sep_in, smc_in}`) and from `smu_axi_xbar.sv` leaving `ext_in`
-without a default master port; this tree carries no SMU crossbar
-specification, so that is the implementation and not a requirement document.
-The observations themselves are taken on the DUT, so the check still fails on a
-crossbar that routed the access or answered OKAY.
+response and the expected silence at ext_out are the integrator guide's rule
+(`doc/integrator/src/smu.adoc`, "SMU AXI Crossbar Address Map": "Unmatched
+inbound (`ext_in`) requests return a decode error and do not reach `ext_out`";
+only the SEP and SMC apertures are programmable and the `ext_out` rule is
+static). The observations themselves are taken on the DUT, so the check fails
+on a crossbar that routed the access or answered OKAY.
 """
 
 from __future__ import annotations

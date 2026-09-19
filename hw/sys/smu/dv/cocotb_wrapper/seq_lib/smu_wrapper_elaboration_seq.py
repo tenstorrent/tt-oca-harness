@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Structural production-wrapper sequence used before firmware bring-up.
 
-DV-CARD:          SMU_ALL_001   ANCHOR: smu_wrapper_elaboration_sep_rtl_test
+DV-CARD:          SMU_ALL_001   ANCHOR: smu_wrapper_elaboration_test
 """
 
 from __future__ import annotations
@@ -235,7 +235,7 @@ class SmuWrapperElaborationSeq:
         raise AssertionError(f"{name} timeout: expected={expected} observed={last} limit={limit}")
 
     async def _run_smu_all_001(self) -> None:
-        """SMU_ALL_001 / smu_wrapper_elaboration_sep_rtl_test (SEP=1 only)."""
+        """SMU_ALL_001 / smu_wrapper_elaboration_test (SEP=1 only)."""
         dut = self.dut
         self.log.info("=" * 70)
         self.log.info("TEST: SMU_ALL_001 SEP=1 wrapper elaboration (compose/clk/rst)")
@@ -624,7 +624,7 @@ class SmuWrapperElaborationSeq:
         # The wrapper has a single compile profile and it elaborates SEP, so
         # this is a contract check rather than a branch: a SEP=0 build of this
         # bench no longer exists, and the SEP=0 composition is proved on
-        # --dut smu_block (testlists/nosep.toml).
+        # --dut smu_block (the `nosep` group of testlists/block.toml).
         assert expected_sep == 1, (
             f"+expected_sep={expected_sep} on the wrapper: the only profile is "
             "compile_smu_chiplet, which elaborates SEP=1"

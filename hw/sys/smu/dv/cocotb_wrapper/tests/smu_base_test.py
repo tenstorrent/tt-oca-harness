@@ -19,18 +19,18 @@ _DV_ROOT = Path(__file__).resolve().parents[2]
 _OSS_HW_ROOT = Path(__file__).resolve().parents[5]
 for _path in (
     _COCOTB_ROOT,
-    _DV_ROOT / "common",
+    _DV_ROOT / "cocotb",
     _OSS_HW_ROOT / "common" / "dv" / "vip",
 ):
     _path_text = str(_path)
     if _path_text not in sys.path:
         sys.path.insert(0, _path_text)
 
+from env.smu_env import SmuEnv  # noqa: E402
 from env.smu_env_cfg import SmuEnvCfg  # noqa: E402
 from env.smu_sep_cpu_trace_monitor import SmuSepCpuTraceMonitor  # noqa: E402
 from ocah_axi_vip import OcahAxiSlaveAgent  # noqa: E402
 from seq_lib.sep_fw_common import load_syms  # noqa: E402
-from smu_dv_env.smu_env import SmuEnv  # noqa: E402
 
 
 class smu_base_test(uvm_test):
