@@ -18,7 +18,7 @@ field by field and checks each decoded field against the port width or
 sub-block parameter that follows it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
-    --items smu_composition_parameter_sep_rtl_test \\
+    --items smu_composition_parameter_test \\
     --tool verilator
 """
 
