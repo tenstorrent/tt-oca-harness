@@ -79,7 +79,7 @@
 |0x10A21200 |0x10A2FFFF |60928 B |60928 B |Reserved |Reserved
 |0x10A30000 |0x10A31FFF |8 KiB |4104 B |sep_cpu_ctrl |SEP CPU control and interrupt registers.
 |0x10A32000 |0x10AFFFFF |824 KiB |824 KiB |Reserved |Reserved
-|0x10B00000 |0x10BFFFFF |1 MiB |56 B |SPI Controller |External I/O SPI controller bridge.
+|0x10B00000 |0x10BFFFFF |1 MiB |56 B |spi_controller |External I/O SPI controller bridge.
 |0x10C00000 |0x10FFFFFF |4 MiB |4 MiB |Reserved |Reserved
 |0x11000000 |0x117FFFFF |8 MiB |8 MiB |ap_region |Remapped regions, either ECAM, M-Mode or XVisor
 |0x11800000 |0x11FFFFFF |8 MiB |8 MiB |stee_region |Remapped regions, either ECAM, M-Mode or XVisor

@@ -78,15 +78,32 @@ static bool ot_rx_wait_data(void) {
     return false;
 }
 
-/* Flush the TX and RX FIFOs (and reset the datapath) via a single SW_RST pulse,
- * preserving the enabled config. SW_RST self-clears. Used to start every read from
- * a known-empty state so residual bytes from a prior or aborted transfer can never
- * leak into the next one. */
+/* Flush the TX and RX FIFOs (and reset the datapath), preserving the enabled
+ * config. Used to start every read from a known-empty state so residual bytes
+ * from a prior or aborted transfer can never leak into the next one.
+ *
+ * CONTROL.SW_RST is a level: the core, both data FIFOs and the command queue stay
+ * held in reset until software clears it, so the release below is what makes the
+ * controller usable again. The CDC FIFOs drain rather than reset, so both must
+ * read empty before that release. The drain poll is bounded; a controller that
+ * never drains is released anyway and surfaces as a timeout in the transfer that
+ * follows. */
 static void ot_spi_flush_fifos(void) {
-    spi_controller__CTRL_t ctrl;
-    ctrl.w = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    spi_controller__CONTROL_t ctrl;
+    ctrl.w = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1u;
-    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+
+    spi_controller__STATUS_t status;
+    for (uint32_t i = 0u; i < OT_SPI_POLL_MAX; i++) {
+        status.w = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        if (status.f.TXEMPTY && status.f.RXEMPTY && !status.f.ACTIVE) {
+            break;
+        }
+    }
+
+    ctrl.f.SW_RST = 0u;
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 }
 
 /* ── Configuration + bring-up ─────────────────────────────────────────────── */
@@ -127,7 +144,7 @@ static int ot_spi_wait_ready(void);
 static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
 
     /* Clock / mode / chip-select timing. */
-    spi_controller__CFG_t cfg = {.w = 0u};
+    spi_controller__CONFIGOPTS_t cfg = {.w = 0u};
     cfg.f.CLKDIV = ot_calc_clkdiv(g_sysclk_mhz, p->sck_mhz);
     cfg.f.CPOL = p->cpol ? 1u : 0u;
     cfg.f.CPHA = p->cpha ? 1u : 0u;
@@ -135,7 +152,7 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     cfg.f.CSNIDLE = p->csnidle;
     cfg.f.CSNLEAD = p->csnlead;
     cfg.f.CSNTRAIL = p->csntrail;
-    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
     /* Single chip-select (CS0). */
     mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0u);
@@ -146,11 +163,11 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     if (rx_wm != (uint32_t)p->rx_watermark) {
         simputshex32("OT_SPI: rx_watermark out of range, clamped from=", (uint32_t)p->rx_watermark);
     }
-    spi_controller__CTRL_t ctrl = {.w = 0u};
+    spi_controller__CONTROL_t ctrl = {.w = 0u};
     ctrl.f.SPIEN = 1u;
     ctrl.f.OUTPUT_EN = 1u;
     ctrl.f.RX_WATERMARK = rx_wm;
-    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Clear any latched error bits (write-1-to-clear). */
     mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
@@ -203,12 +220,12 @@ static int ot_spi_segment(uint8_t dir, uint8_t speed, uint16_t len_bytes, bool c
     if (ot_spi_wait_ready() != 0) {
         return -1;
     }
-    spi_controller__CMD_t cmd = {.w = 0u};
+    spi_controller__COMMAND_t cmd = {.w = 0u};
     cmd.f.LEN = (uint32_t)(len_bytes - 1u); /* LEN encodes count - 1 */
     cmd.f.CSAAT = csaat ? 1u : 0u;
     cmd.f.SPEED = (uint32_t)speed & 0x3u;
     cmd.f.DIRECTION = (uint32_t)dir & 0x3u;
-    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     return 0;
 }
 
@@ -217,7 +234,7 @@ static int ot_spi_tx_word(uint32_t w) {
     for (uint32_t i = 0u; i < OT_SPI_POLL_MAX; i++) {
         status.w = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.TXFULL) {
-            mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, w);
+            mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), w);
             return 0;
         }
     }
@@ -384,7 +401,7 @@ uint32_t ot_spi_flash_read(uint32_t flash_off, uint32_t dst_sram, uint32_t len) 
             if (!ot_rx_wait_data()) {
                 return SEP_MSG_SPI_OT_TRANSPORT_ERROR;
             }
-            uint32_t word = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+            uint32_t word = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
             uint32_t remain = chunk - rxdone;
             uint32_t nb = (remain < 4u) ? remain : 4u;
             for (uint32_t b = 0u; b < nb; b++) {
@@ -487,7 +504,7 @@ static void ot_spi_dma_dst_setup(const ot_spi_dst_region_t *region, uint32_t dst
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
 
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
-                 OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+                 OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0u);
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
