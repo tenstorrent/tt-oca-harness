@@ -78,6 +78,8 @@ name = "all"
 # clk_smc_i edges elapsed over the same window, against a tolerance of 14, so
 # the count tracks clk_smc_i and not clk_ref_i. It keeps its [[tests]] entry
 # and runs from cpu.toml.
+# The four smc_cpu_*_wedge_test leaves remain catalogued in cpu.toml for
+# directed DV use, but are held out of regression groups pending DV review.
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
@@ -274,12 +276,13 @@ tests = [
 
 [[groups]]
 name = "hosted"
-# `all` minus the leaves that need the RISC-V toolchain: the fourteen `fw`
-# leaves and the three dual-target leaves, which all declare a firmware or ROM
-# image. The five #1989 hold-outs above are out of both. Nightly and weekly
-# schedule this group; the per-PR gate stays
-# on the 3-leaf `smoke`. Guarded by expected_count so a leaf cannot join
-# `all` and silently miss the hosted set.
+# `all` minus the leaves that need the RISC-V toolchain or an SMC_DUAL
+# elaboration: the fourteen `fw` leaves and three dual-target leaves, which
+# all declare a firmware or ROM image. The five #1989 hold-outs above are out
+# of both. Nightly and weekly schedule this group; the per-PR gate stays on
+# the 3-leaf `smoke`.
+# Guarded by expected_count so a leaf cannot join `all` and silently miss the
+# hosted set.
 expected_count = 170
 tests = [
     "smc_5agent_observability_test",
@@ -462,9 +465,9 @@ name = "smoke"
 # canonical bring-up, the reset path, and a CSR frontdoor read. Toolchain-free
 # and about a second each.
 #
-# Nightly and weekly schedule `hosted` (`all` minus the firmware and
-# SMC_DUAL leaves), so the gate stays small without taking any leaf off the
-# scheduled tiers.
+# The 34 leaves that left this group stay in `all` and in `hosted`. Nightly
+# and weekly schedule `hosted` (`all` minus the firmware and SMC_DUAL
+# leaves) so cutting the gate does not take them off the scheduled tiers.
 tests = [
     "smc_canonical_smoke_test",
     "smc_cold_reset_test",

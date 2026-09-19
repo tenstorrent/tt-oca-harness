@@ -216,22 +216,30 @@ archives to 90 runs per DUT. Checked by the required `verilator-smoke (dtp)` and
 `lint.yml`, which runs `tools/dv/tests` on DV-scoped changes
 (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
 
-|Contributor environment: `pyproject.toml` and `uv.lock` (the `dv` dependency
-group resolves to the `ocah-dv` workspace package under `hw/common/dv`),
-`Bender.yml`, Verilator, the `ocah-toolchain` image from
-`tools/docker/Dockerfile`, and `scripts/docker-run.sh`
+|Contributor environment: `pyproject.toml`, `uv.lock` (the `dv` dependency
+group resolves to the `ocah-dv` workspace package under `hw/common/dv`), and
+`.python-version`; `Bender.yml`; Verilator; the `ocah-toolchain` image from
+`tools/docker/Dockerfile` and `scripts/docker-run.sh`
 |The root project file and lockfile; the DV package manifest; the Dockerfile
-and its wrapper
+and its wrapper; the composite action for the hosted pins
 |Runner bootstrap, the composite action, the firmware build engine
 `hw/common/dv/fw/compile.mk`
 |The lockfile is the environment: the runner re-executes through
 `uv run --project <root> --locked --group dv`, and a hosted job reaches the
-runner through the same bootstrap. Python 3.11 through 3.13. `OCAH_DV_SKIP_UV=1` opts a
-pre-provisioned environment out of the re-execution and nothing else. Pulled
-container images are pinned by digest where their tags float. A host RISC-V
-toolchain with picolibc may replace the container through `RISCV_TOOLCHAIN`.
-Checked by `--doctor` (a targeted availability probe, not a license test),
-`docker-run.sh verify`, `uv sync --locked`, and the doctor-probe tests.
+runner through the same bootstrap. Python 3.11 through 3.13, with 3.11
+pinned for the hosted jobs. Verilator at or above cocotb's documented floor,
+5.036, the `min_version` the tool registry sets; hosted CI builds the
+composite action's pinned tag from source. Bender is
+unpinned, and the release a run used is recorded in its `result.json`.
+`OCAH_DV_SKIP_UV=1` opts a pre-provisioned environment out of the
+re-execution and nothing else. Pulled container images are pinned by digest
+where their tags float. A host RISC-V toolchain with picolibc may replace the
+container through `RISCV_TOOLCHAIN`. Checked by `--doctor` (a targeted
+availability probe, not a license test, which also fails a required tool
+below its registry `min_version` and scopes its module probe to `--items`
+and `--tag`), `docker-run.sh verify`, `uv sync --locked`, the doctor tests, and
+the environment-matrix tests
+(xref:run-dv.adoc#runner-environment-matrix[Supported environments]).
 |===
 
 == Public and licensed boundary
@@ -248,7 +256,8 @@ the run result so a result is attributable to its layers.
 |Tool registry
 |`simulators.toml` lists `verilator`, `vcs`, `xcelium`, and `sby` by their
 default executable names; a licensed tool's table names its `license_env`
-variables. The `native`
+variables, and `verilator` carries `min_version`, cocotb's documented floor,
+which the doctor enforces. The `native`
 profile declares `visibility = "public"`, `license = "none"`, and
 `default_tool = "verilator"`.
 |Binaries under other names, `launcher` prefixes for containers,
@@ -266,6 +275,17 @@ nightly and weekly regression tiers.
 |VCS and Xcelium need licensed self-hosted runners. Formal mode is a
 developer-host flow: no formal job runs in hosted CI and no formal result
 reaches the dashboard.
+
+|Contributor host
+|The GitHub-hosted `ubuntu-latest` image, on which every smoke and
+regression job runs unless the `DV_LARGE_RUNNER` repository variable
+promotes its row to a larger GitHub-hosted label, and a Linux or macOS
+developer host that meets the same pins
+(xref:run-dv.adoc#runner-environment-matrix[Supported environments]).
+|Licensed simulators run on self-hosted runners. The `sep` tree's private
+submodule is checked out in hosted CI with a repository secret; a public
+clone runs without it, and `--doctor --items <group>` reports the modules of
+that selection only.
 
 |Formal collateral
 |Property and bind files, `sby` task files, the formal config with the `sby`
@@ -303,6 +323,12 @@ engine. Both are unset in a bare clone.
 
 == Operations
 
+Each row names the mechanism behind a routine task. The procedures for a
+red gate, a cancelled or missed tier, a failed publication, and the other
+failure modes of the hosted service are on
+xref:runbook.adoc[DV Infrastructure Runbook], together with the service
+targets, retention, ownership by component, and escalation.
+
 [cols="<2,<3,<3",options="header"]
 |===
 |Task |Mechanism |Detail
@@ -313,9 +339,11 @@ engine. Both are unset in a bare clone.
 merged registries. Runs in every hosted job.
 
 |Probe a host for a DUT and tool
-|`python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>`
+|`python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool> [--items <group>]`
 |Reports the active site file and the source of each tool entry; sources the
-tool's `setup_hook`.
+tool's `setup_hook`; prints the release of each registry tool found on `PATH`
+and fails a required tool below its table's `min_version`. With `--items` or
+`--tag` the module probe covers that selection only.
 
 |Run the tooling tests
 |`uv run --locked --group dv python -m unittest discover tools/dv/tests`

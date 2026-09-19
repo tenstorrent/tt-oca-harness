@@ -41,8 +41,5 @@ filelist:
 	$(foreach exclude,$(EXCLUDE_FILES),grep -v "$(exclude)" |) \
 	cat > $(PWD)/axil_mailbox.f
 
-lint:
-	svlint -v ../rtl/axi_lite_mailbox_unit.sv
-
 wave:
 	surfer -s axil_mailbox.surfer dump.vcd

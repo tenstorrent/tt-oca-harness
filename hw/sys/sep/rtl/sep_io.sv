@@ -173,7 +173,6 @@ module sep_io #(
     .spi_sd_i       (sep_io_spi_rsp_i.sd),
 
     .irq_o          (sep_io_spi_req_o.irq),
-    .busy_o         (sep_io_spi_req_o.busy),
     .lsio_trigger_o (sep_io_spi_req_o.lsio_trigger)
   );
 

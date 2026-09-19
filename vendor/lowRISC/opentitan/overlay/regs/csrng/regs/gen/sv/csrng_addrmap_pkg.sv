@@ -34,4 +34,9 @@ localparam longint unsigned CSRNG_ERR_CODE_TEST_BASE_ADDR = 64'h58;
 localparam longint unsigned CSRNG_MAIN_SM_STATE_BASE_ADDR = 64'h5C;
 
 
+typedef enum logic [3:0] {
+    TRUE = 4'd6,
+    FALSE = 4'd9
+} MultiBitBool4_e;
+
 endpackage

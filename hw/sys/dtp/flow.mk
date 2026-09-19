@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # DTP lint/synth flow descriptor, shared by `make lint-slang-all BLOCK=dtp`
-# and `make synth-all BLOCK=dtp TECH=...`.
+# and `make synth-yosys-all BLOCK=dtp TECH=...`.
 FLOW_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FLOW_DIR)/../../../flows/preamble.mk
 
