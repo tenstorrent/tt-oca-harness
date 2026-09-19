@@ -27,11 +27,10 @@ Checkers:
   CHK-RT     with the scrambler re-enabled, the logical index reads back the
              exact plaintext
   CHK-KEYRD  before the lock, the key register reads back the key that was
-             written: the control that gives CHK-LOCK its meaning
-  CHK-LOCK   after the sticky lock the same register reads zero
+             written: the control that gives CHK-SWWEL its meaning
   CHK-LOCKRT the round-trip still recovers the plaintext after the lock, so the
              hardware kept the key it was using
-  CHK-SWWEL  the lock's DOCUMENTED contract: after it, a write of a different
+  CHK-SWWEL  the lock's documented contract: after it, a write of a different
              key and a write clearing ENABLE are both refused -- the round-trip
              still returns the plaintext and ENABLE still reads 1
 
@@ -49,19 +48,17 @@ address transform is a bijection on the 1024 indices and a bijection may have
 fixed points, so a single index mapping to itself is legal; an identity mapping
 across three seeded indices is not.
 
-CHK-LOCK asserts RTL behaviour that the architecture document does not state.
-The document requires only that a locked key cannot be modified; the hardware
-additionally drives the key register to zero once the lock commits, while the
-scrambler keeps using a shadow copy. Two checks are what make it mean anything.
-CHK-KEYRD reads the same register before the lock and requires the written key
-back, so a write-only or permanently-zero register fails instead of passing
-CHK-LOCK for free. CHK-LOCKRT then shows the key is unreadable and still in
-use.
+The architecture document requires only that a locked key cannot be modified.
+CHK-SWWEL grades that. CHK-KEYRD reads the same register before the lock so a
+write-only register cannot make a later refused write look like a lock.
+CHK-LOCKRT shows the hardware kept the key it was using. The post-lock
+key-register data value is not claimed.
 """
 
 from __future__ import annotations
 
 import pyuvm
+from env.sep_spec_tables import kpv_scrambler_ctrl_mask
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_kpv_scrambler_seq import (
     KPV_N_WORDS,
@@ -168,22 +165,15 @@ class sep_km_kpv_scrambler_test(sep_base_test):
             "CHK-RT PASS: logical %d round-trips to 0x%08x", first_logical, expected_pt
         )
 
-        # --- CHK-KEYRD / CHK-LOCK / CHK-LOCKRT --------------------------------
+        # --- CHK-KEYRD / CHK-LOCKRT -------------------------------------------
         assert rep.key_unlocked == cfg.key_b, (
             f"CHK-KEYRD FAIL: before the lock, KPV_SCRAMBLER_KEY read back "
             f"0x{rep.key_unlocked:08x}, expected the written key 0x{cfg.key_b:08x}. "
-            "Without this the zero-after-lock check below would also pass on a "
-            "write-only or permanently-zero register"
+            "Without this a write-only register would make CHK-SWWEL look locked"
         )
         self.logger.info(
             "CHK-KEYRD PASS: the key register reads back 0x%08x while unlocked", cfg.key_b
         )
-
-        assert rep.key_readback == 0, (
-            f"CHK-LOCK FAIL: KPV_SCRAMBLER_KEY read back 0x{rep.key_readback:08x} after "
-            "the sticky lock, expected zero"
-        )
-        self.logger.info("CHK-LOCK PASS: the key register reads zero once locked")
 
         assert rep.post_lock_round_trip == expected_pt, (
             f"CHK-LOCKRT FAIL: after the lock, logical index {first_logical} read back "
@@ -195,17 +185,16 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         )
 
         # --- CHK-SWWEL --------------------------------------------------------
-        # This is the contract the architecture document actually states, as
-        # opposed to CHK-LOCK's zero readback which it does not. Both halves
-        # matter: a lock that froze the key but let ENABLE be cleared would
-        # leave the vault passing plaintext through.
+        # The documented lock: a later key write and an ENABLE-clear are both
+        # refused. A lock that froze the key but let ENABLE clear would leave
+        # the vault passing plaintext through.
         assert rep.refused_round_trip == expected_pt, (
             f"CHK-SWWEL FAIL: after writing a different key and clearing ENABLE on the "
             f"locked scrambler, logical index {first_logical} read back "
             f"0x{rep.refused_round_trip:08x}, expected 0x{expected_pt:08x} -- one of "
             "the two writes was accepted"
         )
-        assert rep.ctrl_after_refused & 0x1, (
+        assert rep.ctrl_after_refused & kpv_scrambler_ctrl_mask("ENABLE"), (
             f"CHK-SWWEL FAIL: KPV_SCRAMBLER_CTRL reads 0x{rep.ctrl_after_refused:08x} "
             "after a write clearing ENABLE on the locked scrambler; ENABLE should still "
             "be set"

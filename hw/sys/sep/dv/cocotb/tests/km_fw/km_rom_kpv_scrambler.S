@@ -48,9 +48,9 @@
 # before it drains the pair list -- see the collector in
 # cocotb/seq_lib/sep_km_kpv_scrambler_seq.py.
 #
-# The unlocked readback is the control for the locked one: without it, "the key
-# register reads zero after the lock" is equally satisfied by a register that
-# is write-only or always zero.
+# The unlocked readback is the control for the documented lock: without it a
+# write-only register would make a later refused write look like a lock.
+# The post-lock key-register data value is not claimed.
 #
 # Build (output committed as ../km_rom_kpv_scrambler.parhex):
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_kpv_scrambler.parhex

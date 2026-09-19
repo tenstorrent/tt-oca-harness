@@ -45,10 +45,15 @@ class sep_esrc_alert_delivery_test(sep_base_test):
     """Trip persistent failure, claim PIC source 16, W1C-clear."""
 
     def _irq_bit(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_AGG_IDX) & 1
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
+        return (vec >> IRQ_AGG_IDX) & 1
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
+        # Routing only: this leaf holds the raw noise at a constant below to
+        # trip the persistent health-test failure, so a toggling generator is
+        # the opposite of what it needs.
+        await self.assert_noise_force_routed()
         esrc = SepEsrcAlert(self)
 
         sm = await esrc.read_main_sm()
@@ -227,6 +232,13 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
 
         await esrc.leave_alert_hang()
+        sm_before_w1c = await esrc.read_main_sm()
+        st_before_w1c = await esrc.read_intr()
+        assert (sm_before_w1c & ALERT_MASK) and (st_before_w1c & PF_MASK), (
+            f"CHK-W1C FAIL: MODULE_ENABLE=0 already cleared ALERT/PF "
+            f"(sm=0x{sm_before_w1c:08x} st=0x{st_before_w1c:08x}); "
+            "the W1C write would have been a no-op"
+        )
         await esrc.w1c_alert()
         sm = await esrc.read_main_sm()
         st = await esrc.read_intr()

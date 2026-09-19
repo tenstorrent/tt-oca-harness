@@ -198,19 +198,75 @@ def sample(signal: Any, name: str, *, allow_xz: bool = False) -> int:
     return int(val)
 
 
+def _lookup(node: Any, name: str) -> Any:
+    try:
+        return getattr(node, name)
+    except Exception:  # noqa: BLE001 - the handle's exception type varies
+        return None
+
+
 def hier(root: Any, path: str) -> Any:
-    """Resolve a dotted hierarchical path, naming the first missing element."""
+    """Resolve a dotted hierarchical path, naming the first missing element.
+
+    Verilator exposes a generate block as a handle of its own; VCS folds the
+    block name into its children, so `gen_sep.u_sep` is one child named
+    `gen_sep.u_sep`. A part that does not resolve is therefore joined with the
+    parts after it before the path is declared missing.
+    """
     node = root
-    walked = []
+    walked: list[str] = []
+    pending: list[str] = []
     for part in path.split("."):
-        walked.append(part)
-        try:
-            node = getattr(node, part)
-        except Exception as exc:  # noqa: BLE001 - the handle's exception type varies
-            raise AssertionError(f"hierarchy element {'.'.join(walked)} not found: {exc}") from exc
-        if node is None:
-            raise AssertionError(f"hierarchy element {'.'.join(walked)} not found")
+        pending.append(part)
+        found = _lookup(node, ".".join(pending))
+        if found is None:
+            continue
+        walked.append(".".join(pending))
+        pending = []
+        node = found
+    if pending:
+        raise AssertionError(f"hierarchy element {'.'.join(walked + pending)} not found")
     return node
+
+
+class GenerateScope:
+    """A named generate block under ``parent`` on either simulator.
+
+    ``exists()`` is true when the block was elaborated, ``has(child)`` when an
+    instance of that name sits inside it, and ``get(child)`` returns the
+    instance handle; each reads the block as a handle where the simulator
+    offers one and through the folded ``block.child`` names where it does not.
+    """
+
+    def __init__(self, parent: Any, name: str) -> None:
+        self._parent = parent
+        self._name = name
+        self._handle = _lookup(parent, name)
+
+    def _folded(self) -> set[str]:
+        try:
+            self._parent._discover_all()
+            names = set(self._parent._sub_handles)
+        except Exception:  # noqa: BLE001 - not a hierarchy handle
+            return set()
+        prefix = f"{self._name}."
+        return {n[len(prefix) :] for n in names if n.startswith(prefix)}
+
+    def exists(self) -> bool:
+        return self._handle is not None or bool(self._folded())
+
+    def has(self, child: str) -> bool:
+        if self._handle is not None:
+            return _lookup(self._handle, child) is not None
+        return child in self._folded()
+
+    def get(self, child: str) -> Any:
+        node = None if self._handle is None else _lookup(self._handle, child)
+        if node is None:
+            node = _lookup(self._parent, f"{self._name}.{child}")
+        if node is None:
+            raise AssertionError(f"hierarchy element {self._name}.{child} not found")
+        return node
 
 
 def bit_width(handle: Any, name: str) -> int:

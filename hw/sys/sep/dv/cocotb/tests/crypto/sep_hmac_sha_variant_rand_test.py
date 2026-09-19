@@ -233,7 +233,8 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
             f"  golden={[hex(w) for w in golden]}"
         )
 
-        await self.hmac.check_status_clean(mode)  # CHK-ERR
+        await self.hmac.check_status_clean(mode)
+        self.logger.info("CHK-ERR PASS %s: ERR_CODE == 0 and INTR_STATE.hmac_err == 0", mode)
         self.logger.info(
             "CHK-CELL PASS %s: DIGEST==golden, RW1C done, ERR clean, non-vacuous (msg=%d words)",
             mode,

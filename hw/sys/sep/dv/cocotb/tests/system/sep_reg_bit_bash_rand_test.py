@@ -4,7 +4,15 @@
 
 no_cpu / +skip_fuse_sense. RANDCFG: block order and complement-vs-ones
 order come from the run seed. The reset walk is the inventory after
-reasoned skips, not the raw OFFSET export. Full-mask write-lands covers the
+reasoned skips, not the raw OFFSET export.
+
+Two of those skips are read off the RDL rather than named: a write-only
+register returns no storage on a read, and a read-only register the RDL gives
+no reset value is driven by hardware, so the generated DEFAULT is a field
+default and not a POR value. Both read back 0 against a DEFAULT of 0 in most
+cases, so keeping them would pass without the DUT having shown anything. The
+ABR identity registers in that second group are proven frontdoor by the ABR
+KAT tests, and the entropy-pool pair by sep_entropy_pool_aperture_test. Full-mask write-lands covers the
 scratch-cold, scratch-warm and CPU_CTRL registers; the inbound START/END
 registers use the wrap model.
 
@@ -33,7 +41,7 @@ from __future__ import annotations
 
 import pyuvm
 from sep_base_test import sep_base_test
-from seq_lib.sep_reg_bit_bash_seq import SepRegBitBash, SepRegBitBashCfg
+from seq_lib.sep_reg_bit_bash_seq import SepRegBitBash, SepRegBitBashCfg, write_mask
 
 
 @pyuvm.test()
@@ -117,7 +125,7 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
                     info.name,
                     info.addr,
                     x,
-                    info.mask,
+                    write_mask(info),
                 )
             except AssertionError as exc:
                 touch_fails.append(str(exc))

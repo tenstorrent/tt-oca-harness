@@ -44,7 +44,9 @@ KM_RST_MASK = SEP_RESET_CTRL.field_mask("SW_RESET_N", "km_sw_rst_n")
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
-# DIGEST_0 has no generated REG_DEFAULT; OpenTitan HMAC clears it to 0 on rst_ni.
+# OpenTitan HMAC DIGEST clears to 0 on rst_ni. The SystemRDL Python export
+# has no REG_DEFAULT for DIGEST_0 (sw=r, no reset declared), so this is the
+# published block reset, not a scraped RTL constant.
 HMAC_DIGEST_RESET = 0
 
 

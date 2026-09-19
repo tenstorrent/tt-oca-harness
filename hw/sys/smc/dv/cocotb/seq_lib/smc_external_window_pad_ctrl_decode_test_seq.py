@@ -9,16 +9,18 @@ power-on/pad-bias control block, the reference-clock GPIO control block and
 generated bootrom register header (``smc_top_regs.h``), the same map the boot
 ROM is built against.
 
-The adopter implementation of these blocks is out of this repository: the
-reference ``smc_ip_integration`` terminates every one of them with an
-AXI-Lite error slave that answers DECERR with zero data
-(``smc_gpio_ctrl_full_sweep_test`` measures the same). What the SMC side owns,
-and what is proven here, is the decode into the window: every access must
-drive ``smc_external_req_o`` (sampled as ``tb_axil_external_active`` on every
-``clk_smc_i`` edge while the access is in flight) and complete with the
-terminator's DECERR and zero data rather than wedging or being answered by
-some other block. The per-pad stride is taken from the header and checked
-against the spec's 0x20 before the first and last instance are probed.
+The adopter implementation of these blocks is out of this repository, so
+nothing behind the window is specified here and nothing behind it is credited.
+What the SMC side owns, and what is proven here, is the decode into the window:
+every access must drive ``smc_external_req_o`` (sampled as
+``tb_axil_external_active`` on every ``clk_smc_i`` edge while the access is in
+flight) and complete with an error response rather than wedging or being
+answered by some other block. The data returned with that error is required to
+be zero for the same DV-owned reason ``csr_read_decerr_zero`` applies to every
+unmapped SMC hole: an error response carries no payload, so any non-zero data
+means a live responder answered in the terminator's place. The per-pad stride
+is taken from the header and checked against the spec's 0x20 before the first
+and last instance are probed.
 """
 
 from __future__ import annotations
@@ -31,7 +33,9 @@ from .smc_decode_probe_utils import SmcDecodeProbeSeq
 # memmap.adoc: "Per-Pad GPIO Control | BASE + ... + (N x 0x20) | 65 instances".
 SPEC_PER_PAD_STRIDE = 0x20
 SPEC_PER_PAD_INSTANCES = 65
-# smc_ip_integration's error slaves answer with zero data.
+# DV-owned expectation for the data lanes of an error response: an error
+# carries no payload, so a non-zero word means a live responder answered where
+# only the window terminator should. Same rule as `csr_read_decerr_zero`.
 TERMINATOR_RDATA = 0
 
 _CONTROL_BLOCKS = (
@@ -60,8 +64,8 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
     async def _probe(self, cell: str, label: str, addr: int) -> None:
         rdata, hits = await self.read_external_routed(label, addr, decerr=True)
         assert rdata == TERMINATOR_RDATA, (
-            f"{label} @ 0x{addr:08x}: DECERR carried data 0x{rdata:08x}, not the adopter-window "
-            f"terminator's zero data, so another responder answered"
+            f"{label} @ 0x{addr:08x}: the error response carried data 0x{rdata:08x}; an error "
+            f"carries no payload, so another responder answered in the terminator's place"
         )
         self.hits[label] = hits
         self.close_cell(
@@ -109,8 +113,9 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
         self.report_cells("CHK-EXTWIN-PAD-CTRL")
         cocotb.log.info(
             "CHK-EXTERNAL-WINDOW-PAD-CTRL-DECODE: %d control-block and %d per-pad addresses each "
-            "drove the adopter external AXI-Lite port (active cycles %s) and completed DECERR/0 "
-            "from the reference integration's terminator; per-pad stride 0x%x, %d instances",
+            "drove the adopter external AXI-Lite port (active cycles %s) and completed DECERR "
+            "with zero data, the DV-owned answer for an address nothing behind the window "
+            "decodes; per-pad stride 0x%x, %d instances",
             len(_CONTROL_BLOCKS),
             3,
             sorted(self.hits.values()),

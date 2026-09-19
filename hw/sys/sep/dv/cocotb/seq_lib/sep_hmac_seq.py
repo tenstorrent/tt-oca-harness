@@ -41,21 +41,15 @@ HMAC_NUM_PUBLIC_KEY = 32
 # CFG keyed HMAC-SHA256, 256-bit key (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
 # digest_size SHA2_256 -> bit5, key_length 256 -> bit10 (field [14:9]=2);
 # endian_swap/digest_swap = 0 (digest word0 = MSB == standard big-endian digest).
-HMAC_CFG_KEYED_256 = 0x0000_0423
-# Plain SHA-256 (no key): same as keyed-256 but hmac_en[0]=0 and no key_length
-# (bit10) -- sha_en[1]=1 + digest_size SHA2_256 (bit5). Digest is the standard
-# big-endian SHA-256 (digest word0 = MSB), so DIGEST_i == big-endian word i.
-HMAC_CFG_SHA256 = 0x0000_0022
+HMAC_CMD_HASH_START = HMAC.field_mask("CMD", "hash_start")
+HMAC_CMD_HASH_PROCESS = HMAC.field_mask("CMD", "hash_process")
 
-HMAC_CMD_HASH_START = 1 << 0
-HMAC_CMD_HASH_PROCESS = 1 << 1
-
-HMAC_STATUS_FIFO_FULL = 1 << 2
+HMAC_STATUS_FIFO_FULL = HMAC.field_mask("STATUS", "fifo_full")
 # STATUS.hmac_idle: set while the core holds no in-flight message. Taken from
 # the generated block, so a field move cannot leave a stale literal here.
 HMAC_STATUS_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
-HMAC_INTR_DONE = 1 << 0
-HMAC_INTR_ERR = 1 << 2
+HMAC_INTR_DONE = HMAC.field_mask("INTR_STATE", "hmac_done")
+HMAC_INTR_ERR = HMAC.field_mask("INTR_STATE", "hmac_err")
 
 # CFG field encodings (hmac.adoc digest_size / key_length, one-hot).
 HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}  # SHA2_256/384/512
@@ -93,18 +87,23 @@ def build_cfg(
     """Build the HMAC CFG word for a SHA-2 variant / mode / key-length.
 
     ``sha_bits`` in {256,384,512}; ``key_bits`` in {128,256,384,512,1024} for keyed
-    HMAC (pass None for plain SHA). Reproduces the HMAC_CFG_* constants above
-    (keyed-256 -> 0x423, plain-256 -> 0x22).
+    HMAC (pass None for plain SHA). Field positions come from the HMAC RDL
+    through ``HMAC.field_lsb`` / ``HMAC_DIGEST_SIZE``.
     """
-    cfg = int(bool(hmac_en)) | (1 << 1)  # sha_en always 1
-    cfg |= (endian_swap & 1) << 2
-    cfg |= (digest_swap & 1) << 3
-    cfg |= (key_swap & 1) << 4
-    cfg |= HMAC_DIGEST_SIZE[sha_bits] << 5
+    cfg = int(bool(hmac_en)) << HMAC.field_lsb("CFG", "hmac_en")
+    cfg |= 1 << HMAC.field_lsb("CFG", "sha_en")
+    cfg |= (endian_swap & 1) << HMAC.field_lsb("CFG", "endian_swap")
+    cfg |= (digest_swap & 1) << HMAC.field_lsb("CFG", "digest_swap")
+    cfg |= (key_swap & 1) << HMAC.field_lsb("CFG", "key_swap")
+    cfg |= HMAC_DIGEST_SIZE[sha_bits] << HMAC.field_lsb("CFG", "digest_size")
     if hmac_en:
         assert key_bits is not None, "keyed HMAC needs key_bits"
-        cfg |= HMAC_KEY_LENGTH[key_bits] << 9
+        cfg |= HMAC_KEY_LENGTH[key_bits] << HMAC.field_lsb("CFG", "key_length")
     return cfg & 0xFFFF_FFFF
+
+
+HMAC_CFG_KEYED_256 = build_cfg(hmac_en=True, sha_bits=256, key_bits=256)
+HMAC_CFG_SHA256 = build_cfg(hmac_en=False, sha_bits=256)
 
 
 @dataclass

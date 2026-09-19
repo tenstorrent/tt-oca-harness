@@ -68,7 +68,7 @@ The change that adds an image carries:
    (`arm_value` plus an `on_armed` stimulus). A rom-mode image also needs a
    `[c_build.*]` block that builds it; a generic one is added with the first
    image that consumes it.
-2. Its row in `hw/sys/smc/doc/dv/SMC_FW_DISPOSITION.adoc`, the disposition of
+2. Its row in `docs/SMC_VPLAN.adoc` (Known Limitations, "SMC firmware image disposition"), the disposition of
    record for every image name. An image whose consumer is not yet in the tree
    is a `deferred` row with the blocker and the condition that closes it.
 3. Its VPLAN card (`docs/SMC_VPLAN.adoc`, FIRMWARE table).

@@ -35,8 +35,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# OT SPI host control-plane breadth: CSR reset/R-W, INTR test+W1C, ERROR_STATUS
-# W1C (underflow/cmdinval/csidinval), TX watermark, SPIEN enable-gate. [RAND-REP]
+# OT SPI host control-plane breadth: CSR reset/R-W, Event/Status INTR + aggregator,
+# ERROR_STATUS W1C, zero-strobe bridge ack, TX watermark, SPIEN enable-gate. [RAND-REP]
 # folds the reference suite OT-SPI host-control directed family. no_cpu (AXI drives the host
 # CSRs); pure control plane, no flash BFM. DISTINCT from SPI flash command breadth (flash datapath).
 name = "sep_spi_ot_host_csr_irq_rand_test"

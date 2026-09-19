@@ -131,7 +131,9 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         )
 
     def _irq39(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_TOKEN_MATCH_FAULT) & 1
+        mask = 1 << IRQ_TOKEN_MATCH_FAULT
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask)
+        return (vec >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
         seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT)
@@ -248,11 +250,14 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         assert code == TOKEN_MATCH, f"valid retry after release must match, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"sticky SIP fault cleared on retry: 0x{fault:x}"
         assert irq == 1, "irq39 dropped on a valid-token retry"
-        await self._wr_fault(0)
+        await self._wr_fault(fault)
         still = await self._rd_fault()
-        assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write 0 left 0x{still:x}"
+        assert still & FAULT_RMA_SIP, (
+            f"TOKEN_MATCH_FAULT is sw=r; write of the live mask 0x{fault:x} left 0x{still:x}"
+        )
         self.logger.info(
-            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, write-0 ignored",
+            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, "
+            "write of the live mask ignored",
             code,
             still,
         )

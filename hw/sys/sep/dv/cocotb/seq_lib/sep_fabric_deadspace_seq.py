@@ -139,28 +139,28 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "secure_dma",
             sym("SECURE_DMA_REG_MAP_BASE_ADDR"),
-            0x1080_1000,
+            sym("WDT_TIMER_REG_MAP_BASE_ADDR"),
             block_size("SECURE_DMA"),
             _sep_watch(sym("SECURE_DMA_REG_MAP_BASE_ADDR"), block_size("SECURE_DMA")),
         ),
         DeadWindow(
             "wdt_timer",
             sym("WDT_TIMER_REG_MAP_BASE_ADDR"),
-            0x1080_2000,
+            sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"),
             block_size("WDT_TIMER"),
             _sep_watch(sym("WDT_TIMER_REG_MAP_BASE_ADDR"), block_size("WDT_TIMER")),
         ),
         DeadWindow(
             "aes",
             sym("AES_REG_MAP_BASE_ADDR"),
-            0x1091_1000,
+            sym("HMAC_REG_MAP_BASE_ADDR"),
             block_size("AES"),
             _sep_watch(sym("AES_REG_MAP_BASE_ADDR"), block_size("AES")),
         ),
         DeadWindow(
             "otbn",
             sym("OTBN_REG_MAP_BASE_ADDR"),
-            0x1091_0000,
+            sym("AES_REG_MAP_BASE_ADDR"),
             block_size("OTBN"),
             _sep_watch(sym("OTBN_REG_MAP_BASE_ADDR"), block_size("OTBN")),
         ),
@@ -174,14 +174,14 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "edn",
             EDN_BASE,
-            0x1091_6000,
+            esrc_base,
             ot_reg_map_size("edn"),
             _ot_watch("edn", EDN_BASE, ot_reg_map_size("edn")),
         ),
         DeadWindow(
             "entropy_src",
             esrc_base,
-            0x1091_7000,
+            sym("TRNG_REG_MAP_BASE_ADDR"),
             ot_reg_map_size("entropy_source"),
             _ot_watch("entropy_source", esrc_base, ot_reg_map_size("entropy_source")),
             hw_updating=_ot_named(
@@ -200,6 +200,7 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "km_mailbox",
             sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR"),
+            # Map window end; no neighbouring REG_MAP_BASE_ADDR (memory_map.adoc).
             0x1092_1000,
             block_size("KM_MAILBOX_SEP"),
             _sep_watch(
@@ -210,7 +211,7 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "lifecycle",
             sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"),
-            0x1092_0000,
+            sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR"),
             block_size("SEP_LIFECYCLE_CTRL"),
             _sep_watch(
                 sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"),
@@ -221,6 +222,7 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "spi_controller",
             sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
+            # Map window end; no neighbouring REG_MAP_BASE_ADDR (memory_map.adoc).
             0x10C0_0000,
             block_size("SPI_CONTROLLER"),
             _sep_watch(
