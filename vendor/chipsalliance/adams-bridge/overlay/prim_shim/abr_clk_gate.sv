@@ -12,10 +12,10 @@ module abr_clk_gate (
 );
 
   prim_clkgater u_clkgater (
-    .i_clk(clk),
-    .i_en (en),
-    .i_te (te),
-    .o_clk(clk_cg)
+    .clk_i(clk),
+    .en_i (en),
+    .te_i (te),
+    .clk_o(clk_cg)
   );
 
 endmodule
