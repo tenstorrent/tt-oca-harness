@@ -516,8 +516,13 @@ $(BL1_TEST_BIN):
 # (name = "tt-oca-manifest") and keeps package-dir {tt_boot_manifest = "src"} so
 # existing `python -m tt_boot_manifest.pack_images` callers are a drop-in. Do not
 # "fix" the module paths here to match the repo name; they would stop resolving.
+#
+# --python-platform pins wheel selection to the oldest glibc a host here runs
+# (2.28). Left to detection, uv can resolve cryptography's manylinux_2_34 wheel,
+# whose _rust.abi3.so needs GLIBC_2.30 and fails at import, not at install.
 ifneq ($(shell command -v uv 2>/dev/null),)
-PACK_RUN := uv run --no-project --with-editable "$(TT_OCA_MANIFEST_DIR)" \
+PACK_RUN := uv run --no-project --python-platform x86_64-manylinux_2_28 \
+	--with-editable "$(TT_OCA_MANIFEST_DIR)" \
 	python -m tt_boot_manifest.pack_images
 else
 # uv-less fallback (e.g. the ocah-toolchain container, which carries the
