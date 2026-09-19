@@ -1031,7 +1031,6 @@ class _EvidenceRecorder:
         "smc_gpio_intf_full_sweep_test": "protocol-VIP floor and scoreboard compares",
         "smc_i2c_multi_instance_test": "protocol-VIP floor and scoreboard compares",
         "smc_mailbox_inbound_test": "protocol-VIP floor and scoreboard compares",
-        "smc_mailbox_multi_instance_test": "protocol-VIP floor and scoreboard compares",
         "smc_occp_sanity_secure_error_test": "protocol-VIP floor and sequence asserts",
         "smc_register_boundary_depth_test": "protocol-VIP floor and scoreboard compares",
         "smc_register_sanity_test": "protocol-VIP floor and scoreboard compares",
