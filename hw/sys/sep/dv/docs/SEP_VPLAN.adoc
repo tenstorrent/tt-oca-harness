@@ -848,7 +848,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_irq_simultaneous_fanin_no_alias_test`. Several cross-IP sources asserted at once must produce exactly their own bits in `sep_internal_interrupts[8:33]`, with every bit of that region resolved rather than floating. `PIC source map` grades the source-to-PIC-id map and CPU delivery on `sep_pic_irq_source_map_delivery_test`; this row is the aggregation itself — the place a one-hot map can smear onto a neighbour — and is a distinct contract from delivery.
 
 |SPI host control plane (CSR, interrupt, error status, watermark, enable)
-|`sep_spi_ot_host_csr_irq_rand_test`. Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the interrupt-test path setting and releasing interrupt status with no write-one-to-clear (whether the enable masks the status register itself is logged, not graded, because the register description does not state it), five of the six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others (ACCESSINVAL is not claimed: its documented trigger is a write with no bytes enabled, which this AXI master cannot drive), the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane.
+|`sep_spi_ot_host_csr_irq_rand_test`. Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the OpenTitan Event-versus-Status interrupt contract (`INTR_STATE.ERROR` latches and clears only on write-one-to-clear; `INTR_STATE.SPI_EVENT` tracks the `INTR_TEST` force), `INTR_ENABLE` gating of `sep_internal_interrupts[13]`, five of the six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others (ACCESSINVAL is not claimed: its documented trigger is a write with no bytes enabled, which neither this AXI master nor the wrapper bridge presents to the core), a 64-bit CONTROL write whose empty STATUS half the wrapper must ack, the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane.
 
 |SECURE_TM shadow-write lock
 |`sep_efuse_secure_tm_write_lock_test`. Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands (set-only rows OR-merge; `LC_STATE[31:8]` takes a plain shadow write), and after the strap is raised and the image re-sensed the stored value does not move, `sep_internal_interrupts[33]` pulses and the response stays OKAY. A `SECURE_TM_UNLOCK` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`.
@@ -3889,7 +3889,7 @@ poll and yields the same pass.
 
 [arabic]
 . Walk the seeded length and trigger cells: DMA SRAM into the OpenTitan SPI TX FIFO, page-program the flash BFM, read the flash back and compare to the SRAM source; W1C-clear DMA done.
-. Write TXDATA past `STATUS.TXFULL`; expect exclusive `ERROR_STATUS.OVERFLOW`; `CTRL.SW_RST` plus write-one-to-clear; a flash status read must complete.
+. Write TXDATA past `STATUS.TXFULL`; expect exclusive `ERROR_STATUS.OVERFLOW`; `CONTROL.SW_RST` plus write-one-to-clear; a flash status read must complete.
 
 *Checkers*:
 
@@ -3911,7 +3911,7 @@ poll and yields the same pass.
 |CHK-MULTICHUNK
 |Every PAGE PROGRAM the device received carries more *payload* than one 16-byte DMA chunk, so the transmit-watermark refill loop iterated. Counted from the bus, not from the scenario table, and counting payload only: adding the four opcode and address header bytes would let a transfer that delivered exactly one chunk and stopped clear a 16-byte bar.
 |CHK-ERR-OVERFLOW
-|A TXDATA write past `STATUS.TXFULL` latches exactly `ERROR_STATUS.OVERFLOW`; `CTRL.SW_RST` plus write-one-to-clear then lets a flash status read complete.
+|A TXDATA write past `STATUS.TXFULL` latches exactly `ERROR_STATUS.OVERFLOW`; `CONTROL.SW_RST` plus write-one-to-clear then lets a flash status read complete.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -3941,7 +3941,7 @@ poll and yields the same pass.
 . READ ID, then prove WEL set by WREN and cleared by WRDI.
 . Program, FAST_READ, and sector-erase with neighbour intact.
 . After the erase: prove WEL consumed; a page program with WEL clear must not land; opcode `0x35` returns the seeded status-register-2 value.
-. `ERROR_STATUS` is zero after that sequence. Then inject underflow, reserved `CMD.SPEED`, and an out-of-range chip-select, each exclusive and recovered; READ ID works again.
+. `ERROR_STATUS` is zero after that sequence. Then inject underflow, reserved `COMMAND.SPEED`, and an out-of-range chip-select, each exclusive and recovered; READ ID works again.
 
 *Checkers*:
 
@@ -4013,7 +4013,8 @@ feature-scorecard hole.
 [arabic]
 . Read the eight control registers at documented reset with STATUS idle.
 . Walk each read/write register: write, read back, then drive its unimplemented bits and require them to read zero without disturbing the writable ones.
-. Drive the interrupt test register with the enable clear (logged as an observation) and then set.
+. Drive a 64-bit CONTROL write that enables only four payload bytes, so the neighbour STATUS half arrives with no strobe.
+. Drive each interrupt source: Event latch and Status force first with the enable clear, then raise `INTR_ENABLE` and sample aggregator bit 13.
 . Induce each of the five claimed error conditions in turn and write-one-to-clear it.
 . Fill the transmit FIFO across the programmed watermark.
 . Measure the enabled command drain, then hold the same command off with the core disabled for a multiple of that measurement.
@@ -4026,17 +4027,19 @@ feature-scorecard hole.
 |CHK-RESET
 |Eight control registers read their documented reset values and the status register reads idle. Six of the eight expect zero, which a tied-off decode would also return — mitigated within this entry by the writability, interrupt and error checks below, each of which drives a register non-zero.
 |CHK-REG-RW
-|Each read/write register accepts a write and reads it back exactly. Each register that HAS unimplemented bits additionally has those bits driven to one and confirmed to read back zero, with the writable bits undisturbed. The probe pattern is derived from the register's implemented mask, not from the walk mask: `CTRL.SW_RST` is implemented and outside the walk, since driving it would soft-reset the core mid-walk. `CSID` implements all 32 bits and so has no unimplemented half to probe.
+|Each read/write register accepts a write and reads it back exactly. Each register that HAS unimplemented bits additionally has those bits driven to one and confirmed to read back zero, with the writable bits undisturbed. The probe pattern is derived from the register's implemented mask, not from the walk mask: `CONTROL.SW_RST` is implemented and outside the walk, since driving it would soft-reset the core mid-walk. `CSID` implements all 32 bits and so has no unimplemented half to probe.
 |CHK-NONVAC
 |EVERY walked register's readback differs from its own observed pre-write value. Where a seeded value happens to equal what the register already holds, the test flips the lowest writable bit instead, so no register on any seed can satisfy this by writing back what was already there.
 |CHK-INTR
-|The interrupt test register drives interrupt status while the enable is set, and clearing the source deasserts it with no write-one-to-clear. The same raise and release are sampled on aggregator bit 13 (PIC source 14). Whether the enable masks the status register itself is logged as an observation, not graded: the register description does not state it.
+|`INTR_STATE.ERROR` is an Event latch: `INTR_TEST` sets it with `INTR_ENABLE` clear, aggregator bit 13 stays 0, a write of 0 to `INTR_TEST` does not clear it, `INTR_ENABLE` then raises the aggregator, and write-one-to-clear drops both. `INTR_STATE.SPI_EVENT` is Status-type: it tracks the `INTR_TEST` force, stays off the aggregator while the enable is clear, and follows the enable gate. The wrapper OR of the two core lines is the aggregator sample.
 |CHK-ERR-W1C
-|Five error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY) are each induced by their own trigger, observed set, and cleared by write-one-to-clear, with a clean precondition asserted first. Each trigger must set its OWN bit and no other: the clean precondition makes exclusivity checkable, and without it a device that raised every error bit on any stimulus would satisfy all five legs. The OVERFLOW and CMDBUSY triggers find the boundary from the DUT's own `STATUS.TXFULL` / `STATUS.READY` report and then write one beat past it, so no FIFO depth is imported as a golden. The sixth bit the register block defines, ACCESSINVAL, is *not claimed*: its documented trigger is a TXDATA write with no bytes enabled, which the AXI master on this path cannot drive.
+|Five error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY) are each induced by their own trigger, observed set, and cleared by write-one-to-clear, with a clean precondition asserted first. Each trigger must set its OWN bit and no other: the clean precondition makes exclusivity checkable, and without it a device that raised every error bit on any stimulus would satisfy all five legs. The OVERFLOW and CMDBUSY triggers find the boundary from the DUT's own `STATUS.TXFULL` / `STATUS.READY` report and then write one beat past it, so no FIFO depth is imported as a golden. The sixth bit the register block defines, ACCESSINVAL, is *not claimed*: its documented trigger is a TXDATA write with no bytes enabled, which neither this AXI master nor the wrapper's zero-strobe ack presents to the core.
 |CHK-WATERMARK
-|`STATUS.TXWM` follows the documented polarity (`spi_controller.rdl` `STATUS.TXWM`: set while TXQD is below `CTRL.TX_WATERMARK`): set while empty and at occupancy `wm-1`, clear at the exact watermark and after filling past it.
+|`STATUS.TXWM` follows the documented polarity (upstream `spi_host` `STATUS.TXWM`: set while TXQD is below `CONTROL.TX_WATERMARK`): set while empty and at occupancy `wm-1`, clear at the exact watermark and after filling past it.
 |CHK-ENABLE
 |Clearing the enable holds the queued command off; setting it drains the transmit FIFO. The negative window is not a constant: the test first measures how many polls the same one-word command takes to drain with the core ENABLED, then requires the disabled command to survive a fixed multiple of that measurement, with `TXQD` still 1 and `TXEMPTY` clear at the end of it. A device that ignored the enable but merely executed slowly would pass a hand-picked window; it cannot pass a calibrated one.
+|CHK-ZERO-STRB
+|A 64-bit beat (`AxSIZE=3`) that writes only the 4-byte CONTROL half returns OKAY, the CONTROL readback matches the written value, and `ERROR_STATUS` stays 0. The empty STATUS half is the neighbour the 64-to-32 downsizer presents with `WSTRB==0`; without the wrapper ack that beat is SLVERR from the upstream register file.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

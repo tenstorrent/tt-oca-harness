@@ -27,7 +27,8 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   INTR_ENABLE clear (the enable gates only the outgoing line),
                   a write of 0 to INTR_TEST does not clear it, and W1C does.
                   INTR_STATE.SPI_EVENT is Status-type and tracks the INTR_TEST
-                  force level instead.
+                  force level instead. INTR_ENABLE raises and drops
+                  sep_internal_interrupts[13] (PIC source 14) for both sources.
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -43,11 +44,13 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   SPIEN=1 lets it execute (FIFO drains).
   CHK-NONVAC    : every walked reg reads back different from its observed pre-write
                   value, so no entry in the walk is a no-op against a tied-off decode.
+  CHK-ZERO-STRB : a 64-bit beat that enables only the CONTROL half returns OKAY,
+                  lands that write, and leaves ERROR_STATUS clear. The empty
+                  STATUS half is the neighbour the 64-to-32 downsizer would
+                  present as WSTRB==0; the wrapper acks that beat locally.
 
 RXWM is covered by the RX-path tests (`sep_spi_ot_flash_cmd_rand_test` /
-`sep_spi_ot_dma_rx_test`). CHK-INTR samples aggregator bit 13
-(`sep_internal_interrupts[13]`, PIC source 14) on the same INTR_TEST raise
-and release.
+`sep_spi_ot_dma_rx_test`).
 
 no_cpu / +skip_fuse_sense.
 """
@@ -68,6 +71,7 @@ from seq_lib.sep_spi_host_csr_seq import (
     CTRL_SPIEN,
     CTRL_SW_RST,
     CTRL_TX_WM_LSB,
+    ERR_ACCESSINVAL,
     ERR_CMDBUSY,
     ERR_CMDINVAL,
     ERR_CSIDINVAL,
@@ -129,6 +133,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
         await self._chk_reset()
         await self._chk_reg_rw()
+        await self._chk_zero_strb()
         await self._chk_intr()
         await self._chk_err_w1c()
         await self._chk_watermark()
@@ -234,6 +239,36 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         for name, addr, _, _, _ in self.scfg.rw_regs:
             await self.spi.wr(addr, RESET_VALUES[name][1])
 
+    # ---- CHK-ZERO-STRB ----------------------------------------------------
+    async def _chk_zero_strb(self) -> None:
+        # CONTROL sits at an 8-byte-aligned address; STATUS is the next word.
+        # A 64-bit beat (AxSIZE=3) that carries only four payload bytes enables
+        # the CONTROL half. The 64-to-32 downsizer then presents the STATUS
+        # half with WSTRB==0. Without the wrapper ack that beat returns SLVERR
+        # from the upstream register file.
+        await self._clear_error_status()
+        pre_ctrl = await self.spi.rd(CONTROL)
+        written = CTRL_RESET | CTRL_OUTPUT_EN
+        if written == pre_ctrl:
+            written = CTRL_RESET
+        await self.spi.wr(CONTROL, written, length=4, size=3)
+        got = await self.spi.rd(CONTROL)
+        assert got == written, (
+            f"CHK-ZERO-STRB: CONTROL readback 0x{got:08x} != written 0x{written:08x} "
+            f"-- the enabled half of the 64-bit beat did not land"
+        )
+        es = await self.spi.rd(ERROR_STATUS)
+        assert es == 0, (
+            f"CHK-ZERO-STRB: ERROR_STATUS 0x{es:08x} after the 64-bit beat "
+            f"(ACCESSINVAL 0x{ERR_ACCESSINVAL:x} must stay clear)"
+        )
+        await self.spi.wr(CONTROL, CTRL_RESET)
+        self.logger.info(
+            "CHK-ZERO-STRB PASS: 64-bit CONTROL write with a 4-byte payload "
+            "returned OKAY, landed 0x%08x, ERROR_STATUS stayed 0",
+            written,
+        )
+
     # ---- CHK-INTR ---------------------------------------------------------
     async def _chk_intr(self) -> None:
         # Graded against the upstream OpenTitan interrupt contract the SEP
@@ -250,8 +285,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         #   tracks its source level, with INTR_TEST holding a force that a write
         #   of 0 releases.
         #
-        # Line-level delivery (INTR_ENABLE gating irq) is not observable from
-        # these CSRs; sep_irq_ip_to_aggregator_test covers it.
+        # The wrapper ORs the two core lines onto one SEP interrupt. That OR
+        # is sampled on sep_internal_interrupts[13].
         #
         # EVENT_ENABLE and ERROR_STATUS are clean here, so INTR_TEST is the only
         # source either bit can have.
@@ -261,6 +296,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(INTR_STATE, INTR_STATE_MASK)  # W1C the event latch
         st = await self.spi.rd(INTR_STATE)
         assert st == 0, f"CHK-INTR baseline: INTR_STATE 0x{st:08x} with every source clear"
+        await self.poll_internal_irq(_SPI_AGG, 0)
 
         # ERROR: Event latch, set with the enable clear, cleared only by W1C.
         await self.spi.wr(INTR_TEST, INTR_ERROR)
@@ -270,15 +306,20 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"INTR_ENABLE is clear -- the enable gates the line, not the state "
             f"(0x{st:08x})"
         )
+        await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_TEST, 0)
         st = await self.spi.rd(INTR_STATE)
         assert st & INTR_ERROR, (
             f"CHK-INTR ERROR: the state latch followed INTR_TEST down instead of "
             f"holding until W1C (0x{st:08x})"
         )
+        await self.spi.wr(INTR_ENABLE, INTR_ERROR)
+        await self.poll_internal_irq(_SPI_AGG, 1)
         await self.spi.wr(INTR_STATE, INTR_ERROR)
         st = await self.spi.rd(INTR_STATE)
         assert not (st & INTR_ERROR), f"CHK-INTR ERROR: W1C did not clear the latch (0x{st:08x})"
+        await self.poll_internal_irq(_SPI_AGG, 0)
+        await self.spi.wr(INTR_ENABLE, 0)
 
         # SPI_EVENT: Status-type, read-only, follows the INTR_TEST force level.
         await self.spi.wr(INTR_TEST, INTR_SPI_EVENT)
@@ -286,16 +327,24 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         assert st & INTR_SPI_EVENT, (
             f"CHK-INTR SPI_EVENT: INTR_TEST did not force the status bit (0x{st:08x})"
         )
+        await self.poll_internal_irq(_SPI_AGG, 0)
+        await self.spi.wr(INTR_ENABLE, INTR_SPI_EVENT)
+        await self.poll_internal_irq(_SPI_AGG, 1)
         await self.spi.wr(INTR_TEST, 0)
         st = await self.spi.rd(INTR_STATE)
         assert not (st & INTR_SPI_EVENT), (
             f"CHK-INTR SPI_EVENT: releasing INTR_TEST left the status bit set "
             f"(0x{st:08x}) -- a status interrupt tracks its source level"
         )
+        await self.poll_internal_irq(_SPI_AGG, 0)
+        await self.spi.wr(INTR_ENABLE, 0)
         self.logger.info(
             "CHK-INTR PASS: INTR_STATE.ERROR latches on INTR_TEST with INTR_ENABLE "
-            "clear, holds across an INTR_TEST release and clears only on W1C; "
-            "INTR_STATE.SPI_EVENT tracks the INTR_TEST force level"
+            "clear and aggregator [%d] held off, holds across an INTR_TEST release, "
+            "raises the aggregator only after INTR_ENABLE, and clears both on W1C; "
+            "INTR_STATE.SPI_EVENT tracks the INTR_TEST force level and the same "
+            "enable gate",
+            _SPI_AGG,
         )
 
     # ---- CHK-ERR-W1C ------------------------------------------------------
