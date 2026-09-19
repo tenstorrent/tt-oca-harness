@@ -848,9 +848,9 @@ to the SEP BL0 functionality.</p>
 <div class="paragraph">
 <p>SEP will have one SPI host to support access to external NOR flash
 devices which are the primary BL1 image source. Modern devices are MT35
-type and have octal x8 DDR interfaces. We will also support the older
-MT25 category devices using x4 and x1 channels SPI as these are less
-expensive.</p>
+type and have octal x8 DDR interfaces; the OpenTitan SPI Host does not
+drive those, so SEP uses the x4 and x1 channel modes it does support and
+attaches MT25 category devices.</p>
 </div>
 <div class="sect2">
 <h3 id="spi-use-cases"><a class="anchor" href="#spi-use-cases"></a><a class="link" href="#spi-use-cases">Use Cases</a></h3>
@@ -875,23 +875,13 @@ design and support the following features:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>All channel types are supported:</p>
-<div class="ulist">
-<ul>
-<li>
 <p>Single channel (x1) mode, clock frequency up to 80 MHz</p>
 </li>
 <li>
+<p>Dual channel (x2) mode</p>
+</li>
+<li>
 <p>QSPI (x4), quad channel mode, clock frequency up to 166 MHz</p>
-</li>
-<li>
-<p>Octal (x8) in DDR mode, clock frequency up to 200 MHz</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>DQS read data strobe input</p>
 </li>
 <li>
 <p>Separate FIFOs for transmit and receive. Each can be parameterized for
@@ -903,6 +893,13 @@ distinct depth.</p>
 </ul>
 </div>
 <div class="paragraph">
+<p>Quad is the widest mode the IP offers: it drives four data lines, and its
+per-segment speed selector encodes only standard, dual and quad. All transfers
+are single transfer rate, so there is no octal (x8) mode, no DDR mode and no
+DQS read data strobe. An integrator needing those must substitute their own
+controller at the <code>sep_io_spi</code> boundary.</p>
+</div>
+<div class="paragraph">
 <p>The SPI pass-through mode supported by OpenTitan is used on discrete
 secure element designs as a security bridge to filter, modify or
 otherwise modify traffic coming from a separate SPI slave device. We do
@@ -911,13 +908,25 @@ component unconnected or terminated. Furthermore, there is no SPI Slave
 device present in the SEP peripheral subsystem.</p>
 </div>
 <div class="paragraph">
-<p>The SEP instantiates a SPI host controller for boot. The <code>sep_ot_spi_wrap</code> module wraps the modified OpenTitan-derived <code>spi_controller</code> with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (<code>lsio_trigger_o</code>). The <code>NUM_CS</code> parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the <code>sep_io_spi</code> boundary. The controller&#8217;s interrupt is consumed internally: it feeds the SEP PIC via <code>sep_internal_interrupts</code> (through the <code>irq</code> field of <code>sep_io_spi_req_t</code>).</p>
+<p>The SEP instantiates a SPI host controller for boot. The <code>sep_ot_spi_wrap</code> module wraps the unmodified OpenTitan SPI host on its native TL-UL register interface and bridges the AXI4-Lite bus the peripheral fabric presents, the same arrangement the cryptographic accelerators use. It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output and a DMA trigger (<code>lsio_trigger_o</code>). The <code>NUM_CS</code> parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the <code>sep_io_spi</code> boundary. The controller&#8217;s interrupt is consumed internally: it feeds the SEP PIC via <code>sep_internal_interrupts</code> (through the <code>irq</code> field of <code>sep_io_spi_req_t</code>). The two OpenTitan interrupt sources, error and SPI event, are combined onto that single line, so software reads <code>INTR_STATE</code> to tell them apart. There is no busy output: the OpenTitan host reports activity only through <code>STATUS.ACTIVE</code>, which software reads over the register interface. The block&#8217;s access-control (RACL) and SPI pass-through interfaces are not used and are tied off.</p>
+</div>
+<div class="paragraph">
+<p>The interrupt semantics are the OpenTitan ones throughout.
+<code>INTR_STATE.ERROR</code> is a latched event: an error
+condition or a write to <code>INTR_TEST</code> sets it, it stays set once the cause goes
+away and once <code>INTR_TEST</code> is written back to zero, and software clears it by
+writing 1 to it. Clearing <code>ERROR_STATUS</code> does not clear it.
+<code>INTR_STATE.SPI_EVENT</code> is a status bit that instead follows the level of the
+events selected by <code>EVENT_ENABLE</code>. <code>INTR_ENABLE</code> qualifies only the outgoing
+interrupt line; neither state bit is gated by it, so both read their source with
+the enable clear.</p>
 </div>
 <div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host
-documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
+documentation</a> for the authoritative core functionality of the IP; the SEP
+instantiates it unmodified, so that description applies here without amendment.
+The register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
 </div>
 </div>
 </div>
