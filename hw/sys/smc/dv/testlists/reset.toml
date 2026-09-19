@@ -135,7 +135,8 @@ run_modes = ["smoke"]
 # same declaration and the same gate, so a second would differ only in two
 # addresses.
 name = "smc_reset_unit_lock_test"
-module = "smc_reset_unit_lock_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_reset_unit_lock_test", uvm = "smc_reset_unit_lock_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset"]
@@ -203,7 +204,8 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_multi_reset_csr_persistence_test"
-module = "smc_multi_reset_csr_persistence_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_multi_reset_csr_persistence_test", uvm = "smc_multi_reset_csr_persistence_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
