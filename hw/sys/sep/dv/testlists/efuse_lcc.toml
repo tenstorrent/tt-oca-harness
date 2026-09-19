@@ -62,7 +62,6 @@ args = [
 # +skip_fuse_sense -- the JTAG LC gate depends on the sensed lc_state).
 # PROD/RMA_SIP JTAG may reach the MMR token block (TOKEN_I / TOKEN_EOP /
 # MATCH) and must DECERR on shadow and the program/read interface.
-# After sense-done both OTP JTAG2AXIL dbg_disable bits read 0 (LCC ungated).
 name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"

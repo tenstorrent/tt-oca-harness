@@ -285,7 +285,7 @@ never when it was written.
 |`sep_efuse_jtag_axil_el2_cpu_mux_test`
 |cpu, real fuse sense
 |ocah_axi_vip, CPU FW
-|The debug-port counterpart to the two-processor coexistence test. After sense-done both OTP JTAG2AXIL `dbg_disable` bits read 0.
+|The debug-port counterpart to the two-processor coexistence test. A real-sensed PROD image makes the JTAG path LC-restricted, so one image proves allowed-MMR coexistence and the LC-gated shadow deny while the CPU reads the same eFuse port.
 |`sep_nmi_sanity_test`
 |cpu
 |ocah_axi_vip, CPU FW
@@ -2382,7 +2382,7 @@ remapped routes to the error slave and never executes.
 *Test Procedure*:
 
 [arabic]
-. Real-sense a production image; wait for sense-done; both OTP JTAG2AXIL `dbg_disable` bits read 0; publish CPU-ready.
+. Real-sense a production image; wait for sense-done; publish CPU-ready.
 . CPU: a free-running loop reading and value-checking a token register, publishing a counter to cold scratch. The CPU issues no eFuse writes, so only the read channel is contended.
 . Host, concurrently: 16 debug-port register rounds (52 AXI-Lite operations), all expected to succeed.
 . Host: attempt a debug-port read of the protected shadow window; expect a decode error.
