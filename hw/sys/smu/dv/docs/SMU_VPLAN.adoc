@@ -1700,7 +1700,7 @@ check.
 *Test Coverage*:
 
 * Every port read has a row in `hw/sys/smu/doc/port_table.adoc`, which gives presence, direction, type, width expression and, for the CTP channels, the "Tie to '0 if unused" note the inertness legs rest on.
-* The numeric widths those expressions elaborate to, and the SMN struct field layout, come from the implementation (`hw/sys/smu/rtl/smu_pkg.sv`, `smu_axi_xbar_pkg.sv`), so each width compare is a drift check on elaboration against a table that mirrors those packages -- it carries no requirement, and `cocotb_wrapper/seq_lib/smu_compose_helpers.py` states which constant comes from where.
+* The numeric widths those expressions elaborate to, and the SMN struct field layout, come from the implementation (`hw/sys/smu/rtl/smu_pkg.sv`, `smu_axi_xbar_pkg.sv`), so each width compare is a drift check on elaboration against a table that mirrors those packages -- it carries no requirement, and `cocotb/seq_lib/smu_compose_helpers.py` states which constant comes from where.
 * The CTP channels whose data inputs the wrapper ties to zero are read static at the DTP consumer and at the SMU boundary across the run; that leg is device-observed and is the part of the card that is a requirement.
 
 *Test Procedure*:
