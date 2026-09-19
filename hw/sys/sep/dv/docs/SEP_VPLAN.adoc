@@ -2383,7 +2383,7 @@ remapped routes to the error slave and never executes.
 
 [arabic]
 . Real-sense a production image; wait for sense-done; publish CPU-ready.
-. CPU: a free-running loop reading and value-checking a token register, publishing a counter to cold scratch. The CPU issues no eFuse writes, so only the read channel is contended.
+. CPU: a free-running loop scoring two reads per pass -- a token register at its 0 reset value, and the eFuse interface STATUS with `efuse_sense_done` still set -- publishing a counter and an error count to cold scratch. The set status bit is the live control: a mux that stops returning CPU read data yields 0, which the 0-expecting read alone would accept. The CPU issues no eFuse writes, so only the read channel is contended.
 . Host, concurrently: 16 debug-port register rounds (52 AXI-Lite operations), all expected to succeed.
 . Host: attempt a debug-port read of the protected shadow window; expect a decode error.
 . Host: repeat a register read after the denial; expect success.
