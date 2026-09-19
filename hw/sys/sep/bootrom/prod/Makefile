@@ -518,11 +518,11 @@ $(BL1_TEST_BIN):
 # "fix" the module paths here to match the repo name; they would stop resolving.
 #
 # The packer imports native wheels such as cryptography. Keep its environment
-# local to this invocation so a cached environment created on another host
-# cannot supply ABI-incompatible binaries; uv still detects the current OS,
-# architecture and libc when resolving those wheels.
+# local to this invocation and bypass the shared package cache so artifacts
+# resolved on another host cannot supply ABI-incompatible binaries; uv still
+# detects the current OS, architecture and libc when resolving those wheels.
 ifneq ($(shell command -v uv 2>/dev/null),)
-PACK_RUN := uv run --isolated --no-project \
+PACK_RUN := uv run --isolated --no-cache --no-project \
 	--with-editable "$(TT_OCA_MANIFEST_DIR)" \
 	python -m tt_boot_manifest.pack_images
 else
