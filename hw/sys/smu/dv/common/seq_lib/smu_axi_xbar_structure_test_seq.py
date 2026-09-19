@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import cocotb
 
+from seq_lib.smu_compose_helpers import GenerateScope
 from seq_lib.smu_tb_pins import smu_scope
 
 
@@ -25,11 +26,6 @@ class smu_axi_xbar_structure_test_seq:
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
-    def _require_child(self, parent, name: str):
-        if not hasattr(parent, name):
-            raise AssertionError(f"missing hierarchical child {name} under {parent}")
-        return getattr(parent, name)
-
     async def run(self) -> None:
         dut = self.dut
         sb = self.test.env.scoreboard
@@ -37,12 +33,14 @@ class smu_axi_xbar_structure_test_seq:
         smu = wrap.u_smu if hasattr(wrap, "u_smu") else wrap
         sb.expect_true(
             "CHK-XBAR-POS-NO-GEN-SEP: gen_sep absent under SEP=0",
-            not hasattr(smu, "gen_sep"),
+            not GenerateScope(smu, "gen_sep").exists(),
             evidence="CHK-XBAR-POS-NO-GEN-SEP",
         )
-        gen = self._require_child(smu, "gen_no_sep")
-        in_ok = hasattr(gen, "u_iw_conv_smc_in")
-        out_ok = hasattr(gen, "u_iw_conv_smc_out")
+        gen = GenerateScope(smu, "gen_no_sep")
+        if not gen.exists():
+            raise AssertionError(f"missing hierarchical child gen_no_sep under {smu}")
+        in_ok = gen.has("u_iw_conv_smc_in")
+        out_ok = gen.has("u_iw_conv_smc_out")
         sb.expect_true(
             "CHK-XBAR-POS-IW: gen_no_sep u_iw_conv_smc_in/out resolve",
             in_ok and out_ok,
@@ -51,7 +49,7 @@ class smu_axi_xbar_structure_test_seq:
         self.pos_ok = in_ok and out_ok
         self._log("CHK-XBAR-POS: gen_no_sep u_iw_conv_smc_in/out resolve under SEP=0")
 
-        xbar_present = hasattr(gen, "u_smu_axi_xbar")
+        xbar_present = gen.has("u_smu_axi_xbar")
         sb.expect_true(
             "CHK-XBAR-ABSENT-NO-SEP: smu_axi_xbar absent under gen_no_sep",
             not xbar_present,
