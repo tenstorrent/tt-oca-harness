@@ -219,25 +219,22 @@ class sep_base_test(uvm_test):
         value = sig.value
         bits = getattr(value, "binstr", None)
         if bits is None:
-            # Fully resolved already: int() would not have raised.
-            return int(value)
-        unknown = [
-            i
-            for i, c in enumerate(reversed(bits))
-            if c not in "01" and (mask is None or (mask >> i) & 1)
-        ]
-        if unknown:
-            raise AssertionError(
-                f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
-                f"compare reads: binstr={bits!r}, unknown bit indices {unknown}. "
-                "A zero-expecting compare on an unknown node passes for free, so "
-                "it is raised here instead."
-            )
-        cleaned = "".join(c if c in "01" else "0" for c in bits)
-        result = int(cleaned, 2)
-        # Return only what the caller asked about. An out-of-mask X reads as 0
-        # above, so handing the whole word back would let a compare match on a
-        # bit nobody demanded to be known.
+            result = int(value)
+        else:
+            unknown = [
+                i
+                for i, c in enumerate(reversed(bits))
+                if c not in "01" and (mask is None or (mask >> i) & 1)
+            ]
+            if unknown:
+                raise AssertionError(
+                    f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
+                    f"compare reads: binstr={bits!r}, unknown bit indices {unknown}. "
+                    "A zero-expecting compare on an unknown node passes for free, so "
+                    "it is raised here instead."
+                )
+            cleaned = "".join(c if c in "01" else "0" for c in bits)
+            result = int(cleaned, 2)
         return result if mask is None else result & mask
 
     @staticmethod
