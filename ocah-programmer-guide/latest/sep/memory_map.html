@@ -439,8 +439,8 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10801FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">56 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AON_Timer</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Always-On Timer with wakeup and watchdog functionality. Provides a 64-bit wakeup timer with prescaler and a 32-bit watchdog timer with bark and bite thresholds.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always-On Timer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Wakeup and watchdog timers running on a low-power, always-on clock</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10802000</p></td>
@@ -1748,20 +1748,20 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <h2>Register List:</h2>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>Alert Test Register</td></tr>
-<tr><td>0x4</td><td><a href="#WKUP_CTRL">WKUP_CTRL</a></td><td>RW</td><td>Wakeup Timer Control register. Each write to the register resets the internal prescaler count.</td></tr>
-<tr><td>0x8</td><td><a href="#WKUP_THOLD_HI">WKUP_THOLD_HI</a></td><td>RW</td><td>Wakeup Timer Threshold Register (bits 63 - 32)</td></tr>
-<tr><td>0xC</td><td><a href="#WKUP_THOLD_LO">WKUP_THOLD_LO</a></td><td>RW</td><td>Wakeup Timer Threshold Register (bits 31 - 0)</td></tr>
-<tr><td>0x10</td><td><a href="#WKUP_COUNT_HI">WKUP_COUNT_HI</a></td><td>RW</td><td>Wakeup Timer Count Register (bits 63 - 32)</td></tr>
-<tr><td>0x14</td><td><a href="#WKUP_COUNT_LO">WKUP_COUNT_LO</a></td><td>RW</td><td>Wakeup Timer Count Register (bits 31 - 0)</td></tr>
-<tr><td>0x18</td><td><a href="#WDOG_REGWEN">WDOG_REGWEN</a></td><td>RW</td><td>Watchdog Timer Write Enable Register</td></tr>
-<tr><td>0x1C</td><td><a href="#WDOG_CTRL">WDOG_CTRL</a></td><td>RW</td><td>Watchdog Timer Control register</td></tr>
-<tr><td>0x20</td><td><a href="#WDOG_BARK_THOLD">WDOG_BARK_THOLD</a></td><td>RW</td><td>Watchdog Timer Bark Threshold Register</td></tr>
-<tr><td>0x24</td><td><a href="#WDOG_BITE_THOLD">WDOG_BITE_THOLD</a></td><td>RW</td><td>Watchdog Timer Bite Threshold Register</td></tr>
-<tr><td>0x28</td><td><a href="#WDOG_COUNT">WDOG_COUNT</a></td><td>RW</td><td>Watchdog Timer Count Register</td></tr>
-<tr><td>0x2C</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>Interrupt State Register</td></tr>
-<tr><td>0x30</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x34</td><td><a href="#WKUP_CAUSE">WKUP_CAUSE</a></td><td>RW</td><td>Wakeup request status</td></tr>
+<tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#WKUP_CTRL">WKUP_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#WKUP_THOLD_HI">WKUP_THOLD_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#WKUP_THOLD_LO">WKUP_THOLD_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#WKUP_COUNT_HI">WKUP_COUNT_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#WKUP_COUNT_LO">WKUP_COUNT_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#WDOG_REGWEN">WDOG_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#WDOG_CTRL">WDOG_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#WDOG_BARK_THOLD">WDOG_BARK_THOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#WDOG_BITE_THOLD">WDOG_BITE_THOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#WDOG_COUNT">WDOG_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#WKUP_CAUSE">WKUP_CAUSE</a></td><td>RW</td><td>-</td></tr>
 </table>
 <h2>Register Details:</h2>
 <h3 id="ALERT_TEST">ALERT_TEST</h3>
@@ -1774,8 +1774,8 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>12:1</td><td>prescaler</td><td>RW</td><td>0x0</td><td>Pre-scaler value for wakeup timer count.</td></tr>
-<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When set to 1, the wakeup timer will count.</td></tr>
+<tr><td>12:1</td><td>prescaler</td><td>RW</td><td>0x0</td><td>Pre-scaler value for wakeup timer count</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When set to 1, the wakeup timer will count</td></tr>
 </table>
 <h3 id="WKUP_THOLD_HI">WKUP_THOLD_HI</h3>
 <table>
@@ -1836,8 +1836,8 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>wdog_timer_bark</td><td>W</td><td>0x0</td><td>Write 1 to force wdog_timer_bark interrupt.</td></tr>
-<tr><td>0</td><td>wkup_timer_expired</td><td>W</td><td>0x0</td><td>Write 1 to force wkup_timer_expired interrupt.</td></tr>
+<tr><td>1</td><td>wdog_timer_bark</td><td>W</td><td>-</td><td>Write 1 to force wdog_timer_bark interrupt.</td></tr>
+<tr><td>0</td><td>wkup_timer_expired</td><td>W</td><td>-</td><td>Write 1 to force wkup_timer_expired interrupt.</td></tr>
 </table>
 <h3 id="WKUP_CAUSE">WKUP_CAUSE</h3>
 <table>
@@ -1887,85 +1887,85 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>fatal_fault</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
-<tr><td>0</td><td>recov_ctrl_update_err</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>1</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>RECOV_CTRL_UPDATE_ERR</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
 </table>
 <h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>KEY_SHARE0</td><td>W</td><td>0x0</td><td>Initial Key Registers Share 0.<br><br>The actual initial key corresponds to Initial Key Registers<br>Share 0 XORed with Initial Key Registers Share 1.  Loaded into<br>the internal Full Key register upon starting<br>encryption/decryption of the next block.  All key registers<br>(Share 0 and Share 1) must be written at least once when the<br>key is changed, regardless of key length (write random data<br>for unused bits).  The order in which the registers are<br>updated does not matter.  Can only be updated when the AES<br>unit is idle.  If the AES unit is non-idle, writes to these<br>registers are ignored.<br>Upon reset, these registers are cleared with pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>KEY_SHARE0</td><td>W</td><td>0x0</td><td>Initial Key Share 0</td></tr>
 </table>
 <h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>KEY_SHARE1</td><td>W</td><td>0x0</td><td>Initial Key Registers Share 1.<br><br>The actual initial key corresponds to Initial Key Registers<br>Share 0 XORed with Initial Key Registers Share 1.  Loaded into<br>the internal Full Key register upon starting<br>encryption/decryption of the next block.  All key registers<br>(Share 0 and Share 1) must be written at least once when the<br>key is changed, regardless of key length (write random data<br>for unused bits).  The order in which the registers are<br>updated does not matter.  Can only be updated when the AES<br>unit is idle.  If the AES unit is non-idle, writes to these<br>registers are ignored.  Upon reset, these registers are<br>cleared with pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>KEY_SHARE1</td><td>W</td><td>0x0</td><td>Initial Key Share 1</td></tr>
 </table>
 <h3 id="IV_4_">IV[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>IV</td><td>RW</td><td>0x0</td><td>Initialization Vector Registers.<br><br>The initialization vector (IV) or initial counter value must<br>be written to these registers when starting a new message in<br>CBC or CTR mode (see Control Register), respectively.  In CBC<br>and CTR modes, the AES unit does not start<br>encryption/decryption with a partially updated IV.  Each<br>register has to be written at least once.  The order in which<br>the registers are written does not matter.  If the AES unit is<br>non-idle, writes to these registers are ignored.  Whenever<br>starting a new message, the corresponding IV value must be<br>provided by the processor.  Once started, the AES unit<br>automatically updates the contents of these registers.  In ECB<br>mode, the IV registers are not used and do not need to be<br>configured.  Upon reset, these registers are cleared with<br>pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>IV</td><td>RW</td><td>0x0</td><td>Initialization Vector</td></tr>
 </table>
 <h3 id="DATA_IN_4_">DATA_IN[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA_IN</td><td>W</td><td>0x0</td><td>Input Data Registers.<br><br>If MANUAL_OPERATION=0 (see Control Register), the AES unit<br>automatically starts encryption/decryption after all Input<br>Data registers have been written.  Each register has to be<br>written at least once.  The order in which the registers are<br>written does not matter.  Loaded into the internal State<br>register upon starting encryption/decryption of the next<br>block.  After that, the processor can update the Input Data<br>registers (See INPUT_READY field of Status Register).  Upon<br>reset, these registers are cleared with pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>DATA_IN</td><td>W</td><td>0x0</td><td>Input Data</td></tr>
 </table>
 <h3 id="DATA_OUT_4_">DATA_OUT[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA_OUT</td><td>R</td><td>0x0</td><td>Output Data Register.<br><br>Holds the output data produced by the AES unit during the last<br>encryption/decryption operation.  If MANUAL_OPERATION=0 (see<br>Control Register), the AES unit is stalled when the previous<br>output data has not yet been read and is about to be<br>overwritten.  Each register has to be read at least once.  The<br>order in which the registers are read does not matter.  Upon<br>reset, these registers are cleared with pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>DATA_OUT</td><td>R</td><td>0x0</td><td>Output Data</td></tr>
 </table>
 <h3 id="CTRL_SHADOWED">CTRL_SHADOWED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15</td><td>MANUAL_OPERATION</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit is operated in<br>normal/automatic mode (0) or fully manual mode (1).  In<br>automatic mode (0), the AES unit automatically i) starts<br>to encrypt/decrypt when it receives new input data, and<br>ii) stalls during the last encryption/decryption cycle if<br>the previous output data has not yet been read.  This is<br>the most efficient mode to operate in.  Note that the<br>corresponding status tracking is automatically cleared<br>upon a write to the Control Register.  In manual mode (1),<br>the AES unit i) only starts to encrypt/decrypt after<br>receiving a start trigger (see Trigger Register), and ii)<br>overwrites previous output data irrespective of whether it<br>has been read out or not.  This mode is useful if software needs full<br>control over the AES unit.</td></tr>
-<tr><td>14:12</td><td>PRNG_RESEED_RATE</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to control the reseeding rate<br>of the internal pseudo-random number generator (PRNG) used<br>for masking. Invalid input values, i.e., values with<br>multiple bits set and value 3&#x27;b000 are mapped to the<br>highest reseeding rate PER_1 (3&#x27;b001).</td></tr>
-<tr><td>11</td><td>SIDELOAD</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit uses the key<br>provided by the key manager via key sideload interface (1)<br>or the key provided by software via Initial Key Registers<br>KEY_SHARE1_0 - KEY_SHARE1_7 (0).</td></tr>
-<tr><td>10:8</td><td>KEY_LEN</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to select AES key length.<br>Invalid input values, i.e., values with multiple bits set,<br>value 3&#x27;b000, and value 3&#x27;b010 in case 192-bit keys are<br>not supported (because disabled at compile time) are<br>mapped to AES_256 (3&#x27;b100).</td></tr>
-<tr><td>7:2</td><td>MODE</td><td>RW</td><td>0x3F</td><td>6-bit one-hot field to select AES block cipher<br>mode.  Invalid input values, i.e., values with multiple<br>bits set and value 6&#x27;b00_0000, are mapped to AES_NONE<br>(6&#x27;b11_1111).</td></tr>
-<tr><td>1:0</td><td>OPERATION</td><td>RW</td><td>0x1</td><td>2-bit one-hot field to select the operation of AES<br>unit.  Invalid input values, i.e., values with multiple<br>bits set and value 2&#x27;b00, are mapped to AES_ENC (2&#x27;b01).</td></tr>
+<tr><td>15</td><td>MANUAL_OPERATION</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit is operated in normal/automatic mode (0) or fully manual mode (1).<br>In automatic mode (0), the AES unit automatically i) starts to encrypt/decrypt when it receives new input data, and ii) stalls during the last encryption/decryption cycle if the previous output data has not yet been read.<br>This is the most efficient mode to operate in.<br>Note that the corresponding status tracking is automatically cleared upon a write to the Control Register.<br>In manual mode (1), the AES unit i) only starts to encrypt/decrypt after receiving a start trigger (see Trigger Register), and ii) overwrites previous output data irrespective of whether it has been read out or not.<br>This mode is useful if software needs full control over the AES unit.</td></tr>
+<tr><td>14:12</td><td>PRNG_RESEED_RATE</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to control the reseeding rate of the internal pseudo-random number generator (PRNG) used for masking.<br>Invalid input values, i.e., values with multiple bits set and value 3&#x27;b000 are mapped to the highest reseeding rate PER_1 (3&#x27;b001).</td></tr>
+<tr><td>11</td><td>SIDELOAD</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit uses the key provided by the key manager via key sideload interface (1) or the key provided by software via Initial Key Registers KEY_SHARE1_0 - KEY_SHARE1_7 (0).</td></tr>
+<tr><td>10:8</td><td>KEY_LEN</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to select AES key length.<br>Invalid input values, i.e., values with multiple bits set, value 3&#x27;b000, and value 3&#x27;b010 in case 192-bit keys are not supported (because disabled at compile time) are mapped to AES_256 (3&#x27;b100).</td></tr>
+<tr><td>7:2</td><td>MODE</td><td>RW</td><td>0x3F</td><td>6-bit one-hot field to select AES block cipher mode.<br>Invalid input values, i.e., values with multiple bits set and value 6&#x27;b00_0000, are mapped to AES_NONE (6&#x27;b11_1111).</td></tr>
+<tr><td>1:0</td><td>OPERATION</td><td>RW</td><td>0x1</td><td>2-bit one-hot field to select the operation of AES unit.<br>Invalid input values, i.e., values with multiple bits set and value 2&#x27;b00, are mapped to AES_ENC (2&#x27;b01).</td></tr>
 </table>
 <h3 id="CTRL_AUX_SHADOWED">CTRL_AUX_SHADOWED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>FORCE_MASKS</td><td>RW</td><td>0x0</td><td>Allow the internal masking PRNG to advance (0) or<br>force its internal state (1) leading to constant masks.<br>Setting all masks to constant value can be useful when<br>performing SCA.  To completely disable the masking, the<br>second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be<br>zero as well.  In addition, a special seed needs to be<br>loaded into the masking PRNG using the EDN interface.<br>Only applicable if both the Masking parameter and the<br>SecAllowForcingMasks parameter are set to one.</td></tr>
-<tr><td>0</td><td>KEY_TOUCH_FORCES_RESEED</td><td>RW</td><td>0x1</td><td>Controls whether providing a new key triggers the reseeding<br>of internal pseudo-random number generators used for clearing and<br>masking (1) or not (0).</td></tr>
+<tr><td>1</td><td>FORCE_MASKS</td><td>RW</td><td>0x0</td><td>Allow the internal masking PRNG to advance (0) or force its internal state (1) leading to constant masks.<br>Setting all masks to constant value can be useful when performing SCA.<br>To completely disable the masking, the second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be zero as well.<br>In addition, a special seed needs to be loaded into the masking PRNG using the EDN interface.<br>Only applicable if both the Masking parameter and the SecAllowForcingMasks parameter are set to one.</td></tr>
+<tr><td>0</td><td>KEY_TOUCH_FORCES_RESEED</td><td>RW</td><td>0x1</td><td>Controls whether providing a new key triggers the reseeding of internal pseudo-random number generators used for clearing and masking (1) or not (0).</td></tr>
 </table>
 <h3 id="CTRL_AUX_REGWEN">CTRL_AUX_REGWEN</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>CTRL_AUX_REGWEN</td><td>RW</td><td>0x1</td><td>Auxiliary Control Register configuration enable<br>bit.  If this is cleared to 0, the Auxiliary Control<br>Register cannot be written anymore.</td></tr>
+<tr><td>0</td><td>CTRL_AUX_REGWEN</td><td>RW</td><td>0x1</td><td>Auxiliary Control Register configuration enable bit.<br>If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.</td></tr>
 </table>
 <h3 id="TRIGGER">TRIGGER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>PRNG_RESEED</td><td>W</td><td>0x1</td><td>Keep continuing with the current states of the<br>internal pseudo-random number generators used for register<br>clearing and masking (0) or perform a reseed of the internal<br>states from the connected entropy source (1).  If the<br>KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control<br>Register is set to one, this trigger will automatically get<br>set after providing a new initial key.</td></tr>
-<tr><td>2</td><td>DATA_OUT_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Output Data registers (0) or<br>clear those registers with pseudo-random data (1).</td></tr>
-<tr><td>1</td><td>KEY_IV_DATA_IN_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Initial Key, internal Full<br>Key and Decryption Key registers, IV registers and Input<br>Data registers (0) or clear all those registers with<br>pseudo-random data (1).</td></tr>
-<tr><td>0</td><td>START</td><td>W</td><td>0x0</td><td>Keep AES unit paused (0) or trigger the<br>encryption/decryption of one data block (1).  This trigger<br>is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE<br>(see Control Register).</td></tr>
+<tr><td>3</td><td>PRNG_RESEED</td><td>W</td><td>0x1</td><td>Keep continuing with the current states of the internal pseudo-random number generators used for register clearing and masking (0) or perform a reseed of the internal states from the connected entropy source (1).<br>If the KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control Register is set to one, this trigger will automatically get set after providing a new initial key.</td></tr>
+<tr><td>2</td><td>DATA_OUT_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Output Data registers (0) or clear those registers with pseudo-random data (1).</td></tr>
+<tr><td>1</td><td>KEY_IV_DATA_IN_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Initial Key, internal Full Key and Decryption Key registers, IV registers and Input Data registers (0) or clear all those registers with pseudo-random data (1).</td></tr>
+<tr><td>0</td><td>START</td><td>W</td><td>0x0</td><td>Keep AES unit paused (0) or trigger the encryption/decryption of one data block (1).<br>This trigger is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE (see Control Register).</td></tr>
 </table>
 <h3 id="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>ALERT_FATAL_FAULT</td><td>R</td><td>0x0</td><td>No fatal fault has occurred inside the AES unit<br>(0).  A fatal fault has occurred and the AES unit needs to<br>be reset (1).  Examples for fatal faults include i) storage<br>errors in the Control Register, ii) if any internal FSM<br>enters an invalid state, iii) if any sparsely encoded signal<br>takes on an invalid value, iv) errors in the internal round<br>counter, v) escalations triggered by the life cycle<br>controller, and vi) fatal integrity failures on the TL-UL bus.</td></tr>
-<tr><td>5</td><td>ALERT_RECOV_CTRL_UPDATE_ERR</td><td>R</td><td>0x0</td><td>An update error has not occurred (0) or has<br>occurred (1) in the shadowed Control Register.  AES<br>operation needs to be restarted by re-writing the Control<br>Register.</td></tr>
-<tr><td>4</td><td>INPUT_READY</td><td>R</td><td>0x0</td><td>The AES unit is ready (1) or not ready (0) to<br>receive new data input via the DATA_IN registers.  If the<br>present values in the DATA_IN registers have not yet been<br>loaded into the module this flag is `0` (not ready).</td></tr>
+<tr><td>6</td><td>ALERT_FATAL_FAULT</td><td>R</td><td>0x0</td><td>No fatal fault has occurred inside the AES unit (0).<br>A fatal fault has occurred and the AES unit needs to be reset (1).<br>Examples for fatal faults include<br>i) storage errors in the Control Register,<br>ii) if any internal FSM enters an invalid state,<br>iii) if any sparsely encoded signal takes on an invalid value,<br>iv) errors in the internal round counter,<br>v) escalations triggered by the life cycle controller, and<br>vi) fatal integrity failures on the TL-UL bus.</td></tr>
+<tr><td>5</td><td>ALERT_RECOV_CTRL_UPDATE_ERR</td><td>R</td><td>0x0</td><td>An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.<br>AES operation needs to be restarted by re-writing the Control Register.</td></tr>
+<tr><td>4</td><td>INPUT_READY</td><td>R</td><td>0x0</td><td>The AES unit is ready (1) or not ready (0) to receive new data input via the DATA_IN registers.<br>If the present values in the DATA_IN registers have not yet been loaded into the<br>module this flag is `0` (not ready).</td></tr>
 <tr><td>3</td><td>OUTPUT_VALID</td><td>R</td><td>0x0</td><td>The AES unit has no valid output (0) or has valid output data (1).</td></tr>
-<tr><td>2</td><td>OUTPUT_LOST</td><td>R</td><td>0x0</td><td>All previous output data has been fully read by<br>the processor (0) or at least one previous output data block<br>has been lost (1).  It has been overwritten by the AES unit<br>before the processor could fully read it.  Once set to `1`,<br>this flag remains set until AES operation is restarted by<br>re-writing the Control Register.  The primary use of this<br>flag is for design verification.  This flag is not<br>meaningful if MANUAL_OPERATION=0 (see Control Register).</td></tr>
-<tr><td>1</td><td>STALL</td><td>R</td><td>0x0</td><td>The AES unit is not stalled (0) or stalled (1)<br>because there is previous output data that must be read by<br>the processor before the AES unit can overwrite this data.<br>This flag is not meaningful if MANUAL_OPERATION=1 (see<br>Control Register).</td></tr>
-<tr><td>0</td><td>IDLE</td><td>R</td><td>0x0</td><td>The AES unit is idle (1) or busy (0).  This flag<br>is `0` if one of the following operations is currently<br>running: i) encryption/decryption, ii) register clearing or<br>iii) PRNG reseeding.  This flag is also `0` if an<br>encryption/decryption is running but the AES unit is<br>stalled.</td></tr>
+<tr><td>2</td><td>OUTPUT_LOST</td><td>R</td><td>0x0</td><td>All previous output data has been fully read by the processor (0) or at least one previous output data block has been lost (1).<br>It has been overwritten by the AES unit before the processor could fully read it.<br>Once set to `1`, this flag remains set until AES operation is restarted by re-writing the Control Register.<br>The primary use of this flag is for design verification.<br>This flag is not meaningful if MANUAL_OPERATION=0 (see Control Register).</td></tr>
+<tr><td>1</td><td>STALL</td><td>R</td><td>0x0</td><td>The AES unit is not stalled (0) or stalled (1) because there is previous<br>output data that must be read by the processor before the AES unit can<br>overwrite this data.<br>This flag is not meaningful if MANUAL_OPERATION=1 (see Control Register).</td></tr>
+<tr><td>0</td><td>IDLE</td><td>R</td><td>0x0</td><td>The AES unit is idle (1) or busy (0).<br>This flag is `0` if one of the following operations is currently running: i) encryption/decryption, ii) register clearing or iii) PRNG reseeding.<br>This flag is also `0` if an encryption/decryption is running but the AES unit is stalled.</td></tr>
 </table>
 <h3 id="CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10:6</td><td>NUM_VALID_BYTES</td><td>RW</td><td>0x10</td><td>Number of valid bytes of the current input block.<br>Only the last block in the GCM_AAD and GCM_TEXT phases are<br>expected to have not all bytes marked as valid.  For all<br>other blocks, the number of valid bytes should be set to 16.<br>Invalid input values, i.e., the value 5&#x27;b0_0000, and all<br>other values different from 5&#x27;b1_0000 in case GCM is not<br>supported (because disabled at compile time) are mapped to<br>5&#x27;b1_0000.</td></tr>
-<tr><td>5:0</td><td>PHASE</td><td>RW</td><td>0x1</td><td>6-bit one-hot field to select the phase of the<br>Galois/Counter Mode (GCM) of operation.  Invalid input<br>values, i.e., values with multiple bits set and value<br>6&#x27;b00_0000, are mapped to GCM_INIT (6&#x27;b00_0001).  In case<br>support for GCM has been disabled at compile time, this<br>field is not writable and always reads as GCM_INIT<br>(6&#x27;b00_0001).</td></tr>
+<tr><td>10:6</td><td>NUM_VALID_BYTES</td><td>RW</td><td>0x10</td><td>Number of valid bytes of the current input block.<br>Only the last block in the GCM_AAD and GCM_TEXT phases are expected to have not all bytes marked as valid.<br>For all other blocks, the number of valid bytes should be set to 16.<br>Invalid input values, i.e., the value 5&#x27;b0_0000, and all other values different from 5&#x27;b1_0000 in case GCM is not supported (because disabled at compile time) are mapped to 5&#x27;b1_0000.</td></tr>
+<tr><td>5:0</td><td>PHASE</td><td>RW</td><td>0x1</td><td>6-bit one-hot field to select the phase of the Galois/Counter Mode (GCM) of operation.<br>Invalid input values, i.e., values with multiple bits set and value 6&#x27;b00_0000, are mapped to GCM_INIT (6&#x27;b00_0001).<br>In case support for GCM has been disabled at compile time, this field is not writable and always reads as GCM_INIT (6&#x27;b00_0001).</td></tr>
 </table>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
@@ -2186,7 +2186,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:4</td><td>mode</td><td>RW</td><td>0x0</td><td>Keccak hashing mode.<br><br>This module supports SHA3 main hashing algorithm and the part<br>of its derived functions, SHAKE and cSHAKE with limitations.<br>This field is to select the mode.</td></tr>
 <tr><td>3:1</td><td>kstrength</td><td>RW</td><td>0x0</td><td>Hashing Strength<br><br>3 bit field to select the security strength of SHA3 hashing<br>engine. If mode field is set to SHAKE or cSHAKE, only 128 and<br>256 strength can be selected. Other value will result error<br>when hashing starts.</td></tr>
-<tr><td>0</td><td>kmac_en</td><td>RW</td><td>0x0</td><td>KMAC datapath enable.<br><br>If this bit is 1, the incoming message is processed in KMAC<br>with the secret key.</td></tr>
+<tr><td>0</td><td>kmac_en</td><td>RW</td><td>0x0</td><td>KMAC datapath enable.<br><br>If this bit is 1, the KMAC mode is active and the secret key is prepended to the incoming message.</td></tr>
 </table>
 <h3 id="CMD">CMD</h3>
 <table>
@@ -2344,7 +2344,8 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>18</td><td>reg_intg_violation</td><td>RW</td><td>0x0</td><td>A `REG_INTG_VIOLATION` error was observed.</td></tr>
 <tr><td>17</td><td>dmem_intg_violation</td><td>RW</td><td>0x0</td><td>A `DMEM_INTG_VIOLATION` error was observed.</td></tr>
 <tr><td>16</td><td>imem_intg_violation</td><td>RW</td><td>0x0</td><td>A `IMEM_INTG_VIOLATION` error was observed.</td></tr>
-<tr><td>15:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>mai_software_error</td><td>RW</td><td>0x0</td><td>An `MAI_SOFTWARE_ERROR` error was observed.</td></tr>
 <tr><td>7</td><td>rnd_fips_chk_fail</td><td>RW</td><td>0x0</td><td>An `RND_FIPS_CHK_FAIL` error was observed.</td></tr>
 <tr><td>6</td><td>rnd_rep_chk_fail</td><td>RW</td><td>0x0</td><td>An `RND_REP_CHK_FAIL` error was observed.</td></tr>
 <tr><td>5</td><td>key_invalid</td><td>RW</td><td>0x0</td><td>A `KEY_INVALID` error was observed.</td></tr>
@@ -3021,19 +3022,19 @@ SEP aggregate.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW</td><td>0x0</td><td>Enable interrupt when cs_fatal_err is set.</td></tr>
-<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW</td><td>0x0</td><td>Enable interrupt when cs_hw_inst_exc is set.</td></tr>
-<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>0x0</td><td>Enable interrupt when cs_entropy_req is set.</td></tr>
-<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when cs_cmd_req_done is set.</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.cs_fatal_err is set.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.cs_hw_inst_exc is set.</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.cs_entropy_req is set.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.cs_cmd_req_done is set.</td></tr>
 </table>
 <h3 id="INTR_TEST">INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>CS_FATAL_ERR</td><td>W</td><td>0x0</td><td>Write 1 to force cs_fatal_err to 1.</td></tr>
-<tr><td>2</td><td>CS_HW_INST_EXC</td><td>W</td><td>0x0</td><td>Write 1 to force cs_hw_inst_exc to 1.</td></tr>
-<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>W</td><td>0x0</td><td>Write 1 to force cs_entropy_req to 1.</td></tr>
-<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force cs_cmd_req_done to 1.</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.cs_fatal_err to 1.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.cs_hw_inst_exc to 1.</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.cs_entropy_req to 1.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.cs_cmd_req_done to 1.</td></tr>
 </table>
 <h3 id="ALERT_TEST">ALERT_TEST</h3>
 <table>
@@ -3060,11 +3061,7 @@ SEP aggregate.</p>
 <h3 id="CMD_REQ">CMD_REQ</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>24:12</td><td>glen</td><td>W</td><td>0x0</td><td>Generate Length: Only defined for the generate command, this field<br>is the total number of cryptographic entropy blocks requested. Each<br>unit represents 128 bits of entropy returned. The NIST reference name<br>is max_number_of_bit_per_request, and this field size supports the<br>maximum size of 219 bits. For the maximum size, this field should be<br>set to 4096, resulting in a max_number_of_bit_per_request value of<br>4096 x 128 bits. For a smaller example, a value of 8 would return<br>a total of 1024 bits.</td></tr>
-<tr><td>11:8</td><td>flag0</td><td>W</td><td>0x0</td><td>Command Flag0: flag0 is associated with current command. Setting this<br>field to kMultiBitBool4True will enable flag0 to be enabled. Note that<br>flag0 is used for the instantiate and reseed commands only, for all other commands its value is ignored.</td></tr>
-<tr><td>7:4</td><td>clen</td><td>W</td><td>0x0</td><td>Command Length: Number of 32-bit words that can optionally be appended<br>to the command. A value of zero will only transfer the command header.<br>A value of 4&#x27;hc will transfer the header plus an additional twelve<br>32-bit words of data.</td></tr>
-<tr><td>3:0</td><td>acmd</td><td>W</td><td>0x0</td><td>Application Command: Selects one of five operations to perform.<br>The commands supported are instantiate, reseed, generate, update,<br>and uninstantiate. Each application interface port used by peripheral<br>hardware commands a unique instance number in CSRNG.</td></tr>
+<tr><td>31:0</td><td>CMD_REQ</td><td>W</td><td>0x0</td><td>Writing this request with defined CSRNG commands will initiate all<br>possible CSRNG actions. The application interface must wait for the<br>&quot;ack&quot; to return before issuing new commands.</td></tr>
 </table>
 <h3 id="RESEED_INTERVAL">RESEED_INTERVAL</h3>
 <table>
@@ -3079,19 +3076,19 @@ SEP aggregate.</p>
 <h3 id="RESEED_COUNTER_1">RESEED_COUNTER_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>RESEED_COUNTER_0</td><td>R</td><td>0x0</td><td>Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.</td></tr>
+<tr><td>31:0</td><td>RESEED_COUNTER_0</td><td>R</td><td>0x0</td><td>For RESEED_COUNTER1</td></tr>
 </table>
 <h3 id="RESEED_COUNTER_2">RESEED_COUNTER_2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>RESEED_COUNTER_0</td><td>R</td><td>0x0</td><td>Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.</td></tr>
+<tr><td>31:0</td><td>RESEED_COUNTER_0</td><td>R</td><td>0x0</td><td>For RESEED_COUNTER2</td></tr>
 </table>
 <h3 id="SW_CMD_STS">SW_CMD_STS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:3</td><td>CMD_STS</td><td>R</td><td>0x0</td><td>This field represents the status code returned with the application command ack.<br>It is updated each time a command ack is asserted on the internal application<br>interface for software use.<br>To check whether a command was successful, wait for !!INTR_STATE.CS_CMD_REQ_DONE or<br>!!SW_CMD_STS.CMD_ACK to be high and then check the value of this field.</td></tr>
-<tr><td>2</td><td>CMD_ACK</td><td>R</td><td>0x0</td><td>This one bit field indicates when a SW command has been acknowledged by the CSRNG.<br>It is set to low each time a new command is written to !!CMD_REQ.<br>The field is set to high once a SW command request has been acknowledged by the CSRNG.<br>0b0: The last SW command has not been acknowledged yet.<br>0b1: The last SW command has been acknowledged.</td></tr>
+<tr><td>2</td><td>CMD_ACK</td><td>R</td><td>0x0</td><td>This one bit field indicates when a SW command has been acknowledged by the CSRNG.<br>It is set to low each time a new command is written to !!CMD_REQ.<br>The field is set to high once a SW command request has been acknowledged by the CSRNG.<br>0b0: The last SW command has not been acknowledged yet.<br>0b1: The last SW command has been acknowledged.<br>In case of a generate command the acknowledgement goes high after all of the requested entropy is consumed.</td></tr>
 <tr><td>1</td><td>CMD_RDY</td><td>R</td><td>0x0</td><td>This bit indicates when the command interface is ready to accept commands.<br>Before starting to write a new command to !!SW_CMD_REQ, this field needs to be polled.<br>0b0: CSRNG is not ready to accept commands or the last command hasn&#x27;t been acked yet.<br>0b1: CSRNG is ready to accept the next command.</td></tr>
 <tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
@@ -3099,13 +3096,13 @@ SEP aggregate.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>GENBITS_FIPS</td><td>R</td><td>0x0</td><td>This bit is set when genbits are FIPS/CC compliant.</td></tr>
-<tr><td>0</td><td>GENBITS_VLD</td><td>R</td><td>0x0</td><td>This bit is set when genbits are available on this application interface.</td></tr>
+<tr><td>1</td><td>GENBITS_FIPS</td><td>R</td><td>-</td><td>This bit is set when genbits are FIPS/CC compliant.</td></tr>
+<tr><td>0</td><td>GENBITS_VLD</td><td>R</td><td>-</td><td>This bit is set when genbits are available on this application interface after a generate command has been issued.</td></tr>
 </table>
 <h3 id="GENBITS">GENBITS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>GENBITS</td><td>R</td><td>0x0</td><td>Reading this register will get the generated bits that were requested with<br>the generate request. This register must be read four times for each request<br>made. For example, an application command generate request with<br>a `clen` value of 4 requires this register to be read 16 times to get all<br>of the data out of the FIFO path.<br>Note that for !!GENBITS to be able to deliver random numbers, also !!CTRL.SW_APP_ENABLE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Otherwise, the register reads as 0.</td></tr>
+<tr><td>31:0</td><td>GENBITS</td><td>R</td><td>-</td><td>Reading this register will get the generated bits that were requested with<br>the generate request. This register must be read four times for each request<br>made. For example, an application command generate request with<br>a `clen` value of 4 requires this register to be read 16 times to get all<br>of the data out of the FIFO path.<br>Note that for !!GENBITS to be able to deliver random numbers, also !!CTRL.SW_APP_ENABLE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Otherwise, the register reads as 0.</td></tr>
 </table>
 <h3 id="INT_STATE_READ_ENABLE">INT_STATE_READ_ENABLE</h3>
 <table>
@@ -3123,12 +3120,12 @@ SEP aggregate.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:0</td><td>INT_STATE_NUM</td><td>RW</td><td>0x0</td><td>Setting this field will set the number for which internal state can be<br>selected for a read access. Up to 16 internal state values can be chosen<br>from this register. The actual number of valid internal state fields<br>is set by parameter NHwApps plus 1 software app. For those selections that point<br>to reserved locations (greater than NHwApps plus 1), the returned value<br>will be zero. Writing this register will also reset the internal read<br>pointer for the !!INT_STATE_VAL register.<br>Note: This register should be read back after being written to ensure<br>that the !!INT_STATE_VAL read back is accurate.</td></tr>
+<tr><td>3:0</td><td>INT_STATE_NUM</td><td>RW</td><td>0x0</td><td>Setting this field will set the number for which internal state can be<br>selected for a read access. Up to 16 internal state values can be chosen<br>from this register. The actual number of valid internal state fields<br>is set by parameter NumHwApps plus 1 software app. For those selections that point<br>to reserved locations (greater than NumHwApps plus 1), the returned value<br>will be zero. Writing this register will also reset the internal read<br>pointer for the !!INT_STATE_VAL register.<br>Note: This register should be read back after being written to ensure<br>that the !!INT_STATE_VAL read back is accurate.</td></tr>
 </table>
 <h3 id="INT_STATE_VAL">INT_STATE_VAL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>INT_STATE_VAL</td><td>R</td><td>0x0</td><td>Reading this register will dump out the contents of the selected internal state field.<br>Since the internal state field is 448 bits wide, it will require 14 reads from this<br>register to gather the entire field. Once 14 reads have been done, the internal read<br>pointer (selects 32 bits of the 448 bit field) will reset to zero. The !!INT_STATE_NUM<br>can be re-written at this time (internal read pointer is also reset), and then<br>another internal state field can be read.<br>Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.<br>Otherwise, the register reads as 0.</td></tr>
+<tr><td>31:0</td><td>INT_STATE_VAL</td><td>R</td><td>-</td><td>Reading this register will dump out the contents of the selected internal state field.<br>Since the internal state field is 448 bits wide, it will require 14 reads from this<br>register to gather the entire field. Once 14 reads have been done, the internal read<br>pointer (selects 32 bits of the 448 bit field) will reset to zero. The !!INT_STATE_NUM<br>can be re-written at this time (internal read pointer is also reset), and then<br>another internal state field can be read.<br>Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.<br>Otherwise, the register reads as 0.</td></tr>
 </table>
 <h3 id="FIPS_FORCE">FIPS_FORCE</h3>
 <table>
@@ -3162,13 +3159,13 @@ SEP aggregate.</p>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>30</td><td>FIFO_STATE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any FIFO where both the empty and full status bits are set.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>29</td><td>FIFO_READ_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any empty FIFO that has recieved a read pulse.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>28</td><td>FIFO_WRITE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any full FIFO that has been recieved a write pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>29</td><td>FIFO_READ_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any empty FIFO that has received a read pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>28</td><td>FIFO_WRITE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any full FIFO that has been received a write pulse.<br>This bit will stay set until the next reset.</td></tr>
 <tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>CTR_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when a mismatch in any of the hardened counters<br>has been detected.<br>This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>25</td><td>AES_CIPHER_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an AES fatal error has been detected.<br>This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>26</td><td>CTR_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when a mismatch in any of the hardened counters<br>has been detected.<br>This error will signal a fatal alert, and also an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>25</td><td>AES_CIPHER_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an AES fatal error has been detected.<br>This error will signal a fatal alert, and also an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
 <tr><td>24:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>22</td><td>CTR_DRBG_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>ctr_drbg gen state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>22</td><td>CTR_DRBG_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>ctr_drbg state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
 <tr><td>21</td><td>MAIN_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>main state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
 <tr><td>20</td><td>CMD_STAGE_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>command stage state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
 <tr><td>19:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
