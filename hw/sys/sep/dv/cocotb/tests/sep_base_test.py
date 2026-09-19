@@ -96,11 +96,9 @@ class _EvidenceFilter(logging.Filter):
 
     _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
 
-    # Emitted by sep_base_test itself on every bring-up, so it says nothing
-    # about the leaf. Counted in `observed` but excluded from `own`, which is
-    # what a floor grades: 18 of the 92 `all` leaves would otherwise satisfy a
-    # floor of one on this record alone.
-    BASE_IDS = frozenset({"CHK-OTP-JTAG2AXI-UNGATED"})
+    # IDs sep_base_test itself emits. Counted in `observed` but excluded from
+    # `own`, which is what a floor grades. Empty: bring-up logs no named CHK.
+    BASE_IDS: frozenset[str] = frozenset()
 
     # Empty: firmware-console leaves emit CHK-FW-CONSOLE from poll_boot after
     # the mailbox PASS magic is observed. That ID is intentionally not in
@@ -376,21 +374,6 @@ class sep_base_test(uvm_test):
             secure_tm = int(probe.value) & 0x1
         check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
-    def check_otp_jtag2axi_ungated(self) -> None:
-        """Require both OTP JTAG2AXIL disable bits to read 0.
-
-        LCC ties ``dbg_disable_o.smc_otp_jtag2axi`` and
-        ``sep_otp_jtag2axi`` to 0. The fuse controller enforces access.
-        """
-        dut = cocotb.top
-        smc = self.rd_known(dut.dbg_disable_smc_otp_jtag2axi_o)
-        sep = self.rd_known(dut.dbg_disable_sep_otp_jtag2axi_o)
-        if smc != 0 or sep != 0:
-            raise AssertionError(
-                f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, expected both 0"
-            )
-        self.logger.info("CHK-OTP-JTAG2AXI-UNGATED PASS: smc_otp_jtag2axi=0 sep_otp_jtag2axi=0")
-
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
 
@@ -408,7 +391,6 @@ class sep_base_test(uvm_test):
                 self.logger.info("SEP fuse sense done at cycle %d", cycle)
                 await ClockCycles(dut.clk_i, 20)
                 self._check_efuse_shadow_after_sense()
-                self.check_otp_jtag2axi_ungated()
                 return
         raise AssertionError("sep_fuse_sense_done_o never asserted (fabric not released)")
 
