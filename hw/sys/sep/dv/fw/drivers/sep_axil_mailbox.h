@@ -8,11 +8,10 @@
 // sep_addr.h / axil_mailbox_sep_wrap.h (via sep.h).
 //
 // These defines target the inbound aperture, because in hw/sys/sep/rtl/sep.sv
-// only inbound_interrupt_o reaches sep_internal_interrupts[7:0] (mailbox m ->
-// VeeR EL2 PIC source m + 1); outbound_interrupt_o leaves the block on
-// smc_mailbox_interrupt_o. A write to inbound WRITE_DATA is therefore what
-// notifies the SEP CPU, and the entry it queues is popped at the paired
-// outbound READ_DATA. CLOCK_GATE_CTRL in this map implements only
+// only inbound_interrupt_o reaches sep_internal_interrupts[7:0]; outbound
+// leaves the block on smc_mailbox_interrupt_o. A write to inbound WRITE_DATA
+// is therefore what notifies the SEP CPU. interrupts.adoc PIC sources 1-8 are
+// Mailbox interrupt 0-7, so channel ch drives PIC source (ch + 1). CLOCK_GATE_CTRL in this map implements only
 // pka_cg_enable (bit 0). Bit 2 is written for sequence parity; it is not a
 // defined mailbox-clock field and is not on the proof path.
 //
@@ -43,8 +42,19 @@
 #define SEP_AXIL_MBOX_IRQ_ALL \
     (SEP_AXIL_MBOX_IRQ_WRITE | SEP_AXIL_MBOX_IRQ_READ | SEP_AXIL_MBOX_IRQ_ERROR)
 
-// Mailbox 0 inbound interrupt -> sep_internal_interrupts[0] -> PIC source 1.
+// Mailbox 0 inbound interrupt -> PIC source 1 (interrupts.adoc).
 #define SEP_AXIL_MBOX0_PIC_SRC 1u
+
+// Eight channels, stride from generated mailbox 0 vs 1 WRITE_DATA.
+// Channel ch drives PIC source (ch + 1) (interrupts.adoc Mailbox interrupt ch).
+#define SEP_AXIL_MBOX_N 8u
+#define SEP_AXIL_MBOX_STRIDE                                                         \
+    (OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_1_WRITE_DATA_BASE_ADDR -              \
+     OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR)
+
+static inline uint32_t sep_axil_mbox_ch(uint32_t ch, uint32_t mbox0_addr) {
+    return mbox0_addr + ch * SEP_AXIL_MBOX_STRIDE;
+}
 
 #ifndef SEP_CLOCK_GATE_CTRL
 #define SEP_CLOCK_GATE_CTRL OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR
