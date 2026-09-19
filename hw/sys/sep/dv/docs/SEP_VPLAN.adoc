@@ -253,7 +253,7 @@ never when it was written.
 |`sep_mailbox_plic_test`
 |cpu
 |ocah_axi_vip, CPU FW
-|Completes the interrupt path all the way to the CPU.
+|Completes the inbound-aperture interrupt path all the way to the CPU.
 |`sep_km_aes_sideload_kat_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, KM path / golden
@@ -457,7 +457,7 @@ never when it was written.
 |`sep_axil_mailbox_iface_rand_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|64-bit TX FIFO, status, threshold IRQ, empty/full errors, and flush on the outbound mailbox aperture.
+|64-bit TX FIFO, status, threshold IRQ status, empty/full errors, and flush on the outbound mailbox aperture.
 |`sep_mailbox_peer_rx_rirqt_test`
 |no_cpu + external SMN master, +skip_fuse_sense
 |ocah_axi_vip
@@ -842,7 +842,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_kpv_scrambler_test`. Data transform, address tweak and keying, all frontdoor: the vault passes through while disabled, so the raw stored words are readable without a hierarchical peek.
 
 |Mailbox outbox FIFO, threshold interrupt and error flags
-|`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. `Mailbox -> PIC` grades delivery on `sep_mailbox_plic_test` and is not re-credited here. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side and are graded by <<sep_mailbox_peer_rx_rirqt_test>>.
+|`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt status gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. This aperture's interrupt leaves the block on `smc_mailbox_interrupt_o`, so only its status registers are graded here; `Mailbox -> PIC` grades delivery to the SEP CPU, which the inbound aperture drives, on `sep_mailbox_plic_test`. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side and are graded by <<sep_mailbox_peer_rx_rirqt_test>>.
 
 |Interrupt aggregator packing under simultaneous fan-in
 |`sep_irq_simultaneous_fanin_no_alias_test`. Several cross-IP sources asserted at once must produce exactly their own bits in `sep_internal_interrupts[8:33]`, with every bit of that region resolved rather than floating. `PIC source map` grades the source-to-PIC-id map and CPU delivery on `sep_pic_irq_source_map_delivery_test`; this row is the aggregation itself — the place a one-hot map can smear onto a neighbour — and is a distinct contract from delivery.

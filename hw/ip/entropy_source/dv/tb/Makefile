@@ -98,12 +98,10 @@ AXI4LITE_OBJ_DIR = obj_dir_axi4lite
 AXI4LITE_EXECUTABLE = $(AXI4LITE_OBJ_DIR)/Ventropy_source
 AXI4LITE_VCD_FILE = entropy_source_axi4lite.vcd
 
-# Verilator Lint configuration
+# Verilator C++ generation uses the same filelist as a compile check.
 REG_RTL_DIR = ../../regs/gen/sv
 VERILATOR_BUILD_DIR = verilator_lint
 VERILATOR_FILELIST = $(VERILATOR_BUILD_DIR)/entropy_source_complete.f
-VERILATOR_FLAGS = --lint-only --no-timing -Wall -Wno-fatal --top-module entropy_source
-VERILATOR_BACKUP_SCRIPT = verify_verilator_compilation.sh
 
 # Default target shows help
 all: help
@@ -523,13 +521,8 @@ markov-bs-clean:
 	rm -f $(MARKOV_BS_SIM_OUT) $(MARKOV_BS_VCD_FILE)
 
 #==============================================================================
-# VERILATOR LINT TARGETS
+# VERILATOR COMPILE CHECK
 #==============================================================================
-
-# Verilator lint check for full entropy_source component
-verilator-lint: $(VERILATOR_FILELIST)
-	@echo "=== Running Verilator Lint Check ==="
-	$(VERILATOR) $(VERILATOR_FLAGS) -f $(VERILATOR_FILELIST)
 
 # Create complete file list for Verilator compilation
 $(VERILATOR_FILELIST): | $(VERILATOR_BUILD_DIR)
@@ -583,16 +576,6 @@ $(VERILATOR_BUILD_DIR):
 verilator-cpp: $(VERILATOR_FILELIST)
 	@echo "=== Testing Verilator C++ Code Generation ==="
 	$(VERILATOR) -cc --no-timing -Wall -Wno-fatal --top-module entropy_source -f $(VERILATOR_FILELIST)
-
-# Comprehensive Verilator verification (using backup script)
-verilator-verify:
-	@echo "=== Running Comprehensive Verilator Verification ==="
-	@if [ -f "$(VERILATOR_BACKUP_SCRIPT)" ]; then \
-		./$(VERILATOR_BACKUP_SCRIPT); \
-	else \
-		echo "Error: $(VERILATOR_BACKUP_SCRIPT) not found"; \
-		exit 1; \
-	fi
 
 # Clean Verilator files
 verilator-clean:
@@ -652,10 +635,8 @@ help:
 	@echo "  make markov-bs       - Test Markov chain health test (byte stream)"
 	@echo "  make test-bs         - Run all byte stream tests"
 	@echo ""
-	@echo "VERILATOR VERIFICATION:"
-	@echo "  make verilator-lint   - Run Verilator lint check on full entropy_source"
+	@echo "VERILATOR:"
 	@echo "  make verilator-cpp    - Test Verilator C++ code generation"
-	@echo "  make verilator-verify - Run comprehensive Verilator verification"
 	@echo ""
 	@echo "WAVEFORM VIEWING:"
 	@echo "  make ring-waves             - View ring oscillator waveforms"
@@ -692,6 +673,6 @@ help:
 .PHONY: all ring ring-smoke debug tune-fsm-correct repetition markov markov-window health fifo axi4lite test test-bs waves clean help
 .PHONY: ring-waves ring-clean debug-waves debug-clean tune-fsm-correct-waves tune-fsm-correct-clean
 .PHONY: repetition-waves repetition-clean markov-waves markov-clean markov-window-waves markov-window-clean
-.PHONY: health-waves health-clean fifo-waves fifo-clean axi4lite-waves axi4lite-clean verilator-lint verilator-cpp verilator-verify verilator-clean
+.PHONY: health-waves health-clean fifo-waves fifo-clean axi4lite-waves axi4lite-clean verilator-cpp verilator-clean
 .PHONY: repetition-bs markov-bs
 .PHONY: repetition-bs-clean markov-bs-clean

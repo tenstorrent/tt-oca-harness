@@ -1032,6 +1032,7 @@ module sep_crypto_axi_interconnect (
     .mst_req_o  (abr_axi_isolated_req),
     .mst_resp_i (abr_axi_isolated_resp),
     .isolate_i  (isolate_req_i.host_abr),
+    .flush_i    (1'b0),
     .isolated_o (isolated_o.host_abr)
   );
 

@@ -764,9 +764,9 @@ cells for a walk that exercises the PROD rows only
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_raise` / `cp_clear` |Rising and falling edge of the SEP AXI mailbox sources, `sep_internal_interrupts[7:0]` (`sep.sv:534`)
+|`cp_raise` / `cp_clear` |Rising and falling edge of the SEP AXI mailbox sources, `sep_internal_interrupts[7:0]`, driven from `inbound_interrupt_o` in `sep.sv`
 |`cp_km_raise` / `cp_km_clear` |Rising and falling edge of the KM mailbox, `sep_internal_interrupts[14]`
-|`cp_peer_fill` |A completed external-master write to the inbound mailbox `WRITE_DATA`, the only path into the host aperture's receive FIFO. Every other bin in this group is an IRQ edge the transmit path raises, so none of them shows the receive direction was driven. Both 4-byte halves alias to the register, so the address compare masks bit 2.
+|`cp_peer_fill` |A completed external-master write to the inbound mailbox `WRITE_DATA`. The SEP CPU can raise the same inbound source itself, so an IRQ edge alone does not show an external master drove the receive direction. Both 4-byte halves alias to the register, so the address compare masks bit 2.
 |===
 
 The two domains are separate coverpoints because they are separate sources with

@@ -30,7 +30,8 @@ inside the TBS, so raising it invalidates ``manifest_hash`` and the signature. T
 backup has to BOOT, so a stale signature is not survivable the way it is for the
 negative testcases: it is re-sealed with the dev0 key that ships in this tree
 (``env/sep_payload_mutate.reseal``), whose modulus digest is the ROM's own key slot 0
-(``bootrom/prod/src/key_digests.c:18-21``). ``verify_signing_key`` proves the local
+(``digest_rom_key0`` in the generated ``bootrom/prod/<build dir>/key_digests.c``).
+``verify_signing_key`` proves the local
 signer reproduces the shipped signature byte for byte before any mutation, and the
 shared base re-runs ``verify_sealed`` afterwards, so the re-seal is established rather
 than asserted. The PRIMARY is deliberately NOT re-signed and NOT modified: its shipped
