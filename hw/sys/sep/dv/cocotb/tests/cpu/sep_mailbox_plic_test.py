@@ -28,6 +28,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_spec_tables import pic
@@ -63,6 +64,15 @@ class sep_mailbox_plic_test(sep_base_test):
         # Override the boot scoreboard's expected banner here (after its own
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
+
+        # Baseline: the SMC-facing line is idle before the firmware pushes
+        # anything, so a 1 at the end of the run is this run's doing.
+        smc_irq = cocotb.top.smc_mailbox_interrupt_o
+        assert self.rd_known(smc_irq) == 0, (
+            "smc_mailbox_interrupt_o is already asserted at reset; the end-of-run "
+            "check below could not attribute it to the outbound push"
+        )
+
         await self.boot_firmware(
             self.sb,
             _ITCM_HEX,
@@ -88,4 +98,26 @@ class sep_mailbox_plic_test(sep_base_test):
             "CHK-DELIVER PASS: all %d inbound mailbox channels reached the CPU "
             "with RW1C clear and no storm",
             _MBOX_N,
+        )
+
+        # Direction, observed rather than reported: sep.sv routes
+        # outbound_interrupt_o to smc_mailbox_interrupt_o and inbound_interrupt_o
+        # to the CPU PIC. The firmware left its outbound channel-0 entry pending
+        # and cleared every inbound one, so bit 0 must be set and the rest clear.
+        # Before #2054 reversed the connection this read 0, because the outbound
+        # push went to the PIC instead.
+        assert "CHK-DIRECTION PASS:" in console, (
+            "firmware console has no CHK-DIRECTION line, so the outbound push "
+            f"never ran or reached the CPU. Console was:\n{console}"
+        )
+        smc_bits = self.rd_known(smc_irq)
+        assert smc_bits == 0b1, (
+            f"smc_mailbox_interrupt_o = 0b{smc_bits:08b}, expected 0b00000001: "
+            "bit 0 is the pending outbound push, and the seven inbound pushes "
+            "that reached the CPU must not appear on this line at all"
+        )
+        self.logger.info(
+            "CHK-SMC-LINE PASS: outbound push asserted smc_mailbox_interrupt_o[0] "
+            "and the inbound deliveries left the line otherwise clear (%s)",
+            f"0b{smc_bits:08b}",
         )

@@ -49,7 +49,7 @@ _PROGRESS_EVERY = 5_000
 # Console anchors. Each names a leg the firmware scores separately, so a stale image
 # that dropped one is visible here rather than hiding behind the PASS magic.
 _BADADDR_LINE = "reset_ctrl bad-address NMI count == 2 OK"
-_SWRST_DEFAULT_NEEDLE = "SW_RESET_N default"
+_SWRST_DEFAULT_NEEDLE = "PASS: SW_RESET_N default"
 _RESET_WIRE_IPS = ("otbn", "aes", "hmac", "kmac", "abr", "esrc", "csrng", "edn")
 _BANNER = "SEP reset+WDT sanity test"
 # After the firmware PASSes (2nd bark), the WDT runs on to BITE. At ~5 us/tick and

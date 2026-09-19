@@ -48,9 +48,10 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # Mailbox -> PIC -> CPU ISR delivery (the reference suite's sep_mailbox_plic_test): each of the
-# eight outbound mailbox channels raises sep_internal_interrupts[ch] -> VeeR EL2 PIC source
+# eight inbound mailbox channels raises sep_internal_interrupts[ch] -> VeeR EL2 PIC source
 # ch+1 -> CPU MEIP -> ISR; proves the PIC claim id == ch+1, ISR-before-timeout, and the IRQS/IRQP RW1C
-# clear. cpu run mode; +skip_fuse_sense. CPU complex (the PIC lives inside the core).
+# clear. A closing outbound push must raise no PIC source and shows up on
+# smc_mailbox_interrupt_o instead, which is the direction sep.sv implements. cpu run mode; +skip_fuse_sense. CPU complex (the PIC lives inside the core).
 name = "sep_mailbox_plic_test"
 module = "cpu.sep_mailbox_plic_test"
 firmware = "mailbox_plic_test"

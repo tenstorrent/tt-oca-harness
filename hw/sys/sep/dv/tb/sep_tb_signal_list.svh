@@ -528,6 +528,14 @@
 // reset-request edge. This
 // is a DUT output (frontdoor), not an internal-signal probe.
 `SEP_TB_OUT(logic, wdt_timer_rst_req_o)
+// SMC-facing mailbox interrupt: a REAL `sep` output port
+// (sep.sv smc_mailbox_interrupt_o, fed by the mailbox block's
+// outbound_interrupt_o). It leaves the block instead of reaching the SEP CPU
+// PIC, so nothing inside sep observes it. Brought out so the mailbox delivery
+// test can prove the direction: a push at the inbound aperture raises the CPU
+// PIC source and leaves this line low; a push at the outbound aperture raises
+// this line and no PIC source. One bit per mailbox channel.
+`SEP_TB_OUT(logic [sep_pkg::NUM_MAILBOXES-1:0], smc_mailbox_interrupt_o)
 `SEP_TB_OUT(logic, spi_cs_n_o)
 `SEP_TB_OUT(logic, spi_sck_o)
 `SEP_TB_OUT(logic, spi_mosi_o)

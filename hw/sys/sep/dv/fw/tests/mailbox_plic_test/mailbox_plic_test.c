@@ -46,6 +46,9 @@
 
 #define MBOX_TRIGGER_WORD 0x4700CAFEu // arbitrary payload pushed to fire the IRQ
 #define ISR_WAIT_ITERS 200000         // WFI spins before declaring no delivery
+// Quiet window for the direction leg. Long enough that a live outbound->PIC
+// path would have delivered: the inbound legs above wake on the first WFI.
+#define OUTBOUND_QUIET_ITERS 20000
 // Quiet window to confirm a clean deassert (no re-fire). A storm from a failed
 // clear re-traps within a few cycles of mret, so a few hundred iterations is
 // ample; kept small so the Verilator sim fits the regression timeout.
@@ -201,6 +204,55 @@ static int run_channel(uint32_t ch) {
     return errors;
 }
 
+// Direction leg for the reversed mailbox wiring (sep.sv: inbound_interrupt_o ->
+// the SEP CPU PIC, outbound_interrupt_o -> smc_mailbox_interrupt_o). Arm the
+// OUTBOUND channel-0 aperture with PIC source 1 enabled and push one word. The
+// ISR must stay silent: if outbound still reached the PIC this would fire, which
+// is exactly the pre-#2054 wiring. The entry is left pending on purpose so the
+// testbench can read smc_mailbox_interrupt_o[0] asserted at end of run.
+static int run_outbound_no_cpu_delivery(void) {
+    uint32_t pic_src = SEP_AXIL_MBOX0_PIC_SRC;
+
+    g_ch = 0;
+    g_isr_fired = 0;
+    g_isr_count = 0;
+    __asm__ volatile("fence" ::: "memory");
+
+    // Every mailbox source, not just source 1: an outbound IRQ miswired onto a
+    // neighbouring PIC source would otherwise be invisible here.
+    for (uint32_t src = pic_src; src < pic_src + SEP_AXIL_MBOX_N; src++) {
+        pic_register_handler(src, mailbox_isr);
+        pic_set_gateway(src, 0, 0);
+        pic_set_priority(src, 1);
+        pic_enable_source(src);
+    }
+
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_OUT_IRQS, SEP_AXIL_MBOX_IRQ_ALL);
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_OUT_WIRQT, 0u);
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_OUT_IRQEN, SEP_AXIL_MBOX_IRQ_ALL);
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_OUT_WRITE_DATA, MBOX_TRIGGER_WORD);
+
+    // Spin, not WFI: nothing should wake us, and WFI with no pending interrupt
+    // would stall the core instead of letting the window expire.
+    for (volatile int i = 0; i < OUTBOUND_QUIET_ITERS; i++) {
+        __asm__ volatile("" ::: "memory");
+    }
+
+    for (uint32_t src = pic_src; src < pic_src + SEP_AXIL_MBOX_N; src++) {
+        pic_disable_source(src);
+    }
+
+    if (g_isr_fired) {
+        sep_mbx_puts("FAIL: an outbound-aperture push reached the CPU PIC "
+                     "(claim id taken); outbound must leave on "
+                     "smc_mailbox_interrupt_o\n");
+        return 1;
+    }
+    sep_mbx_puts("CHK-DIRECTION PASS: outbound push raised none of the eight "
+                 "mailbox PIC sources\n");
+    return 0;
+}
+
 int main(void) {
     int errors = 0;
 
@@ -222,7 +274,16 @@ int main(void) {
         }
     }
 
+    // Direction leg last: the entry it pushes stays in the outbound FIFO, and
+    // the paired inbound port would see it as read-data-available, which would
+    // make a later inbound channel-0 leg fire on the read threshold instead of
+    // the write one.
+    errors += run_outbound_no_cpu_delivery();
+    if (errors) {
+        return errors;
+    }
+
     sep_mbx_puts("PASS: mailbox[0..7] IRQ -> PIC claim id == ch+1 -> CPU ISR; "
-                 "IRQS/IRQP W1C->0, no storm\n");
+                 "IRQS/IRQP W1C->0, no storm; outbound push off the CPU PIC\n");
     return 0;
 }

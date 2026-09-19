@@ -546,7 +546,7 @@ module sep_uvm_top
         .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
-        .smc_mailbox_interrupt_o      (),
+        .smc_mailbox_interrupt_o      (smc_mailbox_interrupt_o),
 
         // eFuse status
         .smc_fuse_sense_done_i        (smc_fuse_sense_done_model),

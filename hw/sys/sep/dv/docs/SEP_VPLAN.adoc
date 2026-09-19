@@ -1869,9 +1869,9 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 
 *BFM / Model*: ocah_axi_vip, CPU FW
 
-*Objective*: Completes the interrupt path all the way to the CPU for every outbound mailbox channel.
+*Objective*: Completes the interrupt path all the way to the CPU for every inbound mailbox channel, and shows the paired outbound push does not take that path.
 
-*Test Coverage*: Mailbox push to PIC to a CPU interrupt service routine, channels 0..7.
+*Test Coverage*: Inbound mailbox push to PIC to a CPU interrupt service routine, channels 0..7, plus an outbound push that must raise none of the eight PIC sources and must assert `smc_mailbox_interrupt_o` instead.
 
 *Test Procedure*:
 
@@ -1881,6 +1881,7 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 . Arm the mailbox: clear pending status, set the watermark to fire on one word, enable the interrupt.
 . Write one word into that channel's queue.
 . Wait for interrupt; the routine claims it, raises the watermark, clears the status bits, confirms they read back clear while the enable is still set, then masks the enable. Repeat for channels 0..7.
+. With all eight mailbox PIC sources enabled, push one word at the OUTBOUND channel-0 aperture and wait a quiet window. No service routine may run. The entry is left pending, so the testbench reads `smc_mailbox_interrupt_o` at end of run: bit 0 set, the other seven clear.
 
 *Checkers*:
 
@@ -1888,11 +1889,15 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 |===
 |Checker |Contract
 |CHK-DELIVER
-|The service routine actually runs on every outbound channel — the interrupt reached the CPU rather than stopping at the aggregator. The host counts eight `CHK-DELIVER` lines so a skipped channel cannot hide behind the PASS magic.
+|The service routine actually runs on every inbound channel — the interrupt reached the CPU rather than stopping at the aggregator. The host counts eight `CHK-DELIVER` lines so a skipped channel cannot hide behind the PASS magic.
 |CHK-RW1C
 |For each channel, the interrupt status register clears on write-one-to-clear, and the read-only pending register — derived as status AND enable — reads back zero while the enable is still fully set, so that zero is not a masking artefact.
 |CHK-NOSTORM
 |For each channel the routine runs exactly once — the count is compared against one, not merely printed — and the interrupt does not re-fire afterwards.
+|CHK-DIRECTION
+|A push at the outbound aperture raises none of the eight mailbox PIC sources, with every one of them enabled so a miswire onto a neighbour is not silent. `sep.sv` routes `outbound_interrupt_o` off the block on `smc_mailbox_interrupt_o`, and only `inbound_interrupt_o` reaches `sep_internal_interrupts[7:0]`.
+|CHK-SMC-LINE
+|`smc_mailbox_interrupt_o` reads zero before the firmware runs and `0b00000001` after it: the pending outbound push asserts bit 0, and the eight inbound deliveries — which did reach the CPU — never appear on this line. Observed on the testbench probe, not reported by the firmware.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

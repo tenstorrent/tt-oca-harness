@@ -197,15 +197,19 @@ class sep_trng_reset_recovery_test(sep_base_test):
         outstanding_at_isolate = 0
         for _ in range(1_000):
             isolated = int(cocotb.top.trng_axi_isolated_probe_o.value)
-            if isolated and not isolate_seen:
+            # Sample when ALL three paths are isolated, which is the moment the
+            # record below names. Sampling on the first bit would let the drain
+            # finish before 0x7 and still report a read as outstanding.
+            if isolated == 0x7 and not isolate_seen:
                 isolate_seen = True
                 outstanding_at_isolate = sum(1 for event in drain_reads if not event.is_set())
             if int(cocotb.top.trng_gated_rst_n_probe_o.value) == 0:
                 assert isolated == 0x7, (
                     "shared TRNG reset asserted before all three AXI-Lite paths isolated"
                 )
-                assert outstanding_at_isolate > 0, (
-                    "no pre-reset CSR read was still outstanding when isolate asserted"
+                assert isolate_seen and outstanding_at_isolate > 0, (
+                    "no pre-reset CSR read was still outstanding at the cycle all "
+                    "three paths reported isolated"
                 )
                 self.logger.info(
                     "CHK-TRNG-ISOLATE-ALL PASS: all three AXI-Lite paths reported "

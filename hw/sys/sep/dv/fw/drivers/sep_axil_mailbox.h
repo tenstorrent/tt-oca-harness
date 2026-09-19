@@ -52,6 +52,14 @@
     (OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_1_WRITE_DATA_BASE_ADDR -              \
      OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR)
 
+// The paired outbound aperture. Its interrupt leaves the block on
+// smc_mailbox_interrupt_o, so a push here must NOT reach the SEP CPU PIC --
+// which is what the direction leg of sep_mailbox_plic_test asserts.
+#define SEP_AXIL_MBOX0_OUT_WRITE_DATA OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR
+#define SEP_AXIL_MBOX0_OUT_WIRQT OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_BASE_ADDR
+#define SEP_AXIL_MBOX0_OUT_IRQS OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR
+#define SEP_AXIL_MBOX0_OUT_IRQEN OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR
+
 static inline uint32_t sep_axil_mbox_ch(uint32_t ch, uint32_t mbox0_addr) {
     return mbox0_addr + ch * SEP_AXIL_MBOX_STRIDE;
 }

@@ -43,7 +43,7 @@ _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
-_VERDICT_LINE = "PASS: SPI RX FIFO -> DMA -> SRAM (0xA5) + RW1C verified"
+_VERDICT_PREFIX = "PASS: SPI RX FIFO -> DMA -> SRAM"
 _BANNER = "SEP SPI OT DMA RX test"
 
 # Must match the firmware's RX_SIZE / RX_PATTERN (spi_ot_dma_rx_test.c). The
@@ -91,19 +91,26 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             # so a stale image that dropped one is visible instead of hiding behind
             # the PASS magic, and emit the records the VPLAN card names.
             console = self.sb.console_text()
-            assert _VERDICT_LINE in console, (
-                f"firmware console has no {_VERDICT_LINE!r} line, so the SRAM pattern "
-                f"and the write-one-to-clear were not both checked. "
+            verdict = next(
+                (ln for ln in console.splitlines() if ln.startswith(_VERDICT_PREFIX)),
+                "",
+            )
+            assert verdict, (
+                f"firmware console has no {_VERDICT_PREFIX!r} verdict line, so the "
+                f"SRAM pattern and the write-one-to-clear were not both checked. "
                 f"Console was:\n{console}"
             )
-            self.logger.info(
-                "CHK-DATAPATH PASS: firmware reported the preloaded pattern in every "
-                "DMA-written SRAM word"
-            )
-            self.logger.info(
-                "CHK-RW1C PASS: firmware reported the DMA done status clearing on "
-                "write-one-to-clear"
-            )
+            # One line, two contracts: each record names the token that carries it,
+            # so dropping either half of the firmware check fails here.
+            for token, chk, what in (
+                ("(0xA5)", "CHK-DATAPATH", "the preloaded pattern in the DMA-written SRAM"),
+                ("RW1C verified", "CHK-RW1C", "the DMA done status clearing on write-one-to-clear"),
+            ):
+                assert token in verdict, (
+                    f"firmware verdict line has no {token!r}, so {what} was not "
+                    f"checked. Line was: {verdict!r}"
+                )
+                self.logger.info("%s PASS: firmware reported %s", chk, what)
             # Evidence is the firmware's own value-check (gated by the boot
             # scoreboard's fw_pass magic): SRAM == 0xA5A5A5A5 can ONLY come from
             # the BFM's preloaded flash streamed over MISO -> SPI RX FIFO ->

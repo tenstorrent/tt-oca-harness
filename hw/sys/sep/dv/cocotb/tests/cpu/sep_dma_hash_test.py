@@ -98,9 +98,12 @@ class sep_dma_hash_test(sep_base_test):
             ("PASS: SHA-384 pass also copied the message to DCCM intact", "CHK-SHA384-COPY",
              "the SHA-384 pass copying its message intact"),
         ):
-            assert needle in console, (
-                f"firmware console has no {needle!r}, so {what} was not checked. "
-                f"Console was:\n{console}"
+            assert any(
+                needle in ln and not ln.lstrip().startswith(("FAIL", "ERROR"))
+                for ln in console.splitlines()
+            ), (
+                f"firmware console has no passing line carrying {needle!r}, so "
+                f"{what} was not checked. Console was:\n{console}"
             )
             self.logger.info("%s PASS: firmware reported %s", chk, what)
 
