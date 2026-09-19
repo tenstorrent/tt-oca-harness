@@ -96,7 +96,7 @@ stubs = [
   # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
   # receives both files like Verilator does. The leaves that read a
   # signal behind one, and the VCS control that keeps those claims honest, are
-  # in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc (Bench stand-ins).
+  # in docs/SMC_VPLAN.adoc, Known Limitations (Bench stand-ins).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
