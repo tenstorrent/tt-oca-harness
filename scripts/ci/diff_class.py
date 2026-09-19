@@ -46,7 +46,12 @@ REGISTER_INFRASTRUCTURE_PATHS = frozenset(
         "scripts/ci/validate-regen-regs.py",
     }
 )
-REGISTER_INFRASTRUCTURE_DIRS = ("hw/common/regs/", "tools/regs/")
+REGISTER_INFRASTRUCTURE_DIRS = (
+    "hw/common/regs/",
+    "tools/regs/",
+    "vendor/lowRISC/opentitan/patches/",
+    "vendor/lowRISC/opentitan/upstream/util/reggen/",
+)
 
 # pyproject.toml and uv.lock pin the reggen toolchain (peakrdl*, systemrdl-compiler,
 # mako, hjson) alongside dozens of unrelated lint/format tools, so listing either file
@@ -118,6 +123,10 @@ def is_register_regen_path(path: str) -> bool:
     if (
         normalized == UNCLASSIFIED
         or normalized.endswith(".rdl")
+        or (
+            normalized.startswith("vendor/lowRISC/opentitan/upstream/hw/ip/")
+            and normalized.endswith(".hjson")
+        )
         or normalized.endswith(("/doc/memmap.toml", "/regs/regdoc.toml"))
     ):
         return True
@@ -145,6 +154,21 @@ def is_dv_check_path(path: str) -> bool:
 def is_dv_check_required(paths: list[str]) -> bool:
     """Return True when the diff touches the DV runner or a DUT's DV package."""
     return any(is_dv_check_path(path) for path in paths)
+
+
+def is_nix_path(path: str) -> bool:
+    """Return True when path is a Nix file"""
+    normalized = path.replace("\\", "/").lstrip("./")
+    if normalized == UNCLASSIFIED or normalized.startswith("nix"):
+        return True
+    if normalized == "flake.lock":
+        return True
+    return Path(normalized).suffix.lower() == "nix"
+
+
+def is_nix_required(paths: list[str]) -> bool:
+    """Return True when the diff touches the Nix Infrastructure."""
+    return any(is_nix_path(path) for path in paths)
 
 
 def _dependency_spec_name(specifier: str) -> str:
@@ -428,6 +452,9 @@ def self_test() -> None:
         "hw/ip/foo/registers/bar/gen/c/bar.h",
         "vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_reg.sv",
         "tools/regs/reggen_wrapper.py",
+        "vendor/lowRISC/opentitan/patches/0040-systemrdl_exporter_roundtrip.patch",
+        "vendor/lowRISC/opentitan/upstream/util/reggen/systemrdl_exporter.py",
+        "vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson",
         "hw/common/regs/templates/svpkg.mako",
         "ocah.mk",
         UNCLASSIFIED,
@@ -526,6 +553,9 @@ version = "2.12.2"
     assert not is_dv_check_required([])
     assert not is_dv_check_required(["README.md", "hw/sys/smc/rtl/smc.sv"])
 
+    assert is_nix_required(["flake.nix", "nix/lib.nix"])
+    assert is_nix_path("flake.lock")
+
     assert _split_rev_range("origin/main...HEAD") == ("origin/main", "HEAD")
     assert _split_rev_range("abc123..def456") == ("abc123", "def456")
     assert _split_rev_range("HEAD") is None
@@ -564,6 +594,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="exit 0 if the diff can affect register collateral, otherwise 1",
     )
+    mode.add_argument(
+        "--is-nix-required",
+        action="store_true",
+        help="exit 0 if the diff touches a .nix file or flake.lock, otherwise 1",
+    )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
 
@@ -573,11 +608,15 @@ def main(argv: list[str] | None = None) -> int:
 
     paths, rev_range = changed_files()
     documentation_only = is_documentation_only(paths)
+    nix_required = is_nix_required(paths)
     print(f"changed: {', '.join(paths) or '(none)'}", file=sys.stderr)
     print(f"documentation_only={str(documentation_only).lower()}", file=sys.stderr)
+    if nix_required:
+        print(f"nix_required={str(nix_required).lower()}", file=sys.stderr)
 
     if args.github_output:
         print(f"run_hardware_ci={str(not documentation_only).lower()}")
+        print(f"run_nix_ci={str(nix_required).lower()}")
         return 0
     if args.write_documentation_only_child:
         if not documentation_only:
@@ -587,6 +626,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.is_dv_check_required:
         required = is_dv_check_required(paths)
         print(f"dv_check_required={str(required).lower()}", file=sys.stderr)
+        return 0 if required else 1
+    if args.is_nix_required:
+        required = nix_required
+        print(f"nix_required={str(required).lower()}", file=sys.stderr)
         return 0 if required else 1
     if args.is_register_regen_required:
         required = is_register_regen_required(paths, rev_range)

@@ -142,6 +142,10 @@ typedef union {
 #define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_bp 7
 #define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_bw 1
 #define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_reset 0x0
+#define OTBN__ERR_BITS__MAI_SOFTWARE_ERROR_bm 0x100
+#define OTBN__ERR_BITS__MAI_SOFTWARE_ERROR_bp 8
+#define OTBN__ERR_BITS__MAI_SOFTWARE_ERROR_bw 1
+#define OTBN__ERR_BITS__MAI_SOFTWARE_ERROR_reset 0x0
 #define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bm 0x10000
 #define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bp 16
 #define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bw 1
@@ -184,7 +188,8 @@ typedef union {
         uint32_t key_invalid :1;
         uint32_t rnd_rep_chk_fail :1;
         uint32_t rnd_fips_chk_fail :1;
-        uint32_t :8;
+        uint32_t mai_software_error :1;
+        uint32_t :7;
         uint32_t imem_intg_violation :1;
         uint32_t dmem_intg_violation :1;
         uint32_t reg_intg_violation :1;

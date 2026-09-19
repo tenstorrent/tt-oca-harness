@@ -56,17 +56,14 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 # the open DV placeholder and the Samsung shim that shadows it, and only the
 # latter gets a RAL.
 #
-# aes/hmac/kmac/otbn/aon_timer/secure_dma and efuse_mmr are RAL leaves, not
-# sub-blocks: they are homed at the vendored overlay (or hw/ip/efuse), not in the
-# SEP blocks/ tree, so the composite glob does not see them. As leaves they emit
-# their RAL at that home -- as csrng/edn do -- and the SEP DV testbench includes
-# each by bare name via a +incdir on it. Sub-blocks below have no other home.
-#
-# spi_controller is a composite sub-block homed in blocks/: its vendored overlay
-# RDL describes a different, newer spi_host layout than the spi_controller_reg_pkg.sv
-# the SEP DUT instantiates, so the DUT-matching blocks/ copy is the generated one.
+# aes/hmac/kmac/otbn/aon_timer/secure_dma, spi_controller and efuse_mmr are RAL
+# leaves, not sub-blocks: they are homed at the vendored overlay (or
+# hw/ip/efuse), not in the SEP blocks/ tree, so the composite glob does not see
+# them. As leaves they emit their RAL at that home -- as csrng/edn do -- and the
+# SEP DV testbench includes each by bare name via a +incdir on it. Sub-blocks
+# below have no other home.
 OCAH_REG_RAL_SUB_BLOCKS ?= \
-  sep_efuse_map spi_controller \
+  sep_efuse_map \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
 OCAH_REG_RAL_LEAF_BLOCKS ?= \
   hw/ip/axi_alias_remap/regs/alias_remap \
@@ -84,7 +81,8 @@ OCAH_REG_RAL_LEAF_BLOCKS ?= \
   vendor/lowRISC/opentitan/overlay/regs/hmac \
   vendor/lowRISC/opentitan/overlay/regs/kmac \
   vendor/lowRISC/opentitan/overlay/regs/otbn \
-  vendor/lowRISC/opentitan/overlay/regs/secure_dma
+  vendor/lowRISC/opentitan/overlay/regs/secure_dma \
+  vendor/lowRISC/opentitan/overlay/regs/spi_controller
 # Overlay append hooks (the nonfree vendor shim blocks the SEP TB drives).
 OCAH_REG_RAL_SUB_BLOCKS += $(OCAH_REG_RAL_SUB_BLOCKS_EXTRA)
 OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
@@ -161,11 +159,14 @@ OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(O
 
 # Tops that get the shared catalog on their -I path: composite tops, plus plain
 # wrapper/top RDLs that include sibling blocks by bare filename. The relocated
-# OpenTitan overlay blocks hmac/kmac/otbn (like edn) pull the shared
-# opentitan_udps.rdl fragment by bare include, so they need the catalog too.
+# OpenTitan HJSON-exported blocks can pull the shared opentitan_udps.rdl
+# fragment by bare include, so they need the catalog too.
 # smc_cla is a leaf but composes the six generated dfd_<blk> RDLs, which live in
 # the tt-hw-debug overlay include dir the catalog already globs.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
+  aes \
+  aon_timer \
+  csrng \
   edn \
   efuse_interface_ctrl \
   hmac \
@@ -174,9 +175,11 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   kmac \
   oca_i3c_wrap \
   otbn \
+  secure_dma \
   sep_external \
   smc \
   smc_cla \
+  spi_controller \
   telemetry_receiver_wrap \
   uart_log_engine_wrap \
   uart_wrap

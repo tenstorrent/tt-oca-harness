@@ -44,35 +44,10 @@ package jtag_tap_pkg;
   endfunction
 
   //--------------------------------------------------------------------------
-  // Function to check if state is valid TAP state
-  //--------------------------------------------------------------------------
-  function automatic logic is_valid_tap_state(logic [15:0] state);
-    case (state)
-      TEST_LOGIC_RESET,
-            RUN_TEST_IDLE,
-            SELECT_DR_SCAN,
-            CAPTURE_DR,
-            SHIFT_DR,
-            EXIT1_DR,
-            PAUSE_DR,
-            EXIT2_DR,
-            UPDATE_DR,
-            SELECT_IR_SCAN,
-            CAPTURE_IR,
-            SHIFT_IR,
-            EXIT1_IR,
-            PAUSE_IR,
-            EXIT2_IR,
-            UPDATE_IR: return 1'b1;
-      default:   return 1'b0;
-    endcase
-  endfunction
-
-  //--------------------------------------------------------------------------
   // Function to detect state corruption
   //--------------------------------------------------------------------------
   function automatic logic detect_state_error(logic [15:0] state);
-    return (!is_onehot(state) || !is_valid_tap_state(state));
+    return !is_onehot(state);
   endfunction
 
   //--------------------------------------------------------------------------

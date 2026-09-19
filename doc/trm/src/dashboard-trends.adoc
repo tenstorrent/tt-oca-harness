@@ -13,7 +13,7 @@ widen it.
 ifdef::backend-html5[]
 ++++
 <div class="dashboard">
-  <p><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
+  <p class="dashboard-back"><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
 
   <div id="dashboard-status" class="dashboard-status">Loading trend data&hellip;</div>
 

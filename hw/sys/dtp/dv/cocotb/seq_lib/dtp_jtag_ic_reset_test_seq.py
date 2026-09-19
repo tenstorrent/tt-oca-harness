@@ -21,16 +21,16 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
             await self.tms_step(1)
         self.current_tap_state = DtpTapState.TEST_LOGIC_RESET
 
-    async def expect_slice(self, name: str, ovrd: int, ctrl_n: int) -> None:
-        """Check one flattened IC_RESET slice output."""
+    async def expect_slice(self, name: str, ovrd: int, ctrl_n: int, *, context: str = "") -> None:
+        """Record one flattened IC_RESET slice output pair."""
         self.log.info(
             "Expect IC_RESET %s slice: ovrd=%d ctrl_n=%d",
             name.upper(),
             ovrd,
             ctrl_n,
         )
-        await self.expect_signal(f"jtag_ic_reset_{name}_ovrd", ovrd)
-        await self.expect_signal(f"jtag_ic_reset_{name}_ctrl_n", ctrl_n)
+        await self.expect_dbg_signal(f"jtag_ic_reset_{name}_ovrd", ovrd, context=context)
+        await self.expect_dbg_signal(f"jtag_ic_reset_{name}_ctrl_n", ctrl_n, context=context)
 
     async def expect_slices(
         self, reset_enable: dict[str, int], reset_control: dict[str, int], *, context: str
@@ -48,25 +48,33 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         )
         await self.wait_sys_cycles()
         for name in self.PORTS:
-            await self.expect_slice(name, ovrd=1 - reset_enable[name], ctrl_n=reset_control[name])
+            await self.expect_slice(
+                name,
+                ovrd=1 - reset_enable[name],
+                ctrl_n=reset_control[name],
+                context=context,
+            )
 
-    async def expect_default_outputs(self) -> None:
-        """Check all one-port OSS slices are deasserted after reset."""
+    async def expect_default_outputs(self, *, context: str) -> None:
+        """Record that all one-port OSS slices are deasserted."""
         for name in self.PORTS:
-            await self.expect_slice(name, ovrd=0, ctrl_n=1)
+            await self.expect_slice(name, ovrd=0, ctrl_n=1, context=context)
 
     async def body(self) -> None:
         self.log_banner("IC_RESET Override and Hold")
+        await self.attach_family_checker(
+            {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"}, use_monitor=False
+        )
         rng = self.rng("ic_reset")
 
         self.log_step(1, "Reset TAP and verify all IC_RESET fields default to 1")
-        await self.reset_tap()
+        await self.reset_to_tlr()
 
         default_value = self.bit_mask(DTP_IC_RESET_LEN)
         observed = await self.read_ic_reset(shift_value=default_value)
         self.log_ic_reset("Default readback", observed)
-        self.assert_equal("IC_RESET default", observed, default_value)
-        await self.expect_default_outputs()
+        self.family_check("CHK-DBG-TDR", "IC_RESET default", observed, default_value)
+        await self.expect_default_outputs(context="after reset")
 
         self.log_step(2, "Loop each slice through override active and inactive states")
         for idx, name in enumerate(self.PORTS, start=1):
@@ -76,7 +84,7 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 reset_enable={name: 0},
                 reset_control={name: 0},
             )
-            await self.expect_slice(name, ovrd=1, ctrl_n=0)
+            await self.expect_slice(name, ovrd=1, ctrl_n=0, context=f"{name} override active")
 
             self.log_iteration(idx, len(self.PORTS), "Disable JTAG override for %s", name.upper())
             await self.write_ic_reset(
@@ -84,7 +92,7 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 reset_enable={name: 1},
                 reset_control={name: 1},
             )
-            await self.expect_slice(name, ovrd=0, ctrl_n=1)
+            await self.expect_slice(name, ovrd=0, ctrl_n=1, context=f"{name} override released")
 
         self.log_step(3, "Verify reset_hold=0 preserves enable/control bits through TLR")
         held_enable = {"smc": 0, "sep": 0, "ext": 1}
@@ -99,10 +107,8 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         await self.drive_tlr_without_trst()
         held_observed = await self.read_ic_reset(shift_value=held_pattern)
         self.log_ic_reset("Held pattern after TLR", held_observed)
-        self.assert_equal(
-            "IC_RESET reset_hold=0 TLR preserve",
-            held_observed,
-            held_pattern,
+        self.family_check(
+            "CHK-DBG-TDR", "IC_RESET reset_hold=0 TLR preserve", held_observed, held_pattern
         )
 
         self.log_step(4, "Run seeded random reset_hold=0 preservation patterns")
@@ -132,7 +138,8 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
             await self.drive_tlr_without_trst()
             observed_random = await self.read_ic_reset(shift_value=pattern)
             self.log_ic_reset("Random held pattern after TLR", observed_random)
-            self.assert_equal(
+            self.family_check(
+                "CHK-DBG-TDR",
                 "IC_RESET random reset_hold=0 preserve",
                 observed_random,
                 pattern,
@@ -150,12 +157,8 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         await self.drive_tlr_without_trst()
         cleared = await self.read_ic_reset(shift_value=default_value)
         self.log_ic_reset("After reset_hold=1 TLR", cleared)
-        self.assert_equal(
-            "IC_RESET reset_hold=1 TLR clear",
-            cleared,
-            default_value,
-        )
-        await self.expect_default_outputs()
+        self.family_check("CHK-DBG-TDR", "IC_RESET reset_hold=1 TLR clear", cleared, default_value)
+        await self.expect_default_outputs(context="after reset_hold=1 TLR")
 
         self.log_step(6, "Verify TRST always restores reset_hold and enable/control defaults")
         await self.write_ic_reset(
@@ -167,8 +170,8 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         await self.deassert_trst(cycles=2)
         trst_value = await self.read_ic_reset(shift_value=default_value)
         self.log_ic_reset("After TRST", trst_value)
-        self.assert_equal("IC_RESET TRST reset", trst_value, default_value)
-        await self.expect_default_outputs()
+        self.family_check("CHK-DBG-TDR", "IC_RESET TRST reset", trst_value, default_value)
+        await self.expect_default_outputs(context="after TRST")
 
         self.log_summary(
             "IC_RESET complete",
@@ -176,3 +179,4 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
             random_patterns=len(random_patterns),
             default=f"0b{default_value:07b}",
         )
+        await self.finalize_family_checker()

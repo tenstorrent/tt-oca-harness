@@ -8,3 +8,11 @@
 ifndef OCAH_ROOT
 OCAH_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))../../../..)
 endif
+
+ifndef UV
+UV ?= uv
+endif
+
+ifndef PYTHON
+PYTHON ?= $(UV) --directory "$(OCAH_ROOT)" run --locked
+endif
