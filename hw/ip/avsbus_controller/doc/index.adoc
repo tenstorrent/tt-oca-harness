@@ -18,18 +18,20 @@ addressing.
 
 * *Single-Target Support*: Communicates with a single AVS target device
 through a two-wire protocol interface
-* *Dual Bus Interface*: Supports both APB4 and AXI4-Lite register
-interfaces for system integration flexibility
-* *Command FIFO*: 8-deep command queue for efficient transaction
-management and burst operations
-* *Readback FIFO*: 8-deep response buffer with automatic retry mechanism
-for reliable data collection
-* *Flexible Clock Configuration*: Programmable AVS clock generation with
-configurable divider and duty cycle control
-* *Comprehensive Interrupt Support*: Status monitoring with configurable
-interrupt sources for system-level event handling
-* *Slave Resync Operation*: Automatic periodic resynchronization with
-configurable intervals
+* *AXI4-Lite Register Interface*: A 32-bit AXI4-Lite port, bridged internally
+to the APB4 register file
+* *Command FIFO*: 8-deep command queue, crossing from the register clock
+domain to the AVS clock domain
+* *Readback FIFO*: 8-deep response buffer with automatic hardware retry on a
+failed acknowledgment or a bad CRC
+* *Flexible Clock Configuration*: AVS clock generated from either the register
+clock or a reference clock, with a programmable divider and duty cycle
+* *Maskable Interrupts*: Nine sources covering FIFO overruns, retry
+exhaustion, an unresponsive target and target-signalled interrupts
+* *Slave Resync Operation*: Automatic periodic resynchronization at a
+configurable interval, or forced by software
+* *CRC-3 Protection*: Hardware generation on every command and checking on
+every response
 
 ifdef::backend-html5[]
 include::partial$avsbus_controller/doc/architecture.adoc[]

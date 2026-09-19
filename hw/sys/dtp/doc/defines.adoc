@@ -36,7 +36,7 @@ A DTP simulation compile merges these layers, in this order:
 `python3 tools/dv/run_dv.py --define NAME` appends a further `+define+` for
 that run. The supported DTP configuration is the merged set above.
 
-Lint and synthesis (`make lint-slang` / `make synth-all` with `BLOCK=dtp`)
+Lint and synthesis (`make lint-slang` / `make synth-yosys-all` with `BLOCK=dtp`)
 do not use the native DV profile. They pass `-D SYNTHESIS=1` from
 `OCAH_FLOW_COMMON_DEFINES` in `flows/common.mk`.
 

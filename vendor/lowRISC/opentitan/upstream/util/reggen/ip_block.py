@@ -189,6 +189,8 @@ class IpBlock:
     features: list[Feature]
     node: str = ''
     alias_impl: str | None = None
+    human_name: str | None = None
+    one_line_desc: str | None = None
 
     def __post_init__(self) -> None:
         assert isinstance(self.reg_blocks, dict)
@@ -404,7 +406,9 @@ class IpBlock:
                        memories, interrupts, no_auto_intr, alerts, no_auto_alert,
                        scan, inter_signals, bus_interfaces, clocking, xputs,
                        wakeups, rst_reqs, expose_reg_if, scan_reset, scan_en,
-                       countermeasures, features, node)
+                       countermeasures, features, node,
+                       human_name=rd.get('human_name'),
+                       one_line_desc=rd.get('one_line_desc'))
 
     @staticmethod
     def from_text(txt: str,

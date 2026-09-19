@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP outbound-mailbox -> PIC -> CPU interrupt-delivery test (PyUVM).
+"""SEP inbound-mailbox -> PIC -> CPU interrupt-delivery test (PyUVM).
 
 OSS port of the reference suite ``sep_mailbox_plic_test``. Boots the VeeR EL2 core and runs
-the mailbox_plic firmware, which arms outbound mailbox 0 (axil_mailbox @
-0x10A0_0000), self-triggers its threshold interrupt by pushing a word into the
+the mailbox_plic firmware, which arms inbound mailbox 0 (axil_mailbox @
+0x10A0_0800), self-triggers its threshold interrupt by pushing a word into the
 FIFO, and proves the interrupt reaches the CPU through the VeeR PIC (WFI + ISR):
-``axil_mailbox.outbound_interrupt_o[0]`` -> ``sep_internal_interrupts[0]`` ->
+``axil_mailbox.inbound_interrupt_o[0]`` -> ``sep_internal_interrupts[0]`` ->
 PIC source 1 -> CPU trap -> ISR. The whole path is internal to bare ``sep`` -- no
 testbench injection.
 
@@ -47,7 +47,7 @@ _BANNER = "SEP mailbox PLIC test"
 
 @pyuvm.test()
 class sep_mailbox_plic_test(sep_base_test):
-    """Boot VeeR EL2 and run the outbound-mailbox PIC-delivery firmware."""
+    """Boot VeeR EL2 and run the inbound-mailbox PIC-delivery firmware."""
 
     build_env = False
 

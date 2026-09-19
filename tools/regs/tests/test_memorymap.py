@@ -184,6 +184,12 @@ addrmap bounds_top {
         self.assertTrue(text.startswith('<?xml version="1.0"?>\n<!-- SPDX'))
         self.assertIn("<description>text </description>\n", text)
 
+    def test_rdl_stamping(self):
+        rdl = Path(self.temp.name) / "map.rdl"
+        rdl.write_text("addrmap map {};\n")
+        self.assertTrue(stamp_file(rdl))
+        self.assertTrue(rdl.read_text().startswith("// SPDX-License-Identifier"))
+
     def test_config_rejects_unknown_keys(self):
         config = Path(self.temp.name) / "bad.toml"
         config.write_text('version = 1\n[[views]]\nname = "bad"\ncolums = ["base"]\n')

@@ -308,7 +308,7 @@ When [.monospaced]#++r_aw_cnt == WR_MO_CNT++#, [.monospaced]#++AWREADY++# and [.
 
 The [.monospaced]#++O_PENDING_CNT_OVER++# signal (exposed via the interrupt controller) fires if a write handshake is attempted while the counter is already at the limit, serving as a diagnostic for system-hang detection.
 
-image::write-outstanding-backpressure.svg[Write-outstanding queue filling, stalling, and draining as early-table entries free up]
+image::write-outstanding-backpressure.svg["Write-outstanding queue filling, stalling, and draining as early-table entries free up"]
 
 [[aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id]]
 ==== 3.7.6. Mixed Ordering \-- Bufferable Before Non-Bufferable (Same ID)

@@ -602,6 +602,20 @@
     border: 1px solid #ddd;
 }
 
+.dashboard-badges {
+    margin: 1em 0;
+    line-height: 1.9;
+}
+
+.dashboard-badge {
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+.dashboard .dashboard-back {
+    margin: 1.5em 0;
+}
+
 .dashboard-chart {
     margin: 0.5em 0 1.5em 0;
 }

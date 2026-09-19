@@ -36,8 +36,5 @@ clean:: # cocotb's own `clean` uses double colon
 filelist:
 	bender script flist-plus -t common_cells_rtl -t apb_rtl -t axi_rtl -t peripheral > uart_wrap.f
 
-lint:
-	svlint -v ../rtl/uart_wrap.sv
-
 wave:
 	surfer -s uart_wrap.surfer dump.vcd
