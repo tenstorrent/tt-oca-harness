@@ -1260,6 +1260,15 @@ class sep_base_test(uvm_test):
         """Override with the per-test stimulus."""
         raise NotImplementedError
 
+    @staticmethod
+    def _sha256_file(path: str) -> tuple[str, int]:
+        """Return ``(hexdigest, size)`` for ``path``. Raises if the file is missing."""
+        digest = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                digest.update(chunk)
+        return digest.hexdigest(), os.path.getsize(path)
+
     def _log_firmware_identity(self, itcm_hex: str, dtcm_hex: str) -> None:
         """Record sha256 of the staged TCM images.
 
@@ -1268,13 +1277,8 @@ class sep_base_test(uvm_test):
         """
         parts = []
         for label, path in (("itcm", itcm_hex), ("dtcm", dtcm_hex)):
-            digest = hashlib.sha256()
-            with open(path, "rb") as fh:
-                for chunk in iter(lambda: fh.read(1 << 20), b""):
-                    digest.update(chunk)
-            parts.append(
-                f"{label}={path} sha256={digest.hexdigest()} bytes={os.path.getsize(path)}"
-            )
+            digest, nbytes = self._sha256_file(path)
+            parts.append(f"{label}={path} sha256={digest} bytes={nbytes}")
         self.logger.info("RUN-IDENTITY-FW: %s", " ".join(parts))
 
     def _log_run_identity(self) -> None:
@@ -1341,6 +1345,25 @@ class sep_base_test(uvm_test):
             val = cocotb.plusargs[key]
             plus_parts.append(f"+{key}" if val is True or val == "" else f"+{key}={val}")
         self.logger.info("RUN-IDENTITY-PLUSARGS: %s", " ".join(plus_parts) or "(none)")
+        # KM ROM is loaded by tb_backdoor_mem from +km_rom_hex. Ten leaves use
+        # the untracked rom_main.rom.parhex; a path-only plusarg cannot join
+        # those bytes. Hash the staged file when it is present.
+        km_rom = cocotb.plusargs.get("km_rom_hex")
+        if km_rom and km_rom is not True:
+            km_path = (
+                km_rom
+                if os.path.isabs(str(km_rom))
+                else os.path.join(os.getcwd(), str(km_rom))
+            )
+            if os.path.isfile(km_path):
+                digest, nbytes = self._sha256_file(km_path)
+                self.logger.info(
+                    "RUN-IDENTITY-FW: km_rom=%s sha256=%s bytes=%d", km_path, digest, nbytes
+                )
+            else:
+                self.logger.info(
+                    "RUN-IDENTITY-FW: km_rom=%s missing -- bytes not hashed", km_path
+                )
         # Build identity: the binary this process IS. A commit names the
         # sources on disk at time 0, which is not the same claim as "the model
         # executing was compiled from them" -- a reused simv, or a rebuild that

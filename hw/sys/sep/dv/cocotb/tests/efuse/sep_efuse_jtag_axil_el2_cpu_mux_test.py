@@ -145,6 +145,7 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             import shutil
 
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
+        self._log_firmware_identity(_ITCM_HEX, _DTCM_HEX)
 
         async def _load_tcm() -> None:
             from cocotb.triggers import ClockCycles
