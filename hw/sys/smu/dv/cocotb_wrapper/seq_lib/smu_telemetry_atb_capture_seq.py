@@ -18,22 +18,26 @@ S3  One complete last-flagged ATB message. Every beat must be accepted --
     ``telemetry_atvalid_i`` is high -- because a dropped beat leaves a partial
     frame that can still clear ``STATUS.BUFFER_EMPTY`` and still match the
     probe id. The receiver then has to report the buffer non-empty, the probe
-    id that was framed, one valid bit per counter sent and the counter value
-    itself reassembled, and ``CTRL.BUFFER_POP`` has to return it to empty.
+    id that was framed, one valid bit for the one counter's worth of valid
+    blocks sent, that counter reassembled from the byte every valid block
+    carried, and ``CTRL.BUFFER_POP`` has to return it to empty.
 
-S4  The ATB flush handshake. ``telemetry_receiver.sv`` drives
-    ``afvalid_o = CTRL.TELEMETRY_TX_FLUSH`` and clears that field on
-    ``afready_i && afvalid_o``, so with ``telemetry_afready_i`` held low the
-    request must stay asserted, and only raising it may retire the request at
-    both the pin and the register.
+S4  The ATB flush handshake. ``CTRL.TELEMETRY_TX_FLUSH`` requests the
+    upstream flush over the ATB AF interface and clears itself when the flush
+    completes (``regs/telemetry_receiver.rdl``; ``doc/programming.adoc``,
+    "Transmitter Flush"); ``afvalid_o`` is the flush request and ``afready_i``
+    its acknowledgment (``doc/interface.adoc``). With ``telemetry_afready_i``
+    held low the request must stay asserted at the pin and in the field, and
+    raising it retires both.
 
-The frame this sequence builds is derived from the receiver's own packet and
-block types and from its counter decode, not from a bench convention; the
-constants below cite where each field comes from.
+The frame this sequence drives is a DV-owned table transcribed from the
+telemetry receiver specification under ``hw/ip/telemetry_receiver/``; the
+constants below cite each entry and name the positions the specification
+leaves open.
 
-``telemetry_atid_i`` is driven because an ATB beat carries an ID, but no
-register reflects it: ``telemetry_receiver.sv`` declares ``atid_i`` and never
-reads it. Its capture is not claimed here.
+``telemetry_atid_i`` is driven because an ATB beat carries a 7-bit source ID
+(``doc/interface.adoc``), but no register in ``regs/telemetry_receiver.rdl``
+reflects it, so its capture is not claimed here.
 """
 
 from __future__ import annotations
@@ -83,28 +87,52 @@ PROBE_ID_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PR
 BUFFER_POP_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm")
 TX_FLUSH_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bm")
 
-# ATB frame layout, from hw/ip/telemetry_receiver/rtl/telemetry_receiver_pkg.sv
-# and telemetry_receiver.sv. A packet is
-# ``{last_packet, blocks[NUM_BLOCKS_PER_PACKET-1:0]}`` and a block is
-# ``{vld, counter_val_partial[7:0]}``, so block k occupies bits 9k+8 .. 9k and
-# ``last_packet`` is the packet's MSB. ``get_telemetry_probe_id`` reads
-# ``telemetry_packets[0][60:56]``. The counter decode
-# (telemetry_receiver.sv:187-213) starts at block index 1 and walks upward,
-# MSB byte first, so counter 0 is blocks 1..4 of the first packet. The beats
-# carry the packet a byte at a time, least significant byte first.
+# ATB message format, transcribed from the telemetry receiver specification:
+# hw/ip/telemetry_receiver/doc/index.adoc "Message Format" (eight little-endian
+# beats form a 64-bit packet; a message ends at the packet with ``last_packet``
+# set; ``last_packet`` is bit 63 of each packet; ``probe_id`` is bits [60:56]
+# of the first packet; a block is 9 bits, one valid bit and one data byte,
+# seven per packet; a counter is four consecutive blocks, most-significant
+# byte first, valid only when all four blocks are valid), doc/interface.adoc
+# (ATB_DATA_WIDTH 8, PACKET_WIDTH 64, ``atid_i`` 7 bits) and the generated
+# regs/gen/c/telemetry_receiver.h (PROBE_ID width; COUNTER_VLDS bit i is
+# counter i).
 ATB_BEAT_BITS = 8
 ATB_PACKET_BITS = 64
 ATB_BEATS_PER_PACKET = ATB_PACKET_BITS // ATB_BEAT_BITS
-ATB_BLOCK_BITS = ATB_BEAT_BITS + 1
-ATB_FIRST_COUNTER_BLOCK = 1
-ATB_BYTES_PER_COUNTER = 4
+ATB_LAST_PACKET_BIT = 63
+ATB_PROBE_ID_MSB = 60
 ATB_PROBE_ID_LSB = 56
-ATB_LAST_PACKET_BIT = ATB_PACKET_BITS - 1
+ATB_PROBE_ID_BITS = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bw")
+ATB_PROBE_ID_MASK = (1 << ATB_PROBE_ID_BITS) - 1
+ATB_BLOCK_BITS = ATB_BEAT_BITS + 1
+ATB_BLOCKS_PER_PACKET = 7
+ATB_BLOCKS_PER_COUNTER = 4
+assert ATB_PROBE_ID_MSB - ATB_PROBE_ID_LSB + 1 == ATB_PROBE_ID_BITS
+assert ATB_BLOCKS_PER_PACKET * ATB_BLOCK_BITS + 1 == ATB_PACKET_BITS
+
+# Seven 9-bit blocks fill bits 62:0 below ``last_packet``, so block boundaries
+# sit at multiples of 9 and ``probe_id`` lies inside the top block, bits 62:54.
+# The specification does not say which of the seven positions is block 0,
+# whether a block's valid bit is its top or its bottom bit, or which block
+# begins counter 0. The frame below is DV-owned and independent of all three:
+# the header block is left invalid under either orientation, and every other
+# block is all ones, the only 9-bit pattern that reads valid with the same data
+# byte whichever bit is the valid bit. Any four consecutive valid blocks then
+# reassemble COUNTER_VALUE in either byte order, and the six valid blocks hold
+# exactly one counter's worth, so byte order and block placement are not
+# discriminated here.
+ATB_HEADER_BLOCK_LSB = ATB_LAST_PACKET_BIT - ATB_BLOCK_BITS
+ATB_BLOCK_FILL = (1 << ATB_BLOCK_BITS) - 1
+COUNTER_FILL_BYTE = ATB_BLOCK_FILL & ((1 << ATB_BEAT_BITS) - 1)
+COUNTERS_SENT = (ATB_BLOCKS_PER_PACKET - 1) // ATB_BLOCKS_PER_COUNTER
+COUNTER_VALUE = int.from_bytes(bytes([COUNTER_FILL_BYTE]) * ATB_BLOCKS_PER_COUNTER, "big")
+EXPECTED_COUNTER_VLDS = (1 << COUNTERS_SENT) - 1
+assert ATB_HEADER_BLOCK_LSB <= ATB_PROBE_ID_LSB and ATB_PROBE_ID_MSB < ATB_LAST_PACKET_BIT
+assert COUNTERS_SENT == 1
 
 PROBE_ID = 0x0B
-# One counter, so the whole message is a single packet: counter 1 would need
-# the header block, which carries the probe id.
-COUNTER_VALUE = 0x1122_3344
+assert PROBE_ID <= ATB_PROBE_ID_MASK
 ATB_ID = 0x2A
 ATB_READY_BOUND = 64
 STATUS_POLL_BOUND = 200
@@ -192,6 +220,13 @@ class smu_telemetry_atb_capture_seq:
             0,
             evidence="CHK-SMU-TEL-RESET",
         )
+        counter0 = await self._rd32(TEL_COUNTER0, "TELEMETRY_COUNTER[0]")
+        self.sb.expect_eq(
+            "counter 0 reads its reset value before any beat",
+            counter0,
+            0,
+            evidence="CHK-SMU-TEL-RESET",
+        )
 
     async def _ungate(self) -> None:
         cg_mask = TELEMETRY_CG_EN_BM
@@ -238,19 +273,16 @@ class smu_telemetry_atb_capture_seq:
         for i in range(ATB_BEATS_PER_PACKET):
             await self._drive_beat((packet >> (i * ATB_BEAT_BITS)) & mask, i)
 
-    def _frame_single_counter(self, probe_id: int, value: int) -> int:
-        """One last-flagged packet carrying counter 0 in blocks 1..4."""
+    def _frame_single_counter(self, probe_id: int) -> int:
+        """One last-flagged packet: ``probe_id`` in the header block, every other block valid."""
         packet = 1 << ATB_LAST_PACKET_BIT
-        packet |= (probe_id & PROBE_ID_BM) << ATB_PROBE_ID_LSB
-        for step in range(ATB_BYTES_PER_COUNTER):
-            block = ATB_FIRST_COUNTER_BLOCK + step
-            byte = (value >> ((ATB_BYTES_PER_COUNTER - 1 - step) * 8)) & 0xFF
-            packet |= byte << (block * ATB_BLOCK_BITS)
-            packet |= 1 << (block * ATB_BLOCK_BITS + ATB_BEAT_BITS)
+        packet |= (probe_id & ATB_PROBE_ID_MASK) << ATB_PROBE_ID_LSB
+        for block_lsb in range(0, ATB_HEADER_BLOCK_LSB, ATB_BLOCK_BITS):
+            packet |= ATB_BLOCK_FILL << block_lsb
         return packet
 
     async def _send_message(self) -> None:
-        packet = self._frame_single_counter(PROBE_ID, COUNTER_VALUE)
+        packet = self._frame_single_counter(PROBE_ID)
         self.log.info("ATB packet framed as 0x%016x", packet)
         await self._send_packet(packet)
 
@@ -280,14 +312,14 @@ class smu_telemetry_atb_capture_seq:
         )
         vlds = await self._rd32(TEL_COUNTER_VLDS, "TELEMETRY_COUNTER_VLDS")
         self.sb.expect_eq(
-            "one valid bit per counter sent",
+            "one valid bit for the one counter's worth of valid blocks sent",
             vlds,
-            1,
+            EXPECTED_COUNTER_VLDS,
             evidence="CHK-SMU-TEL-CAPTURE",
         )
         counter0 = await self._rd32(TEL_COUNTER0, "TELEMETRY_COUNTER[0]")
         self.sb.expect_eq(
-            "counter 0 reassembles the four bytes that were framed",
+            "counter 0 reassembles the byte that filled every valid block",
             counter0,
             COUNTER_VALUE,
             evidence="CHK-SMU-TEL-CAPTURE",

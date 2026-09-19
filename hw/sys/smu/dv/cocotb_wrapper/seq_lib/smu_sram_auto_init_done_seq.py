@@ -2,13 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_sram_auto_init_done_test (SMU_110).
 
-With smc_disable_sram_auto_init_i at its 1'b0 default, a cold reset is held until
-it reaches the primary reset, and the SMC scratch-RAM zeroing is then watched
-at its consumer: the initialisation enable rises and the address counter
-advances after release, zeroing writes reach the scratch RAM, and
-smc_init_mem_done_o then asserts and holds. The covered geometry and latency are
-unstated (SF-046), so completion is awaited under a testbench bound rather
-than compared against a cycle count.
+With smc_disable_sram_auto_init_i at its 1'b0 default, the bring-up sweep is
+awaited until smc_init_mem_done_o is high, a cold reset is then held until it
+reaches the primary reset and the flag is required to clear, and the SMC
+scratch-RAM zeroing is watched at its consumer after release: the
+initialisation enable rises and the address counter advances, zeroing writes
+reach the scratch RAM, and smc_init_mem_done_o asserts again and holds. The
+covered geometry and latency are unstated (SF-046), so completion is awaited
+under a testbench bound rather than compared against a cycle count.
 """
 
 from __future__ import annotations
@@ -37,6 +38,19 @@ class smu_sram_auto_init_done_seq:
         self.log = test.logger
         self.sb = test.env.scoreboard
 
+    async def _await_done(self, since: str, zero_addr, init_enable) -> int:
+        """Poll smc_init_mem_done_o high under a bound; returns the clk_smu it took."""
+        dut = self.dut
+        for poll in range(DONE_POLL_BOUND):
+            await ClockCycles(dut.clk_smu_i, DONE_POLL_CYCLES)
+            if sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o"):
+                return (poll + 1) * DONE_POLL_CYCLES
+        raise AssertionError(
+            f"TIMEOUT smc_init_mem_done_o never asserted {since}: "
+            f"bound={DONE_POLL_BOUND * DONE_POLL_CYCLES} clk_smu "
+            f"zero_addr=0x{sample(zero_addr, 'zero_addr'):x} enable={sample(init_enable, 'init_mem_enable')}"
+        )
+
     async def run(self) -> None:
         dut = self.dut
         sb = self.sb
@@ -58,9 +72,22 @@ class smu_sram_auto_init_done_seq:
             0,
             evidence="CHK-SMU-MEMINIT-S1",
         )
+        bringup_cycles = await self._await_done("after bring-up", zero_addr, init_enable)
         self.log.info(
-            "smc_init_mem_done_o after bring-up: %d",
+            "smc_init_mem_done_o asserted within %d clk_smu of the sequence start; scratch writes %d",
+            bringup_cycles,
+            sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o"),
+        )
+        sb.expect_eq(
+            "smc_init_mem_done_o is high after the bring-up sweep, before the cold reset",
             sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o"),
+            1,
+            evidence="CHK-SMU-MEMINIT-S1",
+        )
+        sb.expect_eq(
+            "initialisation complete before the cold reset",
+            sample(init_complete, "init_mem_complete"),
+            1,
         )
 
         dut.rst_cold_ni.value = 0
@@ -120,17 +147,7 @@ class smu_sram_auto_init_done_seq:
         )
 
         writes_at_start = sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
-        done_cycle = None
-        for poll in range(DONE_POLL_BOUND):
-            await ClockCycles(dut.clk_smu_i, DONE_POLL_CYCLES)
-            if sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o"):
-                done_cycle = (poll + 1) * DONE_POLL_CYCLES
-                break
-        if done_cycle is None:
-            raise AssertionError(
-                f"TIMEOUT smc_init_mem_done_o never asserted: bound={DONE_POLL_BOUND * DONE_POLL_CYCLES} clk_smu "
-                f"zero_addr=0x{sample(zero_addr, 'zero_addr'):x} enable={sample(init_enable, 'init_mem_enable')}"
-            )
+        done_cycle = await self._await_done("after the cold reset", zero_addr, init_enable)
         writes_at_done = sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
         self.log.info(
             "smc_init_mem_done_o asserted within %d clk_smu of the first enable; scratch writes %d -> %d",
