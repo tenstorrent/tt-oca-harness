@@ -1,21 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_smc_boundary_io_test. SEP=0, no Force.
+"""Sequence for smu_smc_boundary_io_test. No Force.
 
 Every SMC-facing boundary signal exercised here is paired with the SMC CSR
-that the port_table.adoc row says owns it, so the compare is against a
-register the DUT produced rather than against the value the bench drove:
+that the port_table.adoc row says owns it, or with the bit of the SMC CPU
+interrupt vector that hw/sys/smc/doc/interrupts.adoc assigns to it, so the
+compare is against a value the DUT produced rather than against the value the
+bench drove:
 
 * ``smc_ndmreset_request_i``  -> ``NDM_RESET.NDMRESET_REQUEST`` (read-only
-  mirror of the pin), with ``NDMRESET_CLUSTER_COUNT`` read first so a dead
-  window cannot pass the mirror compare.
+  mirror of the pin). ``NDMRESET_CLUSTER_COUNT`` is read first: ndm_reset.rdl
+  defines it as the number of NDM clusters and as the mask for the request
+  register, and bounds the pair at 32 clusters. No specification document
+  states the count numerically, so the register is the only owner of the
+  lane count and every NDM compare is masked to what it reports.
 * ``NDM_RESET.NDMRESET_PROCESS`` -> ``smc_ndmreset_process_o``. The register is
-  32 bits and only ``CPU_CLUSTER_COUNT`` of them leave the block, so the
-  all-ones write is also the port-width check.
-* ``smc_ext_interrupts_i``    -> ``smc_base``'s synchronized ``cpu_interrupts_o``
-  vector, lane for lane over the driven slice. port_table.adoc calls these
-  active-high level inputs, so the release leg requires the vector to follow
-  the pins back down rather than latch. PLIC delivery is not claimed here.
+  32 bits and port_table.adoc gives the port one lane per cluster, so the
+  all-ones write is also the port-width check against the reported count.
+* ``smc_ext_interrupts_i``    -> ``cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]``,
+  the external-interrupt slice of the SMC CPU interrupt vector map, lane for
+  lane over the driven slice. port_table.adoc calls these active-high level
+  inputs, so the release leg requires the vector to follow the pins back down
+  rather than latch. fabric.adoc places the PLIC on the CPU cluster's local
+  path, out of reach of the bench's JTAG2AXI manager, so PLIC pending state
+  is not claimed here.
 * ``RESET_UNIT.SS_CONFIG`` / ``SYNC_REG`` / ``ISOLATE_REQ_REG`` ->
   ``ss_config_o`` / ``sync_irq_o`` / ``isolate_req_o``.
 * ``mem_repair_abort_i`` / ``mbist_abort_i`` -> ``DFX_CTRL.STATUS_SMU``. Those
@@ -37,7 +45,7 @@ from cocotb.triggers import ClockCycles
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_addr
-from seq_lib.smu_boundary_regs import dfx_ctrl_status_u32
+from seq_lib.smu_boundary_regs import dfx_ctrl_status_u32, ndm_reset_u32
 from seq_lib.smu_compose_helpers import hier, sample
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -74,11 +82,17 @@ MBIST_ABORT_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bm")
 MEM_REPAIR_DONE_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MEM_REPAIR_DONE_bm")
 MBIST_DONE_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_DONE_bm")
 
-# smc_config_pkg::CPU_CLUSTER_COUNT, the elaborated width of the NDM pair.
-CPU_CLUSTER_COUNT = 4
-CLUSTER_MASK = (1 << CPU_CLUSTER_COUNT) - 1
-# smc_base.sv synchronizes smc_ext_interrupts_i with a prim_sync3 and the PLIC
-# gateway adds its own stage; the pin is held well past both.
+NDMRESET_CLUSTER_COUNT_BM = ndm_reset_u32(
+    "NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_bm"
+)
+# ndm_reset.rdl: the NDM register pair "supports up to 32 CPU Clusters".
+NDMRESET_MAX_CLUSTERS = 32
+NDMRESET_PATTERNS = (0x5555_5555, 0xAAAA_AAAA)
+# hw/sys/smc/doc/interrupts.adoc, "SMC CPU Interrupt Vector Map":
+# cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] is smc_ext_interrupts_i after a
+# three-stage synchronizer, with NUM_EXT_INTERRUPTS = 256; the pin is held
+# well past the synchronizer before the vector is sampled.
+EXT_IRQ_VECTOR_BITS = 256
 SYNC_CYCLES = 32
 EXT_IRQ_LANE = 0
 EXT_IRQ_PATTERN = 0xA5A5_5A5A
@@ -162,26 +176,37 @@ class smu_smc_boundary_io_seq:
     async def _ndmreset_request(self) -> None:
         dut = self.dut
         count = await self._rd32(NDMRESET_CLUSTER_COUNT, "NDMRESET_CLUSTER_COUNT")
+        count &= NDMRESET_CLUSTER_COUNT_BM
         self.sb.expect_eq(
-            "NDMRESET_CLUSTER_COUNT reads the elaborated cluster count",
-            count & 0xFF,
-            CPU_CLUSTER_COUNT,
+            f"NDMRESET_CLUSTER_COUNT={count} lies within the 1..{NDMRESET_MAX_CLUSTERS} "
+            "clusters the RDL allows",
+            1 <= count <= NDMRESET_MAX_CLUSTERS,
+            True,
             evidence="CHK-SMU-NDMRESET-REQ",
         )
+        request_lanes = len(dut.tb_smc_ndmreset_request)
+        if count > request_lanes:
+            raise AssertionError(
+                f"the bench drives {request_lanes} NDM request lanes, fewer than the "
+                f"{count} NDMRESET_CLUSTER_COUNT reports"
+            )
+        self.cluster_count = count
+        self.cluster_mask = (1 << count) - 1
         idle = await self._rd32(NDMRESET_REQUEST, "NDMRESET_REQUEST")
         self.sb.expect_eq(
             "NDMRESET_REQUEST clear while the pin is idle",
-            idle & CLUSTER_MASK,
+            idle & self.cluster_mask,
             0,
             evidence="CHK-SMU-NDMRESET-REQ",
         )
-        for pattern in (0x5, 0xA):
+        for pattern in (p & self.cluster_mask for p in NDMRESET_PATTERNS):
             dut.tb_smc_ndmreset_request.value = pattern
             await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
             mirrored = await self._rd32(NDMRESET_REQUEST, "NDMRESET_REQUEST")
             self.sb.expect_eq(
-                f"NDMRESET_REQUEST mirrors smc_ndmreset_request_i=0x{pattern:x}",
-                mirrored & CLUSTER_MASK,
+                f"NDMRESET_REQUEST mirrors smc_ndmreset_request_i=0x{pattern:x} "
+                f"over the {count} reported clusters",
+                mirrored & self.cluster_mask,
                 pattern,
                 evidence="CHK-SMU-NDMRESET-REQ",
             )
@@ -190,7 +215,7 @@ class smu_smc_boundary_io_seq:
         released = await self._rd32(NDMRESET_REQUEST, "NDMRESET_REQUEST")
         self.sb.expect_eq(
             "NDMRESET_REQUEST follows the pin back to zero",
-            released & CLUSTER_MASK,
+            released & self.cluster_mask,
             0,
             evidence="CHK-SMU-NDMRESET-REQ",
         )
@@ -217,42 +242,51 @@ class smu_smc_boundary_io_seq:
                 evidence="CHK-SMU-NDMRESET-PROC",
             )
             self.sb.expect_eq(
-                f"smc_ndmreset_process_o carries NDMRESET_PROCESS[{CPU_CLUSTER_COUNT - 1}:0] "
-                f"of 0x{written:08x}",
+                f"smc_ndmreset_process_o carries NDMRESET_PROCESS[{self.cluster_count - 1}:0] "
+                f"of 0x{written:08x}, the lanes NDMRESET_CLUSTER_COUNT reports",
                 self._sample("tb_smc_ndmreset_process"),
-                written & CLUSTER_MASK,
+                written & self.cluster_mask,
                 evidence="CHK-SMU-NDMRESET-PROC",
             )
 
     # ------------------------------------------------------------------
-    # S3: an external interrupt lane where the SMC receives it.
+    # S3: the external interrupt lanes on the external-interrupt slice of the
+    # SMC CPU interrupt vector.
     # ------------------------------------------------------------------
     async def _ext_interrupt(self) -> None:
         dut = self.dut
+        lanes = len(dut.tb_smc_ext_interrupts)
+        if lanes > EXT_IRQ_VECTOR_BITS:
+            raise AssertionError(
+                f"the bench drives {lanes} external interrupt lanes, more than the "
+                f"{EXT_IRQ_VECTOR_BITS} the vector map assigns them"
+            )
+        lane_mask = (1 << lanes) - 1
         smu = smu_scope(dut)
         received = hier(smu, f"{SMC_BASE_PATH}.cpu_interrupts_o")
         self.sb.expect_eq(
-            "no external interrupt lane set at the SMC while the pins are idle",
-            sample(received, "cpu_interrupts_o") & 0xFFFF_FFFF,
+            f"cpu_interrupts_o[{lanes - 1}:0] clear while the external interrupt pins are idle",
+            sample(received, "cpu_interrupts_o") & lane_mask,
             0,
             evidence="CHK-SMU-EXT-IRQ",
         )
-        for pattern in (1 << EXT_IRQ_LANE, 1 << 31, EXT_IRQ_PATTERN):
+        for pattern in (1 << EXT_IRQ_LANE, 1 << (lanes - 1), EXT_IRQ_PATTERN & lane_mask):
             dut.tb_smc_ext_interrupts.value = pattern
             await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
             self.sb.expect_eq(
-                f"smc_ext_interrupts_i=0x{pattern:08x} reaches the SMC on the same lanes",
-                sample(received, "cpu_interrupts_o") & 0xFFFF_FFFF,
+                f"smc_ext_interrupts_i=0x{pattern:08x} appears on cpu_interrupts_o[{lanes - 1}:0] "
+                "bit for bit",
+                sample(received, "cpu_interrupts_o") & lane_mask,
                 pattern,
                 evidence="CHK-SMU-EXT-IRQ",
             )
-        # port_table.adoc calls these active-high level inputs, so the SMC-side
-        # vector has to follow the pins back down and not latch.
+        # port_table.adoc calls these active-high level inputs, so the vector
+        # has to follow the pins back down and not latch.
         dut.tb_smc_ext_interrupts.value = 0
         await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
         self.sb.expect_eq(
-            "the level inputs release at the SMC with the pins",
-            sample(received, "cpu_interrupts_o") & 0xFFFF_FFFF,
+            f"cpu_interrupts_o[{lanes - 1}:0] releases with the level input pins",
+            sample(received, "cpu_interrupts_o") & lane_mask,
             0,
             evidence="CHK-SMU-EXT-IRQ",
         )
