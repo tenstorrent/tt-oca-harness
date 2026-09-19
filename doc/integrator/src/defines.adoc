@@ -7,9 +7,9 @@
 Compile-time defines that apply across OCAH rather than to a single block.
 Set the OCAH names in this chapter. Do not set vendor preprocessor names;
 `hw/common/defs/ocah_vendor_defines.svh` derives the aliases those names
-imply. OCAH DV, lint, and synthesis force-include that header (or expand the
-same aliases onto the command line). An adopter compile must force-include it
-as well, for example Verilator `-FI hw/common/defs/ocah_vendor_defines.svh`.
+imply. OCAH lint and Yosys force-include that header. Native DV expands the
+same aliases onto the command line. An adopter compile must do one of those
+two.
 
 A `` `define `` in a header is visible only in compilation units that include
 it. Command-line `+define+` / `-D` is global. Force-include (or the flow's

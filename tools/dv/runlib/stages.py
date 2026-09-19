@@ -134,7 +134,6 @@ REDACTED_VALUE = "<redacted>"
 # Adopters set the OCAH names; these are the vendor aliases ocah_vendor_defines.svh
 # derives. Flows expand them onto the command line so tools without a force-include
 # still see the vendor spelling. Do not emit VERILATOR / TARGET_VERILATOR from Bender.
-OCAH_VENDOR_DEFINES_HEADER = "hw/common/defs/ocah_vendor_defines.svh"
 OCAH_VENDOR_DEFINE_ALIASES: dict[str, tuple[str, ...]] = {
     "SYNTHESIS": ("TARGET_SYNTHESIS",),
     "SIMULATION": ("ABR_SIMULATION",),
@@ -191,13 +190,6 @@ def expand_ocah_vendor_define_aliases(items: list[str]) -> list[str]:
                 extra.append(alias)
             present.add(alias)
     return [*items, *extra]
-
-
-def ocah_vendor_defines_force_include(root: Path, tool: str) -> list[str]:
-    header = str(repo_path(root, OCAH_VENDOR_DEFINES_HEADER))
-    if tool == "verilator":
-        return ["-FI", header]
-    return []
 
 
 _STAGE_CANCELLATION = threading.Event()
@@ -1318,7 +1310,6 @@ def verilator_compile(
             + [f"+define+{define}" for define in (args.define or [])]
         )
     )
-    argv.extend(ocah_vendor_defines_force_include(root, "verilator"))
     argv.extend(["-Mdir", str(mdir)])
     argv.extend(["-f", str(repo_path(root, str(build.get("filelist", ""))))])
     wave_format = _wave_format(args, tool)
@@ -1376,7 +1367,6 @@ def _cocotb_build_args(
             *expand_ocah_vendor_define_aliases(target_flags(run_target, "verilator")),
             *(args.comp_arg or []),
             *defines,
-            *ocah_vendor_defines_force_include(root, "verilator"),
             *option_build_args(options, verilator_cfg, _build_jobs_arg(args)),
             "-f",
             str(filelist),

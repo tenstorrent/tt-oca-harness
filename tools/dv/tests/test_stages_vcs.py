@@ -212,7 +212,7 @@ class OcahVendorDefineAliases(unittest.TestCase):
         self.assertIn("+define+SIMULATION", argv)
         self.assertIn("+define+ABR_SIMULATION", argv)
 
-    def test_cocotb_verilator_force_includes_and_expands(self):
+    def test_cocotb_verilator_expands_aliases_without_force_include(self):
         argv = _cocotb_build_args(
             "verilator",
             None,
@@ -229,5 +229,4 @@ class OcahVendorDefineAliases(unittest.TestCase):
         )
         self.assertIn("+define+ABR_SIMULATION", argv)
         self.assertIn("+define+TARGET_VERILATOR", argv)
-        fi = argv.index("-FI")
-        self.assertEqual(argv[fi + 1], "/repo/hw/common/defs/ocah_vendor_defines.svh")
+        self.assertNotIn("-FI", argv)
