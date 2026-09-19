@@ -65,13 +65,18 @@ class sep_mailbox_plic_test(sep_base_test):
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
 
-        # Baseline: the SMC-facing line is idle before the firmware pushes
-        # anything, so a 1 at the end of the run is this run's doing.
+        # Baseline: the SMC-facing line is idle once reset is released and
+        # before the firmware pushes anything, so a 1 at the end of the run is
+        # this run's doing. Sampled in the post-bring-up hook rather than at
+        # time 0: under a four-state simulator the port is X before reset, and
+        # a compare there would raise on a healthy run.
         smc_irq = cocotb.top.smc_mailbox_interrupt_o
-        assert self.rd_known(smc_irq) == 0, (
-            "smc_mailbox_interrupt_o is already asserted at reset; the end-of-run "
-            "check below could not attribute it to the outbound push"
-        )
+
+        async def _smc_line_idle() -> None:
+            assert self.rd_known(smc_irq) == 0, (
+                "smc_mailbox_interrupt_o is already asserted after reset; the "
+                "end-of-run check below could not attribute it to the outbound push"
+            )
 
         await self.boot_firmware(
             self.sb,
@@ -81,6 +86,7 @@ class sep_mailbox_plic_test(sep_base_test):
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+            after_bring_up_hook=_smc_line_idle,
         )
         console = self.sb.console_text()
         for label in ("CHK-DELIVER PASS:", "CHK-RW1C PASS:", "CHK-NOSTORM PASS:"):
