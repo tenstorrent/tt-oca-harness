@@ -615,7 +615,7 @@ int main(void) {
     }
     errors += cs_err;
     if (cs_err == 0) {
-        sep_mbx_puts("CHK-ERR-CSIDINVAL PASS: CSID==1 with NUM_CS==1 latched only "
+        sep_mbx_puts("CHK-ERR-CSIDINVAL PASS: CSID=0xFFFFFFFF latched only "
                      "ERROR_STATUS.CSIDINVAL and W1C released it\n");
     }
 

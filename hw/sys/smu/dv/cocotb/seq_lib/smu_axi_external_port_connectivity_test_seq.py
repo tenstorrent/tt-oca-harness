@@ -41,6 +41,7 @@ from seq_lib.smu_axi_helpers import (
     make_smu_axi_master,
     resp_name,
 )
+from seq_lib.smu_compose_helpers import GenerateScope
 from seq_lib.smu_filter_helpers import (
     await_smn_resp,
     clear_inbound0_config,
@@ -96,11 +97,6 @@ class smu_axi_external_port_connectivity_test_seq:
         if not val.is_resolvable:
             raise AssertionError(f"X/Z sample on {name}: {val}")
         return int(val)
-
-    def _require_child(self, parent, name: str):
-        if not hasattr(parent, name):
-            raise AssertionError(f"missing hierarchical child {name} under {parent}")
-        return getattr(parent, name)
 
     async def _axi_write_bounded(self, master, addr: int, data: int, awid: int):
         label = "s2_inbound_write"
@@ -227,14 +223,16 @@ class smu_axi_external_port_connectivity_test_seq:
     async def _observe_direct_iw_converters(self, dut) -> tuple[str, int, int]:
         """Passive hierarchy observe: gen_no_sep IW converters present; no xbar."""
         smu = smu_scope(dut)
-        if hasattr(smu, "gen_sep"):
+        if GenerateScope(smu, "gen_sep").exists():
             raise AssertionError(
                 "SEP=0 elaboration fail: gen_sep present (expected gen_no_sep only)"
             )
-        gen = self._require_child(smu, "gen_no_sep")
-        iw_in = self._require_child(gen, "u_iw_conv_smc_in")
-        iw_out = self._require_child(gen, "u_iw_conv_smc_out")
-        if hasattr(gen, "u_smu_axi_xbar"):
+        gen = GenerateScope(smu, "gen_no_sep")
+        if not gen.exists():
+            raise AssertionError(f"missing hierarchical child gen_no_sep under {smu}")
+        iw_in = gen.get("u_iw_conv_smc_in")
+        iw_out = gen.get("u_iw_conv_smc_out")
+        if gen.has("u_smu_axi_xbar"):
             raise AssertionError("SEP=0 elaboration fail: u_smu_axi_xbar present under gen_no_sep")
 
         # Live clk identity: converters track clk_smu_i (CONNECTIVITY, not force).

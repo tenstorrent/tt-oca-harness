@@ -46,6 +46,9 @@ _PATTERNS = (0xFF, 0xA5, 0x5A, 0xC3, 0x3C, 0x01)
 
 def _sample(signal, name: str) -> int:
     val = signal.value
+    if isinstance(val, int):
+        # An enum-typed handle (jtag_ptap_inst_decoded) reads back as a plain int on VCS.
+        return val
     if not val.is_resolvable:
         raise AssertionError(f"X/Z sample on {name}: {val}")
     return int(val)

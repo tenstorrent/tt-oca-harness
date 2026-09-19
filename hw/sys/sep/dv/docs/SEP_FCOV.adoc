@@ -110,7 +110,7 @@ human. Other members may fill a group in passing.
 |`sep_abr_mlkem_cg` |`sep_abr_mlkem_kat_test`
 |`sep_esrc_edn_flow_cg` |`sep_esrc_e2e_smoke_test`; KM sink `sep_drbg_real_sink_multi_km_aes_test`; the four `cp_edn_*` client coverpoints `sep_crypto_edn_round_robin_grant_test` (it is the only leaf that drives every adapter client in one run)
 |`sep_km_generate_cg` |`sep_km_command_set_rand_test`
-|`sep_km_command_sideload_cg` |the four `sep_km_{aes,hmac,kmac,otbn}_sideload_kat_test` (MUST-fill for HMAC/KMAC/AES/OTBN). `sep_km_command_set_rand_test` writes one seed-selected classic dest plus a directed ABR ML-DSA seed dest every seed. `sep_km_abr_seed_sideload_test` also writes dest ABR. One seed of the command-set leaf does not fill all four classic cells.
+|`sep_km_command_sideload_cg` |the four `sep_km_{aes,hmac,kmac,otbn}_sideload_kat_test` (MUST-fill for HMAC/KMAC/AES/OTBN). `sep_km_command_set_rand_test` writes one seed-selected classic dest plus a directed ABR ML-DSA seed dest every seed. `sep_km_abr_seed_sideload_test` also writes the ML-DSA seed dest. The three ML-KEM cells -- `abr_mlkem_seed_d`, `abr_mlkem_seed_z`, `abr_mlkem_msg` -- are MUST-fill for `sep_km_abr_mlkem_sideload_test`, the only leaf that transfers to them. One seed of the command-set leaf does not fill all four classic cells.
 |`sep_km_host_cmd_cg` |`sep_km_command_set_rand_test` (`CMD_HW_VER` / `CMD_ROM_VER` / `CMD_SRAM_VER` / `CMD_RECOV_ACK` / `CMD_OTP_READ_LOCK_COLD`); `sep_km_handover_test` (`CMD_EXEC_ROM` / `CMD_SRAM_LOAD_EXEC` / `CMD_SRAM_EXEC`)
 |`sep_km_wipe_cg` |`sep_km_wipe_reset_test`
 |`sep_km_sw_reset_cg` |`sep_km_wipe_reset_test`, `sep_km_handover_test`
@@ -408,13 +408,14 @@ bin needs the KM's own answer. Silence cannot score it.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_dest` |HMAC, KMAC, AES, OTBN, ABR ML-DSA seed -- one cell each, taken from `RETURN_ARG` dest_engine of a successful `CMD_KEY_TRANSFER`
+|`cp_dest` |HMAC, KMAC, AES, OTBN, ABR ML-DSA seed, ABR ML-KEM seed D, ABR ML-KEM seed Z, ABR ML-KEM message -- one cell each for all eight destinations the KM firmware decodes, taken from `RETURN_ARG` dest_engine of a successful `CMD_KEY_TRANSFER`
 |===
 
 The consumer's use of the sideloaded key (the KAT digest) stays on the four
 `sep_km_*_sideload_kat_test` checkers for HMAC/KMAC/AES/OTBN, and on
-`sep_km_abr_seed_sideload_test` for ABR. Those leaves are the MUST-fill
-owners for consume. `sep_km_command_set_rand_test` also writes one
+`sep_km_abr_seed_sideload_test` for the ABR ML-DSA seed and
+`sep_km_abr_mlkem_sideload_test` for the three ML-KEM cells. Those leaves are
+the MUST-fill owners for consume. `sep_km_command_set_rand_test` also writes one
 seed-selected classic dest and a directed ABR dest every seed. The sampler
 scores `RETURN_ARG` dest_engine when `RESP_CMD` echoes `CMD_KEY_TRANSFER`
 with rc 0. A refused dest cannot fill a cell. A raw `WRITE_DATA` fill
@@ -772,8 +773,9 @@ The two domains are separate coverpoints because they are separate sources with
 separate owners; one shared pair would let a KM-mailbox edge stand in for the
 SEP mailbox.
 
-The EL2 PIC claim stays on the CPU test. The 42-source exclusivity map is
-Phase 2.
+The EL2 PIC claim stays on the CPU test. `sep_mailbox_plic_test` walks all eight
+outbound channels, so `cp_raise` / `cp_clear` observe each of
+`sep_internal_interrupts[7:0]`. The 42-source exclusivity map is Phase 2.
 
 ==== `sep_wdt_bark_cg`
 
@@ -886,11 +888,11 @@ only that a legal access completed OKAY.
 
 === Phase 3 — named set
 
-Not instrumented. No Phase 3 VPLAN card is required at this stage. These
-names record leftover KM vehicles that are not Phase 1 or Phase 2.
+Not instrumented. No Phase 3 VPLAN card is required at this stage.
 
-`sep_km_abr_shared_key_cg` (`CMD_ABR_SK_TRANSFER` consume after a live ABR
-capture).
+The `CMD_ABR_SK_TRANSFER` consume after a live ABR capture is a Phase 1
+checker on `sep_km_abr_mlkem_sideload_test`. No covergroup samples that
+handshake.
 
 === Exclusions
 

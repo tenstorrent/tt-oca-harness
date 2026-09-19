@@ -32,6 +32,7 @@ from seq_lib.smu_compose_helpers import (
     XTRIG_NUM_INT_CT,
     XTRIG_SMC_CLK_STOP_LANES,
     XTRIG_SMC_INT_CT_LANES,
+    GenerateScope,
     bit_width,
     decode_cfg,
     hier,
@@ -215,5 +216,6 @@ class smu_composition_parameter_seq:
             )
             sb.expect_true(
                 "SEP=0 build elaborates gen_no_sep, not gen_sep",
-                hasattr(smu, "gen_no_sep") and not hasattr(smu, "gen_sep"),
+                GenerateScope(smu, "gen_no_sep").exists()
+                and not GenerateScope(smu, "gen_sep").exists(),
             )

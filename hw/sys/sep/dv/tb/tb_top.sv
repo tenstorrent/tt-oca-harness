@@ -278,9 +278,18 @@ module sep_uvm_top
     sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i = '0;
     sep_pkg::sep_lockstep_status_t lockstep_status_o;
     sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_w;
-    assign dbg_disable_smc_otp_jtag2axi_o = dbg_disable_w.smc_otp_jtag2axi;
-    assign dbg_disable_sep_otp_jtag2axi_o = dbg_disable_w.sep_otp_jtag2axi;
-    assign dbg_disable_all_o              = dbg_disable_w;
+    assign dbg_disable_stap_io_o            = dbg_disable_w.stap_io;
+    assign dbg_disable_stap_smc_o           = dbg_disable_w.stap_smc;
+    assign dbg_disable_stap_sep_o           = dbg_disable_w.stap_sep;
+    assign dbg_disable_stap_extra_o         = dbg_disable_w.stap_extra;
+    assign dbg_disable_stap_host_o          = dbg_disable_w.stap_host;
+    assign dbg_disable_dft_secure_o         = dbg_disable_w.dft_secure;
+    assign dbg_disable_dft_nonsecure_o      = dbg_disable_w.dft_nonsecure;
+    assign dbg_disable_dfd_o                = dbg_disable_w.dfd;
+    assign dbg_disable_smc_jtag2axi_o       = dbg_disable_w.smc_jtag2axi;
+    assign dbg_disable_smc_otp_jtag2axi_o   = dbg_disable_w.smc_otp_jtag2axi;
+    assign dbg_disable_sep_otp_jtag2axi_o   = dbg_disable_w.sep_otp_jtag2axi;
+    assign dbg_disable_all_o                = dbg_disable_w;
 
     // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
     // mode. They remain at the idle TAP-reset values for no-CPU tests.
@@ -448,6 +457,7 @@ module sep_uvm_top
         .dbg_rstb_i                   (dbg_rstb_i),
         .wdt_rst_ni                   (wdt_rst_ni_i),
         .entropy_rosc_sample_clk_i    (entropy_rosc_sample_clk_i),
+        .clk_ref_i                    (clk_ref_i),
         .wdt_timer_rst_req_o          (wdt_timer_rst_req_o),
 
         // JTAG (TB-driven only during +cpu_boot reset-vector TDR setup)
@@ -536,7 +546,7 @@ module sep_uvm_top
         .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
-        .smc_mailbox_interrupt_o      (),
+        .smc_mailbox_interrupt_o      (smc_mailbox_interrupt_o),
 
         // eFuse status
         .smc_fuse_sense_done_i        (smc_fuse_sense_done_model),
@@ -1042,7 +1052,7 @@ module sep_uvm_top
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
-    // map to bits [21:24], EDN to [25:26] (sep.sv).
+    // map to bits [23:26], EDN to [27:28] (sep.sv:548-553).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
     assign trng_gated_rst_n_probe_o =
@@ -1063,6 +1073,14 @@ module sep_uvm_top
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
     assign hmac_km_isolated_probe_o =
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+
+    // KMAC per-IP gated reset and its two isolate-completion bits.
+    assign kmac_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.kmac;
+    assign kmac_host_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
+    assign kmac_km_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
 
     // Adams Bridge per-IP gated reset and the two isolate-completion bits its
     // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
@@ -1298,9 +1316,12 @@ module sep_uvm_top
     // `efuse_program_interface` assert on it. Both states are two bits whose
     // legal encodings are 2'b01 and 2'b10, and no frontdoor stimulus can
     // produce 2'b00 or 2'b11 -- the design is what guarantees that. The force
-    // targets the state register only, for one cycle, and never the error,
-    // data or request outputs the checker reads: the recovery is the DUT's.
-    // Same clock-reissued force/release convention as the digest hook above.
+    // targets the state register only, for one cycle. Seeing the injected
+    // encoding on *_state_o confirms the force landed. After release the
+    // recovered encoding must be a legal idle/wait value. Command withdraw
+    // and the error/done/busy/data terms are claimed only on the in-flight
+    // leg. Same clock-reissued force/release convention as the digest hook
+    // above.
     // ------------------------------------------------------------------
 `define EFUSE_CTRL `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
 `define EFUSE_RD `EFUSE_CTRL.u_efuse_read_interface
@@ -1323,10 +1344,12 @@ module sep_uvm_top
     // sense and frontdoor paths can never present another, so the fail-closed
     // recovery the RTL specifies for 2'b00 and 2'b11 has no frontdoor
     // stimulus. Scope: the two state registers named below, for one cycle at
-    // a time, and no other signal -- never the error, data, busy or request
-    // outputs the checkers read, so the recovery they observe is the design's
-    // own. Owner: sep_efuse_illegal_state_fail_closed_test. Review at the next
-    // change to the state encoding in efuse_read_interface.sv or
+    // a time. Seeing the injected encoding on *_state_o confirms the force
+    // landed; it is not fail-closed evidence. After release the recovered
+    // encoding must be a legal idle/wait value (DUT-driven). Command
+    // withdraw and the error/done/busy/data terms are claimed only on the
+    // in-flight leg. Owner: sep_efuse_illegal_state_fail_closed_test. Review
+    // at the next change to the state encoding in efuse_read_interface.sv or
     // efuse_program_interface.sv.
     //
     // The registers are enum-typed and the injected encodings are, by
@@ -1953,18 +1976,20 @@ module sep_uvm_top
 
     sep_tb_if u_tb_if ();
 
-    // Three free-running clocks with the periods the env publishes on
+    // Four free-running clocks with the periods the env publishes on
     // sep_tb_if from the seeded test cfg (cocotb SepEnvCfg parity: sys
-    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns).
+    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns, reference 40 ns).
     initial begin
         clk_i                     = 1'b0;
         clk_wdt_i                 = 1'b0;
         entropy_rosc_sample_clk_i = 1'b0;
+        clk_ref_i                 = 1'b0;
     end
     always #(u_tb_if.sys_clk_period_ns * 0.5ns) clk_i = ~clk_i;
     always #(u_tb_if.wdt_clk_period_ns * 0.5ns) clk_wdt_i = ~clk_wdt_i;
     always #(u_tb_if.entropy_clk_period_ns * 0.5ns)
         entropy_rosc_sample_clk_i = ~entropy_rosc_sample_clk_i;
+    always #(u_tb_if.ref_clk_period_ns * 0.5ns) clk_ref_i = ~clk_ref_i;
 
     // The primary reset and the boot/run controls are test-sequenced through
     // sep_tb_if; the fabric-release and reset observables are mirrored back

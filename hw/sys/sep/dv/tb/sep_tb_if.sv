@@ -19,6 +19,9 @@ interface sep_tb_if;
   int unsigned sys_clk_period_ns     = 5;
   int unsigned wdt_clk_period_ns     = 5000;
   int unsigned entropy_clk_period_ns = 3;
+  // Reference clock for REFERENCE_COUNTER. Slower than the system clock so the
+  // counter's CDC crossing is a real one in both directions.
+  int unsigned ref_clk_period_ns     = 40;
 
   // Driven by the TB (bring-up owned by the test). rst_n starts released:
   // the bring-up assertion is then a real falling edge, the only event that

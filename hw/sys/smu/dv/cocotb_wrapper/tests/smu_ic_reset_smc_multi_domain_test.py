@@ -5,8 +5,8 @@
 Exercises SMC fuse/warm/cool/cold IC_RESET ports one at a time and checks
 hierarchical jtag_smc_reset_ctrl ovrd/val fields for mutual exclusion.
 
-Port map on the wrapper: EXT@0, the eight SEP ports, then SMC fuse@9, warm@10,
-cool@11, cold@12 (SMU_IC_RESET_SMC_*_PORT in smu_jtag_helpers).
+Port map on the wrapper: EXT@0, the SEP ports, then SMC fuse, warm, cool, cold
+(SMU_IC_RESET_SMC_*_PORT in smu_jtag_helpers, offset by the SEP slice width).
 
 Must FAIL if wrong port toggles wrong reset domain.
 """

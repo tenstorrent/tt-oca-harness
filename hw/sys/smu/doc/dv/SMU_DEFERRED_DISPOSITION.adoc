@@ -417,7 +417,7 @@ Enrolled names outside this catalog:
 |`smu_otp_vs_fabric_map_race_test` carries a `_race_` name it does not earn, and this row is the reason it keeps it. Both writers are JTAG2AXI bridges behind the one TAP, so their DR shifts are serialised by construction and the OTP op has completed before the fabric write can be issued; the enrolled test therefore claims back-to-back coherence, not overlap, and says so in its header and plan entry. Genuine overlap needs a second, independent master on the shadow-map word, which the wrapper's product interfaces do not provide. Not renamed here because the name is carried by the testlist, the evidence map, the feature list and the plan anchor, and the rename would ride inside a branch already this large; it belongs in a standalone change.
 |smu_sep_smc_xbar_test
 |SEP1-blocked
-|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. The SEP brings the SMC up from an SMC SRAM image no sys-inbound master can load; `hw/sys/smc/doc/dv/SMC_FW_DISPOSITION.adoc` holds the SMC half.
+|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. The SEP brings the SMC up from an SMC SRAM image no sys-inbound master can load; `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` ("SMC firmware image disposition") holds the SMC half.
 |smu_sep_ext_axi_test
 |SEP1-blocked
 |Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. Same SRAM-private blockage as `smu_sep_smc_xbar_test`; the three-party protocol header stays with the firmwares.
