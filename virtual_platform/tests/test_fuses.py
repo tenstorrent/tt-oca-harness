@@ -142,23 +142,10 @@ def test_toml_no_lock_flags_emits_no_locks_override():
     assert ov[EF + "sboot_dis"] == ("uint", 1)
 
 
-def test_toml_spi_ctrl_fans_out_and_drops_unmapped_fields():
-    cfg = {
-        "SEP_SPI_CTRL": {
-            "fields": {
-                "spi_control_field_en": {"value": 0x3},
-                "smu_pll_sysclk": {"value": 0x400},  # no VP param -> dropped
-                "rsvd": {"value": 0},  # dropped
-                "spi_ctrl_discovery_ctrl_reg": {"value": 0xABCD},
-                "spi_ctrl_init_rb_valid_time": {"value": 0x10},
-            }
-        }
-    }
+def test_toml_sysclk_freq_mhz_maps_to_the_vp_param():
+    cfg = {"SYSCLK_FREQ_MHZ": {"fields": {"sysclk_freq_mhz": {"value": 800}}}}
     ov = _by_key(fuses.overrides_from_toml(cfg))
-    assert ov[EF + "sep_spi_ctrl_field_en"] == ("uint", 0x3)
-    assert ov[EF + "spi_discovery_ctrl"] == ("uint", 0xABCD)
-    assert ov[EF + "spi_rb_valid_time"] == ("uint", 0x10)
-    assert EF + "spi_phy_misc" not in ov  # field absent -> not emitted
+    assert ov[EF + "sysclk_freq_mhz"] == ("uint", 800)
 
 
 def test_toml_rom_ctrl_combines_endianness_and_swap():

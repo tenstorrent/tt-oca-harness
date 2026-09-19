@@ -110,7 +110,6 @@ def overrides_from_map(fuse_map: dict) -> List[Override]:
 #   array8     : single field -> 8-word [string] array param (little-endian words)
 #   lc_state   : differential-decode + emit sep_efuse + lc_ctrl mirror
 #   rom_ctrl   : combine endianness(bit0)+swap(5:1) -> one uint param
-#   spi_ctrl   : per-field fan-out (see _SPI_CTRL_FIELD_MAP)
 _TOML_REG_MAP = {
     "LC_STATE": ("lc_state", None),
     "SBOOT_DIS": ("uint32", "sboot_dis"),
@@ -130,7 +129,7 @@ _TOML_REG_MAP = {
     "SYS_UID": ("array8", "sys_uid"),
     "STATUS_RPT": ("uint32", "status_rpt"),
     "SEP_ROM_CTRL": ("rom_ctrl", "sep_rom_ctrl"),
-    "SEP_SPI_CTRL": ("spi_ctrl", None),
+    "SYSCLK_FREQ_MHZ": ("uint32", "sysclk_freq_mhz"),
     # CHIPLET_PUBK_HASH0/1 is the RDL's name, PUBLIC_KEY_0/1 the model's; both
     # spellings map to the same fuses.
     "CHIPLET_PUBK_HASH0": ("array8", "chiplet_pubk_hash0"),
@@ -144,20 +143,6 @@ _TOML_REG_MAP = {
     "SEP_CHIPLET_ID": ("array8", "sep_chiplet_id"),
     "SEP_SIP_ID": ("array8", "sep_sip_id"),
     "SEP_SYS_ID": ("array8", "sep_sys_id"),
-}
-
-# SEP_SPI_CTRL is one wide register whose named fields fan out to distinct sep-vp
-# params. Fields with no VP counterpart (smu_pll_sysclk, rsvd) are dropped.
-_SPI_CTRL_FIELD_MAP = {
-    "spi_control_field_en": "sep_spi_ctrl_field_en",
-    "spi_ctrl_discovery_ctrl_reg": "spi_discovery_ctrl",
-    "spi_ctrl_init_phy_dq_timing_reg": "spi_phy_dq_timing",
-    "spi_ctrl_init_phy_dqs_timing_reg": "spi_phy_dqs_timing",
-    "spi_ctrl_init_phy_gate_lpbk_ctrl_reg": "spi_phy_gate_lpbk",
-    "spi_ctrl_init_phy_dll_slave_ctrl_reg": "spi_phy_dll_slave",
-    "spi_ctrl_init_phy_dll_master_ctrl_reg": "spi_phy_dll_master",
-    "spi_ctrl_init_phy_misc_reg": "spi_phy_misc",
-    "spi_ctrl_init_rb_valid_time": "spi_rb_valid_time",
 }
 
 _TOML_IGNORE_PREFIX = "RESERVED_"
@@ -275,11 +260,6 @@ def overrides_from_toml(config: dict) -> List[Override]:
             end = _field_value(fields, "rom_endianness_ctrl")
             swap = _field_value(fields, "rom_swap_ctrl")
             overrides.append(("uint", _EFUSE_PREFIX + target, (end & 0x1) | ((swap & 0x1F) << 1)))
-        elif kind == "spi_ctrl":
-            for fname, vp in _SPI_CTRL_FIELD_MAP.items():
-                if fname in fields:
-                    v = _field_value(fields, fname)
-                    overrides.append(("uint", _EFUSE_PREFIX + vp, v & 0xFFFFFFFF))
 
     # An explicit [LOCKS] value (rare) ORs into the flag-derived vector.
     if "LOCKS" in config:
