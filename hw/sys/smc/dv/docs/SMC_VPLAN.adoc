@@ -3862,6 +3862,40 @@ replaced rather than merely re-read. Under `--framework uvm` the governing check
 instead, and `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`.
 '''''
 
+[[sec-080-smc_occp_sanity_secure_error_test]]
+===== 80 `smc_occp_sanity_secure_error_test`
+
+*Source Module*: `smc_occp_sanity_secure_error_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Secure program-fail completes and reports done; recovery burn programs bit0; signature positive gate.
+
+*Test Coverage*:
+
+* OTP PROGRAM failure injection (secure programming error), via `+smc_efuse_prog_fail_count`.
+* DEFENDS: on the injected-failure burn the eFuse controller still reaches PROGRAM_DONE (bounded poll, expiry fails), and the subsequent recovery burn really does sticky-OR bit0 of word0 through the unmodified data path. The signature positive gate reads CHIP_CONFIG / EFUSE_MAP word0 against their expected values.
+* DOES NOT DEFEND, model-backed: "the failing burn left the OTP word unchanged" is *not DUT-earned*. `hw/ip/efuse/dv/models/efuse_bank_model.sv:120` drives the macro as `.s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata)`, so on the failing write the DV model substitutes 0 for whatever the controller put on the bus and the word cannot change whatever the controller does. The compare stands as a consistency check on the injection hook only. Same tap as testcase 95, which already carries this disclaimer.
+* GAP: the fail path is DUT-observable only if the model rejects the burn at the APB handshake (`pslverr`, macro write suppressed) instead of rewriting the data; the model is shared between the SEP and SMC benches.
+* No mismatched signature is injected -- no write, plusarg, image variant or force on the proof path produces one, and the only `+smc_efuse_hex` image's word 0 *is* the golden. The positive gate is what runs.
+
+*Test Procedure*:
+
+Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|===
+
+
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+'''''
+
 ==== JTAG
 
 [[sec-083-smc_dbs_idle_test]]
