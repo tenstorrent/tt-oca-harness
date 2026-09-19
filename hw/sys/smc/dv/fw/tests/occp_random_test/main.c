@@ -19,11 +19,6 @@ static void run_test_suite(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // Interface status 0x1 is OCCP_INTERFACE_STATUS_READY (bootrom smc_occp_status.h).
-    // check_occp_status_data compares the command count and the interface nibble;
-    // it accepts exp_boot_status but does not compare it, and the ROM main flow
-    // leaves the boot nibble at zero (status-coordination.adoc), so 0x5
-    // (OCCP_BOOT_STATUS_COMPLETE) is not a value the ROM reports here.
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
 
