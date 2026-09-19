@@ -412,7 +412,7 @@ specification in this tree. The hardware facts the features describe are in
 <code>doc/integrator/src/smu.adoc</code>.</p>
 </div>
 <div class="paragraph">
-<p>The executable contract is <code>testlists/wrapper.toml</code>. Feature credit is
+<p>The executable contract is <code>testlists/all.toml</code>. Feature credit is
 the enrolled <code>hosted</code> group. Names in <code>SMU_DEFERRED_DISPOSITION.adoc</code>
 and SEP=1 work are OUT.</p>
 </div>
@@ -438,11 +438,11 @@ and SEP=1 work are OUT.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PR smoke</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hosted_smoke</code> (<code>smu_dtp_jtag_smoke_test</code>, <code>smu_ext_boot_seq_gate_test</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smoke</code> (<code>smu_dtp_jtag_smoke_test</code>, <code>smu_ext_boot_seq_gate_test</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Evidence map</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>common/smu_dv_env/smu_evidence_map.py</code> <code>TEST_EVIDENCE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cocotb/env/smu_evidence_map.py</code> <code>TEST_EVIDENCE</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT catalog</p></td>
@@ -565,7 +565,7 @@ emits; the map must not invent a checkbox the body cannot prove.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_ext_boot_seq_gate_test</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">F1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">hosted, hosted_smoke, smc_under_smu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">hosted, smoke, smc_under_smu</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHK-BOOT-SEQ-GATE</code></p></td>
 </tr>
 <tr>
@@ -599,12 +599,6 @@ emits; the map must not invent a checkbox the body cannot prove.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>WDT_WDOGIP0</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_smc_gpio_strap_sanity_test</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">F1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_STRAP_OK</code></p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_system_timer_octs_test</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">F1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc_under_smu, hosted</p></td>
@@ -625,7 +619,7 @@ emits; the map must not invent a checkbox the body cannot prove.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_dtp_jtag_smoke_test</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">F3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">hosted_smoke, dtp_under_smu, hosted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smoke, dtp_under_smu, hosted</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHK-DTP-JTAG-PTAP-S1</code></p></td>
 </tr>
 <tr>
@@ -817,7 +811,7 @@ emits; the map must not invent a checkbox the body cannot prove.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_dtp_jtag2axi_abort_mid_op_test</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">F3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">needs_otp_stall</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>--dut smu_block</code> <code>all</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>J2A_ABORT_RECOVER</code></p></td>
 </tr>
 <tr>
@@ -910,8 +904,8 @@ labelled <code>DUT_TAG=WRAPPER</code>. The bare block bench is <code>--dut smu_b
 (<code>SMU_VPLAN.adoc</code>).</p>
 </li>
 <li>
-<p>Wrapper elaboration / reset is <code>smu_wrapper_elaboration_sep_rtl_test</code>
-(wrapper <code>smoke</code>).</p>
+<p>Wrapper elaboration / reset is <code>smu_wrapper_elaboration_test</code>
+(wrapper <code>fw_smoke</code> and <code>build_smoke</code>).</p>
 </li>
 </ul>
 </div>

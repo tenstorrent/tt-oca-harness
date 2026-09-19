@@ -409,7 +409,7 @@
 F1–F7, which <code>SMU_FEATURE_LIST.adoc</code> defines. <code>SMU_FEATURE_LIST.adoc</code>
 also defines the hosted subset and the per-leaf <code>TEST_EVIDENCE</code> tokens;
 <code>SMU_DEFERRED_DISPOSITION.adoc</code> classifies the OUT names. Live group
-membership for <code>--dut smu</code> is <code>testlists/wrapper.toml</code>.</p>
+membership for <code>--dut smu</code> is <code>testlists/all.toml</code>.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -441,7 +441,7 @@ membership for <code>--dut smu</code> is <code>testlists/wrapper.toml</code>.</p
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>.github/workflows/sim.yml</code> (PR gate) runs <code>hosted_smoke</code>; <code>.github/workflows/regress.yml</code> runs <code>hosted</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>.github/workflows/sim.yml</code> (PR gate) runs <code>smoke</code>; <code>.github/workflows/regress.yml</code> runs <code>hosted</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -463,8 +463,8 @@ membership for <code>--dut smu</code> is <code>testlists/wrapper.toml</code>.</p
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hosted_smoke</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PR gate (<code>sim.yml</code>). Toolchain-free; <code>smoke</code> reaches the SEP=1 firmware and cannot run on a hosted runner.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smoke</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PR gate (<code>sim.yml</code>). Toolchain-free; <code>fw_smoke</code> reaches the SEP firmware and cannot run on a hosted runner.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>hosted</code></p></td>
@@ -478,9 +478,9 @@ membership for <code>--dut smu</code> is <code>testlists/wrapper.toml</code>.</p
 </table>
 <div class="paragraph">
 <p><code>hosted</code> and the SEP=1 groups are two evidence surfaces on one DUT:
-<code>--dut smu</code> is the wrapper (<code>testlists/wrapper.toml</code>), and <code>regress.yml</code>
+<code>--dut smu</code> is the wrapper (<code>testlists/all.toml</code>), and <code>regress.yml</code>
 runs its <code>hosted</code>. PASSes carry <code>DUT_TAG=WRAPPER</code>. The residual block
-bench is <code>--dut smu_block</code> (<code>testlists/all.toml</code>), whose PASSes carry
+bench is <code>--dut smu_block</code> (<code>testlists/block.toml</code>), whose PASSes carry
 <code>DUT_TAG=BARE</code> and are not feature credit.</p>
 </div>
 </div>
@@ -507,8 +507,8 @@ invent a checkbox the body cannot prove.</p>
 challenge-response (F5) are OUT.</p>
 </li>
 <li>
-<p>Wrapper elaboration / reset is <code>smu_wrapper_elaboration_sep_rtl_test</code>
-(wrapper <code>smoke</code>).</p>
+<p>Wrapper elaboration / reset is <code>smu_wrapper_elaboration_test</code>
+(wrapper <code>fw_smoke</code> and <code>build_smoke</code>).</p>
 </li>
 </ul>
 </div>
@@ -545,20 +545,20 @@ is <code>SMU_FEATURE_LIST.adoc</code>; this table is the credit decision.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>hosted</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_boot_cg</code> / <code>wdt_cg</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>RST_PRIMARY_SMC_1</code>, <code>SMC_MBX_CSR_OK</code>, <code>WDT_UNLOCK_OK</code>, <code>CHK-OCTS-COUNT-MONOTONIC</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">YES for the cluster. <code>smu_smc_smoke_test</code> (<code>CHK-SMC-FAB-DUAL-NET-S2</code>) is in <code>smoke</code> / <code>all</code> only, which nothing schedules, and adds no credit here</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">YES for the cluster. <code>smu_smc_smoke_test</code> (<code>CHK-SMC-FAB-DUAL-NET-S2</code>) is in <code>fw_smoke</code> / <code>all</code> only, which nothing schedules, and adds no credit here</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">F1 GPIO strap</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_smc_gpio_strap_sanity_test</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none: <code>smc_wrapper</code> declares no <code>captured_straps_i</code>, so the feature has no testcase on either bench (<code>SMU_DEFERRED_DISPOSITION.adoc</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_boot_cg</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_STRAP_OK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NO</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">F1 boot-sequence gate</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_ext_boot_seq_gate_test</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hosted</code>, <code>hosted_smoke</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hosted</code>, <code>smoke</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_boot_cg</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHK-BOOT-SEQ-GATE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">YES</p></td>

@@ -425,8 +425,8 @@ and the names in <code>SMU_DEFERRED_DISPOSITION.adoc</code> are OUT.</p>
 <code>smu_dtp_jtag2axi_wstrb_partial_sticky_test</code>,
 <code>smu_dtp_jtag2axi_back_to_back_error_ok_test</code>,
 <code>smu_jtag2axi_vs_smn_same_csr_race_test</code>
-(<code>smu_dtp_jtag2axi_abort_mid_op_test</code> is in <code>needs_otp_stall</code> and in
-<code>--dut smu_block</code> <code>all</code>, not in <code>hosted</code>)</p>
+(<code>smu_dtp_jtag2axi_abort_mid_op_test</code> is enrolled only on
+<code>--dut smu_block</code>, in its <code>all</code>, not in <code>hosted</code>)</p>
 </li>
 <li>
 <p>OTP: <code>smu_dtp_otp_smc_map_rw_test</code>,
@@ -486,19 +486,18 @@ A green atomic test is not ATOP non-support credit.</p>
 </div>
 <div class="paragraph">
 <p><code>smu_smc_smoke_test</code>&#8201;&#8212;&#8201;the SMC ROM boot to PASS on the wrapper&#8201;&#8212;&#8201;is not in
-<code>hosted</code>. It is enrolled in <code>smoke</code>, <code>all</code> and <code>all_with_sep_exec</code>, which
-need the SMC firmware compile; neither <code>sim.yml</code> nor <code>regress.yml</code> runs any
-of those groups, so it carries no release credit until one of them is
-scheduled.</p>
+<code>hosted</code>. It is enrolled in <code>fw_smoke</code> and <code>all</code>, which need the SMC
+firmware compile; neither <code>sim.yml</code> nor <code>regress.yml</code> runs either group, so it
+carries no release credit until one of them is scheduled.</p>
 </div>
 <div class="paragraph">
 <p><code>smu_ext_boot_seq_gate_test</code> and <code>smu_smc_mailbox_int_test</code> are in
-<code>hosted</code> (the former also in <code>hosted_smoke</code>).</p>
+<code>hosted</code> (the former also in <code>smoke</code>).</p>
 </div>
 <div class="paragraph">
 <p>eFuse / burn under SMU is OUT (SEP=1 / child-TB).
-<code>smu_smc_gpio_strap_sanity_test</code> is named in <code>SMU_FEATURE_LIST.adoc</code>
-but is enrolled in no group of <code>testlists/wrapper.toml</code>; it is not release credit.</p>
+The GPIO strap feature has no testcase on either bench (<code>smc_wrapper</code> declares
+no <code>captured_straps_i</code>); it is not release credit.</p>
 </div>
 </div>
 <div class="sect2">

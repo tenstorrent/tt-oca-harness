@@ -429,7 +429,7 @@ bench and its <code>hosted</code> is the mandatory job; <code>--dut smu_block</c
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PR</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>--dut smu --tool verilator --items hosted_smoke</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>--dut smu --tool verilator --items smoke</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PR merge (<code>sim.yml</code>)</p></td>
 </tr>
@@ -452,8 +452,10 @@ bench and its <code>hosted</code> is the mandatory job; <code>--dut smu_block</c
 (<code>regress.yml</code> says so) but it blocks release qualification.</p>
 </div>
 <div class="paragraph">
-<p><code>smu</code> <code>smoke</code> members: <code>smu_wrapper_elaboration_sep_rtl_test</code>,
-<code>smu_smc_smoke_test</code>, <code>smu_sep_smoke_test</code>. The hosted-runner PR tier is <code>hosted_smoke</code>.</p>
+<p><code>smu</code> <code>smoke</code> members: <code>smu_dtp_jtag_smoke_test</code>, <code>smu_ext_boot_seq_gate_test</code>,
+both toolchain-free. The firmware smokes (<code>smu_wrapper_elaboration_test</code>,
+<code>smu_smc_smoke_test</code>, <code>smu_sep_smoke_test</code>) are <code>fw_smoke</code>, which needs the
+toolchain container and is not a CI tier.</p>
 </div>
 </div>
 <div class="sect2">
@@ -461,8 +463,8 @@ bench and its <code>hosted</code> is the mandatory job; <code>--dut smu_block</c
 <div class="ulist">
 <ul>
 <li>
-<p><code>smu_ext_boot_seq_gate_test</code> is in <code>hosted</code> and <code>hosted_smoke</code>.
-It is not a member of <code>smoke</code>.</p>
+<p><code>smu_ext_boot_seq_gate_test</code> is in <code>hosted</code> and <code>smoke</code>.
+It is not a member of <code>fw_smoke</code>.</p>
 </li>
 <li>
 <p><code>--dut smu_block</code> is <strong>not</strong> a release CI job beyond its own <code>smoke</code>. Its
