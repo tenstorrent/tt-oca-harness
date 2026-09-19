@@ -29,9 +29,6 @@ simulation compile and on no other kind of build:
 ----
 
 OCAH's own DV flows set it; a compile driven by an adopter's testbench does not.
-The vendor header defines `ABR_SIMULATION` from it, which Adams Bridge CDC
-delay instrumentation tests. OpenTitan `prim_cdc_rand_delay` tests
-`SIMULATION` directly.
 
 [WARNING]
 ====
@@ -80,12 +77,12 @@ seed with any failure you intend to reproduce.
 
 `SYNTHESIS` selects the implementation view: simulation-only SVA, `$readmemh`
 preload, procedural delays, and similar non-synthesizable paths are omitted.
-Lint and Yosys set it via `OCAH_FLOW_COMMON_DEFINES`. Native DV does not, except
-the SMC `dual` target, which lists it next to `SMC_DUAL`.
-
-The vendor header defines `TARGET_SYNTHESIS` from it (iDMA `IDMA_NONSYNTH_BLOCK`).
-Vendored OpenTitan, PULP, I3C, and Adams Bridge sources test `SYNTHESIS`
-itself.
+Slang lint, Verilator lint, and Yosys set it (`OCAH_FLOW_COMMON_DEFINES`, or
+`+define+SYNTHESIS=1` for Verilator lint). A Synopsys (Design Compiler,
+Fusion Compiler) or Cadence Genus synthesis compile must set it too; those
+tools may also predefine the name. Native DV does not, except the SMC `dual`
+target, which lists it next to `SMC_DUAL`. The open formal path (`sby` /
+`read_slang`) keeps it defined. Licensed formal backends leave it unset.
 
 [[emulation-define]]
 == `EMULATION`
@@ -115,14 +112,19 @@ tools, and do not add a Bender target named `verilator` (flist-plus would emit
 
 |`VERILATOR`
 |Verilator's predefine. First-party and OpenTitan SVA leave their include-assert
-macros undefined. The vendor header defines `TARGET_VERILATOR` from it.
+macros undefined.
 
 |`VCS`
 |VCS predefine. Some PULP AXI files branch on it.
 
+|`XCELIUM`
+|Xcelium's predefine. Native DV uses this tool.
+
 |`XSIM`
-|Vivado simulator. The vendor header defines `TARGET_XSIM` from it. PULP
-assertion macros also treat it as off.
+|Vivado simulator. PULP assertion macros also treat it as off.
+
+|`QUESTA`
+|QuestaSim's predefine. Some PULP AXI files branch on it.
 
 |`YOSYS`
 |Auto-defined by yosys-slang. The Yosys `prim_assert.sv` shim undefines it
@@ -188,34 +190,22 @@ Do not set these. Headers define them from the view and tool names above.
 `ocah_vendor_defines.svh` defines these from the OCAH names. Do not set the
 vendor column.
 
-[cols="<25%,<25%,<50%",options="header"]
+[cols="<40%,<60%",options="header"]
 |===
-|OCAH name |Vendor alias |Read by
+|OCAH name |Vendor alias
 
 |`SYNTHESIS`
 |`TARGET_SYNTHESIS`
-|iDMA `IDMA_NONSYNTH_BLOCK`
 
 |`SIMULATION`
 |`ABR_SIMULATION`
-|Adams Bridge `abr_prim_cdc_rand_delay`
 
 |`VERILATOR`
 |`TARGET_VERILATOR`
-|iDMA `IDMA_NONSYNTH_BLOCK`
 
 |`XSIM`
 |`TARGET_XSIM`
-|iDMA `IDMA_NONSYNTH_BLOCK`
-
-|`EMULATION`
-|(none)
-|No vendor alias. Not `PULP_FPGA_EMUL`.
 |===
-
-I3C AXI vs AHB, VeeR `RV_BUILD_AXI4`, and Adams Bridge `CALIPTRA` are selected
-by headers or Bender targets, not by adopter `+define+`. Do not pass
-`I3C_USE_AXI_LITE`.
 
 [[adopter-overlay-defines]]
 == Adopter overlay hooks
