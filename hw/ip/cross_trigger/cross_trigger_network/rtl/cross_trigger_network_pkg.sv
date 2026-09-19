@@ -30,8 +30,10 @@ package cross_trigger_network_pkg;
   // CTM gets 512 bytes (0x200) - enough for up to 64 CT_SRC register pairs (64 * 8 bytes)
   // Each CT_SRC uses 8 bytes (CONFIG_0 + CONFIG_1) to support up to 64 CT_DST ports
   // Each CTP gets 16 bytes (0x10) - enough for 3 registers (CONFIG, STATUS, STRETCH_MULT)
+  // verilog_format: off  // verible explodes this qualified call's argument list
   localparam int unsigned CSR_ADDR_CTM_SIZE =
       int'(cross_trigger_network_addrmap_pkg::CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
+  // verilog_format: on
   localparam int unsigned CSR_ADDR_CTP_SIZE =
       int'(cross_trigger_network_addrmap_pkg::CROSS_TRIGGER_NETWORK_CTP_STRIDE);
 
