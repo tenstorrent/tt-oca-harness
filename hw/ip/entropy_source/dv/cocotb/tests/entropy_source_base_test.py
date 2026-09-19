@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared helpers for the Entropy Source native cocotb bench."""
+"""Helpers for the Entropy Source native cocotb bench."""
 
 from __future__ import annotations
 

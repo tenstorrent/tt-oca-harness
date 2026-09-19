@@ -13,7 +13,7 @@ runner.
   harnesses.
 - `cocotb/entropy_source_models/` contains the noise, decorrelator, BIW, and
   SHA reference models used by both this suite and SEP system DV.
-- `cocotb/tests/` contains the shared bench and test scenarios.
+- `cocotb/tests/` contains the bench and test scenarios.
 - `testlists/all.toml` defines the `smoke` and `all` groups.
 
 The RTL closure comes from the `entropy_source` Bender target. Register
@@ -45,7 +45,7 @@ the corresponding FIFO and health-test error outputs directly.
 - `register_walk` and `axi_random` cover the generated CSR map and AXI4-Lite
   transactions.
 - `decorrelator_modes` checks every bypass-mask class, sampling rates, byte
-  masks, and BIW extraction against the shared models.
+  masks, and BIW extraction against the entropy-source DV models.
 - `entropy_fifo` checks ordering, wraparound, simultaneous traffic, flush,
   overflow, underflow, parity, hardened pointer operation, and security alerts.
 - `health_tests` checks repetition, adaptive-proportion, and Markov thresholds,

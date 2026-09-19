@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Run every SEP and shared entropy golden-model self-test.
+"""Run every SEP and entropy-source DV model self-test.
 
 Each ``env/sep_*_golden.py`` carries a standalone self-test (a KAT / NIST / FIPS /
 RFC vector check, or hand-computed reference vectors) in its ``__main__`` block.

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Reusable scenarios shared by the entropy-source testcase modules."""
+"""Reusable scenarios for the entropy-source testcase modules."""
 
 from __future__ import annotations
 
