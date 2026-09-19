@@ -164,6 +164,6 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
             f"{bad_tag} KM MMR tag/ordering failures (cross-attribution at the mux)"
         )
         self.logger.info(
-            "coexist observer PASS: both CPUs contended at the eFuse mux, host "
+            "CHK-COEXIST PASS: both CPUs contended at the eFuse mux, host "
             "data uncorrupted, KM progress monotonic and correctly attributed"
         )

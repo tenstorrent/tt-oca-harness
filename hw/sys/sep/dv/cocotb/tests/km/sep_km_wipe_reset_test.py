@@ -6,7 +6,8 @@ no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
 Warm-reset first: park and release the KM ``SW_RESET_N`` bit, wait for
 ``RESP_KM_READY``, and prove a key load still succeeds. Wipe last: write
-``KM_WIPE_CTRL.wipe_state``. The KM posts ``RESP_UNRECOVERABLE_FAULT``.
+``KM_WIPE_CTRL.wipe_state``. The KM posts ``RESP_UNRECOVERABLE_FAULT`` and
+aggregator bit 30 (PIC source 31) asserts.
 KPV-zero is not claimed -- those arrays have no SEP frontdoor.
 """
 
@@ -15,6 +16,7 @@ from __future__ import annotations
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
 from env.sep_reg_meta import SEP_CPU_CTRL
+from env.sep_spec_tables import agg_from_pic
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_km_mailbox_seq import (
@@ -22,6 +24,8 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_RESP_UNRECOVERABLE_FAULT,
     SepKmMailbox,
 )
+
+_KM_UNREC = agg_from_pic("KM unrecoverable error")
 
 # 256-bit known key so CHK-RESET is a real load, not a generate that
 # depends on leftover DRBG state after the warm pulse.
@@ -71,12 +75,13 @@ class sep_km_wipe_reset_test(sep_base_test):
         )
 
         # --- CHK-WIPE: SEP KM_WIPE_CTRL raises unrecoverable fault ------------
+        await self.poll_internal_irq(_KM_UNREC, 0)
         wipe_addr = SEP_CPU_CTRL.addr("KM_WIPE_CTRL")
         seq = SepAxiAccessSeq(
             "km_wipe",
             op=SepAxiOp.WRITE,
             addr=wipe_addr,
-            wdata=1,
+            wdata=SEP_CPU_CTRL.field_mask("KM_WIPE_CTRL", "wipe_state"),
             size=2,
         )
         await self.start_seq(seq)
@@ -87,8 +92,12 @@ class sep_km_wipe_reset_test(sep_base_test):
         assert payload_len >= 1, (
             f"CHK-WIPE FAIL: unrecoverable frame has no payload ({[hex(w) for w in words]})"
         )
+        await self.poll_internal_irq(_KM_UNREC, 1)
         self.logger.info(
-            f"CHK-WIPE PASS: KM_WIPE_CTRL posted RESP_UNRECOVERABLE_FAULT payload=0x{words[1]:08x}"
+            "CHK-WIPE PASS: KM_WIPE_CTRL posted RESP_UNRECOVERABLE_FAULT "
+            "payload=0x%08x; aggregator [%d]=1",
+            words[1],
+            _KM_UNREC,
         )
 
         await self.stop_fifo_drain()

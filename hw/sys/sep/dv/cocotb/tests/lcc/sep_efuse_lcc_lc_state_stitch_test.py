@@ -54,7 +54,7 @@ from env.sep_lcc_golden import (
     LC_TEST_DEV,
     SIP_DBG_BIT,
     dbg_disable_expected,
-    dbg_disable_unpack,
+    dbg_disable_sample,
     is_legal_lc,
     is_valid_lc_transition,
     lc_state_name,
@@ -84,6 +84,8 @@ _PG_DATA = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _PG_GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
 _PG_READ_BACK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
 _PG_ENABLE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
+_PG_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
+_PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 _RMA_SIP_TOKEN_I = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR")
 _RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
 _TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
@@ -207,11 +209,11 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
                 await ClockCycles(cocotb.top.clk_i, 1)
                 status = await self._read(_EFUSE_PROGRAM_CTRL, "program_status")
                 self.last_status = status
-                if not (status & (1 << 25)):
+                if not (status & _PG_DONE):
                     continue
 
                 await self._write(_EFUSE_PROGRAM_CTRL, 0, "program_ctrl_clear")
-                if ((status >> 26) & 1) == 0:
+                if (status & _PG_STATUS) == 0:
                     if saw_retry:
                         cocotb.log.info(
                             "CHK-OTP-RETRY PASS: OTP bit[%d] programmed after retry",
@@ -278,13 +280,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         same bit at both polarities. A formula of ``!secure_tm`` fails here
         whenever Case 3 and the strap disagree.
         """
-        probe = cocotb.top.dbg_disable_all_o
-        val = probe.value
-        width = getattr(val, "n_bits", None)
-        if width is None:
-            bits = getattr(val, "binstr", None)
-            width = len(bits) if bits is not None else len(probe)
-        got = dbg_disable_unpack(int(val), int(width))
+        got = dbg_disable_sample(cocotb.top)
         want = dbg_disable_expected(feat_ctrl)
         for name, exp in want.items():
             assert got[name] == exp, (
@@ -324,9 +320,12 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         prev_raw: int | None,
     ) -> int:
         """Value-check LC shadow + FEAT_CTRL; return the DUT-observed LC code."""
-        sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
+        observed_sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         observed_tm = int(cocotb.top.secure_tm_o.value) & 0x1
         observed_sigint = int(cocotb.top.lcc_sigint_err_probe_o.value) & 0x1
+        assert observed_sec_dis == 0, (
+            f"sec_dis={observed_sec_dis} but this walk presents no SEC_DISABLE token (LC=0x{raw:x})"
+        )
         assert observed_tm == secure_tm, (
             f"secure_tm_o={observed_tm} after TEST_EN strap={secure_tm} (LC=0x{raw:x})"
         )
@@ -336,7 +335,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         seq = sep_lcc_stitch_check_seq(
             image,
             secure_tm=secure_tm,
-            sec_dis=sec_dis,
+            sec_dis=0,
             sigint_err=sigint_err,
         )
         await self.start_seq(seq)
@@ -366,7 +365,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         if sigint_err:
             assert feat == 0, (
                 f"sigint fail-closed expects AXI FEAT_CTRL=0, got 0x{feat:016x} "
-                f"(lcc_sigint_err_probe_o={observed_sigint} sec_dis={sec_dis})"
+                f"(lcc_sigint_err_probe_o={observed_sigint} sec_dis={observed_sec_dis})"
             )
             self.logger.info(
                 "CHK-SIGINT PASS: inject took: lcc_sigint_err_probe_o=%d, "
@@ -484,8 +483,8 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     await self.start_seq(blocked)
                 except AssertionError as exc:
                     status = blocked.last_status
-                    done = (status >> 25) & 1
-                    err = (status >> 26) & 1
+                    done = int(bool(status & _PG_DONE))
+                    err = int(bool(status & _PG_STATUS))
                     if not (done and err):
                         raise AssertionError(
                             "CHK-SECURE-TM-PROG-BLOCK: expected PROGRAM_DONE+ERR "

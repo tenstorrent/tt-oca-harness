@@ -153,6 +153,8 @@ sources:
       - overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv
       - overlay/regs/edn/regs/gen/sv/edn_addrmap_pkg.sv
       - overlay/regs/secure_dma/regs/gen/sv/secure_dma_addrmap_pkg.sv
+      # Generated from upstream spi_host.hjson (see hw/common/regs/discover.mk);
+      # describes the upstream spi_host register map.
       - overlay/regs/spi_controller/regs/gen/sv/spi_controller_addrmap_pkg.sv
 
       # OpenTitan IP packages.
@@ -167,15 +169,17 @@ sources:
       - upstream/hw/ip/dma/rtl/secure_dma_pkg.sv
       - upstream/hw/ip/spi_host/rtl/spi_host_reg_pkg.sv
       - upstream/hw/ip/spi_host/rtl/spi_host_cmd_pkg.sv
+      # Passthrough-only subset of spi_device_pkg; spi_host types its
+      # passthrough ports with it. See the file header.
+      - overlay/spi_device/rtl/spi_device_pkg.sv
       - upstream/hw/ip/otbn/rtl/otbn_reg_pkg.sv
-      - overlay/spi_controller/rtl/spi_controller_reg_pkg.sv
-      - overlay/spi_controller/rtl/spi_controller_pkg.sv
       - upstream/hw/ip/otbn/rtl/otbn_pkg.sv
       - upstream/hw/ip/aon_timer/rtl/aon_timer_reg_pkg.sv
 
       # Primitive modules used by the OpenTitan IPs.
       - upstream/hw/ip/prim/rtl/prim_alert_receiver.sv
       - upstream/hw/ip/prim/rtl/prim_arbiter_fixed.sv
+      - upstream/hw/ip/prim/rtl/prim_racl_error_arb.sv
       - upstream/hw/ip/prim/rtl/prim_arbiter_ppc.sv
       - upstream/hw/ip/prim/rtl/prim_leading_one_ppc.sv
       - upstream/hw/ip/prim/rtl/prim_blanker.sv
@@ -267,6 +271,8 @@ sources:
       - upstream/hw/ip/spi_host/rtl/spi_controller_fsm.sv
       - upstream/hw/ip/spi_host/rtl/spi_controller_shift_register.sv
       - upstream/hw/ip/spi_host/rtl/spi_host_reg_top.sv
+      - upstream/hw/ip/spi_host/rtl/spi_host_window.sv
+      - upstream/hw/ip/spi_host/rtl/spi_host.sv
 
       # AES.
       - upstream/hw/ip/aes/rtl/aes_cipher_control.sv
@@ -362,7 +368,3 @@ sources:
       - ../../../hw/sys/sep/rtl/sep_pkg.sv
       - ../../../hw/sys/sep/rtl/sep_crypto_pkg.sv
       - upstream/hw/ip/otbn/rtl/otbn.sv
-
-      # TT-owned OpenTitan overlay.
-      - overlay/spi_controller/rtl/spi_controller_reg.sv
-      - overlay/spi_controller/rtl/spi_controller.sv

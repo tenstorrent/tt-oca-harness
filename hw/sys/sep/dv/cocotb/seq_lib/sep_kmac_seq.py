@@ -62,10 +62,8 @@ KMAC_STATUS_SQUEEZE = KMAC.field_mask("STATUS", "sha3_squeeze")
 # INTR_STATE bits (kmac.adoc: kmac_done[0], fifo_empty[1], kmac_err[2]).
 # kmac_done fires on the absorbed event (SHA3 message fully absorbed -> squeeze
 # ready) and is a RW1C status bit (write 1 to clear).
-KMAC_INTR_KMAC_DONE = 1 << 0
-KMAC_INTR_KMAC_ERR = 1 << 2
-
-KMAC_KEY_LEN_256 = 0x0000_0002
+KMAC_INTR_KMAC_DONE = KMAC.field_mask("INTR_STATE", "kmac_done")
+KMAC_INTR_KMAC_ERR = KMAC.field_mask("INTR_STATE", "kmac_err")
 
 # PREFIX for KMAC mode: encode_string("KMAC"), S empty.
 KMAC_PREFIX_WORD0 = 0x4D4B_2001
@@ -81,6 +79,7 @@ KMAC_RIGHT_ENCODE_256 = 0x0002_0001
 KMAC_MODE = {"sha3": 0, "shake": 2, "cshake": 3}
 KMAC_STRENGTH = {128: 0, 224: 1, 256: 2, 384: 3, 512: 4}
 KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}
+KMAC_KEY_LEN_256 = KMAC_KEYLEN[256]
 
 
 def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool, sideload: bool = False) -> int:

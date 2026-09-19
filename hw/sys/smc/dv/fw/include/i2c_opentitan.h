@@ -75,10 +75,12 @@ extern "C" {
  * i2c_acq_fifo_stretch_reset at 5.58 ms. 20000 iterations is ~23 ms, roughly
  * 4x that worst case, and finite.
  */
-/* SMC I2C FIFO depths, mirroring smc_config_pkg.sv:23-26. The RTL parameters
- * are SystemVerilog localparams with no generated C export, so these are
- * transcribed -- keep them in step if that package changes. The IP's own
- * defaults (268) are overridden at the SMC level and must not be assumed. */
+/* SMC I2C FIFO depths, transcribed from the specification: the I2C IP's
+ * parameter table (hw/ip/i2c/doc/interface.adoc, CTRL_TX/CTRL_RX/TGT_TX depth
+ * 64, TGT_RX default 268) and the SMC integration override table
+ * (hw/sys/smc/doc/periphs.adoc, I2C_TARGET_RX_FIFO_DEPTH 268 -> 64). No
+ * generated C export carries them, so keep this table in step with those two
+ * documents; the IP default of 268 must not be assumed at the SMC level. */
 #define I2C_CONTROLLER_TX_FIFO_DEPTH 64u
 #define I2C_CONTROLLER_RX_FIFO_DEPTH 64u
 #define I2C_TARGET_TX_FIFO_DEPTH 64u

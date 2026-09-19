@@ -154,6 +154,19 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         await self._wait_status(abr, ST_READY, ST_READY, what="post-zeroize READY (alt)")
 
+        pk_cleared = await self._keygen(abr, None, cfg.entropy, what="CHK-CLEAR")
+        assert pk_cleared != pk_alt, (
+            "CHK-CLEAR FAIL: a keygen with no software seed and no KV "
+            "read-enable reproduced the alternate public key, so ZEROIZE "
+            "left the seed register live"
+        )
+        self.logger.info(
+            "CHK-CLEAR PASS: post-zeroize keygen without a seed differs from the reference PK"
+        )
+
+        await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
+        await self._wait_status(abr, ST_READY, ST_READY, what="post-clear READY")
+
         handle = await self.km.key_load(key_words=list(_ABR_SEED_ALT), dest=KM_DEST_ABR_MLDSA_SEED)
         rc, arg = await self.km.key_transfer(handle=handle, dest=KM_DEST_ABR_MLDSA_SEED)
         assert rc == KM_RC_SUCCESS, f"CHK-XFER FAIL: CMD_KEY_TRANSFER dest=0x10 rc={rc}"

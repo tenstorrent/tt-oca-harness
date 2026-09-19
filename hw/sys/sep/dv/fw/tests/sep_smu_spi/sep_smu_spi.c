@@ -27,12 +27,12 @@
 #define SPI_ERR_STATUS 6
 
 static void spi_controller_init(void) {
-    spi_controller__CTRL_t ctrl = {.w = SPI_CONTROLLER__CTRL_reset};
-    spi_controller__CFG_t cfg = {.w = 0};
+    spi_controller__CONTROL_t ctrl = {.w = SPI_CONTROLLER__CONTROL_reset};
+    spi_controller__CONFIGOPTS_t cfg = {.w = 0};
 
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     cfg.f.CLKDIV = 9;
     cfg.f.CPOL = 0;
@@ -40,7 +40,7 @@ static void spi_controller_init(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
@@ -73,31 +73,31 @@ static int wait_idle(void) {
 typedef __typeof__(((spi_controller_t *)0)->ERROR_STATUS) spi_error_status_t;
 
 static int run_spi_txrx_sequence(void) {
-    spi_controller__CMD_t cmd = {.w = 0};
+    spi_controller__COMMAND_t cmd = {.w = 0};
     spi_error_status_t err = {.w = 0};
 
     spi_controller_init();
 
     /* Step 1: TX single-byte command (0x9F). */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_CMD;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x9F000000u);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x9F000000u);
     cmd.w = 0;
     cmd.f.LEN = 0; /* one byte */
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;     /* standard */
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     if (wait_idle() != 0) return SPI_ERR_WAIT_IDLE_CMD;
 
     /* Step 2: TX address phase (4 bytes) with CS held. */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_ADDR;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x03001000u);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x03001000u);
     cmd.w = 0;
     cmd.f.LEN = 3;   /* four bytes */
     cmd.f.CSAAT = 1; /* hold CS */
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     /* Step 3: RX 4 bytes and release CS. */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_RX;
@@ -106,7 +106,7 @@ static int run_spi_txrx_sequence(void) {
     cmd.f.CSAAT = 0; /* release CS */
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 1; /* RX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     if (wait_idle() != 0) return SPI_ERR_WAIT_IDLE_RX;
 
     /* Hard failures: malformed command / invalid CSID. */

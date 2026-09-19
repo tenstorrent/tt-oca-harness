@@ -77,11 +77,11 @@ def build_aes_ctrl(
     (ECB/CBC/CTR), KEY_LEN the key width (128/192/256), SIDELOAD the KM key vs
     KEY_SHARE. Defaults are ECB-256 (the KM AES sideload KAT path)."""
     return (
-        operation
-        | (mode << 2)
-        | (key_len << 8)
-        | ((1 if sideload else 0) << 11)
-        | (reseed_rate << 12)
+        operation << AES.field_lsb("CTRL_SHADOWED", "operation")
+        | (mode << AES.field_lsb("CTRL_SHADOWED", "mode"))
+        | (key_len << AES.field_lsb("CTRL_SHADOWED", "key_len"))
+        | ((1 if sideload else 0) << AES.field_lsb("CTRL_SHADOWED", "sideload"))
+        | (reseed_rate << AES.field_lsb("CTRL_SHADOWED", "prng_reseed_rate"))
     )
 
 

@@ -12,7 +12,7 @@
 //
 
 module spi_controller_shift_register
-    import spi_controller_pkg::*;
+    import spi_host_cmd_pkg::*;
 #() (
     input  logic       clk_i,
     input  logic       rst_ni,

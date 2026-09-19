@@ -55,14 +55,19 @@ CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 ALIAS_STRIDE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
 ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_START")
+ALIAS_END_RESET = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.reset32("REGION_REGION_END")
 ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_END")
 ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
+ALIAS_START_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_START")
+ALIAS_END_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_END")
+ALIAS_ATTRS_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_ATTRS")
 
 # --- AP / STEE output-remap ---------------------------------------------------
 AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
-REMAP_ATTRS = 0x00  # 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
+REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET")
+# 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
 
 # --- inbound / outbound filter config -----------------------------------------
 INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
@@ -79,7 +84,8 @@ FILTER_CONFIG = INBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG")
 # remap valid[63] (R/W) and filter locked[63] (woset) both sit in the hi word.
 WOSET_HI_BIT = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
 
-# axi_pkg response codes (a locked filter entry rejects a further write with SLVERR).
+# AMBA AXI4 (IHI 0022): OKAY=0, SLVERR=2. A locked filter entry rejects a
+# further write with SLVERR.
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
@@ -109,9 +115,11 @@ FILTER_RW_PATTERN = (
 )
 FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF  # compare RW fields, exclude RO
 
-# Bank sizes (entries) for index randomization.
-ALIAS_REGIONS = 16
-REMAP_REGIONS = 16
+# Bank sizes (entries) for index randomization. Every count comes from the
+# register export: a literal that goes short simply never reaches the tail
+# entries and still reports a clean pass.
+ALIAS_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL")
+REMAP_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL")
 # Both banks are RDL arrays; take the counts from the export so this sweep and
 # the filter-rule sweep cannot disagree about how many entries exist.
 INFILT_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
@@ -152,12 +160,10 @@ class SepFabricCsrCfg:
         )
         # Masked-random field values (read back exactly). REGION_START/END are both
         # 4KB-aligned (low 12 bits masked in RTL); START must be nonzero for NONVAC.
-        self.start_lo = (
-            rng.getrandbits(32) & ~0xFFF & 0xFFFF_FFFF
-        ) or 0x1000  # 4KB-aligned, nonzero
+        self.start_lo = (rng.getrandbits(32) & ALIAS_START_MASK) or 0x1000  # 4KB-aligned, nonzero
         self.start_hi = rng.getrandbits(24)  # addr[55:32]
-        self.end_lo = rng.getrandbits(32) & ~0xFFF & 0xFFFF_FFFF  # 4KB-aligned
-        self.attrs_lo = rng.getrandbits(32) & 0xFFFF_F000  # remap offset [31:12]
+        self.end_lo = rng.getrandbits(32) & ALIAS_END_MASK  # 4KB-aligned
+        self.attrs_lo = rng.getrandbits(32) & ALIAS_ATTRS_MASK  # remap offset [31:12]
         self.ap_lo = rng.getrandbits(32) & 0xFFF0_0000  # offset [31:20]
         self.ap_hi = rng.getrandbits(24)  # offset [55:32]
         self.stee_lo = rng.getrandbits(32) & 0xFFF0_0000
@@ -214,6 +220,105 @@ class SepFabricCsrBank(SepAxiRegDriver):
         )
         await self.test.start_seq(seq)
         return seq.resp_code
+
+    async def bank_field_walk(self) -> tuple[int, list[str]]:
+        """Write an index-derived pattern into every R/W word of every bank entry,
+        then read all of them back.
+
+        Each filter entry and remap region is an independent rule with its own
+        storage, and the per-group sweep writes one entry per group per seed. That
+        leaves two defects invisible: a decode that aliases two entries onto one
+        register, and a bank that implements fewer entries than the address map
+        declares -- both read back correctly on whichever entry the seed picked.
+
+        Deterministic, so the same words are covered on every seed. Patterns are
+        masked per word so the readback is exact: the 4 KB-aligned address words
+        drop their low bits, FILTER_CONFIG excludes the RO data_bus_width, and no
+        pattern sets a lock or valid bit -- bit 31 of every hi word is left clear
+        so the filter woset lock stays available to the leg that grades it.
+        """
+        hi_mask = ~(1 << WOSET_HI_BIT) & 0xFFFF_FFFF
+        # START/END RDL storage is full-width; the walk grades the 4 KB-aligned
+        # bits only (the same granule REGION_START uses). Bits [11:0] are not claimed.
+        filter_addr_walk = ALIAS_START_MASK
+        # (bank, base, stride, entries, [(offset, mask)])
+        banks = (
+            (
+                "alias",
+                ALIAS_BASE,
+                ALIAS_STRIDE,
+                ALIAS_REGIONS,
+                (
+                    (ALIAS_START, ALIAS_START_MASK),
+                    (ALIAS_START + 4, hi_mask),
+                    (ALIAS_END, ALIAS_END_MASK),
+                    (ALIAS_ATTRS, ALIAS_ATTRS_MASK),
+                    (ALIAS_ATTRS + 4, hi_mask),
+                ),
+            ),
+            # FILTER_CONFIG's hi word carries only locked[63], which the woset leg
+            # owns, so it has no word here: bits 32..62 hold nothing and a pattern
+            # written there reads back zero.
+            (
+                "infilt",
+                INFILT_BASE,
+                FILTER_STRIDE,
+                INFILT_ENTRIES,
+                (
+                    (FILTER_CONFIG, FILTER_RW_MASK),
+                    (FILTER_START_ADDR, filter_addr_walk),
+                    (FILTER_END_ADDR, filter_addr_walk),
+                ),
+            ),
+            (
+                "outfilt",
+                OUTFILT_BASE,
+                FILTER_STRIDE,
+                OUTFILT_ENTRIES,
+                (
+                    (FILTER_CONFIG, FILTER_RW_MASK),
+                    (FILTER_START_ADDR, filter_addr_walk),
+                    (FILTER_END_ADDR, filter_addr_walk),
+                ),
+            ),
+        )
+
+        written: list[tuple[str, int, int, int, int, int]] = []
+        for bank_no, (name, base, stride, count, words) in enumerate(banks, start=1):
+            for idx in range(count):
+                entry = base + idx * stride
+                for word, (offset, mask) in enumerate(words):
+                    addr = entry + offset
+                    # Bank number above the index, then the word number, so a
+                    # readback names all three. The bank term is what makes the
+                    # pattern distinct ACROSS banks: the two filter banks are
+                    # instances of one RDL type and share stride and word list,
+                    # so without it inbound entry k and outbound entry k would
+                    # carry identical patterns and a decode that aliased one onto
+                    # the other would still read back what it wrote. Index uses
+                    # bits 21:16 (outbound has 32 entries) and bank uses 23:22,
+                    # so idx=16 cannot collide with another bank's term. No
+                    # walked mask drops those bits.
+                    raw = (bank_no << 22) | ((idx + 1) << 16) | ((word + 1) << 12)
+                    pattern = raw & mask
+                    # Strict write: every word here is R/W and no lock is set
+                    # yet, so a non-OKAY response is a defect, not tolerance.
+                    await self._wr(addr, pattern)
+                    written.append((name, idx, word, addr, pattern, mask))
+
+        # Compare through the same mask the write used. A word's read-only fields
+        # return their own value -- FILTER_CONFIG carries data_bus_width as a
+        # constant 3 -- so an unmasked compare fails on every filter entry for a
+        # reason that is not an aliasing defect. CHK-RO grades those fields.
+        mismatches: list[str] = []
+        for name, idx, word, addr, pattern, mask in written:
+            got = await self.read32(addr)
+            if (got & mask) != pattern:
+                mismatches.append(
+                    f"{name}[{idx}] word{word} @0x{addr:08x} read 0x{got:08x} "
+                    f"(masked 0x{got & mask:08x}), wrote 0x{pattern:08x}"
+                )
+        return len(written), mismatches
 
     async def woset_probe(self, hi_addr: int, bit: int) -> tuple[int, int, int]:
         """Set ``bit`` in the hi word, then attempt to clear it.

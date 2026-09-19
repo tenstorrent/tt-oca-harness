@@ -2,6 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // AXI4-Lite slave to TL-UL host protocol converter.
+//
+// AckZeroStrobeWrite: a write with WSTRB == 0 is a legal AXI no-op (no byte is
+// written), but forwarding it as a TL-UL PutPartialData with an all-zero mask
+// makes OpenTitan register files return d_error, which surfaces as SLVERR. Such
+// beats are not issued by software; they are produced by an AXI data-width
+// downsizer splitting a wider master's beat, where the lanes outside the
+// master's strobe land on the neighbouring 32-bit register. With the parameter
+// set, the converter completes the write with OKAY locally and issues no TL-UL
+// transaction. Default off so existing consumers keep their strict behaviour.
 
 module axi_lite_to_tlul
 	import tlul_pkg::*;
@@ -16,8 +25,9 @@ module axi_lite_to_tlul
 		parameter int unsigned AXI_USER_WIDTH    = 1,
 		parameter type         axi_lite_req_t    = logic,
 		parameter type         axi_lite_rsp_t    = logic,
-		parameter bit          EnableCmdIntgGen  = 1'b1,  // Generate command integrity
-		parameter bit          EnableDataIntgGen = 1'b1   // Generate data integrity
+		parameter bit          EnableCmdIntgGen   = 1'b1,  // Generate command integrity
+		parameter bit          EnableDataIntgGen  = 1'b1,  // Generate data integrity
+		parameter bit          AckZeroStrobeWrite = 1'b0   // WSTRB==0 writes: OKAY, no TL-UL Put
 	) (
 		input  logic      clk_i,
 		input  logic      rst_ni,
@@ -145,7 +155,13 @@ module axi_lite_to_tlul
 					req_addr_d = axi_lite_req_i.aw.addr;
 					req_data_d = axi_lite_req_i.w.data;
 					req_strb_d = axi_lite_req_i.w.strb;
-					state_d = TL_PUT_REQ;
+					if (AckZeroStrobeWrite && (axi_lite_req_i.w.strb == '0)) begin
+						// No byte to write: complete with OKAY, skip the TL-UL Put.
+						req_error_d = 1'b0;
+						state_d     = AXI_B_RESP;
+					end else begin
+						state_d = TL_PUT_REQ;
+					end
 				end
 			end
 

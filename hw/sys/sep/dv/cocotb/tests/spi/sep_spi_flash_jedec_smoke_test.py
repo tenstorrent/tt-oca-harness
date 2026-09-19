@@ -42,5 +42,6 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
             assert seq.rxdata == SPI_RX_JEDEC_WORD, (
                 f"unexpected JEDEC response 0x{seq.rxdata:08x}, expected 0x{SPI_RX_JEDEC_WORD:08x}"
             )
+            self.logger.info("CHK-JEDEC PASS: opcode=0x9F rxdata=0x%08x", seq.rxdata)
         finally:
             await flash.stop()

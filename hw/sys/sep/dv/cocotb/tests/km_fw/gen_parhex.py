@@ -21,6 +21,8 @@ def word_parity(w: int) -> int:
 data = open(sys.argv[1], "rb").read()
 if len(data) % 4:
     data += b"\x00" * (4 - len(data) % 4)
+print("// SPDX-License-Identifier: Apache-2.0")
+print("// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.")
 print("@00000000")
 for i in range(0, len(data), 4):
     w = int.from_bytes(data[i : i + 4], "little")
