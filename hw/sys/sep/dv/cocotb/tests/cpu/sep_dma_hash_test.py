@@ -90,13 +90,22 @@ class sep_dma_hash_test(sep_base_test):
         # card's checker names, so a leg that did not run loses its line here
         # instead of hiding behind the PASS magic.
         for needle, chk, what in (
-            ("CFG_REGWEN = 0x6 (expected 0x6 for unlocked)", "CHK-CFG",
-             "CFG_REGWEN readable and unlocked before configuration"),
+            (
+                "CFG_REGWEN = 0x6 (expected 0x6 for unlocked)",
+                "CHK-CFG",
+                "CFG_REGWEN readable and unlocked before configuration",
+            ),
             ("DMA transfer completed!", "CHK-COMPLETE", "the DMA reporting completion"),
-            ("PASS: SRAM and DCCM data matches", "CHK-COPY",
-             "the copied bytes matching the source"),
-            ("PASS: SHA-384 pass also copied the message to DCCM intact", "CHK-SHA384-COPY",
-             "the SHA-384 pass copying its message intact"),
+            (
+                "PASS: SRAM and DCCM data matches",
+                "CHK-COPY",
+                "the copied bytes matching the source",
+            ),
+            (
+                "PASS: SHA-384 pass also copied the message to DCCM intact",
+                "CHK-SHA384-COPY",
+                "the SHA-384 pass copying its message intact",
+            ),
         ):
             assert any(
                 needle in ln and not ln.lstrip().startswith(("FAIL", "ERROR"))

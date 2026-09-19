@@ -81,12 +81,9 @@ class sep_dma_cpu_contention_test(sep_base_test):
         # cannot say which of them ran, so gate on each clause the line carries and
         # emit the record the VPLAN card names for it.
         console = self.sb.console_text()
-        verdict = next(
-            (ln for ln in console.splitlines() if ln.startswith("PASS: DMA(")), ""
-        )
+        verdict = next((ln for ln in console.splitlines() if ln.startswith("PASS: DMA(")), "")
         assert verdict, (
-            f"firmware console has no 'PASS: DMA(...' verdict line. "
-            f"Console was:\n{console}"
+            f"firmware console has no 'PASS: DMA(...' verdict line. Console was:\n{console}"
         )
         for needle, chk, what in _VERDICT_CLAUSES:
             assert needle in verdict, (
