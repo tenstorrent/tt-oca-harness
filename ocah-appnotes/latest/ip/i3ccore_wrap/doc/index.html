@@ -1535,6 +1535,108 @@ and use the queue-size and threshold fields rather than assuming a configured
 FIFO depth.</p>
 </div>
 <div class="paragraph">
+<p>Each <code>RESPONSE_PORT</code> read returns a 32-bit response descriptor. Bits <code>[15:0]</code>
+contain the transferred data length, bits <code>[23:16]</code> are reserved, bits <code>[27:24]</code>
+contain the transaction ID, and bits <code>[31:28]</code> contain one of the following error
+status codes from TCRI 6.4.1:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 12.5%;">
+<col style="width: 25%;">
+<col style="width: 62.5%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Code</th>
+<th class="tableblock halign-left valign-top">RTL status</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Success</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transaction completed without an error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Crc</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CRC error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Parity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Frame</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Frame error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AddrHeader</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-header error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x5</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Nack</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address or dynamic-address-assignment NACK</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x6</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Ovl</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Receive overflow or transmit underflow</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>I3cShortReadErr</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Target returned fewer bytes than requested when a short read was not permitted</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>HcAborted</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Host controller internal error or abort operation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x9</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>I2cDataNackOrI3cBusAborted</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C write-data NACK or I3C bus abort</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xA</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NotSupported</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command is not supported</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xB</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AbortedWithCRC</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HDR-BT transaction aborted with a CRC error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ErrorC</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer-type-specific error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ErrorD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer-type-specific error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ErrorE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer-type-specific error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ErrorF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer-type-specific error</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
 <p>Reset bits are self-clearing. Poll a requested reset until it reads as zero, and
 do not reset a queue while a transaction is active: doing so can discard queued
 commands, completion status, or transfer data. A soft reset resets controller
