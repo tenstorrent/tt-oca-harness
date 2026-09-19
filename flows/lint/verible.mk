@@ -72,8 +72,6 @@ OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 # authoritative for their syntax.
 OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
 	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/decorrelator/decor_cfg_if.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
 	hw/sys/dtp/dv/tb/tb_top.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/smc/dv/tb/tb_top.sv \
@@ -85,8 +83,6 @@ OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
 # formatter's output reparse does not. Keep their lint findings visible.
 OCAH_VERIBLE_LINT_PARSER_EXCLUDES := \
 	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/decorrelator/decor_cfg_if.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv
 
