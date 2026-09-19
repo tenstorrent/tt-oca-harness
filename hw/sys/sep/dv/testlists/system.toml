@@ -241,6 +241,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# EXPECTED FAIL. Asserts the misaligned-offset latch condition that
+# sep_cpu_ctrl.rdl:383 and doc/interrupts.adoc:241 state for
+# PERIPH_BUS_ERR_STATUS; the DUT refuses the beat at the fabric instead, so
+# nothing latches. Left unmarked so `all` stays a visible fail; a spec-vs-RTL
+# gap is not masked as expect_fail.
+name = "sep_periph_bus_err_misaligned_reveal_test"
+module = "system.sep_periph_bus_err_misaligned_reveal_test"
+seed = 1
+timeout_sec = 600
+tags = ["interrupt", "aggregator", "system", "subsystem", "reveal"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # LCC sep_debug -> inbound-filter gating (security boundary, the reference suite
 # sep_lcc_uvm_inbound_filter_gating_test). A custom OTP image with
 # LC_STATE=PROD is REAL-sensed (so NO +skip_fuse_sense -- the LCC feat_ctrl decode
@@ -362,6 +377,20 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI transaction IDs on the response path. Eight scratch words are primed
+# with eight distinct values, then read with eight reads outstanding at once,
+# one per ID; each must return its own word. Directed, not randomized: the
+# proof is a value compare, and a random ID on either side would remove it.
+name = "sep_axi_id_routing_test"
+module = "system.sep_axi_id_routing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "axi", "id", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

@@ -29,7 +29,7 @@ from env.sep_lcc_golden import (
     SIP_DBG_BIT,
     SMC_FUSE_DBG_BIT,
     dbg_disable_expected,
-    dbg_disable_unpack,
+    dbg_disable_sample,
     feat_ctrl_expected,
     fuse_dft_disable_expected,
     lc_state_name,
@@ -67,14 +67,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         the same FEAT_CTRL the cell above just checked, so the two are one
         consistent claim rather than two independent guesses.
         """
-        probe = cocotb.top.dbg_disable_all_o
-        val = probe.value
-        width = getattr(val, "n_bits", None)
-        if width is None:
-            bits = getattr(val, "binstr", None)
-            width = len(bits) if bits is not None else len(probe)
-        raw = int(val)
-        got = dbg_disable_unpack(raw, int(width))
+        got = dbg_disable_sample(cocotb.top)
         want = dbg_disable_expected(feat_ctrl)
         for name, exp in want.items():
             assert got[name] == exp, (

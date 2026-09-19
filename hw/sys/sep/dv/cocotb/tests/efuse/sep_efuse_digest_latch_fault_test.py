@@ -78,6 +78,10 @@ class sep_efuse_digest_latch_fault_test(sep_base_test):
         captured_digest = int(dut.token_digest_sticky_o.value)
         captured_valid = int(dut.token_digest_valid_o.value)
         assert captured_valid == 1
+        assert captured_digest == cfg.sip_digest, (
+            f"CHK-DIGEST-LATCH FAIL: sticky digest 0x{captured_digest:064x} "
+            f"!= independent SHA-256 of the presented token 0x{cfg.sip_digest:064x}"
+        )
 
         for _ in range(2):
             await RisingEdge(dut.clk_i)

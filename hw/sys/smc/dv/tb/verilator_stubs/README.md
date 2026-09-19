@@ -35,4 +35,4 @@ nested hwif structs are kept compilable by `disable_public_flat_rw` plus
 Which enrolled leaves read a signal behind one of these crossings, what each
 verdict reads, and the VCS control run that keeps those claims honest are
 recorded in the *Bench stand-ins* section of
-`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
+`docs/SMC_VPLAN.adoc` (Known Limitations, "SMC deferred and OUT disposition").

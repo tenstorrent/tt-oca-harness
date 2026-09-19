@@ -104,15 +104,20 @@ static inline uint32_t pic_source_pending(uint32_t source_id) {
 
 // Drop the PIC priority threshold/current level to 0 and enable machine
 // external interrupts (mie.meie) + global interrupts (mstatus.mie).
+#define CSR_MEIPT 0xBC9u    /* VeeR EL2 priority threshold */
+#define CSR_MEICURPL 0xBCCu /* VeeR EL2 current priority level */
+#define MIE_MEIE (1u << 11)
+#define MSTATUS_MIE (1u << 3)
+
 static inline void pic_enable_interrupts(void) {
-    __asm__ volatile("csrwi 0xBC9, 0");                  // meipt = 0 (priority threshold)
-    __asm__ volatile("csrwi 0xBCC, 0");                  // meicurpl = 0 (current priority level)
-    __asm__ volatile("csrs mie, %0" ::"r"(1u << 11));    // mie.meie
-    __asm__ volatile("csrs mstatus, %0" ::"r"(1u << 3)); // mstatus.mie
+    __asm__ volatile("csrwi 0xBC9, 0"); /* CSR_MEIPT */
+    __asm__ volatile("csrwi 0xBCC, 0"); /* CSR_MEICURPL */
+    __asm__ volatile("csrs mie, %0" ::"r"(MIE_MEIE));
+    __asm__ volatile("csrs mstatus, %0" ::"r"(MSTATUS_MIE));
 }
 
 static inline void pic_disable_interrupts(void) {
-    __asm__ volatile("csrc mstatus, %0" ::"r"(1u << 3));
+    __asm__ volatile("csrc mstatus, %0" ::"r"(MSTATUS_MIE));
 }
 
 #endif // SEP_PIC_H

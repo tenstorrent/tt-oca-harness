@@ -98,14 +98,19 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
         # The firmware error count gates the PASS magic, so a failed leg already
         # fails the scoreboard. These gates are here so the kept log cannot show
         # a green run with a checker that never ran: a firmware image built
-        # without the AES leg, or one where it was skipped, would otherwise pass
-        # this test silently.
+        # without one of the named legs, or one where a leg was skipped, would
+        # otherwise pass this test silently.
         # Match the firmware's [PASS] prefix, not the bare checker name: the
         # firmware's own [FAIL] line names the same checker, so a bare-substring
         # gate would be satisfied by the failure it is meant to catch and would
         # then log a PASS of its own.
         console = self.sb.console_text()
         for chk, what in (
+            ("CHK-HMAC-EMPTY", "the empty-message HMAC digest"),
+            ("CHK-HMAC-SHORT", "the short-message HMAC digest"),
+            ("CHK-HMAC-MULTI", "the longer-message HMAC digest"),
+            ("CHK-RW1C", "HMAC and KMAC done-bit write-one-to-clear"),
+            ("CHK-KMAC-LIVE", "the KMAC completion and non-zero digest"),
             ("CHK-CPU-AES-ENC", "the AES encrypt leg against the FIPS-197 vector"),
             ("CHK-CPU-AES-RT", "the AES SRAM round trip"),
         ):
@@ -114,6 +119,7 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
                 f"run or did not pass. Console was:\n{console}"
             )
         self.logger.info(
-            "CHK-CPU-AES-ENC / CHK-CPU-AES-RT PASS: both AES legs reported passing "
-            "in the firmware console"
+            "CHK-HMAC-EMPTY / CHK-HMAC-SHORT / CHK-HMAC-MULTI / CHK-RW1C / "
+            "CHK-KMAC-LIVE / CHK-CPU-AES-ENC / CHK-CPU-AES-RT PASS: every named "
+            "checker reported passing in the firmware console"
         )

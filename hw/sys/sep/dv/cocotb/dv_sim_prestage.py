@@ -158,6 +158,11 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_km_aes_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_hmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_otbn_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_handover_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_wipe_reset_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_command_set_rand_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_abr_seed_sideload_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_abr_mlkem_sideload_test": {"mode": "random", "lc_raw": 0x1},
     "sep_drbg_real_sink_multi_km_aes_test": {"mode": "random", "lc_raw": 0x1},
     # Spare-field lock x program. SPARE0..7 pinned 0 so the unlocked-then-lock
     # walk starts from a known-zero field (lock_prob stays 0).

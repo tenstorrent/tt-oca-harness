@@ -47,6 +47,7 @@ from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
+from seq_lib.sep_irq_aggregator_seq import IRQ_DMA_HOST_PATH, IRQ_DMA_REG_PATH
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_basic_test")
@@ -62,8 +63,6 @@ _BANNER = "SEP DMA basic test"
 
 _PARAM_MAGIC = 0xDA0A11C0
 _BUSY_LEN = 0x100
-_IRQ_DMA_REG_PATH = 40
-_IRQ_DMA_HOST_PATH = 41
 _PIC_POLL = 200_000
 
 
@@ -171,8 +170,8 @@ class sep_dma_basic_test(sep_base_test):
         for _ in range(_MAX_RUN_CYCLES):
             await RisingEdge(dut.clk_i)
             vec = self.rd(dut.sep_internal_interrupts_probe_o)
-            if (vec >> _IRQ_DMA_HOST_PATH) & 1:
-                assert ((vec >> _IRQ_DMA_REG_PATH) & 1) == 0, (
+            if (vec >> IRQ_DMA_HOST_PATH) & 1:
+                assert ((vec >> IRQ_DMA_REG_PATH) & 1) == 0, (
                     f"register-path [40] set on host-path inject (vec=0x{vec:x})"
                 )
                 self.logger.info(
@@ -204,7 +203,7 @@ class sep_dma_basic_test(sep_base_test):
         # cleared bit and pass. Require a RESOLVED zero instead.
         for _ in range(_PIC_POLL):
             await RisingEdge(dut.clk_i)
-            bit = _probe_bit_raw(dut.sep_internal_interrupts_probe_o, _IRQ_DMA_HOST_PATH)
+            bit = _probe_bit_raw(dut.sep_internal_interrupts_probe_o, IRQ_DMA_HOST_PATH)
             if bit == "0":
                 self.logger.info(
                     "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[41] resolved 0 "
@@ -216,12 +215,29 @@ class sep_dma_basic_test(sep_base_test):
             f"(last raw value {bit!r}); an X here is not a cleared bit"
         )
 
+    async def _check_host_fabric_pin(self) -> None:
+        """Require the integrity inject pin low at the fabric-DECERR arm."""
+        dut = cocotb.top
+        for _ in range(_MAX_RUN_CYCLES):
+            if "CHK-HOSTFABRIC-ARM" in self.sb.console_text():
+                pin = self.rd_known(dut.dma_host_intg_inject_i)
+                assert pin == 0, f"CHK-HOSTFABRIC-ARM: dma_host_intg_inject_i={pin}, expected 0"
+                self.logger.info(
+                    "STEP host-intg: dma_host_intg_inject_i=0 at firmware CHK-HOSTFABRIC-ARM"
+                )
+                return
+            if self.sb.fw_done:
+                raise AssertionError("firmware finished without printing CHK-HOSTFABRIC-ARM")
+            await RisingEdge(dut.clk_i)
+        raise AssertionError("firmware never printed CHK-HOSTFABRIC-ARM")
+
     async def run_scenario(self) -> None:
         # Override the boot scoreboard's expected banner here (after its own
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         dtcm = self._stage_dtcm()
         inj = cocotb.start_soon(self._drive_host_intg_inject())
+        fabric = cocotb.start_soon(self._check_host_fabric_pin())
         await self.boot_firmware(
             self.sb,
             _ITCM_HEX,
@@ -232,6 +248,7 @@ class sep_dma_basic_test(sep_base_test):
             progress_every=_PROGRESS_EVERY,
         )
         await inj
+        await fabric
         cfg = self._dma_cfg
         needle = (
             f"SCENARIO src=0x{_SRAM_BASE + cfg.src_off:08x} "

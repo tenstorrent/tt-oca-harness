@@ -28,9 +28,12 @@ from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_image import lc_encode
 from env.sep_lcc_golden import LCC_FEAT_CTRL, feat_ctrl_expected, lc_state_name
 from pyuvm import uvm_sequence
-from sep_reg_meta import sym
+from sep_reg_meta import RegBlock, sym
 
 LC_STATE_SHADOW = sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
+_LC_STATE_MAP = RegBlock("SEP_EFUSE_MAP")
+LC_STATE_BYTE_MASK = _LC_STATE_MAP.field_mask("LC_STATE", "lc_state")
+LC_STATE_UPPER_MASK = _LC_STATE_MAP.field_mask("LC_STATE", "rsvd")
 
 
 class SepLcShadowWriteSeq(uvm_sequence):
@@ -53,7 +56,7 @@ class SepLcShadowWriteSeq(uvm_sequence):
         super().__init__(name)
         self.wdata = wdata & 0xFFFF_FFFF
         self.expected_raw = expected_raw & 0xF
-        self.expected_upper = expected_upper & 0xFFFF_FF00
+        self.expected_upper = expected_upper & LC_STATE_UPPER_MASK
         self.sip_dis = sip_dis
         self.sys_dis = sys_dis
         self.demote_1 = demote_1

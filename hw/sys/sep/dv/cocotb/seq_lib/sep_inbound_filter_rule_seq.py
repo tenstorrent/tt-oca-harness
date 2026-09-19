@@ -8,7 +8,8 @@ SMN master (m_axi, the only path through u_inbound_filter) probes them:
   * allowed address (covered by the entry, read_allowed/write_allowed set, src_id
     match) -> the access traverses the filter + identity global->local remap
     (smc_global_base=0) and reaches the SEP-local CSR -> OKAY + exact value;
-  * any other address (block-by-default) -> the filter's err-slave -> DECERR;
+  * any other address (block-by-default) -> the filter's err-slave ->
+    DECERR + ERR_SLV_RDATA;
   * clearing read_allowed/write_allowed flips the matched read/write to DECERR.
 
 This stays sep_debug=0 and proves PER-ENTRY rule enforcement (vs the global
@@ -38,6 +39,7 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import DENY_READ_SENTINEL, deny_read_rdata
 from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -45,6 +47,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
     ALIAS_BASE,
     AP_BASE,
+    DBW_RO_VAL,
     F_ALLOW_BURST,
     F_ALLOW_NS,
     F_ENTRY_ENABLED,
@@ -76,7 +79,18 @@ WINDOW_B_VALUE = 0xA11C_BEEF
 BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
 RESP_SLVERR = 2
+# AMBA AXI4-Lite encodings (IHI 0022): OKAY=0, SLVERR=2, DECERR=3.
 RESP_DECERR = 3
+# DV-owned deny-path marker (env.sep_spec_tables.DENY_READ_SENTINEL).
+ERR_SLV_RDATA = deny_read_rdata(0)
+ERR_SLV_WORD = DENY_READ_SENTINEL
+
+
+def err_slv_rdata(addr: int) -> int:
+    """The deny-path half a 32-bit beat at ``addr`` must return."""
+    return deny_read_rdata(addr)
+
+
 # Entry count from the generated export, not a literal: the bank is an RDL
 # array (`inbound_filter_ctrl[16]`), and a sequence that carries its own number
 # goes stale the moment the array changes. disable_all() must clear every entry
@@ -107,7 +121,7 @@ BURST_ALLOW_SPAN = 0x2000
 # reach a neighbouring block.
 PAGE_SHIFT = 12
 PAGE_SIZE = 1 << PAGE_SHIFT
-GRANULE_BYTES = 8  # FILTER_CONFIG.data_bus_width reset 3 => 8-byte beat
+GRANULE_BYTES = 1 << DBW_RO_VAL
 SCRATCH_STRIDE = 0x8  # sep_scratch.rdl: 8 x 64-bit per bank
 SCRATCH_BANK_REGS = 8
 # The dual scratch banks are the widen page: both banks are plain RW storage, so

@@ -43,7 +43,7 @@
 #define SEP_KMAC_ENTROPY_MODE_EDN ((uint32_t)0x1u)
 #define SEP_KMAC_ENTROPY_MODE_SW ((uint32_t)0x2u)
 
-/* CMD encodings (OT kmac_pkg::kmac_cmd_e). */
+/* Sparse CMD.CMD encodings (OT KMAC Programmer's Guide / generated kmac.adoc). */
 #define SEP_KMAC_CMD_START 29u
 #define SEP_KMAC_CMD_PROCESS 46u
 #define SEP_KMAC_CMD_MANUAL_RUN 49u

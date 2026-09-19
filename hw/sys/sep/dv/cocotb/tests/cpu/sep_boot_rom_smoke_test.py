@@ -37,7 +37,7 @@ class sep_boot_rom_smoke_test(sep_base_test):
             while True:
                 await RisingEdge(dut.clk_i)
                 if self.rd(dut.cpu_trace_valid_o):
-                    pcs.add(self.rd(dut.cpu_trace_addr_o) & 0xFFFF_FFFF)
+                    pcs.add(self.rd_known(dut.cpu_trace_addr_o) & 0xFFFF_FFFF)
 
         sampler = cocotb.start_soon(_trace_sampler())
         try:
