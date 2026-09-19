@@ -44,13 +44,13 @@
 
         virtual function void build();
             this.CS_CMD_REQ_DONE = uvm_reg_field::type_id::create("CS_CMD_REQ_DONE");
-            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
             this.CS_ENTROPY_REQ = uvm_reg_field::type_id::create("CS_ENTROPY_REQ");
-            this.CS_ENTROPY_REQ.configure(this, 1, 1, "RW", 1, 'h0, 1, 1, 0);
+            this.CS_ENTROPY_REQ.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
             this.CS_HW_INST_EXC = uvm_reg_field::type_id::create("CS_HW_INST_EXC");
-            this.CS_HW_INST_EXC.configure(this, 1, 2, "RW", 1, 'h0, 1, 1, 0);
+            this.CS_HW_INST_EXC.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
             this.CS_FATAL_ERR = uvm_reg_field::type_id::create("CS_FATAL_ERR");
-            this.CS_FATAL_ERR.configure(this, 1, 3, "RW", 1, 'h0, 1, 1, 0);
+            this.CS_FATAL_ERR.configure(this, 1, 3, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__INTR_ENABLE
 
@@ -68,13 +68,13 @@
 
         virtual function void build();
             this.CS_CMD_REQ_DONE = uvm_reg_field::type_id::create("CS_CMD_REQ_DONE");
-            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "WO", 1, 'h0, 1, 1, 0);
+            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
             this.CS_ENTROPY_REQ = uvm_reg_field::type_id::create("CS_ENTROPY_REQ");
-            this.CS_ENTROPY_REQ.configure(this, 1, 1, "WO", 1, 'h0, 1, 1, 0);
+            this.CS_ENTROPY_REQ.configure(this, 1, 1, "WO", 0, 'h0, 1, 1, 0);
             this.CS_HW_INST_EXC = uvm_reg_field::type_id::create("CS_HW_INST_EXC");
-            this.CS_HW_INST_EXC.configure(this, 1, 2, "WO", 1, 'h0, 1, 1, 0);
+            this.CS_HW_INST_EXC.configure(this, 1, 2, "WO", 0, 'h0, 1, 1, 0);
             this.CS_FATAL_ERR = uvm_reg_field::type_id::create("CS_FATAL_ERR");
-            this.CS_FATAL_ERR.configure(this, 1, 3, "WO", 1, 'h0, 1, 1, 0);
+            this.CS_FATAL_ERR.configure(this, 1, 3, "WO", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__INTR_TEST
 
@@ -90,9 +90,9 @@
 
         virtual function void build();
             this.RECOV_ALERT = uvm_reg_field::type_id::create("RECOV_ALERT");
-            this.RECOV_ALERT.configure(this, 1, 0, "WO", 1, 'h0, 1, 1, 0);
+            this.RECOV_ALERT.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
             this.FATAL_ALERT = uvm_reg_field::type_id::create("FATAL_ALERT");
-            this.FATAL_ALERT.configure(this, 1, 1, "WO", 1, 'h0, 1, 1, 0);
+            this.FATAL_ALERT.configure(this, 1, 1, "WO", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__ALERT_TEST
 
@@ -107,7 +107,7 @@
 
         virtual function void build();
             this.REGWEN = uvm_reg_field::type_id::create("REGWEN");
-            this.REGWEN.configure(this, 1, 0, "W0C", 1, 'h1, 1, 1, 0);
+            this.REGWEN.configure(this, 1, 0, "W0C", 0, 'h1, 1, 1, 0);
         endfunction : build
     endclass : csrng__REGWEN
 
@@ -125,37 +125,28 @@
 
         virtual function void build();
             this.ENABLE = uvm_reg_field::type_id::create("ENABLE");
-            this.ENABLE.configure(this, 4, 0, "RW", 1, 'h9, 1, 1, 0);
+            this.ENABLE.configure(this, 4, 0, "RW", 0, 'h9, 1, 1, 0);
             this.SW_APP_ENABLE = uvm_reg_field::type_id::create("SW_APP_ENABLE");
-            this.SW_APP_ENABLE.configure(this, 4, 4, "RW", 1, 'h9, 1, 1, 0);
+            this.SW_APP_ENABLE.configure(this, 4, 4, "RW", 0, 'h9, 1, 1, 0);
             this.READ_INT_STATE = uvm_reg_field::type_id::create("READ_INT_STATE");
-            this.READ_INT_STATE.configure(this, 4, 8, "RW", 1, 'h9, 1, 1, 0);
+            this.READ_INT_STATE.configure(this, 4, 8, "RW", 0, 'h9, 1, 1, 0);
             this.FIPS_FORCE_ENABLE = uvm_reg_field::type_id::create("FIPS_FORCE_ENABLE");
-            this.FIPS_FORCE_ENABLE.configure(this, 4, 12, "RW", 1, 'h9, 1, 1, 0);
+            this.FIPS_FORCE_ENABLE.configure(this, 4, 12, "RW", 0, 'h9, 1, 1, 0);
         endfunction : build
     endclass : csrng__CTRL
 
     // reg - csrng.CMD_REQ
     class csrng__CMD_REQ extends uvm_reg;
         `uvm_object_utils(csrng__CMD_REQ)
-        rand uvm_reg_field acmd;
-        rand uvm_reg_field clen;
-        rand uvm_reg_field flag0;
-        rand uvm_reg_field glen;
+        rand uvm_reg_field CMD_REQ;
 
         function new(string name = "csrng__CMD_REQ");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
         virtual function void build();
-            this.acmd = uvm_reg_field::type_id::create("acmd");
-            this.acmd.configure(this, 4, 0, "WO", 1, 'h0, 1, 1, 0);
-            this.clen = uvm_reg_field::type_id::create("clen");
-            this.clen.configure(this, 4, 4, "WO", 1, 'h0, 1, 1, 0);
-            this.flag0 = uvm_reg_field::type_id::create("flag0");
-            this.flag0.configure(this, 4, 8, "WO", 1, 'h0, 1, 1, 0);
-            this.glen = uvm_reg_field::type_id::create("glen");
-            this.glen.configure(this, 13, 12, "WO", 1, 'h0, 1, 1, 0);
+            this.CMD_REQ = uvm_reg_field::type_id::create("CMD_REQ");
+            this.CMD_REQ.configure(this, 32, 0, "WO", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__CMD_REQ
 
@@ -170,7 +161,7 @@
 
         virtual function void build();
             this.RESEED_INTERVAL = uvm_reg_field::type_id::create("RESEED_INTERVAL");
-            this.RESEED_INTERVAL.configure(this, 32, 0, "RW", 1, 'hffffffff, 1, 1, 0);
+            this.RESEED_INTERVAL.configure(this, 32, 0, "RW", 0, 'hffffffff, 1, 1, 0);
         endfunction : build
     endclass : csrng__RESEED_INTERVAL
 
@@ -252,9 +243,9 @@
 
         virtual function void build();
             this.GENBITS_VLD = uvm_reg_field::type_id::create("GENBITS_VLD");
-            this.GENBITS_VLD.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.GENBITS_VLD.configure(this, 1, 0, "RO", 1, 'h0, 0, 1, 0);
             this.GENBITS_FIPS = uvm_reg_field::type_id::create("GENBITS_FIPS");
-            this.GENBITS_FIPS.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
+            this.GENBITS_FIPS.configure(this, 1, 1, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : csrng__GENBITS_VLD
 
@@ -269,7 +260,7 @@
 
         virtual function void build();
             this.GENBITS = uvm_reg_field::type_id::create("GENBITS");
-            this.GENBITS.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.GENBITS.configure(this, 32, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : csrng__GENBITS
 
@@ -284,7 +275,7 @@
 
         virtual function void build();
             this.INT_STATE_READ_ENABLE = uvm_reg_field::type_id::create("INT_STATE_READ_ENABLE");
-            this.INT_STATE_READ_ENABLE.configure(this, 3, 0, "RW", 1, 'h7, 1, 1, 0);
+            this.INT_STATE_READ_ENABLE.configure(this, 3, 0, "RW", 0, 'h7, 1, 1, 0);
         endfunction : build
     endclass : csrng__INT_STATE_READ_ENABLE
 
@@ -299,7 +290,7 @@
 
         virtual function void build();
             this.INT_STATE_READ_ENABLE_REGWEN = uvm_reg_field::type_id::create("INT_STATE_READ_ENABLE_REGWEN");
-            this.INT_STATE_READ_ENABLE_REGWEN.configure(this, 1, 0, "W0C", 1, 'h1, 1, 1, 0);
+            this.INT_STATE_READ_ENABLE_REGWEN.configure(this, 1, 0, "W0C", 0, 'h1, 1, 1, 0);
         endfunction : build
     endclass : csrng__INT_STATE_READ_ENABLE_REGWEN
 
@@ -314,7 +305,7 @@
 
         virtual function void build();
             this.INT_STATE_NUM = uvm_reg_field::type_id::create("INT_STATE_NUM");
-            this.INT_STATE_NUM.configure(this, 4, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.INT_STATE_NUM.configure(this, 4, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__INT_STATE_NUM
 
@@ -329,7 +320,7 @@
 
         virtual function void build();
             this.INT_STATE_VAL = uvm_reg_field::type_id::create("INT_STATE_VAL");
-            this.INT_STATE_VAL.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.INT_STATE_VAL.configure(this, 32, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : csrng__INT_STATE_VAL
 
@@ -344,7 +335,7 @@
 
         virtual function void build();
             this.FIPS_FORCE = uvm_reg_field::type_id::create("FIPS_FORCE");
-            this.FIPS_FORCE.configure(this, 3, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.FIPS_FORCE.configure(this, 3, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__FIPS_FORCE
 
@@ -455,7 +446,7 @@
 
         virtual function void build();
             this.ERR_CODE_TEST = uvm_reg_field::type_id::create("ERR_CODE_TEST");
-            this.ERR_CODE_TEST.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.ERR_CODE_TEST.configure(this, 5, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__ERR_CODE_TEST
 

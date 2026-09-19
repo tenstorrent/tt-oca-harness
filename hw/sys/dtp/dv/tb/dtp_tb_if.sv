@@ -28,6 +28,12 @@ interface dtp_tb_if;
   logic por_rst_n;
   logic sys_rst_n;
 
+  // DFT controls of the DUT: test_en_i (scan-enable for the clock gaters)
+  // and scan_rst_ni (reset-synchronizer bypass, active-low), both idle in
+  // functional mode; a DFT-mode scenario drives them here.
+  logic test_en    = 1'b0;
+  logic scan_rst_n = 1'b1;
+
   // Reset-assertion counters (driven by tb_top): the scoreboard predictors
   // re-baseline the CSR shadow and the TAP instruction on them.
   logic [31:0] sys_rst_assert_count;
@@ -36,9 +42,10 @@ interface dtp_tb_if;
   // Driven by the DUT top (jtag_tap_pkg::tap_state_e, one-hot).
   logic [15:0] tap_state;
 
-  // Driven by the DUT top: decoded-IR one-hot observable
-  // (jtag_inst_reg_pkg::jtag_instruction_decoded_e) for CHK-IR-DECODE.
-  jtag_inst_reg_pkg::jtag_instruction_decoded_e inst_decoded;
+  // Driven by the DUT top: decoded-IR one-hot observable for CHK-IR-DECODE,
+  // 64 bits wide. cocotb reads an enum-typed interface member as a 32-bit
+  // integer over VPI, so the member is a packed vector.
+  logic [jtag_inst_reg_pkg::DECODED_IR_WIDTH-1:0] inst_decoded;
 
   // Lifecycle debug disables, one named member per dbg_disable_i path
   // (active-high: 1 = path disabled). Init 1 = fail-closed, matching the

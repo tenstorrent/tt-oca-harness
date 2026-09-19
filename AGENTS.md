@@ -189,6 +189,17 @@ bwrap: Can't mkdir parents for <repository path>: Read-only file system
 
 `unset OCAH_TOOLCHAIN_ROOTFS` to fall back to the container engine.
 
+### The toolchain sandbox carries no Python packages
+
+The image and the extracted rootfs both provide a bare `python3` with only the packages
+`tools/docker/Dockerfile` installs. Any build step importing `cryptography`,
+`ruamel.yaml` or similar fails there with `ModuleNotFoundError`.
+
+Keep such steps on the host, run the compile in the sandbox, and order the two so the
+host half produces what the compile consumes — as the SEP boot ROM does with
+`key-digests` and `oca-images` (`hw/sys/sep/bootrom/prod/README.md`). Adding a package
+to the Dockerfile does not reach the bwrap rootfs, which is extracted separately.
+
 ### Rebuilding the image invalidates existing firmware objects
 
 Only the Dockerfile's base image is digest-pinned; the packages installed on top of it
@@ -518,8 +529,8 @@ open files to compensate.
 
 | Check | Local command |
 |---|---|
-| SystemVerilog lint (slang) | `make lint-slang-all` lints every block carrying a `flow.mk`, which `flows/common.mk` discovers under `hw/sys/*`, `hw/ip/*` and vendored IP overlays; add `BLOCK=<block…>` to restrict it. `make lint-slang` from a block's own flow lints that block alone |
-| SystemVerilog lint (Verilator) | `make lint-verilator-all` lints every discovered block as its own top; add `BLOCK=<block…>` to restrict it |
+| SystemVerilog lint (slang) | `make lint-slang-all` lints every `flow.mk` top (`dtp`, `sep`, `smc`, `smu`, `aou` today). `flows/common.mk` also globs `hw/ip/*/flow.mk`; none exist. `BLOCK=` is a top, not an IP. `make lint-slang` from a block's own flow lints that block alone |
+| SystemVerilog lint (Verilator) | `make lint-verilator-all` lints each discovered top the same way; add `BLOCK=<block…>` to restrict it |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | C formatting | `make format-c`, `make format-c-check` |
@@ -528,7 +539,7 @@ open files to compensate.
 
 Each of these is an auto-generated alias for the `ocah-`-prefixed target of the same name, so
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
-plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
+plus the matching `./scripts/docker-run.sh run-here make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 The internal GitLab mirror loads its parent pipeline from a separately access-controlled
 configuration project rather than from this repository, so a pull request cannot replace the

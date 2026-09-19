@@ -672,6 +672,23 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             wstrb=wstrb,
             size=size,
         )
+        return await self.finish_target_single_write(
+            target, addr, data, size=size, wstrb=wstrb, context=context
+        )
+
+    async def finish_target_single_write(
+        self,
+        target: str,
+        addr: int,
+        data: int,
+        *,
+        size: int,
+        wstrb: int,
+        context: str,
+    ) -> tuple[int, int]:
+        """Poll an issued write to its settled status and judge SUCCESS plus the enabled byte lanes in memory."""
+        cfg = self.target_cfg(target)
+        data &= self.target_data_mask(target, size)
         status, rdata = await self.poll_target_single_status(target)
         self.scoreboard_expect_completion(target, status, context=context)
         self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
@@ -703,6 +720,15 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         expected &= self.target_data_mask(target, size)
         self.log_target_jtag2axi_op(target, context, addr=addr, size=size)
         await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
+        return await self.finish_target_single_read(
+            target, addr, expected, size=size, context=context
+        )
+
+    async def finish_target_single_read(
+        self, target: str, addr: int, expected: int, *, size: int, context: str
+    ) -> tuple[int, int]:
+        """Poll an issued read to its settled status and judge SUCCESS plus the returned data."""
+        cfg = self.target_cfg(target)
         status, rdata = await self.poll_target_single_status(target)
         self.scoreboard_expect_completion(target, status, context=context)
         self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)

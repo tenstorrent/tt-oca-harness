@@ -81,10 +81,11 @@ KM_ROM_HEX_SECTIONS_rom := $(KM_ROM_HEX_SECTIONS_vrom) \
 # The SEP UVM resolves firmware symbols (e.g. the payload buffer it checks for
 # key residue) from "<name>.sym" beside the hex it was given, so a rom image also
 # emits the mode-free name the engine's "<name>.<mode>.sym" does not cover.
+
 define FW_TEST_POSTPROCESS
 	$(OBJCOPY) -O verilog $(1) $(KM_ROM_HEX_SECTIONS_$(3)) \
 	  --change-addresses "-0x00000000" "$(4).rom.hex"
-	python3 "$(FW_DIR)/scripts/add_rom_parity.py" "$(4).rom.hex" "$(4).rom.parhex"
+	$(PYTHON) "$(FW_DIR)/scripts/add_rom_parity.py" "$(4).rom.hex" "$(4).rom.parhex"
 	$(if $(filter rom,$(3)),$(NM) -B -n $(1) > "$(4).sym")
 	$(if $(filter-out rom,$(3)),$(OBJCOPY) -O verilog $(1) \
 	  --only-section=.text --only-section=.text.alt_irq --only-section=.rodata --only-section=.data \

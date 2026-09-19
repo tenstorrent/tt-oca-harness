@@ -175,6 +175,8 @@ Before parsing the command, the launcher:
 The supported Python range is 3.11 through 3.13. Install
 https://docs.astral.sh/uv/[`uv`] before the first run. The locked `dv`
 dependency group provides cocotb and the shared Python DV packages.
+<<runner-environment-matrix>> lists every other component a run needs, the
+file that pins it, and the check behind it.
 
 `OCAH_DV_SKIP_UV=1` skips only the `uv` re-execution. Use it for a
 pre-provisioned CI or developer environment that already supplies the required
@@ -192,6 +194,157 @@ targeted availability check rather than a complete license or toolchain test.
 The launcher may be invoked from any working directory because repository and
 checked-in paths are resolved from the script location. Relative `--run-dir`
 and `--result` paths, however, are resolved from the repository root.
+
+[[runner-environment-matrix]]
+=== Supported environments
+
+A run depends on the components below. Each row names where the pin lives
+rather than restating its value, so the named file is the authority; the
+doctor and the environment-matrix tests
+(`tools/dv/tests/test_environment_matrix.py`) fail when two of the files
+disagree.
+
+[cols="<2,<4,<3,<3",options="header"]
+|===
+|Component |Supported |Where it is pinned |How it is checked
+
+|Python
+|3.11 through 3.13. The hosted jobs, `.python-version`, and the launcher's
+`uv run` select an interpreter inside the range; `uv` downloads one when the
+host has none.
+|`requires-python` in `pyproject.toml` and `hw/common/dv/pyproject.toml`,
+the `uv.lock` header, `.python-version`, the composite action's
+`python-version` default, and `SUPPORTED_PYTHON_MIN` and
+`SUPPORTED_PYTHON_MAX_EXCLUSIVE` in `tools/dv/runlib/cli.py`.
+|The doctor's `python` row; the matrix tests hold every statement equal and
+the pinned interpreter inside the range.
+
+|Python packages
+|The versions `uv.lock` records for cocotb, pyuvm, cocotbext-axi, and
+cocotbext-jtag, the four dependencies of the `ocah-dv` workspace member,
+installed through a `uv` release that reads the lockfile's `revision`. The
+`dv` group adds them to the root project's own dependencies; the shared VIP
+and every DUT package import from the tree rather than from an installed
+distribution.
+|`hw/common/dv/pyproject.toml` (the ranges) and `uv.lock` (the resolution).
+|`uv sync --locked --group dv` and the launcher's `uv run --locked` refuse a
+lockfile that drifted from the project files; the doctor prints one row per
+locked distribution; the matrix tests hold the doctor's list, the package's
+dependency list, and the lock equal, and the locked versions inside the
+declared ranges.
+
+|Verilator
+|cocotb's documented floor, 5.036, or newer: the `VLT_MIN` its Makefile flow
+enforces. The Python runner the launcher uses checks no floor, so the
+doctor's version row is the check. Hosted CI builds the tag the composite
+action's `verilator-version` input defaults to from source; a developer host
+runs any release at or above the floor. A distribution package may sit below
+it: Ubuntu 24.04 ships 5.020.
+|`min_version` on the `[verilator]` table of
+`hw/common/dv/configs/simulators.toml` (the floor);
+`.github/actions/dv-run/action.yml` (the hosted tag).
+|The doctor prints the release the binary reports and fails the required
+tool below `min_version`; the matrix tests hold the registry floor equal to
+cocotb's `VLT_MIN` and the hosted tag at or above it.
+
+|Bender
+|Any release that resolves the checked-in `Bender.yml`. Hosted CI installs
+the current release through `pulp-platform/pulp-actions/bender-install`;
+nothing pins it, and the release a run used is recorded as
+`tool_versions.bender` in its `result.json`.
+|None.
+|Every hosted job's `flist` stage; the recorded release in each published
+run.
+
+|Simulators and formal backends
+|`verilator` and `sby` run with no license. `vcs` and `xcelium` need the
+license variables their registry tables name and a licensed self-hosted
+runner. A site renames a binary, wraps a tool in a launcher, or adds a tool
+in the site layer (<<runner-site-layer>>).
+|`hw/common/dv/configs/simulators.toml`; a table's `min_version`, where
+present, is the oldest release the doctor accepts.
+|The doctor names the file that supplied each tool; the matrix tests hold the
+registry to those four tools, with exactly `verilator` and `sby` license-free.
+
+|Host
+|The GitHub-hosted `ubuntu-latest` x86_64 image is the qualified host: every
+smoke, nightly, and weekly job runs on it, or on the larger GitHub-hosted
+label the `DV_LARGE_RUNNER` repository variable names for the rows it
+promotes, and the job log's `Operating System` group names the release the
+label resolved to. A Linux or macOS developer host that meets the rows above
+is supported but not qualified: no hosted job runs there, so its evidence is
+its own doctor report and smoke run. No other host is supported.
+|The `runner` key of each matrix row in `sim.yml` and `regress.yml`.
+|The hosted jobs at head; the matrix tests hold every row's `runner` to the
+hosted label or to the variable that falls back to it.
+
+|Firmware toolchain and container engine
+|A RISC-V toolchain that accepts `--specs=picolibc.specs`, named by
+`RISCV_TOOLCHAIN`, or the `ocah-toolchain` image built from
+`tools/docker/Dockerfile` and run through `scripts/docker-run.sh` (Podman
+when present, else Docker; bubblewrap when `OCAH_TOOLCHAIN_ROOTFS` names an
+extracted rootfs and `bwrap` is installed). Hosted CI installs neither.
+|`tools/docker/Dockerfile` (a digest-pinned base; the packages on it float
+with the distribution) and each DUT's `[c_build.*]` command, which owns the
+choice between the two.
+|`scripts/docker-run.sh verify`; a firmware leaf's `c_compile` stage, which
+fails when its DUT's command finds no usable toolchain.
+|===
+
+==== Hosted CI and a developer host
+
+Hosted CI is the qualified environment and the most constrained one. The
+composite action installs `uv` with the pinned interpreter, Bender, and
+Verilator with its runtime packages, and no container engine or RISC-V
+toolchain, so every hosted row names a group that needs no toolchain;
+`regress.yml` states the reason beside each row that names a group other
+than `all`. A developer host adds the firmware path, and each DUT's
+`[c_build.*]` command owns the toolchain choice. `sep`, and `smu` through
+`hw/sys/smu/dv/fw/build_firmware.py`, use the toolchain `RISCV_TOOLCHAIN`
+names when that compiler accepts `--specs=picolibc.specs` and otherwise
+build in the `ocah-toolchain` container through
+`scripts/docker-run.sh run-here`. `smc` uses `RISCV_TOOLCHAIN` whenever it
+is set and the container otherwise, and `hw/common/dv/fw/compile.mk` fails
+the build when the named compiler lacks picolibc. `make` tracks source
+timestamps and not toolchain identity, so after switching paths or rebuilding
+the image, run `make -f ocah.mk ocah-dv-fw-clean TARGET=<block>` before the
+next simulation.
+
+The `sep` tree carries the repository's one private submodule, under
+`hw/sys/sep/bootrom/prod/tools/`, and some of its test modules import it.
+The hosted `sep` jobs check it out with a repository secret before the run; a
+public clone runs without it, so those modules fail to import there. An
+unscoped `--doctor --dut sep` imports every testlist module and exits `2` on
+that account. Scope the doctor to the selection you will run:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut sep --items smoke
+----
+
+With `--items` or `--tag` the module probe covers the tests the same
+selection names, before a run's framework-binding and `--tool` filters drop
+any, and the `test modules` row names the selection.
+
+==== Unsupported configurations
+
+* Python 3.14 or newer. cocotb 2.0 publishes no build for it. The launcher's
+  `uv run --locked` selects an interpreter inside the range; only
+  `OCAH_DV_SKIP_UV=1` exposes the host interpreter, which the doctor's
+  `python` row then rejects.
+* Verilator older than 5.036, including the Ubuntu 24.04 package. cocotb
+  documents the floor, the registry carries it as `min_version`, and the
+  doctor fails the required tool below it. Build the hosted tag from source
+  as the composite action does, or install a newer release.
+* A `RISCV_TOOLCHAIN` whose compiler lacks picolibc. `sep` and `smu` build
+  in the container instead; `smc` fails at `c_compile` with the picolibc
+  error from `compile.mk`.
+* VCS, Xcelium, and the SV-UVM framework views in hosted CI
+  (<<runner-ci-support-matrix>>).
+* Formal mode in hosted CI (<<runner-formal>>).
+* Coverage collection in hosted CI: the coverage regression runs on the
+  licensed simulator flow (<<runner-ci-support-matrix>>).
+* Any host outside the Host row above.
 
 == Quick start
 
@@ -947,7 +1100,8 @@ tool. A relative path resolves against the site file; the file must exist.
 |`[simulators.<new-tool>]` (complete table)
 |adds
 |A tool the checked-in registry lacks. The registry schema validates it
-(`kind`, `frameworks`, `license_env`, and `argv` for a formal tool); a DUT
+(`kind`, `frameworks`, `license_env`, `min_version` when present, and `argv`
+for a formal tool); a DUT
 selects it through its config's `tools` and `default_tool`.
 
 |`[executors.<name>]` `binary` / `submit_argv`, or a complete table
@@ -1301,29 +1455,6 @@ Both commands run the same item; the tool choice is the only difference, and
 each run records the site file under `site` in its `result.json`.
 `hw/common/dv/configs/site.local.example.toml` is the template for the site
 file.
-
-[[runner-formal-readme]]
-=== The DUT README's formal section
-
-A DUT that carries a formal view states it in its DV `README.md` with one
-section in this shape, which `hw/sys/dtp/dv/README.md` instantiates:
-
-[source,markdown]
-----
-## Formal
-
-`formal/` holds <the described block and the formal top>; the properties
-follow `hw/common/dv/docs/formal-property-style.adoc`. `<dut>_formal_cfg.toml`
-and `testlists/formal.toml` launch it through the runner; the plan section is
-"<section title>" in `docs/<DUT>_VPLAN.adoc`.
-
-    python3 tools/dv/run_dv.py --dut <dut> --mode formal            # <group>: <items>
-    python3 tools/dv/run_dv.py --dut <dut> --mode formal --dry-run  # the rendered command
-
-<One sentence on the toolchain the item needs, and one on how a site with a
-licensed backend selects it, pointing at the Formal verification chapter of
-`tools/dv/doc/run-dv.adoc`.>
-----
 
 == Stage planning
 
@@ -1932,7 +2063,11 @@ back to base validation).
 
 |`--doctor`
 |Report configuration and tool availability; each tool row names the file
-that supplied it. With no selected DUT/tool it is an informational survey.
+that supplied it and, for a registry tool found on `PATH`, is followed by
+the release the binary reports; a required tool below its table's
+`min_version` fails. With `--items` or `--tag` the cocotb module probe covers
+that selection; otherwise it covers every testlist module. With no selected
+DUT/tool it is an informational survey.
 
 |`--dry-run`
 |Render commands and artifacts without executing backend tools or writing
@@ -2420,6 +2555,7 @@ failure stays visible to a JUnit consumer; a run in which a leaf executed,
 or that passes, removes a marked run-level file left by an earlier
 invocation into the same directory.
 
+[[runner-ci]]
 == Continuous integration
 
 Two GitHub workflows run simulator jobs on GitHub-hosted runners. Both run
@@ -2434,7 +2570,7 @@ change can never alter the pull-request gate:
 
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
-|`--items smoke --sim-jobs 2` for `dtp`, `sep`, and `smc`, and
+|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu_block`, and `smc`, and
 `--items hosted_smoke` for `smu`, whose own `smoke` group reaches firmware
 tests the hosted runner cannot build; 60-minute budget per job. The job
 names `verilator-smoke (<dut>)` are the stable check contexts. Every job
@@ -2603,7 +2739,7 @@ promoting a pair into the CI-run tier.
 
 `--cores`, `--mem-mb`, and `--walltime` are executor metadata only and
 enforce nothing locally or in CI. The enforceable controls are the job
-`timeout-minutes` each caller sets (60 for smoke; per DUT for the regression
+`timeout-minutes` each caller sets (60 for smoke; 360 for the regression
 tiers), the pinned cached Verilator build, and the `--sim-jobs`/`--build-jobs`
 fan-out.
 
@@ -2630,10 +2766,15 @@ python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>
 when the site layer wraps the tool, after sourcing the tool's `setup_hook`),
 supported Python packages, and the presence count of configured license
 environment variables, and names the file that supplied each tool
-(<<runner-site-layer>>). When the
+(<<runner-site-layer>>). Each found tool's row is followed by the release its
+binary reports (a tool the site layer wraps in a `launcher` reports none); a
+required tool below the `min_version` its registry table sets, as
+`verilator` does, fails the same way an absent one does
+(<<runner-environment-matrix>>). When the
 required tool is absent and needs a license, the result points at the
 `(licensed)` marking in `--list`. For a cocotb
-DUT it also imports every testlist module in a child interpreter whose
+DUT it also imports every testlist module, or with `--items` or `--tag` the
+modules of that selection, in a child interpreter whose
 `PYTHONPATH` is rebuilt from the DUT config exactly as a run rebuilds it
 (`test_dir`, `python_root`, `python_paths`, and the generated namespace
 bridge), so an import failure reported here reproduces in a real run and an
@@ -2649,6 +2790,25 @@ shared VIP check imports `ocah_axi_vip` from its in-repo root
 (`hw/common/dv/vip`); no `pip install` of `hw/common/dv` is required. The
 doctor does not check out a license or comprehensively probe Bender, Make,
 coverage utilities, or every firmware toolchain.
+
+=== The doctor fails on modules the run would never import
+
+An unscoped `--doctor --dut <dut>` imports every module in the DUT's
+testlist, including modules whose dependencies a run of your selection never
+touches; the `sep` modules that import the private submodule are the case a
+public clone meets (<<runner-environment-matrix>>). Add the selection to the
+doctor:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut sep --items smoke
+----
+
+The `test modules` row then covers the tests the same `--items` and `--tag`
+select, before a run's framework-binding and `--tool` filters drop any, and
+names the selection; an unscoped failure prints the hint, and a selection the
+testlist cannot resolve is a usage error. A module that fails inside the
+selection fails the run too.
 
 === A zero-return-code simulation is UNKNOWN
 
@@ -2717,3 +2877,7 @@ The following behaviors are not part of the runner contract:
   formal mode is a developer-host flow (<<runner-formal>>).
 * Formal results have no waiver mechanism; coverage waivers apply to
   coverage bins only.
+* `--doctor` compares a tool's release against `min_version` only where its
+  registry table sets one (`verilator`); the other rows report a release
+  without judging it, and Bender's release is recorded per run in
+  `result.json` rather than probed.

@@ -11,9 +11,10 @@
 // instruction selects and that the TAP's strobes reach it). Every family
 // helper records named CHK-* evidence through a per-pass ocah_jtag_checker
 // instead of bare asserts; finalize_family_checker() rejects a pass with
-// zero checks or a missing required ID, and cross-checks the env scan
-// builder's pin-level IR/DR reconstruction against the sequence's own scan
-// intent (CHK-SCAN-COUNT / CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN / CHK-NONVAC).
+// zero checks or a missing required ID, and cross-checks the Shift-x
+// episodes of the DUT's exported TAP state (env scan builder) against the
+// sequence's own scan intent (CHK-SCAN-COUNT / CHK-SCAN-IR-LEN /
+// CHK-SCAN-DR-LEN / CHK-NONVAC).
 // The basic-JTAG, debug-TDR, and scan-network scenarios extend it; the
 // cocotb twins are seq_lib/dtp_jtag_base_test_seq.py and
 // seq_lib/dtp_jtag_cmd_lib_seq.py.
@@ -76,7 +77,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
       // Fresh reconstruction window per pass (the cocotb flow starts a
       // fresh monitor per pass); also keeps the builder's bounded
       // history from saturating across the 16-pass floor.
-      scan_builder.clear_history();
+      scan_builder.clear_scan_history();
       m_ir_scan_base = 0;
       m_dr_scan_base = 0;
     end
@@ -101,20 +102,22 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     ));
   endfunction
 
-  // Cross-check the passive scan-builder reconstruction against the
-  // sequence's own scan intent, then finalize the per-pass evidence.
+  // Cross-check the Shift-IR / Shift-DR episodes of the DUT's exported TAP
+  // state against the sequence's own scan intent (as many episodes as scans
+  // issued, each as long as the width driven), then finalize the per-pass
+  // evidence.
   function void finalize_family_checker();
     if (m_family == null) `uvm_fatal(get_type_name(), "family checker was never attached")
     if (m_scan_crosscheck && scan_builder != null) begin
-      int unsigned ir_new = scan_builder.ir_items.size() - m_ir_scan_base;
-      int unsigned dr_new = scan_builder.dr_items.size() - m_dr_scan_base;
+      int unsigned ir_new = scan_builder.dut_ir_shift_lens.size() - m_ir_scan_base;
+      int unsigned dr_new = scan_builder.dut_dr_shift_lens.size() - m_dr_scan_base;
       bit counts_match = (ir_new == m_expected_ir_widths.size()) &&
                                (dr_new == m_expected_dr_widths.size());
       void'(m_family.expect_true(
           "CHK-SCAN-COUNT",
           counts_match,
           $sformatf(
-              "monitored (ir=%0d, dr=%0d) vs sequence-issued (ir=%0d, dr=%0d)",
+              "DUT Shift episodes (ir=%0d, dr=%0d) vs sequence-issued (ir=%0d, dr=%0d)",
               ir_new,
               dr_new,
               m_expected_ir_widths.size(),
@@ -122,25 +125,19 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
       ));
       if (counts_match) begin
         foreach (m_expected_ir_widths[i])
-        void'(m_family.check_scan_length(
-            scan_builder.ir_items[m_ir_scan_base+i],
-            m_expected_ir_widths[i],
-            $sformatf(
-                "ir_scan#%0d", i + 1)
-        ));
+        family_check("CHK-SCAN-IR-LEN", $sformatf("ir_scan#%0d", i + 1),
+                     64'(scan_builder.dut_ir_shift_lens[m_ir_scan_base+i]),
+                     64'(m_expected_ir_widths[i]), "source=jtag_ptap_state_o");
         foreach (m_expected_dr_widths[i])
-        void'(m_family.check_scan_length(
-            scan_builder.dr_items[m_dr_scan_base+i],
-            m_expected_dr_widths[i],
-            $sformatf(
-                "dr_scan#%0d", i + 1)
-        ));
+        family_check("CHK-SCAN-DR-LEN", $sformatf("dr_scan#%0d", i + 1),
+                     64'(scan_builder.dut_dr_shift_lens[m_dr_scan_base+i]),
+                     64'(m_expected_dr_widths[i]), "source=jtag_ptap_state_o");
       end
       void'(m_family.expect_true(
           "CHK-NONVAC",
           (ir_new > 0) && (dr_new > 0),
           $sformatf(
-              "ir_scans=%0d dr_scans=%0d", ir_new, dr_new)
+              "DUT Shift-IR episodes=%0d Shift-DR episodes=%0d", ir_new, dr_new)
       ));
     end
     m_family.finalize(1'b1);
@@ -186,7 +183,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
 
   // CHK-IR-DECODE: the exposed decoded-instruction one-hot matches the
   // loaded opcode (dtp_tb_if.inst_decoded mirror).
-  task expect_decoded_instruction(jtag_instruction_e instr);
+  task expect_decoded_instruction(dtp_jtag_instr_e instr);
     family_check("CHK-IR-DECODE", "decoded instruction", 64'(tb_vif.inst_decoded),
                  64'h1 << int'(instr), $sformatf("ir=0x%02h", instr));
   endtask
@@ -194,14 +191,30 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   // Sample one scan-domain observable and record it. TCK-domain observables
   // settle on the falling edge that ends the last step and the driver idles
   // TCK between items, so one system cycle later the sample is race-free
-  // and precedes any TCK edge.
+  // and precedes any TCK edge. An X sample is an error in its own right: a
+  // zero expectation would otherwise absorb it.
   task check_scan_observable(string check_id, string name, bit expected, string context_s = "");
+    logic sampled;
     if (scan_window == null)
       `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
     wait_sys_cycles(1);
-    family_check(check_id, name, 64'(scan_window.sample_scan_signal(name)), 64'(expected),
-                 context_s);
+    sampled = scan_window.sample_scan_signal(name);
+    if ($isunknown(sampled)) `uvm_error(check_id, $sformatf("%s sampled X (%s)", name, context_s))
+    family_check(check_id, name, 64'(sampled === 1'b1), 64'(expected), context_s);
   endtask
+
+  // Record that the DUT's TAP shifted inside the window that just closed:
+  // its exported state visited Shift-DR or Shift-IR, so the counts judged
+  // next were taken across a scan the DUT performed. A TAP held in reset or
+  // a dead state output records zero cycles here and fails.
+  function void check_window_shifted(string check_id, string context_s);
+    int unsigned cycles;
+    if (scan_window == null)
+      `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
+    cycles = scan_window.last_dut_shift_cycles();
+    family_check(check_id, "window DUT shift cycles nonvacuous", 64'(cycles > 0), 64'd1, $sformatf(
+                 "%s dut_shift_cycles=%0d", context_s, cycles));
+  endfunction
 
   // ------------------------------------------------------------------
   // Scan-control windows (env dtp_scan_window_monitor).
@@ -284,10 +297,11 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
                  64'(strobes), ctx);
   endfunction
 
-  // Record that a live window saw every counted observable stay low.
+  // Record that a window the DUT shifted through saw every counted
+  // observable stay low.
   function void check_quiet_window(string check_id, int unsigned edges, int unsigned counts[string],
                                    string context_s);
-    family_check(check_id, "window edges nonvacuous", 64'(edges > 0), 64'd1, context_s);
+    check_window_shifted(check_id, $sformatf("%s edges=%0d", context_s, edges));
     foreach (counts[name])
     family_check(check_id, {name, " quiet"}, 64'(counts[name]), 64'd0, context_s);
   endfunction
@@ -307,7 +321,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     int unsigned edges;
     string ctx;
     load_ir(instr);
-    expect_decoded_instruction(jtag_instruction_e'(instr));
+    expect_decoded_instruction(dtp_jtag_instr_e'(instr));
     scan_ctrl_signals(BsrScanCtrl, signals);
     foreach (extra_signals[i]) signals.push_back(extra_signals[i]);
     shift_dr_windowed(pattern, width, signals, observed, edges, counts);
@@ -355,7 +369,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
                           input int unsigned width = 64, input bit capture_bit = 1'b0);
     bit [63:0] observed;
     load_ir(instr);
-    expect_decoded_instruction(jtag_instruction_e'(instr));
+    expect_decoded_instruction(dtp_jtag_instr_e'(instr));
     shift_dr(pattern, width, observed);
     check_bypass_tdo(instr, observed, pattern, width, capture_bit);
   endtask
@@ -370,7 +384,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     int unsigned counts[string];
     string ctx;
     load_ir(instr);
-    expect_decoded_instruction(jtag_instruction_e'(instr));
+    expect_decoded_instruction(dtp_jtag_instr_e'(instr));
     host_selects(selects);
     shift_dr_windowed(pattern, width, selects, observed, edges, counts);
     ctx = $sformatf("ir=0x%02h width=%0d edges=%0d", instr, width, edges);
@@ -425,7 +439,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
                            input int unsigned width = DtpBsrModelLen);
     bit [63:0] observed;
     load_ir(instr);
-    expect_decoded_instruction(jtag_instruction_e'(instr));
+    expect_decoded_instruction(dtp_jtag_instr_e'(instr));
     shift_dr(pattern, width, observed);
     family_check("CHK-BSR-LOOPBACK", $sformatf("IR 0x%02h loopback", instr), observed & bit_mask(
                  width), (pattern << 1) & bit_mask(width), $sformatf(

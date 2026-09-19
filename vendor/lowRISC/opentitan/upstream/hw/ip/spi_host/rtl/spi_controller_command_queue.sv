@@ -12,7 +12,7 @@
 //
 
 module spi_controller_command_queue
-    import spi_controller_pkg::*;
+    import spi_host_cmd_pkg::*;
 #(
     parameter int          CmdDepth = 4,
     parameter int unsigned NumCS    = 1,

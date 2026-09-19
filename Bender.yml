@@ -154,7 +154,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "c27b1f2efd04ec464b89cedacc4c0df0452772e9" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "0ca386b3ea47669d5dd9314b8366300e3ff53746" }
     include_from_upstream:
       - "src"
       - "include"

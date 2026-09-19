@@ -141,6 +141,9 @@ localparam int unsigned OTBN_ERR_BITS_RND_REP_CHK_FAIL_SHIFT                    
 localparam int unsigned OTBN_ERR_BITS_RND_FIPS_CHK_FAIL_MASK                                                      = 32'h80;
 localparam int unsigned OTBN_ERR_BITS_RND_FIPS_CHK_FAIL_SHIFT                                                     = 7;
 
+localparam int unsigned OTBN_ERR_BITS_MAI_SOFTWARE_ERROR_MASK                                                     = 32'h100;
+localparam int unsigned OTBN_ERR_BITS_MAI_SOFTWARE_ERROR_SHIFT                                                    = 8;
+
 localparam int unsigned OTBN_ERR_BITS_IMEM_INTG_VIOLATION_MASK                                                    = 32'h10000;
 localparam int unsigned OTBN_ERR_BITS_IMEM_INTG_VIOLATION_SHIFT                                                   = 16;
 
@@ -251,7 +254,8 @@ typedef struct packed {
     logic [0:0]   reg_intg_violation ;
     logic [0:0]   dmem_intg_violation ;
     logic [0:0]   imem_intg_violation ;
-    logic [7:0]   rsvd_0 ;
+    logic [6:0]   rsvd_0 ;
+    logic [0:0]   mai_software_error ;
     logic [0:0]   rnd_fips_chk_fail ;
     logic [0:0]   rnd_rep_chk_fail ;
     logic [0:0]   key_invalid ;

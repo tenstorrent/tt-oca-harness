@@ -302,7 +302,7 @@ module spi_host
 
   logic [3:0]  cmd_qd;
 
-  spi_host_command_queue #(
+  spi_controller_command_queue #(
     .CmdDepth(CmdDepth),
     .NumCS(NumCS)
   ) u_cmd_queue (
@@ -428,7 +428,7 @@ module spi_host
   // ByteOrder == 1 is for Little-Endian transmission (i.e. LSB first), which is achieved by
   // default with the prim_packer_fifo implementation.  Thus we have to swap if Big-Endian
   // transmission is required (i.e. if ByteOrder == 0).
-  spi_host_data_fifos #(
+  spi_controller_data_fifos #(
     .TxDepth(TxDepth),
     .RxDepth(RxDepth),
     .SwapBytes(~ByteOrder)
@@ -477,7 +477,7 @@ module spi_host
   assign sw_rst = reg2hw.control.sw_rst.q;
   assign en_sw  = reg2hw.control.spien.q;
 
-  spi_host_core #(
+  spi_controller_core #(
     .NumCS(NumCS)
   ) u_spi_core (
     .clk_i,

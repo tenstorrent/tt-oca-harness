@@ -65,14 +65,6 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 filelist:
 	bender script flist-plus -t drbg > $(FILELIST)
 
-.PHONY: lint
-lint:
-	slang-tidy $(OCH_ROOT)/hw/comp/drbg/rtl/drbg_pkg.sv $(OCH_ROOT)/hw/comp/drbg/rtl/drbg_entropy_router.sv $(OCH_ROOT)/hw/comp/drbg/rtl/drbg_csrng_seed_adapter.sv $(OCH_ROOT)/hw/comp/drbg/rtl/drbg_edn_axis_adapter.sv $(OCH_ROOT)/hw/comp/drbg/rtl/drbg.sv
-
-.PHONY: lint-verilator
-lint-verilator: filelist
-	verilator --lint-only --top-module $(TOPLEVEL) $(VERILOG_SOURCES) -f $(FILELIST)
-
 .PHONY: build-verilator
 build-verilator: filelist
 	$(MAKE) SIM=verilator compile

@@ -7238,7 +7238,7 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>read_status</ipxact:name>
-              <ipxact:description>0: No Error.  1: Logic error, assert read_go when read is not enabled</ipxact:description>
+              <ipxact:description>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</ipxact:description>
               <ipxact:bitOffset>26</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31808,8 +31808,8 @@ for drain) before timeout. 0 = disabled, wait indefinitely.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>reset_applied</ipxact:name>
-              <ipxact:description>Live status: high while a requested software reset is actually applied
-at the cluster (drain complete and reset asserted).</ipxact:description>
+              <ipxact:description>Live status: high while a requested software reset is applied at the cluster,
+either after drain completes or after a force-mode timeout.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31822,8 +31822,8 @@ at the cluster (drain complete and reset asserted).</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>reset_timeout</ipxact:name>
-              <ipxact:description>Live status: high while a pending software reset has exceeded
-timeout_value (timeout/error flag; set in both modes).</ipxact:description>
+              <ipxact:description>Status for the active software reset request: high after the request exceeds
+timeout_value and remains high until the request is deasserted. Set in both modes.</ipxact:description>
               <ipxact:bitOffset>36</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
