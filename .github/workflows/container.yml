@@ -48,8 +48,7 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
-      - name: Build and load full image
-        id: image
+      - name: Build and validate full image
         run: |
           archive=$(nix build \
             .#dockerContainers.x86_64-linux.with_uv_deps \
@@ -64,40 +63,11 @@ jobs:
           docker tag "$local_ref" "$registry_ref"
           docker image inspect "$registry_ref" >/dev/null
 
-          echo "hash=$image_hash" >> "$GITHUB_OUTPUT"
-          echo "local-ref=$local_ref" >> "$GITHUB_OUTPUT"
-          echo "registry-ref=$registry_ref" >> "$GITHUB_OUTPUT"
-
-      - name: Verify bundled tools
-        env:
-          OCAH_CONTAINER_SOURCE: local
-          OCAH_IMAGE_WITH_UV: "true"
-        run: |
-          ./scripts/docker-run.sh verify
+          OCAH_IMAGE_WITH_UV=true ./scripts/docker-run.sh verify
+          OCAH_IMAGE_WITH_UV=true \
           ./scripts/docker-run.sh run sh -ec '
             uv --version
             python --version
             verilator --version
             bender --version
           '
-
-      - name: Verify registry-only configuration guard
-        run: |
-          if OCAH_CONTAINER_SOURCE=registry \
-            OCAH_CONTAINER_REGISTRY_IMAGE= \
-            ./scripts/docker-run.sh ensure; then
-            echo "registry-only mode accepted an empty registry repository" >&2
-            exit 1
-          fi
-
-      - name: Report dry-run image
-        env:
-          IMAGE_REF: ${{ steps.image.outputs.registry-ref }}
-        run: |
-          {
-            echo "## Nix container dry run"
-            echo
-            echo "Built and validated \`$IMAGE_REF\` locally."
-            echo
-            echo "No registry login or push was performed."
-          } >> "$GITHUB_STEP_SUMMARY"

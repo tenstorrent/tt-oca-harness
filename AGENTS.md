@@ -270,8 +270,8 @@ the one that built the objects already sitting in `hw/**/dv/fw/build/`.
 
 Make tracks source timestamps, not toolchain identity, so unchanged drivers are **not**
 recompiled and the link silently mixes old objects with the new C library. The resulting
-images load into ROM but never execute. **After an image hash, registry selection, cache, or
-toolchain change, clean the firmware explicitly:**
+images load into ROM but never execute. **After any `docker-run.sh build`, image cache
+refresh, or toolchain change, clean the firmware explicitly:**
 
 ```bash
 make -f ocah.mk ocah-dv-fw-clean TARGET=<block>

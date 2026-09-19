@@ -41,7 +41,6 @@ docker-run.sh doc-stage
 | `OCAH_NIXOS_IMAGE` | `docker.io/nixos/nix:latest` | NixOS image used to run Nix on hosts without a local Nix install. |
 | `OCAH_IMAGE_WITH_UV` | `false` | When `true`, uses the `ocah-uv-container` image (with uv-installed Python deps bundled) instead of `ocah-container`. |
 | `OCAH_DOCKER_CACHE_DIR` | _(unset)_ | Directory for the shared tarball image cache. When set, `build` publishes there and `ensure` checks it before building. CI sets this via its environment setup. |
-| `OCAH_CONTAINER_SOURCE` | `auto` | Image acquisition policy. `auto` tries an optional registry before the existing cache/build paths; `local` skips the registry; `registry` requires a successful registry pull and never falls back to a build. |
 | `OCAH_CONTAINER_REGISTRY_IMAGE` | _(unset)_ | Registry repository without a tag, for example `ghcr.io/tenstorrent/ocah-container`. The Nix content hash is appended as the tag. Unset keeps the previous local/cache/build behavior. |
 | `OCAH_DOCKER_UIDGID` | _(auto)_ | `--user` passed to the container engine. Defaults to empty for rootless podman (identity already mapped), or `uid:gid` for docker. Set to empty to run as the image's own default user. |
 | `OCAH_PODMAN_DIR` | _(unset)_ | Explicit base for Podman runtime and storage. When unset, `/tmp/ocah-podman-<uid>` is used only if `XDG_RUNTIME_DIR` is unwritable. |
@@ -74,9 +73,8 @@ nix eval $REPO_ROOT#containerHashes.without_uv_deps | tr -d '"'
 `build` runs `nix build` against the matching flake output. `ensure` evaluates
 the hash and checks whether a loaded image with that tag already exists. When
 `OCAH_CONTAINER_REGISTRY_IMAGE` is set, it next pulls the same hash tag from
-that repository. A failed pull under the default `auto` policy falls back to
-the existing tarball cache and local build; use `registry` in CI to prohibit
-that potentially expensive fallback.
+that repository. A failed pull falls back to the existing tarball cache and
+local build.
 
 For example, once an image has been published:
 
