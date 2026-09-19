@@ -7513,17 +7513,8 @@ localparam int unsigned CSRNG_CTRL_READ_INT_STATE_SHIFT                         
 localparam int unsigned CSRNG_CTRL_FIPS_FORCE_ENABLE_MASK                                                         = 32'hF000;
 localparam int unsigned CSRNG_CTRL_FIPS_FORCE_ENABLE_SHIFT                                                        = 12;
 
-localparam int unsigned CSRNG_CMD_REQ_ACMD_MASK                                                                   = 32'hF;
-localparam int unsigned CSRNG_CMD_REQ_ACMD_SHIFT                                                                  = 0;
-
-localparam int unsigned CSRNG_CMD_REQ_CLEN_MASK                                                                   = 32'hF0;
-localparam int unsigned CSRNG_CMD_REQ_CLEN_SHIFT                                                                  = 4;
-
-localparam int unsigned CSRNG_CMD_REQ_FLAG0_MASK                                                                  = 32'hF00;
-localparam int unsigned CSRNG_CMD_REQ_FLAG0_SHIFT                                                                 = 8;
-
-localparam int unsigned CSRNG_CMD_REQ_GLEN_MASK                                                                   = 32'h1FFF000;
-localparam int unsigned CSRNG_CMD_REQ_GLEN_SHIFT                                                                  = 12;
+localparam int unsigned CSRNG_CMD_REQ_CMD_REQ_MASK                                                                = 32'hFFFFFFFF;
+localparam int unsigned CSRNG_CMD_REQ_CMD_REQ_SHIFT                                                               = 0;
 
 localparam int unsigned CSRNG_RESEED_INTERVAL_RESEED_INTERVAL_MASK                                                = 32'hFFFFFFFF;
 localparam int unsigned CSRNG_RESEED_INTERVAL_RESEED_INTERVAL_SHIFT                                               = 0;
@@ -10606,10 +10597,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [12:0]   glen ;
-    logic [3:0]   flag0 ;
-    logic [3:0]   clen ;
-    logic [3:0]   acmd ;
+    logic [31:0]   cmd_req ;
 } csrng_cmd_req_reg_t;
 
 

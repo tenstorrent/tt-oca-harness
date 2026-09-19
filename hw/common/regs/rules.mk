@@ -69,6 +69,8 @@ ocah_vhr_opt = $(if $(filter $(call ocah_vhr_name,$(1)),$($(2))),$(3))
 ocah_vhr_compat_opts = \
   $(call ocah_vhr_opt,$(1),OCAH_VHR_UPPERCASE_FIELDS,--uppercase-fields) \
   $(call ocah_vhr_opt,$(1),OCAH_VHR_FIRST_REPLICA_MULTIREGS,--first-replica-multiregs) \
+  $(call ocah_vhr_opt,$(1),OCAH_VHR_BASE_MULTIREG_FIELDS,--base-multireg-fields) \
+  $(call ocah_vhr_opt,$(1),OCAH_VHR_FLATTEN_MULTIREGS,--flatten-multiregs) \
   $(call ocah_vhr_opt,$(1),OCAH_VHR_ARRAYED_WINDOWS,--arrayed-windows) \
   $(call ocah_vhr_opt,$(1),OCAH_VHR_NO_METADATA,--no-metadata) \
   $(call ocah_vhr_opt,$(1),OCAH_VHR_NO_GUARD,--no-guard) \

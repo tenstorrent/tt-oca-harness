@@ -85,6 +85,8 @@ def main() -> int:
     )
     parser.add_argument("--uppercase-fields", action="store_true")
     parser.add_argument("--first-replica-multiregs", action="store_true")
+    parser.add_argument("--base-multireg-fields", action="store_true")
+    parser.add_argument("--flatten-multiregs", action="store_true")
     parser.add_argument("--arrayed-windows", action="store_true")
     parser.add_argument("--no-metadata", action="store_true")
     parser.add_argument("--no-guard", action="store_true")
@@ -120,6 +122,8 @@ def main() -> int:
     return SystemrdlExporter(
         block,
         base_multireg_names=not args.first_replica_multiregs,
+        base_multireg_field_names=args.base_multireg_fields,
+        flatten_multiregs=args.flatten_multiregs,
         uppercase_fields=args.uppercase_fields,
         arrayed_windows=args.arrayed_windows,
         include_metadata=not args.no_metadata,

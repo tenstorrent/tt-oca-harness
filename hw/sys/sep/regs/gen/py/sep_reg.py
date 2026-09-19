@@ -7772,10 +7772,7 @@ class CSRNG_CTRL_reg_u(Union):
 CSRNG_CMD_REQ_REG_DEFAULT = 0x00000000
 class CSRNG_CMD_REQ_reg_t(Structure):
     _fields_ = [
-        ('acmd', c_uint32, 4),
-        ('clen', c_uint32, 4),
-        ('flag0', c_uint32, 4),
-        ('glen', c_uint32, 13),
+        ('cmd_req', c_uint32, 32),
     ]
 
 CSRNG_CMD_REQ_REG_DEFAULT = 0x00000000

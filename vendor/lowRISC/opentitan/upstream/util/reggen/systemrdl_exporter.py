@@ -75,6 +75,7 @@ class Field2Systemrdl:
     inner: Field
     importer: RDLImporter
     uppercase_name: bool = False
+    name_override: str | None = None
 
     def _get_mubi_name(self) -> str:
         alignment = 4
@@ -83,7 +84,8 @@ class Field2Systemrdl:
 
     def export(self) -> systemrdl.component.Field:
         rdl_t = self.importer.create_field_definition(self.inner.name)
-        name = self.inner.name.upper() if self.uppercase_name else self.inner.name
+        name = self.name_override or self.inner.name
+        name = name.upper() if self.uppercase_name else name
         field = self.importer.instantiate_field(
             rdl_t, name, self.inner.bits.lsb, self.inner.bits.width()
         )
@@ -140,16 +142,20 @@ class Register2Systemrdl:
     count: int | None = None
     reg_name: str | None = None
     uppercase_fields: bool
+    field_name_override: str | None
 
     def __init__(
         self,
         reg: MultiRegister | Register,
         importer: RDLImporter,
         base_multireg_name: bool,
+        base_multireg_field_names: bool,
         uppercase_fields: bool,
+        field_name_override: str | None = None,
     ):
         self.importer = importer
         self.uppercase_fields = uppercase_fields
+        self.field_name_override = field_name_override
         if isinstance(reg, Register):
             self.inner = reg
         elif isinstance(reg, MultiRegister):
@@ -157,6 +163,8 @@ class Register2Systemrdl:
             self.stride = reg.stride
             self.count = len(reg.cregs)
             self.reg_name = reg.name if base_multireg_name else self.inner.name
+            if base_multireg_field_names and len(self.inner.fields) == 1:
+                self.field_name_override = reg.name
 
     def export(self) -> systemrdl.component.Reg:
         name = self.reg_name or self.inner.name
@@ -164,7 +172,12 @@ class Register2Systemrdl:
         for rfield in self.inner.fields:
             self.importer.add_child(
                 reg_type,
-                Field2Systemrdl(rfield, self.importer, self.uppercase_fields).export(),
+                Field2Systemrdl(
+                    rfield,
+                    self.importer,
+                    self.uppercase_fields,
+                    self.field_name_override,
+                ).export(),
             )
 
         reg_type.external = self.inner.hwext
@@ -190,6 +203,8 @@ class RegBlock2Systemrdl:
     inner: RegBlock
     importer: RDLImporter
     base_multireg_names: bool
+    base_multireg_field_names: bool
+    flatten_multiregs: bool
     uppercase_fields: bool
     arrayed_windows: bool
 
@@ -210,18 +225,32 @@ class RegBlock2Systemrdl:
             self.importer.add_child(
                 rdl_addrmap,
                 Register2Systemrdl(
-                    reg, self.importer, self.base_multireg_names, self.uppercase_fields
+                    reg,
+                    self.importer,
+                    self.base_multireg_names,
+                    self.base_multireg_field_names,
+                    self.uppercase_fields,
                 ).export(),
             )
 
         # multiregs
         for mreg in self.inner.multiregs:
-            self.importer.add_child(
-                rdl_addrmap,
-                Register2Systemrdl(
-                    mreg, self.importer, self.base_multireg_names, self.uppercase_fields
-                ).export(),
-            )
+            regs = mreg.cregs if self.flatten_multiregs else [mreg]
+            for reg in regs:
+                field_name_override = None
+                if self.flatten_multiregs and len(mreg.cregs[0].fields) == 1:
+                    field_name_override = mreg.cregs[0].fields[0].name
+                self.importer.add_child(
+                    rdl_addrmap,
+                    Register2Systemrdl(
+                        reg,
+                        self.importer,
+                        self.base_multireg_names,
+                        self.base_multireg_field_names,
+                        self.uppercase_fields,
+                        field_name_override,
+                    ).export(),
+                )
 
         # windows
         for window in self.inner.windows:
@@ -241,6 +270,8 @@ class IpBlock2Systemrdl:
     inner: IpBlock
     importer: RDLImporter
     base_multireg_names: bool
+    base_multireg_field_names: bool
+    flatten_multiregs: bool
     uppercase_fields: bool
     arrayed_windows: bool
     include_metadata: bool
@@ -262,6 +293,8 @@ class IpBlock2Systemrdl:
                 rb,
                 self.importer,
                 self.base_multireg_names,
+                self.base_multireg_field_names,
+                self.flatten_multiregs,
                 self.uppercase_fields,
                 self.arrayed_windows,
             ).export(target)
@@ -286,6 +319,8 @@ class SystemrdlExporter(Exporter):
         block: IpBlock,
         *,
         base_multireg_names: bool = True,
+        base_multireg_field_names: bool = False,
+        flatten_multiregs: bool = False,
         uppercase_fields: bool = False,
         arrayed_windows: bool = False,
         include_metadata: bool = True,
@@ -294,6 +329,8 @@ class SystemrdlExporter(Exporter):
     ):
         super().__init__(block)
         self.base_multireg_names = base_multireg_names
+        self.base_multireg_field_names = base_multireg_field_names
+        self.flatten_multiregs = flatten_multiregs
         self.uppercase_fields = uppercase_fields
         self.arrayed_windows = arrayed_windows
         self.include_metadata = include_metadata
@@ -311,6 +348,8 @@ class SystemrdlExporter(Exporter):
             self.block,
             imp,
             self.base_multireg_names,
+            self.base_multireg_field_names,
+            self.flatten_multiregs,
             self.uppercase_fields,
             self.arrayed_windows,
             self.include_metadata,
