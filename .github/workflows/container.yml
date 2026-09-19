@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: container
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/container.yml'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'ocah_deps.nix'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'scripts/docker-run.sh'
+      - 'scripts/docker.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Build and validate Nix image
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The manifest remains private during registry preparation. This token is
+      # used only to populate the submodule and Nix input on the ephemeral
+      # runner; the workflow does not log in to GHCR or publish an image.
+      - name: Checkout manifest submodule
+        env:
+          MANIFEST_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          test -n "$MANIFEST_TOKEN"
+          git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
+            submodule update --init --recursive hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
+      - name: Build and load full image
+        id: image
+        run: |
+          archive=$(nix build \
+            .#dockerContainers.x86_64-linux.with_uv_deps \
+            --no-link \
+            --print-out-paths)
+          image_hash=$(nix eval --raw .#containerHashes.with_uv_deps)
+          local_ref="ocah-uv-container:${image_hash}"
+          registry_ref="ghcr.io/tenstorrent/ocah-container:${image_hash}"
+
+          docker load --input "$archive"
+          docker image inspect "$local_ref" >/dev/null
+          docker tag "$local_ref" "$registry_ref"
+          docker image inspect "$registry_ref" >/dev/null
+
+          echo "hash=$image_hash" >> "$GITHUB_OUTPUT"
+          echo "local-ref=$local_ref" >> "$GITHUB_OUTPUT"
+          echo "registry-ref=$registry_ref" >> "$GITHUB_OUTPUT"
+
+      - name: Verify bundled tools
+        env:
+          OCAH_CONTAINER_SOURCE: local
+          OCAH_IMAGE_WITH_UV: "true"
+        run: |
+          ./scripts/docker-run.sh verify
+          ./scripts/docker-run.sh run sh -ec '
+            uv --version
+            python --version
+            verilator --version
+            bender --version
+          '
+
+      - name: Verify registry-only configuration guard
+        run: |
+          if OCAH_CONTAINER_SOURCE=registry \
+            OCAH_CONTAINER_REGISTRY_IMAGE= \
+            ./scripts/docker-run.sh ensure; then
+            echo "registry-only mode accepted an empty registry repository" >&2
+            exit 1
+          fi
+
+      - name: Report dry-run image
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.registry-ref }}
+        run: |
+          {
+            echo "## Nix container dry run"
+            echo
+            echo "Built and validated \`$IMAGE_REF\` locally."
+            echo
+            echo "No registry login or push was performed."
+          } >> "$GITHUB_STEP_SUMMARY"

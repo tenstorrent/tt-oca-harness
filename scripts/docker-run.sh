@@ -27,6 +27,11 @@
 #      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the nix
 #                               container image; unset disables the cache
 #                               (site CI sets this, e.g. in its env setup)
+#      OCAH_CONTAINER_SOURCE   image acquisition policy: auto, local, or
+#                               registry (default: auto)
+#      OCAH_CONTAINER_REGISTRY_IMAGE
+#                               optional registry repository, without a tag;
+#                               e.g. ghcr.io/tenstorrent/ocah-container
 #      OCAH_DOCKER_UIDGID      container --user (default: empty for rootless
 #                               podman, caller's uid:gid for docker; set empty to
 #                               run as the image's own default user)
@@ -52,15 +57,28 @@ NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
 IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
 MANIFEST_SUBMODULE="hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
+CONTAINER_SOURCE="${OCAH_CONTAINER_SOURCE:-auto}"
+REGISTRY_IMAGE="${OCAH_CONTAINER_REGISTRY_IMAGE:-}"
 
 NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
 
-# The nix container image is built locally and published to no registry. A built
-# image can be cached as a tarball on shared storage, keyed by the flake output
-# hash: hosts reuse a matching local image, else load the tarball, else build.
-# The cache is only active when OCAH_DOCKER_CACHE_DIR is set (site-specific;
-# e.g. exported by the adopter's CI environment setup).
+# A built image can be cached as a tarball on shared storage, keyed by the flake
+# output hash. When a registry repository is configured, ensure can pull that
+# same content-addressed tag before falling back to the existing cache/build
+# paths. Registry acquisition remains opt-in until a public image is published.
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
+
+case "$CONTAINER_SOURCE" in
+auto | local | registry) ;;
+*)
+  echo "error: OCAH_CONTAINER_SOURCE must be auto, local, or registry" >&2
+  exit 1
+  ;;
+esac
+if [[ "$CONTAINER_SOURCE" == registry && -z "$REGISTRY_IMAGE" ]]; then
+  echo "error: OCAH_CONTAINER_REGISTRY_IMAGE is required for registry source" >&2
+  exit 1
+fi
 
 # Will this invocation actually need a container engine? run/run-here/verify/shell
 # can be served by the bubblewrap backend (see below), in which case no engine -
@@ -301,17 +319,34 @@ build_image() {
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$image_location"
 }
 
-# Ensure $IMAGE is available locally: reuse a matching local image (verified by
-# the flake hash), else load the shared tarball cache, else build. Use `build`
-# to force a rebuild regardless of what is already present.
+# Ensure $IMAGE is available locally. The default auto policy reuses an exact
+# local image, optionally pulls the same content tag from a configured registry,
+# then retains the existing tarball-cache and local-build fallbacks. The local
+# policy skips the pull. Registry policy fails instead of falling back, which
+# prevents CI from silently starting an expensive build.
 ensure_image() {
-  local flake_hash
+  local flake_hash registry_ref
   flake_hash=$(image_hash)
   IMAGE="${NIX_IMAGE_NAME}:${flake_hash}"
-  # Test for loaded image in podman
+  # Test for an exact image already loaded in the selected engine.
   if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then
     return 0
   fi
+
+  if [[ "$CONTAINER_SOURCE" != local && -n "$REGISTRY_IMAGE" ]]; then
+    registry_ref="${REGISTRY_IMAGE%/}:${flake_hash}"
+    echo "docker-run: pulling $registry_ref" >&2
+    if "$ENGINE" ${PODMAN_STORAGE_FLAGS} pull "$registry_ref"; then
+      "$ENGINE" ${PODMAN_STORAGE_FLAGS} tag "$registry_ref" "$IMAGE"
+      return 0
+    fi
+    if [[ "$CONTAINER_SOURCE" == registry ]]; then
+      echo "error: required registry image $registry_ref is unavailable" >&2
+      exit 1
+    fi
+    echo "docker-run: registry pull failed; trying local cache/build sources" >&2
+  fi
+
   # Check Cache or local image file
   if [[ -n "$DOCKER_CACHE_DIR" ]]; then
     local tar
