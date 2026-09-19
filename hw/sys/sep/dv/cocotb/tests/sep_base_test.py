@@ -208,7 +208,8 @@ class sep_base_test(uvm_test):
         ``mask`` selects the bits that must be known; the default is every bit
         the signal carries. Passing a mask matters on a wide probe whose unused
         lanes are legitimately X -- checking the whole word there would raise on
-        a healthy run.
+        a healthy run. Bits outside the mask that are not 0 or 1 read as 0 in
+        the returned integer so the conversion does not see them.
 
         Note for the reader: Verilator is built two-state here (no
         ``--x-assign`` / ``--x-initial`` in sep_sim_cfg.toml), so uninitialised
@@ -231,7 +232,8 @@ class sep_base_test(uvm_test):
                 "A zero-expecting compare on an unknown node passes for free, so "
                 "it is raised here instead."
             )
-        return int(bits, 2)
+        cleaned = "".join(c if c in "01" else "0" for c in bits)
+        return int(cleaned, 2)
 
     @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
