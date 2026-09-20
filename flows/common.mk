@@ -15,6 +15,19 @@ OCAH_FLOW_COMMON_BENDER_TARGETS ?= -t axi_rtl -t apb_rtl -t common_cells_rtl \
 
 # Defines shared by lint and synth so both see the same design.
 OCAH_FLOW_COMMON_DEFINES ?= -D SYNTHESIS=1
+OCAH_VENDOR_DEFINES_SVH := $(OCAH_ROOT)/hw/common/defs/ocah_vendor_defines.svh
+
+# Insert the mapping header after +define+/+incdir+ lines so a single-unit
+# compile applies those options before the mapping arms run. $(1) = .f path.
+ocah_flist_insert_vendor_defines = \
+	awk -v hdr="$(OCAH_VENDOR_DEFINES_SVH)" ' \
+		BEGIN { ins=0 } \
+		{ \
+		  isopt = $$0 ~ /^\+define\+/ || $$0 ~ /^\+incdir\+/ || $$0 ~ /^-f / || $$0 ~ /^[[:space:]]*$$/; \
+		  if (!ins && !isopt) { print hdr; ins=1 } \
+		  print \
+		} \
+		END { if (!ins) print hdr }' $(1) > $(1).tmp && mv $(1).tmp $(1)
 
 # Default timescale for files that don't declare their own. Shared by
 # flows/lint/slang.mk and flows/synth/yosys/scripts/elab.tcl.
@@ -51,7 +64,8 @@ ocah_require_host_tool = @command -v "$(1)" >/dev/null 2>&1 || { \
 # $(1) = block-specific bender targets (FLOW_BENDER_TARGETS)
 # $(2) = output .f path (relative to the recipe's own CWD)
 ocah_eda_flist = $(OCAH_BENDER) script flist-plus $(OCAH_FLOW_COMMON_DEFINES) \
-	$(OCAH_FLOW_COMMON_BENDER_TARGETS) $(1) > $(2)
+	$(OCAH_FLOW_COMMON_BENDER_TARGETS) $(1) > $(2) && \
+	$(call ocah_flist_insert_vendor_defines,$(2))
 
 # Fan a goal out to selected blocks as an isolated sub-make (BLOCK=<block>
 # picks one, else all discovered blocks). Not named TARGET= to avoid
