@@ -91,4 +91,4 @@ class sep_cov_xbar_axprot_sweep_test(sep_base_test):
                     prot=prot,
                     name=f"cov_prot{prot}_wr",
                 )
-            self.logger.info("AxPROT=0b%03b driven over the fabric apertures", prot)
+            self.logger.info("AxPROT=0b%s driven over the fabric apertures", format(prot, "03b"))

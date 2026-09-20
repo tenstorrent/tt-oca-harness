@@ -117,5 +117,5 @@ class sep_cov_csr_bank_prot_write_sweep_test(sep_base_test):
                     name=f"cov_bankprot{prot}_wr",
                 )
             self.logger.info(
-                "AxPROT=0b%03b driven on writes into %d CSR bank words", prot, len(BANK_WORDS)
+                "AxPROT=0b%s driven on writes into %d CSR bank words", format(prot, "03b"), len(BANK_WORDS)
             )

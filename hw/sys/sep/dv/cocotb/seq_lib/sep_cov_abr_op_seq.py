@@ -52,6 +52,10 @@ CMD_KEYGEN_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN_SIGN")
 # Byte strobe for the last streamed beat. Any value other than all-ones ends
 # the stream; 0b0000 is the 32-bit-aligned form abr_reg.rdl describes for
 # MLDSA_MSG_STROBE, and the other three are its listed partial values.
+# MLDSA_SIGN_RND is eight 32-bit words (abr_reg.rdl:152, `MLDSA_SIGN_RND[8]`),
+# alongside the seed and entropy counts sep_abr_keygen_seq already carries.
+SIGN_RND_WORDS = 8
+
 TAIL_STROBES = (0b0000, 0b0001, 0b0011, 0b0111)
 
 

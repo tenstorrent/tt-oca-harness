@@ -121,7 +121,7 @@ class sep_cov_abr_mldsa_stream_msg_test(sep_base_test):
 
         beats = await abr.stream_message(msg, tail_strobe, tail_word)
         self.logger.info(
-            "cov stimulus: streamed %d message beats, tail strobe 0b%04b", beats, tail_strobe
+            "cov stimulus: streamed %d message beats, tail strobe 0b%s", beats, format(tail_strobe, "04b")
         )
 
         await abr.poll_status(ABR_STATUS, ST_VALID, ST_VALID, what="keygen+sign VALID")

@@ -148,6 +148,21 @@ class sep_cov_kmac_errchk_clear_midflow_test(sep_base_test):
         await self._poll(KMAC_STATUS_IDLE, f"{stage} cleared")
         self.logger.info("cov stimulus: %s cleared without an intervening CMD.done", stage)
 
+    async def _recover(self) -> None:
+        """Retire the aborted operation so the next walk starts from FlushIdle.
+
+        `err_processed` clears kmac_errchk but does not finish the msgfifo flush
+        that PROCESS started. kmac_msgfifo.sv:332 assumes `fifo_valid_i |->
+        flush_st == FlushIdle` -- "No messages in between process_i and
+        clear_i" -- so feeding the next walk while that flush is outstanding
+        drives an input the IP declares illegal. CMD.done here is recovery
+        AFTER the cleared-without-done behaviour has already been driven, so it
+        does not weaken what this leaf exercises.
+        """
+        await self.kmac._wr(KMAC_CMD, KMAC_CMD_DONE)
+        await self.kmac._wr(KMAC_CMD, KMAC_CMD_NONE)
+        await self._poll(KMAC_STATUS_IDLE, "recovered")
+
     # --- the three walks -----------------------------------------------------
 
     async def _clear_in_msgfeed(self, rng: SepSeededRng) -> None:
@@ -157,6 +172,7 @@ class sep_cov_kmac_errchk_clear_midflow_test(sep_base_test):
         # A second START is not a command the feed stage accepts.
         await self.kmac._wr(KMAC_CMD, KMAC_CMD_START)
         await self._clear_now("message feed")
+        await self._recover()
 
     async def _clear_in_processing(self, rng: SepSeededRng) -> None:
         await self._configure()
@@ -166,6 +182,7 @@ class sep_cov_kmac_errchk_clear_midflow_test(sep_base_test):
         # A START while the absorb is running is not a command that stage accepts.
         await self.kmac._wr(KMAC_CMD, KMAC_CMD_START)
         await self._clear_now("processing")
+        await self._recover()
 
     async def _clear_in_squeezing(self, rng: SepSeededRng) -> None:
         await self._configure()
