@@ -2,11 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_sep_secure_tm_test - the SEP secure test-mode strap.
 
-secure_tm_req_i is a strap the SEP eFuse wrapper samples once per cold reset,
-at the rising edge of its fuse-sense-done, and secure_tm_o is that sample. The
-leaf drives the strap through three cold resets at two different values and
-requires the output to carry the sampled value and to ignore the strap between
-sampling windows, which is what separates a latch from a wire.
+secure_tm_req_i is the TEST_EN strap the SEP latches into secure_tm_o once per
+cold reset, when fuse sensing is done (hw/sys/sep/doc/test_mode.adoc). The leaf
+runs three cold resets; in each the strap is changed while the reset is held,
+after the SEP reset and sep_fuse_sense_done_o are observed low, and the output
+is required to stay low until the fuse-sense-done edge, to carry the changed
+value after it -- not the value present when the reset asserted -- and to
+ignore the strap between sampling windows in both directions.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_sep_secure_tm_test --target compile_smu_chiplet_sep_rtl

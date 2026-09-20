@@ -1,0 +1,133 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Testlist for --dut smu_block, the bare `smu #(.SEP(0))` DUT
+# (smu_block_sim_cfg.toml selects this file). The SMU regression is
+# testlists/all.toml on --dut smu, whose single compile profile elaborates
+# SEP=1; neither root includes the other, because every leaf here needs
+# something the wrapper cannot provide. This DUT hosts the SEP=0 composition
+# proofs and the two leaves below that cannot run on the wrapper.
+#
+# smu_dtp_jtag2axi_abort_mid_op_test aborts an OTP operation mid-flight, so it
+# has to observe SINGLE_OP report BUSY first. That is available here, where
+# smu.sv re-exposes the eFuse interface and the TB leaves it unterminated so
+# the operation hangs BUSY. On the wrapper the real SMC eFuse model answers in
+# tens of clk_smu against a 39-bit DR shift, so the operation finishes before
+# any JTAG capture completes and the window does not exist. Reaching it there
+# needs a stallable eFuse hook in the wrapper TB.
+#
+# smu_dtp_jtag_smoke_test is the one VPLAN scenario with an SV-UVM
+# implementation as well as a cocotb one, and the SV-UVM harness is the `UVM`
+# shape of tb/tb_top.sv -- this DUT. Its entry carries the
+# `module = { cocotb, uvm }` binding map that `--dut smu_block --framework uvm`
+# resolves through. Its cocotb side is enrolled in dtp_under_smu on the wrapper,
+# and that is the copy the regression scores.
+#
+# The SEP=0 composition leaves each prove something that only exists when smu
+# elaborates with SEP=0: the gen_no_sep arm (direct ID converters, no
+# crossbar), the SEP aperture and lifecycle tie-offs, and the DTP built without
+# its SEP debug slice.
+
+[[tests]]
+name = "smu_dtp_jtag2axi_abort_mid_op_test"
+module = "smu_dtp_jtag2axi_abort_mid_op_test"
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag2axi", "tier_c", "depth"]
+run_modes = ["dtp"]
+
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class
+# (+UVM_TESTNAME). The SV-UVM realization's harness is the `UVM` shape of
+# tb/tb_top.sv, which is this DUT, and this is the only scenario bound to it
+# (uvm/tests/ carries smu_dtp_jtag_smoke_test.svh and its base); this binding
+# map is what `--dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test`
+# resolves through. The cocotb side of the same scenario also runs on
+# `--dut smu`, where it is enrolled in dtp_under_smu; that copy is the one the
+# regression scores.
+[[tests]]
+name = "smu_dtp_jtag_smoke_test"
+module = { cocotb = "smu_dtp_jtag_smoke_test", uvm = "smu_dtp_jtag_smoke_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "smoke"]
+run_modes = ["dtp", "smoke"]
+
+[[tests]]
+name = "smu_axi_xbar_structure_test"
+module = "smu_axi_xbar_structure_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "no_sep", "tier_c", "depth"]
+run_modes = ["fabric"]
+
+[[tests]]
+name = "smu_axi_external_port_connectivity_test"
+module = "smu_axi_external_port_connectivity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "no_sep"]
+run_modes = ["fabric"]
+
+[[tests]]
+name = "smu_no_sep_configuration_test"
+module = "smu_no_sep_configuration_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "no_sep", "smoke"]
+run_modes = ["smc"]
+
+[[tests]]
+name = "smu_smc_security_demote_pm_test"
+module = "smu_smc_security_demote_pm_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "no_sep", "security"]
+run_modes = ["smc"]
+
+[[tests]]
+name = "smu_dtp_ptap_otp_instr_scan_test"
+module = "smu_dtp_ptap_otp_instr_scan_test"
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag", "otp", "no_sep", "tier_c", "depth"]
+run_modes = ["dtp"]
+
+# `--items all`: every test in this file.
+[[groups]]
+name = "all"
+tests = [
+  "smu_dtp_jtag2axi_abort_mid_op_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_axi_xbar_structure_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_no_sep_configuration_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
+]
+expected_count = 7
+
+# The SEP=0 composition leaves.
+[[groups]]
+name = "nosep"
+tests = [
+  "smu_axi_xbar_structure_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_no_sep_configuration_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
+]
+
+# .github/workflows/sim.yml runs `--items smoke` for every DUT in its matrix.
+# Both leaves, the JTAG smoke and the SEP=0 configuration proof, carry no
+# firmware, which matters: the hosted runner in .github/actions/dv-run installs
+# Verilator and nothing else, so a group needing the RISC-V toolchain cannot
+# run there. The JTAG smoke is also the scenario the SV-UVM view binds to, so
+# `--framework uvm --items smoke --skip-unimplemented` selects it.
+[[groups]]
+name = "smoke"
+tests = [
+  "smu_dtp_jtag_smoke_test",
+  "smu_no_sep_configuration_test",
+]

@@ -31,7 +31,8 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_mutex_semaphore_test"
-module = "smc_mutex_semaphore_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_mutex_semaphore_test", uvm = "smc_mutex_semaphore_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
@@ -41,7 +42,8 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_spm_mem_boundary_test"
-module = "smc_spm_mem_boundary_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_spm_mem_boundary_test", uvm = "smc_spm_mem_boundary_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "mem"]
