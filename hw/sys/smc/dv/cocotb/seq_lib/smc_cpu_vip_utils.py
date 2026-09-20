@@ -12,6 +12,7 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from .smc_addr_map import cpu_ctrl_u32
 from .smc_pad_table import pad_index
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
@@ -55,16 +56,26 @@ CPU_RESET_VECTOR_SCRATCH = 0xC006_0000
 
 # Matches CPU_CTRL_RESET_CTRL_REG_DEFAULT (cores+uncore released).
 CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
-# Hold cores (reset_n=0) while keeping uncore out of reset (bit 8).
-CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
-# Pulse-start bits [7:4] for cores 0-3.
-CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | 0x0000_00F0  # 0x1FF
-# debug_reset_n_n0_scan[24] defaults to 0 (DM held in reset). DMI/dmstatus
-# needs this bit set.
-CPU_RESET_CTRL_DEBUG_RELEASE = CPU_RESET_CTRL_DEFAULT | (1 << 24)  # 0x0100_010F
+# Hold cores (core*_reset_n=0) while keeping uncore out of reset. Field masks
+# come from the generated cpu_ctrl.h, never from a hand-placed bit.
+CPU_RESET_CTRL_HOLD_CORES = cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_bm")
+# Pulse-start fields for cores 0-3.
+CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | (
+    cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_bm")
+    | cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_bm")
+    | cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_bm")
+    | cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bm")
+)
+# debug_reset_n_n0_scan defaults to 0 (DM held in reset). DMI/dmstatus needs
+# this field set.
+CPU_RESET_CTRL_DEBUG_RELEASE = CPU_RESET_CTRL_DEFAULT | cpu_ctrl_u32(
+    "CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_bm"
+)
 
-# RESET_TIMEOUT: timeout_value[15:0]=32, timeout_mode[16]=1 (force apply).
-CPU_RESET_TIMEOUT_FORCE = 0x0001_0020
+# RESET_TIMEOUT: timeout_value=32 in its field, timeout_mode set (force apply).
+CPU_RESET_TIMEOUT_FORCE = (
+    32 << cpu_ctrl_u32("CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bp")
+) | cpu_ctrl_u32("CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bm")
 
 CPU_FW_SUCCESS_MAGIC = 0xACAF_ACA1
 CPU_FW_FAIL_MASK = 0xFFFF_0000

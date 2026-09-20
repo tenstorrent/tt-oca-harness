@@ -24,7 +24,8 @@
 # The scoped number is "the SMC DUT minus the CPU cluster, the I3C core, the
 # lowRISC prims and TB code" -- not "SMC coverage". Quote it that way.
 #
-# No [[thresholds]] are set here. SMC_COVERAGE_POLICY.adoc puts the numeric
+# No [[thresholds]] are set here. SMC_FCOV.adoc ("SMC coverage targets and
+# closure policy") puts the numeric
 # target at "none until an owner signs a measured number", and a floor written
 # from a local run would be that signature. One is set from a measured weekly
 # `--cov` database, by the SMC DV owner, together with
@@ -244,24 +245,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_axil_dtp_csr_active"
-
-[[holes]]
-id = "fcov-smc-c_efuse_jtag_bresp_okay"
-title = "c efuse jtag bresp okay"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_efuse_jtag_bresp_okay"
 
 [[holes]]
 id = "fcov-smc-c_internal_addr_low"

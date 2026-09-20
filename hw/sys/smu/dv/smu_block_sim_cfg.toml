@@ -7,12 +7,11 @@ schema_version = 1
 # technology-specific interfaces tied off rather than attached to the
 # open-source IP integration. SEP=0 is hardcoded in tb/tb_top.sv.
 #
-# It carries the SEP=0 composition proofs (testlists/nosep.toml), the two
-# leaves that cannot run on `--dut smu`, and the SV-UVM
-# view, whose harness is the `UVM` shape of this TB. testlists/all.toml records
-# why each is here.
+# It carries the SEP=0 composition proofs (the `nosep` group), the two leaves
+# that cannot run on `--dut smu`, and the SV-UVM view, whose harness is the
+# `UVM` shape of this TB. testlists/block.toml records why each is here.
 #
-# Executable plan: enrolled groups in testlists/all.toml
+# Executable plan: enrolled groups in testlists/block.toml
 # Two frameworks share this config and one tb_top: cocotb/PyUVM (default) and
 # SV-UVM (`--framework uvm`, VCS; see the [frameworks.uvm] overlay at the
 # bottom). Shared stage graph + tool list come from profile = "native".
@@ -22,7 +21,7 @@ description = "Bare smu #(.SEP(0)) block bench: the SEP=0 composition proofs, th
 default_framework = "cocotb"
 
 [testlist]
-path = "testlists/all.toml"
+path = "testlists/block.toml"
 format = "toml_list"
 
 # The PeakRDL-regblock external-ack checks are immediate assertions in the
@@ -170,15 +169,12 @@ python_root = "hw/sys/smu/dv/cocotb"
 test_dir = "hw/sys/smu/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
-  # Shared PyUVM env (smu_dv_env) and the merged seq_lib, outside both cocotb
-  # trees so neither DUT owns them. `env` and `seq_lib` can each resolve to only
-  # one package -- a regular package wins the import over a namespace one at any
-  # path position -- so each has a single home.
-  "hw/sys/smu/dv/common",
-  # Reuse DTP JTAG helpers (types / tap device / IDCODE decode) without copying.
-  "hw/sys/dtp/dv/cocotb",
-  # The same DV-owned tables as top-level modules (`import dtp_types`), the
-  # spelling the shared seq_lib uses so it resolves under `--dut smu` too.
+  # `env` and `seq_lib` resolve under python_root (cocotb/) as namespace
+  # packages; the wrapper-only halves under cocotb_wrapper/ are not needed
+  # here. No regular package of either name may appear on this path -- the
+  # DTP bench's cocotb/ root carries both, so only its env/ directory is
+  # listed, which exposes the DV-owned JTAG tables as top-level modules
+  # (`import dtp_types`), the spelling the shared seq_lib uses.
   "hw/sys/dtp/dv/cocotb/env",
 ]
 results_dir = "{run_dir}/{item}/results"
@@ -187,10 +183,14 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 [run_modes.smoke]
 description = "Phase-1 smoke: SMC reset/AXI, DTP JTAG IDCODE, no-SEP config"
 timeout_sec = 1800
-# Skip OTP fuse-sense FSM so primary reset can release without a real eFuse model.
+# tb_top.sv ties the eFuse shim off, so no sense can complete and primary reset
+# would never release without +skip_fuse_sense. The SMC shadow preload is read
+# only under that plusarg and supplies the image the skipped sense would have
+# earned; without it the shadow array holds all zeros.
 # +rom_hex required by real OCAH4CORECluster_mems (in smc_ip_integration).
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 
@@ -199,6 +199,7 @@ description = "Phase-1 SMC / no-SEP wrapper tests"
 timeout_sec = 1800
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 
@@ -207,6 +208,7 @@ description = "Phase-1 DTP / JTAG / boot-stall / xtrig tests"
 timeout_sec = 1800
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 
@@ -215,6 +217,7 @@ description = "Phase-1 SEP=0 fabric: SMN port, ID-width, DECERR, remap, ATOP"
 timeout_sec = 1800
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
 ]
 

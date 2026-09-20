@@ -1234,7 +1234,7 @@ module smc_uvm_top
         .ext_boot_seq_done_i        (ext_boot_seq_done),
         // Tied low: the eFuse sense bypass (sense FSM never routed to the bank,
         // shadow regs exposed unsensed, warm domain held in reset) is unreachable
-        // here; hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
+        // here; docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (lc_sigint_err),
@@ -2912,6 +2912,9 @@ module smc_uvm_top
     logic [31:0] cold_rst_assert_count = '0;
     always @(negedge rst_cold_ni) cold_rst_assert_count <= cold_rst_assert_count + 32'd1;
     assign u_tb_if.cold_rst_assert_count = cold_rst_assert_count;
+    logic [31:0] cool_rst_assert_count = '0;
+    always @(negedge rst_cool_ni) cool_rst_assert_count <= cool_rst_assert_count + 32'd1;
+    assign u_tb_if.cool_rst_assert_count = cool_rst_assert_count;
 
     // SEP_IN AXI4 initiator: the shared ocah_axi_vip UVM master agent drives
     // the s_axi_* request side (the agent's driver procedurally drives the
@@ -3441,7 +3444,7 @@ module smc_dual_inst
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
         // Tied low: the eFuse sense bypass is unreachable here;
-        // hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
+        // docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_idle),
         .lc_sigint_err_o            (),

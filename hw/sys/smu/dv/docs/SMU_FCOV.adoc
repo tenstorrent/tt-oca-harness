@@ -139,7 +139,7 @@ third that is easy to confuse with them.
 has one compile profile, `compile_smu_chiplet`, and it elaborates SEP, so every
 `g_sep` point exists there. The block bench passes `1'b0` unconditionally,
 because it hardcodes SEP=0, and it is where the SEP=0 composition proofs
-(`testlists/nosep.toml`) run.
+(the `nosep` group of `testlists/block.toml`) run.
 
 The `g_sep` guards still matter on the block bench: an accepted waiver whose
 selector matches a covered point is a hard `ConfigError`, so a point which can
@@ -161,7 +161,7 @@ lifted" rather than "no stall was ever applied".
 
 === Scenario Intent Is Not Coverage
 
-`common/smu_dv_env/smu_fcov.py` is a static `TEST_FCOV_HITS` table mapping a
+`cocotb/env/smu_fcov.py` is a static `TEST_FCOV_HITS` table mapping a
 test class name to the bins its scenario is *claimed* to reach. Running the
 test marks the bins; no signal is observed, and nothing under `tools/` or
 `.github/` reads its output. It records scenario intent and is neither the

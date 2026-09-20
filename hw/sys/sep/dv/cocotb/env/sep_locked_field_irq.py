@@ -17,11 +17,13 @@ from __future__ import annotations
 from sep_efuse_field_map import spec_secure_tm_blocked
 from sep_efuse_image import LOCK_BITS_PER_SLOT
 from sep_seeded_rng import SepSeededRng
+from sep_spec_tables import agg_from_pic
 
 SENTINEL = 0xBADCAB1E
-IRQ_LOCKED_FIELD = 33
+IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
 RESP_OKAY = 0
 SPARE_COUNT = 8
+# periphs.adoc LOCKS slots 0–31, LOCKS_SPARE slots 32–40. Spare k is slot 32+k.
 SPARE0_SLOT = 32
 
 
@@ -30,7 +32,7 @@ def spare_field_name(spare_idx: int) -> str:
 
 
 def spare_write_lock_bit(spare_idx: int) -> int:
-    """Global lock-vector bit of spare ``k``'s write-lock."""
+    """Global lock-vector bit of spare ``k``'s write-lock (periphs.adoc)."""
     if not 0 <= spare_idx < SPARE_COUNT:
         raise ValueError(f"spare_idx {spare_idx} not in 0..{SPARE_COUNT - 1}")
     return (SPARE0_SLOT + spare_idx) * LOCK_BITS_PER_SLOT

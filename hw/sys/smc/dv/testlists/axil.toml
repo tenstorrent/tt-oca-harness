@@ -6,7 +6,7 @@ name = "smc_axil_idle_test"
 module = "smc_axil_idle_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "pyuvm"]
+tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -14,7 +14,7 @@ name = "smc_axil_burst_idle_test"
 module = "smc_axil_burst_idle_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -22,7 +22,7 @@ name = "smc_axil_downstream_concurrency_test"
 module = "smc_axil_downstream_concurrency_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "pyuvm"]
+tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[groups]]

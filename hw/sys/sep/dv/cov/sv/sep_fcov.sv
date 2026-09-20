@@ -256,6 +256,9 @@ module sep_fcov (
   localparam logic [7:0] KmDestAes = 8'h04;
   localparam logic [7:0] KmDestOtbn = 8'h08;
   localparam logic [7:0] KmDestAbrMldsaSeed = 8'h10;
+  localparam logic [7:0] KmDestAbrMlkemSeedD = 8'h20;
+  localparam logic [7:0] KmDestAbrMlkemSeedZ = 8'h40;
+  localparam logic [7:0] KmDestAbrMlkemMsg = 8'h80;
 
   localparam logic [1:0] AxiOkay = 2'b00;
   localparam int unsigned PageShift = 12;  // traffic_filter.sv compares [.:12]
@@ -1380,13 +1383,18 @@ module sep_fcov (
   covergroup sep_km_command_sideload_cg with function sample (logic [7:0] dest);
     option.per_instance = 1;
     option.name = "sep_km_command_sideload_cg";
-    // One cell per consumer, taken from RETURN_ARG dest_engine on rc 0.
+    // One cell per consumer, taken from RETURN_ARG dest_engine on rc 0. All
+    // eight destinations the KM firmware decodes have a cell: the four classic
+    // engines, the ABR ML-DSA seed, and the three ML-KEM sideload blocks.
     cp_dest: coverpoint dest {
       bins hmac = {KmDestHmac};
       bins kmac = {KmDestKmac};
       bins aes = {KmDestAes};
       bins otbn = {KmDestOtbn};
       bins abr_mldsa_seed = {KmDestAbrMldsaSeed};
+      bins abr_mlkem_seed_d = {KmDestAbrMlkemSeedD};
+      bins abr_mlkem_seed_z = {KmDestAbrMlkemSeedZ};
+      bins abr_mlkem_msg = {KmDestAbrMlkemMsg};
     }
   endgroup
 

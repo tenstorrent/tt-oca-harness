@@ -140,8 +140,8 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             f"HMAC not released for the transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+HMAC released, AES/KMAC/OTBN "
-            "parked (SW_RESET_N=0x%02x)",
+            "CHK-ISO key-bus isolation PASS: only KM+HMAC released, "
+            "AES/KMAC/OTBN parked (SW_RESET_N=0x%02x)",
             rst,
         )
 

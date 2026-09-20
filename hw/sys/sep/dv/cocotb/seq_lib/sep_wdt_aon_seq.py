@@ -55,7 +55,10 @@ WKUP_PRESCALER_SHIFT = WDT_TIMER.field_lsb("WKUP_CTRL", "prescaler")
 WDOG_ENABLE = WDT_TIMER.field_mask("WDOG_CTRL", "enable")
 INTR_TEST_WKUP_EXPIRED = WDT_TIMER.field_mask("INTR_TEST", "wkup_timer_expired")
 INTR_WKUP_EXPIRED = WDT_TIMER.field_mask("INTR_STATE", "wkup_timer_expired")
+INTR_WKUP_LSB = WDT_TIMER.field_lsb("INTR_STATE", "wkup_timer_expired")
 INTR_WDOG_BARK = WDT_TIMER.field_mask("INTR_STATE", "wdog_timer_bark")
+WKUP_CAUSE_BIT = WDT_TIMER.field_mask("WKUP_CAUSE", "cause")
+WKUP_CAUSE_LSB = WDT_TIMER.field_lsb("WKUP_CAUSE", "cause")
 
 RESP_OKAY = 0
 

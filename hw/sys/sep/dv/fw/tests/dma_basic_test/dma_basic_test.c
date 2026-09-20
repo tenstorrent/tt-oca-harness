@@ -192,9 +192,10 @@ static int chk_reset(void) {
         uint32_t addr;
         uint32_t exp;
     } regs[] = {
-        // Non-zero resets come from the generated per-field symbols. The 0x0u
-        // entries are whole-register reads-as-zero, not transcribed field
-        // values, so there is nothing to import for them.
+        // Single-field registers use the generated field reset. Multi-field
+        // CONTROL / SRC_CONFIG / DST_CONFIG / STATUS / ERROR_CODE have only
+        // per-field resets, so the whole-register expectation is the OR of
+        // those zeros.
         {"TRANSFER_WIDTH", OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
          SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_reset},
         {"CONTROL", OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x0u},
@@ -202,13 +203,18 @@ static int chk_reset(void) {
         {"DST_CONFIG", OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x0u},
         {"CFG_REGWEN", OCH_SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_UNLOCKED},
         {"RANGE_REGWEN", OCH_SEP_TOP_SECURE_DMA_RANGE_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_UNLOCKED},
-        {"RANGE_VALID", OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x0u},
+        {"RANGE_VALID", OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR,
+         SECURE_DMA__RANGE_VALID__RANGE_VALID_reset},
         {"STATUS", OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, 0x0u},
         {"ERROR_CODE", OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR, 0x0u},
-        {"SRC_ADDR_LO", OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0x0u},
-        {"DST_ADDR_LO", OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, 0x0u},
-        {"TOTAL_DATA_SIZE", OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, 0x0u},
-        {"CHUNK_DATA_SIZE", OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, 0x0u},
+        {"SRC_ADDR_LO", OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
+         SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_reset},
+        {"DST_ADDR_LO", OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
+         SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_reset},
+        {"TOTAL_DATA_SIZE", OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR,
+         SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_reset},
+        {"CHUNK_DATA_SIZE", OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR,
+         SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_reset},
     };
     for (unsigned i = 0; i < sizeof(regs) / sizeof(regs[0]); i++) {
         uint32_t got = rd(regs[i].addr);
@@ -835,6 +841,7 @@ static int chk_host_fabric(void) {
     }
 
     fill_src_words(nwords, snap);
+    sep_mbx_puts("CHK-HOSTFABRIC-ARM\n");
     // As above: the transfer must terminate, or a wedged engine passes on a
     // latch the fabric raised from its first beat.
     uint32_t st_fab = dma_run(src_base, dead, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
