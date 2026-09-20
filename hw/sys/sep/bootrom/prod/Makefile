@@ -516,8 +516,14 @@ $(BL1_TEST_BIN):
 # (name = "tt-oca-manifest") and keeps package-dir {tt_boot_manifest = "src"} so
 # existing `python -m tt_boot_manifest.pack_images` callers are a drop-in. Do not
 # "fix" the module paths here to match the repo name; they would stop resolving.
+#
+# The packer imports native wheels such as cryptography. Keep its environment
+# local to this invocation and bypass the shared package cache so artifacts
+# resolved on another host cannot supply ABI-incompatible binaries; uv still
+# detects the current OS, architecture and libc when resolving those wheels.
 ifneq ($(shell command -v uv 2>/dev/null),)
-PACK_RUN := uv run --no-project --with-editable "$(TT_OCA_MANIFEST_DIR)" \
+PACK_RUN := uv run --isolated --no-cache --no-project \
+	--with-editable "$(TT_OCA_MANIFEST_DIR)" \
 	python -m tt_boot_manifest.pack_images
 else
 # uv-less fallback (e.g. the ocah-toolchain container, which carries the

@@ -566,7 +566,11 @@ Drive `smc_combined_observability_test_seq`. Each checker below is a named compa
 
 *Test Procedure*:
 
-Drive `smc_default_reg_rd_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_default_reg_rd_test_seq`. The scenario has two implementations that share this
+claim: the cocotb `smc_default_reg_rd_test_seq.py` and the SV-UVM
+`smc_default_reg_rd_test_seq.svh` (`--framework uvm`). Each checker below is a named compare
+the DUT can fail; a token is emitted only after that compare holds. The SV-UVM view reads only
+-- it writes nothing -- which is what lets it claim the registers still hold their reset value.
 
 
 *Checkers*:
@@ -577,10 +581,17 @@ Drive `smc_default_reg_rd_test_seq`. Each checker below is a named compare the D
 |`CHK-DEFAULT-REG-SWEEP` |Named compare in `smc_default_reg_rd_test_seq.py`; the run fails if it mismatches
 |`CHK-DEFAULT-REG-VALUE` |Named compare in `smc_default_reg_rd_test_seq.py`; the run fails if it mismatches
 |`CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` |Named compare in `smc_default_reg_rd_test.py`; the run fails if it mismatches
+|`CHK-REG-DEFAULT` |SV-UVM shape only (`--framework uvm`): each catalogued register reads back its generated `*_REG_DEFAULT`. Two expectations are non-zero (`CHIP_CONFIG.VERSION_LO` = 0x000100A0, `RESET_UNIT.SS_WARM_RESET_N` = 0xFFFFFFFF), so a read path stuck at zero cannot satisfy the catalogue. One compared entry, `NDM_RESET.NDMRESET_REQUEST`, is `sw=r; hw=w` and its value arrives from the harness tie-off `tb_ndmreset_request = '0` at a DUT primary input -- the specified source for such a field, so the register block's decode and read path are in the loop, but the value is not register storage
+|(decode-only entries) |SV-UVM: registers whose read value this bench does not establish carry no checker of their own -- the OKAY claim on the access is `CHK-CSR-RESP`, and the observed word is logged as an `OBSERVED-ONLY` observation rather than a check. `CHIP_CONFIG.LC_STATE` is driven by the harness, `NDM_RESET.NDMRESET_CLUSTER_COUNT` by a design-side count; both read something other than their RDL default, so comparing against it would be an invented claim
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `default_reg` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (one predicted read per catalogue entry carrying a default)
+|`CHK-SB-DEFAULT-REG` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `default_reg`: `smc_default_reg_ref_model` predicts every catalogued read from the generated defaults plus the writes it observed. A required feature with zero comparisons fails the run
 |===
 
 
-*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and `+SMC_DEFAULT_REG_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-006-smc_ext_interrupts_pin_test]]
@@ -2075,10 +2086,12 @@ Drive `smc_cg_dft_reset_bringup_test_seq`. Each checker below is a named compare
 
 *Test Procedure*:
 
-For each of the two (target, lock) pairs:
+The scenario has two implementations that share this claim: the cocotb
+`smc_reset_unit_lock_test_seq.py` and the SV-UVM `smc_reset_unit_lock_test_seq.svh`
+(`--framework uvm`). For each of the two (target, lock) pairs:
 
 [arabic]
-. Require both bits under test to be clear in the lock, since `woset` means a set bit could not have been cleared by this sequence.
+. Require both bits under test to be clear in the lock, since `woset` means a set bit could not have been cleared by this sequence. (cocotb only. The SV-UVM sequence performs no lock pre-read: it locks a fresh bit per pass and expects the accumulated `bits 1..1+loop_index` back, so from pass 1 onward a lock that ignored writes or reset to the wrong value fails on the accumulation instead.)
 . Write bit 0 to the target with nothing locked and read it back, proving the register is writable before any lock exists.
 . Write bit 1 to the lock and require it to set, then write all zeroes and require it to remain set.
 . Write bits 0 and 1 to the target in one access. Require bit 1 to stay clear and bit 0 to follow the write.
@@ -2091,9 +2104,34 @@ For each of the two (target, lock) pairs:
 |`CHK-RESET-LOCK-ARM[<pair>]` |The target accepts a write with the lock clear, so "unchanged" later cannot be explained by a register that never changes
 |`CHK-RESET-LOCK-WOSET[<pair>]` |A set lock bit survives an all-zeroes write, per `onwrite = woset`
 |`CHK-RESET-LOCK-MASKS-WRITE[<pair>]` |In one write carrying both bits, the locked bit does not follow software while the unlocked bit does -- so the write demonstrably reached the register
+|`CHK-LOCK-TARGET-WRITABLE` |SV-UVM shape only (`--framework uvm`): positive control: the target accepts a write at this pass's bit while the lock is still clear, so "unchanged" later cannot be satisfied by a register that never changes
+|`CHK-LOCK-SET` |SV-UVM shape only (`--framework uvm`): the written bit appears in the lock register, which accumulates the bits earlier passes locked
+|`CHK-LOCK-STICKY` |SV-UVM shape only (`--framework uvm`): an all-zeroes write does not release any set lock bit, per `onwrite = woset`
+|`CHK-LOCK-MASKS-TARGET` |SV-UVM shape only (`--framework uvm`): after the lock is taken, a write clearing the locked bit leaves it set -- the lock filters the write bit-enables before they reach the storage flop (`smc_subsystem_resets.sv:81`, `:100`)
+|`CHK-LOCK-FREE-BIT-MOVED` |SV-UVM shape only (`--framework uvm`): the same write carries never-locked bit 0, and that bit is required to change in both directions -- so "unchanged" cannot be explained by the write being dropped
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `lock_csr` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (five predicted reads per lock pair per pass)
+|`CHK-SB-LOCK-CSR` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `lock_csr`: `smc_lock_csr_ref_model` applies `woset` to the lock and lock-filtered bit-enables to the guarded register, rebuilt from the traffic the passive monitor saw rather than from the sequence's own bookkeeping. Note the asymmetry in where the two rules come from: `woset` is specification-sourced (`reset_unit.rdl:18-26`, `:87-95`), but the bit-enable filtering is transcribed from the RTL it checks (`smc_subsystem_resets.sv:81`, `:100`), so on that half the model would be wrong in the same direction as a wrong design. It corroborates; the primary proof of masking is the sequence-side `CHK-LOCK-MASKS-TARGET`, whose expectation comes from the bench's own accumulation
 |===
 
-*Pass Criteria*: all six checkers hold, three per pair: each lock holds 0x2 through an all-zeroes write, and a 0x3 write to its target reads back 0x1. This testcase leaves one bit set in each lock for the rest of its simulation, which is what `woset` means; each testcase runs its own simulation. Enrolled in: `all`, `hosted`, `reset`.
+*Pass Criteria*: all six checkers hold, three per pair: each lock holds 0x2 through an all-zeroes write, and a 0x3 write to its target reads back 0x1. This testcase leaves one bit set in each lock for the rest of its simulation, which is what `woset` means; each testcase runs its own simulation.
+
+A taken lock is irreversible for the rest of the simulation it was taken in, which is what
+`woset` means. The two implementations of this scenario handle that differently, and the
+difference is part of the claim:
+
+* the cocotb testcase owns its simulation and locks one bit;
+* the SV-UVM testcase runs at least 16 scenario passes back to back in ONE simulation with no
+  reset between them (`ocah_test.MinDefaultLoops`), so each pass locks a FRESH bit --
+  bit 1 + `loop_index` -- while bit 0 is never locked in any pass and stays the writability
+  control. Measured PASS on VCS at seed 1: by the sixteenth pass each lock held 0x1FFFE, and a
+  write of 0x00000001 to its target read back 0x0001FFFF. A loop knob that would run past the
+  lockable bits fails the run rather than aliasing silently.
+
+Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and
+`+SMC_LOCK_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`, `reset`.
 
 '''''
 
@@ -2536,12 +2574,18 @@ Drive `smc_mixed_boot_stall_test_seq`. Each checker below is a named compare the
 
 * CSR behaviour across the public cool-reset control.
 * Addresses and expected defaults both come from the generated PeakRDL map via `smc_csr_field_catalog` (which also cross-checks the address that is actually driven against the cataloged symbol).
-* Reset synchronization is handshake-based, never a fixed settle: `smc_reset_ctrl` de-glitches `rst_cool_ni` over `RESET_DEGLITCH_WIDTH` `clk_ref_i` samples, so the pin is held low until the DUT is *observed* to enter cool reset (`rst_warm_smc_clk_n` / `rst_primary_smc_clk_no` drop), and released only until the same observables are back and the fuse-sense/warm release pipe has completed.
+* Reset synchronization is handshake-based, never a fixed settle: `smc_reset_ctrl` de-glitches `rst_cool_ni` over `RESET_DEGLITCH_WIDTH` `clk_ref_i` samples, so the pin is held low until the DUT is *observed* to enter cool reset (`rst_warm_smc_clk_n` / `rst_primary_smc_clk_no` drop), and released only until the same observables are back and the fuse-sense/warm release pipe has completed. Measured on VCS at seed 1: `rst_primary_smc_clk_n` fell 94 smc clocks after the pin, and `rst_warm_smc_clk_n` came back 2346 smc clocks after release -- a fixed delay short of either would prove nothing.
+* Reset TOPOLOGY, read from the RTL rather than from the register names: `smc_peripherals.sv:1077` wires `smc_misc_wrap.rst_ni` to `rst_primary_smc_clk_no`, and `smc_misc_wrap` resets `SCRATCH_COLD` on `rst_ni` alone (`:106-108`) and `SCRATCH_COLD_WARM` on `rst_ni && rst_warm_ni` (`:133`). A cool reset drops `rst_primary`, so BOTH scratch windows clear -- the "COLD" in `SCRATCH_COLD` names the reset it is reset BY, not a reset it survives.
+* NOT claimed: either scratch window surviving a reset the other one takes. No stimulus here drops `rst_warm_ni` without also dropping `rst_primary_ni`, so separating the two domains needs a warm-only source (the `SS_WARM_RESET_N` control or the SEP WDT pin) and is left to a testcase that has one.
 * Both waits are bounded and fail on expiry.
 
 *Test Procedure*:
 
-Drive `smc_multi_reset_csr_persistence_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_multi_reset_csr_persistence_test_seq`. The scenario has two implementations that
+share this claim: the cocotb `smc_multi_reset_csr_persistence_test_seq.py` and the SV-UVM
+`smc_multi_reset_csr_persistence_test_seq.svh` (`--framework uvm`). The SV-UVM view needs no
+reset agent -- `smc_tb_if` carries the `rst_cool_n` pin and the reset-unit observables, so the
+sequence drives and polls them directly. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -2557,10 +2601,26 @@ Drive `smc_multi_reset_csr_persistence_test_seq`. Each checker below is a named 
 |`CHK-CSR-PRE-COOL-READBACK` |Named compare in `smc_multi_reset_csr_persistence_test_seq.py`; the run fails if it mismatches
 |`CHK-CSR-WRITABLE-AFTER-COOL` |Named compare in `smc_multi_reset_csr_persistence_test_seq.py`; the run fails if it mismatches
 |`CHK-MULTI-RESET-CSR-SWEEP` |Named compare in `smc_multi_reset_csr_persistence_test_seq.py`; the run fails if it mismatches
+|`CHK-CSR-PRE-COOL-READBACK` |SV-UVM: both scratch windows hold a NON-ZERO pass-specific pattern before the pulse. Required non-zero, because "reads 0 after the reset" says nothing if the register held 0 going in
+|`CHK-COOL-RESET-ASSERTED` |SV-UVM: the pin pulse survives the de-glitch and both `rst_primary_smc_clk_n` and `rst_warm_smc_clk_n` are polled down -- not waited out with a fixed delay
+|`CHK-COOL-RESET-RELEASED` |SV-UVM: both observables are polled back up after the pin is released
+|`CHK-COOL-CLEARS-SCRATCH` |SV-UVM shape only (`--framework uvm`): both `SCRATCH_COLD[1]` and `SCRATCH_COLD_WARM[1]` read their reset value afterwards, which is the reset topology cited under Test Coverage
+|`CHK-CSR-PATH-RECOVERED` |SV-UVM shape only (`--framework uvm`): the read path returns real content, not just OKAY -- `CHIP_CONFIG.VERSION_LO` reads its non-zero generated default (0x000100A0) again, so a path that came back dead or stuck at zero fails
+|`CHK-CSR-RW-RECOVERED` |SV-UVM shape only (`--framework uvm`): a fresh write and readback lands after the reset, and the restore leaves the register at its reset value
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes, checked before the pulse and again after it
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `scratch_csr` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (six predicted scratch reads per pass)
+|`CHK-SB-SCRATCH-CSR` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `scratch_csr`: `smc_scratch_csr_ref_model` re-baselines on the same cool reset through `smc_csr_reset_epoch`, so a predictor that ignored the cool reset fails here
 |===
 
 
-*Pass Criteria*: `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-COOL-RESET-RELEASED`, `CHK-CSR-BASELINE-RO`, `CHK-CSR-POST-COOL-RECOVERY`, `CHK-CSR-PRE-COOL-READBACK` (and 2 more) hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-COOL-RESET-RELEASED`, `CHK-CSR-BASELINE-RO`, `CHK-CSR-POST-COOL-RECOVERY`, `CHK-CSR-PRE-COOL-READBACK` (and 2 more) hold after their compares.
+
+Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and
+`+SMC_CSR_SCOREBOARD_NEGATIVE` must fail the run. Each of the 16 scenario passes drives its own
+complete write / pulse / check / restore cycle with a fresh pattern, so back-to-back recovery is
+re-proved rather than assumed. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-053-smc_ndm_reset_test]]
@@ -3679,7 +3739,10 @@ Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the
 
 *Test Procedure*:
 
-Drive `smc_mutex_semaphore_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_mutex_semaphore_test_seq`. The scenario has two implementations that share this
+claim: the cocotb `smc_mutex_semaphore_test_seq.py` and the SV-UVM
+`smc_mutex_semaphore_test_seq.svh` (`--framework uvm`). Each checker below is a named compare
+the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -3694,10 +3757,29 @@ Drive `smc_mutex_semaphore_test_seq`. Each checker below is a named compare the 
 |`CHK-MUTEX-REL` |Named compare in `smc_mutex_semaphore_test_seq.py`; the run fails if it mismatches
 |`CHK-MUTEX-TAKE` |Named compare in `smc_mutex_semaphore_test_seq.py`; the run fails if it mismatches
 |`CHK-SEMA-ACCUMULATE` |Named compare in `smc_mutex_semaphore_test_seq.py`; the run fails if it mismatches
+|`CHK-MUTEX-DENY` |SV-UVM shape only (`--framework uvm`): the second read of a held `MUTEX[0]` returns 0. Only meaningful because the first read expected the available encoding and got it -- a mutex stuck at 0 fails the take leg, one stuck at 1 fails this one
+|`CHK-MUTEX-INDEP` |SV-UVM shape only (`--framework uvm`): `MUTEX[1]` still reports available while `MUTEX[0]` is held, so "acquired" is a property of one lock rather than of the block
+|`CHK-MUTEX-RELEASE` |SV-UVM shape only (`--framework uvm`): after a write, `MUTEX[0]` reports available again. The RDL permits *any* value to release; both implementations write zero, so the property is proved for that value and the wider claim is not exercised
+|`CHK-SEMA-ACCUM` |SV-UVM shape only (`--framework uvm`): `SEMA[0]` accumulates a signed 16-bit increment; +N then -N returns it to its baseline, and the baseline expectation of zero is also the check that the previous pass restored it
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- twelve per pass, seven reads and five writes. A control-flow invariant, not a DUT-failable compare: it catches a truncated pass, and `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `mutex_sema` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (seven predicted reads per pass)
+|`CHK-SB-MUTEX-SEMA` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `mutex_sema`: `smc_mutex_sema_ref_model` models acquire-on-read and the signed accumulator, computing each expected value BEFORE the state advances, and compares under the RDL field mask
 |===
 
 
-*Pass Criteria*: `CHK-MUTEX-BASIC`, `CHK-MUTEX-HELD`, `CHK-MUTEX-NEIGHBOUR-FREE`, `CHK-MUTEX-NEIGHBOUR-HOLD`, `CHK-MUTEX-REL`, `CHK-MUTEX-TAKE` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-MUTEX-BASIC`, `CHK-MUTEX-HELD`, `CHK-MUTEX-NEIGHBOUR-FREE`, `CHK-MUTEX-NEIGHBOUR-HOLD`, `CHK-MUTEX-REL`, `CHK-MUTEX-TAKE` (and 1 more) hold after their compares.
+
+Both registers are declared regwidth 64 with their live field inside the low 32 bits, so only
+the RDL field bits are compared -- the bits above the field hold no field and are masked out
+rather than given an invented expectation.
+
+A mutex read acquires, so the SV-UVM view -- 16 scenario passes in one simulation -- hands the
+block back as it found it: `MUTEX[0]` is released again after the read that proves the release,
+`MUTEX[1]` is released, and `SEMA[0]` is returned to its baseline. Under `--framework uvm` the
+SV-UVM checkers above hold instead, and `+SMC_MUTEX_SCOREBOARD_NEGATIVE` must fail the run.
+Enrolled in: `all`, `hosted`.
 '''''
 
 
@@ -3751,7 +3833,14 @@ Drive `smc_reference_counter_test_seq`. Each checker below is a named compare th
 
 *Test Procedure*:
 
-Drive `smc_spm_mem_boundary_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_spm_mem_boundary_test_seq`. The scenario has two implementations that share this
+claim: the cocotb `smc_spm_mem_boundary_test_seq.py` and the SV-UVM
+`smc_spm_mem_boundary_test_seq.svh` (`--framework uvm`). Both write ALL the edge patterns
+before reading any of them back: writing and reading one address at a time cannot see aliasing,
+because each write would be followed immediately by its own read and every pair would still
+match. With the writes batched, a decode that collapsed the edges onto one location returns the
+last pattern written and the first readback fails. Each checker below is a named compare the
+DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -3763,10 +3852,24 @@ Drive `smc_spm_mem_boundary_test_seq`. Each checker below is a named compare the
 |`CHK-SPM-MEM-SPM_HI` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
 |`CHK-SPM-MEM-SPM_LO` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
 |`CHK-SPM-MEM-SPM_LO_NEXT` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
+|`CHK-SPM-MEM-EDGE` |SV-UVM shape only (`--framework uvm`): each window edge reads back the 64-bit word written to it while the other two edge patterns are still resident
+|`CHK-SPM-CO-RESIDENT` |SV-UVM shape only (`--framework uvm`): each edge's readback is required NOT to equal any other edge's pattern -- the shape a collapsed decode would produce. Addresses and patterns are asserted pairwise distinct before the legs run, since identical patterns would make aliasing indistinguishable from correctness
+|`CHK-MEM-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN full-width access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `spm_mem` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (one predicted readback per window edge per pass)
+|`CHK-SB-SPM-MEM` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `spm_mem`: `smc_spm_mem_ref_model` shadows the window per 64-bit word address, so an aliased decode disagrees with the model that keeps the edges apart
 |===
 
 
-*Pass Criteria*: `CHK-SPM-MEM-BASIC`, `CHK-SPM-MEM-SPM_HI`, `CHK-SPM-MEM-SPM_LO`, `CHK-SPM-MEM-SPM_LO_NEXT` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-SPM-MEM-BASIC`, `CHK-SPM-MEM-SPM_HI`, `CHK-SPM-MEM-SPM_LO`, `CHK-SPM-MEM-SPM_LO_NEXT` hold after their compares.
+
+Accesses are full-width 64-bit single beats (AxSIZE = 3, every byte lane strobed): a 32-bit
+CSR-shaped access would leave half of each word untouched and could not discriminate the
+addresses. The SV-UVM view draws a fresh pattern set per pass from the scenario seed, so its 16
+passes exercise different data and each pass also re-proves that the previous pass's words were
+replaced rather than merely re-read. Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds
+instead, and `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-080-smc_occp_sanity_secure_error_test]]
@@ -8499,22 +8602,22 @@ point at it. SMU's record of the tests that stage SMC images is
 |Image |Bucket |Consumer and what closes the row
 |smc_sep_xbar
 |external-consumer
-|SMU DV `smu_sep_smc_xbar_test`, group `sep_smc_sram_blocked` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_smc_xbar_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_sep_ext_axi
 |external-consumer
-|SMU DV `smu_sep_ext_axi_test`, group `sep_smc_sram_blocked` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_ext_axi_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_sep_debug_bus
 |external-consumer
-|SMU DV `smu_sep_debug_bus_test`, group `sep_smc_sram_blocked` and `sep_smc_dual` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_debug_bus_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_sep_lc_handoff
 |external-consumer
-|SMU DV `smu_sep_lc_handoff_test`, group `sep_smc_sram_blocked` and `sep_smc_dual` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_lc_handoff_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_cla_sep_cpu_debug
 |external-consumer
-|SMU DV `smu_cla_sep_cpu_debug_test`, group `sep_smc_sram_blocked` and `sep_smc_dual` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_cla_sep_cpu_debug_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |smu_sep_boot
 |external-consumer
-|SMU DV `smu_sep_wdt_reset_to_smc_test`, group `sep_smc_sram_blocked` and `sep_smc_dual` (not in SMU `all`; the SMU disposition record owns the test name). Closes when that group reports PASS or SMU drops the test.
+|SMU DV `smu_sep_wdt_reset_to_smc_test`, a body under `hw/sys/smu/dv/cocotb_wrapper/tests/` enrolled in no SMU testlist (SMU disposition record, bucket `SEP1-blocked`: the SMU disposition record owns the test name). Closes when SMU enrols it and it reports PASS, or SMU drops the test.
 |uart_engine_sanity
 |external-consumer
 |Consumed by a companion regression outside this repository (UART engine controller/target pairs 0->3 and 1->2 with a four-phase scratch handshake only this image implements; the cocotb alias `smc_uart_engine_sanity_test` is waived in <<smc-deferred-disposition>>); not counted toward this tree's coverage. Closes when that regression runs on this bench, with a leaf here, or drops the image.
@@ -8837,13 +8940,13 @@ the first image that consumes it, not ahead of it.
 |BFM-side SECONDARY image for P2 recovery. DUT PRIMARY plus BFM SECONDARY firmware pair; `smc_octs_dual_sync_test` (`testlists/power.toml`) covers PRIMARY/SECONDARY sync on the dual bench. Closes when a dual sram-mode `[c_build.*]` stages two SMC images, or is superseded if none is added.
 |sep_interop
 |deferred
-|SEP_SMU_002 two-sided mailbox handshake. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_interop` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_002 two-sided mailbox handshake. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_interop` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU disposition bucket `SEP1-blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |sep_mbox_irq
 |deferred
-|SEP_SMU_015 mailbox source IRQ consumer; SMC is the sole functional consumer of the eight SEP mailbox IRQs. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_015 mailbox source IRQ consumer; SMC is the sole functional consumer of the eight SEP mailbox IRQs. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU disposition bucket `SEP1-blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |smu_smc_stall_sep
 |deferred
-|SEP_SMU_004 CLA halt/run of a live SEP. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/smu_smc_stall_sep` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_004 CLA halt/run of a live SEP. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/smu_smc_stall_sep` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU disposition bucket `SEP1-blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |smu_sep_axi_extension_decode
 |deferred
 |SMC pad-arm for the xSPI GPIO override on the SMU external AXI path; SMU's `smu_sep_ext_axi_test` stages `smu_sep_ext_axi` instead. Closes by SMU-owner agreement: an SMU test that stages this image, or removal.

@@ -81,10 +81,13 @@ it.
 `parsers.toml`, `profiles/*.toml` under `hw/common/dv/configs/`
 |The shared configuration directory
 |Runner config loading; `--list --json` for CI matrices
-|Every registry carries `schema_version = 1`. An unknown key is a validation
-error. A checked-in registry that carries `launcher`, `extra_env`, or
-`setup_hook` fails validation, so site-specific launch detail stays in the
-site layer (xref:run-dv.adoc#runner-site-layer[Site-local override layer]).
+|Every registry carries an integer `schema_version`: `1`, and `2` for
+`executors.toml`, whose cluster entries name a driver
+(xref:run-dv.adoc#runner-executor-registry[Executor registry]). An unknown
+key is a validation error. A checked-in registry that carries `launcher`,
+`extra_env`, or `setup_hook` fails validation, so site-specific launch detail
+stays in the site layer (xref:run-dv.adoc#runner-site-layer[Site-local
+override layer]).
 Checked by `--validate-configs`, which every hosted job runs before its
 simulation, and by the configuration and registry tests in `tools/dv/tests`.
 
@@ -119,6 +122,17 @@ either replaces a registry value or adds a complete tool, executor, or
 formal-config entry. The active file is recorded as `site` in
 `result.json`. Checked by `--validate-configs`, which reports the merged
 registries, and by the site-layer tests.
+
+|Leaf manifest: `<run>/stages/regress/jobs/<task>.json` and its
+`<task>.done.json` completion record
+|`tools/dv/runlib` (the coordinator)
+|`run_dv.py --worker-manifest` (a farm worker)
+|Integer `schema_version` `1`. `plan_digest` covers every other key and a
+worker refuses a mismatch; the overrides a manifest may carry are limited to
+wave and console options; the worker writes only its own leaf directory and
+the completion record, and a manifest it cannot trust or run leaves an
+`ERROR` result whose reason starts with `environment_error`. Checked by the
+worker tests in `tools/dv/tests`.
 
 |Runner command line and run tree: `run_dv.py` options; the
 `<dut-dv-root>/build/runs/<stamp>__<tool>__<label>/` layout with `stages/`,

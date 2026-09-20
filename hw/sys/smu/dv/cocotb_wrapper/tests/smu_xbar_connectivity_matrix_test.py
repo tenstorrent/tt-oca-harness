@@ -2,13 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_xbar_connectivity_matrix_test - ext_in has no route to ext_out.
 
-This tree carries no SMU crossbar specification. The routing the check below
-requires -- `ext_in` reaches `sep_in` and `smc_in` only, and has no default
-master port, so an unmatched `ext_in` access decode-errors -- is stated as the
-`Connectivity` localparam and its comment in
-`hw/sys/smu/rtl/smu_axi_xbar_pkg.sv`, which is the implementation. The check is
-still fail-capable against it: the DECERR and the silence at the SMN egress
-boundary are measured on the DUT, not read back off that parameter.
+The routing the check below requires -- an unmatched `ext_in` access returns
+a decode error and does not reach `ext_out` -- is the integrator guide's rule
+(`doc/integrator/src/smu.adoc`, "SMU AXI Crossbar Address Map"). The DECERR
+and the silence at the SMN egress boundary are measured on the DUT.
 
 On the `--dut smu` production wrapper built with compile_smu_chiplet:
 the external master issues a read and a write to an address outside both live

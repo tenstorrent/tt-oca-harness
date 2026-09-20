@@ -7,14 +7,10 @@
 === Overview
 
 The SMU open-source environment is a PyUVM-on-cocotb testbench driven by
-`tools/dv/run_dv.py`. Verilator is the simulator every enrolled group runs
-on, and the only one with a build and a coverage section in either sim
-config. `smu_sim_cfg.toml` lists `vcs` and `xcelium` as selectable tools, but
-no enrolled cocotb group runs on them: the cocotb targets on VCS fail the
-runner on live RTL assertions while every test passes (issue #1755, open),
-and no Xcelium configuration exists. VCS is used for the SystemVerilog UVM
-realization of the bare `smu` DUT (`--framework uvm`) on the same
-`tb/tb_top.sv`; see <<sv-uvm-realization>>.
+`tools/dv/run_dv.py`. `hw/sys/smu/dv/README.md` owns which simulators run
+which groups and why; this chapter describes the bench. The SystemVerilog UVM
+realization of the bare `smu` DUT (`--framework uvm`) shares `tb/tb_top.sv`
+with the cocotb shape; see <<sv-uvm-realization>>.
 
 Two DUTs share this DV root:
 
@@ -23,11 +19,11 @@ Two DUTs share this DV root:
 |Launch name |HDL top |What it is for
 |`--dut smu_block` |`tb/tb_top.sv` (`smu_uvm_top`) |Bare `smu #(.SEP(0))` with its
 technology interfaces tied off. Holds the leaves the wrapper cannot express
-(`testlists/all.toml`), plus the SV-UVM view whose harness is this TB's `UVM`
+(`testlists/block.toml`), plus the SV-UVM view whose harness is this TB's `UVM`
 shape
 |`--dut smu` (alias `smu_wrapper`) |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
-`hw/top/smu_wrapper.sv` with production pins, in a `no_sep` and a `sep_rtl`
-compile profile. The SMU regression: `hosted` and `all`
+`hw/top/smu_wrapper.sv` with production pins, in one compile profile,
+`compile_smu_chiplet` (SEP=1). The SMU regression (`testlists/all.toml`)
 |===
 
 The two are separate evidence surfaces. Logs carry `DUT_TAG=BARE`
@@ -43,7 +39,7 @@ describes the component behind them.
 
 === Environment Components
 
-`SmuEnv` (`common/smu_dv_env/smu_env.py`) builds the
+`SmuEnv` (`cocotb/env/smu_env.py`) builds the
 scoreboard and reads `SmuEnvCfg` out of the PyUVM `ConfigDB`; the JTAG and AXI
 agents are created on demand by the sequences that need them, against
 `cocotb.top`, rather than being instantiated for every test. The one agent that
@@ -157,7 +153,7 @@ reference model and in the scenario evidence, so the run must FAIL.
 [[sep-processor-state-monitor]]
 === SEP Processor-State Monitoring (wrapper)
 
-The `sep_rtl` wrapper profile boots real SEP firmware, so every wrapper test
+The wrapper's firmware leaves boot real SEP images, so every wrapper test
 builds `cocotb_wrapper/env/smu_sep_cpu_trace_monitor.py`, a passive
 `uvm_component` that self-idles unless `+sep_itcm_hex` names a SEP image. It is
 the wrapper realization of the SEP bench's `env/sep_cpu_trace_monitor.py` and
@@ -251,22 +247,20 @@ fields are the *Bench stand-ins and exceptions* entries in
 === Testlists
 
 `testlists/*.toml` hold the leaf entries — one `[[tests]]` table per test, with
-its module, tags and timeout. `testlists/wrapper.toml` holds the `--dut smu`
-leaves and `[[groups]]`; `testlists/all.toml` holds the `--dut smu_block` groups
-and includes `dtp.toml`. A test is selectable by its own name or by any group it
+its module, tags and timeout. `testlists/all.toml` is the `--dut smu` root and
+`testlists/block.toml` the `--dut smu_block` root; the groups each declares,
+and what each group is for, are the *Regression Groups* section of
+`SMU_VPLAN.adoc`. A test is selectable by its own name or by any group it
 belongs to.
 
-Names classified OUT are catalogued in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`; none of
-them is enrolled and none is reportable as a PASS.
+Names classified deferred or OUT are catalogued in
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`; none of them is enrolled and
+none is reportable as a PASS.
 
 === Build and Run
 
-`hw/sys/smu/dv/README.md` owns the build and run recipes: its Quick start
-names the CI, nightly and full-package commands and the toolchain-container
-step the firmware leaves need, and its tools table carries the versions.
-`run_dv.py` bootstraps its own locked `uv` environment; results land under
-`build/runs/<timestamp>__<tool>__<label>/` with a per-test `result.json` and
-`results.xml`.
+`hw/sys/smu/dv/README.md` owns the build and run recipes, the tool versions and
+where a run's results land.
 
 [[sv-uvm-realization]]
 === SystemVerilog UVM Realization (`--framework uvm`)

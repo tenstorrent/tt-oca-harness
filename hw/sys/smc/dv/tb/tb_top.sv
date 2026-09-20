@@ -2912,6 +2912,9 @@ module smc_uvm_top
     logic [31:0] cold_rst_assert_count = '0;
     always @(negedge rst_cold_ni) cold_rst_assert_count <= cold_rst_assert_count + 32'd1;
     assign u_tb_if.cold_rst_assert_count = cold_rst_assert_count;
+    logic [31:0] cool_rst_assert_count = '0;
+    always @(negedge rst_cool_ni) cool_rst_assert_count <= cool_rst_assert_count + 32'd1;
+    assign u_tb_if.cool_rst_assert_count = cool_rst_assert_count;
 
     // SEP_IN AXI4 initiator: the shared ocah_axi_vip UVM master agent drives
     // the s_axi_* request side (the agent's driver procedurally drives the

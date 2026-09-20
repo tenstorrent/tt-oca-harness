@@ -4,14 +4,17 @@
 
 from __future__ import annotations
 
-import pyuvm
 from seq_lib.smu_sep_dbg_gating_seq import SmuSepDbgGatingSeq
 from smu_base_test import smu_base_test
 
 
-@pyuvm.test()
 class smu_sep_dbg_gating_test(smu_base_test):
-    """Require JTAG2AXI to be launched or blocked per the lifecycle state."""
+    """Require JTAG2AXI to be launched or blocked per the lifecycle state.
+
+    Shared body: not a test itself. The testlist names one module per eFuse
+    image, each a subclass in its own file, so the module a testlist entry names
+    ends in that entry's name.
+    """
 
     async def run_scenario(self) -> None:
         await SmuSepDbgGatingSeq(self).run()

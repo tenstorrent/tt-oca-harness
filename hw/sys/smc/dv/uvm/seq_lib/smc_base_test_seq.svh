@@ -25,16 +25,23 @@ class smc_base_test_seq extends ocah_sequence;
   // Named-evidence IDs recorded by the shared helpers below.
   localparam string ChkFuseSense = "CHK-FUSE-SENSE-DONE";
   localparam string ChkCsrResp = "CHK-CSR-RESP";
+  localparam string ChkMemResp = "CHK-MEM-RESP";
+  localparam string ChkSbMinAct = "CHK-SB-MIN-ACTIVITY";
 
-  // Plumbed by the test before start(): the SMC-local TB interface and the
-  // two configuration levels.
+  // Plumbed by the test before start(): the SMC-local TB interface, the two
+  // configuration levels, and the always-on scoreboard whose per-feature
+  // comparison counts are the one activity number this sequence does not
+  // produce itself.
   virtual smc_tb_if tb_vif;
   smc_test_cfg      test_cfg;
   smc_env_cfg       env_cfg;
+  smc_scoreboard    scoreboard;
 
-  // Per-pass named evidence and the CSR access count it certifies.
+  // Per-pass named evidence and the access counts it certifies, kept apart so
+  // a scenario's non-vacuity claim names the access shape it actually issued.
   ocah_checker m_check;
   int unsigned csr_accesses;
+  int unsigned mem_accesses;
 
   function new(string name = "smc_base_test_seq");
     super.new(name);
@@ -45,12 +52,13 @@ class smc_base_test_seq extends ocah_sequence;
   // ------------------------------------------------------------------
 
   function void attach_evidence(string required_ids[$]);
-    if (tb_vif == null || test_cfg == null || env_cfg == null)
-      `uvm_fatal(get_type_name(), "tb_vif/test_cfg/env_cfg not plumbed by the test")
+    if (tb_vif == null || test_cfg == null || env_cfg == null || scoreboard == null)
+      `uvm_fatal(get_type_name(), "tb_vif/test_cfg/env_cfg/scoreboard not plumbed by the test")
     m_check = ocah_checker::type_id::create({get_name(), ".csr"});
     m_check.name_tag     = "smc_csr";
     m_check.required_ids = required_ids;
     csr_accesses = 0;
+    mem_accesses = 0;
   endfunction
 
   function void finalize_evidence();
@@ -58,11 +66,64 @@ class smc_base_test_seq extends ocah_sequence;
     m_check.finalize(1'b1);
   endfunction
 
+  // Record one completed-with-OKAY response. is_ok() is the predicate, NOT
+  // worst_resp(): ocah_axi_worst_resp() returns OKAY for an EMPTY response
+  // list, which is exactly what a watchdog expiry leaves behind, so comparing
+  // the worst response would record PASS for an access that got no response
+  // at all. ocah_axi_resp_ok() returns 0 on an empty list.
+  function void check_response(string check_id, ocah_axi_item result, string name,
+                               string context_s = "");
+    void'(m_check.expect_true(
+        check_id,
+        result.is_ok(),
+        $sformatf(
+            "%s %s resp=%s beats=%0d timed_out=%0b",
+            name,
+            context_s,
+            result.worst_resp().name(),
+            result.resp_list.size(),
+            result.timed_out)
+    ));
+  endfunction
+
   // Record one named evidence comparison (uvm_error on mismatch).
   function void check_evidence(string check_id, string name, bit [63:0] observed,
                                bit [63:0] expected, string context_s = "");
     void'(m_check.expect_equal(check_id, observed, expected,
                                {name, context_s.len() ? " " : "", context_s}));
+  endfunction
+
+  // ------------------------------------------------------------------
+  // Observed minimum activity. csr_accesses / mem_accesses are produced by
+  // this sequence on both sides of their compare, so they reconcile the body
+  // against its own loop bounds and catch a truncated pass -- they cannot
+  // catch a monitor that saw nothing. This one takes its left operand from
+  // the always-on scoreboard, which is fed by the PASSIVE monitor and the
+  // reference models, and its right operand from the scenario's construction.
+  //
+  // It reads the count as it stood when this pass STARTED, so the compare is
+  // against `loop_index` completed passes and never races the pairing of an
+  // item this pass has not issued yet. A floor rather than an equality: this
+  // is the minimum-activity count the stimulus implies, and other features
+  // may legitimately record more.
+  // ------------------------------------------------------------------
+  function void check_min_activity(string feature, int unsigned per_pass);
+    int unsigned observed = scoreboard.compare_count(feature);
+    int unsigned floor_v  = loop_index * per_pass;
+    void'(m_check.expect_true(
+        ChkSbMinAct,
+        observed >= floor_v,
+        $sformatf(
+            {
+              "feature=%s scoreboard compares=%0d after %0d completed passes, ",
+              "floor=%0d (%0d predicted reads per pass)"
+            },
+            feature,
+            observed,
+            loop_index,
+            floor_v,
+            per_pass)
+    ));
   endfunction
 
   // ------------------------------------------------------------------
@@ -143,9 +204,8 @@ class smc_base_test_seq extends ocah_sequence;
     op.data = data;
     op.start(p_sequencer.m_sep_in_seqr);
     csr_accesses++;
-    check_evidence(ChkCsrResp, label.len() ? label : $sformatf("wr_0x%0h", addr),
-                   64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(
-                   "write addr=0x%0h data=0x%08h", addr, data));
+    check_response(ChkCsrResp, op.result, label.len() ? label : $sformatf("wr_0x%0h", addr),
+                   $sformatf("write addr=0x%0h data=0x%08h", addr, data));
     `uvm_info(get_type_name(), $sformatf("SEP_IN CSR WRITE %-24s addr=0x%014h data=0x%08h resp=%s",
                                          label, addr, data, op.result.worst_resp().name()),
               UVM_MEDIUM)
@@ -157,9 +217,8 @@ class smc_base_test_seq extends ocah_sequence;
     op.start(p_sequencer.m_sep_in_seqr);
     csr_accesses++;
     data = op.data;
-    check_evidence(ChkCsrResp, label.len() ? label : $sformatf("rd_0x%0h", addr),
-                   64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(
-                   "read addr=0x%0h data=0x%08h", addr, data));
+    check_response(ChkCsrResp, op.result, label.len() ? label : $sformatf("rd_0x%0h", addr),
+                   $sformatf("read addr=0x%0h data=0x%08h", addr, data));
     `uvm_info(get_type_name(), $sformatf("SEP_IN CSR READ  %-24s addr=0x%014h data=0x%08h resp=%s",
                                          label, addr, data, op.result.worst_resp().name()),
               UVM_MEDIUM)
@@ -171,6 +230,47 @@ class smc_base_test_seq extends ocah_sequence;
     csr_read(addr, observed, label);
     check_evidence(check_id, label.len() ? label : $sformatf("csr_0x%0h", addr), 64'(observed),
                    64'(expected), $sformatf("addr=0x%0h", addr));
+  endtask
+
+  // ------------------------------------------------------------------
+  // Memory operations: one reusable sequence per operation on the SEP_IN
+  // sequencer, full-width 64-bit single beats (AxSIZE = 3) rather than the
+  // 32-bit CSR shape above. Both record CHK-MEM-RESP and count toward
+  // mem_accesses.
+  // ------------------------------------------------------------------
+
+  task mem_write(bit [63:0] addr, bit [63:0] data, string label = "");
+    smc_axi_mem_write_seq op = smc_axi_mem_write_seq::type_id::create("mem_write");
+    op.addr = addr;
+    op.data = data;
+    op.start(p_sequencer.m_sep_in_seqr);
+    mem_accesses++;
+    check_response(ChkMemResp, op.result, label.len() ? label : $sformatf("wr_0x%0h", addr),
+                   $sformatf("write addr=0x%0h data=0x%016h", addr, data));
+    `uvm_info(get_type_name(),
+              $sformatf("SEP_IN MEM WRITE %-24s addr=0x%014h data=0x%016h resp=%s", label, addr,
+                        data, op.result.worst_resp().name()), UVM_MEDIUM)
+  endtask
+
+  task mem_read(bit [63:0] addr, output bit [63:0] data, input string label = "");
+    smc_axi_mem_read_seq op = smc_axi_mem_read_seq::type_id::create("mem_read");
+    op.addr = addr;
+    op.start(p_sequencer.m_sep_in_seqr);
+    mem_accesses++;
+    data = op.data;
+    check_response(ChkMemResp, op.result, label.len() ? label : $sformatf("rd_0x%0h", addr),
+                   $sformatf("read addr=0x%0h data=0x%016h", addr, data));
+    `uvm_info(get_type_name(),
+              $sformatf("SEP_IN MEM READ  %-24s addr=0x%014h data=0x%016h resp=%s", label, addr,
+                        data, op.result.worst_resp().name()), UVM_MEDIUM)
+  endtask
+
+  // Read one 64-bit word and compare it against an expected value.
+  task mem_read_check(string check_id, bit [63:0] addr, bit [63:0] expected, string label = "");
+    bit [63:0] observed;
+    mem_read(addr, observed, label);
+    check_evidence(check_id, label.len() ? label : $sformatf("mem_0x%0h", addr), observed, expected,
+                   $sformatf("addr=0x%0h", addr));
   endtask
 
 endclass : smc_base_test_seq

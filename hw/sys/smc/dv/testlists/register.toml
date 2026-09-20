@@ -14,7 +14,8 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_default_reg_rd_test"
-module = "smc_default_reg_rd_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_default_reg_rd_test", uvm = "smc_default_reg_rd_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "axil", "canonical"]
