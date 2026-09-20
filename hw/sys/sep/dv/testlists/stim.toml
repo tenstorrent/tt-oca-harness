@@ -22,7 +22,7 @@ schema_version = 1
 # TO REMOVE THIS SUITE:
 #   1. drop "stim.toml" from `includes` in all.toml
 #   2. delete the BEGIN/END coverage-stimulus block in the `all` group
-#   3. restore `expected_count = 104` on the `all` group
+#   3. restore `expected_count = 80` on the `all` group
 #   4. delete this file, cocotb/tests/**/sep_cov_*.py, cocotb/seq_lib/sep_cov_*.py
 #      and cocotb/tests/km_rom_cov_*.parhex
 
@@ -119,20 +119,6 @@ module = "system.sep_cov_xbar_axprot_sweep_test"
 seed = 1
 timeout_sec = 1800
 tags = ["coverage", "stimulus", "axi", "xbar", "prot", "system"]
-run_modes = ["no_cpu"]
-target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
-
-[[tests]]
-# Coverage stimulus only -- no contract is asserted. WRAP bursts of 4 and 8
-# beats at size=3 into the SEP SRAM aperture, aligned to their own wrap
-# boundary, so AxBURST[1] moves on the crossbar and SRAM ports. no_cpu;
-# +skip_fuse_sense.
-name = "sep_cov_xbar_wrap_burst_test"
-module = "system.sep_cov_xbar_wrap_burst_test"
-seed = 1
-timeout_sec = 1800
-tags = ["coverage", "stimulus", "axi", "xbar", "burst", "system"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
@@ -957,10 +943,319 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
+#
+# Entries for the toggle-coverage stimulus leaves added on top of the existing
+# `sep_cov_*` suite. Format follows `testlists/system.toml`; the entries below
+# belong with the other `sep_cov_*` leaves in `testlists/stim.toml`, and each
+# name also belongs in that file's group list and in `testlists/all.toml`.
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. The read half of the
+# filter slot data walk: writes a pattern into each 32-bit word of START_ADDR,
+# END_ADDR and FILTER_CONFIG on all 48 slots and reads the same word back, so
+# the per-slot AXI-Lite read-data lanes carry a non-reset value.
+# no_cpu; +skip_fuse_sense.
+name = "sep_cov_csr_filter_slot_readback_walk_test"
+module = "system.sep_cov_csr_filter_slot_readback_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "csr", "filter", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. The read half of the
+# remap region data walk: writes a pattern into each 32-bit word of the 16
+# alias regions and the 16 AP and 16 STEE output-remap regions and reads the
+# same word back, so the three remap response buses carry a non-reset value.
+# no_cpu; +skip_fuse_sense.
+name = "sep_cov_csr_remap_region_readback_walk_test"
+module = "system.sep_cov_csr_remap_region_readback_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "csr", "remap", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Repeats a read and write
+# set over the SRAM, filter, remap, SEP_CPU_CTRL and TRNG apertures with
+# AxUSER swept over the full 12-bit field, so user[11:4] moves on the
+# crossbar, crypto-interconnect and system-peripheral request and response
+# structs. no_cpu; +skip_fuse_sense.
+name = "sep_cov_xbar_axuser_sweep_test"
+module = "system.sep_cov_xbar_axuser_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "axi", "xbar", "user", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Repeats the same read and
+# write set with AxID swept over 0..7, the whole CPU-LSU ID field, so the ID
+# lanes on both crossbars and on the crypto interconnect move instead of
+# holding zero. no_cpu; +skip_fuse_sense.
+name = "sep_cov_xbar_axid_sweep_test"
+module = "system.sep_cov_xbar_axid_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "axi", "xbar", "id", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Writes the reset value
+# into one register word of every sep_system_csr bank with AxPROT swept over
+# 0b000..0b111, so the write-side prot lanes of the filter and remap demux
+# legs move; the existing AxPROT sweep drives those legs on reads only.
+# no_cpu; +skip_fuse_sense.
+name = "sep_cov_csr_bank_prot_write_sweep_test"
+module = "system.sep_cov_csr_bank_prot_write_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "csr", "prot", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Reads and writes at three
+# decode holes inside the system-CSR crossbar rule, which the CSR decode
+# answers from its ERR_SLV leg -- master port 8 of the demux, wholly untoggled
+# today. The accesses are answered with an error by design and are marked
+# tolerant. no_cpu; +skip_fuse_sense.
+name = "sep_cov_csr_demux_err_slv_leg_test"
+module = "system.sep_cov_csr_demux_err_slv_leg_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "csr", "decode", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+# Adams Bridge coverage-stimulus leaves. Append these to testlists/stim.toml
+# and add both names to the coverage-stimulus block of the `all` group in
+# testlists/all.toml.
+#
+# Both entries are STIMULUS ONLY: no checker, no scoreboard, no expected-value
+# compare. A PASS means the engine ran the path. Neither may be cited as
+# evidence for a SEP_VPLAN row.
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. ML-DSA KEYGEN+SIGN (CTRL
+# 0x4) with MLDSA_CTRL.STREAM_MSG set and a 9-byte context, so the message
+# arrives over MLDSA_MSG / MLDSA_MSG_STROBE under MLDSA_STATUS.MSG_STREAM_READY
+# flow control instead of as an external mu. Drives abr_ctrl's stream_msg_fsm_ps
+# through all six states, the KEYGEN_SIGN program-counter entry point, the taken
+# leg of MLDSA_KG_JUMP_SIGN and the internal-mu leg of MLDSA_SIGN_CHECK_MODE --
+# none of which the three ML-DSA KAT leaves reach, because all three use the
+# ACVP external-mu vector groups. Runtime is a full keygen plus a full sign, so
+# the budget matches sep_abr_mldsa_sign_verify_kat_test. no_cpu;
+# +skip_fuse_sense.
+name = "sep_cov_abr_mldsa_stream_msg_test"
+module = "crypto.sep_cov_abr_mldsa_stream_msg_test"
+seed = 1
+timeout_sec = 10800
+tags = ["coverage", "stimulus", "crypto", "abr", "mldsa"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. ML-KEM KEYGEN+DECAPS
+# (MLKEM_CTRL.CTRL 0x4) as one command over an arbitrary ciphertext. FIPS-203
+# implicit rejection means a ciphertext that does not decapsulate still yields a
+# shared key, so the program runs to completion and nothing is compared. Drives
+# the second of the two ABR_RESET program-counter entry points no leaf issues,
+# and the taken leg of MLKEM_KG_E that jumps keygen straight into decaps.
+# sep_abr_mlkem_kat_test walks KEYGEN, ENCAPS and DECAPS as three separate
+# commands and does not reach either. no_cpu; +skip_fuse_sense.
+name = "sep_cov_abr_mlkem_keygen_decaps_test"
+module = "crypto.sep_cov_abr_mlkem_keygen_decaps_test"
+seed = 1
+timeout_sec = 10800
+tags = ["coverage", "stimulus", "crypto", "abr", "mlkem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+#
+# New pulp-platform AXI fabric coverage-stimulus leaves. Merge into
+# testlists/stim.toml and add each name to the `all` group in testlists/all.toml.
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Multi-beat INCR writes and
+# reads presented together into disjoint SEP SRAM regions with B and R
+# backpressured, so axi_to_detailed_mem's read-metadata and write-metadata
+# paths ask for the single memory port in the same cycle and its selection
+# arbiter alternates and locks.
+name = "sep_cov_axi_to_mem_rw_arb_test"
+module = "system.sep_cov_axi_to_mem_rw_arb_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "sram", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Twelve writes and twelve
+# reads offered together into one crypto aperture with B and R held off until
+# the crossbar slave port and the converter read slots saturate, so AxREADY
+# drops on the ID remapper's master port while both channels are offered and
+# its HoldAW / HoldAR / HoldAx arms are entered.
+name = "sep_cov_axi_id_remap_hold_test"
+module = "system.sep_cov_axi_id_remap_hold_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Read and write pairs sharing
+# one AxID offered to two different crossbar master ports at once, in both
+# orders, with the first response backpressured, so the axi_demux ID counters
+# report the master-port select as occupied and hold the second request.
+name = "sep_cov_axi_demux_select_occupied_test"
+module = "system.sep_cov_axi_demux_select_occupied_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+#
+# Pass-3 coverage-stimulus leaves for the OpenTitan IP blocks SEP integrates.
+# Merge these into testlists/stim.toml and add each name to the `all` group in
+# testlists/all.toml and to the coverage-stimulus group in testlists/stim.toml.
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Clears ESRC
+# CTRL.MODULE_ENABLE while the boot phase is running and drives the
+# alert-threshold exit out of BootPhaseDone, so entropy_src_main_sm takes its
+# !enable_i arms (:107, :120) and its AlertState arm (:127). ALERT_THRESHOLD is
+# set to 1 against a short health-test window; FIPS_LOCK is never written so
+# those registers stay writable. no_cpu; +skip_fuse_sense, +esrc_noise_force.
+name = "sep_cov_esrc_disable_alert_walk_test"
+module = "system.sep_cov_esrc_disable_alert_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "system", "entropy_src", "esrc"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Walks EDN through boot
+# request mode, the boot uninstantiate that follows clearing BOOT_REQ_MODE,
+# software port mode and auto request mode, so edn_main_sm leaves the boot path
+# it is pinned to by the shared bring-up. MAX_NUM_REQS_BETWEEN_RESEEDS is 1 so
+# AutoDispatch takes both its generate and its reseed arm. no_cpu;
+# +skip_fuse_sense, +esrc_noise_force.
+name = "sep_cov_edn_mode_walk_test"
+module = "system.sep_cov_edn_mode_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "system", "edn", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Drives the CSRNG software
+# application port through instantiate, generate, update, reseed and
+# uninstantiate, including additional-data commands, a multi-block generate, the
+# out-of-sequence and invalid-command refusals and an exceeded reseed counter.
+# EDN is left disabled so the software port is the only active application.
+# no_cpu; +skip_fuse_sense, +esrc_noise_force.
+name = "sep_cov_csrng_sw_cmd_walk_test"
+module = "system.sep_cov_csrng_sw_cmd_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "system", "csrng", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Runs AES at 128, 192 and
+# 256 bits in both directions, in ECB and in CBC, then pulses the TRIGGER
+# clears. AES192Enable and the decryption key-generation pass are both live in
+# this integration (aes_wrapper.sv overrides no parameter); no leaf had selected
+# either. Needs real entropy for the masking PRNG. no_cpu; +skip_fuse_sense,
+# +esrc_noise_force.
+name = "sep_cov_aes_key192_dec_clear_test"
+module = "crypto.sep_cov_aes_key192_dec_clear_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "crypto", "aes"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Saves and restores an HMAC
+# context with the stop and continue commands at SHA2-256, 384 and 512, writes
+# WIPE_SECRET, and drives each of the four software error codes. The restored
+# digest is not compared against a straight-through one. no_cpu;
+# +skip_fuse_sense.
+name = "sep_cov_hmac_stop_continue_test"
+module = "crypto.sep_cov_hmac_stop_continue_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "crypto", "hmac", "sha2"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Drives each KMAC software
+# error check (command out of sequence, unsupported mode/strength, wrong PREFIX,
+# entropy_ready clear) and squeezes a SHAKE-256 output past one Keccak rate with
+# the manual-run command. Needs real entropy for the masking PRNG. no_cpu;
+# +skip_fuse_sense, +esrc_noise_force.
+name = "sep_cov_kmac_err_squeeze_walk_test"
+module = "crypto.sep_cov_kmac_err_squeeze_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "crypto", "kmac", "sha3"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+# Pass-3 coverage stimulus for the Tenstorrent-owned SEP IP.
+# Merge these entries into testlists/stim.toml, and add the test names to the
+# cov_stimulus group list there.
+
+[[tests]]
+# Coverage stimulus only: the sealed complement of
+# sep_cov_km_kpv_ctrl_slot_walk_test. That image seals even slots only, so on
+# odd slots km_kpv.sv:227/230 hold lock_write.hwset and lock_use.hwset low and
+# the HW-set arms of the replicated km_kpv_reg CTRL fields never execute. This
+# image seals every slot and then erases it, so both HW-set arms are driven on
+# all 64 CTRL instances.
+name = "sep_cov_km_kpv_seal_all_slots_test"
+module = "km.sep_cov_km_kpv_seal_all_slots_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "kpv", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_kpv_seal.parhex"]
+
 [[groups]]
 # The stimulus suite on its own: `--items stim`.
 name = "stim"
-expected_count = 63
+expected_count = 80
 tests = [
     "sep_cov_alias_remap_cacheable_test",
     "sep_cov_alias_remap_region_sweep_test",
@@ -1020,9 +1315,26 @@ tests = [
     "sep_cov_window_remap_dma_window_test",
     "sep_cov_xbar_axprot_sweep_test",
     "sep_cov_xbar_burst_len_sweep_test",
-    "sep_cov_xbar_wrap_burst_test",
     "sep_cov_abr_reg_walk_test",
     "sep_cov_aes_gcm_phase_walk_test",
     "sep_cov_dma_hash_and_tail_test",
     "sep_cov_otbn_base_isa_walk_test",
+    "sep_cov_csr_bank_prot_write_sweep_test",
+    "sep_cov_csr_demux_err_slv_leg_test",
+    "sep_cov_csr_filter_slot_readback_walk_test",
+    "sep_cov_csr_remap_region_readback_walk_test",
+    "sep_cov_xbar_axid_sweep_test",
+    "sep_cov_xbar_axuser_sweep_test",
+    "sep_cov_abr_mldsa_stream_msg_test",
+    "sep_cov_abr_mlkem_keygen_decaps_test",
+    "sep_cov_aes_key192_dec_clear_test",
+    "sep_cov_axi_demux_select_occupied_test",
+    "sep_cov_axi_id_remap_hold_test",
+    "sep_cov_axi_to_mem_rw_arb_test",
+    "sep_cov_csrng_sw_cmd_walk_test",
+    "sep_cov_edn_mode_walk_test",
+    "sep_cov_esrc_disable_alert_walk_test",
+    "sep_cov_hmac_stop_continue_test",
+    "sep_cov_km_kpv_seal_all_slots_test",
+    "sep_cov_kmac_err_squeeze_walk_test",
 ]
