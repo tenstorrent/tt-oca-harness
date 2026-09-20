@@ -95,6 +95,13 @@ def _lc_transition_fixed(seed: int) -> dict[str, int]:
     return fixed
 
 
+def _cov_diversity_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_cov_efuse_shadow_image_diversity_test``'s ``cfg.image_fixed()``."""
+    mod = _load_env_module("sep_cov_efuse_diversity", "sep_cov_efuse_diversity.py")
+    fixed: dict[str, int] = mod.SepCovEfuseDiversityCfg(seed).image_fixed()
+    return fixed
+
+
 def _set_only_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
     mod = _load_env_module("sep_efuse_set_only", "sep_efuse_set_only.py")
@@ -236,6 +243,41 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "fixed_from": "lc_transition",
         "fixed_extra": {"TRANSIENT_RMA_EN": 1},
     },
+    # Code-coverage stimulus leaves (docs/SEP_COV_VPLAN.adoc "eFuse and
+    # lifecycle"). Each mirrors its test's select_efuse_image call.
+    #
+    # Plain FUSE_COMMAND_PROGRAM completion: one unlocked spare, both lock
+    # words clear, so the program starts from a blank field.
+    "sep_cov_efuse_program_no_readback_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": {"SPARE0": 0, "LOCKS": 0, "LOCKS_SPARE": 0},
+    },
+    # Read-lock guard arm: same blank spare; the read-lock bit is burned by
+    # the test itself and re-staged into its golden before the resense.
+    "sep_cov_efuse_read_lock_guard_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": {"SPARE0": 0, "LOCKS": 0, "LOCKS_SPARE": 0},
+    },
+    # Pre-sense shadow access: the image only has to make a real sense run, so
+    # it is the ordinary seeded random one.
+    "sep_cov_efuse_map_access_during_sense_test": {"mode": "random", "lc_raw": 0x0},
+    # Shadow fan-out diversity. The patterned pins come from
+    # SepCovEfuseDiversityCfg(seed); see _cov_diversity_fixed().
+    "sep_cov_efuse_shadow_image_diversity_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed_from": "cov_diversity",
+    },
+    # Transient-RMA CHIPLET arm: the seeded RMA digests with TRANSIENT_RMA_EN
+    # set, which is the case the token arms are evaluated in.
+    "sep_cov_efuse_transient_rma_chiplet_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "rma_token",
+        "fixed_extra": {"TRANSIENT_RMA_EN": 1},
+    },
     # Locked-field shadow IRQ. SPARE lock bits and patterns come from
     # SepLockedFieldIrqCfg(seed); see _locked_field_irq_fixed().
     "sep_locked_field_access_irq_path_test": {
@@ -327,6 +369,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "lc_transition":
             fixed = _lc_transition_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "cov_diversity":
+            fixed = _cov_diversity_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
         extra = spec.get("fixed_extra")

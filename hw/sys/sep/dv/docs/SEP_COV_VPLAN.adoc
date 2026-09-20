@@ -1,0 +1,1093 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-coverage-stimulus-plan]]
+== SEP Code-Coverage Stimulus Plan
+
+=== Purpose and scope
+
+This plan lists stimulus that reaches SEP logic which the current test suite
+never exercises. It is a CODE-COVERAGE plan, not a verification plan. The
+verification contracts stay in link:SEP_VPLAN.adoc[SEP_VPLAN].
+
+Every test in this plan is STIMULUS ONLY:
+
+* No checker, no scoreboard, no assertion is added by these tests.
+* A test in this plan PASSES when the stimulus completes without a bus error.
+  It asserts no contract, so it cannot fail a design behaviour.
+* The single requirement is that the target logic is REACHABLE BY FRONTDOOR --
+  legal AXI or AXI-Lite transactions, legal register programming, or KM
+  firmware running from ROM. No backdoor writes. No hierarchical forces.
+
+Read that literally when auditing this suite. A `sep_cov_*` test that passes is
+evidence that a path was driven, and evidence of nothing else. Do not cite one
+as proof that a behaviour is correct, and do not count one toward a VPLAN row.
+
+=== Naming
+
+Coverage-driven tests take the prefix `sep_cov_`:
+
+  sep_cov_<ip>_<behaviour>_test
+
+The `sep_cov_` prefix sorts the whole suite together and marks it as
+stimulus-only at a glance. Each test carries the same statement in its
+docstring and in its testlist comment.
+
+=== Baseline
+
+Measurements below come from the merged VCS run
+`build/runs/20260919_114453__vcs__all`. Per-module line and toggle counts do
+not depend on the scope epoch, so they hold against any epoch. The headline
+SCORE does depend on it: this plan is measured against epoch
+`sep-code-cov-v2`, whose baseline SCORE is 55.08 (LINE 54.58, COND 55.85,
+TOGGLE 50.66, FSM 23.90, BRANCH 53.83, ASSERT 48.18).
+
+The design-wide shape is the same in every IP below: LINE is largely closed and
+TOGGLE is not. Most SEP modules execute every line while their bus fields hold
+one value for the whole simulation.
+
+Two causes account for most of it:
+
+. No master in the design issues a multi-beat burst. `ar.len` and `aw.len[7:0]`
+  are fully untoggled on every port of both crossbars.
+. Register banks are programmed at one index, or with one value, so the
+  replicated slots and the wide address fields stay at reset.
+
+=== Environment changes this plan needs
+
+. `env/sep_axi_agent.py` pins `prot` to `None`. The OCAH VIP already accepts a
+  `prot` argument (`ocah_axi_master_sequence.py:501-506`), so the agent needs
+  one item field to pass it through. This unlocks `AxPROT[0]` and `AxPROT[2]`.
+. The AXI sequences leave `burst` unset and drive `AxLEN=0`. They need
+  multi-beat `BURST_INCR` support, and `BURST_FIXED` where the slave allows it.
+
+=== SEP system fabric, system CSR and crypto interconnect
+
+Scope: `hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv`,
+`sep_system_peripherals.sv`, `hw/sys/sep/rtl/sep_local_axi_xbar.sv`,
+`hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv`,
+`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv` and the crypto wrappers.
+Source of the numbers: the merged VCS report of run
+`20260919_114453__vcs__all` (96 tests), `cov/report/modinfo.txt`.
+
+Line coverage is not the gap. `sep_system_csr` is 43/43 lines, `hmac_wrapper`,
+`kmac_wrapper`, `sep_dma_wrap`, `sep_crypto_otbn_wrapper` and
+`sep_crypto_abr_wrapper` are all 100% line. The mass is toggle:
+
+* `sep_system_csr` — 34.95% bits (49,780 of 142,422); 4,737 signals, 1,573
+  toggled.
+* `sep_system_peripherals` — 14.96% (252 of 1,685 signals).
+* `sep_local_axi_xbar` — 22.17% (300 of 1,353).
+* `sep_system_peripherals_xbar` — 29.87% (158 of 529).
+* `sep_crypto_axi_interconnect` — 40.68% (711 of 1,748).
+* `sep_abr_kv_shim` — 17.52% (24 of 137).
+
+The shape of the gap is uniform. All 48 filter slots and all 48 remap regions
+elaborate and every slot receives traffic — `outbound_filter_axil_reqs[k]` shows
+9 toggled signals for every k in 0..31 — but the data that is written is sparse.
+`seq_lib/sep_fabric_csr_bank_seq.py` (`bank_field_walk`) writes an index-derived
+pattern `(bank<<22)|((idx+1)<<16)|((word+1)<<12)` into the low 32-bit word only.
+The result is that `outbound_filter_ctrl_o[k].FILTER_CONFIG.read_allowed`,
+`write_allowed`, `entry_enabled`, `allow_ns`, `allow_burst` and `locked` never
+toggle for any k, `START_ADDR`/`END_ADDR` bits [55:24] never toggle, and the
+per-slot lock error slave (`err_slv`, `locked_reg_req`) is exercised on two
+slots per seed. The proposals below extend that sweep; they do not replace it.
+
+The second shape is AXI attributes. No master in the design ever issues a
+multi-beat burst: `ar.len[7:0]` and `aw.len[7:0]` are fully untoggled on every
+master and slave port of both crossbars. `AxPROT[0]` and `AxPROT[2]` are never
+driven, `AxCACHE[3:2]` is never set, and `AxBURST[1]` (WRAP) is never used.
+
+[cols="2,3,4,1",options="header"]
+|===
+| Test name | Target logic (module + signal group) | Frontdoor stimulus | Est. objects reached
+
+| `sep_cov_csr_filter_slot_data_walk_test`
+| `sep_system_csr`: `gen_outbound_filter_reg` (2752 untoggled), `gen_inbound_filter_reg` (1374), `outbound_filter_ctrl_o` (894), `inbound_filter_ctrl_o` (177), `outbound_filter_status_i` (585, the `hw=rw` granule write-back)
+| For each of the 32 outbound slots (`0x10A2_0000 + k*0x20`) and the 16 inbound slots (`0x10A2_1000 + k*0x20`), write `0xFFFF_FFFF`, `0x5555_5555`, `0xAAAA_AAAA`, `0x0000_0000` to both 32-bit words of `START_ADDR` (`+0x08`, `+0x0C`) and `END_ADDR` (`+0x10`, `+0x14`), and to the `FILTER_CONFIG` low word (`+0x00`) covering `read_allowed[0]`, `write_allowed[1]`, `entry_enabled[4]`, `allow_ns[8]`, `src_id[19:16]`, `group_id[23:20]`, `allow_burst[24]`. Leave bit 31 of `+0x04` clear so the slot stays unlocked. A `START_ADDR`/`END_ADDR` pair inside one granule also drives the `hwif_in` write-back.
+| ~4,800
+
+| `sep_cov_csr_filter_lock_all_slots_test`
+| `sep_system_csr`: per-slot `locked_reg_req` / `locked_reg_resp` and the `prim_axi_lite_err_slv` instance in `gen_outbound_filter_reg` / `gen_inbound_filter_reg` (`sep_system_csr.sv:570-581`, `:686-697`), plus `FILTER_CONFIG.locked.value` on all 48 slots
+| Write bit 31 of `FILTER_CONFIG+0x04` on each of the 48 slots, then issue a further `FILTER_CONFIG` write to each locked slot with `allow_unverified_write_resp=True`. The locked slot routes that write to the error slave, which is the only way `locked_reg_req.aw_valid` asserts. The lock is permanent until reset, so this must be its own test and must not share a run with the data walk.
+| ~1,700
+
+| `sep_cov_csr_remap_region_data_walk_test`
+| `sep_system_csr`: `local_masters_alias_remap_reg_ctrl_o` (618), `stee_output_remap_reqs` (639), `ap_output_remap_reqs` (577), `ap_output_remap_reg_ctrl_o` (65, zero covered), `stee_output_remap_reg_ctrl_o` (56, zero covered)
+| For each of the 16 alias regions (`0x10A1_0000 + k*0x20`) write all-ones and alternating patterns to `REGION_START` (`+0x00`/`+0x04`), `REGION_END` (`+0x08`/`+0x0C`) and `REGION_ATTRS` (`+0x10`/`+0x14`), including `cacheable[62]` and `valid[63]` (both plain R/W, clearable). For each of the 16 AP regions (`0x10A1_0200 + k*0x8`) and 16 STEE regions (`0x10A1_0300 + k*0x8`) write both words of `REGION_ATTRS`. Today `stee_output_remap_reqs[3].aw_valid` never asserts: the STEE demux is only addressed for a write on a few regions.
+| ~1,900
+
+| `sep_cov_fabric_outbound_demux_leg_sweep_test`
+| `sep_system_peripherals`: `address_remap_demux_select_aw/ar` legs `SEP_EXT_TO_SMU` and `SEP_EXT_TO_SMC` (`sep_system_peripherals.sv:180-211`), `sep_system_peripheral_56_remapped_from_demux_axi_reqs` (250), `smn_outbound_axi_req_o` (69), `sep_ext_to_smc_axi_req_o` (52); `sep_system_csr`: `sep_cpu_ctrl_hwif_out.SMU_GLOBAL_BASE_ADDR` and `.SMU_REGION_SIZE` (both zero covered)
+| Write `SEP_CPU_CTRL.SMU_GLOBAL_BASE_ADDR` (`0x10A3_0100`) and `SMU_REGION_SIZE` (`0x10A3_0110`). Then program one local-master alias-remap region with a `REGION_ATTRS.offset` that lifts the remapped address into that window, and a second region with an offset above `EXTERNAL_TO_CHIPLET_BASE_ADDR` = `56'h1_0000_0000` (`sep_pkg.sv:255`), which the decode also routes to `SEP_EXT_TO_SMU`. Issue reads and writes through both alias windows from the CPU-LSU master. This is the only frontdoor way to raise address bits above [31:29] on the 56-bit outbound path.
+| ~600
+
+| `sep_cov_xbar_burst_len_sweep_test`
+| `sep_local_axi_xbar`: `xbar_mst_req` (516), `xbar_slv_req` (189), `sram_req_o`, `cpu_tcm_req_o`, `sep_crypto_req_o` `ar.len`/`aw.len`/`w.last`; `sep_system_peripherals_xbar`: `xbar_mst_req` (161), `xbar_slv_req` (91)
+| INCR reads and writes of 2, 4, 8, 16 and 32 beats at `size=3` (16..256 bytes) to the SEP SRAM aperture and to the mailbox aperture, using the existing `SepAxiAccessSeq(length=..., burst=1, size=3)` arguments. No master in the design issues `len > 0` today, so every `len` bit on every crossbar port is dark.
+| ~1,400
+
+| `sep_cov_xbar_axprot_sweep_test`
+| `AxPROT[0]` and `AxPROT[2]` on every path: `gen_outbound_filter_reg[*].filter_reg_req.aw.prot`/`ar.prot`, `local_master_aR_reqs[*]`, `ap_output_remap_reqs[*]`, `stee_output_remap_reqs[*]`, `xbar_mst_req[*].{aw,ar}.prot`, `sep_crypto_axi_req_i.ar.prot[2]`
+| Repeat a short read/write set to the filter, remap and CSR apertures with `prot` swept over `0b000`..`0b111`. `ocah_axi_master_sequence.py:501-506` already accepts a `prot` kwarg; `env/sep_axi_agent.py:158` currently pins it to `None`, so the agent needs one item field added. This is stimulus plumbing, not a force.
+| ~900
+
+| `sep_cov_xbar_wrap_burst_test`
+| `{aw,ar}.burst[1]` on `xbar_mst_req`, `xbar_slv_req`, `sram_req_o` and `sep_crypto_axi_req_i` — WRAP is never used
+| WRAP bursts (`burst=2`) of 4 and 8 beats at `size=3`, address aligned to the wrap boundary, to the SRAM aperture. `SepAxiAccessSeq` already carries a `burst` argument (`seq_lib/sep_axi_access_seq.py:32`).
+| ~130
+
+| `sep_cov_fabric_cacheable_remap_test`
+| `{aw,ar}.cache[3:2]` on `sep_external_req_o`, `entropy_fifo_req_o`, `smn_outbound_axi_req_o` and the crossbar master ports
+| Set `REGION_ATTRS.cacheable` (bit 62) on a local-master alias-remap region, then transact through that region. The alias-remap block ties the top two `AxCACHE` bits high for a matching region (`hw/ip/axi_alias_remap/regs/alias_remap.rdl`, `cacheable` field). No other frontdoor sets those bits.
+| ~120
+
+| `sep_cov_crypto_ic_trng_aperture_test`
+| `sep_crypto_axi_interconnect`: `trng_axi32_req` — 32 signals, none covered; the TRNG leg of the interconnect is never addressed
+| AXI reads and writes to the TRNG aperture at `0x1091_7000` (`OCH_SEP_TOP_TRNG_APERTURE_BASE_ADDR`, `regs/gen/sv/sep_addrmap_pkg.sv:71`) from the CPU-LSU master, sweeping the register offsets of `regs/include/sep_trng.rdl`.
+| ~40
+
+| `sep_cov_crypto_key_share_walk_test`
+| `hmac_wrapper` / `kmac_wrapper` `key_csr_hwif_out.KEY_SHARE0[*]`, `KEY_SHARE1[*]` (17 each, zero covered); `sep_crypto_otbn_wrapper.key_csr_hwif_out` (24, one covered); `sep_crypto_abr_wrapper.abr_key_hwif_out` (195); `sep_abr_kv_shim.hwif_i` (195) and `ab_kv_read[*].read_entry[4:0]` / `ab_kv_write.write_entry[4:0]`, which stay at slot 0
+| KM mailbox `CMD_KEY_TRANSFER` to each of HMAC, KMAC, OTBN and ABR in one run, with key material whose words alternate `0xFFFF_FFFF` / `0xAAAA_AAAA` / `0x5555_5555`, and with the key handle placed in several key-vault slots so `read_entry`/`write_entry` leave 0. The existing per-engine sideload KATs each use one fixed key and run in separate leaves.
+| ~450
+
+| `sep_cov_dma_csr_field_walk_test`
+| `sep_dma_wrap`: `reg_req_i` (57), `axi32_slv_req` (54), `axi32_slv_req_offset` (52), `dma_req_o` / `dma_axi_req_raw` (43 each) — the DMA's own master `len`/`size`/upper address bits
+| Write every R/W field of the Secure DMA CSR block at `0x1080_0000` (`SRC_ADDR_LO/HI` `+0x10`/`+0x14`, `DST_ADDR_LO/HI` `+0x18`/`+0x1C`, `ADDR_SPACE_ID` `+0x20`, `ENABLED_MEMORY_RANGE_BASE/LIMIT` `+0x24`/`+0x28`, `TOTAL_DATA_SIZE` `+0x38`, `CHUNK_DATA_SIZE` `+0x3C`, `TRANSFER_WIDTH` `+0x40`) with all-ones and alternating patterns, then run transfers at each legal `TRANSFER_WIDTH` and at a chunk size that forces multi-beat bursts on `dma_req_o`.
+| ~300
+|===
+
+==== Not frontdoor reachable
+
+`AxCACHE[3:2]` beyond the remap case, `AxQOS[3:0]`, `AxREGION[3:1]`, `AxLOCK` and
+`AxUSER[11:4]`::
+The OCAH AXI master VIP wrapper passes only `burst`, `prot`, `size`, `id` and
+`user` to the driver (`ocah_axi_master_sequence.py:501-506`). These attributes
+are legal AXI, but no sequence can drive them until the VIP wrapper exposes
+them. They are not reachable with the stimulus API as it stands.
+
+`aw.atop[5:0]` on every crossbar port::
+AXI atomic operations. The VIP has no atomic API, and
+`sep_system_peripherals.sv:214-216` instantiates the demux with
+`AtopSupport(1'b0)`, so the fabric does not carry them.
+
+`{aw,ar}.size[2]` on every 64-bit port::
+`size[2]` encodes a beat of 16 bytes or more. The bus is 64-bit, so the largest
+legal `AxSIZE` is 3 and bit 2 cannot be set by a legal transaction.
+
+`dbg_req_i` / `dbg_resp_o` on `sep_local_axi_xbar` (32 + 13 signals, zero
+covered)::
+The debug master port is driven by the RISC-V debug module, not by a test
+master. It needs `+ENABLE_SEP_CPU_AXI_VIP` and a debug-master sequence. That is
+a separate environment change, not a register write, so it is out of scope for a
+stimulus-only test; listed here so it is not counted as an ordinary hole.
+
+`otbn_otp_key_req` / `otbn_otp_key_rsp` in `sep_crypto_otbn_wrapper` (6
+signals)::
+The OTP scrambling-key handshake is a sideband interface to an OTP key
+provider. No register in the OCAH hierarchy starts it, so there is no legal
+frontdoor path.
+
+`scan_mode_i`, `test_en_i`, `test_i`, `lsio_trigger_i`::
+DFT and trigger pins tied off at the top level. No frontdoor path.
+
+`alert_rx_i` on the crypto wrappers (3..6 signals each)::
+The alert receiver inputs come from the alert handler ping mechanism. The SEP
+open tree has no alert-handler frontdoor to drive a ping, so the `ping_p`/`ping_n`
+bits stay quiet.
+
+Anomaly, not a proposal::
+`key_csr_hwif_out.KEY_SHARE0[*]` and `KEY_SHARE1[*]` in `hmac_wrapper`,
+`kmac_wrapper` and `sep_crypto_otbn_wrapper` show zero toggle in this merge,
+although `sep_km_hmac_sideload_kat_test`, `sep_km_kmac_sideload_kat_test` and
+`sep_km_otbn_sideload_kat_test` all PASS in the same run and are in the merged
+test list. `KEY_CTRL.key_valid` does toggle. Either the key words the KATs
+sideload leave those bits at their reset value, or the toggle data for those
+instances did not reach the merge. Resolve this before the
+`sep_cov_crypto_key_share_walk_test` estimate above is relied on.
+=== AXI fabric
+
+The pulp-platform AXI fabric in SEP scores 1232/2041 lines (60.4%) and
+75128/218280 toggle bits (34.4%). The gap is one shape, not one block: every
+AXI master in the current suite drives single-beat INCR only. `cocotb/seq_lib/`
+confirms it -- `sep_sram_breadth_seq.py` states the SRAM port is driven
+AWLEN=0/ARLEN=0 only, `sep_axi_partial_lane_read_seq.py` sweeps AxSIZE 0..2 at
+AxLEN=0, and `sep_axi_access_seq.py` leaves `burst` at `None` for all callers
+except the inbound-filter tests. No test drives AxLEN>0, BURST_FIXED or
+BURST_WRAP anywhere in SEP.
+
+Effect on the width converters. `axi_dw_downsizer` has two parameter groups.
+The AxiMaxReads=8 group (9 instances: the 8 crypto/eFuse converters plus the
+DMA register converter) is 483/1256 lines, 38.46%, with per-instance line
+scores from 18.31 (TRNG) to 37.98 (HMAC). The AxiMaxReads=16 group (sep_io,
+sep_wdt) is 542/2400, 22.58%. 87 lines of the crypto group are dead in *every*
+replicate of *every* instance.
+
+Reachability of the crypto downsizers. They are 64-bit slave to 32-bit master,
+behind one `axi_demux` slave port in `sep_crypto_axi_interconnect.sv:236-266`,
+fed by `sep_crypto_axi_req_i`. `sep.sv:427` drives that port from
+`sep_local_axi_xbar_wrapper`. The inbound external master is slave port 4 of
+that same crossbar (`sep_local_axi_xbar.sv:255`, `sep.sv:414`), and
+`sep_local_axi_xbar_pkg.sv:217-223` gives input 4 the connectivity vector
+`10'b1110101110`; output index 5 is sep_crypto, and that bit is 1. The inbound
+port data width is 64 bits end to end (`sep_pkg.sv:22` and `sep_pkg.sv:623`).
+So the crypto downsizers are inbound-reachable with 64-bit bursts. They are
+not CPU-only.
+
+[cols="1,1,2,1",options="header"]
+|===
+| Test name | Target logic (module + uncovered lines) | Frontdoor stimulus (exact burst shape) | Est. objects reached
+
+| sep_cov_axi_dw_read_burst_shape_test
+| `axi_dw_downsizer.sv` R path: 430-431, 516-517 (R_SPLIT_INCR_DOWNSIZE);
+438-458, 524-544 (BURST_FIXED); 464-465, 550-551 (BURST_WRAP); 604, 631-633
+(split continuation)
+| Inbound master, base 0x10900000 (sep_crypto). (a) ARSIZE=3 (8B), ARLEN=128
+(129 beats), ARBURST=INCR, 8-byte aligned, start offset 0 so the 1032-byte
+burst stays inside one 4 KB page -- conv_ratio=2 gives mst burst_len=257 > 255,
+which is the only way into R_SPLIT_INCR_DOWNSIZE. (b) ARSIZE=3, ARLEN=0,
+ARBURST=FIXED. (c) ARSIZE=3, ARLEN=3, ARBURST=FIXED (error leg). (d) ARSIZE=3,
+ARLEN=3, ARBURST=WRAP, address aligned to 32 B. Repeat each on 2 targets
+(OTBN, HMAC). Default backpressure.
+| ~60 lines x 9 instances, plus the R FSM branch pairs
+
+| sep_cov_axi_dw_write_burst_shape_test
+| `axi_dw_downsizer.sv` W path: 892-893 (W_SPLIT_INCR_DOWNSIZE), 900-930
+(BURST_FIXED single, BURST_WRAP), 801, 822-828 (split AW re-issue and B
+forwarding)
+| Same targets. (a) AWSIZE=3, AWLEN=128, AWBURST=INCR, WSTRB=0xFF on every
+beat, WLAST on beat 129. (b) AWSIZE=3, AWLEN=0, AWBURST=FIXED. (c) AWSIZE=3,
+AWLEN=3, AWBURST=FIXED. (d) AWSIZE=3, AWLEN=3, AWBURST=WRAP. Hold BREADY low
+for 8 cycles after the last W beat on run (a) to hold the B-forward FIFO.
+| ~30 lines x 9 instances
+
+| sep_cov_axi_dw_outstanding_reads_test
+| `axi_dw_downsizer.sv` 375-643, transaction-slot replicates t=1..7. The
+"ALWAYS 351" row repeats 8x per instance; today only slot 0 reaches
+`R_INCR_DOWNSIZE`, which is why 22 of 138 lines are live in slots 1..7.
+| Inbound master, 8 outstanding ARs with 8 distinct ARIDs issued back to back
+before any R beat is accepted: ARSIZE=3, ARLEN=7, ARBURST=INCR, addresses
+64 B apart inside the OTBN window. Hold RREADY low until all 8 ARs are
+accepted, then release. AxiMaxReads=8, so 8 IDs fill every slot.
+| ~116 lines x 7 slots x 9 instances
+
+| sep_cov_axi_to_mem_burst_test
+| `axi_to_detailed_mem.sv` 180-186 (read beat counter), 226-235 (write beat
+counter), 283-309 (read/write meta arbitration and `sel_lock`)
+| Inbound master to SRAM at 0x10000000. (a) ARSIZE=3, ARLEN=15, INCR.
+(b) AWSIZE=3, AWLEN=15, INCR, full strobes. (c) the same read and write issued
+in the same cycle, repeated with RREADY and BREADY throttled every other
+cycle, to force the arbiter to lock a selection. Also run (a) against the boot
+ROM window.
+| 27 lines x 2 instances, plus branch pairs
+
+| sep_cov_axi_burst_splitter_gran_split_test
+| `axi_burst_splitter_gran.sv` 204-221 (W granularity counter), 360-379 (R
+split feedthrough), 274-281 (B error aggregation)
+| The splitter sits inside every `axi_to_axi_lite`, so any AXI-Lite-backed CSR
+block works. (a) AWSIZE=2, AWLEN=15, INCR to the entropy FIFO window
+0x10950000 -- the splitter must cut it into single-beat Lite writes.
+(b) ARSIZE=2, ARLEN=15, INCR to the same window. (c) ARSIZE=2, ARLEN=15, INCR
+starting 8 beats before the end of a CSR window so the tail beats decode into
+a hole and one split beat returns SLVERR; that is the only way to set `b_err_q`
+and reach line 276.
+| 29 lines x up to 20 instances
+
+| sep_cov_axi_id_remap_concurrent_test
+| `axi_id_remap.sv` 255-270 (`both_free` allocation, `ar_prio`), 285-294,
+306-339 (HoldAR / HoldAW / HoldAx)
+| `u_inbound_to_sep_id_remap` is on the inbound path. Drive AW and AR valid in
+the same cycle from the inbound master, both to sep_crypto CSRs, with 4
+distinct AxIDs in flight so the remap table runs out of free output IDs
+(xbar MaxSlvTrans=4, `sep_local_axi_xbar_pkg.sv:201`). Throttle AWREADY and
+ARREADY downstream by keeping BREADY/RREADY low, so at least one of the two
+handshakes fails in the cycle it is offered and the FSM has to hold.
+| 39 lines x 2 instances, plus the FSM states
+
+| sep_cov_axi_isolate_drain_test
+| `axi_isolate_inner.sv` 336-345 (counter clear), 370-394 (AW Hold/Drain),
+439-463 (AR Hold/Drain), 495-501 (flush)
+| Only one full-AXI isolate instance exists: `u_abr_host_isolate`. Issue a
+stream of single-beat reads and writes to the ABR window from the inbound
+master, then assert the ABR isolate request through the reset-control CSR
+while at least one AW and one AR are outstanding and the downstream is
+backpressured (drive the request one cycle after AxVALID rises, before
+AxREADY). Release, then repeat with the traffic idle.
+| 32 lines, 1 instance
+
+| sep_cov_axi_dw_upsizer_dma_test
+| `axi_dw_upsizer.sv` -- 286/884 lines, 32.35%, single instance
+`u_sep_dma_wrap.u_axi_dw_upsizer_dma`
+| No fabric transaction reaches this converter; it is on the DMA engine's own
+master port. Programme the DMA through its CSR window (dma_csr, output index 2,
+reachable from the inbound master) for a 32-to-64 transfer of 1 KB, then repeat
+with an unaligned source address and with a length that makes the upsized burst
+exceed 256 beats.
+| 598 lines, 1 instance
+|===
+
+==== Not frontdoor reachable
+
+*`axi_atop_filter` filtering path, lines 139-326 (57 of 110 lines, 30
+instances).* Every one of these lines needs `aw.atop != 0`. The SEP fabric is
+built ATOPs=0 throughout: `sep_local_axi_xbar.sv:266`,
+`sep_crypto_axi_interconnect.sv:275`, `sep_crypto.sv:560` and `sep_cpu.sv:596`.
+With ATOPs=0 the fabric carries an `assume property` that the atop field is
+zero -- `axi_err_slv.sv:253-254` and `axi_demux_simple.sv:536-540`. The
+testbench also ties the field: `tb/tb_top.sv:950` builds the inbound request
+with `'{default: '0}`, and `tb/tb_top.sv:879` does the same for the CPU-LSU
+splice. Removing those ties is a testbench change, not a backdoor, and would be
+allowed; it is not sufficient. The stimulus would still break the DUT's own
+ATOPs=0 assumption, so an atomic is not legal frontdoor stimulus here. The
+same reasoning parks `axi_dw_downsizer.sv` 476-554 and 853-854 (the
+`R_INJECT_AW` state and `inject_aw_into_ar`) and `axi_isolate.sv` 306-307.
+
+*`axi_dw_downsizer.sv` 468, 554, 930 (`default: ;`).* AxBURST 2'b11 is
+reserved. There is no legal AXI transaction that reaches these arms.
+=== Key manager
+
+The `key_manager` instance is at 8739/9840 lines (88.8%) and 92271/138920 toggle
+bits (66.4%). The uncovered lines concentrate in the generated register blocks:
+`km_kpv_reg` 605 (3559/4164, 85.5%), `km_csr_reg` 325 (1656/1981, 83.6%),
+`km_mailbox_km_reg` 36 (359/395, 90.9%), `km_drbg_sampler` 30 (136/166, 81.9%),
+`km_mailbox_sep_reg` 22 (373/395, 94.4%), `km_drbg_sampler_reg` 21 (203/224,
+90.6%). `km_kpv`, `km_kpv_eraser`, `km_kpv_regfile`, `km_rom_interface`,
+`km_sram_interface`, `km_reset_conditioner` and `picorv32_pcpi_crc` are already
+at 100% lines.
+
+Access split (evidence: `hw/ip/key_manager/rtl/km_axi_lite_xbar.sv` header and
+`XbarCfg.NoSlvPorts: 1` — "KM CPU only"; `hw/ip/key_manager/rtl/key_manager.sv`
+ports 60-70): the only inbound AXI-Lite slave on `key_manager` is
+`mbox_sep_req_i`, the SEP-facing mailbox window (`KM_MAILBOX_SEP`, size 0x1C).
+KPV (KM-local 0x1_2000), KMCSR (0x1_4000), the DRBG sampler (0x1_5000) and the
+KM-side mailbox (0x1_0000) sit behind the crossbar and are reachable only from
+the KM PicoRV32. Any test that targets `km_csr_reg`, `km_kpv_reg`,
+`km_drbg_sampler*` or `km_mailbox_km_reg` therefore needs a KM ROM image.
+
+KPV numbers confirmed from RTL: `km_kpv.sv:67-69` gives `NUM_SLOTS = 64`,
+`WORDS_PER_SLOT = 16`; `km_kpv_addrmap_pkg.sv` gives KEY_ENTRY stride 0x40,
+`KM_KPV_CTRL_NUM = 0x40`, CTRL at 0x1000 + idx*4, block size 0x1108. KM SRAM is
+32 KB and ROM 16 KB (`key_manager.sv:41-42`, `sep_crypto.sv:927-929`).
+
+[cols="1,2,2,1",options="header"]
+|===
+| Test name | Target logic (module + uncovered lines/signals) | Frontdoor stimulus | Est. objects reached
+
+| sep_cov_km_mailbox_sep_decode_err_test
+| `km_mailbox_sep_reg` lines 210-211 (`s_axil_bresp/rresp = 2'b10` from
+`decoded_err`, computed at line 272). Also the error-buffer toggle bits.
+| Inbound AXI-Lite only, no KM ROM. From the SEP master at
+`KM_MAILBOX_SEP_REG_MAP_BASE_ADDR`: read offset 0x0 (SEP_WRITE_DATA is
+write-only; `km_mailbox.sv:161` intercepts writes only, so a read reaches the
+regblock), write offset 0x8 (SEP_READ_DATA is read-only;
+`km_mailbox.sv:162` intercepts reads only), and access offset 0x1C (past
+`KM_MAILBOX_SEP_SIZE`, still inside the 5-bit decode).
+| 2 lines + error-path toggles
+
+| sep_cov_km_mailbox_sep_sticky_test
+| `km_mailbox_sep_reg` 497-498, 526-530, 555-556, 584-585 (SEP_STATUS
+overflow/underflow `hwset` legs) and 613-614, 642-643, 671-672
+(SEP_IRQ_STATUS `inbound_overflow`, `outbound_underflow`, `flushed_by_km`).
+The `.next` legs are hard-tied 0 at `km_mailbox.sv:576,578,580,582`, so `hwset`
+is the only live leg.
+| Inbound AXI-Lite only. MAILBOX_DEPTH is 16 (`sep_crypto.sv:929`): push 17
+words to SEP_WRITE_DATA (0x0) to raise `inbound_overflow`; read SEP_READ_DATA
+(0x8) with the outbound FIFO empty to raise `outbound_underflow`; then W1C
+SEP_STATUS (0xC) and SEP_IRQ_STATUS (0x10). `flushed_by_km` and the
+`outbound_overflow` / `inbound_underflow` twins need the KM side, so pair with a
+ROM that drains and flushes.
+| ~18 lines
+
+| sep_cov_km_kpv_ctrl_slot_walk_test
+| `km_kpv_reg` — all 605 uncovered lines. The CTRL always block at line 384 is
+replicated 64 times; only 3 instances reach 13/13, 45 sit at 9/13. Uncovered
+are the SW-write-1-set legs of `CTRL[i].lock_write`, `.lock_use`, `.erase`,
+`.seal` (lines 387-391) and their HW-set/clear legs.
+| New KM ROM. Over the KM CPU bus walk `KEY_MANAGER_KPV_BASE_ADDR + 0x1000 +
+i*4` for i = 0..63: write `seal|lock_write|lock_use`, read back, then write
+`erase` and poll. Both erase outcomes matter — a sealed slot retires
+(`lock_write`+`lock_use` via hwset) and an unsealed slot frees (hwclr). Pattern
+already proven for 3 slots by `km_rom_vault.S`; this is the same ROM widened to
+all 64 slots, parameterised by a mailbox word for start/stride.
+| ~605 lines
+
+| sep_cov_km_csr_otp_shadow_walk_test
+| `km_csr_reg` readback mux lines 3664-4156: one uncovered line per OTP shadow
+register — `OTP_CHIPLET_UID_VAL/CPL_0..7`, `OTP_SIP_UID_*`, `OTP_SYS_UID_*`,
+`OTP_CLASS_KEY_*`, `OTP_SEP_CHIPLET_ID_*`, `OTP_SEP_SIP_ID_*`,
+`OTP_SEP_SYS_ID_*`, plus `OTP_LIFE_CYCLE`, `OTP_DEMOTION_STATE`,
+`VUART_STATUS`, `VUART_RX`, `TB_CMD_RESULT`, `SRAM_EXEC_MODE`,
+`IRQ_ENTRY_LOCK`, `OTP_READ_LOCK_COLD`. No test reads them.
+| New KM ROM. Word reads of `KEY_MANAGER_KMCSR_BASE_ADDR` 0x14200-0x144BC
+(the shadow block) plus 0x14030, 0x14034, 0x14038, 0x140BC, 0x14104, 0x14108,
+0x1412C, 0x14308. Real fuse sense (no `+skip_fuse_sense`) so the shadows carry
+data; results reported to KM SRAM word 0 as `km_rom_vault.S` does.
+| ~160 lines
+
+| sep_cov_km_csr_otp_lock_test
+| `km_csr_reg` 2970-3150 (`OTP_READ_LOCK` W1S legs, all 9 fields, 37 lines) and
+3177-3660 (`OTP_CHANGE_STATUS` W1C legs, 9 fields, 73 lines).
+| New KM ROM, same image as above. One write of 0x1FF to
+`KEY_MANAGER_KMCSR_OTP_READ_LOCK_BASE_ADDR` (0x14300) covers every W1S leg; one
+write of 0x1FF to `..._OTP_CHANGE_STATUS_BASE_ADDR` (0x14304) covers every W1C
+leg. Both are warm-reset fields, so the writes must follow boot.
+| ~110 lines
+
+| sep_cov_km_csr_tb_vuart_test
+| `km_csr_reg` 2755-2779 (`VUART_TX.tx_byte`, `.data_valid`), 2804-2946
+(`TB_RESULT`, `TB_SIGNATURE`, `TB_ERRCODE`, `TB_SUBTEST`, `TB_CMD`,
+`TB_CMD_ARG`, `TB_CMD_STATUS`), 2686-2697 (`SRAM_EXEC_MODE.enable` W1S),
+2732-2743 (`IRQ_ENTRY_LOCK.lock` W1S), 2617-2618
+(`SRAM_WRITE_LOCK_VIOLATION` hwset).
+| New KM ROM. Single writes to 0x14100, 0x14110, 0x14114, 0x14118, 0x1411C,
+0x14120, 0x14124, 0x14128, 0x14038, 0x140BC, then a store into a write-locked
+SRAM region to raise the lock violation.
+| ~35 lines
+
+| sep_cov_km_rom_lockout_test
+| `picorv32_wrapper.sv:377` (`rom_lockout_q <= 1'b1`), the
+`rom_access_violation_o` path at line 384, and `km_csr_reg` 1878-1882
+(`IRQ_STATUS.rom_access_violation` hwset; the `.next` leg is tied 0 at
+`km_csr.sv:255`).
+| New KM ROM. Set `SRAM_EXEC_MODE.enable` (0x14038), write-lock one SRAM
+region, copy a short stub into it, then jump to it:
+`sram_exec_allowed = is_sram_addr && sram_exec_mode_i && sram_lock_bits_i[...]`
+(`picorv32_wrapper.sv:355`) arms the lockout on the first committed fetch.
+A ROM load afterwards raises `rom_access_violation_o` and the IRQ bit. The
+existing `sep_km_handover_test` does not reach this: `SRAM_EXEC_MODE` is in the
+warm-reset domain and its CMD_SRAM_EXEC follows a warm reset.
+| ~6 lines + the `rom_lockout_q` toggle
+
+| sep_cov_km_csr_fault_irq_test
+| `km_csr_reg` 1617-1621 (`IRQ_STATUS.rom_write_err`), 1704-1708
+(`.axi_decerr`), 1849-1853 (`.exec_violation`). The `.next` legs of all three
+are tied 0 (`km_csr.sv:216,219,250`), so only the `hwset` leg of each pair is
+live; the other two lines per field are structurally dead.
+| New KM ROM. Store into the KM ROM window to raise `rom_write_err_o`
+(`km_rom_interface.sv`); AXI access to a KM-local address outside every
+crossbar rule in `km_axi_lite_xbar.sv:130-190` for `axi_decerr`; a committed
+fetch from a peripheral address for `exec_violation`
+(`picorv32_wrapper.sv:363`). Each fault is recoverable, so one image can raise
+all three in sequence with a W1C of `IRQ_STATUS` (0x1400C) between them.
+| ~6 live lines (6 more dead)
+
+| sep_cov_km_csr_soft_rst_test
+| `km_csr.sv:838` (`soft_rst_q <= 1'b0`) and `km_csr_reg` 1533-1544
+(`SOFT_RST_CODE.code` SW-write legs).
+| New KM ROM. Write `SOFT_RST_CODE_MAGIC` to
+`KEY_MANAGER_KMCSR_SOFT_RST_CODE_BASE_ADDR` (0x14008). `km_csr.sv:819` compares
+the stored code; the match drives `soft_rst_o`, which the reset conditioner
+feeds back as a warm reset, so the register self-clears. Report progress over
+the mailbox before the write.
+| 5 lines + the `soft_rst_q` toggle
+
+| sep_cov_km_drbg_timeout_test
+| `km_drbg_sampler.sv` 380-383 (`StTimeout`: rdata 0, SLVERR, done, back to
+idle) and 327 (`count_bad` increment); `km_drbg_sampler_reg` 414-431
+(`STATUS.timeout_err` W1C and hwset), 472-473 and 499-500 (`count_bad` /
+`count_good` SW-write legs, i.e. lines 317-319 of `km_drbg_sampler.sv`).
+| Inbound register write plus a new KM ROM. From the SEP side set
+`EXT_TRNG_SRC_SEL` to the ext_trng leg (the seq helper in
+`cocotb/seq_lib/sep_esrc_bringup_seq.py:241,311` already writes it);
+`sep_ip_integration.sv:773` drives `ext_trng_axis_req_o = '{default: '0}`, so
+that leg never asserts TVALID. The ROM then writes a small `CFG.TIMEOUT`
+(0x15004) and reads `DATA` (0x15000): the FSM counts out and answers SLVERR.
+Afterwards write `STATUS` (0x15008) to clear `timeout_err`, `count_bad` and
+`count_good`.
+| ~30 lines
+
+| sep_cov_km_drbg_prefetch_read_test
+| `km_drbg_sampler_reg` 558 (`PREFETCH_DATA` readback leg) and the
+`prefetched_valid` consume path in `km_drbg_sampler.sv:345-350`.
+| New KM ROM, internal DRBG leg selected, `+esrc_noise_force`. Set
+`CFG.prefetch` (0x15004), wait, then read `PREFETCH_DATA` (0x1500C) and `DATA`
+(0x15000).
+| ~2 lines + prefetch toggles
+
+| sep_cov_km_crc_illegal_mode_test
+| `km_crc_engine.sv` 48, 57, 66, 75 — the `default:` arm of `mode_legal`,
+`mode_byte_count`, `mode_poly` and `mode_mask`. `mode_q` is 2 bits with three
+legal encodings, so one encoding is unused.
+| Extend `cocotb/tests/km_fw/km_rom_crc.S` with a custom-0 PCPI instruction
+carrying the fourth mode encoding. The engine has no register interface, so the
+instruction is the only route. Same testlist shape as
+`sep_km_crc_pcpi_kat_test` (`+skip_fuse_sense`, dedicated ROM).
+| 4 lines
+
+| sep_cov_km_mailbox_km_decode_err_test
+| `km_mailbox_km_reg` 210-211 (SLVERR from `decoded_err`), 494-598
+(`KM_STATUS` overflow/underflow W1C legs) and 613-672 (`KM_IRQ_STATUS` hwset
+legs).
+| New KM ROM. Read `KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR` (0x10000,
+write-only) and write 0x10008 (read-only) for the error path; push 17 words to
+the outbound FIFO for `outbound_overflow`; read the inbound FIFO when empty for
+`inbound_underflow`; then W1C `KM_STATUS` (0x1000C) and `KM_IRQ_STATUS`
+(0x10010).
+| ~34 lines
+|===
+
+==== Not frontdoor reachable
+
+`picorv32_wrapper.sv` 473, 487, 505 — the `MemRdataSelVrom` legs of the read-data
+select. `vrom_mem_ready` is hardwired to `1'b0` at `picorv32_wrapper.sv:576` and
+`vrom_mem_rdata` to `'0` at line 577, so `current_read_complete` can never be
+true for a VROM address in this integration. The VROM window (0x1000_0000 to
+0x1000_FFFF, `km_intf_pkg.sv:216-217`) is a block-TB feature only.
+
+`km_drbg_sampler.sv` 357, 359, 362, 366-371 and 464 — the `StByteAssembly` and
+stream-error legs of the DATA and prefetch FSMs. They need a beat with fewer
+than four TSTRB bits set, or TVALID falling before TREADY. The internal source
+drives `edn_axis_o[i].tstrb = 4'hF` unconditionally
+(`hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:78`) and is protocol-legal, and the
+ext_trng leg is tied to zero (`sep_ip_integration.sv:773`). No legal register
+programming produces a partial strobe or a TVALID glitch.
+
+`km_drbg_sampler.sv` 425-428 — the prefetch discard on `stream_err_pulse`. Same
+reason: `stream_err_pulse` (`km_drbg_sampler.sv:269`) needs a TVALID fall
+without a handshake, which neither source can produce.
+
+`km_mailbox_sep_reg` 444-445, 455 and 903 — the `SEP_WRITE_DATA.data` storage
+path and the readback of offset 0x8. `km_mailbox.sv:161-164` intercepts writes
+at 0x0 and reads at 0x8 and routes them to the FIFOs, so the regblock's own copy
+of those registers is never written or read. Dead by integration, not by
+stimulus.
+
+`km_mailbox.sv:202` (`sep_fifo_aw_pending_q <= 1'b1`) — an AW accepted a cycle
+or more before its W. The inbound path is fed by the AXI4-64 to AXI-Lite-32
+conversion in `sep_crypto.sv` (`km_mbox_axil_req`), so AW/W separation is set by
+the converter and not by the SEP master.
+
+`km_axi_lite_xbar.sv:223` (`return 1'b0;`) — inside the elaboration-time address
+map validation function. It reports a bad map at compile time and has no
+run-time stimulus.
+
+`km_csr_reg` 1559-1563, 1588-1589, 1620-1621, 1791-1795 and the matching lines
+in the other `IRQ_STATUS` fields — the `stickybit .next` legs. `km_csr.sv`
+214-219, 246, 250, 255 tie `.next` to `1'b0` for `rom_parity_err`,
+`sram_parity_err`, `rom_write_err`, `axi_decerr`, `otp_change`,
+`exec_violation` and `rom_access_violation`; only the `hwset` leg of each pair
+is live. About 12 lines of `km_csr_reg` are dead for this reason.
+
+`km_csr_reg` 1762-1763, 1820-1821 (`IRQ_STATUS.wipe_state`, `.otp_sigint`) and
+3177-3184 `OTP_CHANGE_STATUS` hwset legs — these need an OTP shadow that changes
+value after the first sense, or a differential-encoding fault on `otp_data_i`.
+Re-sensing a different fuse image is an eFuse-side operation, not a KM-side one;
+scope it with the eFuse plan rather than here.
+=== eFuse and lifecycle
+
+Source: `build/runs/20260919_114453__vcs__all/cov/report/`.
+
+`ip/efuse` holds 1205 of 1312 lines (91.8 %) but only 427316 of 472998 toggle
+bits, so 45682 toggle bits are open. `sep_efuse_wrapper` is at 95.8 % line with
+2199 uncovered toggle bits; `sep_lifecycle_ctrl` is at 100.00 % line and
+100.00 % cond with 1452 uncovered toggle bits. `efuse_shadow_regs` misses 29 of
+191 lines. `efuse_interface_shim` scores 70.94 (line 93.71, toggle 47.43).
+`u_efuse_shim_demux` (`sep.sv:505`) scores 21.99 with toggle 5.86 and is the
+worst block in SEP.
+
+`u_efuse_shim_demux` is an `axi_demux` on the crossbar `sep_external` master
+port. Arm 1 is the eFuse shim CSR window (`EFUSE_SHIM_BASE` =
+`OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR` = 0x2000_0000,
+`EFUSE_SHIM_SIZE` = 4). Arm 0 is every other `sep_external` address
+(0x2000_0004 .. 0x3FFF_FFFF), which terminates in `u_axi_extension_err_slv`
+(`top/sep_ip_integration.sv:781`) and returns DECERR. Both arms answer, so both
+are frontdoor reachable. The uncovered part is the multi-ID, multi-outstanding
+logic: `gen_ar_id_counter` is at 1.91 toggle and `gen_aw_id_counter` at 0.23.
+
+The `sep_lifecycle_ctrl` toggle gap is not decode logic. Every LC-state case arm
+and the `security_disable_i` condition are covered. The gap is
+`shadow_regs_i.values[255:0][31:0]`: most fuse words never go 0 -> 1, because
+every test senses a near-blank image.
+
+.New stimulus-only tests
+[options="header",cols="2,2,3,1"]
+|===
+| Test name | Target logic | Frontdoor stimulus | Est. objects reached
+
+| `sep_cov_efuse_shim_demux_arms_test`
+| `u_efuse_shim_demux` (`sep.sv:505`), both arms and its AW/AR ID counters
+| `+skip_fuse_sense`, LC TEST_DEV. SMN-inbound AXI master. Alternate reads and
+writes between 0x2000_0000 (arm 1, shim CSR) and a set of addresses in
+0x2000_0100 .. 0x2100_0000 (arm 0, DECERR). Sweep AXI ID 0..63, keep 4 or more
+transactions outstanding, and use multi-beat bursts on both arms. Leave
+`SYS_DIS` bit 0 (`SEP_DBG`) clear so the inbound filter keeps passing the
+stimulus.
+| ~40 k toggle bits; line 31.68 -> 80 +
+
+| `sep_cov_efuse_shim_init_time_sweep_test`
+| `efuse_shim_ctrl_reg` (toggle 17.13) and both `prim_count` instances in
+`efuse_interface_shim`
+| `+skip_fuse_sense`. Write `EFUSE_BANK_INIT_TIME` at 0x2000_0000 with a
+walking-one and walking-zero sweep of the 32-bit `init_time` field, read back
+after each, and run one `EFUSE_READ_CTRL` read per value so the counter loads
+it.
+| ~1.5 k toggle bits in `efuse_shim_ctrl_reg` and `prim_count_r` / `prim_count_w`
+
+| `sep_cov_efuse_program_no_readback_test`
+| `efuse_interface_shim` lines 401-406, the plain `FUSE_COMMAND_PROGRAM`
+completion in `StWriteWait`
+| Real fuse sense, LC TEST_DEV. Write `EFUSE_PROGRAM_CTRL` (0x1093_0404) with
+`efuse_addr` = an unlocked SPARE bit, `efuse_data` = 1, `program_enable` = 1,
+`efuse_program_read_back` = 0, `efuse_program_go` = 1. Every current test sets
+`efuse_program_read_back`.
+| 6 lines, 1 branch, plus `write_readback_phase_en` toggle
+
+| `sep_cov_efuse_go_without_enable_test`
+| `efuse_program_interface` lines 120-128 and `efuse_read_interface` lines
+113-116
+| `+skip_fuse_sense`. Three legal register sequences, each after a
+`EFUSE_INTERFACE_CTRL_STATUS` error clear: (a) `EFUSE_PROGRAM_CTRL`
+`efuse_program_go` = 1 with `program_enable` = 0; (b) the same with
+`program_enable` = 1 and `efuse_data` = 0; (c) `EFUSE_READ_CTRL` (0x1093_0408)
+`efuse_read_go` = 1 with `read_enable` = 0.
+| 12 lines, 3 branches
+
+| `sep_cov_efuse_req_timeout_arm_test`
+| `efuse_program_interface` lines 175-183, the `program_req_timeout_en_i` arm
+| `+skip_fuse_sense`. Write `EFUSE_PROGRAM_REQ_TIMEOUT` (0x1093_0418) with
+`program_req_timeout_enable` = 1 and `program_req_timeout_cycles` = 4, which is
+below the shim init time, then start a program. Repeat with
+`EFUSE_READ_REQ_TIMEOUT` (0x1093_0414) and a read.
+| 9 lines, 2 branches, `timeout_count_q` toggle (28 bits x 2)
+
+| `sep_cov_efuse_read_lock_guard_test`
+| `efuse_guard` lines 120-122, the `is_reading_i && is_read_locked` arm
+| Real fuse sense, LC TEST_DEV. Program the read-lock bit of one SPARE field,
+resense, then read that SPARE bit address through `EFUSE_READ_CTRL`. Read
+`EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error`, then write
+`efuse_req_error_clear`. Use a SPARE, never `LC_STATE` or a `DIS` field, so the
+lock cannot close the path the test itself uses.
+| 3 lines, 1 branch, `err` / `error_capture` toggle
+
+| `sep_cov_efuse_map_access_during_sense_test`
+| `efuse_shadow_regs` lines 544-546 and 504-506, the two pre-sense-done
+`0xbadcab1e` responses
+| Two leaves. Leaf A: real fuse sense; issue an AXI read of `SEP_EFUSE_MAP`
+(0x1093_0000) as soon as reset is released, while sense is still streaming.
+Leaf B: `+skip_fuse_sense`; issue the same read in the preload window before
+`fuse_sense_done`.
+| 6 lines, 2 branches, `pslverr` / `prdata` toggle
+
+| `sep_cov_efuse_shadow_image_diversity_test`
+| `shadow_regs_o` fan-out: `sep_efuse_wrapper` (2199 bits), `sep_lifecycle_ctrl`
+(1452 bits), `efuse_shadow_regs`, `efuse_interface_controller`
+| Real fuse sense of an eFuse image whose spare and reserved words carry a
+diverse pattern (alternate 0x5555_5555 and 0xAAAA_AAAA), with `LC_STATE`,
+`LOCKS` and the token words left legal. Keep `SYS_DIS` bit 0 (`SEP_DBG`) clear
+and `TRANSIENT_RMA_EN` clear. Resense and repeat with the complement pattern so
+each bit sees both edges.
+| ~3.5 k toggle bits across the eFuse and LCC hierarchy; the largest single win
+
+| `sep_cov_efuse_transient_rma_chiplet_test`
+| `efuse_shadow_regs` line 339 and lines 685-688, the CHIPLET arm of the
+transient-RMA path
+| Real fuse sense. Reach RMA_SiP first so `lc_state_cur[1]` is 1: present a
+matching SIP token over the eFuse MMR. Then set `TRANSIENT_RMA_EN` and present a
+matching CHIPLET token. `sep_lcc_lc_state_w1s_transient_test` takes the SIP arm
+only, so the CHIPLET arm and the `chiplet_state_change_completed` latch stay
+open.
+| 4 lines, 2 branches, LC_STATE bit 2 toggle
+
+| `sep_cov_lcc_demote_rsvd_readback_test`
+| `sep_lifecycle_ctrl_reg` (toggle 41.69): `DEMOTE_1.rsvd` and `DEMOTE_2.rsvd`
+| `+skip_fuse_sense`, LC TEST_DEV. Write all ones then all zeros to `DEMOTE_1`
+(0x1091_8008) and `DEMOTE_2` (0x1091_8010) while `lock` is 0, and read back
+each time. Bits [63:2] are plain storage and no test writes them.
+| 124 toggle bits x 2 registers
+|===
+
+==== Not frontdoor reachable
+
+* `sep_efuse_wrapper:200`, `security_disable && (reset_cycle_cnt == 2'd1)`.
+`security_disable` comes from the SEC_DIS token comparator, which needs a
+frontdoor MMR token write. That write cannot complete one cycle after cold-reset
+release, so the arm is unreachable without a force.
+* `efuse_interface_shim:537-540`, the demux default arm. `fuse_command_e`
+(`efuse_pkg.sv:189-192`) has three encodings and no source drives 2'b11.
+* `efuse_interface_shim:246` and `:481`, the two FSM `default` arms. Every state
+of `efuse_read_state_e` and `efuse_write_state_e` is enumerated.
+* `efuse_shadow_regs:421`, the sense-FSM `default` arm. Same reason.
+* `efuse_shadow_regs:558-560`, the out-of-range APB response.
+`SHADOW_REG_BYTES` is 1024 (`SHADOW_REG_BITS` = `NumEfuseBits` = 8192), and the
+`SEP_EFUSE_MAP` aperture is 0x400, so `paddr > SHADOW_REG_BYTES - 4` cannot be
+produced from the aperture.
+* `efuse_shadow_regs:610` and `:633-635`, and `:709-714`. Lines 610 and 633-635
+are the normal-storage arms of the `is_lc_state_access` write path, but
+`LC_STATE` is in `CLASS1_SHADOW_RANGES`, so only the class-1 arms run. Lines
+709-714 are the `HAS_LC_STATE` = 0 else-branch.
+* `efuse_shadow_regs:184-187`, the `smc_shadow_reg_preload` plusarg. It belongs
+to the SMC instance of the same IP.
+* `efuse_guard:87-88`, `efuse_shadow_reg_access_control:79` and `:120-121`,
+`efuse_interface_controller:234-237`, `:252-255` and `:369-374`. All are the
+`HAS_LC_STATE` = 0 branches. SEP instantiates the IP with `HAS_LC_STATE` = 1
+(`sep_efuse_wrapper.sv`), so these arms are dead in this DUT.
+
+==== Reachable, but blocked by an assertion
+
+`efuse_program_interface:130-134`, `:234`, `:236` and
+`efuse_read_interface:118-124`, `:218`, `:220` are the out-of-bounds address
+arms and the sticky `*_addr_error` latches. The CSR fields are 16 bits wide and
+`SHADOW_REG_BITS` is 8192, so a value of 8192 or more is a legal register write
+and reaches the arms. `efuse_interface_controller:835` (`ProgramAddrValid_A`)
+and `:839` (`ReadAddrValid_A`) declare that combination illegal, so the
+stimulus would fail the run. Either the two assertions or the RTL arms are
+wrong; resolve that before writing
+`sep_cov_efuse_addr_error_latch_test`.
+=== Remap and filter datapath
+
+The remap and filter IPs execute almost every line but move almost no bits. In
+the `20260919_114453__vcs__all` merge, `ip/axi_filter` has 239/241 lines
+(99.2 %) and 4819/36242 toggle bits (13.3 %); `ip/axi_alias_remap` has 170/172
+lines (98.8 %) and 5115/21140 toggle bits (24.2 %); `ip/output_remap` has
+122/124 lines (98.4 %) and 2121/7964 toggle bits (26.6 %). `axi_window_remap`
+is at 867/1862 (46.6 %) and `memory_interface` at 1082/2478 (43.7 %).
+`ip/scrambler` is at 1544/1606 (96.1 %) and needs no new stimulus.
+
+The cause is stimulus width, not dead logic. The rules are programmed and the
+decode runs, but the values are few. In `traffic_filter`, `tx_in_range` toggles
+in 97/97 instance ranges while `cfg_start_addr_i` toggles in only 32/596 and
+`cfg_end_addr_i` in 38/642 -- one or two windows are programmed and the rest of
+the bank keeps its reset value. In `output_remap`, `remap_table[].offset`
+toggles in 0/226 ranges: no AP or STEE region offset is ever written. In
+`axi_alias_remap`, `aw_remap_idx` and `ar_remap_idx` toggle in 0/1 ranges (one
+region index only) and `aw_remapped_cacheable` / `ar_remapped_cacheable` in 0/1
+(the cacheable attribute is never set). Instance scores follow:
+`u_outbound_filter` 12.98 toggle, `u_local_master_remap_wrap` 19.53,
+`u_ap_remap` 22.68, `u_inbound_filter` 48.08.
+
+Existing stimulus is narrow by construction. `sep_inbound_filter_rule_seq.py`
+walks entries 0 and 7 only (`WALK_ENTRIES = (0, 7)`).
+`sep_fabric_local_alias_seq.py` programs one alias region from the upper half
+and issues 32-bit reads with `cacheable` left clear.
+`sep_outbound_remap_seq.py` programs one output-remap region and leaves a
+second at offset 0. `SepAxiAccessSeq` already carries `addr`, `wdata`,
+`length`, `size`, `user`, `burst` and `axi_id`, so the sweeps below need no new
+AXI agent field.
+
+[cols="2,3,4,1", options="header"]
+|===
+| Test name | Target logic | Frontdoor stimulus | Est. objects reached
+
+| sep_cov_filter_rule_bank_sweep_test
+| `axi_filter_wrap.filter_ctrl_i[*]`, `filters[].start_addr` / `.end_addr`
+  (32/596 and 38/642 ranges today), `traffic_filter` `cfg_*` inputs on all
+  2 x 16 and 2 x 32 sub-filters
+| CPU-LSU programs every entry of both banks: all 16 `inbound_filter_ctrl` and
+  all 32 `outbound_filter_ctrl`. Each entry gets its own START/END pair whose
+  set bits walk `[55:12]` (a walking one, then its complement), and its own
+  `FILTER_CONFIG`: `src_id` stepping 0x0..0xF, `allow_ns` and `allow_burst`
+  each 0 and 1, `read_allowed` / `write_allowed` in all four combinations.
+  After programming, one matching beat per entry from the SMN master (inbound)
+  and from the CPU-LSU (outbound), then `entry_enabled` cleared and the beat
+  repeated.
+| ~12000 bits
+
+| sep_cov_filter_datapath_pattern_test
+| `axi_in_req_i`, `err_slv_req` and `axi_filtered_out_req_o` payload bits:
+  `err_slv_req.ar.id` 0/12 ranges, `aw.id` 0/12, `w.data` 14/38, `ar.addr`
+  14/50; `traffic_filter.tx_len_i` 32/128, `tx_group_id_i` 0/96
+| External SMN master, one wide allow window plus the block-by-default region.
+  Sweep AxID over the full instance ID width (0..2^ID-1), AxLEN 0, 1, 3, 7, 15
+  INCR, AxSIZE 0..3, and W data as a walking one and walking zero over the
+  64-bit beat. Set `user[7:4]` (the group-id slice) non-zero on part of the
+  traffic. Address every beat at a different offset inside the window so
+  `ar.addr` / `aw.addr` bits move, and repeat the same sweep on blocked
+  addresses so the err-slave copy of each field moves too.
+| ~4000 bits
+
+| sep_cov_filter_hit_priority_test
+| `write_filter_hit[]` / `read_filter_hit[]` (8/16 ranges each),
+  `allow_write[]` / `allow_read[]` (8/14), the `lzc` index and
+  `write_filter_hit_idx` / `read_filter_hit_idx`
+| Program several entries with deliberately overlapping windows so more than
+  one hit bit is set at once, and step the lowest matching index across the
+  whole bank: entry 0 alone, then 0+1, then 1 alone, and so on up to 15
+  (inbound) and 31 (outbound). One read and one write per configuration.
+| ~1500 bits
+
+| sep_cov_alias_remap_region_sweep_test
+| `axi_alias_remap.remap_regions_i[0..15]`, `aw_remap_hit` / `ar_remap_hit`,
+  `aw_remap_idx` / `ar_remap_idx` (0/1 ranges today), `aw_addr_modified` /
+  `ar_addr_modified` (6/21), and the `prim_carry_select_adder` chain
+  (`a_i` 8/42, `carry`, `sum_chunk`)
+| Program all 16 `local_master_alias_remap_ctrl` regions valid, each with its
+  own 4 KiB window and its own `REGION_ATTRS.offset`. Choose the offsets so
+  the addend bits walk `[55:12]`, and include addends that carry across each
+  of the five 9-bit chunks of the 45-bit adder. One CPU-LSU read and one write
+  per region, plus one beat outside every window for the `no_write_hit` /
+  `no_read_hit` pass-through.
+| ~6000 bits
+
+| sep_cov_alias_remap_cacheable_test
+| `aw_remapped_cacheable` / `ar_remapped_cacheable` (0/1 ranges each) and the
+  `axi_out_req_o.aw.cache` / `.ar.cache` replication
+| One valid alias region. Write `REGION_ATTRS.cacheable = 1`, send a read and
+  a write through the window; rewrite `cacheable = 0` and repeat. Then one
+  beat outside every region, where the incoming `AxCACHE` passes through
+  unchanged.
+| ~40 bits
+
+| sep_cov_output_remap_region_offset_sweep_test
+| `output_remap.remap_table[].offset` (0/226 ranges -- never leaves reset),
+  `remap_ctrl_i[*]`, `remap_aw_idx` / `remap_ar_idx` (3/9 and 3/12),
+  `remapped_aw_addr` / `remapped_ar_addr`, `adjusted_aw_addr` /
+  `adjusted_ar_addr`
+| Program `REGION_ATTRS.offset` on all 16 AP regions and all 16 STEE regions
+  with distinct values whose set bits walk `[55:IdxStart]`. Then one read and
+  one write into each region's own sub-window of the AP and the STEE aperture,
+  so the index slice `adjusted_addr[IdxStart+:4]` steps 0..15 and the low
+  `[IdxStart-1:0]` bits vary per beat.
+| ~5000 bits
+
+| sep_cov_window_remap_dma_window_test
+| `axi_window_remap` on the DMA path: `slv_req_i.aw.addr` 13/39 ranges,
+  `aw_addr_adjusted` 18/44, `ar_addr_adjusted` 16/44, `aw_in_alias` /
+  `ar_in_alias` 2/4
+| DMA descriptors that move data with the source and the destination on both
+  sides of the local-alias window: inside `0xC000_0000 + SRAM offset` and
+  outside it, in both directions, with the transfer length and the buffer
+  alignment varied so the adjusted address bits span the window.
+| ~700 bits
+
+| sep_cov_memory_interface_sram_burst_id_test
+| `memory_interface.mem_axi_req_i` / `mem_axi_req_mem`: `aw.len` 0/3 ranges,
+  `aw.burst` 1/6, `aw.size` 3/6, `aw.id` 4/9, `aw.addr` 7/14, and
+  `mem_req_o.addr` 3/9, `.strb` 3/5, `.wdata` 3/5
+| AXI bursts to the SEP SRAM aperture: AxLEN 1, 3, 7, 15 INCR and WRAP, AxSIZE
+  0..3, AxID stepping over the full 6-bit range, start addresses spanning the
+  whole SRAM window so the high address bits move, and walking-pattern write
+  data with partial strobes from sub-word sizes.
+| ~500 bits
+|===
+
+==== Not frontdoor reachable
+
+* `traffic_filter.pass_group_id` (0/97 ranges). Both filter instances set
+  `EnGroupIdFilter (1'b0)` (`sep_system_peripherals.sv:351` and `:399`), so
+  `pass_group_id` is a constant `1'b1`. The `tx_group_id_i` and `cfg_group_id_i`
+  ports still move, and the sweep above drives them, but the compare itself
+  needs a parameter change.
+* `memory_interface` CSR AXI4-Lite ports: `csr_in_axil_req_i`,
+  `csr_in_axil_resp_o`, `csr_out_axil_req_o`, `csr_out_axil_resp_i` (all 0/3
+  ranges). Both SEP instances tie the inputs to `'0` and leave the outputs
+  unused (`sep.sv:705`, `:708`, `:776`, `:779`). No bus reaches them.
+* `prim_carry_select_adder.c_o` (0/2 ranges). The carry-out is unconnected at
+  both call sites (`axi_alias_remap.sv:93` and `:103`).
+* `axi_window_remap.target_base_i` (0/3 ranges). The inbound instance ties it
+  to `'0` (`sep_system_peripherals.sv:449`); the DMA and CPU instances tie it to
+  the package constant `SEP_LOCAL_ALIAS_REGION_BASE` (`sep_dma_wrap.sv:317`,
+  `sep_cpu.sv:491`, `:506`, `:521`). The value is fixed at elaboration.
+* `axi_window_remap` DMA-path `aw.prot`, `aw.cache`, `aw.lock`, `aw.burst`,
+  `aw.id` and `ar.id` (0/3 to 0/7 ranges). The DMA engine drives these, not the
+  descriptor, so a test cannot vary them from the front door.
+* `axi_filter_wrap.test_en_i` (no toggle). This is the DFT/scan enable, not a
+  functional input.
+=== Entropy, DRBG, TL-UL and mailbox
+
+Coverage source: `build/runs/20260919_114453__vcs__all/cov/report/`.
+`ip/entropy_source` is 1609/2229 lines (72.2%) and 10937/17040 toggle bits
+(64.2%). One module holds most of the gap: `entropy_source_rec_thresh_lut` is
+27/515 lines (5.2%), 488 lines never executed. `entropy_sampler_clocks` is
+48/96 (50%). The instance `u_noise_obs_fifo` is 1/6 lines with 1.33% toggle and
+`u_biw_obs_fifo` is 1/6 lines; `u_shared_ro` is 0.88% toggle. `ip/drbg` is
+136/144 lines (94.4%). `ip/axi_lite_mailbox_unit` is 2/2 lines but 7904/15142
+toggle (52.2%), because only mailbox bank 0 is ever driven. The SEP-level
+`u_entropy_fifo` block scores 29.78 (toggle 25.48), which is its
+`u_axi_to_axi_lite` burst splitter, never given a multi-beat burst.
+
+The single cause of the LUT gap is that the bring-up sequence
+(`cocotb/seq_lib/sep_esrc_bringup_seq.py`) never writes `MIN_ENTROPY_H`.
+`entropy_source.sv:828` assigns `min_entropy_h = reg_out.MIN_ENTROPY_H.H.value`
+and feeds it as the only input of `u_rec_thresh_lut`
+(`entropy_source.sv:830-833`). The LUT is a 256-way `unique case` on that
+8-bit field, two lines per arm. The field is at `MIN_ENTROPY_H` (0x1091615C),
+mask 0xFF. It is `swwel`-gated by `FIPS_LOCK.LOCK` (`entropy_source.sv:784`),
+so the sweep must run before `FIPS_LOCK` is set.
+
+All ESRC tests below need the standard bring-up: `+esrc_noise_force`,
+`+skip_fuse_sense`, `SepEsrcConfigSeq` then `SepEsrcEnableGeneratorsSeq`, and
+no `SepEsrcEnableEdnSeq` (it writes `FIPS_LOCK`) until the sweep is done.
+
+[cols="1,1,2,1",options="header"]
+|===
+| Test name | Target logic | Frontdoor stimulus | Est. objects reached
+
+| `sep_cov_esrc_thresh_lut_sweep_test`
+| `entropy_source_rec_thresh_lut` 256-arm case; `RECOMMENDED_THRESHOLDS` feeds
+| Before `FIPS_LOCK`: for h in 0x00..0xFF write `MIN_ENTROPY_H` (0x1091615C) = h, then read `RECOMMENDED_THRESHOLDS` (0x10916160). 512 register accesses, no entropy flow needed.
+| ~488 lines, plus the 16-bit `rct_limit_o`/`apt_limit_o` toggle pairs
+
+| `sep_cov_esrc_sample_clk_divide_sweep_test`
+| `entropy_sampler_clocks.sv:86-93` per-lane divide mux, 6 arms x 12 lanes
+| Before `FIPS_LOCK`: for d in 0..5, write all twelve `GENERATOR_n_SAMPLE_CLK_CONFIG` (0x10916100 + 4n, n=0..11, field mask 0x1F) = d and let the generators run a few sample periods. Add one pass at d=6 to keep the `default` arm.
+| 48 uncovered lines in `entropy_sampler_clocks`
+
+| `sep_cov_esrc_shared_ro_select_test`
+| `entropy_sampler_clocks.sv:65-71` `u_shared_ro` (0.88% toggle) and the `selected_clk` mux
+| Before `FIPS_LOCK`: write `RING_OSC_CTRL` (0x10916098) `SAMPLE_CLK_SELECT` = 0xFFF so every lane takes the shared RO, run the generators, then step to 0x000 and 0x555 for the mux both ways.
+| `u_shared_ro` toggle, `selected_clk[11:0]` both values
+
+| `sep_cov_esrc_noise_obs_raw_capture_test`
+| `entropy_source.sv:538-539` packer shift/count; `u_noise_obs_fifo` (1/6 lines, 1.33% toggle)
+| Write `NOISE_OBS_CTRL` (0x10916170) `RAW_ENABLE`=1 (bit 0) with `LANE_SEL` (bits 7:4) held at one value for at least 32 sample periods, poll `NOISE_OBS_STATUS` (0x10916174) `LEVEL`, drain `NOISE_OBS_RDATA` (0x10916178). Repeat for LANE_SEL 0..11, then pulse `FLUSH` (bit 1).
+| 2 lines in `entropy_source`, the 6 `entropy_fifo` lines and the 32-bit datapath toggle in `u_noise_obs_fifo`
+
+| `sep_cov_esrc_biw_obs_capture_test`
+| `u_biw_obs_fifo` (1/6 lines) and the BIW observe tap
+| Write `BIW_OBS_CTRL` (0x10916164) `RAW_ENABLE`=1 (bit 0), run the generators, poll `BIW_OBS_STATUS` (0x10916168), drain `BIW_OBS_RDATA` (0x1091616C) until LEVEL reads 0.
+| 5 lines and the `u_biw_obs_fifo` data toggle
+
+| `sep_cov_esrc_bypass_compressor_test`
+| `entropy_source.sv:643-682` FIFO-push FSM `ST_FIFO_PUSH` arm, only live when the compressor is bypassed
+| Before `FIPS_LOCK`: write `CTRL` (0x10916004) with `BYPASS_ENTROPY_COMPRESSOR` (bit 8) = 1, `MODULE_ENABLE` (bit 1) kept set, generators on. Drain `FIFO_RDATA` so the FIFO does not stall.
+| 12 lines in `entropy_source`, plus `fifo_push_count`/`fifo_push_state` toggle
+
+| `sep_cov_esrc_downsample_rate_test`
+| `entropy_source.sv:620` `downsample_count` decrement arm
+| Before `FIPS_LOCK`: write `CTRL` (0x10916004) `DOWNSAMPLE_RATE` (bits 25:16) to a non-zero value, for example 0x00F and 0x3FF, generators on.
+| 1 line plus the 10-bit `downsample_count` toggle
+
+| `sep_cov_drbg_lane_adapter_unsupported_test`
+| `drbg_axil64_lane_adapter.sv:89`, `217-220`, `233-235` unsupported-access path
+| Read at `CSRNG_CTRL`+1 (0x10915015) so `addr[1:0]` != 0 -> SLVERR read arm. Write at the same unaligned address, and a write at an aligned CSRNG/EDN register with a WSTRB that is neither 0x0F nor 0xF0 (for example a single-byte strobe) -> SLVERR write arm.
+| 8 lines, `unsupported_access_pulse_o` and `resp_code` toggle
+
+| `sep_cov_mailbox_all_banks_irq_test`
+| `axi_lite_mailbox_unit` `outbound_interrupt_o[7:1]`, `mst_reqs[2..15]`, demux select values 2..15
+| For m = 1..7 at outbound base 0x10A00000 + 0x1000*m: write WIRQT (+0x20) = 1, IRQEN (+0x38) = enabled, push two words to WRITE_DATA (+0x00), read STATUS (+0x10) and IRQS (+0x30), drain READ_DATA (+0x08). Repeat on the inbound banks at +0x800.
+| 7 interrupt outputs, 14 of 16 demux master ports, large part of the 7238 untoggled mailbox bits
+
+| `sep_cov_mailbox_partial_strobe_deadspace_test`
+| `mailbox_axi_req_i.w.strb[3:0]`, `aw.addr[2:0]`/`ar.addr[1:0]`, `addr[10:7]`, `r.resp[0]`/`b.resp[0]`
+| Partial-strobe writes to WRITE_DATA (+0x00) of bank 0, so only the low or high 32 bits are strobed (`axi_lite_mailbox.sv` gen_w_mbox_data zeroes unstrobed bytes). Then access the dead space inside a bank, offsets 0x50..0x7F8 (for example 0x10A00080 and 0x10A00400), which decode to no register and return SLVERR.
+| ~20 input/output toggle bits including both `resp[0]` bits
+
+| `sep_cov_entropy_pool_burst_test`
+| SEP-level `u_entropy_fifo`.`u_axi_to_axi_lite` (27.68), `i_axi_burst_splitter`, `i_axi_atop_filter`
+| AXI INCR burst reads over the entropy-pool aperture 0x10950000..0x10950017 (`SepAxiItem.burst` = INCR, 2 and 3 beats), covering both the status offsets and the pool-pop offset 0x10950010. The agent already supports multi-beat INCR for the inbound-filter checkers.
+| the burst-splitter datapath and the atop filter pass-through, ~1500 toggle bits under `u_entropy_fifo`
+|===
+
+==== Not frontdoor reachable
+
+* `entropy_generator_complex.sv` shows 0/28 line but 1208/1404 toggle (86%).
+  The 28 lines are the bodies of two elaboration-time functions,
+  `get_total_length` and `get_tapped_length`, which are called only in
+  parameter and generate context. They have no runtime path, so no stimulus
+  can execute them. The module's real logic is already covered by toggle. Do
+  not write a test for these.
+* `tlul_err.sv:67-69` (1-byte), `:73-77` (2-byte) and `:87-89` (default) size
+  arms. Every TL-UL request in SEP originates in `axi_lite_to_tlul.sv`, which
+  hardcodes `tl_o.a_size = 2` at line 133. No legal AXI-Lite access can make
+  the converter emit another size, so these arms are dead in this
+  integration.
+* `tlul_err_resp.sv:45-51`, the d-channel capture. The only instance is the
+  error device of `tlul_socket_1n` (`tlul_socket_1n.sv:243`), whose a_valid is
+  gated on `dev_select_t >= NWD'(N)`. Every SEP socket is N=2 driven by a
+  1-bit steer (`hmac_reg_top.sv:130-137` and the kmac, otbn and spi_host
+  equivalents), so the select is always 0 or 1 and never selects the error
+  device. Unreachable without an RTL or integration change.
+* `sep_entropy_fifo.sv:361-362`, the scrub of a staged pool word when
+  `entropy_clear_i` asserts. It needs the TRNG reset to land in the few cycles
+  between accepting a read of offset 0x10 and the master taking R. Both
+  actions are frontdoor, but the window is not deterministically schedulable
+  from the register interface, so this is not proposed as a stimulus target.
+
+== Corrections found during implementation
+
+The six IP sections above were written from the coverage report and the RTL
+before any test existed. Implementation found these details wrong. They are
+recorded here rather than silently edited, because the same mistakes are easy
+to repeat on the next pass.
+
+[cols="1,3",options="header"]
+|===
+|Plan said |Reality
+
+|Downsizer targets at `0x10900000` (sep_crypto)
+|`0x10900000` is the OTBN *CSR* base. A 1032-byte burst from it runs past the
+register file into block-internal holes. The tests use OTBN DMEM `0x10908000`
+and HMAC `0x10911000`, both page-aligned with the needed span in one 4 KB page.
+
+|AP and STEE remap traffic needs only remap programming
+|`sep_system_peripherals.sv` orders alias-remap -> demux -> legs -> **outbound
+filter** -> out, and the filter blocks by default. Every AP/STEE beat needs a
+live allow window at the *remapped* address first. Two agents found this
+independently.
+
+|`SEP_EXT_TO_SMC` demux leg is drivable
+|`dv/tb/tb_top.sv` ties `smc_global_base_addr_i` / `smc_region_size_i` to zero
+unless the build defines `SEP_SMC_MEM_MODEL`, so the window is empty and the
+SMC branch cannot be selected. The SMC leg also taps off *before* the outbound
+filter (`sep_system_peripherals.sv:246`).
+
+|Inbound mailbox banks reachable from the CPU-LSU master
+|The inbound apertures are on the SMN-inbound path and the inbound filter
+blocks by default. The test opens one inbound-filter allow entry, then drives
+the external master.
+
+|`axi_window_remap` alias base is `0xC000_0000 + SRAM offset`
+|That value is an *example comment* in the `axi_window_remap.sv` header. This
+design drives `local_alias_base_i` from `SEP_CPU_CTRL.SEP_LOCAL_BASE_ADDR`
+(`sep_system_csr.sv:759`, `sep_dma_wrap.sv:315`), reset `0xD000_0000`. The test
+reads the CSR instead of hardcoding either value.
+
+|Output-remap offsets walk `[55:IdxStart]`
+|`REGION_ATTRS.offset` is 1 MiB-granular while `IdxStart` is 19, so the walk
+covers the field's own `[55:20]`.
+
+|AxID sweep 0..63 from any master
+|`dv/tb/tb_top.sv:1852` gives `s_axi` (CPU-LSU) a 3-bit ID; only `m_axi` is
+6 bits (`:1799`). Wide-ID sweeps must run on the external master.
+`memory_interface.aw.id` is 9 bits, so its top bits stay unreachable frontdoor
+with the present TB master.
+
+|Filter banks are programmed at slots 0 and 7 only
+|`sep_fabric_csr_bank_seq.bank_field_walk` does reach all 48 slots, but writes
+only a sparse index pattern to the LOW 32-bit word. Every `FILTER_CONFIG`
+enable bit and `START/END_ADDR[55:24]` is dark on *all* slots.
+|===
+
+== Not legal-consume, so not stimulus: waiver candidates
+
+A path the design DECLARES illegal cannot be reached by legal-consume
+stimulus. Driving one is out-of-spec usage, not coverage work, so these belong
+in `cov/config/vcs/` as structural exclusions rather than in the plan above.
+
+The discriminator is cheap: **when an assertion or an assume guards the arm,
+the design is telling you the arm is unreachable.** All three items below carry
+one.
+
+* **`axi_atop_filter` active path.** The fabric is `ATOPs=0`
+  (`sep_local_axi_xbar.sv:266`, `sep_crypto_axi_interconnect.sv:275`,
+  `sep_crypto.sv:560`, `sep_cpu.sv:596`) and carries
+  `assume property aw.atop=='0` (`axi_err_slv.sv:253`,
+  `axi_demux_simple.sv:536-540`). No conforming master issues an atomic.
+* **`km_crc_engine` default mode arms.** `picorv32_pcpi_crc.sv:88-95` decodes
+  three encodings and defaults a fourth to `CRC_MODE_32C_WORD`, so
+  `insn_recognized` stays low and the core traps; `mode_i` is never `2'b11`.
+  Guarded by `km_crc_engine.sv:135 LegalModeOnStart_A`.
+* **`drbg_axil64_lane_adapter` unsupported-access arms.** The block enforces
+  single-lane 32-bit semantics (header, `:16-17`): `read_supported` requires
+  `addr[1:0]==2'b00`, `write_supported` requires strobe `0x0F` or `0xF0`. A
+  test that drives a sub-word or unaligned access is issuing a shape the spec
+  refuses. `sep_cov_drbg_lane_adapter_unsupported_test` was written and then
+  withdrawn for this reason.
+
+== What a sep_cov_ test still catches
+
+These leaves add no checker, but they are not blind. A `sep_cov_*` test fails
+on:
+
+* an unexpected AXI error response (the agent fails any ungraded non-OKAY);
+* a transaction that never retires (the VIP raises on timeout);
+* any RTL assertion the stimulus provokes -- legal stimulus must not fire one,
+  and if it does, that is a finding to investigate, not a result to waive;
+* a bring-up failure, and for the KM leaves a ROM that never boots
+  (`wait_km_cov_done` requires the 0xC0 magic in `km_sram_word0_o`).
+
+`allow_error` marks the few legal accesses the design answers with an error by
+design -- an unpopulated leg terminated by an error slave, an empty-FIFO read.
+It tolerates the response and asserts nothing about it. It does NOT cover a
+wedge: a tolerated error is still a response.

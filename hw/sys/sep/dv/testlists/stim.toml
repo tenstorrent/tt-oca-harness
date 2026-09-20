@@ -1,0 +1,1028 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+schema_version = 1
+
+# Code-coverage stimulus suite. Rationale and per-test targets are in
+# docs/SEP_COV_VPLAN.adoc.
+#
+# EVERY TEST HERE IS STIMULUS ONLY. It adds no checker, no scoreboard and no
+# expected-value compare, and it sets `stimulus_only = True` so the own-evidence
+# floor in sep_base_test does not apply. A PASS means a path was driven and the
+# stimulus completed without an unexpected bus error. It means nothing else.
+#
+#   * Do NOT cite a sep_cov_* test as proof that a behaviour is correct.
+#   * Do NOT count one toward a SEP_VPLAN row or as VPLAN evidence.
+#   * Verification contracts live in docs/SEP_VPLAN.adoc and its tests.
+#
+# The group is named `stim`, not `cov`, so `--items stim` does not read as a
+# coverage-report flag next to `--stage cov_report`, `cov/config/vcs/` and
+# sep_cov_scope.hier. The `sep_cov_` test prefix marks what a test IS; `stim`
+# names the group you run.
+#
+# TO REMOVE THIS SUITE:
+#   1. drop "stim.toml" from `includes` in all.toml
+#   2. delete the BEGIN/END coverage-stimulus block in the `all` group
+#   3. restore `expected_count = 104` on the `all` group
+#   4. delete this file, cocotb/tests/**/sep_cov_*.py, cocotb/seq_lib/sep_cov_*.py
+#      and cocotb/tests/km_rom_cov_*.parhex
+
+
+# Code-coverage stimulus leaves for the SEP system fabric, system CSR and
+# crypto interconnect (docs/SEP_COV_VPLAN.adoc). Every entry below is
+# STIMULUS ONLY: it adds no checker, no scoreboard and no assertion, and it
+# passes when the path was driven without an unexpected bus error. None of
+# them may be cited as evidence for a SEP_VPLAN row.
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Pattern walk through
+# START_ADDR, END_ADDR and FILTER_CONFIG on all 32 outbound and 16 inbound
+# filter slots, so the replicated sep_system_csr filter register slices and
+# the filter control structs move off their reset value. Leaves the
+# write-once-set lock bit clear. no_cpu; +skip_fuse_sense.
+name = "sep_cov_csr_filter_slot_data_walk_test"
+module = "system.sep_cov_csr_filter_slot_data_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "fabric", "filter", "csr", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Sets FILTER_CONFIG.locked
+# on all 48 filter slots and re-writes each locked slot, which is the only path
+# that asserts the per-slot locked_reg_req and reaches the per-slot
+# prim_axi_lite_err_slv. The lock holds until reset, so this must not share a
+# run with sep_cov_csr_filter_slot_data_walk_test. no_cpu; +skip_fuse_sense.
+name = "sep_cov_csr_filter_lock_all_slots_test"
+module = "system.sep_cov_csr_filter_lock_all_slots_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "fabric", "filter", "csr", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Pattern walk through
+# REGION_START, REGION_END and REGION_ATTRS on all 16 local-master alias
+# regions, and through REGION_ATTRS on all 16 AP and 16 STEE output-remap
+# regions. The two output-remap control structs are at zero toggle today.
+# no_cpu; +skip_fuse_sense.
+name = "sep_cov_csr_remap_region_data_walk_test"
+module = "system.sep_cov_csr_remap_region_data_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "fabric", "remap", "csr", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Programs the SMU window
+# registers, opens two outbound filter slots and points two alias-remap
+# regions at them, then drives reads and writes down the SEP_EXT_TO_SMU demux
+# leg -- once through the programmed SMU window and once above
+# EXTERNAL_TO_CHIPLET_BASE_ADDR, which is the only frontdoor that raises an
+# outbound address bit above bit 31. no_cpu; +skip_fuse_sense.
+name = "sep_cov_fabric_outbound_demux_leg_sweep_test"
+module = "system.sep_cov_fabric_outbound_demux_leg_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "fabric", "remap", "outbound", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. INCR reads and writes of
+# 2, 4, 8, 16 and 32 beats at size=3 into the SEP SRAM aperture, and INCR read
+# bursts of the same lengths into the alias-remap register bank, so AxLEN and
+# WLAST move on both crossbars. No master in the design issues len > 0 today.
+# no_cpu; +skip_fuse_sense.
+name = "sep_cov_xbar_burst_len_sweep_test"
+module = "system.sep_cov_xbar_burst_len_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "axi", "xbar", "burst", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Repeats a short read and
+# write set over the filter, remap and SEP_CPU_CTRL apertures with AxPROT
+# swept over 0b000..0b111, so AxPROT[0] and AxPROT[2] move on the filter,
+# remap and crossbar request paths. no_cpu; +skip_fuse_sense.
+name = "sep_cov_xbar_axprot_sweep_test"
+module = "system.sep_cov_xbar_axprot_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "axi", "xbar", "prot", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. WRAP bursts of 4 and 8
+# beats at size=3 into the SEP SRAM aperture, aligned to their own wrap
+# boundary, so AxBURST[1] moves on the crossbar and SRAM ports. no_cpu;
+# +skip_fuse_sense.
+name = "sep_cov_xbar_wrap_burst_test"
+module = "system.sep_cov_xbar_wrap_burst_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "axi", "xbar", "burst", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Programs two alias-remap
+# regions with REGION_ATTRS.cacheable set, one to a local target and one to
+# the SMU window, then transacts through both, so AxCACHE[3:2] moves on the
+# crossbar master ports and on the outbound port. No other frontdoor raises
+# those bits. no_cpu; +skip_fuse_sense.
+name = "sep_cov_fabric_cacheable_remap_test"
+module = "system.sep_cov_fabric_cacheable_remap_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "fabric", "remap", "cache", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Pattern walk through every
+# R/W configuration word of the Secure DMA CSR block, then SRAM-to-SRAM copies
+# at each legal TRANSFER_WIDTH and one with a chunk smaller than the total, so
+# the DMA register path and the DMA's own master move off one value. STATUS is
+# polled with a bound and logged, never graded. no_cpu; +skip_fuse_sense.
+name = "sep_cov_dma_csr_field_walk_test"
+module = "system.sep_cov_dma_csr_field_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "dma", "csr", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Reads and writes across
+# the TRNG aperture, which is the only way to address the external-TRNG leg of
+# the crypto AXI interconnect. The open tree terminates that leg with an error
+# slave, so the responses are tolerated and neither they nor the read data are
+# graded. no_cpu; +skip_fuse_sense.
+name = "sep_cov_crypto_ic_trng_aperture_test"
+module = "crypto.sep_cov_crypto_ic_trng_aperture_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "crypto", "interconnect", "trng"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Boots the KM firmware on
+# real entropy, then sideloads a differently patterned key to HMAC, KMAC, OTBN
+# and the ABR ML-DSA seed in one run, each from its own key-vault handle, so
+# the wrapper KEY_SHARE words and the ABR key-vault shim indices leave their
+# single value. Nothing is read back and no engine is run. Real fuse sense
+# (PROD image), so no +skip_fuse_sense. no_cpu.
+name = "sep_cov_crypto_key_share_walk_test"
+module = "crypto.sep_cov_crypto_key_share_walk_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 7200
+tags = ["coverage", "stimulus", "crypto", "km", "sideload", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+# Coverage stimulus for the pulp-platform AXI fabric (SEP_COV_VPLAN.adoc,
+# "AXI fabric"). Every entry below is STIMULUS ONLY: it asserts no contract,
+# and a PASS means the path was driven and nothing wedged. None of these may
+# be cited as evidence for a VPLAN row.
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Read burst shapes through the
+# crypto axi_dw_downsizer instances: the over-255-beat INCR split, FIXED
+# single and multi-beat, and WRAP, at AxSIZE=3 on the SMN inbound master.
+name = "sep_cov_axi_dw_read_burst_shape_test"
+module = "system.sep_cov_axi_dw_read_burst_shape_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Write burst shapes through the
+# crypto axi_dw_downsizer instances, including the over-255-beat INCR split
+# with BREADY held low so the B-forward path holds a response.
+name = "sep_cov_axi_dw_write_burst_shape_test"
+module = "system.sep_cov_axi_dw_write_burst_shape_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Eight multi-beat reads on
+# eight distinct ARIDs, all accepted before any R beat retires, to occupy the
+# downsizer transaction slots beyond slot 0.
+name = "sep_cov_axi_dw_outstanding_reads_test"
+module = "system.sep_cov_axi_dw_outstanding_reads_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. 16-beat INCR reads and writes
+# into the SRAM and boot-ROM axi_to_detailed_mem adapters, plus a concurrent
+# read/write pair under R and B backpressure.
+name = "sep_cov_axi_to_mem_burst_test"
+module = "system.sep_cov_axi_to_mem_burst_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "memory", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Multi-beat bursts into an
+# AXI-Lite-backed CSR block so axi_burst_splitter_gran must cut them, including
+# a burst that runs off the end of the block.
+name = "sep_cov_axi_burst_splitter_gran_split_test"
+module = "system.sep_cov_axi_burst_splitter_gran_split_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Four writes and four reads on
+# four distinct AxIDs presented together with B and R backpressured, so
+# axi_id_remap has to arbitrate and hold.
+name = "sep_cov_axi_id_remap_concurrent_test"
+module = "system.sep_cov_axi_id_remap_concurrent_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. The ABR isolate request
+# asserted with an AW and an AR outstanding, then again with the port quiet,
+# to drive the axi_isolate_inner hold/drain states.
+name = "sep_cov_axi_isolate_drain_test"
+module = "system.sep_cov_axi_isolate_drain_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "reset", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. DMA transfers programmed
+# through the DMA CSR window; the DMA master port is the only path that
+# reaches axi_dw_upsizer.
+name = "sep_cov_axi_dw_upsizer_dma_test"
+module = "system.sep_cov_axi_dw_upsizer_dma_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "dma", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+# Key manager rows of the SEP code-coverage stimulus plan
+# (docs/SEP_COV_VPLAN.adoc, "Key manager").
+#
+# EVERY entry below is CODE-COVERAGE STIMULUS ONLY. No checker, no scoreboard
+# and no assertion is added by these tests. A pass means the path was driven
+# and nothing more, so no entry here may be cited as evidence for a VPLAN row.
+
+[[tests]]
+# Coverage stimulus only: drives the km_mailbox_sep_reg decode-error legs from
+# the SEP fabric. No KM ROM; the SEP mailbox window is the only inbound
+# AXI-Lite slave on key_manager.
+name = "sep_cov_km_mailbox_sep_decode_err_test"
+module = "km.sep_cov_km_mailbox_sep_decode_err_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "mailbox", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only: drives the SEP_STATUS / SEP_IRQ_STATUS sticky
+# overflow and underflow legs and their W1C. No KM ROM; the KM stays in
+# software reset so the FIFOs never drain. RANDCFG: pushes past depth.
+name = "sep_cov_km_mailbox_sep_sticky_test"
+module = "km.sep_cov_km_mailbox_sep_sticky_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "mailbox", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only: walks all 64 replicated km_kpv_reg CTRL slots, half
+# sealed and half unsealed. RANDCFG: first slot and stride from the run seed.
+name = "sep_cov_km_kpv_ctrl_slot_walk_test"
+module = "km.sep_cov_km_kpv_ctrl_slot_walk_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["km", "kpv", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_kpv_walk.parhex"]
+
+[[tests]]
+# Coverage stimulus only: reads every word of the KMCSR block, which drives
+# one readback mux leg per OTP shadow, VUART and TB register. Real fuse sense
+# (no +skip_fuse_sense) with the committed default OTP image staged, so the
+# shadows carry data.
+name = "sep_cov_km_csr_otp_shadow_walk_test"
+module = "km.sep_cov_km_csr_otp_shadow_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["km", "kmcsr", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_efuse_preload", "+km_rom_hex=km_rom_cov_csr.parhex"]
+
+[[tests]]
+# Coverage stimulus only: drives the OTP_READ_LOCK W1S legs and the
+# OTP_CHANGE_STATUS W1C legs. Same image as the shadow walk, which reads the
+# block first and writes the locks afterwards.
+name = "sep_cov_km_csr_otp_lock_test"
+module = "km.sep_cov_km_csr_otp_lock_test"
+seed = 1
+timeout_sec = 3600
+tags = ["km", "kmcsr", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_efuse_preload", "+km_rom_hex=km_rom_cov_csr.parhex"]
+
+[[tests]]
+# Coverage stimulus only: writes VUART_TX, the TB_* registers, SRAM_EXEC_MODE
+# and IRQ_ENTRY_LOCK, then stores into a write-locked SRAM region.
+name = "sep_cov_km_csr_tb_vuart_test"
+module = "km.sep_cov_km_csr_tb_vuart_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "kmcsr", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_tbvuart.parhex"]
+
+[[tests]]
+# Coverage stimulus only: arms the picorv32_wrapper ROM lockout by executing
+# from a write-locked SRAM region, then loads from ROM.
+name = "sep_cov_km_rom_lockout_test"
+module = "km.sep_cov_km_rom_lockout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "picorv32", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_lockout.parhex"]
+
+[[tests]]
+# Coverage stimulus only: raises rom_write_err, axi_decerr and exec_violation
+# in sequence on the KM CPU bus.
+name = "sep_cov_km_csr_fault_irq_test"
+module = "km.sep_cov_km_csr_fault_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "kmcsr", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_fault.parhex"]
+
+[[tests]]
+# Coverage stimulus only: writes the SOFT_RST_CODE magic, which drives
+# soft_rst_o and returns as a KM warm reset.
+name = "sep_cov_km_csr_soft_rst_test"
+module = "km.sep_cov_km_csr_soft_rst_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "kmcsr", "reset", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_softrst.parhex"]
+
+[[tests]]
+# Coverage stimulus only: selects the ext_trng leg, which never asserts
+# TVALID, so each km_drbg_sampler DATA read counts out into StTimeout.
+# RANDCFG: CFG.TIMEOUT from the run seed.
+name = "sep_cov_km_drbg_timeout_test"
+module = "km.sep_cov_km_drbg_timeout_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "drbg", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_drbg_timeout.parhex"]
+
+[[tests]]
+# Coverage stimulus only: with the internal DRBG leg live, sets CFG.prefetch
+# and reads PREFETCH_DATA then DATA. +esrc_noise_force makes the ring
+# oscillators alive under Verilator; the entropy stack is brought up without
+# the DRBG scoreboard because this test grades nothing.
+name = "sep_cov_km_drbg_prefetch_read_test"
+module = "km.sep_cov_km_drbg_prefetch_read_test"
+seed = 1
+timeout_sec = 7200
+tags = ["km", "drbg", "entropy", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+    "+skip_fuse_sense",
+    "+esrc_noise_force",
+    "+km_rom_hex=km_rom_cov_drbg_prefetch.parhex",
+]
+
+[[tests]]
+# Coverage stimulus only: drives the km_mailbox_km_reg decode-error leg, the
+# outbound overflow and inbound underflow sticky legs, and their W1C.
+name = "sep_cov_km_mailbox_km_decode_err_test"
+module = "km.sep_cov_km_mailbox_km_decode_err_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "mailbox", "cov_stimulus"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_mbox_km.parhex"]
+
+# Fragment for testlists/efuse_lcc.toml: the "eFuse and lifecycle" stimulus
+# leaves of docs/SEP_COV_VPLAN.adoc. Append these entries as they stand.
+#
+# Every entry below is CODE-COVERAGE STIMULUS ONLY. It adds no checker, no
+# scoreboard expectation and no assertion, and it passes when the stimulus
+# completed without an unexpected bus error. None of them is evidence for a
+# verification-plan row.
+
+[[tests]]
+# Coverage stimulus only: drives both arms of u_efuse_shim_demux across the
+# AXI ID field, with several transactions outstanding and multi-beat bursts.
+# Asserts nothing. +skip_fuse_sense leaves the shadow at zero, so SYS_DIS
+# bit 0 (SEP_DBG) is clear and the inbound filter passes the external master.
+name = "sep_cov_efuse_shim_demux_arms_test"
+module = "efuse.sep_cov_efuse_shim_demux_arms_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse", "fabric"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only: walking-one and walking-zero sweep of the eFuse shim
+# EFUSE_BANK_INIT_TIME field, with a bank read for the small values so both
+# prim_count instances load and count. Asserts nothing. No sensed data is
+# needed, so +skip_fuse_sense.
+name = "sep_cov_efuse_shim_init_time_sweep_test"
+module = "efuse.sep_cov_efuse_shim_init_time_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only: programs one unlocked spare bit with
+# efuse_program_read_back clear, so efuse_interface_shim takes the plain
+# FUSE_COMMAND_PROGRAM exit from StWriteWait, then one with it set. Asserts
+# nothing. REAL fuse sense (no +skip_fuse_sense): the program path is gated by
+# the sensed LOCKS image.
+name = "sep_cov_efuse_program_no_readback_test"
+module = "efuse.sep_cov_efuse_program_no_readback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Coverage stimulus only: the early-reject arms of the program and read
+# interfaces -- go with the enable clear, and a program of data zero. Asserts
+# nothing. No command reaches the bank, so +skip_fuse_sense.
+name = "sep_cov_efuse_go_without_enable_test"
+module = "efuse.sep_cov_efuse_go_without_enable_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only: arms the program and read request timeouts below the
+# shim bank init time, so both abandon arms and their counters run. Asserts
+# nothing. The arm is reached by abandoning the request, not by what the bank
+# returns, so +skip_fuse_sense.
+name = "sep_cov_efuse_req_timeout_arm_test"
+module = "efuse.sep_cov_efuse_req_timeout_arm_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only: burns one spare's read-lock bit, resenses, and reads
+# that spare through EFUSE_READ_CTRL so efuse_guard takes its read-lock arm.
+# Asserts nothing. REAL fuse sense (no +skip_fuse_sense): the guard reads the
+# sensed lock vector.
+name = "sep_cov_efuse_read_lock_guard_test"
+module = "efuse.sep_cov_efuse_read_lock_guard_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Coverage stimulus only: reads SEP_EFUSE_MAP while the sense FSM is still
+# streaming, which is the pre-sense-done 0xbadcab1e arm of efuse_shadow_regs.
+# Asserts nothing, and does not grade the response. REAL fuse sense (no
+# +skip_fuse_sense): the window only exists while a real sense runs.
+name = "sep_cov_efuse_map_access_during_sense_test"
+module = "efuse.sep_cov_efuse_map_access_during_sense_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Coverage stimulus only: senses a fuse image whose freely-writable words carry
+# an alternating 0x5555_5555 / 0xAAAA_AAAA pattern, then resenses, so the
+# shadow fan-out into sep_efuse_wrapper, sep_lifecycle_ctrl and
+# efuse_interface_controller moves instead of holding zero. Asserts nothing of
+# its own. REAL fuse sense (no +skip_fuse_sense).
+name = "sep_cov_efuse_shadow_image_diversity_test"
+module = "efuse.sep_cov_efuse_shadow_image_diversity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse", "lcc"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Coverage stimulus only: reaches RMA_SiP with the SIP token, then presents the
+# CHIPLET token with TRANSIENT_RMA_EN sensed set, which is the CHIPLET arm of
+# the transient-RMA path and its completion latch. Asserts nothing. REAL fuse
+# sense (no +skip_fuse_sense): the arm reads the sensed TRANSIENT_RMA_EN bit
+# and the sensed token digests.
+name = "sep_cov_efuse_transient_rma_chiplet_test"
+module = "efuse.sep_cov_efuse_transient_rma_chiplet_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "efuse", "rma", "lcc"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Coverage stimulus only: writes patterns across the reserved bits of DEMOTE_1
+# and DEMOTE_2 and reads them back, with demote and lock left clear. Asserts
+# nothing. The register is plain LCC storage and no sensed value gates it, so
+# +skip_fuse_sense.
+name = "sep_cov_lcc_demote_rsvd_readback_test"
+module = "lcc.sep_cov_lcc_demote_rsvd_readback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cov", "lcc"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+# Remap and filter datapath coverage stimulus (SEP_COV_VPLAN.adoc
+# "Remap and filter datapath"). Entries for testlists/system.toml.
+
+[[tests]]
+# COVERAGE STIMULUS ONLY. No contract is asserted; a PASS means the path was
+# driven, nothing more. Do not cite it as proof of a behaviour and do not count
+# it toward a VPLAN row.
+# Writes every entry of both axi_filter banks (16 inbound, 32 outbound) through
+# the START/END address field and the FILTER_CONFIG field combinations with
+# entry_enabled clear, then drives one allowed and one blocked outbound beat per
+# outbound entry. no_cpu; +skip_fuse_sense.
+name = "sep_cov_filter_rule_bank_sweep_test"
+module = "system.sep_cov_filter_rule_bank_sweep_test"
+seed = 1
+timeout_sec = 5400
+tags = ["fabric", "filter", "coverage_stimulus", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# COVERAGE STIMULUS ONLY. No contract is asserted; a PASS means the path was
+# driven, nothing more.
+# Sweeps AxID (0..63), AxLEN (1/2/4/8/16 INCR), the AxUSER group-id slice, the
+# beat offset and walking write data on the external SMN master, through one
+# page-wide inbound allow window and again on a blocked address so the filter
+# error-slave request copy moves too. no_cpu with a real PROD fuse sense: the
+# inbound filter is only active at feat_ctrl.sep_debug=0.
+name = "sep_cov_filter_datapath_pattern_test"
+module = "system.sep_cov_filter_datapath_pattern_test"
+seed = 1
+timeout_sec = 5400
+tags = ["fabric", "inbound_filter", "coverage_stimulus", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# COVERAGE STIMULUS ONLY. No contract is asserted; a PASS means the path was
+# driven, nothing more.
+# Enables inbound-filter entries cumulatively over one probe address so several
+# hit bits are set at once, then one entry at a time so the resolved hit index
+# steps over the bank. Real PROD fuse sense (filter active).
+name = "sep_cov_filter_hit_priority_test"
+module = "system.sep_cov_filter_hit_priority_test"
+seed = 1
+timeout_sec = 3600
+tags = ["fabric", "inbound_filter", "coverage_stimulus", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# COVERAGE STIMULUS ONLY. No contract is asserted; a PASS means the path was
+# driven, nothing more.
+# Walks REGION_ATTRS.offset on all sixteen local-master alias-remap regions with
+# valid clear, then makes the whole table valid onto SEP SRAM pages and drives a
+# read and a write through every region plus one no-hit beat. no_cpu;
+# +skip_fuse_sense.
+name = "sep_cov_alias_remap_region_sweep_test"
+module = "system.sep_cov_alias_remap_region_sweep_test"
+seed = 1
+timeout_sec = 3600
+tags = ["fabric", "remap", "coverage_stimulus", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# COVERAGE STIMULUS ONLY. No contract is asserted; a PASS means the path was
+# driven, nothing more.
+# Drives a read and a write through one alias-remap region with
+# REGION_ATTRS.cacheable set, then clear, then one beat outside every window.
+# no_cpu; +skip_fuse_sense.
+name = "sep_cov_alias_remap_cacheable_test"
+module = "system.sep_cov_alias_remap_cacheable_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "remap", "coverage_stimulus", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# COVERAGE STIMULUS ONLY. No contract is asserted; a PASS means the path was
+# driven, nothing more.
+# Walks REGION_ATTRS.offset on all sixteen AP and all sixteen STEE output-remap
+# regions with no traffic in the aperture, then points one region at a time at
+# the outbound target window and drives a read and a write into each region's
+# own sub-window. One outbound-filter entry gates the traffic. no_cpu;
+# +skip_fuse_sense.
+name = "sep_cov_output_remap_region_offset_sweep_test"
+module = "system.sep_cov_output_remap_region_offset_sweep_test"
+seed = 1
+timeout_sec = 3600
+tags = ["fabric", "remap", "coverage_stimulus", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# COVERAGE STIMULUS ONLY. No contract is asserted; a PASS means the path was
+# driven, nothing more.
+# Secure-DMA SRAM-to-SRAM copies with the source and the destination on each
+# side of the DMA local-alias window, at three lengths and four alignments, so
+# axi_window_remap on the DMA path sees both the in-alias and the pass-through
+# case. The STATUS poll is bounded and logged, never graded. no_cpu;
+# +skip_fuse_sense.
+name = "sep_cov_window_remap_dma_window_test"
+module = "system.sep_cov_window_remap_dma_window_test"
+seed = 1
+timeout_sec = 3600
+tags = ["fabric", "remap", "dma", "coverage_stimulus", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# COVERAGE STIMULUS ONLY. No contract is asserted; a PASS means the path was
+# driven, nothing more.
+# AXI bursts into the SEP SRAM aperture: AxLEN 1/2/4/8/16 INCR, AxSIZE 1/2/4/8
+# bytes, AxID over the CPU-LSU instance width, start addresses spanning the
+# whole window and walking write data. no_cpu; +skip_fuse_sense.
+name = "sep_cov_memory_interface_sram_burst_id_test"
+module = "system.sep_cov_memory_interface_sram_burst_id_test"
+seed = 1
+timeout_sec = 3600
+tags = ["memory_interface", "sram", "coverage_stimulus", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+# Coverage stimulus entries for the entropy / DRBG / mailbox group.
+# Merge these into testlists/crypto.toml (sep_cov_esrc_*, sep_cov_drbg_*) and
+# testlists/system.toml (sep_cov_mailbox_*, sep_cov_entropy_pool_*).
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Writes every MIN_ENTROPY_H.H value and reads
+# RECOMMENDED_THRESHOLDS after each, so the 256-arm recommended-threshold LUT
+# selects every arm. No entropy flow, and FIPS_LOCK is never written.
+name = "sep_cov_esrc_thresh_lut_sweep_test"
+module = "crypto.sep_cov_esrc_thresh_lut_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Walks all twelve GENERATOR_n_SAMPLE_CLK_CONFIG lanes
+# through the named divide arms and the default arm with the generators
+# running. FIPS_LOCK is never written.
+name = "sep_cov_esrc_sample_clk_divide_sweep_test"
+module = "crypto.sep_cov_esrc_sample_clk_divide_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Steps RING_OSC_CTRL.SAMPLE_CLK_SELECT through all-shared,
+# all-core and an alternating pattern with the generators running.
+# FIPS_LOCK is never written.
+name = "sep_cov_esrc_shared_ro_select_test"
+module = "crypto.sep_cov_esrc_shared_ro_select_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Opens the raw noise-observe tap on each of the twelve
+# lanes, drains the observe FIFO, then pulses FLUSH.
+name = "sep_cov_esrc_noise_obs_raw_capture_test"
+module = "crypto.sep_cov_esrc_noise_obs_raw_capture_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Opens the bit-in-word observe tap and drains the
+# BIW observe FIFO while the generators run.
+name = "sep_cov_esrc_biw_obs_capture_test"
+module = "crypto.sep_cov_esrc_biw_obs_capture_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Runs the entropy source with
+# CTRL.BYPASS_ENTROPY_COMPRESSOR set so the FIFO-push state machine takes its
+# bypass arm, then clears it. FIPS_LOCK is never written.
+name = "sep_cov_esrc_bypass_compressor_test"
+module = "crypto.sep_cov_esrc_bypass_compressor_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Runs the entropy source at two non-zero
+# CTRL.DOWNSAMPLE_RATE values so the downsample counter decrements.
+# FIPS_LOCK is never written.
+name = "sep_cov_esrc_downsample_rate_test"
+module = "crypto.sep_cov_esrc_downsample_rate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Arms the threshold, enables the interrupts and pushes
+# two words on every outbound bank (CPU-LSU) and every inbound bank (external
+# SMN master, behind one inbound-filter allow entry).
+name = "sep_cov_mailbox_all_banks_irq_test"
+module = "system.sep_cov_mailbox_all_banks_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "mailbox", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Half-word strobed WRITE_DATA pushes on bank 0, then
+# reads and writes at in-bank offsets that decode to no register.
+name = "sep_cov_mailbox_partial_strobe_deadspace_test"
+module = "system.sep_cov_mailbox_partial_strobe_deadspace_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "mailbox", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only. No contract is asserted; a PASS means the path was
+# driven, nothing more. Two- and three-beat INCR reads over the entropy-pool
+# aperture so the SEP-level burst splitter divides a real multi-beat burst.
+name = "sep_cov_entropy_pool_burst_test"
+module = "system.sep_cov_entropy_pool_burst_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "entropy", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+#
+# New coverage-stimulus leaves. Merge these into testlists/stim.toml and add
+# each name to the `all` group in testlists/all.toml.
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Pattern walk over the
+# Adams Bridge register groups the ML-DSA KAT leaves never program:
+# MLDSA_CTX, MLDSA_MSG, MLDSA_SIGN_RND, MLDSA_MSG_STROBE, MLDSA_CTX_CONFIG,
+# the interrupt block file and the key-vault control registers. MLDSA_CTRL is
+# excluded so no engine operation is launched from walk data, and the
+# key-vault enable bit is held clear. no_cpu; +skip_fuse_sense.
+name = "sep_cov_abr_reg_walk_test"
+module = "crypto.sep_cov_abr_reg_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "crypto", "abr", "csr"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Drives the AES GCM phase
+# sequence (INIT, AAD full and partial, TEXT full and partial, SAVE, INIT,
+# RESTORE, TEXT, TAG) so the GHASH block runs. SEP's AES takes the vendor
+# default AESGCMEnable=1, so a CTRL_SHADOWED.MODE of AES_GCM is not remapped
+# to AES_NONE. Needs real entropy for the masking PRNG reseed. no_cpu;
+# +skip_fuse_sense, +esrc_noise_force.
+name = "sep_cov_aes_gcm_phase_walk_test"
+module = "crypto.sep_cov_aes_gcm_phase_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "crypto", "aes", "gcm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Secure DMA inline-hash
+# opcodes (SHA-256/384/512) with DIGEST_SWAP both ways and the digest window
+# read out, copies whose length leaves a 1-, 2- or 3-byte tail, a software
+# abort, and the programmings the DMA answers with its own ERROR_CODE. All
+# errors are reported in a status register, not as a bus response. no_cpu;
+# +skip_fuse_sense.
+name = "sep_cov_dma_hash_and_tail_test"
+module = "system.sep_cov_dma_hash_and_tail_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "dma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- no contract is asserted. Loads and runs an OTBN
+# program that retires the base-ISA decode arms no existing program uses:
+# xori/ori/andi, slli/srli/srai, sub/or/sll/srl/sra, beq and bne each taken
+# and not taken, and a balanced jal/jalr call-return pair. Needs real entropy
+# because the post-reset secure wipe consumes URND. no_cpu;
+# +skip_fuse_sense, +esrc_noise_force.
+name = "sep_cov_otbn_base_isa_walk_test"
+module = "otbn.sep_cov_otbn_base_isa_walk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "otbn", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[groups]]
+# The stimulus suite on its own: `--items stim`.
+name = "stim"
+expected_count = 63
+tests = [
+    "sep_cov_alias_remap_cacheable_test",
+    "sep_cov_alias_remap_region_sweep_test",
+    "sep_cov_axi_burst_splitter_gran_split_test",
+    "sep_cov_axi_dw_outstanding_reads_test",
+    "sep_cov_axi_dw_read_burst_shape_test",
+    "sep_cov_axi_dw_upsizer_dma_test",
+    "sep_cov_axi_dw_write_burst_shape_test",
+    "sep_cov_axi_id_remap_concurrent_test",
+    "sep_cov_axi_isolate_drain_test",
+    "sep_cov_axi_to_mem_burst_test",
+    "sep_cov_crypto_ic_trng_aperture_test",
+    "sep_cov_crypto_key_share_walk_test",
+    "sep_cov_csr_filter_lock_all_slots_test",
+    "sep_cov_csr_filter_slot_data_walk_test",
+    "sep_cov_csr_remap_region_data_walk_test",
+    "sep_cov_dma_csr_field_walk_test",
+    "sep_cov_efuse_go_without_enable_test",
+    "sep_cov_efuse_map_access_during_sense_test",
+    "sep_cov_efuse_program_no_readback_test",
+    "sep_cov_efuse_read_lock_guard_test",
+    "sep_cov_efuse_req_timeout_arm_test",
+    "sep_cov_efuse_shadow_image_diversity_test",
+    "sep_cov_efuse_shim_demux_arms_test",
+    "sep_cov_efuse_shim_init_time_sweep_test",
+    "sep_cov_efuse_transient_rma_chiplet_test",
+    "sep_cov_entropy_pool_burst_test",
+    "sep_cov_esrc_biw_obs_capture_test",
+    "sep_cov_esrc_bypass_compressor_test",
+    "sep_cov_esrc_downsample_rate_test",
+    "sep_cov_esrc_noise_obs_raw_capture_test",
+    "sep_cov_esrc_sample_clk_divide_sweep_test",
+    "sep_cov_esrc_shared_ro_select_test",
+    "sep_cov_esrc_thresh_lut_sweep_test",
+    "sep_cov_fabric_cacheable_remap_test",
+    "sep_cov_fabric_outbound_demux_leg_sweep_test",
+    "sep_cov_filter_datapath_pattern_test",
+    "sep_cov_filter_hit_priority_test",
+    "sep_cov_filter_rule_bank_sweep_test",
+    "sep_cov_km_csr_fault_irq_test",
+    "sep_cov_km_csr_otp_lock_test",
+    "sep_cov_km_csr_otp_shadow_walk_test",
+    "sep_cov_km_csr_soft_rst_test",
+    "sep_cov_km_csr_tb_vuart_test",
+    "sep_cov_km_drbg_prefetch_read_test",
+    "sep_cov_km_drbg_timeout_test",
+    "sep_cov_km_kpv_ctrl_slot_walk_test",
+    "sep_cov_km_mailbox_km_decode_err_test",
+    "sep_cov_km_mailbox_sep_decode_err_test",
+    "sep_cov_km_mailbox_sep_sticky_test",
+    "sep_cov_km_rom_lockout_test",
+    "sep_cov_lcc_demote_rsvd_readback_test",
+    "sep_cov_mailbox_all_banks_irq_test",
+    "sep_cov_mailbox_partial_strobe_deadspace_test",
+    "sep_cov_memory_interface_sram_burst_id_test",
+    "sep_cov_output_remap_region_offset_sweep_test",
+    "sep_cov_window_remap_dma_window_test",
+    "sep_cov_xbar_axprot_sweep_test",
+    "sep_cov_xbar_burst_len_sweep_test",
+    "sep_cov_xbar_wrap_burst_test",
+    "sep_cov_abr_reg_walk_test",
+    "sep_cov_aes_gcm_phase_walk_test",
+    "sep_cov_dma_hash_and_tail_test",
+    "sep_cov_otbn_base_isa_walk_test",
+]

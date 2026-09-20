@@ -32,7 +32,7 @@ schema_version = 1
 # grade them (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known
 # Limitations). They are still defined here through `includes` so a caller can
 # name them, and so the catalog stays one file set.
-includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml"]
+includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml", "stim.toml"]
 
 # CI smoke gate (`--items smoke`), matching the dtp/smc/smu convention so the
 # shared Jenkins/GitHub `items=smoke` parameter resolves for every DUT. One
@@ -58,7 +58,18 @@ tests = ["sep_axi_smoke_test"]
 # a coverage run grades. expected_count fails the run when membership drifts
 # from the class groups instead of silently shrinking the suite.
 name = "all"
-expected_count = 104
+# 104 graded tests + 63 coverage stimulus leaves (stim.toml).
+#
+# The 104 graded leaves are `cpu` (20) plus `cpu_stub` (83) plus the one
+# expected-fail reveal held out of both. The stimulus leaves are all no_cpu
+# but are deliberately NOT members of `cpu_stub`: they grade nothing, so a
+# pre-merge class regression should not spend runtime on them, and keeping
+# them out of the class groups makes the suite removable in three edits.
+# Drift is still caught -- stim.toml carries its own expected_count.
+#
+# Removing the stimulus suite restores this to 104; see the recipe at the
+# top of stim.toml.
+expected_count = 167
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -167,6 +178,71 @@ tests = [
     "sep_abr_mldsa_keygen_kat_test",
     "sep_abr_mldsa_sign_verify_kat_test",
     "sep_abr_mlkem_kat_test",
+    # --- BEGIN coverage stimulus (delete this block to drop the suite) ---
+    "sep_cov_abr_reg_walk_test",
+    "sep_cov_aes_gcm_phase_walk_test",
+    "sep_cov_alias_remap_cacheable_test",
+    "sep_cov_alias_remap_region_sweep_test",
+    "sep_cov_axi_burst_splitter_gran_split_test",
+    "sep_cov_axi_dw_outstanding_reads_test",
+    "sep_cov_axi_dw_read_burst_shape_test",
+    "sep_cov_axi_dw_upsizer_dma_test",
+    "sep_cov_axi_dw_write_burst_shape_test",
+    "sep_cov_axi_id_remap_concurrent_test",
+    "sep_cov_axi_isolate_drain_test",
+    "sep_cov_axi_to_mem_burst_test",
+    "sep_cov_crypto_ic_trng_aperture_test",
+    "sep_cov_crypto_key_share_walk_test",
+    "sep_cov_csr_filter_lock_all_slots_test",
+    "sep_cov_csr_filter_slot_data_walk_test",
+    "sep_cov_csr_remap_region_data_walk_test",
+    "sep_cov_dma_csr_field_walk_test",
+    "sep_cov_dma_hash_and_tail_test",
+    "sep_cov_efuse_go_without_enable_test",
+    "sep_cov_efuse_map_access_during_sense_test",
+    "sep_cov_efuse_program_no_readback_test",
+    "sep_cov_efuse_read_lock_guard_test",
+    "sep_cov_efuse_req_timeout_arm_test",
+    "sep_cov_efuse_shadow_image_diversity_test",
+    "sep_cov_efuse_shim_demux_arms_test",
+    "sep_cov_efuse_shim_init_time_sweep_test",
+    "sep_cov_efuse_transient_rma_chiplet_test",
+    "sep_cov_entropy_pool_burst_test",
+    "sep_cov_esrc_biw_obs_capture_test",
+    "sep_cov_esrc_bypass_compressor_test",
+    "sep_cov_esrc_downsample_rate_test",
+    "sep_cov_esrc_noise_obs_raw_capture_test",
+    "sep_cov_esrc_sample_clk_divide_sweep_test",
+    "sep_cov_esrc_shared_ro_select_test",
+    "sep_cov_esrc_thresh_lut_sweep_test",
+    "sep_cov_fabric_cacheable_remap_test",
+    "sep_cov_fabric_outbound_demux_leg_sweep_test",
+    "sep_cov_filter_datapath_pattern_test",
+    "sep_cov_filter_hit_priority_test",
+    "sep_cov_filter_rule_bank_sweep_test",
+    "sep_cov_km_csr_fault_irq_test",
+    "sep_cov_km_csr_otp_lock_test",
+    "sep_cov_km_csr_otp_shadow_walk_test",
+    "sep_cov_km_csr_soft_rst_test",
+    "sep_cov_km_csr_tb_vuart_test",
+    "sep_cov_km_drbg_prefetch_read_test",
+    "sep_cov_km_drbg_timeout_test",
+    "sep_cov_km_kpv_ctrl_slot_walk_test",
+    "sep_cov_km_mailbox_km_decode_err_test",
+    "sep_cov_km_mailbox_sep_decode_err_test",
+    "sep_cov_km_mailbox_sep_sticky_test",
+    "sep_cov_km_rom_lockout_test",
+    "sep_cov_lcc_demote_rsvd_readback_test",
+    "sep_cov_mailbox_all_banks_irq_test",
+    "sep_cov_mailbox_partial_strobe_deadspace_test",
+    "sep_cov_memory_interface_sram_burst_id_test",
+    "sep_cov_otbn_base_isa_walk_test",
+    "sep_cov_output_remap_region_offset_sweep_test",
+    "sep_cov_window_remap_dma_window_test",
+    "sep_cov_xbar_axprot_sweep_test",
+    "sep_cov_xbar_burst_len_sweep_test",
+    "sep_cov_xbar_wrap_burst_test",
+    # --- END coverage stimulus ---
 ]
 
 [[groups]]

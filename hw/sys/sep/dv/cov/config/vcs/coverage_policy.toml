@@ -16,7 +16,7 @@
 
 schema_version = 1
 dut = "sep"
-scope_epoch = "sep-code-cov-v2"
+scope_epoch = "sep-code-cov-v2a"
 
 # Report-page pruning only. `urg -hier` drops rows from the report but scores
 # the whole database regardless, so this entry keeps the pages aligned with the

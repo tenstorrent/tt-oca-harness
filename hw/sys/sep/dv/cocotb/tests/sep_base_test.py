@@ -156,6 +156,15 @@ class sep_base_test(uvm_test):
     required_evidence: tuple[str, ...] = ()
     min_evidence = 0
 
+    # Code-coverage stimulus leaf (docs/SEP_COV_VPLAN.adoc). A `sep_cov_*` test
+    # adds no checker, no scoreboard and no expected-value compare: it drives a
+    # path so the coverage database records it, and it passes when the stimulus
+    # completes without an unexpected bus error. Such a leaf grades nothing by
+    # design, so the own-evidence floor does not apply to it. Setting this flag
+    # states that the leaf proves no contract; it must never be set on a test
+    # whose checks merely fail to log.
+    stimulus_only = False
+
     @staticmethod
     def random_seed() -> int:
         """Runner-provided seed (run_dv.py --seed -> RANDOM_SEED); default 1."""
@@ -1534,7 +1543,11 @@ class sep_base_test(uvm_test):
         )
 
         problems: list[str] = []
-        if not own and self.get_type_name() not in _EvidenceFilter.NO_OWN_EVIDENCE:
+        if (
+            not own
+            and not self.stimulus_only
+            and self.get_type_name() not in _EvidenceFilter.NO_OWN_EVIDENCE
+        ):
             problems.append(
                 "no CHK-* PASS record of its own -- a run that grades nothing cannot "
                 "be a pass. If this leaf's checks live in its sequence, log them "

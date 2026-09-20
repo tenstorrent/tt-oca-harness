@@ -65,6 +65,24 @@ class SepScoreboard(uvm_subscriber):
                 )
             return
         if not item.resp_ok:
+            if item.allow_error:
+                # Coverage stimulus: a legal access to an address the design
+                # answers with an error by design. Tolerated, and nothing is
+                # asserted about which response arrived. A wedge is still a
+                # failure -- allow_error does not cover a missing response.
+                if item.timed_out:
+                    self._fail(
+                        f"{item.op.value} @ 0x{item.addr:08x} marked allow_error but "
+                        f"TIMED OUT (no response) -- a tolerated error is still a response"
+                    )
+                else:
+                    self.logger.info(
+                        "tolerated %s @ 0x%08x resp=%d (allow_error; nothing asserted)",
+                        item.op.value,
+                        item.addr,
+                        item.resp_code,
+                    )
+                return
             if item.op is SepAxiOp.WRITE and item.allow_unverified_write_resp:
                 self.logger.info(
                     "write @ 0x%08x response not classified OKAY; sequence verifies by readback",

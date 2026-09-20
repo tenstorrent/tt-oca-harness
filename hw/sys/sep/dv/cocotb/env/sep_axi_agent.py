@@ -70,6 +70,14 @@ class SepAxiItem(uvm_sequence_item):
         # Independent of allow_timeout: an expect_error probe still requires a real
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False
+        # Tolerate a non-OKAY response without requiring one. The read-side
+        # counterpart of allow_unverified_write_resp: a legal access to an
+        # address the design answers with an error by design (an unpopulated
+        # leg terminated by an error slave, an empty-FIFO read) is not a test
+        # failure, and this asserts nothing about which response arrived.
+        # Unlike expect_error it does NOT fail on OKAY, so a coverage-stimulus
+        # leaf carries no response-code expectation.
+        self.allow_error: bool = False
         # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
         # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4).
         self.user: int = 0
@@ -83,6 +91,11 @@ class SepAxiItem(uvm_sequence_item):
         # the master index to it, and the demux keeps one outstanding counter
         # per ID, so an access that never leaves 0 exercises one ID slot.
         self.axi_id: int = 0
+        # AXI AxPROT. None lets the VIP default. The crossbar decode and the
+        # filter src_id match do not read it, so an access that never leaves
+        # the default holds all three bits at one value. A test opts in to
+        # move AxPROT[0] (privileged) and AxPROT[2] (instruction).
+        self.prot: int | None = None
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
         # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
         # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
@@ -147,6 +160,7 @@ class SepAxiDriver(uvm_driver):
             self.ap.write(item)
             self.seq_item_port.item_done()
 
+
     async def _drive(self, item: SepAxiItem) -> None:
         # Byte-length helpers, not write_result/read_result: those encode one
         # beat from data_width/size, which would widen a length=4 access on
@@ -155,7 +169,7 @@ class SepAxiDriver(uvm_driver):
             "size": item.size,
             "burst": item.burst,
             "id": item.axi_id,
-            "prot": None,
+            "prot": item.prot,
             "check_response": False,
             "timeout_ns": self.cfg.axi_timeout_ns,
             "allow_timeout": item.allow_timeout,
