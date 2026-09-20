@@ -389,6 +389,17 @@ bwrap_run() {
   # The repo (and, under it, nonfree/) at its real path so absolute -C paths,
   # bender filelists and generated collateral all resolve unchanged.
   binds+=(--bind "$ROOT" "$ROOT")
+  # Host tool trees the firmware build invokes by ABSOLUTE path. bwrap binds the
+  # rootfs over / and replaces PATH, so such a tool is invisible here unless it
+  # is bound: the KM ROM parity step (add_rom_parity.py, run through `uv` from
+  # hw/common/dv/fw/compile.mk) otherwise dies with `uv: not found`, the ROM
+  # image is never produced, and every test needing it reports "firmware
+  # outputs missing". Each is bound only when present, so this is inert
+  # wherever the path does not exist.
+  local site
+  for site in /tools_soc/opensrc/python/python-3.9; do
+    [[ -e "$site" ]] && binds+=(--bind "$site" "$site")
+  done
   local extra
   for extra in ${OCAH_BWRAP_EXTRA_BINDS:-}; do
     [[ -e "$extra" ]] && binds+=(--bind "$extra" "$extra")
