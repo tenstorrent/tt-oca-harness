@@ -33,12 +33,18 @@ class EntropySourceTb:
         dut = self.dut
         dut.rst_n.value = 0
         dut.rosc_sample_clk.value = 0
+        dut.dut_entropy_inject_enable.value = 0
+        dut.dut_entropy_inject_valid.value = 0
+        dut.dut_entropy_inject_data.value = 0
+        dut.dut_entropy_inject_uncompressed.value = 0
+        dut.dut_generator_fault_inject.value = 0
 
         dut.fifo_push.value = 0
         dut.fifo_pop.value = 0
         dut.fifo_clear.value = 0
         dut.fifo_wdata.value = 0
         dut.fifo_churn_enable.value = 0
+        dut.fifo_pointer_fault_inject.value = 0
 
         dut.health_entropy.value = 0
         dut.health_valid.value = 0

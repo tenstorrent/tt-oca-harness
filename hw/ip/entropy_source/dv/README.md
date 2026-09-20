@@ -74,6 +74,11 @@ Tests
 * `entropy_source_pipeline_integration_test` and
   `entropy_source_conditioning_test` — decorrelator-to-FIFO data flow,
   SHA-256 conditioning, bypass, and status counters.
+* `entropy_source_integrated_test` — production-DUT entropy generation,
+  AXI4-Lite FIFO auto-pop and write gating, hardware-sourced FIFO and health
+  interrupts, hardened-pointer and parity fault propagation, health counters
+  and recovery, automatic tuning, SHA progress, debug-monitor routing, and
+  downsampling.
 
 SEP-level entropy bring-up, FIPS locking, watermark arming, alert delivery,
 entropy-pool integration, and coordinated reset remain in `hw/sys/sep/dv`.

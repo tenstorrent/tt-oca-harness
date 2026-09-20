@@ -167,6 +167,22 @@ async def test_2_7_2_parity_error_detection(dut):
 
 
 @cocotb.test()
+async def test_2_7_3_pointer_fault_detection(dut):
+    tb = await _start(dut, "fifo_pointer_fault")
+    await fifo_push(tb, 0x12345678)
+    dut.fifo_pointer_fault_inject.value = 1
+    await RisingEdge(dut.clk)
+    await FallingEdge(dut.clk)
+    assert int(dut.fifo_pointer_error.value) == 1
+    assert int(dut.fifo_security_alert.value) == 1
+
+    level = int(dut.fifo_level.value)
+    await fifo_push(tb, 0xDEADBEEF)
+    assert int(dut.fifo_level.value) == level
+    dut.fifo_pointer_fault_inject.value = 0
+
+
+@cocotb.test()
 async def test_2_7_4_combined_security_alert(dut):
     tb = await _start(dut, "fifo_security_alert")
     await fifo_push(tb, 0xCAFEBABE)
@@ -176,3 +192,20 @@ async def test_2_7_4_combined_security_alert(dut):
     assert int(dut.fifo_parity_error.value) == 1
     assert int(dut.fifo_security_alert.value) == 1
     await fifo_flush(tb)
+
+
+@cocotb.test()
+async def test_fifo_churn_xor_behavior(dut):
+    tb = await _start(dut, "fifo_churn")
+    baseline = [(0x10204081 * (index + 1)) & 0xFFFFFFFF for index in range(FIFO_DEPTH)]
+    for word in baseline:
+        await fifo_push(tb, word)
+    assert [await fifo_pop(tb) for _ in range(FIFO_DEPTH // 2)] == baseline[: FIFO_DEPTH // 2]
+
+    incoming = [0xA5000000 | index for index in range(FIFO_DEPTH // 2)]
+    expected = [word ^ baseline[index + FIFO_DEPTH // 2] for index, word in enumerate(incoming)]
+    for word in incoming:
+        await fifo_push(tb, word, churn=True)
+
+    assert [await fifo_pop(tb) for _ in range(FIFO_DEPTH // 2)] == baseline[FIFO_DEPTH // 2 :]
+    assert [await fifo_pop(tb) for _ in range(FIFO_DEPTH // 2)] == expected

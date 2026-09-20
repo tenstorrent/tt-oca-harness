@@ -64,6 +64,21 @@ async def test_apt_window_boundaries(dut):
 
 
 @cocotb.test()
+async def test_apt_low_failure(dut):
+    await _start(dut, "apt_low_failure")
+    dut.health_enable.value = 0b010
+    dut.health_apt_hi_limit.value = 0xFFFF
+    dut.health_apt_lo_limit.value = 3
+    for _ in range(4):
+        await _word(dut, 0)
+    dut.health_window_wrap.value = 1
+    await Timer(1, unit="ns")
+    assert int(dut.health_apt_lo_count.value) == 0
+    assert int(dut.health_apt_fail_lo.value) == 1
+    assert int(dut.health_status.value) & (1 << 3)
+
+
+@cocotb.test()
 async def test_markov_transition_counts(dut):
     await _start(dut, "markov_counts")
     dut.health_enable.value = 0b100
@@ -73,6 +88,37 @@ async def test_markov_transition_counts(dut):
         await _word(dut, word)
     assert int(dut.health_markov_01_count.value) > 0
     assert int(dut.health_markov_10_count.value) > 0
+
+
+@cocotb.test()
+async def test_markov_pattern_battery(dut):
+    await _start(dut, "markov_pattern_battery")
+    dut.health_enable.value = 0b100
+    dut.health_markov_01_limit.value = 0xFFFF
+    dut.health_markov_10_limit.value = 0
+
+    counts = []
+    for pattern in (
+        (0, 0, 0, 0, 0, 0),
+        (0, 0xFFFFFFFF, 0, 0xFFFFFFFF, 0, 0xFFFFFFFF),
+        (0, 0, 0xFFFFFFFF, 0xFFFFFFFF, 0, 0),
+    ):
+        dut.health_enable.value = 0
+        await ClockCycles(dut.clk, 2)
+        dut.health_enable.value = 0b100
+        for word in pattern:
+            await _word(dut, word)
+        counts.append(
+            (
+                int(dut.health_markov_01_count.value),
+                int(dut.health_markov_10_count.value),
+            )
+        )
+
+    stuck, alternating, blocked = counts
+    assert stuck == (0, 0)
+    assert sum(alternating) > sum(blocked)
+    assert blocked == stuck
 
 
 @cocotb.test()

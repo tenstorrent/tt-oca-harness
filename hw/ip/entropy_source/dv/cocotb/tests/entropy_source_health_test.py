@@ -218,3 +218,23 @@ async def test_3_7_4_autotune_markov_test(dut):
         _, state = await _toggle_tune(dut)
         states.append(state)
     assert states == [1, 0, 1, 0]
+
+
+@cocotb.test()
+async def test_tune_fsm_edge_semantics(dut):
+    await _start(dut, "tune_fsm_edges")
+    initial = int(dut.tune_state.value)
+
+    dut.tune_health_error.value = 1
+    await RisingEdge(dut.clk)
+    await FallingEdge(dut.clk)
+    toggled = int(dut.tune_state.value)
+    assert toggled != initial
+
+    await ClockCycles(dut.clk, 8)
+    assert int(dut.tune_state.value) == toggled
+
+    await FallingEdge(dut.clk)
+    dut.tune_health_error.value = 0
+    await ClockCycles(dut.clk, 4)
+    assert int(dut.tune_state.value) == toggled

@@ -50,3 +50,33 @@ async def test_4_1_3_frequency_selector_boundary_values(dut):
             dut.debug_signals.value = 0
             await Timer(1, unit="ns")
         assert 1 in observed
+
+
+@cocotb.test()
+async def test_debug_frequency_divider_ratios(dut):
+    tb = EntropySourceTb(dut, "debug_divider_ratios")
+    await tb.start()
+    dut.debug_select_signal.value = 0
+
+    transition_counts = []
+    for divider in range(8):
+        dut.rst_n.value = 0
+        dut.debug_select_div.value = divider
+        dut.debug_signals.value = 0
+        await Timer(4, unit="ns")
+        dut.rst_n.value = 1
+        await Timer(4, unit="ns")
+
+        previous = int(dut.debug_monitor.value)
+        transitions = 0
+        for index in range(2048):
+            dut.debug_signals.value = index & 1
+            await Timer(1, unit="ns")
+            current = int(dut.debug_monitor.value)
+            transitions += current != previous
+            previous = current
+        transition_counts.append(transitions)
+
+    assert all(count > 0 for count in transition_counts)
+    for faster, slower in zip(transition_counts, transition_counts[1:]):
+        assert 1.8 <= faster / slower <= 2.2

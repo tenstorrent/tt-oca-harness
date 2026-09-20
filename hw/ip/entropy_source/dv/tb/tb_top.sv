@@ -36,12 +36,22 @@ module entropy_source_tb_top (
   output wire [31:0]  entropy_stream_data,
   output wire         entropy_stream_valid,
   output wire         irq,
+  output wire [7:0]   dut_health_status,
+  output wire         dut_boot_phase_done,
+  output wire [3:0]   dut_sha_input_count,
+  output wire [3:0]   dut_sha_output_count,
+  input  wire         dut_entropy_inject_enable,
+  input  wire         dut_entropy_inject_valid,
+  input  wire [31:0]  dut_entropy_inject_data,
+  input  wire [95:0]  dut_entropy_inject_uncompressed,
+  input  wire         dut_generator_fault_inject,
 
   input  wire         fifo_push,
   input  wire         fifo_pop,
   input  wire         fifo_clear,
   input  wire [31:0]  fifo_wdata,
   input  wire         fifo_churn_enable,
+  input  wire         fifo_pointer_fault_inject,
   output wire [31:0]  fifo_rdata,
   output wire [6:0]   fifo_level,
   output wire [5:0]   fifo_wptr,
@@ -140,6 +150,47 @@ module entropy_source_tb_top (
     .entropy_stream_vld_o  (entropy_stream_valid),
     .irq_o                 (irq)
   );
+
+  assign dut_health_status   = u_dut.health_status;
+  assign dut_boot_phase_done = u_dut.boot_phase_done;
+  assign dut_sha_input_count = u_dut.u_sha256_whitener.input_count_o;
+  assign dut_sha_output_count = u_dut.u_sha256_whitener.output_count_o;
+
+  always @(dut_entropy_inject_enable or dut_entropy_inject_valid or dut_entropy_inject_data or
+           dut_entropy_inject_uncompressed) begin
+    if (dut_entropy_inject_enable) begin
+      force u_dut.entropy_stream = dut_entropy_inject_data;
+      force u_dut.entropy_stream_uncompressed = dut_entropy_inject_uncompressed;
+      force u_dut.entropy_stream_valid = dut_entropy_inject_valid;
+      force u_dut.boot_phase_done = 1'b1;
+    end else begin
+      release u_dut.entropy_stream;
+      release u_dut.entropy_stream_uncompressed;
+      release u_dut.entropy_stream_valid;
+      release u_dut.boot_phase_done;
+    end
+  end
+
+  always @(dut_generator_fault_inject) begin
+    if (dut_generator_fault_inject) begin
+      force u_dut.generator_0_test_status = 8'h01;
+    end else begin
+      release u_dut.generator_0_test_status;
+    end
+  end
+
+  // Inject at the hardened pointer primitive's detected-error boundary. This
+  // verifies FIFO blocking and alert propagation without mutating private
+  // counter state through simulator-specific VPI writes.
+  always @(fifo_pointer_fault_inject) begin
+    if (fifo_pointer_fault_inject) begin
+      force u_dut.u_entropy_fifo.counter_err = 1'b1;
+      force u_fifo.counter_err = 1'b1;
+    end else begin
+      release u_dut.u_entropy_fifo.counter_err;
+      release u_fifo.counter_err;
+    end
+  end
 
   entropy_fifo #(
     .DEPTH(64)

@@ -18,6 +18,17 @@ async def _transitions(signal, samples=256):
     return count
 
 
+async def _bit_transitions(signal, bit, samples):
+    previous = (int(signal.value) >> bit) & 1
+    count = 0
+    for _ in range(samples):
+        await Timer(1, unit="ns")
+        current = (int(signal.value) >> bit) & 1
+        count += current != previous
+        previous = current
+    return count
+
+
 @cocotb.test()
 async def test_ring_oscillator_enable_disable(dut):
     tb = EntropySourceTb(dut, "ring_enable")
@@ -60,3 +71,24 @@ async def test_sample_clock_divider(dut):
         slow += ((current >> 1) & 1) != ((previous >> 1) & 1)
         previous = current
     assert fast > slow > 0
+
+
+@cocotb.test()
+async def test_sample_clock_divider_ratio_matrix(dut):
+    tb = EntropySourceTb(dut, "sample_divider_ratio_matrix")
+    await tb.start()
+    dut.sampler_select.value = 0
+    dut.sampler_enable.value = 0b01
+
+    transition_counts = []
+    for divide in range(5):
+        dut.rst_n.value = 0
+        dut.sampler_divide_0.value = divide
+        await Timer(40, unit="ns")
+        dut.rst_n.value = 1
+        await Timer(40, unit="ns")
+        transition_counts.append(await _bit_transitions(dut.sampler_clk, 0, samples=4096))
+
+    assert all(count > 0 for count in transition_counts)
+    for faster, slower in zip(transition_counts, transition_counts[1:]):
+        assert 1.8 <= faster / slower <= 2.2

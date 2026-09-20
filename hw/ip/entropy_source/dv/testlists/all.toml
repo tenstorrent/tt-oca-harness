@@ -101,6 +101,14 @@ timeout_sec = 1200
 tags = ["entropy_source", "sha", "csr"]
 run_modes = ["functional"]
 
+[[tests]]
+name = "entropy_source_integrated_test"
+module = { cocotb = "entropy_source_integrated_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "integration", "fifo", "irq"]
+run_modes = ["functional"]
+
 [[groups]]
 name = "smoke"
 tests = ["entropy_source_sanity_test"]
@@ -120,4 +128,5 @@ tests = [
   "entropy_source_pipeline_integration_test",
   "entropy_source_sampling_test",
   "entropy_source_conditioning_test",
+  "entropy_source_integrated_test",
 ]
