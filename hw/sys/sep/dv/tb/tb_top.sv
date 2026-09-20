@@ -946,8 +946,21 @@ module sep_uvm_top
     // X-harden the handshakes (clean-1 only) so a 4-state sim sees idle, not X,
     // before cocotb drives m_axi_*.
     // ------------------------------------------------------------------
+    // AxATOP on the SMN-inbound master. The pulp AW struct carries `atop`, but
+    // the OCAH AXI interface has no member for it (ocah_axi_struct_bridge.sv:13-14)
+    // and cocotbext-axi drives no such signal, so the field would be a constant
+    // zero and every axi_atop_filter would sit in its pass-through arm. Only
+    // sep_cpu.sv:467-469 ties atop in RTL; the inbound port does not, so an
+    // atomic reaching the filters is legal traffic. A test drives this pin
+    // directly (cocotb.top.m_axi_awatop_drive), holds it for one write on an
+    // otherwise-idle ID -- AXI E2.1.4 forbids an atomic sharing an ID with
+    // another transaction -- and clears it. Default zero keeps every existing
+    // leaf bit-identical.
+    logic [5:0] m_axi_awatop_drive = 6'b0;
+
     always_comb begin
-        smn_inbound_req_drive           = '{default: '0};  // zeros atop/unused
+        smn_inbound_req_drive           = '{default: '0};  // zeros unused
+        smn_inbound_req_drive.aw.atop   = m_axi_awatop_drive;
         smn_inbound_req_drive.aw.id     = m_axi_awid;
         smn_inbound_req_drive.aw.addr   = m_axi_awaddr;
         smn_inbound_req_drive.aw.len    = m_axi_awlen;
