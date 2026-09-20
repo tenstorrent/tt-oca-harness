@@ -1,19 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_axi_id_width_conversion_test - the external-port ID conversion, on the wrapper.
+"""smu_axi_id_width_conversion_test - the external-port ID round trip, on the wrapper.
 
-smu_axi_in (8-bit ID) enters the SMU fabric and reaches SMC SYS_IN (6-bit ID)
-through the ID-width conversion in front of it. The AXI slave is the `ext_in_*`
-pin group, the smu_axi_in_req_i / smu_axi_in_resp_o pair on smu_wrapper.sv, and
-the SMC reset observable is rst_primary_smc_clk_n_o.
+The wrapper elaborates SEP=1, so a read entering on the `ext_in_*` pins (8-bit
+ID, the smu_axi_in_req_i / smu_axi_in_resp_o pair on smu_wrapper.sv) is routed
+by the SMU crossbar to the SMC system input, whose transaction IDs are 6 bits
+wide. The RID that comes back on ext_in_rid has therefore crossed the fabric's
+ID handling in both directions. The SMC reset observable is
+rst_primary_smc_clk_n_o.
 
 SYS_IN blocks by default, so a probe issued without programming lands on the
 error slave, which also answers with RID == ARID; a RID compare alone cannot
-tell the converter from that slave. The sequence therefore first routes the
+tell the fabric route from that slave. The sequence therefore first routes the
 local SMC aperture and opens an INBOUND0 window over the probed page through
 JTAG2AXI, then requires every probe to complete OKAY with RID == ARID and the
 VERSION_LO probe to return its RDL reset value: only a read that reached the
-SMC through the converter can do that.
+SMC register can do that.
+
+The SEP=0 direct ID converter (the gen_no_sep arm) is not elaborated on this
+bench; it is proved on --dut smu_block by smu_axi_external_port_connectivity_test.
 """
 
 from __future__ import annotations
@@ -51,7 +56,7 @@ WINDOW_END = max(PROBE_ADDRS) + 4
 
 @pyuvm.test()
 class smu_axi_id_width_conversion_test(smu_base_test):
-    """Prove SMN->iw_converter->SYS_IN completes OKAY with matching RID on smu_wrapper."""
+    """ext_in -> SEP=1 crossbar -> SMC SYS_IN completes OKAY with RID == ARID on smu_wrapper."""
 
     use_shared_env = True
 
@@ -92,13 +97,13 @@ class smu_axi_id_width_conversion_test(smu_base_test):
                 int(value) & 0xFFFF_FFFF,
             )
             sb.expect_eq(
-                f"OKAY through ID-converted SYS_IN @0x{addr:08x}",
+                f"OKAY through the SEP=1 crossbar to SYS_IN @0x{addr:08x}",
                 resp,
                 RESP_OKAY,
                 evidence="AXI_ID_WIDTH_OK",
             )
             sb.expect_eq(
-                f"RID match via ID-converted SYS_IN @0x{addr:08x}",
+                f"RID match through the SEP=1 crossbar to SYS_IN @0x{addr:08x}",
                 rid,
                 issued,
                 evidence="AXI_ID_WIDTH_OK",
@@ -109,13 +114,14 @@ class smu_axi_id_width_conversion_test(smu_base_test):
             master, SMC_CHIP_CONFIG_VERSION_LO, arid=arids[0], label="id_width_rd@version_lo"
         )
         sb.expect_eq(
-            "VERSION_LO through ID-converted SYS_IN reads its RDL reset value",
+            "VERSION_LO through the SEP=1 crossbar to SYS_IN reads its RDL reset value",
             int(first_value) & 0xFFFF_FFFF,
             SMC_CHIP_CONFIG_VERSION_LO_RESET,
             evidence="AXI_ID_WIDTH_OK",
         )
 
         self.logger.info(
-            "smu_axi_id_width_conversion_test: %d ID-path probes OKAY on smu_wrapper",
+            "smu_axi_id_width_conversion_test: %d ID round-trip probes OKAY through the SEP=1 "
+            "crossbar on smu_wrapper",
             len(PROBE_ADDRS),
         )

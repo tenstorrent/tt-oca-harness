@@ -1057,7 +1057,7 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
             memcpy(statusBuff, body_buf, 4);
             return OCCP_SUCCESS;
         } else {
-            /* GET_STATUS body is one 32-bit status value (occp-protocol.adoc, GetStatus) */
+            /* GET_STATUS: 4 bytes BE */
             uint8_t body_buf[16] = {0};
             uint16_t body_len = 0;
             int rc =
@@ -1302,8 +1302,6 @@ int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
 
     exec_hdr.header = occp_encode_header_word(OCCP_JUMP, body_len, has_body_crc);
     exec_hdr.start_addr = addr;
-    /* Byte 8 is the CPU ID; byte 9 carries reserved bits 2:0 and address attributes
-     * 7:3. None of them affects ROM behaviour (occp-protocol.adoc, ExecuteImage). */
     exec_hdr.cpu_id = 0;
     exec_hdr.reserved = 0;
     exec_hdr.addr_attr = 0;
@@ -1768,12 +1766,7 @@ void send_random_occp_read(test_context_t *ctx, uint64_t addr_range) {
 void execute_random_commands(test_context_t *ctx, int num_commands) {
 
     uint64_t addr_range = ctx->test_upper_addr_bound - ctx->test_base_addr;
-    /* Interface status 0x1 is OCCP_INTERFACE_STATUS_READY (bootrom smc_occp_status.h).
-     * check_occp_status_data compares the command count and the interface nibble;
-     * it accepts exp_boot_status but does not compare it, and the ROM main flow
-     * leaves the boot nibble at zero (status-coordination.adoc), so 0x5
-     * (OCCP_BOOT_STATUS_COMPLETE) is not a value the ROM reports here. Both
-     * applications report version 1.0.0 (occp-protocol.adoc, GetVersion). */
+
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
     int exp_occp_version_major = 1;
