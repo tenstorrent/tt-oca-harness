@@ -79,14 +79,19 @@ endef
 ocah-regen-regs-clean:
 	$(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_clean_one,$(block)))
 
-## Refresh the committed vendored register RDLs from their upstream OpenTitan hjson.
+## Refresh or check committed vendored register RDLs from upstream OpenTitan hjson.
 ## On-demand only: a clean checkout already has the RDLs and regen-regs never runs
-## this (the committed RDL is never a make prerequisite of the hjson). Re-serializes
-## with tt-oca's reggen, so expect a format diff vs the checked-in RDL.
-## @param RDL=aes Optional vendored RDL basename to refresh (default: all). A
+## this (the committed RDL is never a make prerequisite of the hjson).
+## @param RDL=hmac Optional vendored RDL basename to refresh (default: all). A
 ## separate selector from TARGET, which classify.mk validates against top blocks.
-ocah_vhr_name = $(notdir $(basename $(call ocah_vhr_rdl,$(1))))
+## @param CHECK=1 Report drift and fail instead of rewriting.
+OCAH_VENDOR_HJSON_RDL_NAMES := $(foreach e,$(OCAH_VENDOR_HJSON_RDLS),$(call ocah_vhr_name,$(e)))
 OCAH_SELECTED_VENDOR_HJSON_RDLS = $(if $(RDL),$(foreach e,$(OCAH_VENDOR_HJSON_RDLS),$(if $(filter $(RDL),$(call ocah_vhr_name,$(e))),$(e))),$(OCAH_VENDOR_HJSON_RDLS))
+ifneq ($(strip $(RDL)),)
+  ifeq ($(filter $(RDL),$(OCAH_VENDOR_HJSON_RDL_NAMES)),)
+    $(error Unknown managed vendor RDL '$(RDL)'; known blocks: $(OCAH_VENDOR_HJSON_RDL_NAMES))
+  endif
+endif
 ## Refresh the DFD RDLs from the vendored tt_hw_debug MMR spec yaml.
 ## On-demand like ocah-regen-vendor-rdl: the RDLs are committed, so a clean
 ## checkout needs no regen. Run after bumping the tt-hw-debug vendor drop.
@@ -98,9 +103,18 @@ ocah-regen-dfd-rdl: | $(OCAH_REG_UV_PREREQ)
 
 .PHONY: ocah-regen-vendor-rdl
 ocah-regen-vendor-rdl: | $(OCAH_REG_UV_PREREQ)
+ifeq ($(CHECK),)
 	@$(foreach e,$(OCAH_SELECTED_VENDOR_HJSON_RDLS),\
 		echo "Exporting HJSON register description to RDL: $(call ocah_vhr_rdl,$(e))"; \
 		$(call ocah_vendor_hjson_rdl_regen,$(e)); )
+else
+	@trap 'rm -f $(foreach e,$(OCAH_SELECTED_VENDOR_HJSON_RDLS),"$(call ocah_vhr_rdl,$(e)).check.rdl")' EXIT; stale=0; \
+	$(foreach e,$(OCAH_SELECTED_VENDOR_HJSON_RDLS),\
+		echo "Checking HJSON register description against RDL: $(call ocah_vhr_rdl,$(e))"; \
+		$(call ocah_vendor_hjson_rdl_regen_to,$(e),$(call ocah_vhr_rdl,$(e)).check.rdl); \
+		diff -u "$(call ocah_vhr_rdl,$(e))" "$(call ocah_vhr_rdl,$(e)).check.rdl" || stale=1; ) \
+	exit $$stale
+endif
 
 OCAH_PHONY += \
   ocah-regen-regs \

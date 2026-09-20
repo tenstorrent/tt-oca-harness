@@ -211,6 +211,23 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
+# KM -> ABR ML-KEM sideload: the seed (D||Z on one 16-dword KV lane), the
+# message, and the shared-key writeback the KM consumes back out. Each lane is
+# compared against a direct-register run of the same words, after a run on
+# different words, so a stale register cannot pass. REAL fuse-sense;
+# +esrc_noise_force. Three ML-KEM-1024 keygens and four encaps set the wall
+# budget.
+name = "sep_km_abr_mlkem_sideload_test"
+module = "km.sep_km_abr_mlkem_sideload_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 10800
+tags = ["km", "abr", "sideload", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
 # KM mailbox as a SEP-side register surface. RANDCFG: the 16 inbound fill
 # words come from the run seed. KM stays in software reset so firmware
 # cannot drain or fault the FIFOs; the SEP-facing mailbox lives on cold

@@ -23,6 +23,7 @@ dependencies = [
   "peakrdl-systemrdl>=1.0.1",
   "pre-commit==4.5.1",  # 4.6+ requires Git 2.31; supported environments include Git 2.26
   "pyelftools>=0.33",
+  "pyyaml>=6.0.3",
   "ruff==0.16.5",
   "semantic-version>=2.10.0",
   "shellcheck-py==0.11.0.1",  # wraps the shellcheck binary; see shfmt-py below for the formatter half
@@ -38,15 +39,17 @@ dependencies = [
 # Simulation environment for the native DV runner (tools/dv/run_dv.py). Kept out of
 # default-groups so `uv sync` for reggen/docs does not pull the simulation stack.
 dv = ["ocah-dv"]
+manifest = ["tt-oca-manifest"]
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
 ocah-dv = { workspace = true }
+tt-oca-manifest = { workspace = true }
 
 [tool.uv.workspace]
-members = ["hw/common/dv"]
+members = ["hw/common/dv", "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"]
 
 [tool.ruff]
 target-version = "py311"
@@ -61,6 +64,17 @@ extend-exclude = [
   "**/build_ot_pio",
   "**/regs/gen/py",
   "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest",
+]
+
+# The SMU DV `env` and `seq_lib` packages are namespace packages spanning the
+# block and wrapper framework trees (hw/sys/smu/dv/README.md), so they carry no
+# __init__.py; name them here so isort keeps treating their imports as
+# first-party.
+namespace-packages = [
+  "hw/sys/smu/dv/cocotb/env",
+  "hw/sys/smu/dv/cocotb/seq_lib",
+  "hw/sys/smu/dv/cocotb_wrapper/env",
+  "hw/sys/smu/dv/cocotb_wrapper/seq_lib",
 ]
 
 [tool.ruff.lint]

@@ -62,7 +62,6 @@ args = [
 # +skip_fuse_sense -- the JTAG LC gate depends on the sensed lc_state).
 # PROD/RMA_SIP JTAG may reach the MMR token block (TOKEN_I / TOKEN_EOP /
 # MATCH) and must DECERR on shadow and the program/read interface.
-# After sense-done both OTP JTAG2AXIL dbg_disable bits read 0 (LCC ungated).
 name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"
@@ -174,6 +173,10 @@ target = "lsu_stub_all_live"
 # move and the locked-field interrupt must pulse. A SECURE_TM_UNLOCK spare stays
 # writable with the strap up, so the deny is the lock and not a dead write path.
 # Real fuse sense, LC_PROD, no_cpu.
+#
+# Plusarg-selected variant: the module is the locked-field leaf, and
+# +secure_tm_lock selects this scenario, so the module does not end in this
+# entry name. See Naming Rules in docs/SEP_VPLAN.adoc.
 name = "sep_efuse_secure_tm_write_lock_test"
 module = "efuse.sep_locked_field_access_irq_path_test"
 seed = 1
@@ -213,6 +216,11 @@ target = "lsu_stub_all_live"
 # of the same state. RANDCFG: tokens and the LC_STATE[31:8] pattern come from
 # the seed; the cells within a leaf are fixed, so no contract is seed-selected.
 # Real fuse sense, no_cpu.
+#
+# The six sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of one
+# module, sep_lcc_lc_state_transition_matrix_test: +lc_start=N picks the start
+# state, so none of them ends the module name. See Naming Rules in
+# docs/SEP_VPLAN.adoc.
 #
 # PROD: W1S no-clear, the RMA_SIP token gate, the RMA_CHIPLET ordering gate
 # (with its token gate already open), then the authorized advance to RMA_SIP.

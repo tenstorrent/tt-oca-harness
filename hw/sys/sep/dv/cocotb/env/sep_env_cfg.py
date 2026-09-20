@@ -20,6 +20,11 @@ class SepEnvCfg(uvm_object):
         self.sys_clk_period_ns = 5
         self.wdt_clk_period_ns = 5000
         self.entropy_clk_period_ns = 3
+        # Reference clock for the SEP_CPU_CTRL REFERENCE_COUNTER. Slower than
+        # the system clock so the counter's CDC crossing is a real one in both
+        # directions; kept off the seeded randomization because a read-count
+        # delta is compared against an elapsed-time bound.
+        self.ref_clk_period_ns = 40
         # Per-access AXI timeout (ns) before the driver fails a wedged LSU path.
         self.axi_timeout_ns = 50_000
         # Set by the test once clocks run and reset releases, so the AXI driver

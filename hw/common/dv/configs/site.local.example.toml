@@ -53,3 +53,15 @@ argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
 # on that DUT is an error.
 # [duts.dtp]
 # formal_cfg = "nonfree/hw/sys/dtp/dv/dtp_formal_cfg.toml"
+
+# A cluster executor the registry declares takes per-key overrides: the site's queue and
+# resource defaults, its coordinator limits, the hook that puts the scheduler commands on
+# PATH, and a whole argv template when the site's scheduler wants other flags or units. A
+# complete table adds an executor the registry lacks.
+[executors.lsf]
+defaults = { queue = "batch", cores = 1, mem_mb = 8192, walltime = "02:00" }
+# setup_hook = "eda/lsf.env"
+
+[executors.lsf.limits]
+max_in_flight = 200
+poll_interval_sec = 30

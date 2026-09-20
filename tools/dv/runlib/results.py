@@ -75,6 +75,48 @@ def git_info(root: Path) -> dict[str, str]:
     }
 
 
+def git_provenance(root: Path, run_dir: Path) -> dict[str, str]:
+    """``git_info`` plus, on a dirty tree, an archived copy of the uncommitted diff.
+
+    A commit hash identifies only the committed sources. When the tree carries
+    uncommitted edits the diff is written under ``<run_dir>/provenance/`` and
+    its path recorded beside the hash, so the sources a run compiled can still
+    be reconstructed after the fact.
+    """
+    info = git_info(root)
+    if info.get("dirty") != "true":
+        return info
+    prov_dir = run_dir / "provenance"
+    try:
+        prov_dir.mkdir(parents=True, exist_ok=True)
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=60,
+        ).stdout
+        diff = subprocess.run(
+            ["git", "diff", "HEAD"],
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=120,
+        ).stdout
+    except (FileNotFoundError, subprocess.SubprocessError):
+        info["diff_archive"] = ""
+        return info
+    (prov_dir / "worktree.status").write_text(status, encoding="utf-8")
+    (prov_dir / "worktree.diff").write_text(diff, encoding="utf-8")
+    info["diff_archive"] = repo_rel(root, prov_dir / "worktree.diff")
+    info["dirty_files"] = str(len([line for line in status.splitlines() if line.strip()]))
+    return info
+
+
 def tool_versions(root: Path) -> dict[str, str]:
     versions: dict[str, str] = {"python": platform.python_version()}
     for tool, version_args in TOOL_VERSION_ARGS.items():
@@ -832,7 +874,7 @@ def regression_payload(
         "run_dir": repo_rel(root, run_dir),
         "artifact_root": repo_rel(root, run_dir),
         "artifacts": artifacts,
-        "git": git_metadata if git_metadata is not None else git_info(root),
+        "git": git_metadata if git_metadata is not None else git_provenance(root, run_dir),
         "tool_versions": versions,
         "overrides": {"cli": cli_overrides(args)},
         "selection": _selection_payload(args, items),
@@ -908,7 +950,7 @@ def result_payload(
         "overrides": {"cli": cli_overrides(args)},
         "tests": _tests_summary(stages, completion),
         "coverage": coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False))),
-        "git": git_metadata if git_metadata is not None else git_info(root),
+        "git": git_metadata if git_metadata is not None else git_provenance(root, run_dir),
         "tool_versions": versions,
         "stages": [_stage_dict(stage) for stage in stages],
     }

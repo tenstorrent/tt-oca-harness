@@ -125,6 +125,7 @@
         rand uvm_reg_field key_invalid;
         rand uvm_reg_field rnd_rep_chk_fail;
         rand uvm_reg_field rnd_fips_chk_fail;
+        rand uvm_reg_field mai_software_error;
         rand uvm_reg_field imem_intg_violation;
         rand uvm_reg_field dmem_intg_violation;
         rand uvm_reg_field reg_intg_violation;
@@ -155,6 +156,8 @@
             this.rnd_rep_chk_fail.configure(this, 1, 6, "RW", 1, 'h0, 1, 1, 0);
             this.rnd_fips_chk_fail = uvm_reg_field::type_id::create("rnd_fips_chk_fail");
             this.rnd_fips_chk_fail.configure(this, 1, 7, "RW", 1, 'h0, 1, 1, 0);
+            this.mai_software_error = uvm_reg_field::type_id::create("mai_software_error");
+            this.mai_software_error.configure(this, 1, 8, "RW", 1, 'h0, 1, 1, 0);
             this.imem_intg_violation = uvm_reg_field::type_id::create("imem_intg_violation");
             this.imem_intg_violation.configure(this, 1, 16, "RW", 1, 'h0, 1, 1, 0);
             this.dmem_intg_violation = uvm_reg_field::type_id::create("dmem_intg_violation");

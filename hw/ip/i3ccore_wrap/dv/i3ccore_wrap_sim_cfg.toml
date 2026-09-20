@@ -73,9 +73,6 @@ args = []
 [targets.default]
 description = "I3C block TB: i3ccore_wrapper under tb_i3ccore"
 build_dir = "hw/ip/i3ccore_wrap/dv/build/cocotb"
-defines = [
-  "I3C_USE_AXI_LITE",
-]
 
 [targets.default.tools.verilator]
 flags = [

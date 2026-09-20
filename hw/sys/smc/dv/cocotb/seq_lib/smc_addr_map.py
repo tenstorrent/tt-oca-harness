@@ -95,6 +95,12 @@ def smc_addr(symbol: str) -> int:
         raise KeyError(f"{symbol} not in {_SMC_ADDR_H}") from exc
 
 
+def smc_addr_symbols(pattern: str) -> tuple[str, ...]:
+    """Return every ``SMC_TOP_*`` symbol in ``smc_addr.h`` matching ``pattern`` (a full-match regex)."""
+    rx = re.compile(pattern)
+    return tuple(name for name in _parse_simple_defines(_SMC_ADDR_H) if rx.fullmatch(name))
+
+
 def smc_indexed_addr(symbol: str, idx: int = 0) -> int:
     """Evaluate a PeakRDL indexed ``SMC_TOP_*_BASE_ADDR(idx)`` macro."""
     table = _parse_indexed_bases(_SMC_ADDR_H)

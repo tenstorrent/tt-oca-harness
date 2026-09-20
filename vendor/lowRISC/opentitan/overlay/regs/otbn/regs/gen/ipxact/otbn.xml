@@ -284,6 +284,19 @@ All BUSY values represent an operation started by a write to the
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
+            <ipxact:name>mai_software_error</ipxact:name>
+            <ipxact:description>An `MAI_SOFTWARE_ERROR` error was observed.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
             <ipxact:name>imem_intg_violation</ipxact:name>
             <ipxact:description>A `IMEM_INTG_VIOLATION` error was observed.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>

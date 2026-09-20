@@ -96,7 +96,7 @@ stubs = [
   # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
   # receives both files like Verilator does. The leaves that read a
   # signal behind one, and the VCS control that keeps those claims honest, are
-  # in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc (Bench stand-ins).
+  # in docs/SMC_VPLAN.adoc, Known Limitations (Bench stand-ins).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
@@ -507,6 +507,11 @@ work_dir = "hw/sys/smc/dv/build/uvm"
 incdirs = [
   "hw/sys/smc/dv/tb",
   "hw/common/assert",
+  # hw/sys/smc/regs/gen/svh carries the generated register header smc_env_pkg
+  # includes for reset values and field masks (smc_types.svh); addresses keep
+  # coming from smc_top_addrmap_pkg through the bender filelist. Same split as
+  # hw/sys/sep/dv/sep_sim_cfg.toml.
+  "hw/sys/smc/regs/gen/svh",
   "hw/sys/smc/dv/uvm/env",
   "hw/sys/smc/dv/uvm/seq_lib",
   "hw/sys/smc/dv/uvm/tests",
@@ -527,6 +532,16 @@ sources = [
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_encode.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv",
+  # Eight prims the cocotb [build].sources list above carries are absent here:
+  # prim_ram_1p, prim_ram_1p_adv, prim_arbiter_tree, prim_fifo_async,
+  # prim_rst_sync, prim_subreg, prim_subreg_arb and prim_subreg_ext. The
+  # Bender-resolved layer already names each of them (smc_uvm_bender.f), and
+  # VCS rejects a module declared by two files it is handed (Error-[MPD])
+  # where Verilator tolerates the repeat. Anything added here has to be
+  # checked against the bender filelist first:
+  #   comm -12 <(grep '\.sv$' smc_uvm_compile.f | sort -u) \
+  #            <(grep '\.sv$' smc_uvm_bender.f  | sort -u)
+  # must stay empty.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv",

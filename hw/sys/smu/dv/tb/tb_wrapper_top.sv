@@ -296,7 +296,7 @@ module smu_wrapper_uvm_top (
   output logic [7:0]  lc_state_o,
   // Hierarchical SEP lifecycle source (for lc_state=from_sep identity). This
   // bench elaborates SEP, so the tap is live; the SEP=0 composition is proved
-  // on --dut smu_block, whose testlists/nosep.toml holds those leaves.
+  // on --dut smu_block, whose testlists/block.toml `nosep` group holds those leaves.
   output logic [7:0]  obs_sep_lc_state_o,
   // Compile-time present flags, diagnostic only: SMU_ALL_001 proves presence
   // from the hierarchical clk/rst identity observes below.

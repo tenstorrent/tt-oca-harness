@@ -13,11 +13,16 @@
 //   1. wait for real fuse-sense to complete (no +skip_fuse_sense);
 //   2. publish CPU_READY to scratch-cold[0] so the cocotb side knows it may start
 //      the JTAG burst;
-//   3. loop forever: read RMA_SIP_TOKEN_I_0 and value-check its reset value (CPU-path
-//      integrity through the mux while JTAG contends -- the CPU uses TOKEN_I_0,
-//      the JTAG side uses TOKEN_I_1/3/LAST, so they do not overlap), and publish
-//      the loop counter and error count to scratch-cold so the observer can
-//      confirm the CPU keeps making progress during the JTAG burst.
+//   3. loop forever, scoring two reads per pass so a path that returns nothing
+//      cannot pass: RMA_SIP_TOKEN_I_0 must read its 0 reset value, and
+//      EFUSE_INTERFACE_CTRL STATUS must still carry efuse_sense_done set. The
+//      zero-expecting read alone is satisfied by a dead or zero-returning path;
+//      the set status bit is the live control that makes the pair meaningful.
+//      The CPU uses TOKEN_I_0, the JTAG side uses TOKEN_I_1/3/LAST, so they do
+//      not overlap. Both are reads: the CPU issues no eFuse writes, so only the
+//      read channel is contended. The loop counter and error count go to
+//      scratch-cold so the observer can confirm the CPU keeps making progress
+//      during the JTAG burst.
 //
 // The EL2 runs as a live worker. Coexistence is the loop counter advancing
 // across the JTAG burst while the CPU-published error count stays zero.
@@ -58,6 +63,13 @@ int main(void) {
         uint32_t rb = sep_efuse_rd(SEP_EFUSE_MMR0);
         if (rb != 0u) {
             integ_err++; // CPU path corrupted under contention
+        }
+        // Live control for the compare above. A mux that stops returning CPU
+        // read data yields 0, which satisfies the 0-expecting check on its own;
+        // requiring a bit that is set makes the pair fail on a dead path.
+        uint32_t st = sep_efuse_rd(SEP_EFUSE_IFC_STATUS);
+        if ((st & SEP_EFUSE_SENSE_DONE) == 0u) {
+            integ_err++; // CPU read path dead or returning zeros under contention
         }
         // Publish progress (1..N) so the observer can prove the CPU advanced while
         // the JTAG burst ran.

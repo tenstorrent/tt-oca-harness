@@ -1031,7 +1031,6 @@ class _EvidenceRecorder:
         "smc_gpio_intf_full_sweep_test": "protocol-VIP floor and scoreboard compares",
         "smc_i2c_multi_instance_test": "protocol-VIP floor and scoreboard compares",
         "smc_mailbox_inbound_test": "protocol-VIP floor and scoreboard compares",
-        "smc_mailbox_multi_instance_test": "protocol-VIP floor and scoreboard compares",
         "smc_occp_sanity_secure_error_test": "protocol-VIP floor and sequence asserts",
         "smc_register_boundary_depth_test": "protocol-VIP floor and scoreboard compares",
         "smc_register_sanity_test": "protocol-VIP floor and scoreboard compares",
@@ -1384,10 +1383,16 @@ class smc_base_test(uvm_test):
             dut.tb_ss_reset_complete.value = 0xFFFFFFFF
         if hasattr(dut, "tb_jtag_reset_ctrl"):
             dut.tb_jtag_reset_ctrl.value = 0
+        if hasattr(dut, "tb_sep_axi_b_hold"):
+            dut.tb_sep_axi_b_hold.value = 0
         if hasattr(dut, "tb_sep_axi_r_hold"):
             dut.tb_sep_axi_r_hold.value = 0
+        if hasattr(dut, "tb_sep_axi_r_drop"):
+            dut.tb_sep_axi_r_drop.value = 0
         if hasattr(dut, "tb_sys_axi_r_hold"):
             dut.tb_sys_axi_r_hold.value = 0
+        if hasattr(dut, "tb_sys_axi_r_drop"):
+            dut.tb_sys_axi_r_drop.value = 0
         if hasattr(dut, "tb_output_axi_resp_hold"):
             dut.tb_output_axi_resp_hold.value = 0
         if hasattr(dut, "tb_mem_repair_abort"):

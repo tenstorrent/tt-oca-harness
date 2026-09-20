@@ -163,6 +163,19 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         dut.rst_cold_ni.value = 0
         await ClockCycles(dut.clk_ref_i, 64)
         dut.rst_cold_ni.value = 1
+        # Armed at the release, as the cold+stall leg is: with the pad the only
+        # stall source the sense completes within a hundred clk_smu of the
+        # release, inside the settle below.
+        pad_gate_held = cocotb.start_soon(
+            expect_gate_held_after_sense(
+                dut,
+                sb,
+                log,
+                phase="cold+GPIO pad only",
+                name="fuse_reset gated by the GPIO pad with the override idle",
+                evidence="STALL_PAD_ONLY",
+            )
+        )
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         await wait_signal_high(
             smc_primary_reset(dut),
@@ -172,14 +185,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         )
         await ClockCycles(dut.clk_smu_i, 64)
         sb.expect_eq("pad-only leg: jtag ovrd idle", int(dut.jtag_boot_stall_ovrd.value), 0)
-        await expect_gate_held_after_sense(
-            dut,
-            sb,
-            log,
-            phase="cold+GPIO pad only",
-            name="fuse_reset gated by the GPIO pad with the override idle",
-            evidence="STALL_PAD_ONLY",
-        )
+        await pad_gate_held
 
         # Both sources asserted: the override selects its own 1, which agrees
         # with the pad, so the gate stays shut.

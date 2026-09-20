@@ -7,7 +7,7 @@ name = "smc_gpio_observe_test"
 module = "smc_gpio_observe_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "functional", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -15,7 +15,7 @@ name = "smc_gpio_multi_sample_test"
 module = "smc_gpio_multi_sample_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -23,7 +23,7 @@ name = "smc_gpio_output_driveback_test"
 module = "smc_gpio_output_driveback_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -31,7 +31,7 @@ name = "smc_gpio_irq_type_matrix_test"
 module = "smc_gpio_irq_type_matrix_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 # Edge-type GPIO interrupts; level is irq_type_matrix.
@@ -40,7 +40,7 @@ name = "smc_gpio_p0_int_test"
 module = "smc_gpio_p0_int_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 # GPIO mux: interface_enable vs lsio_select.
@@ -49,7 +49,7 @@ name = "smc_gpio_p0_mux_test"
 module = "smc_gpio_p0_mux_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 # BFM rebuild of gpio_filter_access_sep (ACCESS_FILTER AxPROT allow/deny).
@@ -58,7 +58,7 @@ name = "smc_gpio_filter_access_sep_test"
 module = "smc_gpio_filter_access_sep_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 # INTERRUPT_ENABLE is an output mask: clearing it de-asserts interrupt_o and
@@ -68,7 +68,7 @@ name = "smc_gpio_irq_mask_deassert_test"
 module = "smc_gpio_irq_mask_deassert_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 [[groups]]
@@ -90,7 +90,7 @@ name = "smc_gpio_irq_active_test"
 module = "smc_gpio_irq_active_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -98,7 +98,7 @@ name = "smc_gpio_ctrl_full_sweep_test"
 module = "smc_gpio_ctrl_full_sweep_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -106,7 +106,7 @@ name = "smc_gpio_pad_input_readback_test"
 module = "smc_gpio_pad_input_readback_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "pyuvm"]
+tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -114,7 +114,7 @@ name = "smc_external_window_pad_ctrl_decode_test"
 module = "smc_external_window_pad_ctrl_decode_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "decode", "pyuvm"]
+tags = ["ci", "gpio", "decode"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -122,5 +122,5 @@ name = "smc_gpio_intf_full_sweep_test"
 module = "smc_gpio_intf_full_sweep_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]

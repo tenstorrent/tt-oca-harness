@@ -26,12 +26,14 @@ default_tool = "verilator"
 tools = ["verilator", "vcs", "xcelium"]
 
 [testlist]
-path = "testlists/wrapper.toml"
+path = "testlists/all.toml"
 format = "toml_list"
 
-# Waive abr_reg.sv external wr/rd_ack $error. On the wrapper SEP=1 profile the
-# ABR datapath is not meaningfully exercised; the assertion fires at t=0 and
-# again after reset release (e.g. 8 ns), so waive by file (not only "at time 0").
+# Waive the abr_reg.sv external wr/rd_ack $error, and only that assertion
+# class. On the wrapper SEP=1 profile the ABR datapath is not exercised; the
+# assertion fires at t=0 and again after reset release (e.g. 8 ns), so it is
+# waived at any time -- but a line naming abr_reg.sv for any other reason
+# still fails the run.
 #
 # Every other PeakRDL-regblock external-ack check fires once at time 0 on a
 # four-state simulator: the check is an immediate assertion in the `else`
@@ -41,8 +43,14 @@ format = "toml_list"
 # assertion failing at any later time stays a hard fail.
 [pass_fail]
 extra_ignore_patterns = [
-  'abr_reg\.sv',
+  'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack',
   'assert_bad_ext_(wr|rd)_ack: at time 0 [a-z]s$',
+  # SEP's assertions are SEP's bench's contract: under the wrapper the SEP core
+  # is elaborated but, in most leaves, never brought up, so its known-value
+  # checks fire on quiescent X and its prim_count AssertConnected_A checks ask
+  # for an OpenTitan alert SEP does not have. The wrapper is graded on its
+  # interface; hw/sys/sep/dv/tb/tb_top.sv scopes the same classes off.
+  'u_dut\.u_smu\.gen_sep\.u_sep\..*: at time',
 ]
 extra_hard_fail_patterns = ['assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]']
 
@@ -199,11 +207,13 @@ policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.to
 # because a DUT table replaces the list, then the scope file is added.
 # `-cm_hier` limits what is instrumented at compile time; `-cm_common_hier`
 # extends the same file to assertion coverage, which carries the cov/sv
-# `cover property` points, and needs `-lca`. design_artifact points the
-# post-compile check at the database the compile writes, for the reason
-# sep_sim_cfg.toml gives. cov/config/vcs/README.md explains the scope file.
+# `cover property` points, and needs `-lca`. The coverage database lands
+# next to simv under the wrapper's one compile profile, compile_smu_chiplet;
+# the runner's default looks under a `default` build directory this DUT never
+# compiles into, so design_db names the database the profile writes.
+# cov/config/vcs/README.md explains the scope file.
 # Edit `smu_wrapper_cov_scope.hier` then `--rebuild`.
-design_artifact = "{build_dir}/../cov_build.vdb"
+design_db = "hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb"
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",
@@ -228,11 +238,11 @@ python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
-  # Shared PyUVM env and seq_lib, one package each for both DUTs. seq_lib
-  # modules import each other as `from seq_lib.x`, so they only resolve inside
-  # a package of that name, and `seq_lib` can only ever be one package -- see
-  # smu_block_sim_cfg.toml, which puts the same directory on its path.
-  "hw/sys/smu/dv/common",
+  # `env` and `seq_lib` are namespace packages (no __init__.py) spanning two
+  # directories: the wrapper-only half under this DUT's python_root above, and
+  # the half both DUTs share under cocotb/. No regular package of either name
+  # may appear anywhere on this path, or it would shadow both halves.
+  "hw/sys/smu/dv/cocotb",
   # The DTP bench's DV-owned JTAG tables (dtp_types: instruction opcodes, IR
   # width) as top-level modules. The DTP `env` package itself cannot go on
   # the path: `env` is the wrapper flow's own PyUVM package.
@@ -545,7 +555,7 @@ outputs = [
 ]
 
 # Run modes carry no eFuse plusargs. `+skip_fuse_sense` and the shadow-register
-# preloads are declared per test in testlists/wrapper.toml, next to the reason
+# preloads are declared per test in testlists/all.toml, next to the reason
 # each claim tolerates the skip; the boot-stall leaves carry none and sense
 # their OTP image through the wrapper's SMC eFuse model. $value$plusargs
 # returns the first match, so a preload named here would override a test's own.

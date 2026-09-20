@@ -139,6 +139,26 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
         self.logger.info("CHK-NAME PASS: NAME0=0x%08x NAME1=0x%08x (MLDSA-87)", name0, name1)
 
         await abr.enable_notif()
+        await self._assert_irq_low(IRQ_ABR_ERROR, what="before error_intr_trig")
+        await abr.trigger_error()
+        saw_err = False
+        for _ in range(64):
+            if await self._irq_bit(IRQ_ABR_ERROR) == "1":
+                saw_err = True
+                break
+        assert saw_err, (
+            f"PIC [{IRQ_ABR_ERROR}] stayed low after error_intr_trig "
+            "(probe stuck-low / enable missed)"
+        )
+        err_st = await abr.error_state()
+        assert err_st & 1, f"error_internal_sts=0x{err_st:x} after trigger"
+        err_st = await abr.w1c_error()
+        assert (err_st & 1) == 0, f"error_internal_sts=0x{err_st:x} after W1C"
+        await self._assert_irq_low(IRQ_ABR_ERROR, what="after error_internal_sts W1C")
+        self.logger.info(
+            "CHK-PIC-ERROR PASS: [%d] 0->1 via error_intr_trig, W1C readback 0",
+            IRQ_ABR_ERROR,
+        )
 
         # --- CHK-SIGN ---------------------------------------------------------
         await self._wait_status(abr, ST_READY, ST_READY, what="pre-sign READY")

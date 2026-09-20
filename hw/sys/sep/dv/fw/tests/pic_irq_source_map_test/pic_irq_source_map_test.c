@@ -9,7 +9,7 @@
 //   mailbox[0]  sep_internal_interrupts[0]  -> PIC source 1   (real FIFO push)
 //   OTBN done   sep_internal_interrupts[29] -> PIC source 30  (INTR_TEST)
 //   HMAC done   sep_internal_interrupts[17] -> PIC source 18  (INTR_TEST)
-//   extras      INTR_TEST pool (DMA / KMAC / CSRNG / EDN / KMAC-err)
+//   extras      INTR_TEST pool (DMA done/chunk/error / HMAC-err / KMAC / CSRNG / EDN / KMAC-err)
 //
 // PIC source id = sep_internal_interrupts index + 1 (VeeR EL2 extintsrc_req is
 // 1-based; source 0 is the tied no-interrupt source). Each ISR reads the claim
@@ -81,9 +81,18 @@ static const struct pic_src_desc k_catalog[] = {
     {9u, PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
      OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_SECURE_DMA_INTR_TEST_BASE_ADDR,
      SECURE_DMA__INTR_STATE__DMA_DONE_bm, "DMA"},
+    {10u, PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_SECURE_DMA_INTR_TEST_BASE_ADDR,
+     SECURE_DMA__INTR_STATE__DMA_CHUNK_DONE_bm, "DMA-chunk"},
+    {11u, PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_SECURE_DMA_INTR_TEST_BASE_ADDR,
+     SECURE_DMA__INTR_STATE__DMA_ERROR_bm, "DMA-error"},
     {18u, PIC_KIND_INTR, OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR,
      OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR,
      HMAC__INTR_STATE__HMAC_DONE_bm, "HMAC"},
+    {20u, PIC_KIND_INTR, OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR,
+     HMAC__INTR_STATE__HMAC_ERR_bm, "HMAC-err"},
     {21u, PIC_KIND_INTR, OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
      OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR,
      KMAC__INTR_STATE__KMAC_DONE_bm, "KMAC"},
@@ -467,6 +476,12 @@ int main(void) {
             errors++;
             storm = 1;
         }
+    }
+    if (g_unexpected_claims != 0) {
+        sep_mbx_puts("FAIL: unexpected PIC claim after the walk (storm)\n");
+        report_unexpected();
+        errors++;
+        storm = 1;
     }
     if (!storm) {
         sep_mbx_puts("CHK-PIC-COMPLETE PASS: no source re-fired after its ISR cleared "

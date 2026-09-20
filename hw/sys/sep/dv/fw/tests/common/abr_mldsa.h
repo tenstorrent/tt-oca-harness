@@ -5,10 +5,11 @@
  * Shared Adams Bridge (ML-DSA-87) helpers for SEP firmware tests.
  *
  * Register map taken from abr_reg.rdl (MLDSA block), at the SEP ABR aperture
- * 0x1094_0000. Completion model: Adams Bridge parks the sequencer at the op's
- * end state with STATUS.VALID asserted and does NOT auto-return to RESET, so
- * completion is detected via VALID and a zeroize is required between
- * back-to-back operations (see abr_zeroize()).
+ * documented in memory_map.adoc (same base as env/sep_spec_tables WINDOWS["ABR"]).
+ * Completion model: Adams Bridge parks the sequencer at the op's end state
+ * with STATUS.VALID asserted and does NOT auto-return to RESET, so completion
+ * is detected via VALID and a zeroize is required between back-to-back
+ * operations (see abr_zeroize()).
  */
 
 #ifndef SEP_ABR_MLDSA_H

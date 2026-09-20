@@ -46,6 +46,13 @@ coverage stages, and generated replay material.
 |`runlib/waves.py`
 |Wave format validation, failure-window calculation, retention, viewer
 commands, and same-seed replay metadata.
+
+|`runlib/executors/`
+|The executor contract (submit, poll, cancel, collect), the local executor,
+and the leaf manifest that describes one attempt.
+
+|`runlib/worker.py`
+|The `--worker-manifest` entry point: one leaf attempt on a farm machine.
 |===
 
 The runner and the dashboard do not call each other. Their integration boundary
@@ -150,8 +157,12 @@ first selected group, the single test name, `multi`, or `build`. It is
 recorded in `result.json`.
 
 Executor::
-The dispatch mechanism for leaves, declared in `executors.toml`. Only `local`
-dispatch is implemented.
+The dispatch mechanism for leaves, declared in `executors.toml` and selected
+with `--executor` or the profile's `[scheduler] default_executor`. Every
+executor implements the same four operations, submit, poll, cancel, and
+collect, and the regression loop runs on them (<<runner-executor-registry>>).
+`local` runs leaves in this process; a cluster entry names a scheduler driver
+and validates, and dispatches only when the runner implements that driver.
 
 == Prerequisites and bootstrap
 
@@ -182,6 +193,13 @@ file that pins it, and the check behind it.
 pre-provisioned CI or developer environment that already supplies the required
 packages. Repository-root discovery, `OCH_ROOT`, and namespace synchronization
 still occur.
+
+`run_dv.py --worker-manifest <manifest>` is the farm worker a cluster
+executor submits (<<runner-executor-registry>>). That branch neither
+re-executes through `uv` nor synchronizes the bridge: it runs on the
+interpreter the coordinator provisioned, attaches the bridge the coordinator
+wrote, and exits `2` when that bridge is missing, so concurrent workers never
+race on a shared checkout.
 
 [WARNING]
 ====
@@ -637,7 +655,8 @@ Configuration ownership is split:
 build/coverage defaults, and formal launch templates.
 
 |`hw/common/dv/configs/executors.toml`
-|Executor declarations. Only `local` dispatch is implemented.
+|Executor declarations: the `local` executor, and cluster entries that name a
+scheduler driver (<<runner-executor-registry>>).
 
 |`hw/common/dv/configs/site.local.toml` (git-ignored), or the file `OCAH_DV_SITE` names
 |One deployment's tool binaries, launcher prefixes, environment hooks, added
@@ -1104,9 +1123,13 @@ tool. A relative path resolves against the site file; the file must exist.
 for a formal tool); a DUT
 selects it through its config's `tools` and `default_tool`.
 
-|`[executors.<name>]` `binary` / `submit_argv`, or a complete table
+|`[executors.<name>]` any data key (`driver`, `binaries`, the argv
+templates, `defaults`, `limits`, `env_passthrough`, `history_parser`,
+`setup_hook`), or a complete table
 |replaces / adds
-|The same over `executors.toml`.
+|The same over `executors.toml` (<<runner-executor-registry>>); `kind` stays
+with the registry. `setup_hook` is site-only and resolves against the site
+file.
 
 |`[duts.<dut>]` `formal_cfg = "path"`
 |replaces
@@ -1167,6 +1190,141 @@ The container sees the checkout and the run directory at the same paths as
 the host, so the rendered command, the replay script under `scripts/`, and
 the paths the tool prints hold on both sides. `--doctor --tool vcs` then
 checks `podman`, not `vcs`.
+
+[[runner-executor-registry]]
+=== Executor registry
+
+`hw/common/dv/configs/executors.toml` declares where leaves run. Every entry
+implements the same four operations behind the regression loop: submit an
+attempt, poll its state, cancel it, and collect its result. The loop never
+takes a verdict from the executor; the leaf's own `result.json` grades it, and
+an attempt that ends without one grades `ERROR` with a reason that starts with
+`environment_error`.
+
+[cols="<2,<1,<4",options="header"]
+|===
+|Key |Kind |Meaning
+
+|`kind = "local"`
+|both
+|Leaves run in this process. `submit_argv = []` and `wait_mode = "inline"`
+are its only other keys. At `--sim-jobs 1` an attempt runs on the calling
+thread; above that, a thread pool of that size runs them.
+
+|`kind = "cluster"`, `driver`
+|cluster
+|A scheduler driver, `lsf` or `slurm`. The entry validates and appears in
+`--doctor` whether or not the runner implements the driver; selecting an
+entry whose driver the runner lacks is a configuration error.
+
+|`binaries`
+|cluster
+|Every scheduler command the driver runs. `--doctor` looks each one up on
+`PATH` after sourcing `setup_hook`, and a missing one on the executor a run
+would select fails the doctor.
+
+|`submit_argv`, `query_argv`, `cancel_argv` (required); `history_argv`,
+`worker_argv`
+|cluster
+|Argv templates. A string element renders its `{placeholders}`; a nested list
+is an optional group that renders whole when every placeholder in it has a
+value and is dropped otherwise, so `["-q", "{queue}"]` costs nothing when no
+queue is set. `{job_ids_argv}` splices one token per job id.
+
+|`defaults`
+|cluster
+|The normalized resource vocabulary: `queue`, `cores`, `mem_mb`, `walltime`.
+`--queue`, `--cores`, `--mem-mb`, and `--walltime` win over a stage's
+`resources` table in the DUT config, which wins over these.
+
+|`limits`
+|cluster
+|Coordinator knobs: `max_in_flight`, `submit_batch_size`, `query_batch_size`,
+`poll_interval_sec`, `artifact_grace_sec`, `cancel_grace_sec`.
+
+|`env_passthrough`, `history_parser`, `description`
+|cluster
+|Variables the submission forwards, the named parser for `history_argv`
+output, and a free-text note.
+
+|`setup_hook`
+|cluster, site layer only
+|A shell file sourced before every scheduler command, relative to the site
+file.
+|===
+
+[cols="<2,<4",options="header"]
+|===
+|Template |Placeholders
+
+|`submit_argv`
+|`{queue}` `{cores}` `{mem_mb}` `{mem_gb}` `{walltime}` `{walltime_sec}`
+`{walltime_min}` `{walltime_hms}` `{jobname}` `{joblog}` `{image}` `{script}`
+`{manifest}` `{python}` `{run_dir}` `{repo_root}` `{leaf_dir}` `{task_id}`
+`{executor}`
+
+|`query_argv`, `history_argv`, `cancel_argv`
+|`{job_id}` `{job_ids_csv}` `{job_ids_argv}`
+
+|`worker_argv`
+|`{python}` `{manifest}` `{repo_root}` `{run_dir}` `{leaf_dir}` `{task_id}`
+|===
+
+A wall time is written as minutes (`90`), with a unit suffix (`90m`, `2h`),
+or as a clock (`HH:MM`, `HH:MM:SS`, `D-HH:MM:SS`); the template picks the
+rendering its scheduler expects, so one request serves a scheduler that
+counts minutes and one that wants a clock. Memory is requested in megabytes
+and also renders as whole gigabytes, rounded up, for a scheduler whose unit is
+the gigabyte.
+
+The registry's LSF entry, with the values a site adds through
+`site.local.toml`:
+
+[source,toml]
+----
+[executors.lsf]
+kind = "cluster"
+driver = "lsf"
+binaries = ["bsub", "bjobs", "bhist", "bkill"]
+submit_argv = [
+  "bsub", ["-q", "{queue}"], ["-n", "{cores}"], ["-R", "rusage[mem={mem_gb}]"],
+  ["-W", "{walltime_min}"], "-J", "{jobname}", "-o", "{joblog}", "{script}",
+]
+query_argv = ["bjobs", "-json", "-o", "jobid stat exit_code exit_reason", "{job_ids_argv}"]
+history_argv = ["bhist", "-l", "{job_ids_argv}"]
+cancel_argv = ["bkill", "{job_ids_argv}"]
+history_parser = "lsf_bhist_long"
+env_passthrough = ["PATH", "LD_LIBRARY_PATH"]
+defaults = { queue = "regress", cores = 1, mem_mb = 20480, walltime = "02:00" }
+setup_hook = "lsf.env"
+
+[executors.lsf.limits]
+max_in_flight = 200
+poll_interval_sec = 30
+----
+
+The checked-in registry is schema 2: the `local` entry plus generic `lsf`
+and `slurm` tables built from each scheduler's stock flags, carrying no site
+value. A site layer supplies the site's queue names, resource defaults,
+limits and `setup_hook`, replaces a template whose unit or flag differs at
+that site (an LSF cluster that counts memory in gigabytes renders
+`{mem_gb}`), or adds an executor the registry lacks.
+
+==== Leaf manifests and the worker
+
+A cluster driver runs each attempt through `run_dv.py --worker-manifest
+<run>/stages/regress/jobs/<task>.json`, a JSON brief the coordinator writes
+per attempt: DUT, framework, tool, stage, item, seed, attempt, the run and leaf
+directories, the resource request, and the command line the coordinator ran
+with. Its `plan_digest` covers every other key, so an edited manifest is
+refused, and the only command-line attributes a manifest may override are the
+wave and console options a debug rerun changes. The worker verifies the digest,
+the checkout, and the run tree, reloads the configuration from the tree, runs
+exactly one stage, writes the leaf's `result.json` and a `<task>.done.json`
+completion record beside the manifest, and exits with the leaf's status code.
+A manifest that cannot be trusted or run leaves an `ERROR` result whose reason
+starts with `environment_error` and exits `2`. Workers write nothing else: the
+coordinator is the single writer of every aggregate in the run tree.
 
 [[runner-formal]]
 == Formal verification
@@ -1455,29 +1613,6 @@ Both commands run the same item; the tool choice is the only difference, and
 each run records the site file under `site` in its `result.json`.
 `hw/common/dv/configs/site.local.example.toml` is the template for the site
 file.
-
-[[runner-formal-readme]]
-=== The DUT README's formal section
-
-A DUT that carries a formal view states it in its DV `README.md` with one
-section in this shape, which `hw/sys/dtp/dv/README.md` instantiates:
-
-[source,markdown]
-----
-## Formal
-
-`formal/` holds <the described block and the formal top>; the properties
-follow `hw/common/dv/docs/formal-property-style.adoc`. `<dut>_formal_cfg.toml`
-and `testlists/formal.toml` launch it through the runner; the plan section is
-"<section title>" in `docs/<DUT>_VPLAN.adoc`.
-
-    python3 tools/dv/run_dv.py --dut <dut> --mode formal            # <group>: <items>
-    python3 tools/dv/run_dv.py --dut <dut> --mode formal --dry-run  # the rendered command
-
-<One sentence on the toolchain the item needs, and one on how a site with a
-licensed backend selects it, pointing at the Formal verification chapter of
-`tools/dv/doc/run-dv.adoc`.>
-----
 
 == Stage planning
 
@@ -2149,10 +2284,15 @@ them in automation.
 otherwise derives from `--sim-jobs`.
 
 |`--executor NAME`
-|Select an allowed executor. Only `local` dispatch is implemented.
+|Select an executor the flow allows. `local` dispatches; a cluster executor
+validates and appears in `--doctor`, and selecting one whose driver the
+runner lacks is a configuration error.
 
 |`--queue NAME`, `--cores N`, `--mem-mb MB`, `--walltime TIME`
-|Record resource-request metadata. The local executor does not consume it.
+|The leaves' resource request. The command line wins over a stage's
+`resources` table, which wins over the executor's `defaults`
+(<<runner-executor-registry>>). The local executor records the request and
+enforces nothing.
 |===
 
 === Regression, waves, and coverage
@@ -2712,13 +2852,14 @@ are enrolled in the regression tiers only.
 tools. A pair joins the workflow matrix only with a qualifying run at head.
 
 |Unsupported in hosted CI
-|VCS/Xcelium anywhere; formal mode; `smu_wrapper` real-SEP group
-(`all_with_sep_exec`); non-local executors
+|VCS/Xcelium anywhere; formal mode; the `smu_wrapper` SEP firmware set
+(the part of its `all` outside `hosted`); non-local executors
 |VCS and Xcelium need licensed self-hosted runners. Formal mode is a
 developer-host flow: hosted CI runs no formal job and no formal result
-reaches the dashboard (<<runner-formal>>). The real-SEP `smu_wrapper` items stay
-out of the default `all` group. Non-local executor dispatch is not
-implemented.
+reaches the dashboard (<<runner-formal>>). The `smu_wrapper` SEP firmware
+items are in its `all` but need the RISC-V toolchain container, which hosted
+runners lack, so the workflows select `hosted`. Non-local executor dispatch is
+not implemented.
 |===
 
 === Framework-aware CI matrices
@@ -2878,8 +3019,10 @@ tool does not need to rerun. See <<runner-waive>>.
 
 The following behaviors are not part of the runner contract:
 
-* Only the `local` executor dispatches work. Queue, core, memory, and wall-time
-  flags are metadata; there is no LSF/SLURM or other non-local dispatch.
+* Only the `local` executor dispatches work. A cluster executor validates and
+  is checked by `--doctor`, and selecting one is a configuration error while
+  the runner has no driver for it; queue, core, memory, and wall-time flags
+  are recorded metadata that the local executor does not enforce.
 * The runner writes no `run.json` and has no background execution or job
   lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may
