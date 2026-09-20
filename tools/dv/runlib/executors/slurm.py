@@ -174,7 +174,7 @@ class SlurmDialect(SchedulerDialect):
             job_id, message = match.group(1), match.group(2).lower()
             if "invalid job id" in message:
                 replies[job_id] = CancelReply.UNKNOWN
-            elif "already" in message and ("complet" in message or "finish" in message):
+            elif "already" in message and ("complete" in message or "finish" in message):
                 replies[job_id] = CancelReply.FINISHED
         fallback = CancelReply.REQUESTED if result.ok else CancelReply.UNKNOWN
         for job_id in job_ids:

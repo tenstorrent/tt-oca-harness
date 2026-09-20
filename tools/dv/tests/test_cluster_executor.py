@@ -850,6 +850,13 @@ class CoordinatorTest(unittest.TestCase):
         self.state = self.tmp / "sched"
         self.bin = self.tmp / "bin"
         fake_scheduler.install(self.bin)
+        # The coordinator checks the selected simulator is on PATH before dispatching; no leaf
+        # runs it here, so a shim that answers the version probe stands in for it.
+        shim = self.bin / "verilator"
+        shim.write_text(
+            '#!/bin/sh\necho "Verilator 5.036 2025-04-05 rev v5.036"\n', encoding="utf-8"
+        )
+        shim.chmod(0o755)
         (self.tmp / "sched.env").write_text(
             f"export PATH={self.bin}:$PATH\nexport OCAH_FAKE_SCHEDULER={self.state}\n",
             encoding="utf-8",
@@ -899,6 +906,7 @@ class CoordinatorTest(unittest.TestCase):
             *extra,
         ]
         env = {
+            "PATH": f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}",
             "OCAH_DV_SITE": str(self.site),
             "FAKE_WORKER_STATUS": json.dumps(statuses or {}),
             "OCAH_FAKE_SCHEDULER": str(self.state),

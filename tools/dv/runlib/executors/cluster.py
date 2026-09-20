@@ -454,7 +454,7 @@ class ClusterExecutor(Executor):
             return parse(result, job_ids)
         except (ValueError, KeyError, TypeError) as exc:
             failed = whole_command_failed(result, job_ids)
-            failed.error = f"unparseable {purpose} output: {exc}"
+            failed.error = f"unparsable {purpose} output: {exc}"
             return failed
 
     @staticmethod
@@ -647,7 +647,7 @@ class ClusterExecutor(Executor):
             try:
                 replies.update(self._dialect.parse_cancel(result, batch))
             except (ValueError, KeyError, TypeError) as exc:
-                self._event(f"unparseable cancel output: {exc}")
+                self._event(f"unparsable cancel output: {exc}")
                 replies.update({job_id: CancelReply.UNKNOWN for job_id in batch})
         outstanding: list[_Tracked] = []
         for tracked in targets:
