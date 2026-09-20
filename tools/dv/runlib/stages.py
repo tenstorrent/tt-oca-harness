@@ -3497,7 +3497,7 @@ def run_stage(
         "kind": flow.kind,
         "framework": flow.framework,
         "tool": tool,
-        "executor": "local",
+        "executor": str(getattr(args, "executor", None) or "local"),
         "target": target_name,
         "item": item or "",
         "seed": str(seed),

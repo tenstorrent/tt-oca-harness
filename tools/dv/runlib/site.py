@@ -25,6 +25,15 @@ Layout of a site file::
 
     [duts.dtp]
     formal_cfg = "nonfree/hw/sys/dtp/dv/dtp_formal_cfg.toml"
+
+    [executors.lsf]                       # a complete schema-2 cluster table, or per-key
+    kind = "cluster"                      # overrides on one the registry declares
+    driver = "lsf"
+    binaries = ["bsub", "bjobs", "bhist", "bkill"]
+    submit_argv = ["bsub", ["-q", "{queue}"], "{script}"]
+    query_argv = ["bjobs", "-json", "-o", "jobid stat exit_code", "{job_ids_argv}"]
+    cancel_argv = ["bkill", "{job_ids_argv}"]
+    setup_hook = "lsf.env"                # relative to the site file
 """
 
 from __future__ import annotations
@@ -41,6 +50,8 @@ from pathlib import Path
 from typing import Any
 
 from .config import (
+    CLUSTER_EXECUTOR_KEYS,
+    CLUSTER_EXECUTOR_V1_KEYS,
     SITE_ONLY_TOOL_KEYS,
     as_str_list,
     load_toml,
@@ -60,7 +71,8 @@ SITE_TOP_KEYS = {"schema_version", "description", "simulators", "executors", "du
 # Keys a site may set on a tool table the checked-in registry declares; each replaces the
 # checked-in value whole.
 SITE_TOOL_KEYS = {"binary", "launcher", "argv", "license_env", "extra_env", "setup_hook"}
-SITE_EXECUTOR_KEYS = {"binary", "submit_argv"}
+# Every data key of an executor table; `kind` stays with the registry.
+SITE_EXECUTOR_KEYS = (CLUSTER_EXECUTOR_KEYS | CLUSTER_EXECUTOR_V1_KEYS) - {"kind"}
 SITE_DUT_KEYS = {"formal_cfg"}
 SETUP_HOOK_TIMEOUT_SEC = 120
 # Shell bookkeeping a sourced hook changes without exporting anything.
@@ -168,6 +180,23 @@ def _site_tool_table(table: dict[str, Any], where: str, site_dir: Path) -> dict[
     return out
 
 
+def _site_executor_table(table: dict[str, Any], where: str, site_dir: Path) -> dict[str, Any]:
+    """Resolve an executor table's ``setup_hook`` against the site file, as tool tables do."""
+    out = dict(table)
+    if "setup_hook" in table:
+        text = table["setup_hook"]
+        if not isinstance(text, str) or not text:
+            raise ConfigError(f"{where}.setup_hook must be a non-empty path")
+        hook = Path(text).expanduser()
+        if not hook.is_absolute():
+            hook = site_dir / hook
+        hook = hook.resolve()
+        if not hook.is_file():
+            raise ConfigError(f"{where}.setup_hook does not exist: {hook}")
+        out["setup_hook"] = str(hook)
+    return out
+
+
 def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> SiteLayer | None:
     """Load and shape-check the active site file; None when no site file is active."""
     path = site_layer_path(root, environ)
@@ -183,7 +212,10 @@ def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> Sit
         tool: _site_tool_table(table, f"{where} [simulators.{tool}]", path.parent)
         for tool, table in _tables(data, "simulators", where).items()
     }
-    executors = _tables(data, "executors", where)
+    executors = {
+        name: _site_executor_table(table, f"{where} [executors.{name}]", path.parent)
+        for name, table in _tables(data, "executors", where).items()
+    }
     duts = _tables(data, "duts", where)
     for name, entry in duts.items():
         entry_where = f"{where} [duts.{name}]"
