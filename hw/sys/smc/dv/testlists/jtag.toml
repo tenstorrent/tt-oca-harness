@@ -8,10 +8,7 @@ name = "smc_ijtag_basic_test"
 module = "smc_ijtag_basic_test"
 seed = 1
 timeout_sec = 1800
-tags = [
-    "ci", "functional",
-    "pyuvm"
-]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -19,7 +16,7 @@ name = "smc_jtag_dmi_smoke_test"
 module = "smc_jtag_dmi_smoke_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "jtag_depth", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -27,7 +24,7 @@ name = "smc_dfx_status_abort_test"
 module = "smc_dfx_status_abort_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "dfx", "pyuvm"]
+tags = ["ci", "dfx"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -35,15 +32,8 @@ name = "smc_dbs_idle_test"
 module = "smc_dbs_idle_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "functional", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 # Discriminator for the Xcelium SYS_OUT write hang (AW handshake, no W).
-# Not in per_ip: run with --items smc_dbs_idle_test.
-
-[[groups]]
-name = "jtag_depth"
-tests = [
-    "smc_jtag_reset_proxy_test",
-    "smc_jtag_dmi_smoke_test",
-]
+# Run with --items smc_dbs_idle_test.

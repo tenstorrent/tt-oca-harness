@@ -91,14 +91,26 @@
 `SMC_TB_IN(logic, tb_uart0_rx_ext_drive)
 `SMC_TB_OUT(logic, tb_uart0_tx_from_dut)
 
-// Telemetry ATB receiver 0 pad lift (U4-6). Cocotb drives beats into
-// telemetry_at*_i[0]; receivers 1/2 stay tied off.
+// Telemetry ATB pad lift (U4-6). Cocotb drives beats into telemetry_at*_i per
+// receiver. Every stimulus entry here idles at the value the tie-off it
+// replaced presented (atdata/atid 0, atvalid 0, afready 1), so a test that
+// touches none of them sees the bench it saw before the lift. AFVALID/AFREADY
+// stay lifted for receiver 0 only: the flush handshake is not part of what the
+// per-receiver decode legs drive.
 `SMC_TB_IN(logic [7:0], tb_telemetry0_atdata)
 `SMC_TB_IN(logic [6:0], tb_telemetry0_atid)
 `SMC_TB_IN(logic, tb_telemetry0_atvalid)
 `SMC_TB_OUT(logic, tb_telemetry0_atready)
 `SMC_TB_IN(logic, tb_telemetry0_afready)
 `SMC_TB_OUT(logic, tb_telemetry0_afvalid)
+`SMC_TB_IN(logic [7:0], tb_telemetry1_atdata)
+`SMC_TB_IN(logic [6:0], tb_telemetry1_atid)
+`SMC_TB_IN(logic, tb_telemetry1_atvalid)
+`SMC_TB_OUT(logic, tb_telemetry1_atready)
+`SMC_TB_IN(logic [7:0], tb_telemetry2_atdata)
+`SMC_TB_IN(logic [6:0], tb_telemetry2_atid)
+`SMC_TB_IN(logic, tb_telemetry2_atvalid)
+`SMC_TB_OUT(logic, tb_telemetry2_atready)
 
 // SPI octal-flash pad lift (U2-1/U2-2). Cocotb drives tb_spi_* as the
 // external SPI host into the padring mux; flash MISO returns via
@@ -218,6 +230,11 @@
 // into u_dut.u_smc under smc_public_scope.vlt (TB-top public only).
 `SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_o)
 `SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_en_o)
+// Per-pad input-buffer enable. gpio.sv drives core2pad_en from the CSRs only
+// (its default branch is 1'b0 for every instance) and carries
+// INPUT_BY_DEFAULT on pad2core_en, so this is the bus on which the padring's
+// default direction map is visible.
+`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_pad2core_en_o)
 
 // Flat inbound AXI manager driven by cocotbext-axi (prefix s_axi).
 // Inbound AXI path for real CSR/fabric traffic.
@@ -247,6 +264,9 @@
 `SMC_TB_OUT(logic [11:0], s_axi_buser)
 `SMC_TB_OUT(logic, s_axi_bvalid)
 `SMC_TB_IN(logic, s_axi_bready)
+// TB-owned SEP_IN B-channel hold. It keeps an accepted write response
+// outstanding while later AW/W traffic remains available.
+`SMC_TB_IN(logic, tb_sep_axi_b_hold)
 
 `SMC_TB_IN(logic [5:0], s_axi_arid)
 `SMC_TB_IN(logic [55:0], s_axi_araddr)
@@ -273,6 +293,9 @@
 // r_ready and hides r_valid from the VIP so the beat stays outstanding.
 // Hang detector snoops the gated handshake (not irq_test). Idle 0.
 `SMC_TB_IN(logic, tb_sep_axi_r_hold)
+// Consume stale R beats without presenting them to the AXI VIP.
+`SMC_TB_IN(logic, tb_sep_axi_r_drop)
+`SMC_TB_OUT(logic, tb_sep_axi_r_raw_valid)
 
 // Flat SYS-input AXI manager: SYS_IN reaches the filtered local-fabric path.
 `SMC_TB_IN(logic [5:0], sys_axi_awid)
@@ -326,6 +349,8 @@
 // TB-owned SYS_IN R-channel hold. Same product handshake as
 // tb_sep_axi_r_hold, on the SYS hang-detector snoop. Idle 0.
 `SMC_TB_IN(logic, tb_sys_axi_r_hold)
+`SMC_TB_IN(logic, tb_sys_axi_r_drop)
+`SMC_TB_OUT(logic, tb_sys_axi_r_raw_valid)
 
 // Flat JTAG AXI manager used by output-fabric final VIP tests.
 `SMC_TB_IN(logic [1:0], jtag_axi_awid)
@@ -440,6 +465,23 @@
 `SMC_TB_OUT(logic [57:0], tb_cpu_mepc2)
 `SMC_TB_OUT(logic [57:0], tb_cpu_mepc3)
 `SMC_TB_OUT(logic, tb_cpu_cluster_isolate)
+// CPU timeout-reset / AXI-isolate recovery observability. These are passive
+// lifts only; tests create stalls with the existing public hold controls.
+`SMC_TB_OUT(logic, tb_cpu_isolate_req)
+`SMC_TB_OUT(logic, tb_cpu_drained)
+`SMC_TB_OUT(logic, tb_cpu_reset_timeout)
+`SMC_TB_OUT(logic, tb_cpu_reset_applied)
+`SMC_TB_OUT(logic, tb_cpu_uncore_reset_n)
+`SMC_TB_OUT(logic, tb_cpu_l2_isolated)
+`SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_aw)
+`SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_w)
+`SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_ar)
+`SMC_TB_OUT(logic, tb_cpu_l2_flush_active)
+`SMC_TB_OUT(logic, tb_cpu_mmio_isolated)
+`SMC_TB_OUT(logic [3:0], tb_cpu_mmio_pending_aw)
+`SMC_TB_OUT(logic [3:0], tb_cpu_mmio_pending_w)
+`SMC_TB_OUT(logic [3:0], tb_cpu_mmio_pending_ar)
+`SMC_TB_OUT(logic, tb_cpu_mmio_flush_active)
 // U7-3: Rocket DM active + ack after dmcontrol.dmactive write.
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive)
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive_ack)
@@ -538,6 +580,165 @@
 `SMC_TB_OUT(logic [1:0], ej_axi_rresp)
 `SMC_TB_OUT(logic, ej_axi_rvalid)
 `SMC_TB_IN(logic, ej_axi_rready)
+
+// ------------------------------------------------------------------
+// P1 interrupt-vector observability. The interrupt chapters name a bit index
+// per source, and nothing published the vectors those indices live in: the
+// per-source scalars above are hand-picked slices. These are the whole buses.
+// ------------------------------------------------------------------
+`SMC_TB_OUT(logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0], tb_cpu_interrupts)
+`SMC_TB_OUT(logic [31:0], tb_peripheral_interrupts)
+`SMC_TB_OUT(logic [31:0], tb_mailbox_interrupts)
+`SMC_TB_OUT(logic [31:0], tb_ext_mailbox_interrupts)
+`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_gpio_interrupt)
+`SMC_TB_OUT(logic [3:0], tb_ndmreset_request_sync)
+// The three contributors the combined UART bit ORs together, before the OR.
+`SMC_TB_OUT(logic [3:0], tb_uart_irq_raw)
+`SMC_TB_OUT(logic [3:0], tb_uart_err_raw)
+`SMC_TB_OUT(logic [3:0], tb_logengine_irq_raw)
+`SMC_TB_OUT(logic [2:0], tb_telemetry_irq)
+`SMC_TB_OUT(logic, tb_sep_wdt_irq_sync)
+`SMC_TB_OUT(logic, tb_cla_interrupt)
+// The CLA clock-stop status and the term behind it. The status output is
+// ANDed with tdr_dbg_ctrl_clock_stop_en_i, which this tb ties low.
+`SMC_TB_OUT(logic, tb_cla_clock_stop)
+`SMC_TB_OUT(logic, tb_cla_halt_clock_global)
+`SMC_TB_OUT(logic, tb_dma_intp)
+
+// PLIC state. Context 2N is hart N machine-mode, 2N+1 supervisor-mode.
+`SMC_TB_OUT(logic [3:0], tb_plic_meip)
+`SMC_TB_OUT(logic [3:0], tb_plic_seip)
+`SMC_TB_OUT(logic [2:0], tb_plic_threshold0)
+`SMC_TB_OUT(logic [8:0], tb_plic_maxdev0)
+`SMC_TB_OUT(logic [6:0], tb_plic_enables0_w0)
+`SMC_TB_OUT(logic, tb_plic_claim0)
+`SMC_TB_OUT(logic, tb_plic_complete0)
+`SMC_TB_OUT(logic [8:0], tb_plic_completer_dev)
+`SMC_TB_OUT(logic [2:0], tb_plic_pending_low)
+`SMC_TB_OUT(logic [2:0], tb_plic_priority_low)
+// Source index 331 is the fourth cluster-internal watchdog: a PLIC source
+// with no cpu_interrupts bit behind it.
+`SMC_TB_OUT(logic, tb_plic_pending_331)
+// Source 324 is the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_324)
+
+// CLINT. MTIMECMP is `pad`/`pad_N` in the generated cluster.
+`SMC_TB_OUT(logic [63:0], tb_clint_mtime)
+`SMC_TB_OUT(logic [63:0], tb_clint_mtimecmp0)
+`SMC_TB_OUT(logic [63:0], tb_clint_mtimecmp1)
+`SMC_TB_OUT(logic [3:0], tb_clint_msip)
+`SMC_TB_OUT(logic [3:0], tb_clint_mtip)
+// Per-core direct pins, read at the core boundary rather than at the CLINT.
+`SMC_TB_OUT(logic [3:0], tb_core_mtip)
+`SMC_TB_OUT(logic [3:0], tb_core_msip)
+`SMC_TB_OUT(logic [3:0], tb_core_meip)
+`SMC_TB_OUT(logic [3:0], tb_core_buserror)
+
+// ------------------------------------------------------------------
+// P1 DMA stream-0 command registers and the master port a transfer moves on.
+// ------------------------------------------------------------------
+`SMC_TB_OUT(logic, tb_dma_next_id_re)
+`SMC_TB_OUT(logic [31:0], tb_dma_next_id)
+`SMC_TB_OUT(logic [9:0], tb_dma_status0)
+`SMC_TB_OUT(logic [31:0], tb_dma_done_id)
+`SMC_TB_OUT(logic [63:0], tb_dma_src_addr)
+`SMC_TB_OUT(logic [63:0], tb_dma_dst_addr)
+`SMC_TB_OUT(logic [63:0], tb_dma_length)
+`SMC_TB_OUT(logic [63:0], tb_dma_reps)
+`SMC_TB_OUT(logic, tb_dma_done_id_re)
+`SMC_TB_OUT(logic, tb_dma_fe_req_valid)
+`SMC_TB_OUT(logic, tb_dma_fe_req_ready)
+`SMC_TB_OUT(logic, tb_dma_trans_complete)
+`SMC_TB_OUT(logic, tb_dma_frontend_wakeup)
+`SMC_TB_OUT(logic, tb_dma_frontend_gated_clk)
+`SMC_TB_OUT(logic, tb_dma_mst_awvalid)
+`SMC_TB_OUT(logic, tb_dma_mst_awready)
+`SMC_TB_OUT(logic [55:0], tb_dma_mst_awaddr)
+`SMC_TB_OUT(logic [7:0], tb_dma_mst_awlen)
+`SMC_TB_OUT(logic, tb_dma_mst_wvalid)
+`SMC_TB_OUT(logic, tb_dma_mst_wready)
+`SMC_TB_OUT(logic, tb_dma_mst_wlast)
+`SMC_TB_OUT(logic [7:0], tb_dma_mst_wstrb)
+`SMC_TB_OUT(logic [63:0], tb_dma_mst_wdata)
+`SMC_TB_OUT(logic, tb_dma_mst_bvalid)
+
+// Zeroer master port, outstanding counter and command registers.
+`SMC_TB_OUT(logic, tb_zeroer_awready)
+`SMC_TB_OUT(logic [55:0], tb_zeroer_awaddr)
+`SMC_TB_OUT(logic [7:0], tb_zeroer_awlen)
+`SMC_TB_OUT(logic, tb_zeroer_wready)
+`SMC_TB_OUT(logic, tb_zeroer_wlast)
+`SMC_TB_OUT(logic [7:0], tb_zeroer_wstrb)
+`SMC_TB_OUT(logic [63:0], tb_zeroer_wdata)
+`SMC_TB_OUT(logic, tb_zeroer_bvalid)
+`SMC_TB_OUT(logic [31:0], tb_zeroer_outstanding)
+`SMC_TB_OUT(logic [63:0], tb_zeroer_dest_addr)
+`SMC_TB_OUT(logic [63:0], tb_zeroer_size)
+`SMC_TB_OUT(logic, tb_zeroer_trigger)
+`SMC_TB_OUT(logic, tb_zeroer_status_read)
+`SMC_TB_OUT(logic, tb_zeroer_strb_dest)
+`SMC_TB_OUT(logic, tb_zeroer_strb_size)
+`SMC_TB_OUT(logic, tb_zeroer_req_is_wr)
+`SMC_TB_OUT(logic, tb_zeroer_disable_cg)
+`SMC_TB_OUT(logic, tb_zeroer_axi_clk_enable)
+
+// GPIO wrap 0 AXI-Lite protection filter: the requirement, the enables and
+// the prot the request actually carried.
+`SMC_TB_OUT(logic, tb_gpio0_awvalid)
+`SMC_TB_OUT(logic, tb_gpio0_arvalid)
+`SMC_TB_OUT(logic [2:0], tb_gpio0_awprot)
+`SMC_TB_OUT(logic [2:0], tb_gpio0_arprot)
+`SMC_TB_OUT(logic [2:0], tb_gpio0_awprot_req)
+`SMC_TB_OUT(logic [2:0], tb_gpio0_arprot_req)
+`SMC_TB_OUT(logic, tb_gpio0_wr_filter_en)
+`SMC_TB_OUT(logic, tb_gpio0_rd_filter_en)
+
+// Inbound fabric filter decisions and the JTAG alias-remap hit debug.
+`SMC_TB_OUT(logic [15:0], tb_inb_write_hit)
+`SMC_TB_OUT(logic [15:0], tb_inb_read_hit)
+`SMC_TB_OUT(logic, tb_inb_isolate_write)
+`SMC_TB_OUT(logic, tb_inb_isolate_read)
+`SMC_TB_OUT(logic [2:0], tb_remap_jtag_aw_hit)
+`SMC_TB_OUT(logic [2:0], tb_remap_jtag_ar_hit)
+
+// Isolation / FLR sequencing state.
+`SMC_TB_OUT(logic [31:0], tb_isolate_req_reg)
+`SMC_TB_OUT(logic [31:0], tb_isolate_req_smcen_reg)
+`SMC_TB_OUT(logic, tb_isolate_req_smc_reg)
+`SMC_TB_OUT(logic, tb_flr_sync_ref)
+`SMC_TB_OUT(logic, tb_flr_posedge_ref)
+`SMC_TB_OUT(logic [1:0], tb_flr_counter_state)
+
+// Peripherals: ATB per receiver, I2C mode enables, mailbox 0 FIFO levels,
+// the UART TX lines and one AXI-Lite CDC bridge on its peripheral-clock side.
+`SMC_TB_OUT(logic [2:0], tb_telem_atvalid)
+`SMC_TB_OUT(logic [2:0], tb_telem_atready)
+`SMC_TB_OUT(logic [6:0], tb_telem_atid0)
+`SMC_TB_OUT(logic [6:0], tb_telem_atid1)
+`SMC_TB_OUT(logic [6:0], tb_telem_atid2)
+`SMC_TB_OUT(logic [2:0], tb_i2c_host_enable)
+`SMC_TB_OUT(logic [2:0], tb_i2c_target_enable)
+`SMC_TB_OUT(logic [1:0], tb_mbx0_full)
+`SMC_TB_OUT(logic [1:0], tb_mbx0_empty)
+`SMC_TB_OUT(logic [3:0], tb_uart_tx)
+`SMC_TB_OUT(logic, tb_periph_cdc_awvalid)
+`SMC_TB_OUT(logic, tb_periph_cdc_awready)
+`SMC_TB_OUT(logic, tb_periph_cdc_wvalid)
+`SMC_TB_OUT(logic, tb_periph_cdc_bvalid)
+`SMC_TB_OUT(logic, tb_periph_cdc_arvalid)
+`SMC_TB_OUT(logic, tb_periph_cdc_arready)
+`SMC_TB_OUT(logic, tb_periph_cdc_rvalid)
+
+// eFuse bank-control AXI-Lite port and the SHIM command handshake.
+`SMC_TB_OUT(logic, tb_efuse_bank_awvalid)
+`SMC_TB_OUT(logic, tb_efuse_bank_wvalid)
+`SMC_TB_OUT(logic, tb_efuse_bank_arvalid)
+`SMC_TB_OUT(logic, tb_efuse_bank_bvalid)
+`SMC_TB_OUT(logic, tb_efuse_bank_rvalid)
+`SMC_TB_OUT(logic, tb_efuse_shim_cmd_valid)
+`SMC_TB_OUT(logic, tb_efuse_shim_resp_valid)
+`SMC_TB_OUT(logic, tb_efuse_shim_resp_status)
+`SMC_TB_OUT(logic [63:0], tb_efuse_locks)
 
 // ------------------------------------------------------------------
 // Elaboration aliases: optional observe ports for the bring-up smoke

@@ -55,3 +55,8 @@ property fracwidth {
     type = longint unsigned;
     component = field;
 };
+
+property ocah_aperture_size {
+    component = addrmap | regfile | reg | mem;
+    type = longint unsigned;
+};

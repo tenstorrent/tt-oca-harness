@@ -87,6 +87,10 @@ module sep_fcov (
   input wire        drbg_genbits_vld_i,
   input wire        axis1_tvalid_i,
   input wire        axis1_tready_i,
+  // Per-client post-adapter EDN grant (drbg_axis_edn_adapter client order:
+  // AES, KMAC, OTBN-RND, OTBN-URND). axis1_* above is the shared stream
+  // ahead of the fan-out and cannot say which client took the beat.
+  input wire [3:0]  crypto_edn_ack_i,
   input wire        km_entropy_tvalid_i,
   input wire        km_entropy_tready_i,
   input wire [7:0]  irq_mailbox_i,
@@ -101,7 +105,19 @@ module sep_fcov (
   input wire [1:0]  demote_2_i,
   input wire        cpu_reset_n_i,
   input wire        spi_cs_n_i,
-  input wire        spi_sck_i
+  input wire        spi_sck_i,
+
+  // Crypto isolate / per-IP reset sequencing for the HMAC domain. An
+  // accelerator reset waits on BOTH the SEP host path and the Key Manager
+  // path, so the two isolate-completion bits are separate inputs.
+  input wire        hmac_gated_rst_n_i,
+  input wire        hmac_host_isolated_i,
+  input wire        hmac_km_isolated_i,
+  // The same three for the Adams Bridge domain. Its host path is a full-AXI
+  // isolate and its Key Manager path is shared with the KM domain.
+  input wire        abr_gated_rst_n_i,
+  input wire        abr_host_isolated_i,
+  input wire        abr_km_isolated_i
 );
 
   import och_sep_top_addrmap_pkg::*;
@@ -140,7 +156,19 @@ module sep_fcov (
   localparam logic [31:0] AbrCtrl = AbrBase + 32'h10;
   localparam logic [31:0] AbrStatus = AbrBase + 32'h14;
   localparam logic [31:0] AbrCmdKeygen = 32'h1;  // MLDSA_CTRL.CTRL = KEYGEN
+  localparam logic [31:0] AbrCmdSign = 32'h2;  // MLDSA_CTRL.CTRL = SIGNING
+  localparam logic [31:0] AbrCmdVerify = 32'h3;  // MLDSA_CTRL.CTRL = VERIFYING
   localparam logic [31:0] AbrStValid = 32'h2;  // MLDSA_STATUS.VALID
+
+  // ML-KEM is a separate register block in the same aperture: its own CTRL and
+  // STATUS, so a ML-DSA command can never score an ML-KEM cell. Offsets from
+  // the Caliptra abr_reg.rdl MLKEM block.
+  localparam logic [31:0] KemCtrl = AbrBase + 32'h9010;
+  localparam logic [31:0] KemStatus = AbrBase + 32'h9014;
+  localparam logic [31:0] KemCmdKeygen = 32'h1;  // MLKEM_CTRL.CTRL = KEYGEN
+  localparam logic [31:0] KemCmdEncaps = 32'h2;  // MLKEM_CTRL.CTRL = ENCAPS
+  localparam logic [31:0] KemCmdDecaps = 32'h3;  // MLKEM_CTRL.CTRL = DECAPS
+  localparam logic [31:0] KemStValid = 32'h2;  // MLKEM_STATUS.VALID
 
   // AES CTRL_SHADOWED / STATUS (OpenTitan aes_reg_pkg via sep_reg.svh).
   localparam logic [1:0] AesOpEnc = 2'b01;
@@ -184,11 +212,14 @@ module sep_fcov (
   localparam logic [31:0] HmacCmdProcess = HMAC_CMD_HASH_PROCESS_MASK;
   localparam logic [31:0] HmacDoneMask = HMAC_INTR_STATE_HMAC_DONE_MASK;
 
-  localparam logic [7:0] OtbnExecute = 8'hD8;  // otbn_pkg cmd_e CmdExecute
-  localparam logic [7:0] OtbnIdle = 8'h00;  // otbn_pkg status_e StatusIdle
+  // CMD.cmd EXECUTE and STATUS IDLE from
+  // vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson.
+  localparam logic [7:0] OtbnExecute = 8'hD8;
+  localparam logic [7:0] OtbnIdle = 8'h00;
 
   localparam logic [3:0] DmaOpCopy = 4'h0;  // fw/drivers/sep_dma.h
   localparam logic [3:0] DmaOpSha256 = 4'h1;
+  localparam logic [3:0] DmaOpSha384 = 4'h2;
 
   // aon_timer INTR_STATE: wkup_timer_expired[0], wdog_timer_bark[1]. The
   // vendored block exports no field symbol into sep_reg.svh; the position is
@@ -225,6 +256,9 @@ module sep_fcov (
   localparam logic [7:0] KmDestAes = 8'h04;
   localparam logic [7:0] KmDestOtbn = 8'h08;
   localparam logic [7:0] KmDestAbrMldsaSeed = 8'h10;
+  localparam logic [7:0] KmDestAbrMlkemSeedD = 8'h20;
+  localparam logic [7:0] KmDestAbrMlkemSeedZ = 8'h40;
+  localparam logic [7:0] KmDestAbrMlkemMsg = 8'h80;
 
   localparam logic [1:0] AxiOkay = 2'b00;
   localparam int unsigned PageShift = 12;  // traffic_filter.sv compares [.:12]
@@ -408,7 +442,7 @@ module sep_fcov (
       (((rd_data & OTBN_STATUS_STATUS_MASK) >> OTBN_STATUS_STATUS_SHIFT) == 32'(OtbnIdle));
   wire otbn_err_zero = rd_ev && (ar_addr_q == OTBN_ERR_BITS_REG_ADDR) && (rd_data == 32'h0);
 
-  // otbn_pkg status_e: Idle 0x00, BusyExecute 0x01, BusySecWipe* 0x02-0x04.
+  // otbn.hjson STATUS: IDLE 0x00, BUSY_EXECUTE 0x01, BUSY_SEC_WIPE_* 0x02-0x04.
   // Without an observed busy status the poll can win a race against OTBN
   // leaving IDLE and score a program that never started.
   wire otbn_status_busy = rd_ev && (ar_addr_q == OTBN_STATUS_REG_ADDR) &&
@@ -425,6 +459,39 @@ module sep_fcov (
       ((rd_data & AbrStValid) != 32'h0);
   logic abr_keygen_q;
   wire  abr_done = abr_status_valid && abr_keygen_q;
+  // SIGNING and VERIFYING are separate MLDSA_CTRL.CTRL commands, so each gets
+  // its own pending flag: a VALID read only scores the command that is still
+  // outstanding, and a leaf that issued one command cannot fill the other bin.
+  wire abr_sign = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdSign[3:0]);
+  wire abr_verify = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdVerify[3:0]);
+  // MLDSA_STATUS.VALID is sticky, so a pending flag plus a VALID read is not
+  // enough on its own: a command written to a busy engine is dropped, and the
+  // previous operation's VALID would then be credited to it. Arming on an
+  // observed VALID==0 read is the anchor -- the same problem OTBN solves by
+  // requiring an observed busy status between EXECUTE and IDLE.
+  wire abr_status_clear = rd_ev && (ar_addr_q == AbrStatus) &&
+      ((rd_data & AbrStValid) == 32'h0);
+  logic abr_sign_q, abr_verify_q;
+  logic abr_sign_armed_q, abr_verify_armed_q;
+  wire  abr_sign_done = abr_status_valid && abr_sign_q && abr_sign_armed_q;
+  wire  abr_verify_done = abr_status_valid && abr_verify_q && abr_verify_armed_q;
+
+  // ML-KEM. Same pending-plus-armed shape as the ML-DSA pair above, and for the
+  // same reason: MLKEM_CTRL is writable only while STATUS.READY is set, so a
+  // command issued to a busy engine is dropped silently and the stale VALID
+  // would be read as its completion.
+  wire kem_status_valid = rd_ev && (ar_addr_q == KemStatus) &&
+      ((rd_data & KemStValid) != 32'h0);
+  wire kem_status_clear = rd_ev && (ar_addr_q == KemStatus) &&
+      ((rd_data & KemStValid) == 32'h0);
+  wire kem_keygen = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdKeygen[2:0]);
+  wire kem_encaps = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdEncaps[2:0]);
+  wire kem_decaps = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdDecaps[2:0]);
+  logic kem_keygen_q, kem_encaps_q, kem_decaps_q;
+  logic kem_keygen_armed_q, kem_encaps_armed_q, kem_decaps_armed_q;
+  wire  kem_keygen_done = kem_status_valid && kem_keygen_q && kem_keygen_armed_q;
+  wire  kem_encaps_done = kem_status_valid && kem_encaps_q && kem_encaps_armed_q;
+  wire  kem_decaps_done = kem_status_valid && kem_decaps_q && kem_decaps_armed_q;
 
   // --- ESRC / DRBG / EDN -------------------------------------------------
   logic esrc_seed_q;
@@ -447,6 +514,7 @@ module sep_fcov (
   logic [7:0] km_rsp_cmd_q;      // echoed cmd_id (payload word 2)
   logic [7:0] km_rsp_rc_q;       // rc (payload word 3)
   logic       km_rsp_is_cmd_q;   // outbound header resp_id was RESP_CMD
+  logic [7:0] km_rsp_len_q;      // declared RESP payload_len, from the header
 
   // Generate succeeded: the response frame echoed CMD_KEY_GENERATE with rc 0
   // and a non-null handle. Nothing here is inferred from silence.
@@ -454,12 +522,20 @@ module sep_fcov (
       (km_rsp_cmd_q == KmCmdGenerate) && (km_rsp_rc_q == 8'h00) && (rd_data[7:0] != 8'h00);
   // Score dest/cmd on a RESP_CMD payload, not on inbound WRITE_DATA.
   // Transfer dest is RETURN_ARG dest_engine[15:8] of a success frame.
-  // Host-cmd sample is word 4 so rc is already latched. Success only,
-  // except CMD_SRAM_VER whose defined result is not success.
-  wire km_host_cmd_seen = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
-      (km_rsp_idx_q == 9'd4) &&
-      ((km_rsp_cmd_q == KmCmdSramVer) ? (km_rsp_rc_q != 8'h00)
-                                      : (km_rsp_rc_q == 8'h00));
+  //
+  // Completion is the LAST payload word, taken from the header's declared
+  // payload_len rather than a fixed word 4. A RESP_CMD is valid at
+  // payload_len 3 -- [cmd_seq, cmd_id, rc] with no return arg -- so an
+  // arg-less command such as CMD_SRAM_EXEC ends a word early and a fixed
+  // index can never see it complete.
+  wire km_rsp_last = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
+      (km_rsp_idx_q == 9'(km_rsp_len_q));
+  // On a 3-word frame the rc is being read on this very cycle, so it is not
+  // latched yet; take it off the bus in that case.
+  wire [7:0] km_rsp_rc_now = (km_rsp_idx_q == 9'd3) ? rd_data[7:0] : km_rsp_rc_q;
+  wire km_host_cmd_seen = km_rsp_last &&
+      ((km_rsp_cmd_q == KmCmdSramVer) ? (km_rsp_rc_now != 8'h00)
+                                      : (km_rsp_rc_now == 8'h00));
   wire km_xfer_scored = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
       (km_rsp_idx_q == 9'd4) && (km_rsp_cmd_q == KmCmdTransfer) &&
       (km_rsp_rc_q == 8'h00);
@@ -475,6 +551,11 @@ module sep_fcov (
       SECURE_DMA_CONTROL_OPCODE_SHIFT;
   wire dma_copy_go = dma_go && (dma_opcode_w == DmaOpCopy);
   wire dma_hash_go = dma_go && (dma_opcode_w == DmaOpSha256);
+  // Any inline-hash GO, whatever the digest length, so the opcode
+  // coverpoint can say WHICH hash the suite walked. dma_hash_go above
+  // stays SHA-256-only because the completion pairing below is written
+  // against that leaf.
+  wire dma_hash_any_go = dma_go && (dma_opcode_w != DmaOpCopy);
   wire dma_hs_go   = dma_go &&
       ((wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0);
   logic dma_copy_q, dma_hash_q, dma_hs_q;
@@ -563,6 +644,15 @@ module sep_fcov (
 
   wire filt_allow_wr = m_b_ok && (m_aw_out_q == 4'd1) && in_allow_window(m_aw_addr_q);
   wire filt_allow_rd = m_r_ok && (m_ar_out_q == 4'd1) && in_allow_window(m_ar_addr_q);
+
+  // --- peer-side mailbox fill --------------------------------------------
+  // A completed external write to the inbound mailbox WRITE_DATA register: the
+  // only way anything reaches the host aperture's receive FIFO. The host-side
+  // mailbox bins below are all IRQ edges and are hit by the transmit path, so
+  // none of them shows the receive direction was ever driven. Both halves of
+  // the 8-byte register alias to it, so the compare masks bit 2.
+  wire m_mbox_peer_wr = m_b_ok && (m_aw_out_q == 4'd1) &&
+      ((m_aw_addr_q & ~32'h4) == AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_REG_ADDR);
 
   // --- eFuse program x write-lock ----------------------------------------
   // Programming a write-locked field is a LEGAL software action with a
@@ -773,11 +863,22 @@ module sep_fcov (
       otbn_busy_q       <= 1'b0;
       otbn_idle_q       <= 1'b0;
       abr_keygen_q      <= 1'b0;
+      abr_sign_q        <= 1'b0;
+      abr_verify_q      <= 1'b0;
+      abr_sign_armed_q  <= 1'b0;
+      abr_verify_armed_q <= 1'b0;
+      kem_keygen_q      <= 1'b0;
+      kem_encaps_q      <= 1'b0;
+      kem_decaps_q      <= 1'b0;
+      kem_keygen_armed_q <= 1'b0;
+      kem_encaps_armed_q <= 1'b0;
+      kem_decaps_armed_q <= 1'b0;
       km_cmd_hdr_next_q <= 1'b1;
       km_cmd_idx_q      <= '0;
       km_rsp_idx_q      <= '0;
       km_rsp_arm_q      <= 1'b0;
       km_rsp_is_cmd_q   <= 1'b0;
+      km_rsp_len_q      <= '0;
       dma_copy_q        <= 1'b0;
       dma_hs_q          <= 1'b0;
       dma_hash_q        <= 1'b0;
@@ -886,6 +987,57 @@ module sep_fcov (
       if (abr_keygen) abr_keygen_q <= 1'b1;
       if (abr_done) abr_keygen_q <= 1'b0;
 
+      // Each command pends on its CTRL write, arms on a subsequent VALID==0
+      // read, and retires with its own completion. The arm is what stops a
+      // dropped command from being credited by the previous operation's sticky
+      // VALID: that stale VALID is non-zero, so it can never arm anything.
+      if (abr_sign) begin
+        abr_sign_q       <= 1'b1;
+        abr_sign_armed_q <= 1'b0;
+      end
+      if (abr_sign_q && abr_status_clear) abr_sign_armed_q <= 1'b1;
+      if (abr_sign_done) begin
+        abr_sign_q       <= 1'b0;
+        abr_sign_armed_q <= 1'b0;
+      end
+      if (abr_verify) begin
+        abr_verify_q       <= 1'b1;
+        abr_verify_armed_q <= 1'b0;
+      end
+      if (abr_verify_q && abr_status_clear) abr_verify_armed_q <= 1'b1;
+      if (abr_verify_done) begin
+        abr_verify_q       <= 1'b0;
+        abr_verify_armed_q <= 1'b0;
+      end
+
+      if (kem_keygen) begin
+        kem_keygen_q       <= 1'b1;
+        kem_keygen_armed_q <= 1'b0;
+      end
+      if (kem_keygen_q && kem_status_clear) kem_keygen_armed_q <= 1'b1;
+      if (kem_keygen_done) begin
+        kem_keygen_q       <= 1'b0;
+        kem_keygen_armed_q <= 1'b0;
+      end
+      if (kem_encaps) begin
+        kem_encaps_q       <= 1'b1;
+        kem_encaps_armed_q <= 1'b0;
+      end
+      if (kem_encaps_q && kem_status_clear) kem_encaps_armed_q <= 1'b1;
+      if (kem_encaps_done) begin
+        kem_encaps_q       <= 1'b0;
+        kem_encaps_armed_q <= 1'b0;
+      end
+      if (kem_decaps) begin
+        kem_decaps_q       <= 1'b1;
+        kem_decaps_armed_q <= 1'b0;
+      end
+      if (kem_decaps_q && kem_status_clear) kem_decaps_armed_q <= 1'b1;
+      if (kem_decaps_done) begin
+        kem_decaps_q       <= 1'b0;
+        kem_decaps_armed_q <= 1'b0;
+      end
+
       // KM command frame: header, payload_len words, then the payload CRC word
       // when payload_len > 0.
       if (km_wr_data) begin
@@ -908,10 +1060,17 @@ module sep_fcov (
       // would shift a later word onto index 4 and false-hit cp_generate.
       if (km_rd_data && km_rsp_arm_q) begin
         km_rsp_idx_q <= km_rsp_idx_q + 9'd1;
-        if (km_rsp_idx_q == 9'd0) km_rsp_is_cmd_q <= (rd_data[15:8] == KmRespCmd);
+        // The header carries the length, so it cannot itself be compared
+        // against it: at index 0 the register still holds the PREVIOUS frame's
+        // value, and a reset 0 would retire the frame on its own header.
+        if (km_rsp_idx_q == 9'd0) begin
+          km_rsp_is_cmd_q <= (rd_data[15:8] == KmRespCmd);
+          km_rsp_len_q    <= rd_data[23:16];
+        end else if (km_rsp_idx_q >= 9'(km_rsp_len_q)) begin
+          km_rsp_arm_q <= 1'b0;
+        end
         if (km_rsp_idx_q == 9'd2) km_rsp_cmd_q <= rd_data[7:0];
         if (km_rsp_idx_q == 9'd3) km_rsp_rc_q <= rd_data[7:0];
-        if (km_rsp_idx_q >= 9'd4) km_rsp_arm_q <= 1'b0;
       end
 
       if (dma_copy_go) begin
@@ -1065,8 +1224,19 @@ module sep_fcov (
     }
     // Each cross cell is one configured mode/key size/operation that reached
     // OUTPUT_VALID and returned a data word. The suite walks nine ENC cells
-    // plus the ECB/CBC decrypt legs of the round-trip; no suite test issues CTR
-    // DECRYPT, so that cell is excluded rather than left permanently empty.
+    // plus the ECB/CBC decrypt legs of the round-trip.
+    //
+    // CTR x DECRYPT is excluded because the cell has nothing to score, not
+    // because no test happens to drive it. CTR is a stream mode: the engine
+    // runs the forward cipher whichever way OPERATION is programmed, so
+    // decryption is the same operation as encryption and re-encrypting the
+    // ciphertext is what recovers the plaintext. A test that programmed
+    // DECRYPT here would pass with the OPERATION field disconnected. Filling
+    // this cell would record configuration, not consume.
+    //
+    // The scoreable neighbour is OPERATION's shadowed-register behaviour --
+    // one-hot readback and the update/storage-error alerts -- which is
+    // mode-independent and belongs on a CSR vehicle, not on a CTR cipher cell.
     x_mode_key_op: cross cp_mode, cp_key, cp_op{
       ignore_bins ctr_decrypt = binsof (cp_mode.ctr) && binsof (cp_op.dec);
     }
@@ -1147,6 +1317,45 @@ module sep_fcov (
     cp_done: coverpoint abr_done {bins status_valid = {1'b1};}
   endgroup
 
+  // verilog_format: off  // verible splits the concatenated coverpoint
+  // expressions across lines and then packs the bins onto one line, which
+  // makes the per-operation bins harder to read than the one-bin-per-line
+  // form below. Formatting is off for the two covergroups that concatenate
+  // their operation strobes; everything else in this file is verible-formatted.
+  covergroup sep_abr_sign_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_abr_sign_cg";
+    cp_op: coverpoint {abr_verify, abr_sign} {
+      bins mldsa_sign = {2'b01};
+      bins mldsa_verify = {2'b10};
+    }
+    // One coverpoint per command, not a concatenation. The two pending flags
+    // are independent and each is cleared only by its own completion, so a
+    // signature that never reaches VALID leaves its flag set; a later verify
+    // that does complete would then present both _done bits at once and a
+    // concatenated coverpoint would land in no bin, losing a completion that
+    // really happened.
+    cp_sign_done: coverpoint abr_sign_done {bins sign_status_valid = {1'b1};}
+    cp_verify_done: coverpoint abr_verify_done {bins verify_status_valid = {1'b1};}
+  endgroup
+
+  covergroup sep_abr_mlkem_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_abr_mlkem_cg";
+    cp_op: coverpoint {kem_decaps, kem_encaps, kem_keygen} {
+      bins mlkem_keygen = {3'b001};
+      bins mlkem_encaps = {3'b010};
+      bins mlkem_decaps = {3'b100};
+    }
+    // Independent coverpoints for the same reason as sep_abr_sign_cg: a command
+    // that never completes holds its pending flag, and a concatenation would
+    // then drop a later command's genuine completion into no bin.
+    cp_keygen_done: coverpoint kem_keygen_done {bins keygen_status_valid = {1'b1};}
+    cp_encaps_done: coverpoint kem_encaps_done {bins encaps_status_valid = {1'b1};}
+    cp_decaps_done: coverpoint kem_decaps_done {bins decaps_status_valid = {1'b1};}
+  endgroup
+  // verilog_format: on
+
   covergroup sep_esrc_edn_flow_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_esrc_edn_flow_cg";
@@ -1154,18 +1363,38 @@ module sep_fcov (
     cp_gen: coverpoint drbg_gen {bins genbits_valid = {1'b1};}
     cp_crypto: coverpoint edn_crypto_beat {bins crypto_sink = {1'b1};}
     cp_km: coverpoint edn_km_beat {bins km_sink = {1'b1};}
+    // Which adapter client took the grant. cp_crypto above scores the shared
+    // AXIS stream and is hit by any sink, so it cannot show that a given
+    // client was ever served. All four clients have a producer.
+    // One coverpoint per client rather than one-hot bins on the 4-bit vector.
+    // The acks are per-endpoint state machines, not arbiter grants, so two can
+    // assert in the same cycle; a one-hot coverpoint would land in no bin and
+    // lose BOTH grants, which reads afterwards as a client the test never
+    // drove. This is the leaf that must fill all four, and simultaneous acks
+    // are likeliest exactly here.
+    cp_edn_aes: coverpoint crypto_edn_ack_i[0] iff (!in_reset) {
+      bins aes = {1'b1};
+    }
+    cp_edn_kmac: coverpoint crypto_edn_ack_i[1] iff (!in_reset) {bins kmac = {1'b1};}
+    cp_edn_otbn_rnd: coverpoint crypto_edn_ack_i[2] iff (!in_reset) {bins otbn_rnd = {1'b1};}
+    cp_edn_otbn_urnd: coverpoint crypto_edn_ack_i[3] iff (!in_reset) {bins otbn_urnd = {1'b1};}
   endgroup
 
   covergroup sep_km_command_sideload_cg with function sample (logic [7:0] dest);
     option.per_instance = 1;
     option.name = "sep_km_command_sideload_cg";
-    // One cell per consumer, taken from RETURN_ARG dest_engine on rc 0.
+    // One cell per consumer, taken from RETURN_ARG dest_engine on rc 0. All
+    // eight destinations the KM firmware decodes have a cell: the four classic
+    // engines, the ABR ML-DSA seed, and the three ML-KEM sideload blocks.
     cp_dest: coverpoint dest {
       bins hmac = {KmDestHmac};
       bins kmac = {KmDestKmac};
       bins aes = {KmDestAes};
       bins otbn = {KmDestOtbn};
       bins abr_mldsa_seed = {KmDestAbrMldsaSeed};
+      bins abr_mlkem_seed_d = {KmDestAbrMlkemSeedD};
+      bins abr_mlkem_seed_z = {KmDestAbrMlkemSeedZ};
+      bins abr_mlkem_msg = {KmDestAbrMlkemMsg};
     }
   endgroup
 
@@ -1196,6 +1425,50 @@ module sep_fcov (
     cp_rel: coverpoint km_swrst_rel {bins km_released = {1'b1};}
   endgroup
 
+  // --- crypto isolate sequencing -----------------------------------------
+  // Registered copies so an edge can be named. The reset is active-low, so a
+  // fall is the domain going INTO reset.
+  // Tracks the live inputs during reset rather than holding constants. Cold
+  // reset already presents the isolated, domain-in-reset state -- the isolate
+  // FSMs reset to Isolate and the gated domain reset is low -- so seeding these
+  // to 1/0 would manufacture both edges below on the first clock of every run,
+  // in every test, whether or not anything sequenced an isolate.
+  logic hmac_rst_n_q, hmac_km_iso_q;
+  logic abr_rst_n_q;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      hmac_rst_n_q  <= hmac_gated_rst_n_i;
+      hmac_km_iso_q <= hmac_km_isolated_i;
+      abr_rst_n_q   <= abr_gated_rst_n_i;
+    end else begin
+      hmac_rst_n_q  <= hmac_gated_rst_n_i;
+      hmac_km_iso_q <= hmac_km_isolated_i;
+      abr_rst_n_q   <= abr_gated_rst_n_i;
+    end
+  end
+
+  // The cycle the HMAC domain enters reset. Sampling the state instead would
+  // bin a steady condition that holds for the whole window, and both isolate
+  // bits are high throughout it -- so the ordering bin would fill whatever the
+  // sequencer did. Every edge is additionally qualified on being out of reset:
+  // the cold-reset window presents the same levels a real isolate does, and an
+  // edge derived from it says nothing about the sequencer.
+  wire hmac_rst_fall   = !in_reset && hmac_rst_n_q && !hmac_gated_rst_n_i;
+  wire hmac_km_iso_rise = !in_reset && !hmac_km_iso_q && hmac_km_isolated_i;
+  wire hmac_km_iso_fall = !in_reset && hmac_km_iso_q && !hmac_km_isolated_i;
+  wire hmac_rst_ordered = hmac_rst_fall && hmac_host_isolated_i && hmac_km_isolated_i;
+  wire abr_rst_fall    = !in_reset && abr_rst_n_q && !abr_gated_rst_n_i;
+  wire abr_rst_ordered = abr_rst_fall && abr_host_isolated_i && abr_km_isolated_i;
+
+  covergroup sep_crypto_isolate_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_crypto_isolate_cg";
+    cp_km_iso: coverpoint hmac_km_iso_rise {bins km_path_isolated = {1'b1};}
+    cp_rst_ordered: coverpoint hmac_rst_ordered {bins reset_after_both_isolated = {1'b1};}
+    cp_reopen: coverpoint hmac_km_iso_fall {bins km_path_reopened = {1'b1};}
+    cp_abr_rst_ordered: coverpoint abr_rst_ordered {bins reset_after_both_isolated = {1'b1};}
+  endgroup
+
   covergroup sep_km_generate_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_km_generate_cg";
@@ -1218,6 +1491,16 @@ module sep_fcov (
       bins chunk_done = {1'b1};
     }
     cp_rego: coverpoint dma_rego_non_initial {bins rego_not_initial = {1'b1};}
+    // Which inline-hash opcode was commanded. cp_hash above is SHA-256 only,
+    // so it does not distinguish a SHA-384 transfer. SHA-512 is a legal opcode
+    // with no leaf that commands it, so it has no bin rather than a permanent
+    // hole.
+    // verilog_format: off  // verible packs these two bins onto one line.
+    cp_hash_opcode: coverpoint dma_opcode_w iff (dma_hash_any_go) {
+      bins sha256 = {DmaOpSha256};
+      bins sha384 = {DmaOpSha384};
+    }
+    // verilog_format: on
   endgroup
 
   covergroup sep_dma_completion_route_cg with function sample (logic irq_route, logic handshake);
@@ -1419,6 +1702,12 @@ module sep_fcov (
       bins km_raise = {1'b1};
     }
     cp_km_clear: coverpoint km_mbox_clear {bins km_clear = {1'b1};}
+    // The receive direction. Owner: sep_mailbox_peer_rx_rirqt_test, the only
+    // leaf that drives the peer aperture; every other mailbox leaf is transmit
+    // side and cannot fill this.
+    cp_peer_fill: coverpoint m_mbox_peer_wr {
+      bins peer_write = {1'b1};
+    }
   endgroup
 
   covergroup sep_wdt_bark_cg @(posedge clk_i);
@@ -1448,11 +1737,14 @@ module sep_fcov (
   sep_kmac_mode_cg            u_sep_kmac_mode_cg            = new();
   sep_otbn_execute_cg         u_sep_otbn_execute_cg         = new();
   sep_abr_keygen_cg           u_sep_abr_keygen_cg           = new();
+  sep_abr_sign_cg             u_sep_abr_sign_cg             = new();
+  sep_abr_mlkem_cg            u_sep_abr_mlkem_cg            = new();
   sep_esrc_edn_flow_cg        u_sep_esrc_edn_flow_cg        = new();
   sep_km_command_sideload_cg  u_sep_km_command_sideload_cg  = new();
   sep_km_host_cmd_cg          u_sep_km_host_cmd_cg          = new();
   sep_km_wipe_cg              u_sep_km_wipe_cg              = new();
   sep_km_sw_reset_cg          u_sep_km_sw_reset_cg          = new();
+  sep_crypto_isolate_cg       u_sep_crypto_isolate_cg       = new();
   sep_km_generate_cg          u_sep_km_generate_cg          = new();
   sep_dma_copy_hash_cg        u_sep_dma_copy_hash_cg        = new();
   sep_spi_flash_cg            u_sep_spi_flash_cg            = new();

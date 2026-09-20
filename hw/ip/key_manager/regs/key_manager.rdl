@@ -22,6 +22,7 @@
 `include "hmac_wrapper_key.rdl"
 `include "otbn_wrapper_key.rdl"
 `include "abr_wrapper_key.rdl"
+`include "km_memory.rdl"
 // SEP eFuse register definitions — included from the shared SEP/peripheral
 // RDL trees so the KM-generated headers carry the OTP register constants at
 // the KM-local window addresses.  Hardware remaps addr[31:12] to the value
@@ -53,6 +54,7 @@ addrmap key_manager {
     // - Accessed via direct memory interface (not AXI-Lite)
     // - Includes byte-wise parity checking
     // - Size: 16KB (4096 words × 4 bytes)
+    external km_rom rom @ 0x0000_0000;
 
     // Reserved: 0x0000_4000 - 0x0000_7FFF (16KB)
     // - Unmapped; returns DECERR
@@ -63,6 +65,7 @@ addrmap key_manager {
     // - Includes byte-wise parity checking
     // - Optional address/data scrambling (controlled by KMCSR)
     // - Size: 32KB (8192 words × 4 bytes)
+    external km_sram sram @ 0x0000_8000;
 
     //=========================================================================
     // Register-Based Peripherals (AXI-Lite Access)
@@ -168,6 +171,23 @@ addrmap key_manager {
     external sep_efuse_map        otp_efuse_map  @ 0x0001_1000;
     external efuse_interface_ctrl otp_efuse_ctrl @ 0x0001_1400;
     external efuse_mmr            otp_efuse_mmr  @ 0x0001_1500;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_aperture_size = 0x1D000;
+    mailbox_km->ocah_aperture_size = 0x20;
+    otp_efuse_map->desc = "SEP eFuse shadow-register pass-through.";
+    otp_efuse_ctrl->ocah_aperture_size = 0x100;
+    otp_efuse_ctrl->desc = "SEP eFuse command and status pass-through.";
+    otp_efuse_mmr->ocah_aperture_size = 0x100;
+    otp_efuse_mmr->desc = "SEP eFuse security-token pass-through.";
+    kpv->ocah_aperture_size = 0x2000;
+    kmcsr->ocah_aperture_size = 0x800;
+    otbn_wrapper_key->ocah_aperture_size = 0x80;
+    aes_wrapper_key->ocah_aperture_size = 0x80;
+    kmac_wrapper_key->ocah_aperture_size = 0x80;
+    hmac_wrapper_key->ocah_aperture_size = 0x80;
+    abr_wrapper_key->ocah_aperture_size = 0x800;
+`endif
 
     //=========================================================================
     // Memory Map Summary

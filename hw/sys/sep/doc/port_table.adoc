@@ -1,9 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[.small,stretch]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="SEP port reference" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide.small,stretch]
 .SEP Port Declaration
+ifdef::backend-html5[]
+[cols="<19%,<15%,<11%,<8%,<20%,<14%,<13%",options="header",frame=all,grid=all]
+endif::backend-html5[]
+ifndef::backend-html5[]
 [%autowidth,options="header",frame=all,grid=all]
+endif::backend-html5[]
 |===
 |Interface Name |Type |Direction |Width |Description |Connection |Default value (if applicable)
 
@@ -14,21 +25,21 @@
 |`wdt_rst_ni` |`logic` |Input |1 |Watchdog timer reset from SMC (active low). |SMC reset unit |N/A
 |`wdt_timer_rst_req_o` |`logic` |Output |1 |WDT reset request output. Triggers memory interface reset in `sep_wrapper`. |SEP wrapper |N/A
 
-|`jtag_tck` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
-|`jtag_tms` |`logic` |Input |1 |JTAG test mode select. |JTAG pads (via DTP STAP) |N/A
-|`jtag_tdi` |`logic` |Input |1 |JTAG test data in. |JTAG pads (via DTP STAP) |N/A
-|`jtag_trst_n` |`logic` |Input |1 |JTAG test reset (active low). |JTAG pads (via DTP STAP) |N/A
-|`jtag_tdo` |`logic` |Output |1 |JTAG test data out. |JTAG pads (via DTP STAP) |N/A
-|`jtag_tdoEn` |`logic` |Output |1 |JTAG test data out enable. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tck_i` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tms_i` |`logic` |Input |1 |JTAG test mode select. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdi_i` |`logic` |Input |1 |JTAG test data in. |JTAG pads (via DTP STAP) |N/A
+|`jtag_trst_ni` |`logic` |Input |1 |JTAG test reset (active low). |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdo_o` |`logic` |Output |1 |JTAG test data out. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdoEn_o` |`logic` |Output |1 |JTAG test data out enable. |JTAG pads (via DTP STAP) |N/A
 
 |`axil_sep_otp_jtag_req_i` |`sep_efuse_pkg::efuse_axil_req_t` |Input |- |OTP debug AXI-Lite request from JTAG. |DTP `axil_sep_otp_jtag_req_o` |Tie to '0 if unused
 |`axil_sep_otp_jtag_resp_o` |`sep_efuse_pkg::efuse_axil_resp_t` |Output |- |OTP debug AXI-Lite response to JTAG. |DTP `axil_sep_otp_jtag_resp_i` |N/A
 
-|`mpc_debug_halt_req` |`logic` |Input |1 |Async halt request from MPC. |Debug controller |Tie to '0 if unused
-|`mpc_debug_run_req` |`logic` |Input |1 |Async run request from MPC. |Debug controller |Tie to '0 if unused
-|`mpc_reset_run_req` |`logic` |Input |1 |Run/halt selection after reset. |Debug controller |1'b1
-|`i_cpu_halt_req` |`logic` |Input |1 |Async halt request to CPU. |Debug controller |Tie to '0 if unused
-|`i_cpu_run_req` |`logic` |Input |1 |Async restart request to CPU. |Debug controller |Tie to '0 if unused
+|`mpc_debug_halt_req_i` |`logic` |Input |1 |Async halt request from MPC. |Debug controller |Tie to '0 if unused
+|`mpc_debug_run_req_i` |`logic` |Input |1 |Async run request from MPC. |Debug controller |Tie to '0 if unused
+|`mpc_reset_run_req_i` |`logic` |Input |1 |Run/halt selection after reset. |Debug controller |1'b1
+|`cpu_halt_req_i` |`logic` |Input |1 |Async halt request to CPU. |Debug controller |Tie to '0 if unused
+|`cpu_run_req_i` |`logic` |Input |1 |Async restart request to CPU. |Debug controller |Tie to '0 if unused
 
 |`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller |1'b0
 |`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1
@@ -120,3 +131,9 @@
 
 |`ext_debug_bus_o` |`logic` |Output |`[511:0]` |External debug observation bus. |Debug infrastructure |N/A
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]

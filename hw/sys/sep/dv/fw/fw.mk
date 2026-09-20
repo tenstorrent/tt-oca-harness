@@ -145,7 +145,7 @@ SEP_ROM_BASE := 0x10040000
 
 define FW_TEST_POSTPROCESS
 $(if $(filter rom_only,$(3)),
-	python3 "$(SEP_BOOTROM_DIR)/tools/elf-to-vmem.py" \
+	$(PYTHON) "$(SEP_BOOTROM_DIR)/tools/elf-to-vmem.py" \
 	  --base $(SEP_ROM_BASE) --gcc-prefix $(patsubst %-,%,$(OCAH_FW_TOOL_PREFIX)) \
 	  -o "$(4).vmem" "$(1)"
 ,

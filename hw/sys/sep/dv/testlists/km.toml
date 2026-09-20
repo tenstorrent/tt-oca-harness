@@ -81,7 +81,7 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # CMD_KEY_TRANSFERs it to the OpenTitan HMAC engine, then runs keyed HMAC-SHA256
 # over a fixed message and proves HMAC consumed the exact key: the digest equals
 # an independent HMAC-SHA256 golden (env/sep_hmac_golden.py, stdlib hmac/hashlib,
-# RFC 4231 self-tested) of the known key under the RTL-pinned convention.
+# RFC 4231 self-tested) of the known key (key_word_rev=1, key_be=1, msg_be=0).
 # Frontdoor (no backdoor); HMAC has no CFG sideload bit, so the digest-vs-golden
 # compare is the consume-proof. no_cpu;
 # +esrc_noise_force for the ring oscillators under Verilator. REAL fuse-sense
@@ -134,6 +134,16 @@ tags = ["km", "kpv", "sram_lock", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]
+
+[[tests]]
+name = "sep_km_isolate_termination_test"
+module = "km.sep_km_isolate_termination_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "isolate", "reset", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_iso.parhex"]
 
 [[tests]]
 # KM mailbox command set: generate, transfer, revoke-or-shred, illegal-to-error,
@@ -192,6 +202,23 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # REAL fuse-sense; +esrc_noise_force. Three ML-DSA-87 KEYGENs set the wall budget.
 name = "sep_km_abr_seed_sideload_test"
 module = "km.sep_km_abr_seed_sideload_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 10800
+tags = ["km", "abr", "sideload", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM -> ABR ML-KEM sideload: the seed (D||Z on one 16-dword KV lane), the
+# message, and the shared-key writeback the KM consumes back out. Each lane is
+# compared against a direct-register run of the same words, after a run on
+# different words, so a stale register cannot pass. REAL fuse-sense;
+# +esrc_noise_force. Three ML-KEM-1024 keygens and four encaps set the wall
+# budget.
+name = "sep_km_abr_mlkem_sideload_test"
+module = "km.sep_km_abr_mlkem_sideload_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 10800

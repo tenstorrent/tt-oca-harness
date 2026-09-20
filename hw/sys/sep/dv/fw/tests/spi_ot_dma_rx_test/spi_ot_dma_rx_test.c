@@ -64,10 +64,10 @@ int main(void) {
     // --- OpenTitan SPI host init ---------------------------------------------
     // RX watermark = 4 words (asserts lsio_trigger), TX watermark = 0, enable the
     // controller + output.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
-           (RX_WATERMARK << SPI_CONTROLLER__CTRL__RX_WATERMARK_bp) |
-               SPI_CONTROLLER__CTRL__OUTPUT_EN_bm | SPI_CONTROLLER__CTRL__SPIEN_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+           (RX_WATERMARK << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp) |
+               SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm | SPI_CONTROLLER__CONTROL__SPIEN_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     sep_mbx_puts("STEP SPI host configured: RX watermark, clock divider, enable\n");
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
@@ -94,18 +94,18 @@ int main(void) {
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
     sep_mbx_puts("STEP DMA armed: RXDATA(WRAP) -> SRAM(INCR), hardware handshake\n");
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
-               OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+               OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DST_ADDR);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
-               SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset |
-                   (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << 4));
+               SEP_DMA_ASID_PAIR(SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset,
+                                 SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset));
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
                SECURE_DMA__SRC_CONFIG__WRAP_bm); // fixed RXDATA register
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR,
-               SECURE_DMA__SRC_CONFIG__INCREMENT_bm); // walk through SRAM
+               SECURE_DMA__DST_CONFIG__INCREMENT_bm); // walk through SRAM
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, RX_SIZE);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, DMA_CHUNK);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
@@ -117,18 +117,18 @@ int main(void) {
     // TX segment: opcode 0x03 + 24-bit address 0 (4 bytes, LSB-first in TXDATA),
     // CS held asserted (CSAAT). RX segment: clock in RX_SIZE bytes, release CS.
     // The flash BFM streams its preloaded 0xA5 bytes back on MISO.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR,
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
            SPI_READ_OPCODE); // 0x03, then addr bytes 0,0,0
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
-           (SPI_CMD_DIR_TX << SPI_CONTROLLER__CMD__DIRECTION_bp) | SPI_CONTROLLER__CMD__CSAAT_bm |
-               ((4u - 1u) << SPI_CONTROLLER__CMD__LEN_bp));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+           (SPI_CMD_DIR_TX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) |
+               SPI_CONTROLLER__COMMAND__CSAAT_bm | ((4u - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
     if (spi_wait_ready(SPI_POLL_TIMEOUT) != 0) {
         sep_mbx_puts("FAIL: SPI host stuck after command phase\n");
         errors++;
     }
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
-           (SPI_CMD_DIR_RX << SPI_CONTROLLER__CMD__DIRECTION_bp) |
-               ((RX_SIZE - 1u) << SPI_CONTROLLER__CMD__LEN_bp));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+           (SPI_CMD_DIR_RX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) |
+               ((RX_SIZE - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
     sep_mbx_puts("STEP flash READ issued: opcode 0x03 + 24-bit address\n");
 
     // --- Wait for the DMA to drain all chunks --------------------------------

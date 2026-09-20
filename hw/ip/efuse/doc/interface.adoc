@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[efuse-interface]]
-===== Interface
+== Interface
 
-====== Configuration Parameters
+=== Configuration Parameters
 
 [width="100%",cols="30%,20%,50%",options="header",]
 |===================================================
@@ -14,34 +14,54 @@
 |NUM_WORDS |768 |Total number of OTP words
 |===================================================
 
-====== Signal Interfaces
+=== Signal Interfaces
 
-====== Clock and Reset
+=== Clock and Reset
 
-[width="100%",cols="20%,15%,15%,50%",options="header",]
+[width="100%",cols="24%,14%,8%,54%",options="header",]
 |==========================================================
 |Signal Name |Direction |Width |Description
 |`clk_i` |Input |1 |System clock input
 |`rst_ni` |Input |1 |Active-low asynchronous reset
 |==========================================================
 
-====== Main AXI4-Lite Interfaces
+=== Main AXI4-Lite Interfaces
 
 The eFuse controller provides two AXI4-Lite interfaces for register
 access:
 
-====== SMC Interface (Functional Access)
+=== SMC Interface (Functional Access)
 
-[width="100%",cols="20%,15%,15%,50%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="eFuse SMC Interface (Functional Access)" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide]
+[width="100%",cols="30%,12%,28%,30%",options="header",]
 |==================================================================================
 |Signal Name |Direction |Type |Description
 |`axil_req_i` |Input |`efuse_axil_req_t` |AXI4-Lite request from SMC
 |`axil_resp_o` |Output |`efuse_axil_resp_t` |AXI4-Lite response to SMC
 |==================================================================================
 
-====== JTAG Interface (Debug Access)
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
-[width="100%",cols="20%,15%,15%,50%",options="header",]
+=== JTAG Interface (Debug Access)
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="eFuse JTAG Interface (Debug Access)" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide]
+[width="100%",cols="30%,12%,28%,30%",options="header",]
 |=====================================================================================
 |Signal Name |Direction |Type |Description
 |`axil_jtag_req_i` |Input |`efuse_axil_req_t` |AXI4-Lite request from
@@ -51,11 +71,24 @@ JTAG
 JTAG
 |=====================================================================================
 
-====== Fuse Bank Control Interface
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Fuse Bank Control Interface
 
 APB interface for communicating with the eFuse bank model:
 
-[width="100%",cols="20%,15%,15%,50%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Bank Control Interface" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide]
+[width="100%",cols="30%,12%,28%,30%",options="header",]
 |=====================================================================================
 |Signal Name |Direction |Type |Description
 |`fuse_bank_ctrl_req_o` |Output |`efuse_apb_req_t` |APB request to eFuse
@@ -65,11 +98,24 @@ bank
 eFuse bank
 |=====================================================================================
 
-====== Fuse Command Interface
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Fuse Command Interface
 
 Custom interface for SHIM state machine communication:
 
-[width="100%",cols="20%,15%,15%,50%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Command Interface" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide]
+[width="100%",cols="30%,12%,28%,30%",options="header",]
 |=====================================================================================
 |Signal Name |Direction |Type |Description
 |`fuse_command_req_o` |Output |`fuse_command_req_t` |Command request to
@@ -79,9 +125,22 @@ SHIM
 from SHIM
 |=====================================================================================
 
-====== Security and Control Signals
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
-[width="100%",cols="20%,15%,15%,50%",options="header",]
+=== Security and Control Signals
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="eFuse Security and Control Signals" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide]
+[width="100%",cols="28%,12%,25%,35%",options="header",]
 |=====================================================================================
 |Signal Name |Direction |Width |Description
 |`lc_state_i` |Input |4 |Life cycle state from SEP
@@ -102,9 +161,22 @@ control rules
 |`shadow_regs_o` |Output |`efuse_map_t` |Shadow register contents
 |=====================================================================================
 
-====== Debug and Status Signals
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
-[width="100%",cols="30%,12%,13%,45%",options="header",]
+=== Debug and Status Signals
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="eFuse Debug and Status Signals" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide]
+[width="100%",cols="42%,12%,8%,38%",options="header",]
 |=====================================================================================
 |Signal Name |Direction |Width |Description
 |`is_write_locked_shadow_regs_o` |Output |1 |Shadow register CSRs are write locked
@@ -134,7 +206,13 @@ control rules
 |`sec_disable_token_o` |Output |256 |Security disable token value (8 x 32-bit words)
 |=====================================================================================
 
-====== Fuse Command Protocol
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Fuse Command Protocol
 
 Custom command interface between controller and SHIM:
 

@@ -19,7 +19,7 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_dtp_jtag2axi_back_to_back_error_ok_test TierC JTAG2AXI-B2B SEP=0 JTAG"
+            "DUT_TAG=WRAPPER smu_dtp_jtag2axi_back_to_back_error_ok_test TierC JTAG2AXI-B2B SEP=1 JTAG"
         )
         seq = smu_dtp_jtag2axi_back_to_back_error_ok_test_seq(self)
         await seq.run()

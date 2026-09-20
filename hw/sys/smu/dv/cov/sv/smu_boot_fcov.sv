@@ -30,7 +30,12 @@
 
 `include "ocah_fcov_macros.svh"
 
-module smu_boot_fcov (
+module smu_boot_fcov #(
+  // 0 on an elaboration without SEP. The LCC demote pair is driven by the SEP
+  // lifecycle controller, so smu.sv's gen_no_sep branch ties both to '0 and
+  // the points that read them are dropped rather than carried unhittable.
+  parameter bit SepPresent = 1'b1
+) (
   input wire clk_ref_i,
   input wire clk_smu_i,
 
@@ -172,15 +177,22 @@ module smu_boot_fcov (
   end
 
   wire lc_state_changed_e = lc_state_changed_q;
-  wire lc_sigint_err_e = (lc_sigint_err_i === 1'b1);
-  wire lcc_demote_1_e = (lcc_demote_state_1_i !== 2'b00);
-  wire lcc_demote_2_e = (lcc_demote_state_2_i !== 2'b00);
-  wire lcc_demote_both_e = lcc_demote_1_e && lcc_demote_2_e;
   `OCAH_FCOV_COVER(c_lc_state_changed, lc_state_changed_e, clk_smu_i, not_powered)
-  `OCAH_FCOV_COVER(c_lc_sigint_err, lc_sigint_err_e, clk_smu_i, not_powered)
-  `OCAH_FCOV_COVER(c_lcc_demote_state_1, lcc_demote_1_e, clk_smu_i, not_powered)
-  `OCAH_FCOV_COVER(c_lcc_demote_state_2, lcc_demote_2_e, clk_smu_i, not_powered)
-  `OCAH_FCOV_COVER(c_lcc_demote_both, lcc_demote_both_e, clk_smu_i, not_powered)
+
+  // The lifecycle signal-integrity error, each demote lane away from its 2'b00
+  // idle encoding, and both lanes at once. Only elaborated with SEP present:
+  // all of them are lifecycle-controller outputs and are tied to constants
+  // without it.
+  if (SepPresent) begin : g_sep
+    wire lc_sigint_err_e = (lc_sigint_err_i === 1'b1);
+    wire lcc_demote_1_e = (lcc_demote_state_1_i !== 2'b00);
+    wire lcc_demote_2_e = (lcc_demote_state_2_i !== 2'b00);
+    wire lcc_demote_both_e = lcc_demote_1_e && lcc_demote_2_e;
+    `OCAH_FCOV_COVER(c_lc_sigint_err, lc_sigint_err_e, clk_smu_i, not_powered)
+    `OCAH_FCOV_COVER(c_lcc_demote_state_1, lcc_demote_1_e, clk_smu_i, not_powered)
+    `OCAH_FCOV_COVER(c_lcc_demote_state_2, lcc_demote_2_e, clk_smu_i, not_powered)
+    `OCAH_FCOV_COVER(c_lcc_demote_both, lcc_demote_both_e, clk_smu_i, not_powered)
+  end
 
 `ifndef VERILATOR
   // ------------------------------------------------------------------

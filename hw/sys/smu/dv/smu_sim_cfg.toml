@@ -21,26 +21,44 @@ schema_version = 1
 # evidence directory.
 name = "smu"
 profile = "native"
-description = "Production-wrapper OSS baseline: no-SEP and real-SEP smoke"
+description = "Production-wrapper OSS regression on the single SEP=1 compile profile"
 default_tool = "verilator"
 tools = ["verilator", "vcs", "xcelium"]
 
 [testlist]
-path = "testlists/wrapper.toml"
+path = "testlists/all.toml"
 format = "toml_list"
 
-# Waive abr_reg.sv external wr/rd_ack $error. On the wrapper SEP=1 profile the
-# ABR datapath is not meaningfully exercised; the assertion fires at t=0 and
-# again after reset release (e.g. 8 ns), so waive by file (not only "at time 0").
+# Waive the abr_reg.sv external wr/rd_ack $error, and only that assertion
+# class. On the wrapper SEP=1 profile the ABR datapath is not exercised; the
+# assertion fires at t=0 and again after reset release (e.g. 8 ns), so it is
+# waived at any time -- but a line naming abr_reg.sv for any other reason
+# still fails the run.
+#
+# Every other PeakRDL-regblock external-ack check fires once at time 0 on a
+# four-state simulator: the check is an immediate assertion in the `else`
+# branch of the reset always_ff, and the first clock edge sees `arst_n` = X.
+# It is generated code, so it cannot be gated in the tree, and $assertoff
+# races the time-0 evaluation. Ignore exactly the time-0 fire; the same
+# assertion failing at any later time stays a hard fail.
 [pass_fail]
-extra_ignore_patterns = ['abr_reg\.sv']
+extra_ignore_patterns = [
+  'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack',
+  'assert_bad_ext_(wr|rd)_ack: at time 0 [a-z]s$',
+  # SEP's assertions are SEP's bench's contract: under the wrapper the SEP core
+  # is elaborated but, in most leaves, never brought up, so its known-value
+  # checks fire on quiescent X and its prim_count AssertConnected_A checks ask
+  # for an OpenTitan alert SEP does not have. The wrapper is graded on its
+  # interface; hw/sys/sep/dv/tb/tb_top.sv scopes the same classes off.
+  'u_dut\.u_smu\.gen_sep\.u_sep\..*: at time',
+]
+extra_hard_fail_patterns = ['assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]']
 
 [native.stages.clean]
 kind = "clean"
 paths = [
   "{run_dir}",
-  "hw/sys/smu/dv/build/cocotb_wrapper_no_sep",
-  "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl",
+  "hw/sys/smu/dv/build/cocotb_wrapper",
   "hw/sys/smu/dv/build/work_wrapper",
   "hw/sys/smu/dv/build/firmware",
 ]
@@ -73,14 +91,9 @@ bender_targets = [
   "sep_el2",
   "smu_wrapper",
 ]
-# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
-# (see smu_block_sim_cfg.toml).
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
-  # ocah_fcov_macros.svh, so an assertion or coverage include resolves
-  # here too; the cov/sv functional-coverage modules themselves are
-  # instantiated in tb/tb_top.sv and compile on smu_block, not here.
+  # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
 ]
 # Vendor simulation collateral that an overlay of the sep bender graph can pull
@@ -140,6 +153,21 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
+  # Functional-coverage modules (cov/sv/), instantiated in tb/tb_wrapper_top.sv
+  # on this bench's signal names. smu_block_sim_cfg.toml carries the same set
+  # minus smu_clk_fcov, whose clock mirrors only this bench exposes, and plus
+  # smu_nosep_fcov, whose points only exist without SEP. Their cover
+  # properties are the `user` points --coverage-user records.
+  "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clk_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lc_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dtp_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_ext_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clkstop_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dbg_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_alias_fcov.sv",
 ]
 
 [build.verilator]
@@ -147,15 +175,61 @@ public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
 
 [coverage.verilator]
-# Line / branch (--coverage-line), expression, and SVL user coverage, replacing
-# the simulator default `--coverage`, which would enable every form including
-# toggle. Toggle is absent: this DUT elaborates the real SEP/SMC/DTP wrappers,
-# and unscoped toggle is the 0.5 GB-per-leaf case. Scoped toggle lives on
-# `--dut smu_block`.
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+# Line / branch (--coverage-line), expression, toggle and SVL user coverage,
+# replacing the simulator default `--coverage`.
+#
+# Toggle is what an integration level owns: whether every interface it wires
+# up was actually exercised. smu_wrapper_cov_scope.vlt drops the SMU block,
+# the subsystem, vendored and generated trees at compile time, so the toggle
+# points that remain belong to smu_wrapper itself; cov/interface_toggle.py
+# keeps the ones on its ports and folds them into one figure per port from
+# the run's cov/merged.dat.
+#
+# --output-groups 0 compiles the generated .cpp files one by one, as the other
+# DUTs do: grouped, one unit of the coverage-instrumented model grows past
+# what the CI compiler finishes in time.
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-toggle",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
+]
+# Two DUTs share this dv tree, so the policy is named per DUT rather than
+# discovered at cov/config/verilator/coverage_policy.toml.
+policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.toml"
+
+[coverage.vcs]
+# Commercial signoff path, the same shape as hw/sys/sep/dv/sep_sim_cfg.toml
+# [coverage.vcs]. The simulator defaults (`-cm`, `-cm_dir`) are restated
+# because a DUT table replaces the list, then the scope file is added.
+# `-cm_hier` limits what is instrumented at compile time; `-cm_common_hier`
+# extends the same file to assertion coverage, which carries the cov/sv
+# `cover property` points, and needs `-lca`. The coverage database lands
+# next to simv under the wrapper's one compile profile, compile_smu_chiplet;
+# the runner's default looks under a `default` build directory this DUT never
+# compiles into, so design_db names the database the profile writes.
+# cov/config/vcs/README.md explains the scope file.
+# Edit `smu_wrapper_cov_scope.hier` then `--rebuild`.
+design_db = "hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb"
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_hier",
+  "{repo_root}/hw/sys/smu/dv/cov/config/vcs/smu_wrapper_cov_scope.hier",
+  "-lca",
+  "-cm_common_hier",
+]
 
 [build.options]
-build_jobs = 8
+# The hosted CI runner has four vCPUs and 16 GB; the wrapper model (SEP with
+# the EL2, the four-core SMC and the DTP) is the largest Verilated model in the
+# tree, so the compile parallelism matches that runner instead of oversubscribing it.
+build_jobs = 4
 
 [frameworks.cocotb]
 # Wrapper flow keeps its own PyUVM tree so module names stay independent of
@@ -164,11 +238,11 @@ python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
-  # Shared PyUVM env and seq_lib, one package each for both DUTs. seq_lib
-  # modules import each other as `from seq_lib.x`, so they only resolve inside
-  # a package of that name, and `seq_lib` can only ever be one package -- see
-  # smu_block_sim_cfg.toml, which puts the same directory on its path.
-  "hw/sys/smu/dv/common",
+  # `env` and `seq_lib` are namespace packages (no __init__.py) spanning two
+  # directories: the wrapper-only half under this DUT's python_root above, and
+  # the half both DUTs share under cocotb/. No regular package of either name
+  # may appear anywhere on this path, or it would shadow both halves.
+  "hw/sys/smu/dv/cocotb",
   # The DTP bench's DV-owned JTAG tables (dtp_types: instruction opcodes, IR
   # width) as top-level modules. The DTP `env` package itself cannot go on
   # the path: `env` is the wrapper flow's own PyUVM package.
@@ -219,6 +293,13 @@ argv = [
 outputs = [
   "hw/sys/smu/dv/build/firmware/smu_smc_smoke/smu_smc_smoke.rom.hex",
   "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  # The SEP=1 wrapper loads its SEP boot ROM, TCMs and eFuse at time zero and
+  # is fatal without them; build_firmware.py writes these zero-filled preloads
+  # for every --target, so staging them costs nothing.
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
 ]
 
 [c_build.sep_smoke]
@@ -474,17 +555,12 @@ outputs = [
 ]
 
 # Run modes carry no eFuse plusargs. `+skip_fuse_sense` and the shadow-register
-# preloads are declared per test in testlists/wrapper.toml, next to the reason
+# preloads are declared per test in testlists/all.toml, next to the reason
 # each claim tolerates the skip; the boot-stall leaves carry none and sense
 # their OTP image through the wrapper's SMC eFuse model. $value$plusargs
 # returns the first match, so a preload named here would override a test's own.
 [run_modes.smoke]
-description = "Production-wrapper baseline for no-SEP and real-SEP targets"
-timeout_sec = 1800
-args = []
-
-[run_modes.no_sep]
-description = "SMC firmware boot in the OSS smu_wrapper with SEP=0"
+description = "Production-wrapper baseline"
 timeout_sec = 1800
 args = []
 
@@ -498,11 +574,24 @@ description = "Real-SEP wrapper for the lifecycle leaves, whose SEP shadow image
 timeout_sec = 3600
 args = []
 
+# Fuse-sense run modes. Every other run mode above passes +skip_fuse_sense,
+# under which efuse_shadow_regs.sv drives fuse_sense_done from the plusarg
+# rather than from the sense sequence and loads the shadow array from the
+# preload file. A test that observes fuse-sense completion has to run without
+# it, so the eFuse bank models supply the sensed data. The shadow preload
+# plusargs are read only under +skip_fuse_sense, so the SMC one is inert here
+# and the SEP one is left off entirely.
+[run_modes.sep_rtl_fuse_sense]
+description = "Real-SEP wrapper with real SMC and SEP fuse sense"
+timeout_sec = 3600
+args = [
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+]
+
 [targets.default]
-description = "Fallback: OSS wrapper no-SEP profile"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
+description = "Fallback: the single OSS wrapper profile (SEP=1, real EL2 CPU)"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
-  "SMU_NO_SEP",
 ]
 
 [targets.default.tools.verilator]
@@ -512,27 +601,13 @@ flags = [
   "+define+ASSERTS_OFF",
 ]
 
-[targets.compile_smu_chiplet_no_sep]
-description = "OSS smu_wrapper with NoSepCfg and SEP=0"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
-defines = [
-  "SMU_NO_SEP",
-]
-
-[targets.compile_smu_chiplet_no_sep.tools.verilator]
-flags = [
-  "-Wno-BLKLOOPINIT",
-  "+define+VERILATOR",
-  "+define+ASSERTS_OFF",
-]
-
-[targets.compile_smu_chiplet_sep_rtl]
+[targets.compile_smu_chiplet]
 description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
 ]
 
-[targets.compile_smu_chiplet_sep_rtl.tools.verilator]
+[targets.compile_smu_chiplet.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",

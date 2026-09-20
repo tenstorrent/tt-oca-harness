@@ -31,7 +31,9 @@ MABI   = ilp32
 
 BUILD_DIR = build
 
-CFLAGS  = -Os -ffreestanding -fno-builtin \
+# -MMD/-MP: bl1_pass_test.c reads bl0_state from the address and layout the
+# ROM's include/bl0_state.h defines, so a change there must force a rebuild.
+CFLAGS  = -Os -ffreestanding -fno-builtin -MMD -MP \
           -fdata-sections -ffunction-sections \
           -mno-relax -march=$(MARCH) -mabi=$(MABI)
 
@@ -65,3 +67,5 @@ $(BIN): $(ELF)
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+-include $(OBJS:.o=.d)

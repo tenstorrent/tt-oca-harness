@@ -15,7 +15,7 @@
 //   * IC_RESET[6:0]: reset_hold plus one {enable, control} pair per
 //     default slice in EXT, SEP, SMC order;
 //   * JTAG_CAPS[59:0] / *_JTAG2AXI_CAPS[13:0]: read-only capability TDRs
-//     compared against the standalone OSS DTP elaboration constants;
+//     compared against the bench's declared DTP configuration (dtp_types);
 //   * pin observables through dtp_tb_if (stop_clks, cla_clock_stop_en,
 //     boot-stall pair, flattened IC_RESET slices) with a bounded poll —
 //     stop_clks passes through a 2-flop synchronizer and an output flop,
@@ -32,14 +32,14 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   // Register sizes: DEBUG_CONTROL from the interface-unit instruction table;
   // IC_RESET is reset_hold plus one {enable, control} pair per port
   // ("IC_RESET Support" table), one SMC, one SEP, and one external port in
-  // the standalone DTP; JTAG_CAPS[59:0] ("JTAG Capabilities" table) and
-  // *_JTAG2AXI_CAPS[13:0] from the PTAP document.
+  // the bench's DTP configuration; JTAG_CAPS[59:0] ("JTAG Capabilities"
+  // table) and *_JTAG2AXI_CAPS[13:0] from the PTAP document.
   localparam int unsigned DebugControlLen = 5;
-  localparam int unsigned IcResetPorts = 3;
+  localparam int unsigned IcResetPorts = DtpNumSmcIcReset + DtpNumSepIcReset + DtpNumExtIcReset;
   localparam int unsigned IcResetLen = 2 * IcResetPorts + 1;
   localparam int unsigned JtagCapsLen = 60;
   localparam int unsigned Jtag2AxiCapsLen = DtpJtag2AxiCapsLen;
-  localparam int unsigned NumClkStopReq = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ;
+  localparam int unsigned NumClkStopReq = DtpNumClkStopReq;
 
   // DEBUG_CONTROL bit positions.
   localparam int unsigned DbgBootStallBit = 0;
@@ -55,6 +55,9 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     ICR_SEP = 1,
     ICR_SMC = 2
   } icr_port_e;
+
+  // Observables already reported X in this pass (one error per name).
+  protected bit m_x_reported[string];
 
   function new(string name = "dtp_debug_tdr_base_test_seq");
     super.new(name);
@@ -132,19 +135,20 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   // --- CAPS TDRs ---------------------------------------------------------------
-  // Expected JTAG_CAPS for the standalone OSS DTP instantiation
-  // (elaboration constants: XTRIG 10 internal / 16 CTP, 1 extra STAP, all
-  // instruction families enabled, one IC_RESET slice per port, OCH v0).
+  // Expected JTAG_CAPS of the DTP configuration the bench instantiates
+  // (dtp_types bench-configuration constants), packed per the "JTAG
+  // Capabilities" table of the PTAP document: every instruction family
+  // enabled, one IC_RESET slice per port.
   static function bit [63:0] expected_jtag_caps();
-    return (64'd10 << 54)  // NUM_XTRIG_INT_CT
-    | (64'd16 << 48)  // NUM_XTRIG_CTP
-    | (64'd1 << 44)  // NUM_EXTRA_STAPS
-    | (64'd1 << 43)  // STAP_IO_EN
-    | (64'd1 << 42)  // SEP_DBG_EN
-    | (64'd1 << 41)  // SMC_DBG_EN
-    | (64'd1 << 33)  // NUM_SMC_IC_RESET
-    | (64'd1 << 25)  // NUM_SEP_IC_RESET
-    | (64'd1 << 17)  // NUM_EXT_IC_RESET
+    return (64'(DtpXtrigNumIntCt) << 54)  // num_xtrig_int_ct
+    | (64'(DtpXtrigNumCtp) << 48)  // num_xtrig_ctp
+    | (64'(DtpNumExtraStaps) << 44)  // num_xtra_stap
+    | (64'd1 << 43)  // stap_io_en
+    | (64'd1 << 42)  // sep_dbg_en
+    | (64'd1 << 41)  // smc_dbg_en
+    | (64'(DtpNumSmcIcReset) << 33)  // num_smc_ic_rst
+    | (64'(DtpNumSepIcReset) << 25)  // num_sep_ic_rst
+    | (64'(DtpNumExtIcReset) << 17)  // num_ext_ic_rst
     | (64'd1 << 16)  // IC_RST_INST_EN
     | (64'd1 << 15)  // TMP_INST_EN
     | (64'd1 << 14)  // RUNBIST_INST_EN
@@ -154,7 +158,7 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     | (64'd1 << 10)  // EXTEST_PULSE_EN
     | (64'd1 << 9)  // EXTEST_TRAIN_EN
     | (64'd1 << 8)  // BSR_INST_EN
-    | 64'd0;  // OCH_VER
+    | 64'(DtpOchVer);  // och_ver
   endfunction
 
   static function bit [63:0] expected_jtag2axi_caps(bit bus_type, int unsigned addr_width,
@@ -250,28 +254,77 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   // --- pin observables through dtp_tb_if -----------------------------------
+  // An X on a debug observable is an error once per name per pass: a zero
+  // expectation would otherwise absorb it.
   function bit [63:0] sample_dbg_signal(string name);
+    logic [63:0] sampled;
     case (name)
-      "stop_clks":                return 64'(tb_vif.stop_clks);
-      "cla_clock_stop_en":        return 64'(tb_vif.cla_clock_stop_en);
-      "jtag_boot_stall":          return 64'(tb_vif.jtag_boot_stall);
-      "jtag_boot_stall_ovrd":     return 64'(tb_vif.jtag_boot_stall_ovrd);
-      "jtag_ic_reset_smc_ovrd":   return 64'(tb_vif.jtag_ic_reset_smc_ovrd);
-      "jtag_ic_reset_smc_ctrl_n": return 64'(tb_vif.jtag_ic_reset_smc_ctrl_n);
-      "jtag_ic_reset_sep_ovrd":   return 64'(tb_vif.jtag_ic_reset_sep_ovrd);
-      "jtag_ic_reset_sep_ctrl_n": return 64'(tb_vif.jtag_ic_reset_sep_ctrl_n);
-      "jtag_ic_reset_ext_ovrd":   return 64'(tb_vif.jtag_ic_reset_ext_ovrd);
-      "jtag_ic_reset_ext_ctrl_n": return 64'(tb_vif.jtag_ic_reset_ext_ctrl_n);
+      "stop_clks":                sampled = 64'(tb_vif.stop_clks);
+      "cla_clock_stop_en":        sampled = 64'(tb_vif.cla_clock_stop_en);
+      "jtag_boot_stall":          sampled = 64'(tb_vif.jtag_boot_stall);
+      "jtag_boot_stall_ovrd":     sampled = 64'(tb_vif.jtag_boot_stall_ovrd);
+      "jtag_ic_reset_smc_ovrd":   sampled = 64'(tb_vif.jtag_ic_reset_smc_ovrd);
+      "jtag_ic_reset_smc_ctrl_n": sampled = 64'(tb_vif.jtag_ic_reset_smc_ctrl_n);
+      "jtag_ic_reset_sep_ovrd":   sampled = 64'(tb_vif.jtag_ic_reset_sep_ovrd);
+      "jtag_ic_reset_sep_ctrl_n": sampled = 64'(tb_vif.jtag_ic_reset_sep_ctrl_n);
+      "jtag_ic_reset_ext_ovrd":   sampled = 64'(tb_vif.jtag_ic_reset_ext_ovrd);
+      "jtag_ic_reset_ext_ctrl_n": sampled = 64'(tb_vif.jtag_ic_reset_ext_ctrl_n);
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown debug observable '%s'", name))
-        return '0;
+        sampled = '0;
       end
     endcase
+    if ($isunknown(sampled) && !m_x_reported.exists(name)) begin
+      m_x_reported[name] = 1'b1;
+      `uvm_error(get_type_name(), $sformatf("debug observable %s sampled X", name))
+    end
+    return sampled;
   endfunction
 
   // Single-sample observable compare through the family recorder.
   function void expect_dbg_signal(string name, bit expected, string context_s = "");
     family_check("CHK-DBG-PIN", name, sample_dbg_signal(name), 64'(expected), context_s);
+  endfunction
+
+  // The debug-TDR pin observables sample_dbg_signal resolves.
+  static function void debug_output_names(output string names[$]);
+    names = {
+      "stop_clks",
+      "cla_clock_stop_en",
+      "jtag_boot_stall",
+      "jtag_boot_stall_ovrd",
+      "jtag_ic_reset_smc_ovrd",
+      "jtag_ic_reset_smc_ctrl_n",
+      "jtag_ic_reset_sep_ovrd",
+      "jtag_ic_reset_sep_ctrl_n",
+      "jtag_ic_reset_ext_ovrd",
+      "jtag_ic_reset_ext_ctrl_n"
+    };
+  endfunction
+
+  // Their values with DEBUG_CONTROL at 0x00 and IC_RESET at its all-ones
+  // default (every slice enable inactive drives ovrd=0, ctrl_n=1).
+  static function void debug_output_defaults(output bit [63:0] defaults[string]);
+    string names[$];
+    debug_output_names(names);
+    foreach (names[i]) defaults[names[i]] = 64'd0;
+    defaults["jtag_ic_reset_smc_ctrl_n"] = 64'd1;
+    defaults["jtag_ic_reset_sep_ctrl_n"] = 64'd1;
+    defaults["jtag_ic_reset_ext_ctrl_n"] = 64'd1;
+  endfunction
+
+  // Sample every debug-TDR pin observable by name.
+  function void snapshot_debug_outputs(output bit [63:0] snapshot[string]);
+    string names[$];
+    debug_output_names(names);
+    foreach (names[i]) snapshot[names[i]] = sample_dbg_signal(names[i]);
+  endfunction
+
+  // One comparison per debug-TDR pin observable.
+  function void check_debug_outputs(string check_id, bit [63:0] observed[string],
+                                    bit [63:0] expected[string], string context_s);
+    foreach (expected[name])
+    family_check(check_id, name, observed[name], expected[name], context_s);
   endfunction
 
   // Bounded observable poll: stop_clks passes through a 2-flop

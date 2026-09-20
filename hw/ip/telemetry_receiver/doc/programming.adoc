@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver-programming]]
-===== Programming
+== Programming
 
-====== Buffer Management
+=== Buffer Management
 
 Reading Telemetry Data:
 
@@ -26,7 +26,7 @@ Buffer Threshold Configuration:
 4. Monitor INTR_STATUS.BUFFER_THRESHOLD for threshold events
 ....
 
-====== Flush Operations
+=== Flush Operations
 
 Receiver Flush (clears internal buffers):
 
@@ -44,7 +44,7 @@ Transmitter Flush (upstream telemetry source):
 3. Resume normal operation
 ....
 
-====== Interrupt Handling
+=== Interrupt Handling
 
 Buffer Threshold Interrupt:
 

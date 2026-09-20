@@ -13,28 +13,32 @@ its pads come out of the wrapper. There is no SPI pad mux in this build.
 **Stimulus** = a cocotbext-axi master on the CPU LSU splice (`s_axi_*`), a second
 master on the real SMN-inbound port (`m_axi_*`, inbound filter), and VeeR EL2
 firmware boot on the `cpu` / `rom_fw` paths.
-**Backend** = Verilator is the reference backend; VCS and Xcelium also run.
+**Backend** = Verilator is the acceptance backend; VCS and Xcelium are the
+commercial development backends (`sep_sim_cfg.toml` `tools`), and VCS is the
+one graded coverage and SV-UVM run on.
 Everything the environment needs lives under this tree.
 
 ## Prerequisites
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x | the acceptance backend | CI pin 5.050 (`v5.050`) |
-| g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
-| Python ≥ 3.11 | launcher | `run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
-| Bender | filelist (`--stage flist`) | must be on `PATH` |
-| ccache | Verilator object cache | SEP sets `[build.verilator] ccache = true`; without the binary the C++ compile dies |
-| RISC-V GCC with picolibc | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | `riscv64-unknown-elf-gcc` or `riscv-none-elf-gcc` (rv32imc / ilp32); not needed for `--items smoke`. Host installs without picolibc fall back to `scripts/docker-run.sh` |
-| VCS or Xcelium | optional commercial backends | Verilator is the acceptance backend; SV-UVM (`--framework uvm`) is VCS only |
+| Verilator 5.x (CI pin `v5.050`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
+| g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8 g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
+| Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python` |
+| uv (CI: `astral-sh/setup-uv@v6`) | every stage, including `--items smoke` | must be on `PATH`. `run_dv.py` re-executes itself inside the locked uv-managed DV env (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi). A missing binary exits 2 before any stage runs. No SEP-owned semver pin; the dependency pin is `uv.lock` |
+| Bender (CI: `pulp-actions/bender-install@v2.5.1`) | filelist (`--stage flist`) | must be on `PATH`. A missing binary fails filelist generation. No SEP-owned semver pin |
+| ccache (CI: Ubuntu apt) | Verilator object cache | `[build.verilator] ccache = true`. Absence fails the C++ compile (`ccache: No such file or directory` / make Error 127) |
+| RISC-V GCC + picolibc (`ocah-toolchain`) | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | `tools/docker/Dockerfile`: Debian trixie `gcc-riscv64-unknown-elf` + `picolibc-riscv64-unknown-elf` (packages float; the base image digest is pinned). Host without `--specs=picolibc.specs` fails unless `scripts/docker-run.sh` is available. Not needed for `--items smoke` |
+| VCS (commercial; no public pin) | develop, graded `--cov`, and SV-UVM | Missing `VCS_HOME` / `SNPSLMD_LICENSE_FILE` or the 32-bit `vcs` driver's python-3.9 lib on `LD_LIBRARY_PATH` fails the driver |
 
 ### Environment variables
 
 | Variable / action | When it is needed |
 |---|---|
-| `PATH` | must contain `verilator`, `python3`, `bender`; `ccache` for the Verilator model; a RISC-V GCC for `--items all`, `--items cpu`, `--items rom_fw`, and `--tag boot` |
+| `PATH` | must contain `uv`, `verilator`, `python3`, `bender`; `ccache` for the Verilator model; a RISC-V GCC for `--items all`, `--items cpu`, `--items rom_fw`, and `--tag boot` |
 | `source /opt/rh/gcc-toolset-11/enable` | RHEL-8 hosts whose default g++ is 8.5 (sets `PATH` to g++ ≥ 10) |
 | `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | optional override for `--stage c_compile`. Unset, the stage probes a site toolchain then a local xPack install, then `scripts/docker-run.sh` when picolibc is missing |
+| `OCAH_DV_SKIP_UV` | set to `1` on a pre-provisioned host that already supplies the `dv` dependency group. It skips only the uv re-execution; `run_dv.py` still exports the root and sets the Python path |
 | `OCAH_ROOT` | firmware `make` only (`OCAH_ROOT="$PWD"` from the repository root) |
 | `TMPDIR` | large local scratch for sim/build temporaries; do not use `/tmp` |
 | `VCS_HOME`, `SNPSLMD_LICENSE_FILE`, `LD_LIBRARY_PATH` | VCS only (license file plus the 32-bit `vcs` driver's python-3.9 lib dir) |
@@ -67,10 +71,11 @@ python3 tools/dv/run_dv.py --dut sep --items smoke
 That group is `sep_axi_smoke_test` only. `--items all --tag smoke` is a tag
 filter over `all` and is not the CI command.
 
-### Nightly `all` group
+### Full regression, the `all` group
 
-The nightly command for the `all` group (every test this VPLAN grades:
-`cpu_stub` + `cpu`), one fresh seed per leaf:
+The command for the `all` group (every test this VPLAN grades: `cpu_stub` +
+`cpu`), one fresh seed per leaf. It is a local command -- no CI tier runs it,
+see below:
 
 ```bash
 # No --stage: builds the filelist, the firmware and the model, then regresses.
@@ -88,9 +93,28 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress \
 
 `all` includes firmware-boot tests, so a picolibc-enabled RISC-V GCC (or
 `scripts/docker-run.sh`) must be available -- the `c_compile` stage above builds
-the images with it (see [Prerequisites](#prerequisites)). Hosted GitHub nightly
-(`.github/workflows/regress.yml`) runs `--items cpu_stub` instead, because those
-runners have no RISC-V toolchain.
+the images with it (see [Prerequisites](#prerequisites)).
+
+`all` enrolls 104 leaves: `cpu_stub` (83) plus `cpu` (20), which are disjoint,
+plus `sep_periph_bus_err_misaligned_reveal_test`. That last leaf fails by
+design -- it reveals a spec-vs-RTL gap and is deliberately not masked as an
+xfail -- so the expected result of an `all` run is 103 passes and that one
+failure. It is held out of both class groups, so the two class commands below
+are a clean pass/fail gate. A run whose only failure is that leaf is green;
+any other failure is a real one.
+
+### Scheduled tiers
+
+Both scheduled tiers in `.github/workflows/regress.yml` run
+`--items cpu_stub`, not `all`: the nightly tier (cron `0 18 * * 0-5`) and the
+weekly coverage tier (cron `0 18 * * 6`). Their runners are GitHub-hosted and
+the shared `dv-run` action installs uv, Bender and Verilator only, so a
+`c_compile` stage has no RISC-V toolchain to call.
+
+The consequence for reading a green CI badge: the `cpu` and `rom_fw` runtime
+classes are **never** exercised by any CI tier. Firmware-boot evidence comes
+only from a local `all` / `cpu` / `rom_fw` run on a host that has the
+toolchain.
 
 The pre-merge class split is the reliable local gate. `rom_fw` is a separate
 owner and is not a member of `all`:
@@ -154,11 +178,10 @@ EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
 
 `own` excludes the records `sep_base_test` emits during bring-up, so a leaf
 cannot satisfy the gate on infrastructure alone. A leaf whose `own` count is
-zero **fails** — unless it is named in `_EvidenceFilter.NO_OWN_EVIDENCE`, which
-lists the leaves that grade through another channel (firmware console verdict,
-a sequence-level compare, a base-class golden compare) together with the reason
-for each. That list may only shrink; retire an entry by making the check that
-already runs log a `CHK-` ID where it happens.
+zero **fails**. Firmware-console leaves emit `CHK-FW-CONSOLE` from `poll_boot`
+after the mailbox PASS magic, and that ID is not in `BASE_IDS`, so it counts
+as the leaf's own evidence. `_EvidenceFilter.NO_OWN_EVIDENCE` is empty and
+may only shrink.
 
 Leaves may also declare more: `min_evidence = N` sets a floor on `own`, and
 `required_evidence = ("CHK-A", ...)` names IDs that must appear.

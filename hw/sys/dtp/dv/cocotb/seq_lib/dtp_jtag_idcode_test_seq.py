@@ -2,7 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_jtag_idcode_test.
 
-Verifies the DTP primary TAP IDCODE data register through the OCAH JTAG BFM.
+Verifies the DTP primary TAP IDCODE data register through the OCAH JTAG BFM:
+one read through the reset-loaded instruction (a DR scan with no IR load
+after TAP reset), then looped reads under seeded random TAP preconditioning.
 """
 
 from __future__ import annotations
@@ -125,6 +127,18 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
         rng = random.Random(seed)
 
         observed_values: list[int] = []
+        # Test-Logic-Reset loads IDCODE into the instruction register, so a DR
+        # scan with no IR load reads the device identification through the
+        # reset-selected path.
+        await self.reset_to_tlr()
+        item = await self.shift_dr(0, 32)
+        observed_values.append(item.result & 0xFFFF_FFFF)
+        self.checker.expect_equal(
+            "CHK-IDCODE-RAW",
+            observed_values[-1],
+            DTP_DEFAULT_IDCODE,
+            context="precondition=tap_reset no_ir_load",
+        )
         for loop_idx in range(self.read_loops):
             await self.random_precondition(rng, loop_idx)
             item = await self.read_idcode()

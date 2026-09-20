@@ -5,8 +5,8 @@
 `define OCAH_ASSERT_SV
 
 // Default clock and reset signals for assertion macros
-`define OCAH_ASSERT_DEFAULT_CLK i_clk
-`define OCAH_ASSERT_DEFAULT_RST !i_reset_n
+`define OCAH_ASSERT_DEFAULT_CLK clk_i
+`define OCAH_ASSERT_DEFAULT_RST !rst_ni
 
 // Helper macro to convert a block of code into a Verilog string
 `define OCAH_STRINGIFY(__x) `"__x`"

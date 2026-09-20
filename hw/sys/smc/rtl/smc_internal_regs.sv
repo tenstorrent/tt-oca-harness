@@ -112,6 +112,7 @@ module smc_internal_regs #(
 
   // Test mode
   input  logic test_en_i,
+  input  logic scan_rst_ni,
 
   // indicators for DFT status
   input  logic mem_repair_done_i,
@@ -861,7 +862,7 @@ module smc_internal_regs #(
   /////////////////////
 
   smc_dfd_wrap #(
-    .BASE_ADDR({32'd0, smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR})
+    .BASE_ADDR(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR[22:0])
   ) u_smc_dfd_wrap (
     .clk_smc_i                                  (clk_smc_i),
     .clk_ref_i                                  (clk_ref_i),
@@ -888,7 +889,8 @@ module smc_internal_regs #(
     .trace_mem_req_o                            (trace_mem_req_o),
     .trace_mem_resp_i                           (trace_mem_resp_i),
 
-    .test_en_i                                  (test_en_i)
+    .test_en_i                                  (test_en_i),
+    .scan_rst_ni                                (scan_rst_ni)
   );
 
   /////////////////////

@@ -26,7 +26,7 @@ What differs from the SMC-SRAM sibling:
     test would silently prove nothing -- hence the explicit path assertions below.
   * ``OcahSpiFlash`` answers on the SPI pads, preloaded with the packed image at
     flash offset 0. The packer lays the primary manifest at 0x1000, which is
-    exactly ``PRIMARY_MANIFEST_OFFSET`` (manifest.h), so the ROM's fixed offsets
+    exactly ``PRIMARY_MANIFEST_OFFSET``, so the ROM's fixed offsets
     line up with the image with no fixups.
 
 The SMC responder is still present (target ``rom_boot``): the ROM reads its straps,
@@ -46,6 +46,7 @@ import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
@@ -57,9 +58,10 @@ _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # (stub, OT+DMA, OT+PIO) read the same image and it is built once.
 # NOT the .spi_preload variant: that is $readmemh text, while
 # OcahSpiFlash.preload() reads raw binary.
-_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "non_secure_boot.bin")
-# Signed sibling, same layout, RSA-3072 over the manifest (make secure_boot_spi).
-SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "secure_boot.bin")
+# OCA boot manifests, built by `make oca-images`.
+_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_non_secure_boot.bin")
+# Signed sibling, same layout, RSA-3072 over the manifest's signed region.
+SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_secure_boot.bin")
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 # A serial flash read of the manifest (1184 B) plus the BL1 payload (5136 B) at
@@ -75,6 +77,11 @@ _PROGRESS_EVERY = 50_000
 _SPI_PATH_MARKER = "BOOT_SPI"
 _SMC_PATH_MARKER = "WAIT_SMC_MANIFEST"
 _MANIFEST_OK_MARKER = "MANIFEST_OK"
+# Printed after the payload hash chain and TOC entry hashes verified -- i.e. the
+# bytes about to be jumped to are the ones the manifest describes, not merely
+# bytes that arrived. Distinct from MANIFEST_OK, which says only that the
+# manifest itself was sound.
+_PAYLOAD_OK_MARKER = "PAYLOAD_OK"
 # Flash-relative manifest offset. This is the transport evidence that is NOT entailed
 # by BOOT_SPI: the SMC-SRAM branch prints an absolute 0x4006xxxx address, so only the
 # OT-SPI branch can print 0x00001000. See the note on forbidden_markers below.
@@ -96,7 +103,17 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     # Console lines that must appear / must not appear. The subclass appends the
     # RSA markers; keeping them as class data is what lets the two variants share
     # one scenario without a copy.
-    required_markers = (_SPI_PATH_MARKER, _MANIFEST_SRC_MARKER, _MANIFEST_OK_MARKER)
+    # Cycle budget for poll_boot. Class data so a test whose boot ends earlier --
+    # a negative test that is refused before the payload is ever fetched -- can
+    # trim it. poll_boot breaks out on fw_done, so this is normally a backstop;
+    # it only becomes the runtime if the firmware neither passes nor reports.
+    max_run_cycles = _MAX_RUN_CYCLES
+    required_markers = (
+        _SPI_PATH_MARKER,
+        _MANIFEST_SRC_MARKER,
+        _MANIFEST_OK_MARKER,
+        _PAYLOAD_OK_MARKER,
+    )
     # Kept as a cheap guard, but it is NOT independent evidence: BOOT_SPI and
     # WAIT_SMC_MANIFEST sit on complementary arms of the same predicate
     # (boot_from_spi(straps)) within one boot, and there is no fallback edge -- if every
@@ -163,6 +180,17 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         # rom_lifecycle_policy validates the eFuse LC_STATE, so real fuse sense
         # runs (no +skip_fuse_sense). TEST_DEV is in the manifest's allowed
         # life_cycle_states (0x7).
+        # Raw noise for the entropy source. The ROM brings the ESRC -> CSRNG ->
+        # EDN chain up itself before driving OTBN or AES, and +esrc_noise_force
+        # only FORCES the decorrelator inputs from this port -- it generates
+        # nothing. Without a driver the port sits at 0, the repetition health test
+        # trips, and the ROM correctly refuses to boot on a dead entropy source.
+        #
+        # Started for every SPI ROM test, not just the crypto ones: it is cheap,
+        # and a test that later grows a crypto dependency should not have to
+        # rediscover this.
+        cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
+
         efuse_img = self.build_efuse_image()
         self.write_efuse_image(efuse_img)
 
@@ -199,7 +227,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
             await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
             await self.poll_boot(
                 self.sb,
-                max_run_cycles=_MAX_RUN_CYCLES,
+                max_run_cycles=self.max_run_cycles,
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,
             )

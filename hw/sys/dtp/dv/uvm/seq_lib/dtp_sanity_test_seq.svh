@@ -114,7 +114,7 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
             $sformatf(
                 "hop=%0d/%0d target=%s", h + 1, GotoHops, reached.name())
         ));
-      check_state(tap_state_e'(16'h1 << int'(reached)), "sanity_goto_state_chk", $sformatf(
+      check_state(dtp_tap_state_e'(16'h1 << int'(reached)), "sanity_goto_state_chk", $sformatf(
                   "after goto hop %0d/%0d", h + 1, GotoHops));
     end
   endtask

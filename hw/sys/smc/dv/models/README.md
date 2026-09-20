@@ -15,7 +15,7 @@ listed here.
 `axil_okay_slv` is a stand-in that can answer a checker: which retired tests
 would sit behind it, the one live consumer, and what that consumer does and
 does not prove are recorded in the *Bench stand-ins* section of
-`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`. The synchroniser
+`docs/SMC_VPLAN.adoc` (Known Limitations, "SMC deferred and OUT disposition"). The synchroniser
 stand-ins that Verilator and Xcelium compile (VCS drops them) live in
 `tb/verilator_stubs/` and are recorded in the same section.
 
@@ -28,4 +28,8 @@ SMU wires DTP internally.
 CPU ROM/scratch/L1$ live in `hw/top/smc_ip_integration.sv` (smc_wrapper,
 smu_wrapper TB, and bare SMU TB).
 
-Bender consumes only `regs/gen/sv/*_addrmap_pkg.sv` from the PeakRDL tree.
+`regs/gen/` holds every view `make regen-regs` emits from `regs/*.rdl` (`adoc/`,
+`c/`, `html/`, `ipxact/`, `py/`, `sv/`, `svh/`), committed beside the source as
+`CONTRIBUTING.md` requires. Bender consumes only `regs/gen/sv/*_addrmap_pkg.sv`;
+`doc/stage-docs.sh` stages `regs/gen/html/*.html` into the documentation site
+as the register-map partials for the two placeholder wraps.

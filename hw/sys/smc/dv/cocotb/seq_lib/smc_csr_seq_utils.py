@@ -248,7 +248,7 @@ class SmcCsrSeq(smc_base_test_seq):
 
     # Bound for the OVRD-write -> open-drain pad settle. The path is
     # CSR write ack (clk_smc) -> i2c_wrap OVRD -> GPIO pad mux -> the tb_top
-    # open-drain resolver (tb_top.sv:635-638), i.e. a handful of clk_smc cycles
+    # open-drain resolver (tb_top.sv:644-647), i.e. a handful of clk_smc cycles
     # plus the AXI-Lite write completion the caller already awaited. The bound is
     # generous so a slow build cannot flake; expiry is a FAILURE, never a pass
     # ([TIMEOUT-MUST-FAIL]).

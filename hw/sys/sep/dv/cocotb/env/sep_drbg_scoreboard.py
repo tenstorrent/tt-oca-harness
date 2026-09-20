@@ -26,15 +26,12 @@ from __future__ import annotations
 
 from collections import Counter, deque
 
-# Largest number of 128b blocks one CSRNG Generate command can request: the glen
-# field is GenBitsCtrWidth bits (csrng_pkg.sv:26, GenBitsCtrWidth = 12).
-_CSRNG_MAX_GLEN = (1 << 12) - 1
-
 import cocotb
 from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from sep_entropy_golden import SepEntropyGolden
 from sep_noise_golden import SepNoiseGolden
+from sep_spec_tables import CRYPTO_EDN_SINKS
 
 
 def _safe_int(sig):
@@ -94,14 +91,9 @@ class SepDrbgScoreboard:
         "otbn_urnd": "CHK5_otbn_urnd",
         "pool": "CHK5_pool",
     }
-    # crypto-EDN sink stream key -> bit/word index into the packed crypto_edn_*_o
-    # probe vectors (drbg_axis_edn_adapter client order: AES,KMAC,OTBN-RND,OTBN-URND).
-    _CRYPTO_SINK_IDX = {
-        "CHK5_aes": 0,
-        "CHK5_kmac": 1,
-        "CHK5_otbn_rnd": 2,
-        "CHK5_otbn_urnd": 3,
-    }
+    # Packed-probe index from the DV-owned sink table. Consuming tests bind
+    # each name with a single-client beat delta before any concurrent fork.
+    _CRYPTO_SINK_IDX = {f"CHK5_{name}": i for i, name in enumerate(CRYPTO_EDN_SINKS)}
 
     @staticmethod
     def _norm_mode(v, *, what):
@@ -214,9 +206,10 @@ class SepDrbgScoreboard:
         # golden_kwargs["legal_gen_lengths"]; otherwise segments are only bounds-
         # checked (see report()).
         self.glen = int(self._gk.get("glen", 32))
-        # Default the legal set to the sequence's own commanded glen. A None legal
-        # set degrades the check to 1 <= n <= 4095, which no block count these tests
-        # reach can violate; defaulting to glen keeps the predicate falsifiable.
+        # Default the legal set to the sequence's own commanded glen, so the
+        # segmentation check in report() is always an exact membership test.
+        # There is no looser fallback: a width-derived ceiling no block count
+        # these tests reach could violate is not a check.
         if self.legal_gen_lengths is None:
             self.legal_gen_lengths = {self.glen}
         self._fips_violations = 0
@@ -545,7 +538,11 @@ class SepDrbgScoreboard:
         if self._skip[key] > 0:
             self._skip[key] -= 1
             return
-        ok = expected == actual
+        # An absent side is never a match: an X/Z bus with a same-cycle dual grant
+        # records (None, None), and a bare ``expected == actual`` would score that
+        # as a compare with nothing compared -- satisfying a beat floor with no
+        # evidence. A pair is a match only when both sides are present.
+        ok = expected is not None and actual is not None and expected == actual
         if ok:
             r.matches += 1
         else:
@@ -1295,27 +1292,22 @@ class SepDrbgScoreboard:
                 "inside csrng_cmd_stage.",
                 self.results["CHK4_genbits"].dut_items,
             )
-        # A completed command must carry a legal number of blocks. glen is a
-        # GenBitsCtrWidth field, so a segment can never exceed its maximum, and a
-        # zero-length segment would mean gen_last fired with no genbits at all.
-        # When the caller declares the lengths its endpoints request
-        # (golden_kwargs["legal_gen_lengths"]) anything else is a hard failure.
+        # A completed command must carry a legal number of blocks: one of the
+        # lengths the endpoints actually request, and never zero, which would
+        # mean gen_last fired with no genbits at all. legal_gen_lengths is the
+        # only bound, and __init__ always leaves it a set -- the caller's
+        # declared lengths, else the sequence's own commanded glen -- so the
+        # predicate is an exact membership test on every path.
         for seg_len, count in sorted(self._gen_lengths.items()):
-            bad = (
-                (seg_len < 1)
-                or (seg_len > _CSRNG_MAX_GLEN)
-                or (self.legal_gen_lengths is not None and seg_len not in self.legal_gen_lengths)
-            )
-            if bad:
+            if seg_len < 1 or seg_len not in self.legal_gen_lengths:
                 self.log.error(
                     "CHK4 illegal Generate segmentation: %d command(s) emitted "
-                    "%d blocks; legal=%s (max %d). gen_last landed somewhere the "
+                    "%d blocks; legal=%s. gen_last landed somewhere the "
                     "commanded glen cannot explain, so the trailing CTR_DRBG "
                     "Update ran at the wrong point.",
                     count,
                     seg_len,
-                    sorted(self.legal_gen_lengths) if self.legal_gen_lengths else ">=1",
-                    _CSRNG_MAX_GLEN,
+                    sorted(self.legal_gen_lengths),
                 )
                 any_fail = True
         self.log.info("==== end report (strict=%s, any_fail=%s) ====", self.strict, any_fail)

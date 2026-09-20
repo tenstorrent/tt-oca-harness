@@ -19,18 +19,18 @@ _DV_ROOT = Path(__file__).resolve().parents[2]
 _OSS_HW_ROOT = Path(__file__).resolve().parents[5]
 for _path in (
     _COCOTB_ROOT,
-    _DV_ROOT / "common",
+    _DV_ROOT / "cocotb",
     _OSS_HW_ROOT / "common" / "dv" / "vip",
 ):
     _path_text = str(_path)
     if _path_text not in sys.path:
         sys.path.insert(0, _path_text)
 
+from env.smu_env import SmuEnv  # noqa: E402
 from env.smu_env_cfg import SmuEnvCfg  # noqa: E402
 from env.smu_sep_cpu_trace_monitor import SmuSepCpuTraceMonitor  # noqa: E402
 from ocah_axi_vip import OcahAxiSlaveAgent  # noqa: E402
 from seq_lib.sep_fw_common import load_syms  # noqa: E402
-from smu_dv_env.smu_env import SmuEnv  # noqa: E402
 
 
 class smu_base_test(uvm_test):
@@ -183,10 +183,17 @@ class smu_base_test(uvm_test):
 
     #: TB inputs no leaf drives unless it exercises that interface. Verilator
     #: two-state reads an undriven input as 0, but this config also lists vcs
-    #: and xcelium, where it is X -- and an X on AxPROT or a cross-trigger
-    #: request reaches the DUT. Driven here so the idle value is the same on
-    #: every simulator; a leaf that wants them takes them over afterwards.
+    #: and xcelium, where it is X -- and an X on AxPROT, on an AXI handshake
+    #: valid or ready (the fabric's clock-gate snoop and hang detector fold
+    #: those into their known-value assertions), or on a cross-trigger request
+    #: reaches the DUT. Driven here so the idle value is the same on every
+    #: simulator; a leaf that wants them takes them over afterwards.
     IDLE_INPUTS = (
+        "ext_in_awvalid",
+        "ext_in_wvalid",
+        "ext_in_arvalid",
+        "ext_in_bready",
+        "ext_in_rready",
         "ext_in_awlock",
         "ext_in_awcache",
         "ext_in_awprot",
@@ -202,6 +209,21 @@ class smu_base_test(uvm_test):
         "xtrig_ctm_dst_req",
         "xtrig_ctm_src_ack",
         "xtrig_clk_stop_req",
+        "tb_telemetry_atdata",
+        "tb_telemetry_atid",
+        "tb_telemetry_atvalid",
+        "tb_telemetry_afready",
+        "tb_smc_ext_interrupts",
+        "tb_smc_ndmreset_request",
+        "tb_cfg_flr_pf_active",
+        "tb_mem_repair_abort",
+        "tb_mbist_abort",
+        "tb_secure_tm_req",
+        "tb_gpio0_drive_en",
+        "tb_gpio0_drive_val",
+        "tb_xtrig_ctp_req_out_din",
+        "tb_xtrig_ctp_req_in_din",
+        "tb_xtrig_ctp_ack_in_din",
     )
 
     def drive_idle_inputs(self) -> None:

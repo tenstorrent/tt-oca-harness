@@ -206,8 +206,7 @@ Otherwise, the hardware empties the FIFO faster than software can fill it and th
             <ipxact:name>kmac_en</ipxact:name>
             <ipxact:description>KMAC datapath enable.
 
-If this bit is 1, the incoming message is processed in KMAC
-with the secret key.</ipxact:description>
+If this bit is 1, the KMAC mode is active and the secret key is prepended to the incoming message.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

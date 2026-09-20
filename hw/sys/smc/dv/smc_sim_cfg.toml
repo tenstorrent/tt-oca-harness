@@ -78,7 +78,6 @@ common_bender_targets = [
 # smc_wrapper Bender target pulls hw/top/smc_wrapper.sv.
 bender_targets = ["smc", "smc_wrapper"]
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smc/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
@@ -97,7 +96,7 @@ stubs = [
   # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
   # receives both files like Verilator does. The leaves that read a
   # signal behind one, and the VCS control that keeps those claims honest, are
-  # in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc (Bench stand-ins).
+  # in docs/SMC_VPLAN.adoc, Known Limitations (Bench stand-ins).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
@@ -160,6 +159,19 @@ sources = [
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Spec-derived P0 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  # Spec-derived P1 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_iso_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_filt_fcov.sv",
 ]
 
 [build.verilator]
@@ -413,9 +425,10 @@ build_dir = "hw/sys/smc/dv/build/cocotb"
 # `ifndef SYNTHESIS` block (OpenTitan ASSERT macros, PeakRDL register
 # checks, Chipyard sim-only `$error` / plusargs). Verilator still compiles
 # those macros out because prim_assert.sv / ocah_assert.svh gate on
-# VERILATOR; VCS and Xcelium run them. The shared native profile keeps
-# COMMON_CELLS_ASSERTS_OFF, so PULP common_cells inline asserts stay off
-# on every backend. Verilator also keeps +define+ASSERTS_OFF below.
+# VERILATOR; VCS and Xcelium run them. The shared native profile sets
+# COMMON_CELLS_ASSERTS_OFF in its Verilator flags only, so the PULP
+# common_cells inline asserts are compiled out on Verilator and run on VCS
+# and Xcelium. Verilator also keeps +define+ASSERTS_OFF below.
 
 [targets.default.tools.verilator]
 flags = [
@@ -492,9 +505,13 @@ filelist = "hw/sys/smc/dv/build/uvm/smc_uvm_compile.f"
 bender_filelist = "hw/sys/smc/dv/build/uvm/smc_uvm_bender.f"
 work_dir = "hw/sys/smc/dv/build/uvm"
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smc/dv/tb",
   "hw/common/assert",
+  # hw/sys/smc/regs/gen/svh carries the generated register header smc_env_pkg
+  # includes for reset values and field masks (smc_types.svh); addresses keep
+  # coming from smc_top_addrmap_pkg through the bender filelist. Same split as
+  # hw/sys/sep/dv/sep_sim_cfg.toml.
+  "hw/sys/smc/regs/gen/svh",
   "hw/sys/smc/dv/uvm/env",
   "hw/sys/smc/dv/uvm/seq_lib",
   "hw/sys/smc/dv/uvm/tests",
@@ -515,6 +532,16 @@ sources = [
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_encode.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv",
+  # Eight prims the cocotb [build].sources list above carries are absent here:
+  # prim_ram_1p, prim_ram_1p_adv, prim_arbiter_tree, prim_fifo_async,
+  # prim_rst_sync, prim_subreg, prim_subreg_arb and prim_subreg_ext. The
+  # Bender-resolved layer already names each of them (smc_uvm_bender.f), and
+  # VCS rejects a module declared by two files it is handed (Error-[MPD])
+  # where Verilator tolerates the repeat. Anything added here has to be
+  # checked against the bender filelist first:
+  #   comm -12 <(grep '\.sv$' smc_uvm_compile.f | sort -u) \
+  #            <(grep '\.sv$' smc_uvm_bender.f  | sort -u)
+  # must stay empty.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv",
@@ -533,14 +560,27 @@ sources = [
   # TB collateral shared with the cocotb flow.
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
-  # Flow-shared functional-coverage modules; the same five entries the
-  # [build] sources list carries for the cocotb/Verilator flow.
+  # Flow-shared functional-coverage modules; the same entries the [build]
+  # sources list carries for the cocotb/Verilator flow.
   "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Spec-derived P0 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  # Spec-derived P1 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_iso_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_filt_fcov.sv",
   "hw/sys/smc/dv/tb/smc_tb_if.sv",
   "hw/sys/smc/dv/uvm/env/smc_env_pkg.sv",
   "hw/sys/smc/dv/uvm/seq_lib/smc_seq_lib_pkg.sv",

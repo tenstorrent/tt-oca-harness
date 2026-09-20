@@ -1,6 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Debug TDR helper base sequence for DTP tests."""
+"""Debug TDR helper base sequence for DTP tests.
+
+Every TDR readback, pin observable, and capability comparison records named
+family evidence: ``CHK-DBG-TDR`` is a decoded TDR field or a whole TDR,
+``CHK-DBG-PIN`` a pin observable sampled through the driver, ``CHK-CAPS`` and
+``CHK-CAPS-RO`` a capability value and its readback after a write attempt,
+``CHK-TMP-PERSIST`` and ``CHK-TMP-ESCAPE`` the two TMP_STATUS bits. The
+TDR accesses are driver-level read and write operations the sequence cannot
+count, so scenarios attach the family checker with ``use_monitor=False``.
+The SV-UVM twin is ``uvm/seq_lib/dtp_debug_tdr_base_test_seq.svh``.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +31,14 @@ from env.dtp_types import DtpJtag2AxiTargetCfg, DtpJtagInstr
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
+# Evidence IDs of the debug-TDR family, shared with the SV-UVM twin.
+DBG_TDR_CHECK_ID = "CHK-DBG-TDR"
+DBG_PIN_CHECK_ID = "CHK-DBG-PIN"
+CAPS_CHECK_ID = "CHK-CAPS"
+CAPS_RO_CHECK_ID = "CHK-CAPS-RO"
+TMP_PERSIST_CHECK_ID = "CHK-TMP-PERSIST"
+TMP_ESCAPE_CHECK_ID = "CHK-TMP-ESCAPE"
+
 DBG_BOOT_STALL_BIT = 0
 DBG_BOOT_STALL_OVRD_BIT = 1
 DBG_CLA_CLOCK_STOP_EN_BIT = 2
@@ -35,9 +53,61 @@ IC_RESET_PORT_INDEX = {
 
 EXPECTED_CAPS_BY_REG = {"JTAG_CAPS": DTP_EXPECTED_JTAG_CAPS, **DTP_EXPECTED_JTAG2AXI_CAPS}
 
+# The debug-TDR pin observables and their values with DEBUG_CONTROL at 0x00
+# and IC_RESET at its all-ones default (every slice enable inactive drives
+# ovrd=0, ctrl_n=1).
+DEBUG_OUTPUT_DEFAULTS: dict[str, int] = {
+    "stop_clks": 0,
+    "cla_clock_stop_en": 0,
+    "jtag_boot_stall": 0,
+    "jtag_boot_stall_ovrd": 0,
+    "jtag_ic_reset_smc_ovrd": 0,
+    "jtag_ic_reset_smc_ctrl_n": 1,
+    "jtag_ic_reset_sep_ovrd": 0,
+    "jtag_ic_reset_sep_ctrl_n": 1,
+    "jtag_ic_reset_ext_ovrd": 0,
+    "jtag_ic_reset_ext_ctrl_n": 1,
+}
+
 
 class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     """Helpers for TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS TDRs."""
+
+    async def snapshot_debug_outputs(self) -> dict[str, int]:
+        """Sample every debug-TDR pin observable by name."""
+        item = await self.sample_observables()
+        return {name: item.signals[name] for name in DEBUG_OUTPUT_DEFAULTS}
+
+    async def sample_dbg_signal(self, name: str) -> int:
+        """Sample one debug-TDR pin observable by name through the driver."""
+        item = await self.sample_observables()
+        if name not in item.signals:
+            raise KeyError(f"{name} is not exposed by the DTP JTAG driver")
+        return item.signals[name]
+
+    async def expect_dbg_signal(
+        self,
+        name: str,
+        expected: int,
+        *,
+        check_id: str = DBG_PIN_CHECK_ID,
+        context: str = "",
+    ) -> None:
+        """Sample one debug-TDR pin observable and record it."""
+        observed = await self.sample_dbg_signal(name)
+        self.family_check(check_id, name, observed, expected, context=context)
+
+    def check_debug_outputs(
+        self,
+        check_id: str,
+        observed: dict[str, int],
+        expected: dict[str, int],
+        *,
+        context: str,
+    ) -> None:
+        """Record one comparison per debug-TDR pin observable."""
+        for name, value in expected.items():
+            self.family_check(check_id, name, observed[name], value, context=context)
 
     def decode_tmp_status(self, value: int) -> dict[str, int]:
         """Decode TMP_STATUS. Bit 1 reflects TMP persistence; bit 0 arms escape."""
@@ -65,6 +135,58 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     async def write_tmp_status(self, value: int) -> None:
         """Write TMP_STATUS[1:0], used to arm BYPASS_ESCAPE."""
         await self.write_tdr("TMP_STATUS", value & self.bit_mask(DTP_TMP_STATUS_LEN))
+
+    async def check_tmp_persistence(
+        self,
+        label: str,
+        expected: int,
+        *,
+        shift_value: int = 0,
+        context: str = "",
+    ) -> int:
+        """Read TMP_STATUS, record its persistence bit, and return the raw value."""
+        status = await self.read_tmp_status(shift_value=shift_value)
+        decoded = self.log_tmp_status(label, status)
+        self.family_check(
+            TMP_PERSIST_CHECK_ID,
+            "TMP_STATUS.persistence",
+            decoded["persistence"],
+            expected,
+            context=f"{label} {context}".strip(),
+        )
+        return status
+
+    async def check_tmp_escape(
+        self,
+        label: str,
+        expected: int,
+        *,
+        shift_value: int = 0,
+        context: str = "",
+    ) -> int:
+        """Read TMP_STATUS, record its BYPASS_ESCAPE bit, and return the raw value."""
+        status = await self.read_tmp_status(shift_value=shift_value)
+        decoded = self.log_tmp_status(label, status)
+        self.family_check(
+            TMP_ESCAPE_CHECK_ID,
+            "TMP_STATUS.bypass_escape",
+            decoded["bypass_escape"],
+            expected,
+            context=f"{label} {context}".strip(),
+        )
+        return status
+
+    async def check_idcode_marker(self, *, context: str = "") -> int:
+        """Read IDCODE and record its LSB marker bit; a routed TDR path returns 1."""
+        idcode = (await self.read_idcode()).result
+        self.family_check(
+            DBG_TDR_CHECK_ID,
+            "IDCODE.lsb",
+            idcode & 0x1,
+            1,
+            context=f"idcode=0x{idcode:08x} {context}".strip(),
+        )
+        return idcode
 
     def decode_debug_control(self, value: int) -> dict[str, int]:
         """Decode DEBUG_CONTROL with writable bits [3:0] and CLA status bit [4]."""
@@ -117,6 +239,19 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     async def write_debug_control(self, value: int) -> None:
         """Write DEBUG_CONTROL[3:0]; bit 4 is read-only CLA status."""
         await self.write_tdr("DEBUG_CONTROL", value & self.bit_mask(DTP_DEBUG_CONTROL_LEN))
+
+    def check_debug_control_fields(
+        self,
+        decoded: dict[str, int],
+        expected: dict[str, int],
+        *,
+        context: str = "",
+    ) -> None:
+        """Record one CHK-DBG-TDR comparison per named decoded DEBUG_CONTROL field."""
+        for name, value in expected.items():
+            self.family_check(
+                DBG_TDR_CHECK_ID, f"DEBUG_CONTROL.{name}", decoded[name], value, context=context
+            )
 
     def decode_ic_reset(self, value: int) -> dict[str, object]:
         """Decode IC_RESET TDR using OSS default EXT, SEP, SMC one-port order."""
@@ -192,10 +327,16 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         width = DTP_JTAG_CAPS_LEN if reg == "JTAG_CAPS" else DTP_JTAG2AXI_CAPS_LEN
         return value & self.bit_mask(width)
 
-    def expect_caps_value(self, reg: str, value: int) -> None:
-        """Compare a CAPS TDR against the centralized expected value."""
-        expected = EXPECTED_CAPS_BY_REG[reg]
-        self.assert_equal(reg, value, expected)
+    def expect_caps_value(
+        self,
+        reg: str,
+        value: int,
+        *,
+        check_id: str = CAPS_CHECK_ID,
+        context: str = "packed value",
+    ) -> None:
+        """Record a CAPS TDR against the centralized expected value."""
+        self.family_check(check_id, reg, value, EXPECTED_CAPS_BY_REG[reg], context=context)
 
     def decode_jtag_caps(self, value: int) -> dict[str, int]:
         """Decode JTAG_CAPS by the "JTAG Capabilities" table of the PTAP document."""
@@ -252,8 +393,14 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         )
         return decoded
 
-    async def check_caps_multi_read(self, reg: str, *, count: int = 5) -> int:
-        """Read a CAPS TDR repeatedly and verify the value is stable."""
+    async def check_caps_multi_read(
+        self,
+        reg: str,
+        *,
+        count: int = 5,
+        check_id: str = CAPS_CHECK_ID,
+    ) -> int:
+        """Read a CAPS TDR repeatedly, record each read against the first, return the first."""
         self.log.info("Checking %s multi-read consistency (%d reads)", reg, count)
         values = []
         for idx in range(1, count + 1):
@@ -262,7 +409,9 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             self.log.info("  %s read %d/%d = 0x%x", reg, idx, count, value)
         expected = values[0]
         for idx, value in enumerate(values, start=1):
-            self.assert_equal(f"{reg} multi-read", value, expected, context=f"read={idx}")
+            self.family_check(
+                check_id, f"{reg} multi-read", value, expected, context=f"read={idx}/{count}"
+            )
         return expected
 
     def caps_write_patterns(self, width: int, label: str) -> list[int]:
@@ -280,8 +429,14 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             patterns.append(rng.getrandbits(width) & mask)
         return list(dict.fromkeys(patterns))
 
-    async def check_caps_read_only_patterns(self, reg: str, width: int) -> int:
-        """Attempt multiple writes into a read-only CAPS TDR and verify no change."""
+    async def check_caps_read_only_patterns(
+        self,
+        reg: str,
+        width: int,
+        *,
+        check_id: str = CAPS_RO_CHECK_ID,
+    ) -> int:
+        """Attempt multiple writes into a read-only CAPS TDR and record each readback."""
         initial = await self.read_caps_tdr(reg)
         self.log.info("Checking %s read-only behavior from initial=0x%x", reg, initial)
         patterns = self.caps_write_patterns(width, reg)
@@ -289,13 +444,24 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             self.log_iteration(idx, len(patterns), "%s write-attempt pattern=0x%x", reg, pattern)
             await self.write_tdr(reg, pattern)
             readback = await self.read_caps_tdr(reg)
-            self.assert_equal(
+            self.family_check(
+                check_id,
                 f"{reg} read-only",
                 readback,
                 initial,
                 context=f"pattern=0x{pattern:x}",
             )
         return initial
+
+    async def check_caps_after_instruction_switch(self, reg: str, value: int) -> None:
+        """Re-read a CAPS TDR after IDCODE and after BYPASS and record it against ``value``."""
+        for idx, instr in enumerate([DtpJtagInstr.IDCODE, DtpJtagInstr.BYPASS_3F], start=1):
+            self.log_iteration(idx, 2, "load %s before re-reading %s", instr.name, reg)
+            await self.load_ir(instr)
+            reread = await self.read_caps_tdr(reg)
+            self.family_check(
+                CAPS_CHECK_ID, f"{reg} after instruction switch", reread, value, context=instr.name
+            )
 
     async def check_jtag2axi_caps(self, target: DtpJtag2AxiTargetCfg) -> int:
         """Run the common JTAG2AXI_CAPS field, stability, and RO checks for one bridge."""
@@ -304,24 +470,26 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         decoded = self.log_jtag2axi_caps(reg, value)
         self.expect_caps_value(reg, value)
 
-        self.assert_equal(f"{reg}.bus_type", decoded["bus_type"], target.bus_type)
-        self.assert_equal(f"{reg}.addr_size", decoded["addr_size"], target.addr_width)
-        self.assert_equal(f"{reg}.data_width_bits", decoded["data_width_bits"], target.data_width)
-        self.assert_equal(f"{reg}.rd_pl_depth", decoded["rd_pl_depth"], DTP_JTAG2AXI_RD_PL_DEPTH)
-        self.assert_equal(f"{reg}.wr_pl_depth", decoded["wr_pl_depth"], DTP_JTAG2AXI_WR_PL_DEPTH)
+        expected_fields = {
+            "bus_type": target.bus_type,
+            "addr_size": target.addr_width,
+            "data_width_bits": target.data_width,
+            "rd_pl_depth": DTP_JTAG2AXI_RD_PL_DEPTH,
+            "wr_pl_depth": DTP_JTAG2AXI_WR_PL_DEPTH,
+        }
+        for name, expected in expected_fields.items():
+            self.family_check(CAPS_CHECK_ID, f"{reg}.{name}", decoded[name], expected)
 
-        self.assert_equal(f"{reg} multi-read value", await self.check_caps_multi_read(reg), value)
-        self.assert_equal(
+        self.family_check(
+            CAPS_CHECK_ID, f"{reg} multi-read value", await self.check_caps_multi_read(reg), value
+        )
+        self.family_check(
+            CAPS_CHECK_ID,
             f"{reg} read-only sweep",
             await self.check_caps_read_only_patterns(reg, DTP_JTAG2AXI_CAPS_LEN),
             value,
         )
-
-        for idx, instr in enumerate([DtpJtagInstr.IDCODE, DtpJtagInstr.BYPASS_3F], start=1):
-            self.log_iteration(idx, 2, "load %s before re-reading CAPS", instr.name)
-            await self.load_ir(instr)
-            reread = await self.read_caps_tdr(reg)
-            self.assert_equal(f"{reg} after instruction switch", reread, value, instr.name)
+        await self.check_caps_after_instruction_switch(reg, value)
         return value
 
     async def wait_for_signal_value(
@@ -331,32 +499,23 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         *,
         cycles: int = 6,
         context: str = "",
+        check_id: str = DBG_PIN_CHECK_ID,
     ) -> None:
-        """Poll a sampled observable across clk_i cycles.
+        """Poll a sampled observable across clk_i cycles and record the last sample.
 
         `stop_clks` passes through a 2-flop synchronizer and an output flop, so
         clock-stop tests must poll instead of assuming a fixed immediate value.
+        The sample that ends the poll is the evidence either way; a mismatch
+        after the budget records a FAIL.
         """
-        last = None
-        for cycle in range(cycles + 1):
-            item = await self.sample_observables()
-            assert name in item.signals, f"{name} is not exposed by the DTP JTAG driver"
-            last = item.signals[name]
-            if last == expected:
-                self.log.info(
-                    "CHECK %-36s expected=%d observed=%d after %d cycles %s",
-                    name,
-                    expected,
-                    last,
-                    cycle,
-                    f"({context})" if context else "",
-                )
-                return
-            if cycle < cycles:
-                await self.wait_sys_cycles(1)
-        assert last == expected, (
-            f"{name}: expected {expected}, got {last} after {cycles} cycles"
-            f"{f' ({context})' if context else ''}"
+        last = await self.sample_dbg_signal(name)
+        polled = 0
+        while last != expected and polled < cycles:
+            await self.wait_sys_cycles(1)
+            last = await self.sample_dbg_signal(name)
+            polled += 1
+        self.family_check(
+            check_id, name, last, expected, context=f"{context} polled_cycles={polled}".strip()
         )
 
     async def set_clk_stop_requests(self, value: int, cycles: int = 4) -> None:

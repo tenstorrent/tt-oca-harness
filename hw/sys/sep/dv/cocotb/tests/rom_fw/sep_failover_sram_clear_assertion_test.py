@@ -2,16 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """TP080 -- the SEP EXT SRAM is cleared between the primary failure and the backup fetch.
 
-WHAT THIS PROVES, AND WHAT IT DOES NOT. Read this before citing a green run.
+What this proves, AND WHAT IT DOES NOT. Read this before citing a green run.
 
-The procedure (TP080) asks for TWO clears in
+The procedure (``procedure_manifest.md`` Test 24 / TP080) asks for TWO clears in
 the window between "primary-fail status published" and "SPI re-init for backup":
 EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
 
   * **EXT SRAM -- covered here, in full.** ``rom_manifest_boot()`` calls
     ``clear_sram_region(SRAM_BASE, SRAM_SIZE)`` on the retry path
-    (``bootrom/prod/src/manifest_load.c:776``), which zeroes the whole 256 KiB at
-    ``bootrom/prod/src/manifest_load.c:693-699``. It is compiled in
+    (``bootrom/prod/src/), which zeroes the whole 256 KiB at
+    ``bootrom/prod/src/. It is compiled in
     unconditionally. In ``bootrom/prod/build_ot/boot_rom.dis`` it is the loop
 
         10042740: lui  a4,0x10000        ; a4 = 0x1000_0000  = SRAM_BASE
@@ -27,27 +27,17 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     "cleared before SPI re-init" is settled by the linked image; simulation settles
     "cleared, and cleared entirely", which is what this test measures.
 
-  * **SMC SRAM -- NOT covered. The stimulus exists; the ROM branch that would
-    need the clear does not.** The spec does not ask for this clear
+  * **SMC SRAM -- NOT covered, because the OCA manifest cannot express the
+    condition the clear is gated on.** The spec does not ask for this clear
     unconditionally. ``sep-boot-flow.puml`` reads "Clear SMC SRAM available for
     payload loading **if SMC SRAM used**", and what decides "used" is the USE_EXT
     bit two partitions later (``puml:384-392``: payload into EXT SRAM if the bit is
     set, into SMC SRAM otherwise).
-    Be precise about which side is missing, because the two have different owners.
-    The manifest side is fully implemented: the host-side packer emits the bit
-    (``bootrom/prod/tools/tt-boot-manifest/src/pack_images.py:82-83,91``,
-    ``.../src/pack_images_constants.py:91``), and every image this DV tree boots is
-    built with it CLEAR -- ``bootrom/prod/configs/non_secure_boot_test.yaml:32,101``,
-    ``secure_boot_test.yaml`` and ``encrypted_boot_test.yaml`` all set
-    ``use_ext_sram: 0``. The ROM side is not: ``FLAG_ARGS_BIT_USE_EXT_SRAM``
-    (``bootrom/prod/include/manifest.h:88``) is referenced nowhere under
-    ``bootrom/prod/src/`` or ``bootrom/prod/include/`` apart from that ``#define``,
-    and the payload load (``manifest_load.c``) unconditionally targets
-    ``dest + payload_offset`` with ``dest == SRAM_BASE``.
-    THIS RUN OBSERVES THE DEVIATION rather than inferring it. The backup manifest
-    it boots logs ``flag_args=0x00000000`` (CHK-STIMULUS-SPI), i.e. USE_EXT clear,
-    so ``puml:386-392`` says its payload belongs in SMC SRAM -- and the same run
-    logs ``COPY_SRC=0x10002000`` -- the payload staged in EXT SRAM. (``LOAD`` and
+    The OCA manifest declares no such bit. There is nothing for a producer to set
+    and nothing for the ROM to branch on, so the payload load unconditionally
+    targets ``dest + payload_offset`` with ``dest == SRAM_BASE``.
+    THIS RUN OBSERVES THAT rather than inferring it: it logs
+    ``COPY_SRC=0x10002000``, i.e. the payload staged in EXT SRAM. (``LOAD`` and
     ``COPY_DST`` are 0xC0000000, BL1's ICCM destination, not the staging area.)
     So ``puml:152``'s condition can be requested but never becomes true
     in the ROM, and a testcase for the SMC clear has nothing to assert against.
@@ -59,9 +49,8 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     ``ring buffer address: 0x40060000``), so a wholesale SMC SRAM clear would
     destroy the ROM's own reporting channel.
     Second, independent reason the window does not exist there: the only path whose
-    manifest comes from SMC SRAM runs ``num_retries = 0``
-    (``manifest_load.c``), so it has no backup retry at all.
-    This test asserts nothing about SMC SRAM.
+    manifest comes from SMC SRAM runs ``num_retries = 0``, so it has no backup retry at all. This test asserts nothing about SMC
+    SRAM.
 
 DO NOT confuse this clear with ``rom_clear_ext_sram()``. That is a DIFFERENT,
 one-time, pre-manifest scrub (``rom_main.c`` -> ``rom_mem_clear.c``) gated
@@ -70,16 +59,16 @@ boot log in this tree prints ``SRAM_CLR_SKIP`` for it. It is compiled out, it ru
 before SPI init, and it is outside TP080's window entirely. The failover clear
 asserted here is a separate call site and is NOT gated on that knob.
 
-WHY THE MEMORY IS POISONED FIRST. Under Verilator the SRAM array powers up all
-zero (``tb_top.sv`` compiles the explicit zero-fill for VCS only because
-Verilator 0-inits). A test that simply asserted "the SRAM reads zero after the
-failure" would therefore pass on a ROM that never cleared anything -- the exact
-vacuity the procedure's step 2 snapshot at "(i) before primary boot" exists to
-prevent. So every one of the 32768 words is first written with a distinct
-non-zero value, and CHK-SRAM-POISON reads all 32768 back before the boot starts:
-if the instrument silently no-ops, this test goes red rather than green. The
-poison strengthens the check; it does not create the pass, and it is not on any
-DUT decision path -- the ROM reads none of it before overwriting or zeroing it.
+Why the memory is poisoned first. Under Verilator the SRAM array powers up all zero
+(``tb_top.sv`` compiles the explicit zero-fill for VCS only because Verilator 0-inits).
+A test that simply asserted "the SRAM reads zero after the failure" would therefore pass
+on a ROM that never cleared anything -- the exact vacuity the procedure's step 2
+snapshot at "(i) before primary boot" exists to prevent. So every one of the 32768 words
+is first written with a distinct non-zero value, and CHK-SRAM-POISON reads all 32768
+back before the boot starts: if the instrument silently no-ops, this test goes red
+rather than green. The poison strengthens the check; it does not create the pass, and it
+is not on any DUT decision path -- the ROM reads none of it before overwriting or
+zeroing it.
 
 Part of the claim does not rest on the poison, and it is worth separating. Word 0
 holds ``0xFFFF_FFFF_FFFF_FFFF`` -- the erased primary slot's own bytes, put there
@@ -90,19 +79,21 @@ clear covered the whole 256 KiB rather than the 148 words the ROM happened to
 write) and the evidence that the clear had not already started when the primary
 landed.
 
-OBSERVATION CHANNEL. ``sep_public_scope.vlt`` marks ``prim_ram_1p.mem``
-``public_flat_rw``, so the built model registers
-``sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram.gen_ram_inst[0].u_mem`` and its
-``mem`` array (32768 x 64 bits) for VPI. The whole array is reachable from cocotb,
-with no dedicated testbench port. The two port probes (``sram_word0_probe_o``,
-``sram_payload_probe_o``, ``tb_top.sv``) expose only 7 of the 32768 words, which
-cannot support a claim about a 256 KiB clear.
+Observation channel. ``sep_public_scope.vlt:38`` marks ``prim_ram_1p.mem``
+``public_flat_rw``, and the built model registers the scope and the variable:
+``Vtop__Syms__ctor__1__Slow.cpp`` carries ``VerilatedScope{...,
+"sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram.gen_ram_inst[0].u_mem", ...}`` and
+``varInsert("mem", ..., VLVT_UINT64, VLVD_NODIR|VLVF_PUB_RW, 1, 1, 0,32767, 63,0)``. So
+the whole array is reachable by VPI from cocotb, and no testbench change is needed. The
+two pre-existing port probes (``sram_word0_probe_o``, ``sram_payload_probe_o``,
+``tb_top.sv``) expose only 7 of the 32768 words, which cannot support a claim about a
+256 KiB clear.
 
 STIMULUS. Inherited whole from ``sep_spi_primary_fail_backup_test`` -- the primary
 slot span erased, so the primary is rejected with ``MANIFEST_ERR_BAD_MAGIC`` and
 the ROM fails over to the backup. TP080 step 1 says to reuse any existing
-primary-fault test, and every failover assertion that test makes (console order,
-device-side address order, blank-primary evidence,
+primary-fault test; this is the tree's proven one, and every failover assertion it
+already makes (console order, device-side address order, blank-primary evidence,
 the ``SPI init failed`` forbid) is inherited and still enforced. TP080 adds the
 SRAM scoreboard on top; it changes nothing about the failover under test.
 """
@@ -122,7 +113,7 @@ from rom_fw.sep_spi_primary_fail_backup_test import sep_spi_primary_fail_backup_
 from sep_reg_meta import sym
 
 # 0x1000_0000. From the RDL export, not a literal, so the test cannot drift from
-# the address the ROM's SRAM_BASE macro resolves to (manifest_load.c).
+# the address the ROM's SRAM_BASE macro resolves to.
 _SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 # prim_ram_1p_adv Depth for u_sep_sram: 256 KiB / 8 B (hw/top/sep_ip_integration.sv:148).
 _SRAM_WORDS = 32768
@@ -136,8 +127,8 @@ _SRAM_LEAF = ("u_mem", "mem")
 
 # Scoreboard sampling period, in clocks. The two windows this has to resolve are
 # ~30k cycles (primary DMA -> clear start) and >=1.4k cycles (clear end -> backup
-# fetch) on a passing boot. 100 is well inside the smaller of the two and costs two
-# VPI reads per sample.
+# fetch), both measured on this testbench. 100 is well inside
+# the smaller of the two and costs two VPI reads per sample.
 _SAMPLE_EVERY = 100
 
 # An erased primary slot: what the flash device returns, and therefore what the
@@ -149,7 +140,7 @@ _ERASED_WORD = int.from_bytes(bytes([mm.ERASED_BYTE]) * _WORD_BYTES, "little")
 # already asserted by the parent on MANIFEST_SRC= and the device transactions;
 # MANIFEST_BACKUP is used here only to mark "the second attempt has begun", which
 # is what it means regardless of which slot the retry counter selected.
-_PRIMARY_ERR = f"MANIFEST_ERR=0x{0x0003_0002:08x}"
+_PRIMARY_ERR = f"MANIFEST_ERR=0x{mm.boot_err('OCA_FAIL_MAGIC'):08x}"
 _BACKUP_LABEL = "MANIFEST_BACKUP"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
@@ -221,9 +212,9 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
     def _word(self, idx: int) -> int:
         """Read one 64-bit SRAM word.
 
-        Not ``sep_base_test.rd()``: that helper resolves an unreadable value to 0,
-        which for this test would turn a broken probe into a passing "the memory is
-        cleared" claim.
+        Deliberately NOT ``sep_base_test.rd()``: that helper swallows the
+        exception and returns 0, which for this test would turn a broken probe
+        into a passing "the memory is cleared" claim.
         """
         return int(self._mem[idx].value)
 
@@ -442,7 +433,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         # --- the clear itself ---------------------------------------------------
         assert self._cleared is not None, (
             f"CHK-SRAM-CLEARED FAIL: word[{_LAST_WORD}] never reached 0, so the "
-            f"failover clear at manifest_load.c:776 did not run to completion between "
+            f"failover clear did not run to completion between "
             f"the primary rejection and the end of the boot. Console: {console}"
         )
         assert self._cleared["nonzero_count"] == 0, (
@@ -453,7 +444,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
                 for i, v in self._cleared["nonzero_sample"]
             )
             + ". clear_sram_region(SRAM_BASE, SRAM_SIZE) is specified to zero the "
-            "whole 256 KiB (manifest_load.c:693-699,776)."
+            "whole 256 KiB."
         )
         self.logger.info(
             "CHK-SRAM-CLEARED: at t=%sns all %d words (0x%08x..0x%08x, %d KiB) read 0 "
@@ -515,19 +506,15 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "CHK-SCOPE: TP080 asks for EXT SRAM *and* SMC SRAM to be cleared in this "
             "window. Only the EXT SRAM half is asserted above. sep-boot-flow.puml:152 "
             "conditions the SMC SRAM clear on 'if SMC SRAM used', which puml:384-392 "
-            "decides from the manifest USE_EXT bit. The stimulus side of that exists: "
-            "the packer emits the bit (pack_images.py:91) and every image booted here "
-            "is built with it CLEAR (bootrom/prod/configs/*_test.yaml use_ext_sram: 0), "
-            "which this run observes as flag_args=0x00000000 on the manifest it booted. "
-            "What is missing is the ROM's consuming branch: FLAG_ARGS_BIT_USE_EXT_SRAM "
-            "(manifest.h:88) is referenced nowhere under bootrom/prod/src, and "
-            "manifest_load.c:647-657 staged this payload in EXT SRAM regardless "
+            "decides from a manifest USE_EXT bit. The OCA manifest declares no such "
+            "bit, so there is nothing for a producer to set and nothing for the ROM to "
+            "branch on: this payload was staged in EXT SRAM unconditionally "
             "(COPY_SRC=0x10002000; LOAD=0xC0000000 is BL1's ICCM destination). So the "
             "SMC clear has nothing to "
             "assert against. Consistently, boot_rom.dis has no store loop over "
             "sep_get_smc_sram_base() (0x40060000) -- which is also where this ROM's "
-            "own status ring lives. A green run here does NOT cover the SMC SRAM half "
-            "of TP080."
+            "own status ring lives. A green run here does "
+            "NOT cover the SMC SRAM half of TP080."
         )
 
 

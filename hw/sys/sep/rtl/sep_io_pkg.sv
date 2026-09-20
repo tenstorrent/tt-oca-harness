@@ -40,9 +40,6 @@ package sep_io_pkg;
     // Interrupt
     logic       irq;
 
-    // Busy
-    logic       busy;
-
     // DMA trigger
     logic        lsio_trigger;
   } sep_io_spi_req_t;

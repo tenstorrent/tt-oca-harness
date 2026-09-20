@@ -117,6 +117,9 @@ ocah_jtag_vip/
     ocah_jtag_cov.sv     - covergroup interface (commercial simulators only)
   sva/
     ocah_jtag_sva.sv     - clean-room IEEE 1149.1 protocol assertions
+    ocah_jtag_fv.sv      - the TAP state, TDO and phase rules in the boolean
+                           subset formal environments bind; both checkers assert
+                           or assume each side by parameter
   uvm/
     ocah_jtag_uvm_pkg.sv - SV-UVM agent package (see below)
   dv/                    - simulated VIP selftests on a wire harness (the shared
@@ -415,9 +418,9 @@ PYTHONPATH=hw/common/dv/vip python3 hw/common/dv/vip/ocah_jtag_vip/cocotb/exampl
 | Timeout | No operation waits on the DUT, so none can time out; the driver carries no timeout knob | — |
 | Errors and evidence | Monitors hold callback exceptions and re-raise them; `OcahJtagChecker.finalize()` fails on a held error, a failed check, zero checks, or a missing required ID; every harness selftest carries an in-band negative probe (cocotb), and `OCAH_JTAG_SELFTEST_NEGATIVE` (harness) or `DTP_JTAG_TAP_CHECKER_NEGATIVE` (DTP bench) forces a failing run in both flows | — |
 | Slave side | Reactive TAP device with IDCODE, BYPASS, undefined instructions as BYPASS, and a register map that latches on Update-DR, holding its shift registers across Pause-x and latching the captured value on a scan with no Shift-x cycle; simulator-free selftest | A DUT-specific register decode beyond the map |
-| Protocol checking | `sva/ocah_jtag_sva.sv` (TDO falling-edge timing, TLR via TMS and TRST, one-hot state legality with an exported state, X-hygiene on four-state simulators), bound in the `dv/` harness (state rules from the device's mirrored state in the cocotb shape, pin rules in the SV-UVM shape) and in the DTP, SMU, and SMC benches | State rules in the SV-UVM harness shape, where the device state stays inside the slave driver |
+| Protocol checking | `sva/ocah_jtag_sva.sv` (TDO falling-edge timing, TLR via TMS and TRST, one-hot state legality with an exported state, X-hygiene on four-state simulators), bound in the `dv/` harness (state rules from the device's mirrored state in the cocotb shape, pin rules in the SV-UVM shape) and in the DTP, SMU, and SMC benches; `sva/ocah_jtag_fv.sv` carries the state, TDO and phase rules in the boolean subset a formal environment binds, the host side and the TAP side each asserted or assumed by parameter | State rules in the SV-UVM harness shape, where the device state stays inside the slave driver |
 | Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`), sampled by the SV-UVM harness (`--dut ocah_jtag_vip --framework uvm --tool vcs --cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through `--dut ocah_jtag_vip --cov`, graded by `dv/cov/config/verilator/coverage_policy.toml`, and through the DTP bench | Covergroups on Verilator |
-| Simulators | Verilator (cocotb: the `dv/` harness and the DTP, SMC, and SMU benches) and VCS (SV-UVM: the `dv/` harness and the DTP and SMU benches) | Xcelium |
+| Simulators | Verilator, VCS, and Xcelium (cocotb: the `dv/` harness; Verilator also the DTP, SMC, and SMU benches) and VCS (SV-UVM: the `dv/` harness and the DTP and SMU benches) | SV-UVM on Xcelium (the runner's SV-UVM flow is VCS-only) |
 
 ## Scope
 

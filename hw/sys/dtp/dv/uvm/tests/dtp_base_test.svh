@@ -123,7 +123,7 @@ class dtp_base_test extends ocah_test;
   // the newest-scan-length evidence on a stale item (the cocotb flow
   // likewise starts a fresh monitor per pass).
   virtual function void pre_scenario_pass(int unsigned idx);
-    m_env.m_scan_builder.clear_history();
+    m_env.m_scan_builder.clear_scan_history();
   endfunction
 
   // Clock/reset bring-up (cocotb bring_up parity): route the downstream

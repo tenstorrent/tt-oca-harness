@@ -9,13 +9,15 @@
 #   stage_dashboard_data.sh <site-root>  fetch if needed, then trim into the site
 #
 # Missing data is a warning, never an error: a doc build must not fail because
-# a nightly did not publish.
+# a run did not publish.
 #
 # Env: OCAH_ROOT                    repository root (default: this script's repo)
 #      OCAH_DASHBOARD_DATA_DIR      where the published summary is cached
 #      OCAH_DASHBOARD_DATA_REF      git ref carrying the data branch
 #      OCAH_DASHBOARD_DATA_PATH     path to summary.json within that ref
 #      OCAH_DASHBOARD_HISTORY_PATH  path to history.json within that ref
+#      OCAH_DASHBOARD_RUNS_PREFIX   archive prefix for the test-history page
+#      OCAH_DASHBOARD_RUNS_LIMIT    newest N archives to aggregate (0 = all)
 set -euo pipefail
 
 root="${OCAH_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)}"
@@ -23,6 +25,8 @@ data_dir="${OCAH_DASHBOARD_DATA_DIR:-$root/doc/_build/dashboard-data}"
 ref="${OCAH_DASHBOARD_DATA_REF:-origin/dv-dashboard-data}"
 path="${OCAH_DASHBOARD_DATA_PATH:-latest/summary.json}"
 history_path="${OCAH_DASHBOARD_HISTORY_PATH:-data/history.json}"
+runs_prefix="${OCAH_DASHBOARD_RUNS_PREFIX:-data/runs/}"
+runs_limit="${OCAH_DASHBOARD_RUNS_LIMIT:-0}"
 site="${1:-}"
 
 summary="$data_dir/summary.json"
@@ -63,4 +67,7 @@ python3 "$trim" summary "$summary" "$data/summary.json" --tests-out "$data/tests
 if [ -f "$history" ]; then
   python3 "$trim" history "$history" "$data/history.json"
 fi
+python3 "$root/tools/doc/aggregate_test_history.py" "$data/test-history.json" \
+  --ref "$ref" --prefix "$runs_prefix" --limit "$runs_limit"
+python3 "$root/tools/doc/render_badges.py" "$summary" "$data"
 echo "Staged dashboard data into $data/"

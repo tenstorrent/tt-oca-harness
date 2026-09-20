@@ -2,49 +2,51 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smu-feature-list]]
-== SMU SEP=0 feature list
+== SMU hosted feature list
 
-This chapter defines the SEP=0 feature subset F1–F7 and maps every enrolled
+This chapter defines the hosted feature subset F1–F7 and maps every enrolled
 test to one feature and one `TEST_EVIDENCE` token. The F1–F7 numbering is
 defined by the table below and nowhere else; there is no separate SMU feature
 specification in this tree. The hardware facts the features describe are in
 `doc/integrator/src/smu.adoc`.
 
-The executable contract is `testlists/wrapper.toml`. Feature credit is
-the enrolled `sep0_all` group. Names in `SMU_DEFERRED_DISPOSITION.adoc`
+The executable contract is `testlists/all.toml`. Feature credit is
+the enrolled `hosted` group. Names in `SMU_DEFERRED_DISPOSITION.adoc`
 and SEP=1 work are OUT.
 
 [cols=",",options="header",]
 |===
 |Field |Value
 |Feature numbering |F1–7, defined by the table in this chapter
-|Feature-credit group |`sep0_all` (`--dut smu`)
-|PR smoke |`smoke_sep0` (`smu_wrapper_elaboration_no_sep_test`, `smu_dtp_jtag_smoke_test`, `smu_no_sep_configuration_test`, `smu_ext_boot_seq_gate_test`)
-|Evidence map |`common/smu_dv_env/smu_evidence_map.py` `TEST_EVIDENCE`
+|Feature-credit group |`hosted` (`--dut smu`)
+|PR smoke |`smoke` (`smu_dtp_jtag_smoke_test`, `smu_ext_boot_seq_gate_test`)
+|Evidence map |`cocotb/env/smu_evidence_map.py` `TEST_EVIDENCE`
 |OUT catalog |`SMU_DEFERRED_DISPOSITION.adoc`
 |===
 
 [[smu-feature-subset]]
-=== SEP=0 subset
+=== Hosted subset
 
-Features 1–7, scoped to `--dut smu` on its `SEP=0` compile profile.
+Features 1–7, scoped to `--dut smu` on its compile profile `compile_smu_chiplet`
+(the wrapper with the real SEP). The SEP=0 composition proofs run on
+`--dut smu_block` (`nosep`) and are listed with that group below.
 
 [cols="1,2,2,3,3",options="header",]
 |===
 |ID |SPEC feature |Scope |What is in |What stays OUT
-|F1 |SMC boot and firmware execution |IN (SEP=0 observe) |Bring-up, reset release, mailbox CSR, WDT, GPIO strap, OCTS free-run, no-SEP composition |SMC CPU firmware boot, ROM regression
+|F1 |SMC boot and firmware execution |IN (observe) |Bring-up, reset release, mailbox CSR, WDT, GPIO strap, OCTS free-run |SMC CPU firmware boot, ROM regression
 |F2 |Real SEP RTL under the SMU |OUT |— |SEP=1 instantiate / fetch / retire
-|F3 |DTP debug and test access |IN |PTAP IDCODE/BYPASS, JTAG2AXI, OTP MAP, STAP, BSR select, boot-stall, IC_RESET |Closed JTAG2AXI security gate (SEP=0 ties `sep_feat_ctrl` to `'1`), real LCC, iJTAG model depth
-|F4 |AXI crossbar fabric |IN (SEP=0 shape) |Direct SMC↔external ID converters, filters, ATOP reject, alias remap, fabric BAR |`smu_axi_xbar` itself (`SEP=1` only); `smu_axi_xbar_structure_test` proves the xbar is *absent*
+|F3 |DTP debug and test access |IN |PTAP IDCODE/BYPASS, JTAG2AXI, OTP MAP, STAP, BSR select, boot-stall, IC_RESET |Closed JTAG2AXI security gate (the default SEP eFuse preload leaves debug enabled), lifecycle policy, iJTAG model depth
+|F4 |AXI crossbar fabric |IN |External-port ID conversion through the crossbar, filters, ATOP reject, alias remap, fabric BAR |The crossbar routing matrix beyond the SMC aperture; the SEP=0 shape (direct ID converters, `smu_axi_xbar` absent) is `--dut smu_block` `nosep`
 |F5 |SMC↔SEP interoperability |OUT |— |Mailbox challenge-response with a live SEP
 |F6 |Cross-trigger and clock-stop |IN (pin-level) |Clock-stop coordination, product-pin CTM remap, illegal-phase corners |Four-phase CTM handshake / CLA loop (no product pin or frontdoor for CLA feedback or the CTM handshake)
-|F7 |Lifecycle and security |IN (observe-only) |SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`) |`feat_ctrl` matrices, lifecycle policy (need a real SEP under SMU)
+|F7 |Lifecycle and security |OUT for `hosted` |— (the SEP=0 demote / `lc_state` observe, `smu_smc_security_demote_pm_test`, is `--dut smu_block` `nosep`) |`feat_ctrl` matrices, lifecycle policy (need a real SEP under SMU)
 |===
 
 [[smu-enrolled-mapping]]
 === Enrolled test → feature → evidence
 
-Every `sep0_all` name maps to one feature ID and to `TEST_EVIDENCE`.
+Every `hosted` name maps to one feature ID and to `TEST_EVIDENCE`.
 Tokens are the scoreboard `evidence=` / `expect_*` names the test already
 emits; the map must not invent a checkbox the body cannot prove.
 
@@ -52,62 +54,61 @@ emits; the map must not invent a checkbox the body cannot prove.
 |===
 |Test |Feature |Groups |Primary evidence token
 |`smu_smc_smoke_test` |F1 |smoke, all |`CHK-SMC-FAB-DUAL-NET-S2`
-|`smu_no_sep_configuration_test` |F1 |smoke_sep0, smc_under_smu, sep0_all |`CHK-SEP0-LC`
-|`smu_ext_boot_seq_gate_test` |F1 |sep0_all, smoke_sep0, smc_under_smu |`CHK-BOOT-SEQ-GATE`
-|`smu_smc_reset_ctrl_test` |F1 |smc_under_smu, sep0_all |`RST_PRIMARY_SMC_1`
-|`smu_smc_mailbox_sanity_test` |F1 |smc_under_smu, sep0_all |`SMC_MBX_CSR_OK`
-|`smu_smc_mailbox_int_test` |F1 |sep0_all, smc_under_smu |`CHK-SMC-MBX-IRQ-EXT-S2`
-|`smu_smc_wdt_sanity_test` |F1 |smc_under_smu, sep0_all |`WDT_UNLOCK_OK`
-|`smu_smc_wdt_timeout_irq_test` |F1 |smc_under_smu, sep0_all |`WDT_WDOGIP0`
-|`smu_smc_gpio_strap_sanity_test` |F1 |none |`SMC_STRAP_OK`
-|`smu_system_timer_octs_test` |F1 |smc_under_smu, sep0_all |`CHK-OCTS-COUNT-MONOTONIC`
-|`smu_smc_security_demote_pm_test` |F7 |smc_under_smu, sep0_all |`DEMOTE_TIEOFF_OBS`
-|`smu_i3c_mem_port_connectivity_test` |F4 |smc_under_smu, sep0_all |`CHK-SUB-AXIL-LOCAL-S1`
-|`smu_dtp_jtag_smoke_test` |F3 |smoke_sep0, dtp_under_smu, sep0_all |`CHK-DTP-JTAG-PTAP-S1`
-|`smu_dft_dtp_boot_stall_test` |F3 |dtp_under_smu, sep0_all |`STALL_COLD_STICKY`
-|`smu_dft_gpio_boot_stall_test` |F3 |dtp_under_smu, sep0_all |`STALL_COLD_STICKY`
-|`smu_clock_stop_coordination_test` |F6 |dtp_under_smu, sep0_all |`CHK-DTP-BOOT-STALL-S1`
-|`smu_jtag_reset_override_test` |F3 |dtp_under_smu, sep0_all |`IC_RESET_DEFAULT`
-|`smu_xtrig_ctm_remap_test` |F6 |dtp_under_smu, sep0_all |`XT_CTM_REMAP`
+|`smu_no_sep_configuration_test` |F1 |`--dut smu_block` `nosep` |`CHK-SEP0-LC`
+|`smu_ext_boot_seq_gate_test` |F1 |hosted, smoke, smc_under_smu |`CHK-BOOT-SEQ-GATE`
+|`smu_smc_reset_ctrl_test` |F1 |smc_under_smu, hosted |`RST_PRIMARY_SMC_1`
+|`smu_smc_mailbox_sanity_test` |F1 |smc_under_smu, hosted |`SMC_MBX_CSR_OK`
+|`smu_smc_mailbox_int_test` |F1 |hosted, smc_under_smu |`CHK-SMC-MBX-IRQ-EXT-S2`
+|`smu_smc_wdt_sanity_test` |F1 |smc_under_smu, hosted |`WDT_UNLOCK_OK`
+|`smu_smc_wdt_timeout_irq_test` |F1 |smc_under_smu, hosted |`WDT_WDOGIP0`
+|`smu_system_timer_octs_test` |F1 |smc_under_smu, hosted |`CHK-OCTS-COUNT-MONOTONIC`
+|`smu_smc_security_demote_pm_test` |F7 |`--dut smu_block` `nosep` |`DEMOTE_TIEOFF_OBS`
+|`smu_i3c_mem_port_connectivity_test` |F4 |smc_under_smu, hosted |`CHK-SUB-AXIL-LOCAL-S1`
+|`smu_dtp_jtag_smoke_test` |F3 |smoke, dtp_under_smu, hosted |`CHK-DTP-JTAG-PTAP-S1`
+|`smu_dft_dtp_boot_stall_test` |F3 |dtp_under_smu, hosted |`STALL_COLD_STICKY`
+|`smu_dft_gpio_boot_stall_test` |F3 |dtp_under_smu, hosted |`STALL_COLD_STICKY`
+|`smu_clock_stop_coordination_test` |F6 |dtp_under_smu, hosted |`CHK-DTP-BOOT-STALL-S1`
+|`smu_jtag_reset_override_test` |F3 |dtp_under_smu, hosted |`IC_RESET_DEFAULT`
+|`smu_xtrig_ctm_remap_test` |F6 |dtp_under_smu, hosted |`XT_CTM_REMAP`
 |`smu_sep_smoke_test` |F1 observe / F6 |smoke, all |`CHK-SMC-RST-PRIMARY-EXPORT-S1` (SEP=1 wrapper; not F2 credit)
-|`smu_axi_id_width_conversion_test` |F4 |fabric, sep0_all |`AXI_ID_WIDTH_OK`
-|`smu_axi_crossbar_error_handling_test` |F4 |fabric, sep0_all |`CHK-SMC-PWRGOOD-DTP-POR-S2`
-|`smu_axi_external_port_connectivity_test` |F4 |fabric, sep0_all |`CHK-SMU-PORT-SMN-AXI-S1`
-|`smu_axi_xbar_structure_test` |F4 |fabric, sep0_all |`CHK-XBAR-ABSENT-NO-SEP`
-|`smu_axi_atomic_operation_test` |F4 |fabric, sep0_all |`AXI_NON_ATOP_OK`
-|`smu_axi_filter_allow_ns_test` |F4 |fabric, sep0_all |`CHK-SMU-ALLOW-NS-S1`
-|`smu_sys_in_filter_program_jtag_test` |F4 |fabric, sep0_all |`AXI_FILTER_OKAY`
-|`smu_sys_in_filter_window_edge_test` |F4 |fabric, sep0_all |`AXI_FILTER_OKAY`
-|`smu_sys_in_filter_reprogram_shrink_test` |F4 |fabric, sep0_all |`AXI_FILTER_OKAY`
-|`smu_axi_prot_encoding_decode_test` |F4 |fabric, sep0_all |`CHK-SMU-PROT-S9-MATRIX`
-|`smu_axi_filter_in_instance_matrix_test` |F4 |fabric, sep0_all |`CHK-FILTER-IN-INSTANCES-S1`
-|`smu_axi_filter_out_instance_matrix_test` |F4 |fabric, sep0_all |`CHK-FILTER-OUT-INSTANCES-S1`
-|`smu_fabric_reg_bar_wr_test` |F4 |fabric, sep0_all |`CHK-SUB-AXIL-LOCAL-S2`
-|`smu_axi_alias_remap_manager_scope_test` |F4 |fabric, sep0_all |`CHK-ALIAS-REMAP-SCOPE-S3`
-|`smu_dtp_io_stap_smoke_test` |F3 |dtp_under_smu, sep0_all |`CHK-DTP-IO-STAP-SCAN`
-|`smu_dtp_smc_stap_smoke_test` |F3 |dtp_under_smu, sep0_all |`CHK-DTP-SMC-STAP-IDCODE`
-|`smu_dtp_bsr_ijtag_scan_test` |F3 |dtp_under_smu, sep0_all |`CHK-DTP-BSR-EXTEST-SELECT`
-|`smu_dtp_otp_smc_map_rw_test` |F3 |dtp_under_smu, sep0_all |`CHK-OTP-SMC-MAP-RW`
-|`smu_dtp_otp_smc_series_error_test` |F3 |dtp_under_smu, sep0_all |`CHK-OTP-SMC-DECODE-SLVERR`
-|`smu_smc_dtp_jtag2axi_smoke_test` |F3 |dtp_under_smu, sep0_all |`CHK-JTAG2AXI-SMOKE-SCRATCH`
-|`smu_dtp_jtag2axi_smc_error_path_test` |F3 |dtp_under_smu, sep0_all |`J2A_DECERR_POISON`
-|`smu_dtp_jtag_smc_cpu_register_test` |F3 |dtp_under_smu, sep0_all |`JTAG2AXI_RW_OK`
-|`smu_dtp_jtag2axi_smc_rw_matrix_test` |F3 |dtp_under_smu, sep0_all |`J2A_RW_MATRIX_OK`
-|`smu_dtp_jtag2axi_wstrb_partial_sticky_test` |F3 |dtp_under_smu, sep0_all |`J2A_WSTRB_NEIGHBOR`
-|`smu_dtp_jtag2axi_back_to_back_error_ok_test` |F3 |dtp_under_smu, sep0_all |`J2A_B2B_OK`
-|`smu_dtp_jtag2axi_abort_mid_op_test` |F3 |needs_otp_stall |`J2A_ABORT_RECOVER`
-|`smu_jtag2axi_vs_smn_same_csr_race_test` |F3/F4 |dtp_under_smu, sep0_all |`RACE_J2A_SMN`
-|`smu_otp_vs_fabric_map_race_test` |F3 |dtp_under_smu, sep0_all |`RACE_OTP_FABRIC`
-|`smu_dtp_otp_smc_complete_rw_test` |F3 |dtp_under_smu, sep0_all |`OTP_MAP_RW_OK`
-|`smu_dtp_ptap_otp_instr_scan_test` |F3 |dtp_under_smu, sep0_all |`PTAP_SEP_OTP_CAPS_OK`
-|`smu_jtag_chain_enhanced_test` |F3 |dtp_under_smu, sep0_all |`JTAG_CHAIN_ENHANCED_OK`
-|`smu_boot_stall_jtag_cold_reset_matrix_test` |F3 |dtp_under_smu, sep0_all |`STALL_COLD_STICKY`
-|`smu_ic_reset_smc_multi_domain_test` |F3 |dtp_under_smu, sep0_all |`IC_RESET_DOMAIN_EXCL`
-|`smu_ic_reset_dual_domain_illegal_test` |F3 |dtp_under_smu, sep0_all |`IC_RESET_DUAL_PACK`
-|`smu_boot_stall_vs_ic_reset_priority_test` |F3 |dtp_under_smu, sep0_all |`STALL_VS_IC_RESET`
-|`smu_xtrig_ctm_illegal_phase_test` |F6 |dtp_under_smu, sep0_all |`XT_ILLEGAL_PHASE`
-|`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, sep0_all |`IC_RESET_SS_COLD_OVRD`, `IC_RESET_SS_WARM_OVRD`, `IC_RESET_SS_EXCL`
-|`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, sep0_all |`BSR_EXTEST_TDO_MATCH`
+|`smu_axi_id_width_conversion_test` |F4 |fabric, hosted |`AXI_ID_WIDTH_OK`
+|`smu_axi_crossbar_error_handling_test` |F4 |fabric, hosted |`CHK-SMC-PWRGOOD-DTP-POR-S2`
+|`smu_axi_external_port_connectivity_test` |F4 |`--dut smu_block` `nosep` |`CHK-SMU-PORT-SMN-AXI-S1`
+|`smu_axi_xbar_structure_test` |F4 |`--dut smu_block` `nosep` |`CHK-XBAR-ABSENT-NO-SEP`
+|`smu_axi_atomic_operation_test` |F4 |fabric, hosted |`AXI_NON_ATOP_OK`
+|`smu_axi_filter_allow_ns_test` |F4 |fabric, hosted |`CHK-SMU-ALLOW-NS-S1`
+|`smu_sys_in_filter_program_jtag_test` |F4 |fabric, hosted |`AXI_FILTER_OKAY`
+|`smu_sys_in_filter_window_edge_test` |F4 |fabric, hosted |`AXI_FILTER_OKAY`
+|`smu_sys_in_filter_reprogram_shrink_test` |F4 |fabric, hosted |`AXI_FILTER_OKAY`
+|`smu_axi_prot_encoding_decode_test` |F4 |fabric, hosted |`CHK-SMU-PROT-S9-MATRIX`
+|`smu_axi_filter_in_instance_matrix_test` |F4 |fabric, hosted |`CHK-FILTER-IN-INSTANCES-S1`
+|`smu_axi_filter_out_instance_matrix_test` |F4 |fabric, hosted |`CHK-FILTER-OUT-INSTANCES-S1`
+|`smu_fabric_reg_bar_wr_test` |F4 |fabric, hosted |`CHK-SUB-AXIL-LOCAL-S2`
+|`smu_axi_alias_remap_manager_scope_test` |F4 |fabric, hosted |`CHK-ALIAS-REMAP-SCOPE-S3`
+|`smu_dtp_io_stap_smoke_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-IO-STAP-SCAN`
+|`smu_dtp_smc_stap_smoke_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-SMC-STAP-IDCODE`
+|`smu_dtp_bsr_ijtag_scan_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-BSR-EXTEST-SELECT`
+|`smu_dtp_otp_smc_map_rw_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-SMC-MAP-RW`
+|`smu_dtp_otp_smc_series_error_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-SMC-DECODE-SLVERR`
+|`smu_smc_dtp_jtag2axi_smoke_test` |F3 |dtp_under_smu, hosted |`CHK-JTAG2AXI-SMOKE-SCRATCH`
+|`smu_dtp_jtag2axi_smc_error_path_test` |F3 |dtp_under_smu, hosted |`J2A_DECERR_POISON`
+|`smu_dtp_jtag_smc_cpu_register_test` |F3 |dtp_under_smu, hosted |`JTAG2AXI_RW_OK`
+|`smu_dtp_jtag2axi_smc_rw_matrix_test` |F3 |dtp_under_smu, hosted |`J2A_RW_MATRIX_OK`
+|`smu_dtp_jtag2axi_wstrb_partial_sticky_test` |F3 |dtp_under_smu, hosted |`J2A_WSTRB_NEIGHBOR`
+|`smu_dtp_jtag2axi_back_to_back_error_ok_test` |F3 |dtp_under_smu, hosted |`J2A_B2B_OK`
+|`smu_dtp_jtag2axi_abort_mid_op_test` |F3 |`--dut smu_block` `all` |`J2A_ABORT_RECOVER`
+|`smu_jtag2axi_vs_smn_same_csr_race_test` |F3/F4 |dtp_under_smu, hosted |`RACE_J2A_SMN`
+|`smu_otp_vs_fabric_map_race_test` |F3 |dtp_under_smu, hosted |`RACE_OTP_FABRIC`
+|`smu_dtp_otp_smc_complete_rw_test` |F3 |dtp_under_smu, hosted |`OTP_MAP_RW_OK`
+|`smu_dtp_ptap_otp_instr_scan_test` |F3 |`--dut smu_block` `nosep` |`PTAP_SEP_OTP_CAPS_OK`
+|`smu_jtag_chain_enhanced_test` |F3 |dtp_under_smu, hosted |`JTAG_CHAIN_ENHANCED_OK`
+|`smu_boot_stall_jtag_cold_reset_matrix_test` |F3 |dtp_under_smu, hosted |`STALL_COLD_STICKY`
+|`smu_ic_reset_smc_multi_domain_test` |F3 |dtp_under_smu, hosted |`IC_RESET_DOMAIN_EXCL`
+|`smu_ic_reset_dual_domain_illegal_test` |F3 |dtp_under_smu, hosted |`IC_RESET_DUAL_PACK`
+|`smu_boot_stall_vs_ic_reset_priority_test` |F3 |dtp_under_smu, hosted |`STALL_VS_IC_RESET`
+|`smu_xtrig_ctm_illegal_phase_test` |F6 |dtp_under_smu, hosted |`XT_ILLEGAL_PHASE`
+|`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, hosted |`IC_RESET_SS_COLD_OVRD`, `IC_RESET_SS_WARM_OVRD`, `IC_RESET_SS_EXCL`
+|`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, hosted |`BSR_EXTEST_TDO_MATCH`
 |===
 
 [[smu-out-and-wrapper]]
@@ -116,9 +117,8 @@ emits; the map must not invent a checkbox the body cannot prove.
 * Every name in `SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset,
   and none of them has a `TEST_EVIDENCE` row: the map holds rows only for
   names with a test body in this tree.
-* `--dut smu` is the wrapper bench and carries `sep0_all` itself; PASSes are
+* `--dut smu` is the wrapper bench and carries `hosted` itself; PASSes are
   labelled `DUT_TAG=WRAPPER`. The bare block bench is `--dut smu_block`
   (`SMU_VPLAN.adoc`).
-* Wrapper elaboration / reset is `smu_wrapper_elaboration_no_sep_test`;
-  SEP=1 elaboration is `smu_wrapper_elaboration_sep_rtl_test` (wrapper
-  `smoke`).
+* Wrapper elaboration / reset is `smu_wrapper_elaboration_test`
+  (wrapper `fw_smoke` and `build_smoke`).

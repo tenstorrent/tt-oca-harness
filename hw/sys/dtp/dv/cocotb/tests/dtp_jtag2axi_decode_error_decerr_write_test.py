@@ -10,6 +10,11 @@ from seq_lib.dtp_jtag2axi_robustness_test_seq import dtp_jtag2axi_robustness_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_decode_error_decerr_write_test(dtp_base_test):
+    # The bridge's DECERR write handling is exercised on all three JTAG2AXI
+    # targets with the response injected by each target's responder (the DTP
+    # boundary has no address decoder): the status reports DECERR, the
+    # errored slot keeps its prior word, and a recovery write follows.
+    #
     # Shared AXI checker: passive bus monitors + reference model compare every
     # observed transaction; the required evidence IDs and per-stream minimum
     # compared-transaction counts below make a silent no-op run fail at

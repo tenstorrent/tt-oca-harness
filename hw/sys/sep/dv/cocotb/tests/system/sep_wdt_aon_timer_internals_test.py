@@ -26,12 +26,15 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_spec_tables import aon_timer_regwen_gates, aon_timer_wkup_ticks_per_count
 from sep_base_test import sep_base_test
+from sep_reg_meta import SEP_CPU_CTRL
 from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
     INTR_TEST,
     INTR_TEST_WKUP_EXPIRED,
     INTR_WKUP_EXPIRED,
+    INTR_WKUP_LSB,
     WDOG_BARK_THOLD,
     WDOG_BITE_THOLD,
     WDOG_COUNT,
@@ -39,6 +42,8 @@ from seq_lib.sep_wdt_aon_seq import (
     WDOG_ENABLE,
     WDOG_REGWEN,
     WKUP_CAUSE,
+    WKUP_CAUSE_BIT,
+    WKUP_CAUSE_LSB,
     WKUP_COUNT_HI,
     WKUP_COUNT_LO,
     WKUP_CTRL,
@@ -49,12 +54,6 @@ from seq_lib.sep_wdt_aon_seq import (
     SepWdtAon,
     SepWdtCfg,
 )
-
-# WKUP_CAUSE.cause bit (wakeup-request status). The RDL labels it onwrite=woclr,
-# but the cause is acknowledged/cleared by WRITING 0, AFTER the wakeup condition
-# (count>=thold) is removed -- it is level-held and AON-domain (the clear settles
-# over a few clk_wdt cycles).
-WKUP_CAUSE_BIT = 1 << 0
 
 # How much faster than the silicon 1000x ratio we run clk_wdt for this CSR test
 # (sim-timing knob): clk_wdt = WDT_CLK_RATIO x the core period -- still
@@ -67,6 +66,15 @@ WDT_CLK_RATIO = 8
 # probe lowers it. A literal: it is the non-vacuity anchor for that check and
 # must not move with any seeded value.
 _COUNT_RUN_FLOOR = 40
+
+
+# SEP_CPU_CTRL.REFERENCE_COUNTER is one 64-bit field. The high 32-bit AXI
+# window is the last word of that field.
+REFERENCE_COUNTER_LO = SEP_CPU_CTRL.addr("REFERENCE_COUNTER")
+_RC_BITS = SEP_CPU_CTRL.field_width("REFERENCE_COUNTER", "rc")
+if _RC_BITS % 32:
+    raise RuntimeError(f"REFERENCE_COUNTER.rc is {_RC_BITS} bits, not a multiple of 32")
+REFERENCE_COUNTER_HI = REFERENCE_COUNTER_LO + 4 * ((_RC_BITS // 32) - 1)
 
 
 @pyuvm.test()
@@ -153,10 +161,66 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wkup_expire()
         await self._chk_intr_test()
         await self._chk_wdog_pet()
+        await self._chk_reference_counter()
         await self._chk_regwen_lock_and_nonvac()
         # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
         # row keyed on a bare summary string would record coverage with no checker
         # behind it.
+
+    async def _read_refcnt(self) -> int:
+        """The 64-bit reference count, high half first.
+
+        Reading high then low, and requiring the high half to be unchanged
+        afterwards, is what keeps a carry between the two reads from being
+        reported as a count that went backwards.
+        """
+        hi = await self.wdt.read(REFERENCE_COUNTER_HI)
+        lo = await self.wdt.read(REFERENCE_COUNTER_LO)
+        hi_again = await self.wdt.read(REFERENCE_COUNTER_HI)
+        if hi_again != hi:
+            # A carry landed between the halves; take the pair again on the
+            # new high half rather than returning a torn value.
+            lo = await self.wdt.read(REFERENCE_COUNTER_LO)
+            hi = hi_again
+        return (hi << 32) | lo
+
+    async def _chk_reference_counter(self) -> None:
+        """CHK-REFCNT-RUNS on SEP_CPU_CTRL.REFERENCE_COUNTER.
+
+        The counter is the one piece of SEP that runs on clk_ref_i rather than
+        clk_i: prim_refclk_count_w_cdc counts on the reference edge and
+        resynchronises the value across to clk_i for the CSR read. Both halves
+        of that crossing are dark whenever the reference clock is not driven,
+        and a frozen counter reads as a perfectly stable CSR.
+        """
+        first = await self._read_refcnt()
+        await ClockCycles(cocotb.top.clk_i, 400)
+        second = await self._read_refcnt()
+        assert second > first, (
+            f"CHK-REFCNT-RUNS FAIL: REFERENCE_COUNTER did not advance across a "
+            f"400-cycle window ({first} -> {second}). The counter runs on "
+            "clk_ref_i and resynchronises onto clk_i; a reference clock that is "
+            "not running, or a CDC that never hands the value over, both read as "
+            "a stable count"
+        )
+        self.logger.info(
+            "CHK-REFCNT-RUNS PASS: REFERENCE_COUNTER %d -> %d across 400 core "
+            "cycles, so the clk_ref_i counter and its crossing onto clk_i are live",
+            first,
+            second,
+        )
+
+        # CHK-REFCNT-LOAD is deliberately NOT claimed here. A software load of
+        # this counter is lost whenever clk_i runs far faster than clk_ref_i: at
+        # a 4 ns core period against the 40 ns reference the written value never
+        # reaches the counter, while 8 ns and 16 ns both take it. The update
+        # crosses on a depth-1 async FIFO whose own source comment says an
+        # update that arrives before the previous one has crossed is "dropped
+        # with no error indication", and the guard assertion in that primitive
+        # (CntUpdateAccepted_A) is compiled out of this build by
+        # COMMON_CELLS_ASSERTS_OFF, so the loss is silent. Claiming the load
+        # would be claiming a contract this elaboration does not honour at every
+        # clock ratio the environment generates.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""
@@ -179,6 +243,12 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-WKUP-COUNT: high threshold expired in the count window "
             f"(INTR_STATE=0x{intr:08x}, count2={count2}, thold={self.cfg_wdt.wkup_high_thold})"
         )
+        await self.wdt.write(INTR_TEST, INTR_TEST_WKUP_EXPIRED)
+        forced = await self.wdt.read(INTR_STATE)
+        assert forced & INTR_WKUP_EXPIRED, (
+            f"CHK-WKUP-COUNT: INTR_STATE.wkup_expired stayed 0 after INTR_TEST (0x{forced:08x})"
+        )
+        await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)
         self.logger.info(
             "CHK-WKUP-COUNT PASS: WKUP_COUNT %d -> %d (advances on clk_wdt); "
             "INTR_STATE.wkup_expired stayed 0 under the high threshold",
@@ -204,17 +274,19 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
     async def _chk_wkup_prescale(self) -> None:
         """CHK-WKUP-PRESCALE: WKUP_CTRL.prescaler divides the wakeup count rate.
 
-        aon_timer_core.sv gates wkup_incr on ``prescale_count_q == prescaler``, so the
-        counter advances once per ``prescaler + 1`` clk_wdt ticks. Measured over the
-        same window with prescaler=0 and prescaler=P, the divided advance must fit the
-        spec bound; a prescaler that is decoded but not applied advances at the
-        undivided rate and fails the bound.
+        The OpenTitan AON Timer Technical Specification (Wakeup timer) states "The
+        number of cycles per tick is one more than the 12-bit WKUP_CTRL.prescaler
+        field", so the counter advances once per ``prescaler + 1`` ticks. That rate
+        is carried by sep_spec_tables.aon_timer_wkup_ticks_per_count, not read back
+        from aon_timer_core.sv. Measured over the same window with prescaler=0 and
+        prescaler=P, the divided advance must fit the spec bound; a prescaler that is
+        decoded but not applied advances at the undivided rate and fails the bound.
         """
         presc = self.cfg_wdt.wkup_prescaler
         # Window sized from the programmed divisor so the divided run must tick.
         # A frozen counter then fails the lower bound; a prescaler that is
         # ignored fails the upper bound. Both bounds come from the divisor.
-        window = 4 * (presc + 1)
+        window = 4 * aon_timer_wkup_ticks_per_count(presc)
         adv_fast = await self._count_advance(0, window)
         adv_slow = await self._count_advance(presc, window)
         # Nonvacuity against an independent literal: the undivided run must make real
@@ -223,7 +295,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-WKUP-PRESCALE: prescaler=0 advanced only {adv_fast} over {window} "
             f"clk_wdt ticks; the divided-rate bound below would be vacuous"
         )
-        expected = window // (presc + 1)
+        expected = window // aon_timer_wkup_ticks_per_count(presc)
         bound_lo = 1
         bound_hi = expected + 2
         assert adv_slow >= bound_lo, (
@@ -261,7 +333,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )  # small: expires within poll budget
         await self.wdt.write(WKUP_CTRL, WKUP_ENABLE)
         ok, val = await self._poll_bit_set(
-            INTR_STATE, 0, timeout_cycles=300 * self._tick, step=4 * self._tick
+            INTR_STATE, INTR_WKUP_LSB, timeout_cycles=300 * self._tick, step=4 * self._tick
         )
         assert ok, f"WKUP_COUNT>=THOLD never set INTR_STATE.wkup_expired (INTR_STATE=0x{val:08x})"
         self.logger.info("CHK-WKUP-EXPIRE PASS (set): INTR_STATE.wkup_expired=1 (0x%08x)", val)
@@ -287,7 +359,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         # WKUP_CAUSE is AON-domain (clk_aon=clk_wdt): the clear settles over a few clk_wdt
         # cycles via the register CDC, so poll rather than read back immediately.
         ccleared, cpost = await self._poll_bit_clear(
-            WKUP_CAUSE, 0, timeout_cycles=100 * self._tick, step=4 * self._tick
+            WKUP_CAUSE, WKUP_CAUSE_LSB, timeout_cycles=100 * self._tick, step=4 * self._tick
         )
         assert ccleared, (
             f"WKUP_CAUSE.cause not cleared after condition removal + write 0 (0x{cpost:08x})"
@@ -325,7 +397,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
         await self.wdt.write(INTR_TEST, INTR_TEST_WKUP_EXPIRED)
         ok, val = await self._poll_bit_set(
-            INTR_STATE, 0, timeout_cycles=100 * self._tick, step=4 * self._tick
+            INTR_STATE, INTR_WKUP_LSB, timeout_cycles=100 * self._tick, step=4 * self._tick
         )
         assert ok, f"CHK-INTR-TEST: INTR_TEST did not set wkup_expired (INTR_STATE=0x{val:08x})"
         await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)  # W1C
@@ -411,11 +483,24 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
 
         # CHK-REGWEN-SCOPE: the lock covers WDOG_CTRL / WDOG_BARK_THOLD /
-        # WDOG_BITE_THOLD only (aon_timer_reg_top.sv passes wdog_regwen_qs as
-        # src_regwen_i for those three registers and '0 for every other). The WKUP
-        # configuration and WDOG_COUNT must therefore still accept writes while the
-        # watchdog thresholds are locked -- a lock wired to the whole block would
-        # freeze the wakeup timer and the pet path with it.
+        # WDOG_BITE_THOLD only. The scope is read from the OpenTitan register
+        # description (aon_timer.hjson, the source aon_timer_reg_top.sv is
+        # generated from) via aon_timer_regwen_gates, not from the generated RTL,
+        # so a hand-edited src_regwen_i disagrees with this check instead of
+        # defining it. The WKUP configuration and WDOG_COUNT must therefore still
+        # accept writes while the watchdog thresholds are locked -- a lock wired to
+        # the whole block would freeze the wakeup timer and the pet path with it.
+        gated = aon_timer_regwen_gates("WDOG_REGWEN")
+        assert gated == {"WDOG_CTRL", "WDOG_BARK_THOLD", "WDOG_BITE_THOLD"}, (
+            f"CHK-REGWEN-SCOPE: aon_timer.hjson gates {sorted(gated)} behind "
+            "WDOG_REGWEN; this check walks the three watchdog configuration "
+            "registers and probes WKUP_THOLD_LO / WDOG_COUNT as ungated"
+        )
+        for ungated in ("WKUP_THOLD_LO", "WDOG_COUNT"):
+            assert ungated not in gated, (
+                f"CHK-REGWEN-SCOPE: {ungated} is gated by WDOG_REGWEN in "
+                "aon_timer.hjson, so probing it as still-writable is wrong"
+            )
         thold_val = self.cfg_wdt.postlock_wkup_thold
         await self.wdt.write(WKUP_THOLD_LO, thold_val)
         thold_rb = await self.wdt.read(WKUP_THOLD_LO)

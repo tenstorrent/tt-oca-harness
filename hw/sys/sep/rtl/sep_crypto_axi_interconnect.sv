@@ -30,6 +30,10 @@ module sep_crypto_axi_interconnect (
   output sep_pkg::sep_32_32_axil_req_t       kmac_axil_isolated_req_o,
   input  sep_pkg::sep_32_32_axil_resp_t      kmac_axil_isolated_resp_i,
 
+  // Isolated full-AXI host bus to Adams Bridge
+  output sep_pkg::sep_32_64_6_12_axi_req_t   abr_axi_isolated_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t  abr_axi_isolated_resp_i,
+
   // KM key-bus slave ports (from key_manager master ports)
   input  sep_pkg::sep_32_32_axil_req_t       otbn_key_axil_req_i,
   output sep_pkg::sep_32_32_axil_resp_t      otbn_key_axil_resp_o,
@@ -78,18 +82,17 @@ module sep_crypto_axi_interconnect (
   output sep_pkg::sep_32_64_6_12_axi_req_t   fuse_axi_req_o,
   input  sep_pkg::sep_32_64_6_12_axi_resp_t  fuse_axi_resp_i,
   output sep_pkg::sep_32_64_6_12_axi_req_t   lifecycle_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t  lifecycle_axi_resp_i,
-  output sep_pkg::sep_32_64_6_12_axi_req_t   abr_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t  abr_axi_resp_i
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t  lifecycle_axi_resp_i
 );
 
-  // Drain depth of every isolate. Must cover the maximum outstanding
-  // transactions of the upstream converter, so the host-path
-  // axi_to_axi_lite instances use it as AxiMaxWriteTxns/AxiMaxReadTxns too.
+  // Drain depth of every isolate matches the crypto demux transaction limit.
+  // Host-path axi_to_axi_lite instances use the same limit.
   localparam int unsigned ISOLATE_NUM_PENDING = 4;
 
   sep_pkg::sep_32_64_6_12_axi_req_t  [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_reqs;
   sep_pkg::sep_32_64_6_12_axi_resp_t [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_resps;
+  sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_isolated_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_isolated_resp;
 
   ////////////////
   // AXI4 Demux //
@@ -1001,15 +1004,37 @@ module sep_crypto_axi_interconnect (
     .mst_resp_i  (ext_trng_axil_resp_i)
   );
 
-  ///////////////////////////////
-  // Full AXI4 passthroughs    //
-  ///////////////////////////////
+  //////////////////////////
+  // Full AXI4 paths      //
+  //////////////////////////
 
   assign fuse_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiFuse];
   assign sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiFuse] = fuse_axi_resp_i;
 
   assign lifecycle_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiLifecycle];
   assign sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiLifecycle] = lifecycle_axi_resp_i;
+
+  axi_isolate #(
+    .NumPending           (ISOLATE_NUM_PENDING),
+    .TerminateTransaction (1'b1),
+    .AtopSupport          (1'b0),
+    .AxiAddrWidth         (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+    .AxiDataWidth         (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+    .AxiIdWidth           (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .AxiUserWidth         (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
+    .axi_req_t            (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t           (sep_pkg::sep_32_64_6_12_axi_resp_t)
+  ) u_abr_host_isolate (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAbr]),
+    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
+    .mst_req_o  (abr_axi_isolated_req),
+    .mst_resp_i (abr_axi_isolated_resp),
+    .isolate_i  (isolate_req_i.host_abr),
+    .flush_i    (1'b0),
+    .isolated_o (isolated_o.host_abr)
+  );
 
 `ifdef SEP_ABR_EN
   // Break the B-channel combinational loop between the sep_crypto demux's
@@ -1027,14 +1052,14 @@ module sep_crypto_axi_interconnect (
   ) u_abr_b_cut (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAbr]),
-    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
-    .mst_req_o  (abr_axi_req_o),
-    .mst_resp_i (abr_axi_resp_i)
+    .slv_req_i  (abr_axi_isolated_req),
+    .slv_resp_o (abr_axi_isolated_resp),
+    .mst_req_o  (abr_axi_isolated_req_o),
+    .mst_resp_i (abr_axi_isolated_resp_i)
   );
 `else
-  assign abr_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAbr];
-  assign sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr] = abr_axi_resp_i;
+  assign abr_axi_isolated_req_o = abr_axi_isolated_req;
+  assign abr_axi_isolated_resp  = abr_axi_isolated_resp_i;
 `endif
 
 endmodule

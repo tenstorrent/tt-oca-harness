@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_3dcr_config_hold_test — PTAP 3DCR CONFIG_HOLD preserve/TLR-clear/TRST-clear sub-cases in a
-// seeded order
+// dtp_3dcr_config_hold_test — per-STAP PTAP and STAP 3DCR CONFIG_HOLD sub-cases in a seeded
+// order (hold=1 across TLR preserves, hold=0 across TLR clears, TRST clears),
+// each read back through composed chain scans
 // (looped runner with per-pass family evidence, 16-pass floor).
 
 class dtp_3dcr_config_hold_test extends dtp_base_test;

@@ -17,21 +17,17 @@
 
 #include "och_sep_common.h"
 #include "sep.h"
+#include "smc_sep_xbar_protocol.h"
 #include "tb.h"
 #include "filter_ctrl.h"
 
 /*
- * FILTER_CONFIG open window: read|write|entry_enabled|allow_burst.
- * Compose from generated FILTER_CTRL__FILTER_CONFIG__*_bm (filter_ctrl.h).
- * Do NOT set ALLOW_NS: EnNsFilter=1 and SEP CPU traffic is secure (ns=0).
- * Bit 32 is set to match the XBAR golden value XBAR_SEP_OUTBOUND_CFG (smc_sep_xbar_protocol.h).
+ * FILTER_CONFIG open window. XBAR_SEP_OUTBOUND_CFG is the named golden
+ * for the same word (read|write|entry_enabled|allow_burst plus the
+ * protocol bit the XBAR check uses). Do NOT set ALLOW_NS: EnNsFilter=1
+ * and SEP CPU traffic is secure (ns=0).
  */
-#define SEP_OUTBOUND_FILTER_CFG_OPEN \
-    ((uint64_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | \
-                FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
-                FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm | \
-                FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm) | \
-     (1ULL << 32))
+#define SEP_OUTBOUND_FILTER_CFG_OPEN XBAR_SEP_OUTBOUND_CFG
 
 /* Mailbox window: STDOUT (test_completion) plus a small pad. */
 #define SEP_OUTBOUND_FILTER_WIN_START ((uint64_t)(uint32_t)STDOUT)

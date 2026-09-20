@@ -10,7 +10,7 @@ mem sep_iccm #(
     longint unsigned NUM_ENTRIES = 0x8000,  // 256 KiB / 8 bytes = 0x8000 entries
     longint unsigned WIDTH       = 64
 ) {
-    desc = "SEP ICCM Memory";
+    desc = "Tightly coupled instruction SRAM for the SEP CPU.";
 
     mementries = NUM_ENTRIES;
     memwidth   = WIDTH;

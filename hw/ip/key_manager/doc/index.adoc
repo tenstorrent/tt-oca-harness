@@ -2,5 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Key Manager component documentation
+ifdef::backend-html5[]
+include::partial$key_manager/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$key_manager/doc/firmware.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::firmware.adoc[]
+endif::backend-pdf[]

@@ -107,6 +107,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# The peer half of the mailbox that the TX rep above cannot reach. The external
+# SMN master writes the inbound aperture to fill the receive FIFO, which closes
+# the data round-trip readback and the read threshold (RIRQT), and grades the
+# fabric.adoc contract that a 4-byte READ_DATA at either half pops one whole
+# entry -- so two reads consume two entries rather than reassembling one.
+name = "sep_mailbox_peer_rx_rirqt_test"
+module = "system.sep_mailbox_peer_rx_rirqt_test"
+seed = 1
+timeout_sec = 1800
+tags = ["mailbox", "axil_mailbox", "fifo", "interrupt", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Per-IP SW-reset domain isolation (the reference suite\'s sep_clock_uvm_sw_reset_per_ip_test ).
 # With entropy brought up, hold a LIVE golden-checked crypto RESULT in each of two engines --
 # HMAC SHA-256 DIGEST and AES ECB-256 DATA_OUT (the AES masking-PRNG reseed consumes the
@@ -114,7 +129,11 @@ args = ["+skip_fuse_sense"]
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
 # clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
 # address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
-# DIGEST_0 is OKAY at reset. Drain-before-reset is not claimed. no_cpu; +skip_fuse_sense
+# DIGEST_0 is OKAY at reset. Drain-before-reset IS claimed on the HMAC path:
+# CHK-DRAIN-ORDER (reset waits for both AXI-Lite paths to drain),
+# CHK-HOST-DRAIN (reads accepted before the request resolve OKAY) and
+# CHK-DRAIN-ARRIVAL (a read arriving mid-drain also resolves). The other three
+# accelerator domains are not claimed. no_cpu; +skip_fuse_sense
 # (entropy/crypto independent of OTP lifecycle).
 name = "sep_crypto_per_ip_reset_isolation_test"
 module = "system.sep_crypto_per_ip_reset_isolation_test"
@@ -222,6 +241,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# EXPECTED FAIL. Asserts the misaligned-offset latch condition that
+# sep_cpu_ctrl.rdl:383 and doc/interrupts.adoc:241 state for
+# PERIPH_BUS_ERR_STATUS; the DUT refuses the beat at the fabric instead, so
+# nothing latches. Left unmarked so `all` stays a visible fail; a spec-vs-RTL
+# gap is not masked as expect_fail.
+name = "sep_periph_bus_err_misaligned_reveal_test"
+module = "system.sep_periph_bus_err_misaligned_reveal_test"
+seed = 1
+timeout_sec = 600
+tags = ["interrupt", "aggregator", "system", "subsystem", "reveal"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # LCC sep_debug -> inbound-filter gating (security boundary, the reference suite
 # sep_lcc_uvm_inbound_filter_gating_test). A custom OTP image with
 # LC_STATE=PROD is REAL-sensed (so NO +skip_fuse_sense -- the LCC feat_ctrl decode
@@ -239,7 +273,7 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # reset_ctrl CSR + WDT sanity, combined (the reference suite\'s sep_reset_ctrl_csr_test +
-# wdt_sanity_test): SW_RESET_N=0x3E plus the per-IP and shared TRNG reset-wire
+# wdt_sanity_test): SW_RESET_N=0x7E plus the per-IP and shared TRNG reset-wire
 # clears, bad-address D-bus NMI x2, WDT
 # bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
 # wdt_timer_rst_req_o output (tb_top probe). cpu run mode; +skip_fuse_sense.
@@ -343,6 +377,20 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI transaction IDs on the response path. Eight scratch words are primed
+# with eight distinct values, then read with eight reads outstanding at once,
+# one per ID; each must return its own word. Directed, not randomized: the
+# proof is a value compare, and a random ID on either side would remove it.
+name = "sep_axi_id_routing_test"
+module = "system.sep_axi_id_routing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "axi", "id", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

@@ -29,9 +29,33 @@ the cold-stable path released.
 
 from __future__ import annotations
 
+import cocotb
+from cocotb.triggers import ClockCycles
 from env.smc_reset_item import SmcResetOp
 
+from .smc_isolate_pin_utils import await_skip_mem_repair, drive_isolate_pin, skip_mem_repair
 from .smc_reset_seq_base import SmcResetSeqBase
+
+# The isolate-request pin is the pad the DV-owned pad table
+# (`doc/integrator/meta/ocah_gpio_table.csv`) names "Isolate Request";
+# `smc_isolate_pin_utils` reads the index from that table. `clk_rst.adoc`
+# ("Function Level Reset") defines pin-based isolation as `isolate_req_pin_i`
+# gated by `ISOLATE_REQ_PINEN_REG` and makes it one of the three isolation
+# sources; under "Memory Test Bypass" it activates `skip_mem_repair_o`
+# automatically when either FLR-triggered or pin-based isolation is asserted.
+# The testcase module programs `ISOLATE_REQ_PINEN_REG` to all ones over SEP_IN
+# before this sequence starts, so the pin is an enabled isolation source; with
+# no FLR signalled and ISOLATE_REQ_SMC_REG at its reset 0 it is the only one,
+# and `skip_mem_repair_o` must follow it: 0 with the pin low, 1 with the pin
+# high. The bench leaves the pad undriven by default and it then reads 1; that
+# undriven sample, and what the output does before the enable is written, are
+# reported and not asserted. A board idles the pin low, which is what the two
+# legs below drive and observe. The cold resets that follow return
+# `ISOLATE_REQ_PINEN_REG` to 0, so the post-reset leg holds the pin low, where
+# the spec predicts no pin isolation whatever the enable.
+# Ceiling on the fuse-sense re-run after the last reset release, matching the
+# package-wide `wait_fuse_sense_done` bound. Expiry is a FAILURE.
+_SENSE_BOUND = 200_000
 
 
 class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
@@ -50,7 +74,68 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
     # `_wait_released` come from SmcResetSeqBase so the guard is defined once
     # for the whole reset family ([REUSE-AND-LAYERING]).
 
+    def __init__(self, name: str = "smc_cold_reset_repeated_test_seq") -> None:
+        super().__init__(name)
+        #: `skip_mem_repair_o` sampled with the isolate pin left undriven.
+        self.skip_pin_floating = -1
+        #: `skip_mem_repair_o` sampled with the isolate pin driven low.
+        self.skip_pin_low = -1
+        #: `skip_mem_repair_o` sampled with the isolate pin driven high.
+        self.skip_pin_high = -1
+        #: `skip_mem_repair_o` at the post-reset fuse-sense completion.
+        self.skip_at_sense_done = -1
+
+    def _skip_mem_repair(self, dut) -> int:
+        return skip_mem_repair(dut)
+
+    async def _await_skip_mem_repair(self, dut, want: int, label: str) -> int:
+        return await await_skip_mem_repair(dut, want, label)
+
+    def _drive_isolate_pin(self, dut, level: int | None) -> None:
+        drive_isolate_pin(dut, level)
+
+    async def _prove_skip_mem_repair_tracks_isolate_pin(self, dut) -> None:
+        """Both polarities of the isolate pin on one `skip_mem_repair_o` probe.
+
+        ISOLATE_REQ_PINEN_REG has been programmed to all ones by the testcase
+        module, no FLR has been signalled and ISOLATE_REQ_SMC_REG resets to 0,
+        so of the isolation sources `clk_rst.adoc` names the enabled pin is the
+        only one that moves between the three samples below. Driving the pin low
+        is also what lets the fuse-sense edges of the reset cycles that follow
+        happen with the repair path enabled at all -- with the pin floating,
+        every sense edge in this package is a bypassed one.
+        """
+        self.skip_pin_floating = self._skip_mem_repair(dut)
+        self._drive_isolate_pin(dut, 0)
+        low_cycles = await self._await_skip_mem_repair(dut, 0, "isolate pin low")
+        self.skip_pin_low = self._skip_mem_repair(dut)
+        self._drive_isolate_pin(dut, 1)
+        high_cycles = await self._await_skip_mem_repair(dut, 1, "isolate pin high")
+        self.skip_pin_high = self._skip_mem_repair(dut)
+        # Back to low for the reset cycles below, so their fuse-sense edges are
+        # taken with the repair path enabled.
+        self._drive_isolate_pin(dut, 0)
+        await self._await_skip_mem_repair(dut, 0, "isolate pin low again")
+        assert self.skip_pin_low == 0 and self.skip_pin_high == 1, (
+            f"skip_mem_repair_o did not follow the isolate-request pin: "
+            f"low->{self.skip_pin_low} high->{self.skip_pin_high}"
+        )
+        cocotb.log.info(
+            "CHK-SKIP-MEM-REPAIR-PIN: tb_skip_mem_repair_o read %d with the "
+            "isolate-request pad undriven, %d within %d clk_smc_i cycles of "
+            "driving it low, and %d within %d cycles of driving it high, with "
+            "ISOLATE_REQ_PINEN_REG at all ones, no FLR signalled and "
+            "ISOLATE_REQ_SMC_REG at its reset 0",
+            self.skip_pin_floating,
+            self.skip_pin_low,
+            low_cycles,
+            self.skip_pin_high,
+            high_cycles,
+        )
+
     async def body(self) -> None:
+        dut = cocotb.top
+        await self._prove_skip_mem_repair_tracks_isolate_pin(dut)
         await self._send(SmcResetOp.SAMPLE)
         for _ in range(self.REPEATS):
             await self._send(SmcResetOp.COLD_RST_LO)
@@ -118,4 +203,48 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
             f"expected {expected_raw} checked mid-assert hold samples "
             f"({self.REPEATS + 1} legs x {self.MID_ASSERT_HOLD_REF_CYCLES} "
             f"clk_ref_i edges), scoreboard saw {sb.reset_raw_checks_seen}"
+        )
+        await self._prove_fuse_sense_completes_with_repair_enabled(dut)
+        # Release the pad override so nothing after this sequence inherits it.
+        self._drive_isolate_pin(dut, None)
+
+    async def _prove_fuse_sense_completes_with_repair_enabled(self, dut) -> None:
+        """Fuse sense finishes again after the resets, repair path enabled.
+
+        `fuse_sense_done` is cleared by `rst_primary_smc_clk_no`, which every
+        cold assert above drives low, so the sense FSM has to re-run and
+        re-complete after the last release. Nothing in this package observed
+        that re-completion, and nothing observed it with the repair path
+        enabled -- the isolate pin is still held low here, so
+        `skip_mem_repair_o` must read 0 at the moment sense completes rather
+        than the 1 the floating pad produces.
+        """
+        last = -1
+        for cycle in range(1, _SENSE_BOUND + 1):
+            await ClockCycles(dut.clk_smc_i, 1)
+            raw = dut.tb_fuse_sense_done.value
+            assert raw.is_resolvable, f"tb_fuse_sense_done is X/Z: {raw}"
+            last = int(raw) & 1
+            if last == 1:
+                break
+        else:
+            raise AssertionError(
+                f"tb_fuse_sense_done never rose within {_SENSE_BOUND} clk_smc_i "
+                f"cycles of the last reset release (last={last}): fuse sense "
+                f"did not re-complete after the repeated cold resets"
+            )
+        self.skip_at_sense_done = self._skip_mem_repair(dut)
+        assert self.skip_at_sense_done == 0, (
+            f"skip_mem_repair_o read {self.skip_at_sense_done} when fuse sense "
+            f"completed while the isolate-request pin was held low; the repair "
+            f"path was bypassed with nothing requesting isolation"
+        )
+        cocotb.log.info(
+            "CHK-SENSE-DONE-REPAIR-ENABLED: tb_fuse_sense_done rose %d "
+            "clk_smc_i cycles after the last reset release with "
+            "tb_skip_mem_repair_o reading %d (isolate pin held low), against "
+            "the %d it reads with the pad undriven",
+            cycle,
+            self.skip_at_sense_done,
+            self.skip_pin_floating,
         )

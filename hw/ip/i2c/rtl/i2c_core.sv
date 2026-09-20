@@ -234,26 +234,26 @@ module i2c_core
   logic target_rx_fifo_error;
 
   // Interrupt
-  logic fmt_threshold_intr_test, fmt_threshold_intr_en, fmt_threshold_intr_req;
-  logic rx_threshold_intr_test, rx_threshold_intr_en, rx_threshold_intr_req;
-  logic acq_threshold_intr_test, acq_threshold_intr_en, acq_threshold_intr_req;
-  logic rx_overflow_intr_test, rx_overflow_intr_en;
-  logic controller_halt_intr_test, controller_halt_intr_en, controller_halt_intr_req;
-  logic scl_interference_intr_test, scl_interference_intr_en;
-  logic sda_interference_intr_test, sda_interference_intr_en;
-  logic stretch_timeout_intr_test, stretch_timeout_intr_en;
-  logic sda_unstable_intr_test, sda_unstable_intr_en;
-  logic cmd_complete_intr_test, cmd_complete_intr_en;
-  logic tx_stretch_intr_test, tx_stretch_intr_en, tx_stretch_intr_req;
-  logic tx_threshold_intr_test, tx_threshold_intr_en, tx_threshold_intr_req;
-  logic acq_stretch_intr_test, acq_stretch_intr_en, acq_stretch_intr_req;
-  logic unexp_stop_intr_test, unexp_stop_intr_en;
-  logic host_timeout_intr_test, host_timeout_intr_en;
-  logic smbalert_intr_test, smbalert_intr_en;
-  logic controller_tx_fifo_error_intr_test, controller_tx_fifo_error_intr_en;
-  logic controller_rx_fifo_error_intr_test, controller_rx_fifo_error_intr_en;
-  logic target_tx_fifo_error_intr_test, target_tx_fifo_error_intr_en;
-  logic target_rx_fifo_error_intr_test, target_rx_fifo_error_intr_en;
+  logic fmt_threshold_intr_test, fmt_threshold_intr_req;
+  logic rx_threshold_intr_test, rx_threshold_intr_req;
+  logic acq_threshold_intr_test, acq_threshold_intr_req;
+  logic rx_overflow_intr_test;
+  logic controller_halt_intr_test, controller_halt_intr_req;
+  logic scl_interference_intr_test;
+  logic sda_interference_intr_test;
+  logic stretch_timeout_intr_test;
+  logic sda_unstable_intr_test;
+  logic cmd_complete_intr_test;
+  logic tx_stretch_intr_test, tx_stretch_intr_req;
+  logic tx_threshold_intr_test, tx_threshold_intr_req;
+  logic acq_stretch_intr_test, acq_stretch_intr_req;
+  logic unexp_stop_intr_test;
+  logic host_timeout_intr_test;
+  logic smbalert_intr_test;
+  logic controller_tx_fifo_error_intr_test;
+  logic controller_rx_fifo_error_intr_test;
+  logic target_tx_fifo_error_intr_test;
+  logic target_rx_fifo_error_intr_test;
 
   assign reg_in_o.STATUS.FMTFULL.next          = !fmt_fifo_wready;
   assign reg_in_o.STATUS.RXFULL.next           = !rx_fifo_wready;
@@ -963,25 +963,37 @@ module i2c_core
   // Interrupt Logic //
   /////////////////////
 
-  assign fmt_threshold_intr_req   = (fmt_lt_threshold || fmt_threshold_intr_test) &&
-                                      fmt_threshold_intr_en;
-  assign rx_threshold_intr_req    = (rx_gt_threshold || rx_threshold_intr_test) &&
-                                      rx_threshold_intr_en;
-  assign acq_threshold_intr_req   = (acq_gt_threshold || acq_threshold_intr_test) &&
-                                      acq_threshold_intr_en;
-  assign controller_halt_intr_req = (status_controller_halt || controller_halt_intr_test) &&
-                                      controller_halt_intr_en;
-  assign tx_stretch_intr_req      = (event_tx_stretch || tx_stretch_intr_test) &&
-                                      tx_stretch_intr_en;
-  assign tx_threshold_intr_req    = (tx_lt_threshold || tx_threshold_intr_test) &&
-                                      tx_threshold_intr_en;
-  assign acq_stretch_intr_req     = (event_acq_stretch || acq_stretch_intr_test) &&
-                                      acq_stretch_intr_en;
+  assign fmt_threshold_intr_req   = fmt_lt_threshold || fmt_threshold_intr_test;
+  assign rx_threshold_intr_req    = rx_gt_threshold || rx_threshold_intr_test;
+  assign acq_threshold_intr_req   = acq_gt_threshold || acq_threshold_intr_test;
+  assign controller_halt_intr_req = status_controller_halt || controller_halt_intr_test;
+  assign tx_stretch_intr_req      = event_tx_stretch || tx_stretch_intr_test;
+  assign tx_threshold_intr_req    = tx_lt_threshold || tx_threshold_intr_test;
+  assign acq_stretch_intr_req     = event_acq_stretch || acq_stretch_intr_test;
 
-  assign irq_o = reg_out_i.INTR_STATE.intr ||
-                   |{fmt_threshold_intr_req, rx_threshold_intr_req, acq_threshold_intr_req,
-                     controller_halt_intr_req, tx_stretch_intr_req, tx_threshold_intr_req,
-                     acq_stretch_intr_req};
+  // Event-type status bits latch whether or not the interrupt is enabled
+  // Clear only on W1C; INTR_ENABLE masks the output
+  assign irq_o =
+        (reg_out_i.INTR_STATE.RX_OVERFLOW.value              && reg_out_i.INTR_ENABLE.RX_OVERFLOW.value) ||
+        (reg_out_i.INTR_STATE.SCL_INTERFERENCE.value         && reg_out_i.INTR_ENABLE.SCL_INTERFERENCE.value) ||
+        (reg_out_i.INTR_STATE.SDA_INTERFERENCE.value         && reg_out_i.INTR_ENABLE.SDA_INTERFERENCE.value) ||
+        (reg_out_i.INTR_STATE.STRETCH_TIMEOUT.value          && reg_out_i.INTR_ENABLE.STRETCH_TIMEOUT.value) ||
+        (reg_out_i.INTR_STATE.SDA_UNSTABLE.value             && reg_out_i.INTR_ENABLE.SDA_UNSTABLE.value) ||
+        (reg_out_i.INTR_STATE.CMD_COMPLETE.value             && reg_out_i.INTR_ENABLE.CMD_COMPLETE.value) ||
+        (reg_out_i.INTR_STATE.UNEXP_STOP.value               && reg_out_i.INTR_ENABLE.UNEXP_STOP.value) ||
+        (reg_out_i.INTR_STATE.HOST_TIMEOUT.value             && reg_out_i.INTR_ENABLE.HOST_TIMEOUT.value) ||
+        (reg_out_i.INTR_STATE.SMBALERT.value                 && reg_out_i.INTR_ENABLE.SMBALERT.value) ||
+        (reg_out_i.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value && reg_out_i.INTR_ENABLE.CONTROLLER_TX_FIFO_ERROR.value) ||
+        (reg_out_i.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value && reg_out_i.INTR_ENABLE.CONTROLLER_RX_FIFO_ERROR.value) ||
+        (reg_out_i.INTR_STATE.TARGET_TX_FIFO_ERROR.value     && reg_out_i.INTR_ENABLE.TARGET_TX_FIFO_ERROR.value) ||
+        (reg_out_i.INTR_STATE.TARGET_RX_FIFO_ERROR.value     && reg_out_i.INTR_ENABLE.TARGET_RX_FIFO_ERROR.value) ||
+        (fmt_threshold_intr_req                              && reg_out_i.INTR_ENABLE.FMT_THRESHOLD.value) ||
+        (rx_threshold_intr_req                               && reg_out_i.INTR_ENABLE.RX_THRESHOLD.value) ||
+        (acq_threshold_intr_req                              && reg_out_i.INTR_ENABLE.ACQ_THRESHOLD.value) ||
+        (controller_halt_intr_req                            && reg_out_i.INTR_ENABLE.CONTROLLER_HALT.value) ||
+        (tx_stretch_intr_req                                 && reg_out_i.INTR_ENABLE.TX_STRETCH.value) ||
+        (tx_threshold_intr_req                               && reg_out_i.INTR_ENABLE.TX_THRESHOLD.value) ||
+        (acq_stretch_intr_req                                && reg_out_i.INTR_ENABLE.ACQ_STRETCH.value);
 
 
   ///////////////
@@ -992,45 +1004,24 @@ module i2c_core
   assign reg_in_o.INTR_STATE.FMT_THRESHOLD.next            = fmt_threshold_intr_req;
   assign reg_in_o.INTR_STATE.RX_THRESHOLD.next             = rx_threshold_intr_req;
   assign reg_in_o.INTR_STATE.ACQ_THRESHOLD.next            = acq_threshold_intr_req;
-  assign reg_in_o.INTR_STATE.RX_OVERFLOW.next              = (event_rx_overflow        || rx_overflow_intr_test)      && rx_overflow_intr_en;
+  assign reg_in_o.INTR_STATE.RX_OVERFLOW.next              = event_rx_overflow || rx_overflow_intr_test;
   assign reg_in_o.INTR_STATE.CONTROLLER_HALT.next          = controller_halt_intr_req;
-  assign reg_in_o.INTR_STATE.SCL_INTERFERENCE.next         = (event_scl_interference   || scl_interference_intr_test) && scl_interference_intr_en;
-  assign reg_in_o.INTR_STATE.SDA_INTERFERENCE.next         = (event_sda_interference   || sda_interference_intr_test) && sda_interference_intr_en;
-  assign reg_in_o.INTR_STATE.STRETCH_TIMEOUT.next          = (event_stretch_timeout    || stretch_timeout_intr_test)  && stretch_timeout_intr_en;
-  assign reg_in_o.INTR_STATE.SDA_UNSTABLE.next             = (event_sda_unstable       || sda_unstable_intr_test)     && sda_unstable_intr_en;
-  assign reg_in_o.INTR_STATE.CMD_COMPLETE.next             = (event_cmd_complete       || cmd_complete_intr_test)     && cmd_complete_intr_en;
+  assign reg_in_o.INTR_STATE.SCL_INTERFERENCE.next         = event_scl_interference || scl_interference_intr_test;
+  assign reg_in_o.INTR_STATE.SDA_INTERFERENCE.next         = event_sda_interference || sda_interference_intr_test;
+  assign reg_in_o.INTR_STATE.STRETCH_TIMEOUT.next          = event_stretch_timeout || stretch_timeout_intr_test;
+  assign reg_in_o.INTR_STATE.SDA_UNSTABLE.next             = event_sda_unstable || sda_unstable_intr_test;
+  assign reg_in_o.INTR_STATE.CMD_COMPLETE.next             = event_cmd_complete || cmd_complete_intr_test;
   assign reg_in_o.INTR_STATE.TX_STRETCH.next               = tx_stretch_intr_req;
   assign reg_in_o.INTR_STATE.TX_THRESHOLD.next             = tx_threshold_intr_req;
   assign reg_in_o.INTR_STATE.ACQ_STRETCH.next              = acq_stretch_intr_req;
-  assign reg_in_o.INTR_STATE.UNEXP_STOP.next               = (event_unexp_stop         || unexp_stop_intr_test)               && unexp_stop_intr_en;
-  assign reg_in_o.INTR_STATE.HOST_TIMEOUT.next             = (event_host_timeout       || host_timeout_intr_test)             && host_timeout_intr_en;
-  assign reg_in_o.INTR_STATE.SMBALERT.next                 = (~smbalert_n              || smbalert_intr_test)                 && smbalert_intr_en;
-  assign reg_in_o.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.next = (controller_tx_fifo_error || controller_tx_fifo_error_intr_test) && controller_tx_fifo_error_intr_en;
-  assign reg_in_o.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.next = (controller_rx_fifo_error || controller_rx_fifo_error_intr_test) && controller_rx_fifo_error_intr_en;
-  assign reg_in_o.INTR_STATE.TARGET_TX_FIFO_ERROR.next     = (target_tx_fifo_error     || target_tx_fifo_error_intr_test)     && target_tx_fifo_error_intr_en;
-  assign reg_in_o.INTR_STATE.TARGET_RX_FIFO_ERROR.next     = (target_rx_fifo_error     || target_rx_fifo_error_intr_test)     && target_rx_fifo_error_intr_en;
+  assign reg_in_o.INTR_STATE.UNEXP_STOP.next               = event_unexp_stop || unexp_stop_intr_test;
+  assign reg_in_o.INTR_STATE.HOST_TIMEOUT.next             = event_host_timeout || host_timeout_intr_test;
+  assign reg_in_o.INTR_STATE.SMBALERT.next                 = ~smbalert_n || smbalert_intr_test;
+  assign reg_in_o.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.next = controller_tx_fifo_error || controller_tx_fifo_error_intr_test;
+  assign reg_in_o.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.next = controller_rx_fifo_error || controller_rx_fifo_error_intr_test;
+  assign reg_in_o.INTR_STATE.TARGET_TX_FIFO_ERROR.next     = target_tx_fifo_error || target_tx_fifo_error_intr_test;
+  assign reg_in_o.INTR_STATE.TARGET_RX_FIFO_ERROR.next     = target_rx_fifo_error || target_rx_fifo_error_intr_test;
 
-  // INTR_ENABLE Register
-  assign fmt_threshold_intr_en   = reg_out_i.INTR_ENABLE.FMT_THRESHOLD.value;
-  assign rx_threshold_intr_en    = reg_out_i.INTR_ENABLE.RX_THRESHOLD.value;
-  assign acq_threshold_intr_en   = reg_out_i.INTR_ENABLE.ACQ_THRESHOLD.value;
-  assign controller_halt_intr_en = reg_out_i.INTR_ENABLE.CONTROLLER_HALT.value;
-  assign tx_stretch_intr_en      = reg_out_i.INTR_ENABLE.TX_STRETCH.value;
-  assign tx_threshold_intr_en    = reg_out_i.INTR_ENABLE.TX_THRESHOLD.value;
-  assign acq_stretch_intr_en     = reg_out_i.INTR_ENABLE.ACQ_STRETCH.value;
-  assign rx_overflow_intr_en              = reg_out_i.INTR_ENABLE.RX_OVERFLOW.value;
-  assign scl_interference_intr_en         = reg_out_i.INTR_ENABLE.SCL_INTERFERENCE.value;
-  assign sda_interference_intr_en         = reg_out_i.INTR_ENABLE.SDA_INTERFERENCE.value;
-  assign stretch_timeout_intr_en          = reg_out_i.INTR_ENABLE.STRETCH_TIMEOUT.value;
-  assign sda_unstable_intr_en             = reg_out_i.INTR_ENABLE.SDA_UNSTABLE.value;
-  assign cmd_complete_intr_en             = reg_out_i.INTR_ENABLE.CMD_COMPLETE.value;
-  assign unexp_stop_intr_en               = reg_out_i.INTR_ENABLE.UNEXP_STOP.value;
-  assign host_timeout_intr_en             = reg_out_i.INTR_ENABLE.HOST_TIMEOUT.value;
-  assign smbalert_intr_en                 = reg_out_i.INTR_ENABLE.SMBALERT.value;
-  assign controller_tx_fifo_error_intr_en = reg_out_i.INTR_ENABLE.CONTROLLER_TX_FIFO_ERROR.value;
-  assign controller_rx_fifo_error_intr_en = reg_out_i.INTR_ENABLE.CONTROLLER_RX_FIFO_ERROR.value;
-  assign target_tx_fifo_error_intr_en     = reg_out_i.INTR_ENABLE.TARGET_TX_FIFO_ERROR.value;
-  assign target_rx_fifo_error_intr_en     = reg_out_i.INTR_ENABLE.TARGET_RX_FIFO_ERROR.value;
 
   // INTR_TEST Register
   assign fmt_threshold_intr_test            = reg_out_i.INTR_TEST.FMT_THRESHOLD.value;
