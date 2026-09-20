@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-#
-# This APB VIP is scheduled to fold into the shared VIP rather than be
-# renamed in place.
-waive --rule=interface-name-style --regex="interface apb_intf " --location=".*hw/ip/entropy_source/dv/tb_vcs/apb_vip/apb_intf\.sv$"
+
+waive --rule=module-filename --regex="module entropy_source_tb_top" --location=".*hw/ip/entropy_source/dv/tb/tb_top\.sv$"
