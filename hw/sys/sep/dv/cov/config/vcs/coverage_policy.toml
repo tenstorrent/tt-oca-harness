@@ -16,7 +16,7 @@
 
 schema_version = 1
 dut = "sep"
-scope_epoch = "sep-code-cov-v2a"
+scope_epoch = "sep-code-cov-v2b"
 
 # Report-page pruning only. `urg -hier` drops rows from the report but scores
 # the whole database regardless, so this entry keeps the pages aligned with the
@@ -27,10 +27,9 @@ tool = "vcs"
 role = "scope"
 path = "sep_cov_scope.hier"
 apply_phase = "report"
-# `-cm_common_hier` is the report-time half of the compile-time pairing: it makes
-# `-hier` prune assertion pages as well as code pages, so the report matches the
-# instrumented scope instead of showing assertion rows for excluded hierarchy.
-args = ["-hier", "{path}", "-cm_common_hier"]
+# The compile-time `-cm` list has no `assert` metric, so there are no assertion
+# pages for `-cm_common_hier` to prune and the flag is dropped with it.
+args = ["-hier", "{path}"]
 
 # Point-level structural ties in the PeakRDL-generated regblocks. Hierarchy-level
 # scope lives in sep_cov_scope.hier; this file waives individual coverage objects

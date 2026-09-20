@@ -1584,3 +1584,49 @@ A stimulus test was written and withdrawn. `dv/tb/tb_top.sv` carries an
 path crosses the assume above, which sits behind `ifndef VERILATOR` -- so such a leaf
 looks clean on Verilator and fires on VCS, where coverage is measured. The pin defaults
 to zero, changes nothing, and remains as the mechanism if atomic support is ever added.
+
+= Metric scope: assertion coverage is not graded
+
+`sep_sim_cfg.toml` compiles with `-cm line+cond+tgl+fsm+branch`. The `assert`
+metric is absent by decision, not by oversight.
+
+== Reason
+
+SEP assertions are predominantly negative controls: the implication antecedent
+is an illegal condition -- a protocol violation, an out-of-range field, a
+forbidden state transition. VCS scores an assertion as covered only when it
+records a successful attempt, which requires the antecedent to match. This
+environment drives legal stimulus only, by policy, so a negative-control
+assertion cannot record an attempt from any test the policy permits.
+
+That makes the hole uncoverable by construction rather than by a stimulus gap,
+which is the same standard the structural waivers in this document meet: the
+design, not the testbench, decides the arm cannot be taken. Grading the metric
+reports the absence of traffic the stimulus policy forbids.
+
+Measured on the `sep-code-cov-v2a` database, assertion coverage was 52.64%
+(10403 assertions, 4927 uncovered, 79 without attempts). Removing the metric
+moves the headline from 59.23 to 60.33 and leaves every code metric unchanged
+(LINE 58.05, COND 61.81, TOGGLE 59.95, FSM 25.98, BRANCH 57.60, GROUP 98.57).
+The 1.10 is a consequence of the decision, not its purpose.
+
+== What this does NOT do
+
+`-cm assert` governs coverage accounting only. Every assertion stays compiled,
+evaluating, and able to fail a test. An assertion that fires still stops the
+run and still reports. Nothing about the checking surface changes.
+
+== Consequences
+
+* `-cm_common_hier` and its `-lca` opt-in are dropped from both the compile and
+  the report. Their only purpose was extending `-cm_hier` from the code metrics
+  to assertion coverage; with no assertion metric there is nothing to scope.
+* The report no longer renders assertion pages, so `asserts.txt` -- which also
+  carried the Failure and Incomplete tallies -- is gone. Assertion failures
+  still surface per test in the simulation log and in `results.xml`.
+
+== When to restore it
+
+Add `+assert` back if SEP gains an illegal-stimulus or error-injection
+environment. At that point the negative controls become reachable and the
+metric measures a real gap again.
