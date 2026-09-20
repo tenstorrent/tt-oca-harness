@@ -1555,3 +1555,32 @@ updated to match it.
   four-value `program_status` enumeration and the `& 0x3` mask -- and
   should both operation sequences gain a step that reads
   `EFUSE_INTERFACE_CTRL_STATUS` bits 5 and 6?
+
+== axi_atop_filter: unreachable by construction
+
+The 31 `axi_atop_filter` instances in SEP have an entirely uncovered active path. They
+are unreachable in the delivered system, and the evidence spans two subsystems because
+the enforcement does.
+
+SEP ships as part of SMU, not standalone, so the inbound port is only ever driven by
+`smu_axi_xbar`, instantiated with `.ATOPs (1'b0)` at
+`hw/sys/smu/rtl/smu_axi_xbar.sv:131`. An atomic cannot reach SEP.
+
+Inside SEP the same decision is applied throughout: `ATOPs(1'b0)` at
+`rtl/crossbars/sep_system_peripherals_xbar.sv:116`, `sep_local_axi_xbar.sv:266`,
+`sep_cpu.sv:596`, `sep_crypto.sv:560`, `sep_crypto_axi_interconnect.sv:275` and
+`axi_filter_wrap.sv:277`, plus `NoAtopAllowed` (`axi_filter_wrap.sv:242` ->
+an assume at `axi_demux_simple.sv:570`). `sep_cpu.sv:467-469` ties `atop` for the three
+VeeR masters.
+
+Citing SMU here is deliberate and is the correct scope for a waiver: the exclusion
+describes the system being measured. It would NOT be correct evidence for a claim about
+SEP's standalone interface specification, which ends at `sep_wrapper.sv:85`. That
+distinction cost a round trip on a since-closed issue, and is worth keeping in mind for
+the next waiver that reaches outside the subsystem.
+
+A stimulus test was written and withdrawn. `dv/tb/tb_top.sv` carries an
+`m_axi_awatop_drive` pin that makes an atomic presentable on the inbound port, but the
+path crosses the assume above, which sits behind `ifndef VERILATOR` -- so such a leaf
+looks clean on Verilator and fires on VCS, where coverage is measured. The pin defaults
+to zero, changes nothing, and remains as the mechanism if atomic support is ever added.
