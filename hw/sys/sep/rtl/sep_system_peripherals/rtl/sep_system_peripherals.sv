@@ -81,6 +81,8 @@ module sep_system_peripherals (
 
   sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_system_peripheral_56_axi_req;
   sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_system_peripheral_56_axi_resp;
+  sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_system_peripheral_56_remapped_precut_axi_req;
+  sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_system_peripheral_56_remapped_precut_axi_resp;
   sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_system_peripheral_56_remapped_axi_req;
   sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_system_peripheral_56_remapped_axi_resp;
 
@@ -165,8 +167,26 @@ module sep_system_peripherals (
     .remap_debug_o                 (local_masters_remap_debug_o),
     .axi_in_req_i                  (sep_system_peripheral_56_axi_req),
     .axi_in_resp_o                 (sep_system_peripheral_56_axi_resp),
-    .axi_out_req_o                 (sep_system_peripheral_56_remapped_axi_req),
-    .axi_out_resp_i                (sep_system_peripheral_56_remapped_axi_resp)
+    .axi_out_req_o                 (sep_system_peripheral_56_remapped_precut_axi_req),
+    .axi_out_resp_i                (sep_system_peripheral_56_remapped_precut_axi_resp)
+  );
+
+  axi_cut #(
+    .Bypass     (1'b0),
+    .aw_chan_t  (sep_pkg::sep_system_peripherals_internal_axi_aw_chan_t),
+    .w_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_w_chan_t),
+    .b_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_b_chan_t),
+    .ar_chan_t  (sep_pkg::sep_system_peripherals_internal_axi_ar_chan_t),
+    .r_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_r_chan_t),
+    .axi_req_t  (sep_pkg::sep_system_peripherals_internal_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_system_peripherals_internal_axi_resp_t)
+  ) u_local_master_remap_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (sep_system_peripheral_56_remapped_precut_axi_req),
+    .slv_resp_o (sep_system_peripheral_56_remapped_precut_axi_resp),
+    .mst_req_o  (sep_system_peripheral_56_remapped_axi_req),
+    .mst_resp_i (sep_system_peripheral_56_remapped_axi_resp)
   );
 
   ////////////////////////////////////
