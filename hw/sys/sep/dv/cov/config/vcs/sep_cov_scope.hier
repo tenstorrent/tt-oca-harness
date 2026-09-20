@@ -240,13 +240,3 @@
 // contract, and belongs out of the number with its parent.
 -module efuse_bank_reg
 
-// KMAC application interface. SEP's only KMAC is kmac_wrapper.sv:161, and its
-// application port is tied off: :186 drives .app_i('0) and leaves .app_o
-// unconnected. No other driver exists -- app_i appears nowhere else in
-// hw/sys/sep/rtl, and sep_crypto.sv:470 exposes no app port. The wrapper's one
-// hardware key path is keymgr_key_i (:190), fed by its own key CSRs, which
-// never asserts app_i.valid. app_req.req_valid is therefore constant zero and
-// the app FSM cannot leave StIdle, so every StAppCfg..StAppFinish arm, the
-// SelApp/SelOutLen message mux and the app digest assembly are integration
-// tie-off rather than a stimulus gap.
--module kmac_app

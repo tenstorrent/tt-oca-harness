@@ -1252,10 +1252,118 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_cov_kpv_seal.parhex"]
 
+#
+# FSM-transition coverage-stimulus leaves. Merge into testlists/stim.toml and
+# add each name to the `all` group in testlists/all.toml.
+#
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. SHAKE message lengths that stop
+# one Keccak word short of the rate, so the sha3pad pad beat is the last word of
+# the block and the FSM takes its StPad -> StPadRun -> StPadFlush exit.
+name = "sep_cov_kmac_pad_block_aligned_test"
+module = "crypto.sep_cov_kmac_pad_block_aligned_test"
+seed = 1
+timeout_sec = 10800
+tags = ["coverage", "stimulus", "crypto", "kmac", "sha3", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. KMAC declared ready with no
+# entropy mode selected, then released with CMD.err_processed, for the
+# kmac_entropy StRandErrIncorrectMode / StRandErr branch and its recovery.
+name = "sep_cov_kmac_entropy_mode_error_test"
+module = "crypto.sep_cov_kmac_entropy_mode_error_test"
+seed = 1
+timeout_sec = 10800
+tags = ["coverage", "stimulus", "crypto", "kmac", "entropy", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. CMD.entropy_req from the ready
+# state with a one-tick ENTROPY_PERIOD wait timer, for the kmac_entropy
+# StRandReady -> StRandEdn and StRandEdn -> StRandErrWaitExpired arcs.
+name = "sep_cov_kmac_entropy_wait_timer_test"
+module = "crypto.sep_cov_kmac_entropy_wait_timer_test"
+seed = 1
+timeout_sec = 10800
+tags = ["coverage", "stimulus", "crypto", "kmac", "entropy", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. CMD.err_processed written while
+# the stage is still live, for the kmac_errchk StMsgFeed / StProcessing /
+# StSqueezing returns to StIdle.
+name = "sep_cov_kmac_errchk_clear_midflow_test"
+module = "crypto.sep_cov_kmac_errchk_clear_midflow_test"
+seed = 1
+timeout_sec = 10800
+tags = ["coverage", "stimulus", "crypto", "kmac", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. ZEROIZE written at seeded
+# offsets inside a running ML-DSA / ML-KEM keygen, for the abr_sha3pad returns
+# to StPadIdle from StMessage, StPad, StPad01 and StPadRun.
+name = "sep_cov_abr_zeroize_midabsorb_test"
+module = "crypto.sep_cov_abr_zeroize_midabsorb_test"
+seed = 1
+timeout_sec = 14400
+tags = ["coverage", "stimulus", "crypto", "abr", "sha3", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. An AES clear trigger withdrawn
+# by a second TRIGGER write before the clear starts, for the aes_control_fsm
+# CTRL_GHASH_READY -> CTRL_IDLE arc.
+name = "sep_cov_aes_trigger_overwrite_test"
+module = "crypto.sep_cov_aes_trigger_overwrite_test"
+seed = 1
+timeout_sec = 10800
+tags = ["coverage", "stimulus", "crypto", "aes", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. ABR register writes with B held
+# off, for the axi4_to_ahb DATA_WR -> DONE_WR -> IDLE arcs in the ABR wrapper.
+name = "sep_cov_abr_ahb_bresp_stall_test"
+module = "system.sep_cov_abr_ahb_bresp_stall_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "abr", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. ABR writes and reads started
+# together with R and B held off, for the axi4_to_ahb DATA_WR -> CMD_RD arc and
+# the axi_id_remap HoldAR / HoldAW / HoldAx states.
+name = "sep_cov_abr_ahb_rw_interleave_test"
+module = "system.sep_cov_abr_ahb_rw_interleave_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "fabric", "axi", "abr", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
 [[groups]]
 # The stimulus suite on its own: `--items stim`.
 name = "stim"
-expected_count = 80
+expected_count = 88
 tests = [
     "sep_cov_alias_remap_cacheable_test",
     "sep_cov_alias_remap_region_sweep_test",
@@ -1337,4 +1445,12 @@ tests = [
     "sep_cov_hmac_stop_continue_test",
     "sep_cov_km_kpv_seal_all_slots_test",
     "sep_cov_kmac_err_squeeze_walk_test",
+    "sep_cov_abr_ahb_bresp_stall_test",
+    "sep_cov_abr_ahb_rw_interleave_test",
+    "sep_cov_abr_zeroize_midabsorb_test",
+    "sep_cov_aes_trigger_overwrite_test",
+    "sep_cov_kmac_entropy_mode_error_test",
+    "sep_cov_kmac_entropy_wait_timer_test",
+    "sep_cov_kmac_errchk_clear_midflow_test",
+    "sep_cov_kmac_pad_block_aligned_test",
 ]
