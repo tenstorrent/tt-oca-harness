@@ -134,6 +134,18 @@ the completion record, and a manifest it cannot trust or run leaves an
 `ERROR` result whose reason starts with `environment_error`. Checked by the
 worker tests in `tools/dv/tests`.
 
+|Cluster job files: `<run>/stages/regress/scripts/<task>.sh`,
+`logs/<task>.log`, `logs/executor.log`, and `jobs/cancel-unconfirmed.json`
+|`tools/dv/runlib/executors/cluster.py`
+|The scheduler, which receives the script as `{script}` and the log as
+`{joblog}` in `submit_argv`; operators reading a run
+|The script exports the executor's `env_passthrough` values, changes to the
+checkout, and execs `worker_argv`. The executor log holds every scheduler
+command with its status and output. The unconfirmed-cancel record lists the
+job ids an interrupted run could not confirm stopped. Checked by
+`tools/dv/tests/test_cluster_executor.py`, which drives both drivers through
+fake scheduler commands.
+
 |Runner command line and run tree: `run_dv.py` options; the
 `<dut-dv-root>/build/runs/<stamp>__<tool>__<label>/` layout with `stages/`,
 per-leaf directories, and `cov/`

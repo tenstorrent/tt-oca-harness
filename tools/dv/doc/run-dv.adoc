@@ -49,7 +49,9 @@ commands, and same-seed replay metadata.
 
 |`runlib/executors/`
 |The executor contract (submit, poll, cancel, collect), the local executor,
-and the leaf manifest that describes one attempt.
+the cluster executor that runs the registry's argv templates, the LSF and
+Slurm dialects that read scheduler output, and the leaf manifest that
+describes one attempt.
 
 |`runlib/worker.py`
 |The `--worker-manifest` entry point: one leaf attempt on a farm machine.
@@ -161,8 +163,9 @@ The dispatch mechanism for leaves, declared in `executors.toml` and selected
 with `--executor` or the profile's `[scheduler] default_executor`. Every
 executor implements the same four operations, submit, poll, cancel, and
 collect, and the regression loop runs on them (<<runner-executor-registry>>).
-`local` runs leaves in this process; a cluster entry names a scheduler driver
-and validates, and dispatches only when the runner implements that driver.
+`local` runs leaves in this process; a cluster entry names a scheduler driver,
+`lsf` or `slurm`, and runs each leaf attempt as a scheduler job through the
+commands the registry declares (<<runner-cluster-dispatch>>).
 
 == Prerequisites and bootstrap
 
@@ -1214,8 +1217,9 @@ thread; above that, a thread pool of that size runs them.
 |`kind = "cluster"`, `driver`
 |cluster
 |A scheduler driver, `lsf` or `slurm`. The entry validates and appears in
-`--doctor` whether or not the runner implements the driver; selecting an
-entry whose driver the runner lacks is a configuration error.
+`--doctor`; selecting an entry whose driver the runner has no dialect for, or
+whose `history_parser` that dialect does not implement, is a configuration
+error.
 
 |`binaries`
 |cluster
@@ -1239,13 +1243,17 @@ queue is set. `{job_ids_argv}` splices one token per job id.
 
 |`limits`
 |cluster
-|Coordinator knobs: `max_in_flight`, `submit_batch_size`, `query_batch_size`,
-`poll_interval_sec`, `artifact_grace_sec`, `cancel_grace_sec`.
+|Coordinator knobs, with the value an unset key takes in parentheses:
+`max_in_flight` (unbounded), `submit_batch_size` (25), `query_batch_size`
+(100), `poll_interval_sec` (10), `artifact_grace_sec` (60), `cancel_grace_sec`
+(30), `command_timeout_sec` (120). <<runner-cluster-dispatch>> says what each
+one bounds.
 
 |`env_passthrough`, `history_parser`, `description`
 |cluster
-|Variables the submission forwards, the named parser for `history_argv`
-output, and a free-text note.
+|Variables whose values at submission the job script exports before the
+worker starts; the named parser for `history_argv` output (`lsf_bhist_long`
+for LSF; `slurm_sacct` or `slurm_scontrol` for Slurm); a free-text note.
 
 |`setup_hook`
 |cluster, site layer only
@@ -1309,6 +1317,83 @@ value. A site layer supplies the site's queue names, resource defaults,
 limits and `setup_hook`, replaces a template whose unit or flag differs at
 that site (an LSF cluster that counts memory in gigabytes renders
 `{mem_gb}`), or adds an executor the registry lacks.
+
+[[runner-cluster-dispatch]]
+==== Cluster dispatch
+
+A run selects a cluster executor with `--executor`, and the flow's
+`[scheduler] allowed` list must name it. `--sim-jobs` is then the number of
+attempts queued or running at once, bounded by the executor's
+`limits.max_in_flight`; the coordinator submits at most `submit_batch_size`
+attempts between two polls and asks about at most `query_batch_size` job ids
+per query command. A dry run submits nothing.
+
+Every attempt is one job. The coordinator writes the leaf manifest, then a job
+script at `<run>/stages/regress/scripts/<task>.sh` that exports the
+`env_passthrough` values, changes to the checkout, and execs `worker_argv`
+(`run_dv.py --worker-manifest <manifest>` unless the registry says otherwise),
+and renders `submit_argv` with that script as `{script}`,
+`<run>/stages/regress/logs/<task>.log` as `{joblog}`, and
+`ocah.<run>.<task>` as `{jobname}`. Every scheduler command the executor runs,
+with its status and output, is appended to
+`<run>/stages/regress/logs/executor.log`; a leaf graded from a job carries the
+job id and final scheduler state under `metadata.scheduler` and its job log
+under `artifacts.executor_log`.
+
+The scheduler decides only whether an attempt is over. Each poll maps the
+driver's native states onto one lifecycle:
+
+[cols="<2,<5",options="header"]
+|===
+|State |Meaning, and the leaf's grade when the job left no `result.json`
+
+|`QUEUED`, `RUNNING`, `SUSPENDED`
+|Live in the scheduler. `SUSPENDED` waits like `RUNNING`.
+
+|`RECONCILING`
+|Missing from the live query, or reported finished before its `result.json`
+is visible. The completion record and `result.json` settle it first, then
+`history_argv`, and `artifact_grace_sec` without either ends the wait: a
+finished job grades `ERROR` (`environment_error`), a missing one is `LOST`.
+
+|`SUCCEEDED`, `FAILED`
+|The job ran to its end. The leaf's own `result.json` grades it, with the
+exit code recovered from the query or the completion record when the
+scheduler reports none; no `result.json` within the grace is `ERROR`
+(`environment_error`).
+
+|`TIMED_OUT`
+|The scheduler's wall time expired: `TIMEOUT`, with the job log as the
+leaf's log.
+
+|`CANCELLED`
+|Stopped by this run's cancellation: an interrupted leaf, as in a local run.
+
+|`PREEMPTED`, `LOST`
+|Preempted, requeued, or gone without a record: `ERROR`
+(`environment_error`), which `--retry` reruns as a new attempt.
+|===
+
+A query that fails, or hangs past `command_timeout_sec`, leaves every asked
+job in its previous state and doubles the next wait, up to eight times
+`poll_interval_sec`; five consecutive failed queries, or three consecutive
+refused submissions, abort the run, which cancels its jobs and writes the
+interrupted summary with `interruption.kind = "executor"` and exit status
+`2`. A single refused submission grades that attempt `ERROR`. On
+interruption the coordinator renders `cancel_argv` for the run's own job ids
+only, then confirms each within `cancel_grace_sec` by query; a job the
+scheduler reports finished counts as confirmed, and the ids it does not know
+or does not confirm are written to
+`<run>/stages/regress/jobs/cancel-unconfirmed.json` for the operator.
+
+Hosted CI has no scheduler, so `tools/dv/tests/test_cluster_executor.py`
+drives both drivers through `tools/dv/tests/fake_scheduler.py`, which answers
+with the output shapes the production schedulers print, including a
+submission filter's stderr banner, the `ERROR` record `bjobs -json` returns
+for an unknown id, `bkill`'s status 255 for a finished job, `squeue`'s
+failure for an id the controller dropped, and `scancel`'s success for any id.
+The state maps and parsers live in `runlib/executors/lsf.py` and
+`runlib/executors/slurm.py`.
 
 ==== Leaf manifests and the worker
 
@@ -2277,16 +2362,19 @@ them in automation.
 |Choose terminal rendering. Default: `auto`.
 
 |`--sim-jobs N`
-|Set scheduler fan-out. Default: `1`; must be at least `1`.
+|Set scheduler fan-out. Default: `1`; must be at least `1`. On a cluster
+executor it is the number of attempts queued or running at once, bounded by
+the executor's `limits.max_in_flight`.
 
 |`--build-jobs N`
 |Set backend/model build concurrency when configuration does not supply it;
 otherwise derives from `--sim-jobs`.
 
 |`--executor NAME`
-|Select an executor the flow allows. `local` dispatches; a cluster executor
-validates and appears in `--doctor`, and selecting one whose driver the
-runner lacks is a configuration error.
+|Select an executor the flow's `[scheduler] allowed` list permits. `local`
+runs leaves in this process; `lsf` and `slurm` submit each attempt as a job
+(<<runner-cluster-dispatch>>). Selecting an entry whose driver the runner
+lacks is a configuration error, and a dry run dispatches nothing.
 
 |`--queue NAME`, `--cores N`, `--mem-mb MB`, `--walltime TIME`
 |The leaves' resource request. The command line wins over a stage's
@@ -2856,8 +2944,9 @@ tools. A pair joins the workflow matrix only with a qualifying run at head.
 developer-host flow: hosted CI runs no formal job and no formal result
 reaches the dashboard (<<runner-formal>>). The `smu_wrapper` SEP firmware
 items are in its `all` but need the RISC-V toolchain container, which hosted
-runners lack, so the workflows select `hosted`. Non-local executor dispatch is
-not implemented.
+runners lack, so the workflows select `hosted`. Hosted runners have no
+scheduler; the cluster executors are checked there against fake scheduler
+commands (<<runner-cluster-dispatch>>).
 |===
 
 === Framework-aware CI matrices

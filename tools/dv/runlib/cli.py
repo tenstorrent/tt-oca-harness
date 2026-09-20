@@ -73,6 +73,7 @@ from .duts import (
     resolve_dut,
 )
 from .executors import (
+    ClusterError,
     build_executor,
     dispatch_blocker,
     executor_driver,
@@ -394,7 +395,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--executor",
         default=None,
         metavar="NAME",
-        help="Executor from executors.toml (`local` is the implemented dispatch)",
+        help="Executor from executors.toml (`local`, or a cluster entry the run may use)",
     )
     parallel.add_argument("--queue", metavar="NAME", help="Executor queue/partition metadata")
     parallel.add_argument("--cores", type=int, metavar="N", help="Executor CPU-core request")
@@ -1539,8 +1540,9 @@ def _doctor_executors(
                 hook_error = str(exc)
             found = {binary: shutil.which(binary, path=env.get("PATH")) for binary in binaries}
             missing = [binary for binary, path in found.items() if not path]
+            blocker = dispatch_blocker(name, cfg)
             parts = [
-                "dispatch not implemented" if dispatch_blocker(name, cfg) else "dispatch ready",
+                "dispatch ready" if blocker is None else f"cannot dispatch ({blocker})",
                 ", ".join(f"{binary} {'OK' if found[binary] else 'MISSING'}" for binary in binaries)
                 or "no binaries declared",
             ]
@@ -3311,14 +3313,24 @@ def run_flow(
     def run_leaf_stage(stage: str, leaves: list[dict[str, Any]], parallel: bool) -> None:
         """Drive one stage's leaves through the executor until every leaf is recorded."""
         nonlocal final_failures
-        limits = executor_limits(executor_cfg)
+        # A dry run plans; it submits nothing to a scheduler.
+        stage_executor = "local" if args.dry_run else executor
+        stage_executor_cfg = registries.executors[stage_executor]
+        limits = executor_limits(stage_executor_cfg)
         max_in_flight = args.sim_jobs if parallel else 1
         if limits.get("max_in_flight"):
             max_in_flight = min(max_in_flight, int(limits["max_in_flight"]))
         executor_impl = build_executor(
-            executor, executor_cfg, runner=local_runner, max_workers=max_in_flight
+            stage_executor,
+            stage_executor_cfg,
+            runner=local_runner,
+            max_workers=max_in_flight,
+            root=root,
+            run_dir=run_dir,
+            on_event=lambda text: console.event("executor", text),
         )
         max_in_flight = max(1, min(max_in_flight, executor_impl.max_in_flight))
+        submit_cap = executor_impl.submit_batch_size
         poll_interval = float(limits["poll_interval_sec"])
         cancel_grace = float(limits["cancel_grace_sec"])
         pending = deque(leaves)
@@ -3455,7 +3467,11 @@ def run_flow(
 
         try:
             while pending or handles:
+                submitted = 0
                 while pending and len(handles) < max_in_flight:
+                    if submit_cap is not None and submitted >= submit_cap:
+                        break
+                    submitted += 1
                     leaf = pending.popleft()
                     if (
                         scheduler
@@ -3474,7 +3490,9 @@ def run_flow(
                 if not handles:
                     continue
                 live = list(handles.values())
-                executor_impl.wait(live, poll_interval)
+                # With submissions capped per turn, keep filling before the first real wait.
+                throttled = bool(pending) and len(handles) < max_in_flight
+                executor_impl.wait(live, 0.0 if throttled else poll_interval)
                 for task_id, observation in executor_impl.poll(live).items():
                     if not observation.state.terminal:
                         continue
@@ -3485,12 +3503,21 @@ def run_flow(
             outstanding = list(handles.values())
             # Only an attempt that had ended before the interruption counts as a completed
             # leaf; whatever the cancellation ends is interrupted, whichever result it wrote.
+            # A scheduler that stopped answering must not keep the run from its summary.
+            try:
+                snapshot = executor_impl.poll(outstanding)
+            except Exception as exc:  # noqa: BLE001
+                console.event("executor", f"final poll failed: {exc}", force=True)
+                snapshot = {}
             finished = {
                 task_id
-                for task_id, seen in executor_impl.poll(outstanding).items()
+                for task_id, seen in snapshot.items()
                 if seen.state.terminal and seen.state is not JobState.CANCELLED
             }
-            executor_impl.cancel(outstanding, grace_sec=cancel_grace)
+            try:
+                executor_impl.cancel(outstanding, grace_sec=cancel_grace)
+            except Exception as exc:  # noqa: BLE001
+                console.event("executor", f"cancel failed: {exc}", force=True)
             request_stage_cancellation()
             for handle in outstanding:
                 if handle.task_id not in finished:
@@ -3803,19 +3830,29 @@ def run_flow(
             incomplete=incomplete_run_note(payload.get("tests")),
         )
         return exit_code_for_status(status)
-    except RunInterrupted as exc:
+    except (RunInterrupted, ClusterError) as exc:
         # The signal unwound run_stage past its console.suppress exit, so this thread is
         # still muted; everything below is for the operator.
         console.clear_suppression()
         request_stage_cancellation()
-        signal_name = signal.Signals(exc.signum).name
-        interruption = {
-            "kind": "signal",
-            "signal": signal_name,
-            "signal_number": exc.signum,
-            "reason": f"run interrupted by {signal_name}",
-            "recorded_at": datetime.now(UTC).isoformat(),
-        }
+        if isinstance(exc, RunInterrupted):
+            signal_name = signal.Signals(exc.signum).name
+            interruption = {
+                "kind": "signal",
+                "signal": signal_name,
+                "signal_number": exc.signum,
+                "reason": f"run interrupted by {signal_name}",
+                "recorded_at": datetime.now(UTC).isoformat(),
+            }
+            exit_code = 128 + exc.signum
+        else:
+            interruption = {
+                "kind": "executor",
+                "executor": executor,
+                "reason": f"run aborted by executor `{executor}`: {exc}",
+                "recorded_at": datetime.now(UTC).isoformat(),
+            }
+            exit_code = exit_code_for_status("ERROR")
         progress = checkpoint_progress("interrupted")
         elapsed_sec = time.monotonic() - run_started
         if nest and checkpoint_enabled:
@@ -3866,7 +3903,7 @@ def run_flow(
             f"{progress['expected_count']} planned leaves ran",
             force=True,
         )
-        return 128 + exc.signum
+        return exit_code
     finally:
         for signum, previous_handler in previous_signal_handlers.items():
             signal.signal(signum, previous_handler)
