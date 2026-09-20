@@ -1360,10 +1360,122 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
+# Coverage-stimulus leaves that close FSM arcs whose target is the FSM's own
+# reset state. Those arcs have no `case`-arm assignment anywhere; the reset
+# value of the state flop is what takes them, and VCS scores that like any
+# other transition. Each leaf brings a block into a running state and then
+# requests that block's per-IP software reset (SW_RESET_N in sep_reset_ctrl).
+#
+# Every leaf releases what it parks and restores SW_RESET_N in a `finally`,
+# so no later leaf in the same regression inherits a held IP.
+#
+# Append these entries to testlists/stim.toml, and the names to the
+# stimulus list in testlists/all.toml.
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Per-IP reset of the Adams
+# Bridge engine at seeded offsets inside a running ML-DSA or ML-KEM keygen,
+# to drive the reset-only returns to idle in abr_ctrl, abr_sha3, abr_sha3pad,
+# abr_keccak_round, abr_sampler_top, ntt_ctrl, makehint, pkdecode,
+# power2round_ctrl, sample_in_ball_ctrl, sigdecode_h_ctrl, sigdecode_z_top,
+# sigencode_z_top, skdecode_ctrl and skencode. ABR is not an EDN client, so
+# no entropy bring-up is needed. no_cpu; +skip_fuse_sense.
+name = "sep_cov_abr_reset_midop_test"
+module = "crypto.sep_cov_abr_reset_midop_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "crypto", "abr", "reset", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Per-IP reset of the TRNG
+# domain at seeded offsets while the entropy source, CSRNG and EDN are
+# mid-flow, to drive the reset-only returns to idle in entropy_src_main_sm,
+# csrng_main_sm, csrng_cmd_stage, csrng_ctr_drbg, edn_main_sm and edn_ack_sm.
+# The crypto consumers stay idle and are quiesced before the TRNG, which is
+# the ordering SepSwReset.begin_trng_recovery exists for. The entropy stack
+# is reinitialized after every pulse. no_cpu; +skip_fuse_sense,
+# +esrc_noise_force.
+name = "sep_cov_trng_reset_midflow_test"
+module = "system.sep_cov_trng_reset_midflow_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "entropy", "trng", "reset", "fsm", "system"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Per-IP reset of the KMAC
+# engine at seeded offsets during absorb, process and squeeze of a SHAKE-256
+# operation, to drive the reset-only returns to idle in kmac, kmac_core,
+# kmac_msgfifo, kmac_entropy, sha3, sha3pad, keccak_round and the
+# axi_lite_to_tlul / tlul_to_axi_lite bridge pair inside kmac_wrapper.
+# KMAC masking stalls without entropy, so the real stack is brought up first.
+# no_cpu; +skip_fuse_sense, +esrc_noise_force.
+name = "sep_cov_kmac_reset_midabsorb_test"
+module = "crypto.sep_cov_kmac_reset_midabsorb_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "crypto", "kmac", "reset", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Per-IP reset of the AES
+# engine at seeded offsets with a block in the cipher core, across ECB, CTR
+# and GCM, to drive the reset-only returns to idle or error in
+# aes_control_fsm, aes_cipher_control_fsm, aes_ctr_fsm, aes_ghash and the
+# bridge pair inside aes_wrapper. AES masking stalls without entropy, so the
+# real stack is brought up first. no_cpu; +skip_fuse_sense, +esrc_noise_force.
+name = "sep_cov_aes_reset_midcipher_test"
+module = "crypto.sep_cov_aes_reset_midcipher_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "crypto", "aes", "reset", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Per-IP reset of the HMAC
+# engine at seeded offsets during push, process and completion of a SHA-256
+# message, to drive the reset-only returns to idle in hmac, prim_sha2,
+# prim_sha2_pad and the bridge pair inside hmac_wrapper. HMAC is not an EDN
+# client, so no entropy bring-up is needed. no_cpu; +skip_fuse_sense.
+name = "sep_cov_hmac_reset_midmsg_test"
+module = "crypto.sep_cov_hmac_reset_midmsg_test"
+seed = 1
+timeout_sec = 1800
+tags = ["coverage", "stimulus", "crypto", "hmac", "reset", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Coverage stimulus only -- asserts no contract. Per-IP reset of OTBN at
+# seeded offsets while a program is executing, to drive the reset-only
+# returns in otbn_start_stop_control, otbn_controller, otbn_scramble_ctrl and
+# the bridge pair inside sep_crypto_otbn_wrapper. Each pass waits for STATUS
+# to leave IDLE first, so the pulse lands past the start-up URND refresh and
+# does not drop an ungranted entropy request. no_cpu; +skip_fuse_sense,
+# +esrc_noise_force.
+name = "sep_cov_otbn_reset_midrun_test"
+module = "otbn.sep_cov_otbn_reset_midrun_test"
+seed = 1
+timeout_sec = 3600
+tags = ["coverage", "stimulus", "crypto", "otbn", "reset", "fsm"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
 [[groups]]
 # The stimulus suite on its own: `--items stim`.
 name = "stim"
-expected_count = 88
+expected_count = 94
 tests = [
     "sep_cov_alias_remap_cacheable_test",
     "sep_cov_alias_remap_region_sweep_test",
@@ -1453,4 +1565,10 @@ tests = [
     "sep_cov_kmac_entropy_wait_timer_test",
     "sep_cov_kmac_errchk_clear_midflow_test",
     "sep_cov_kmac_pad_block_aligned_test",
+    "sep_cov_abr_reset_midop_test",
+    "sep_cov_aes_reset_midcipher_test",
+    "sep_cov_hmac_reset_midmsg_test",
+    "sep_cov_kmac_reset_midabsorb_test",
+    "sep_cov_otbn_reset_midrun_test",
+    "sep_cov_trng_reset_midflow_test",
 ]

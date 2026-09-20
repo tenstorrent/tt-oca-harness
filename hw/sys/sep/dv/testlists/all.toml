@@ -58,7 +58,7 @@ tests = ["sep_axi_smoke_test"]
 # a coverage run grades. expected_count fails the run when membership drifts
 # from the class groups instead of silently shrinking the suite.
 name = "all"
-# 104 graded tests + 88 coverage stimulus leaves (stim.toml).
+# 104 graded tests + 94 coverage stimulus leaves (stim.toml).
 #
 # The 104 graded leaves are `cpu` (20) plus `cpu_stub` (83) plus the one
 # expected-fail reveal held out of both. The stimulus leaves are all no_cpu
@@ -69,7 +69,7 @@ name = "all"
 #
 # Removing the stimulus suite restores this to 104; see the recipe at the
 # top of stim.toml.
-expected_count = 192
+expected_count = 198
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -184,9 +184,11 @@ tests = [
     "sep_cov_abr_mldsa_stream_msg_test",
     "sep_cov_abr_mlkem_keygen_decaps_test",
     "sep_cov_abr_reg_walk_test",
+    "sep_cov_abr_reset_midop_test",
     "sep_cov_abr_zeroize_midabsorb_test",
     "sep_cov_aes_gcm_phase_walk_test",
     "sep_cov_aes_key192_dec_clear_test",
+    "sep_cov_aes_reset_midcipher_test",
     "sep_cov_aes_trigger_overwrite_test",
     "sep_cov_alias_remap_cacheable_test",
     "sep_cov_alias_remap_region_sweep_test",
@@ -237,6 +239,7 @@ tests = [
     "sep_cov_filter_datapath_pattern_test",
     "sep_cov_filter_hit_priority_test",
     "sep_cov_filter_rule_bank_sweep_test",
+    "sep_cov_hmac_reset_midmsg_test",
     "sep_cov_hmac_stop_continue_test",
     "sep_cov_km_csr_fault_irq_test",
     "sep_cov_km_csr_otp_lock_test",
@@ -256,12 +259,15 @@ tests = [
     "sep_cov_kmac_err_squeeze_walk_test",
     "sep_cov_kmac_errchk_clear_midflow_test",
     "sep_cov_kmac_pad_block_aligned_test",
+    "sep_cov_kmac_reset_midabsorb_test",
     "sep_cov_lcc_demote_rsvd_readback_test",
     "sep_cov_mailbox_all_banks_irq_test",
     "sep_cov_mailbox_partial_strobe_deadspace_test",
     "sep_cov_memory_interface_sram_burst_id_test",
     "sep_cov_otbn_base_isa_walk_test",
+    "sep_cov_otbn_reset_midrun_test",
     "sep_cov_output_remap_region_offset_sweep_test",
+    "sep_cov_trng_reset_midflow_test",
     "sep_cov_window_remap_dma_window_test",
     "sep_cov_xbar_axid_sweep_test",
     "sep_cov_xbar_axprot_sweep_test",

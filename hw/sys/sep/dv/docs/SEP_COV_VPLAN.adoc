@@ -1059,11 +1059,27 @@ The discriminator is cheap: **when an assertion or an assume guards the arm,
 the design is telling you the arm is unreachable.** All three items below carry
 one.
 
-* **`axi_atop_filter` active path.** The fabric is `ATOPs=0`
-  (`sep_local_axi_xbar.sv:266`, `sep_crypto_axi_interconnect.sv:275`,
-  `sep_crypto.sv:560`, `sep_cpu.sv:596`) and carries
-  `assume property aw.atop=='0` (`axi_err_slv.sv:253`,
-  `axi_demux_simple.sv:536-540`). No conforming master issues an atomic.
+* **`axi_atop_filter` active path.** This took three passes to get right, so
+  the full chain is recorded. The `ATOPs(1'b0)` parameters are NOT where the
+  filter lives -- they are exactly where it does not elaborate
+  (`axi_err_slv.sv:47 if (ATOPs)`). The 31 filters that DO elaborate sit in
+  `axi_to_axi_lite` (unconditional) and in each `axi_err_slv` inside the width
+  converters. Only `sep_cpu.sv:467-469` ties `atop`; the inbound SoC master
+  `smn_inbound_axi_req_i` (`sep.sv:98`) does not, and `tb_top.sv` now carries
+  an `m_axi_awatop_drive` stimulus pin, so an atomic CAN be presented.
++
+  It still is not legal-consume. The inbound path crosses three modules built
+  without ATOP support that assume the field is zero: the `axi_filter_wrap`
+  demux (`axi_filter_wrap.sv:242` -> `NoAtopAllowed`,
+  `axi_demux_simple.sv:570`) and the `ATOPs(1'b0)` crossbars at
+  `sep_system_peripherals_xbar.sv:116` and `sep_local_axi_xbar.sv:266`. Those
+  assumes sit behind `ifndef VERILATOR`, so a leaf looks clean on Verilator and
+  fires them on VCS -- which is where coverage is measured. A test was written,
+  run against that evidence, and withdrawn.
++
+  The open question is a DESIGN one, not a coverage one: should the SEP fabric
+  accept an inbound atomic? Until someone answers it, these arms stay waived
+  and the pin stays inert at zero.
 * **`km_crc_engine` default mode arms.** `picorv32_pcpi_crc.sv:88-95` decodes
   three encodings and defaults a fourth to `CRC_MODE_32C_WORD`, so
   `insn_recognized` stays low and the core traps; `mode_i` is never `2'b11`.
@@ -1185,3 +1201,87 @@ Two pools dominate what is left, and neither is a stimulus gap:
 Treat both as a coverage-model question rather than a DV gap. A toggle target
 on a 64-bit crossbar data bus is a statement about stimulus variety, not about
 whether the design was verified.
+
+== Suite inventory
+
+94 `sep_cov_*` leaves in the `stim` group, folded into `all`. Added in five
+rounds; each round is recorded here because several were written against a
+premise a later round disproved, and the disproofs are the useful part.
+
+[cols="1,1,3",options="header"]
+|===
+|Round |Leaves |What it targeted
+
+|1
+|59
+|The six IP sections above. Measured 55.08 -> 58.10.
+
+|2
+|4
+|`abr_reg` walk, AES-GCM phases, DMA hash and tails, OTBN base ISA.
+
+|3
+|12
+|OpenTitan CSR paths (EDN modes, CSRNG software app port, HMAC stop/continue,
+AES-192 decrypt, KMAC error paths), fabric arbitration and Hold states, ABR
+`STREAM_MSG` and `KEYGEN_DECAPS`, the KPV seal complement.
+
+|4
+|8
+|FSM transitions rather than states: ABR ZEROIZE mid-absorb, KMAC
+`err_processed` mid-stage, rate-aligned padding, AES trigger withdrawal.
+
+|5
+|6
+|FSM reset arcs -- reset an engine while its FSM is mid-operation. ~227 arcs,
+the largest single FSM item available.
+|===
+
+=== FSM: what the metric actually measures
+
+FSM reads 24.67%, the weakest metric, and part of that is a measurement
+artifact rather than missing verification.
+
+VCS reports transition coverage over the state CROSS-PRODUCT, not the arc list
+the RTL implements. `axi4_to_ahb` reports 72 transitions for a 9-state machine
+-- 9x8 -- while `axi4_to_ahb.sv:273-390` assigns `buf_nxtstate` on 15 distinct
+pairs. Most of the dark rows name arcs the design cannot take.
+
+That looked like a large, well-evidenced waiver. It is not, and the reason is
+worth keeping:
+
+* A mechanical prover over all 134 FSM instances found 307 dark arcs with no
+  `case`-arm assignment. **All 307 name their FSM's reset state.**
+* A reset IS an assignment. `otbn_start_stop_control` never writes
+  `state_d = OtbnStartStopStateInitial` -- it is the flop's reset value at
+  `:158-159` -- yet the report records `Halt->Initial` as **Covered**.
+* So those arcs are reachable: reset the block while its FSM sits in the
+  source state. They are stimulus work, and round 5 chases them.
+
+The waivable class was empty. The prover's self-check -- skip any FSM where a
+COVERED arc is missing from the derived live set -- fired on four FSMs and
+prevented 80 wrong exclusions. Any future waiver class should carry the same
+check: validate the generator against objects already known to be covered
+before trusting what it excludes.
+
+What remains in FSM after round 5 is mostly one thing: `->StTerminalError` and
+equivalent arcs, entered only by a corrupted sparse encoding or a counter
+fault. With `lc_escalate_en_i` tied `Off` at `kmac_wrapper.sv:176`,
+`aes_wrapper.sv:145` and `sep_crypto_otbn_wrapper.sv:178`, legal stimulus has
+no way in. That is a fault-injection gap, recorded as such rather than waived.
+
+=== Withdrawn tests
+
+Two leaves were written, run or analysed, and removed. Both for the same
+reason, and it is the rule that defines this suite:
+
+* `sep_cov_xbar_wrap_burst_test` -- sent WRAP to the SRAM aperture, whose
+  `axi_to_detailed_mem` asserts `BURST_INCR` for `len > 0` (`:587`, `:590`).
+  The leaf reported PASS while the endpoint returned OKAY with wrong data. No
+  SEP endpoint consumes WRAP.
+* `sep_cov_axi_atop_filter_classes_test` -- see the ATOP entry above.
+
+**A shape the design declares illegal is a waiver candidate, not a test.** A
+leaf that drives one is not measuring coverage; it is measuring what the design
+does when you break its contract, and it will either fire an assertion or pass
+on a wrong answer.
