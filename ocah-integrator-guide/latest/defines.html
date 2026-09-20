@@ -194,7 +194,18 @@
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Compile-time defines that apply across OCAH rather than to a single block.</p>
+<p>Compile-time defines that apply across OCAH rather than to a single block.
+Set the OCAH names in this chapter. Do not set vendor preprocessor names;
+<code>hw/common/defs/ocah_vendor_defines.svh</code> derives the aliases those names
+imply. OCAH lint and Yosys force-include that header. Native DV expands the
+same aliases onto the command line. An adopter compile must do one of those
+two.</p>
+</div>
+<div class="paragraph">
+<p>A <code> <code>define </code> in a header is visible only in compilation units that include
+it. Command-line `define</code> / <code>-D</code> is global. Force-include (or the flow&#8217;s
+alias expansion) is what makes the mapping apply to vendored files that never
+include an OCAH header.</p>
 </div>
 </div>
 </div>
@@ -280,6 +291,245 @@ other than Verilator (<code>+prim_lfsr_use_default_seed=1</code> pins it). Two r
 test are therefore not identical unless the simulator seed is fixed; record the
 seed with any failure you intend to reproduce.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="synthesis-define"><a class="anchor" href="#synthesis-define"></a><a class="link" href="#synthesis-define">2. <code>SYNTHESIS</code></a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>SYNTHESIS</code> selects the implementation view: simulation-only SVA, <code>$readmemh</code>
+preload, procedural delays, and similar non-synthesizable paths are omitted.
+Slang lint, Verilator lint, and Yosys set it (<code>OCAH_FLOW_COMMON_DEFINES</code>, or
+<code>+define+SYNTHESIS=1</code> for Verilator lint). A Synopsys (Design Compiler,
+Fusion Compiler) or Cadence Genus synthesis compile must set it too; those
+tools may also predefine the name. Native DV does not, except the SMC <code>dual</code>
+target, which lists it next to <code>SMC_DUAL</code>. The open formal path (<code>sby</code> /
+<code>read_slang</code>) keeps it defined. Licensed formal backends leave it unset.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="emulation-define"><a class="anchor" href="#emulation-define"></a><a class="link" href="#emulation-define">3. <code>EMULATION</code></a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>EMULATION</code> is the reserved OCAH name for a synthesizable emulator view
+(Palladium, Zebu, and similar): assertions, cover, assume, and <code>$display</code> /
+<code>$error</code> / <code>$fatal</code> stay compiled, while procedural delays, random-init
+<code>initial</code> blocks, <code>force</code>/<code>release</code>, dump/<code>$fopen</code> tasks, and non-synthesizable
+real-time constructs do not.</p>
+</div>
+<div class="paragraph">
+<p>The tree has no <code>EMULATION</code> gating. Setting the name does not select that view.
+Do not set <code>SYNTHESIS</code> in order to keep emulator debug hooks; <code>SYNTHESIS</code>
+strips assertions as well. Do not set <code>PULP_FPGA_EMUL</code> as a substitute:
+that name is an FPGA clock-mux path.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="tool-predefines"><a class="anchor" href="#tool-predefines"></a><a class="link" href="#tool-predefines">4. Tool predefined names</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Simulators and frontends define these themselves. Restate them only on that
+tool&#8217;s compile line. Do not put them in a Bender filelist shared with other
+tools, and do not add a Bender target named <code>verilator</code> (flist-plus would emit
+<code>+define+TARGET_VERILATOR</code> into that shared <code>.f</code>).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>VERILATOR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Verilator&#8217;s predefine. First-party and OpenTitan SVA leave their include-assert
+macros undefined.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>VCS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VCS predefine. Some PULP AXI files branch on it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>XCELIUM</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Xcelium&#8217;s predefine. Native DV uses this tool.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>XSIM</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vivado simulator. PULP assertion macros also treat it as off.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>QUESTA</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">QuestaSim&#8217;s predefine. Some PULP AXI files branch on it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>YOSYS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auto-defined by yosys-slang. The Yosys <code>prim_assert.sv</code> shim undefines it
+around the vendored header when <code>SYNTHESIS</code> is also set.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="native-dv-defines"><a class="anchor" href="#native-dv-defines"></a><a class="link" href="#native-dv-defines">5. Native DV extras</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>An adopter that copies the native profile sees these in addition to
+<code>SIMULATION</code>. They are not required to elaborate OCAH RTL for silicon.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOM=0</code>, <code>RANDOMIZE_MEM_INIT</code>, <code>RANDOMIZE_REG_INIT</code>, <code>RANDOMIZE_DELAY=0.02</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chisel/FIRRTL random-init hooks on the generated SMC cluster. Native DV
+zero-fills rather than randomizing.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UVM</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SV-UVM framework overlay. Assertion headers report through <code>uvm_report_error</code>.
+Adds the UVM harness block to shared testbench tops. Do not set it on a cocotb
+compile.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>COMMON_CELLS_ASSERTS_OFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strips inline assertion blocks inside PULP <code>common_cells</code> modules. Native DV
+sets it on every tool (Verilator, VCS, Xcelium) from
+<code>hw/common/dv/configs/profiles/native.toml</code>. This spelling is the OCAH name.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ASSERTS_OFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Turns off PULP <code>OCAH_PULP_INC_ASSERT</code> macros. Verilator DUT flags and
+Verilator lint set it; VCS and Xcelium native compiles do not.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="derived-assert-defines"><a class="anchor" href="#derived-assert-defines"></a><a class="link" href="#derived-assert-defines">6. Derived assertion gates</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Do not set these. Headers define them from the view and tool names above.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Defined when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_INC_ASSERT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">First-party concurrent SVA. <code>ocah_assert.svh</code> defines it only when
+<code>SYNTHESIS</code>, <code>VERILATOR</code>, and <code>NO_OCAH_ASSERT</code> are all absent.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_OT_INC_ASSERT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan-derived SVA, from <code>SYNTHESIS</code> and <code>VERILATOR</code> (YOSYS forces it on).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_PULP_INC_ASSERT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP <code>OCAH_PULP_ASSERT*</code> macros, unless <code>ASSERTS_OFF</code>, <code>SYNTHESIS</code>, or
+<code>XSIM</code> is set.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NO_OCAH_ASSERT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional escape: drops first-party SVA only. No OCAH flow sets it.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="vendor-define-map"><a class="anchor" href="#vendor-define-map"></a><a class="link" href="#vendor-define-map">7. Vendor aliases</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>ocah_vendor_defines.svh</code> defines these from the OCAH names. Do not set the
+vendor column.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">OCAH name</th>
+<th class="tableblock halign-left valign-top">Vendor alias</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYNTHESIS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TARGET_SYNTHESIS</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIMULATION</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ABR_SIMULATION</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>VERILATOR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TARGET_VERILATOR</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>XSIM</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TARGET_XSIM</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="adopter-overlay-defines"><a class="anchor" href="#adopter-overlay-defines"></a><a class="link" href="#adopter-overlay-defines">8. Adopter overlay hooks</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>No checked-in config sets these. An adopter overlay
+(<code>run_dv.py --overlay</code>) may append them.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_JTAG_VENDOR_IF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nests a commercial JTAG verification interface.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_AXI_VENDOR_IF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nests a commercial AXI verification interface.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </article>
