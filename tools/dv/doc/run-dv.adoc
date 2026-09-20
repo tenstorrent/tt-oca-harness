@@ -1691,10 +1691,20 @@ A cocotb model is built into the target's `build_dir` with the tool name
 appended (`<build_dir>/<tool>`, or the sibling `<build_dir>/<tool>-coverage`
 under `--cov`; VCS adds one more component named after the target) and
 reused by every later run of the same target and tool. The
-`artifact build=<dir> (rebuild=<bool>)` line of a run names the directory it
-used. With `rebuild` off, the existing directory is handed to cocotb's build
-step, which rebuilds only what the simulator's own build system finds out of
-date.
+`artifact build=<dir> (rebuild=<bool> reason=<why>)` line of a run names the
+directory it used and, when the model is rebuilt, why.
+
+cocotb's build step rebuilds a model only when a source it was handed is
+newer than the model, and this flow hands it none: the sources reach the
+compiler through the filelist. The runner therefore decides for it. Every
+build writes `build_record.json` into the model directory with the
+fingerprint of the inputs that produced the model, and the next run compares
+its own fingerprint with the record: a different fingerprint (`reason=inputs
+changed`), or a model directory without a record (`reason=no build record`),
+forces a clean build; `--rebuild` forces one regardless (`reason=requested`).
+An edit to any file the filelist reaches, including its `-f` includes, or to
+any file a build argument names, such as a coverage scope file, therefore
+rebuilds the model on the next run.
 
 `[build.options]` sets the sharing policy:
 
@@ -1702,7 +1712,8 @@ date.
   the build inputs, so configurations that differ never overwrite each
   other's model and an unchanged configuration finds its build again. The
   fingerprint covers the top module, the tool version, the generated filelist
-  text, a digest of the sources the Bender filelist names, the rendered build
+  text, a digest of every source the filelist reaches through its `-f`
+  includes, a digest of every file a build argument names, the rendered build
   arguments, the selected `[targets.<name>]` table, the Verilator
   public-scope list, the wave format, whether coverage is on, and the strings
   in `cache_key_extra`.
@@ -1849,6 +1860,49 @@ with its test, seed, attempt, status, target, and build fingerprint, every
 rejection with its reason, the exclusion files, and the policy file with its
 SHA-256 and `scope_epoch`.
 
+[[runner-cov-combine]]
+==== Combining finished runs
+
+`--cov-combine RUN_DIR...` combines the coverage of two or more finished runs
+into one new run directory and grades it, so a DUT whose scenarios run under
+two frameworks, or whose seeds run on two hosts, gets one signoff figure:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp \
+  --cov-combine hw/sys/dtp/dv/build/runs/<cocotb-run> hw/sys/dtp/dv/build/runs/<uvm-run> \
+  --run-dir hw/sys/dtp/dv/build/runs/<combined-run>
+----
+
+No simulator runs. Each input run must belong to the DUT, have finished, and
+carry a coverage record whose merge and report completed and whose merged
+database exists; its own grade does not matter, since the combined run is
+graded on its own. Every run must use one tool, and all must record one
+commit, since one figure describes one revision of the design. A run
+recorded on a dirty tree is accepted with a warning. The runs may sit in
+another checkout or in a retained copy: their artifact paths resolve against
+the tree that produced them, and a design database that the copy left out is
+skipped, since the merged database its own merge loaded already holds the
+design data.
+
+Two verbs, two operations. The `cov_merge` stage *merges* the leaf databases
+of one run into that run's merged database, and `--stage cov_merge --run-dir X`
+replays that in place. `--cov-combine` *combines* finished runs: the new run
+carries the DUT's `cov_merge` and `cov_report` stages, its merge runs the
+tool's `combine_cmd` over the runs' design databases and merged databases
+(`urg -flex_merge union` on VCS, because runs of different frameworks
+elaborate different harness tops and only the DUT subtree is common), and its
+report grades the result against the same policy, threshold and exclusion
+inputs as any run. `cov/coverage.json` lists the runs as its inputs (`item`
+of `run:<name>`, `selection_source` of `run_dirs`) and names each run's
+directory, framework, commit, tool version and database under
+`combine.input_runs`. `--run-dir` names the new directory; without it the run
+lands under the DUT's run tree with the label `combine`, and `latest` keeps
+pointing at the last simulation run, so the dashboard's default collection is
+unaffected and a combined run is collected by naming its directory.
+`--fail-under` and `--dry-run` apply; selection, seed, wave and build options
+do not.
+
 [[runner-coverage-grading]]
 ==== How the grade forms
 
@@ -1882,6 +1936,16 @@ skipped without an outcome. `max_unclassified_points` fails the rule when
 more uncovered points than that carry no `pass:[[[holes]]]` entry. A rule
 whose metric family has no points is not met.
 |===
+
+A report tool that applies exclusion inputs while it reports (URG with
+`-elfile`) writes the effective figures only. When the report phase has such
+inputs, it runs the report command a second time without them into
+`cov/report_raw/`, and each family's `raw_percent` comes from that report while
+`effective_percent` comes from `cov/report/`; without exclusion inputs the one
+report supplies both. The stage log carries one `COVERAGE FAMILY` line per
+family with both figures, the console prints them on a `coverage` line, the
+manifest points at the raw report as `artifacts.report_raw`, and `result.json`
+carries the figures as `raw_metrics` and `effective_metrics`.
 
 The coverage status is `PASS` when every threshold is met and `FAIL`
 otherwise. A `FAIL` gives the `cov_report` record return code `1` and a
@@ -2343,6 +2407,12 @@ accepted waivers do not move it. Valid range: 0 through 100.
 |Re-grade the finished run in `--run-dir` against the DUT's coverage policy,
 or against `FILE`; no simulator or report tool runs. Exits 0, 1, or 2 by the
 coverage grade alone. See <<runner-waive>>.
+
+|`--cov-combine RUN_DIR...`
+|Combine the coverage of two or more finished runs of the DUT into one new
+graded run directory (`--run-dir` names it); the runs must share the tool and
+the commit, and no simulator runs. Exits 0, 1, or 2 by the combined run's
+coverage grade. See <<runner-cov-combine>>.
 |===
 
 === Pass-through and formal options
@@ -2513,7 +2583,8 @@ in JSON, while the runner process exits with the conventional
 `128 + signal number` value (`130` or `143`).
 
 `--waive` exits by its coverage grade alone (`0`, `1`, or `2`; see
-<<runner-waive>>), independent of the run status it records.
+<<runner-waive>>), independent of the run status it records, and
+`--cov-combine` exits by the grade of the combined run it writes.
 
 Run-level aggregation uses:
 
@@ -2642,7 +2713,10 @@ and the paths of the files below.
 |The merge manifest (<<runner-coverage-inputs>>) and, once the report has
 run, the grade: `status`, `metrics`, `overall_percent`, `threshold`,
 `threshold_met`, `policy_thresholds`, `holes_summary`, the fingerprints, and
-the merge and report return codes.
+the merge and report return codes, with `artifacts.report_raw` when the
+report ran without its exclusion inputs as well. A combined run's manifest
+lists the runs as its inputs (`selection_source` of `run_dirs`) and carries
+the `combine` block (<<runner-cov-combine>>).
 
 |`cov/report/summary.json`
 |`2`

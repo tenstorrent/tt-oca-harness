@@ -57,6 +57,7 @@ from .coverage_closure import (
     grade_coverage_run,
     parse_coverage_run,
 )
+from .coverage_combine import plan_combine
 from .coverage_policy import (
     CoveragePolicy,
     expired_holes,
@@ -487,6 +488,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Coverage report threshold override",
     )
     coverage.add_argument(
+        "--cov-combine",
+        nargs="+",
+        metavar="RUN_DIR",
+        help=(
+            "Combine the coverage of the finished runs at RUN_DIR... into one new graded run "
+            "directory (--run-dir names it); the runs must share the DUT, the tool and the "
+            "commit, and no simulator runs"
+        ),
+    )
+    coverage.add_argument(
         "--waive",
         nargs="?",
         const="",
@@ -576,6 +587,7 @@ _SIM_ONLY_FLAGS = {
     "cov": "--cov",
     "fail_under": "--fail-under",
     "waive": "--waive",
+    "cov_combine": "--cov-combine",
     "rebuild": "--rebuild",
     "define": "--define",
     "comp_arg": "--comp-arg",
@@ -1995,6 +2007,24 @@ def validate_waive_options(args: argparse.Namespace) -> None:
         raise ConfigError("--waive requires --run-dir naming the finished run")
 
 
+# Options --cov-combine accepts besides --dut, --run-dir, --result, --tool, --framework,
+# --overlay, --verbose and --quiet.
+_COMBINE_COMPANIONS = {"cov_combine", "fail_under", "dry_run", "timeout"}
+
+
+def validate_combine_options(args: argparse.Namespace) -> None:
+    run_flags = {**_SIM_ONLY_FLAGS, **_FORMAL_ONLY_FLAGS, **_WAIVE_SELECTION_FLAGS}
+    for attr, flag in run_flags.items():
+        if attr not in _COMBINE_COMPANIONS and _flag_was_set(args, attr):
+            hint = (
+                "; `--stage cov_merge` re-merges one run's own leaves, `--cov-combine` merges "
+                "finished runs"
+                if attr == "stage"
+                else ""
+            )
+            raise ConfigError(f"{flag} cannot be combined with --cov-combine{hint}")
+
+
 def _waive_recorded_run(
     root: Path,
     args: argparse.Namespace,
@@ -2309,6 +2339,141 @@ def cmd_waive(
     except Exception:  # noqa: BLE001
         traceback.print_exc()
         return 2
+
+
+def cmd_cov_combine(
+    root: Path,
+    registries: Registries,
+    args: argparse.Namespace,
+) -> int:
+    """`--cov-combine`: exit 0 when the combined run meets its thresholds, 1 when it does
+    not, 2 when the runs cannot be combined."""
+
+    try:
+        validate_combine_options(args)
+        flow = resolve_dut(
+            root,
+            args.dut,
+            mode=args.mode,
+            framework=args.framework,
+            adopter_overlay=adopter_overlay_path(args),
+            site=registries.site,
+        )
+        validate_flow(flow, root, registries.simulators, registries.policies, registries.executors)
+        return combine_flow(root=root, flow=flow, registries=registries, args=args)
+    except (ConfigError, CoverageError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+
+def combine_flow(
+    *,
+    root: Path,
+    flow: Flow,
+    registries: Registries,
+    args: argparse.Namespace,
+) -> int:
+    """Combine finished runs into a new run directory and grade it.
+
+    The new run carries the DUT's `cov_merge` and `cov_report` stages over the runs' design
+    and merged databases, so its `cov/coverage.json`, report, summary and `result.json`
+    have the shape of any coverage run; the manifest's `combine` block names the input runs.
+    """
+
+    simulators, policies = registries.simulators, registries.policies
+    if registries.site is not None:
+        setattr(args, "_site_layer", registries.site.label)
+    activate_adopter_overlay_env(flow.raw)
+    plan = plan_combine(
+        root,
+        flow,
+        args.tool,
+        [Path(value).expanduser() for value in args.cov_combine],
+    )
+    tool = plan.tool
+    if tool not in flow.tools:
+        raise ConfigError(f"tool `{tool}` is not allowed for flow `{flow.name}`")
+    args.tool = tool
+    args.cov = True
+    validate_selected_tool_available(tool, simulators, args, flow)
+    available = flow_stages(flow)
+    for stage in ("cov_merge", "cov_report"):
+        if stage not in available:
+            raise ConfigError(f"{flow.path}: this flow declares no `{stage}` stage")
+    sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
+    catalog = load_test_catalog(flow, root)
+    setattr(args, "_cov_combine_plan", plan)
+
+    if args.run_dir:
+        run_dir = Path(args.run_dir).expanduser()
+        if not run_dir.is_absolute():
+            run_dir = root / run_dir
+    else:
+        stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        run_dir = default_run_dir(repo_path(root, flow.root), stamp, tool, "combine")
+        # `latest` stays on the last simulation run: the dashboard's default collection
+        # follows it, and a combined run has no leaves of its own.
+        run_dir = reserve_run_dir(run_dir, args.dry_run)
+    result_path = run_dir / "result.json"
+
+    console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
+    args._ui_console = console
+    args._ui_leaf_mode = "full"
+    commit = plan.commit or "unknown"
+    console.event(
+        "coverage",
+        f"combine runs={len(plan.runs)} frameworks={','.join(plan.frameworks)} "
+        f"commit={commit[:12]} inputs="
+        + ",".join(repo_rel(root, run.run_dir) or str(run.run_dir) for run in plan.runs),
+    )
+    for run in plan.runs:
+        if run.dirty:
+            console.event(
+                "warning",
+                f"{repo_rel(root, run.run_dir)} was recorded on a dirty tree",
+                force=True,
+            )
+    run_started = time.monotonic()
+    results: list[StageResult] = []
+    for stage in ("cov_merge", "cov_report"):
+        result = run_stage(
+            flow, root, sim_cfg, catalog, stage, None, args, tool, run_dir, simulators, policies
+        )
+        results.append(result)
+        if result.status != "PASS" and stage == "cov_merge":
+            break
+    payload = result_payload(
+        flow=flow,
+        root=root,
+        tool=tool,
+        run_dir=run_dir,
+        stages=results,
+        dry_run=args.dry_run,
+        items=[],
+        label="combine",
+        args=args,
+        versions=tool_versions(root),
+        git_metadata=git_provenance(root, run_dir),
+        planned_leaves=0,
+    )
+    if not args.dry_run:
+        write_result(result_path, payload)
+        if args.result:
+            export_path = Path(args.result).expanduser()
+            if not export_path.is_absolute():
+                export_path = root / export_path
+            if export_path != result_path:
+                write_result(export_path, payload)
+    status = str(payload.get("status", aggregate_status(results)))
+    console.result(
+        status=status,
+        elapsed_sec=time.monotonic() - run_started,
+        tests=0,
+        run_dir=repo_rel(root, run_dir),
+        result_json=repo_rel(root, result_path),
+        incomplete=None,
+    )
+    return exit_code_for_status(status)
 
 
 def flow_executor_name(flow: Flow, args: argparse.Namespace) -> str:
@@ -3931,6 +4096,8 @@ def main(argv: list[str] | None = None) -> int:
             raise ConfigError(f"unknown DUT `{args.dut}`")
         if args.waive is not None:
             return cmd_waive(root, simulators, policies, executors, args)
+        if args.cov_combine:
+            return cmd_cov_combine(root, registries, args)
         flow = resolve_dut(
             root,
             args.dut,

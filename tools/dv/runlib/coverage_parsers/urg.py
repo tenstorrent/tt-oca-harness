@@ -191,6 +191,35 @@ def _hole_observations(paths: list[Path], tool: str) -> list[CoverageObservation
     return observations
 
 
+def _report_files(report_dir: Path) -> list[Path]:
+    paths: list[Path] = []
+    if report_dir.is_dir():
+        for pattern in ("*.txt", "*.html", "*.htm"):
+            paths.extend(report_dir.rglob(pattern))
+    return sorted(set(paths))
+
+
+def _apply_raw_report(metrics: list[MetricRecord], raw_report_dir: Path | None) -> list[str]:
+    """Take each family's raw percentage from the report URG wrote without exclusions.
+
+    URG applies an exclusion file while it reports, so one report carries either the raw or
+    the effective figure. The graded report is the effective one; the raw report exists only
+    when the report stage ran with exclusion inputs.
+    """
+    if raw_report_dir is None:
+        return []
+    raw_paths = _report_files(raw_report_dir)
+    if not raw_paths:
+        return [f"raw URG report files were not found under {raw_report_dir}"]
+    raw_values = {
+        record.metric_family: record.raw_percent for record in _summary_metrics(raw_paths)
+    }
+    for record in metrics:
+        if record.metric_family in raw_values:
+            record.raw_percent = raw_values[record.metric_family]
+    return []
+
+
 def parse_urg_details(
     *,
     dut: str,
@@ -199,6 +228,7 @@ def parse_urg_details(
     build_fingerprint: str | None,
     report_dir: Path,
     log_path: Path | None,
+    raw_report_dir: Path | None = None,
 ) -> CoverageDetails:
     report_paths: list[Path] = []
     detail_paths: list[Path] = []
@@ -221,6 +251,8 @@ def parse_urg_details(
         warnings.append("URG report files were not found")
     elif not details_available:
         warnings.append("URG scalar summary found, but detailed hole files are unavailable")
+    metrics = _summary_metrics(report_paths)
+    warnings.extend(_apply_raw_report(metrics, raw_report_dir))
     details = CoverageDetails(
         dut=dut,
         tool=tool,
@@ -228,7 +260,7 @@ def parse_urg_details(
         build_fingerprint=build_fingerprint,
         details_available=details_available,
         observations_complete=False,
-        metrics=_summary_metrics(report_paths),
+        metrics=metrics,
         observations=observations,
         warnings=warnings,
     )
