@@ -1275,3 +1275,283 @@ produce reliably. Five lines; judged not worth a dedicated leaf, and explicitly
 
 `prim_secded_inv_*` (10 611 toggle bits)::
 Already rejected in `opentitan.adoc` as a data-pattern gap. Unchanged.
+
+// ---- spec cross-check ----
+= Spec check for two coverage questions
+:description: Whether the SEP and IP specifications answer, omit, or contradict the RTL on AXI atomics and on out-of-range eFuse addresses.
+
+Read-only survey of `hw/sys/sep/doc/`, `hw/ip/*/doc/`, and the generated
+register documentation under `hw/*/regs/gen/adoc/`. Nothing was changed.
+
+== Question 1 -- AXI atomic transactions (ATOP) on the SEP fabric
+
+=== Verdict: (c) SPEC IS SILENT
+
+No specification text in the tree mentions AXI atomics in any form.
+
+.Searches run, all over `.adoc`/`.md` outside `dv/` trees
+* `atop`, `AXI atomic`, `atomic transaction|operation|access`
+* `exclusive access`, `exclusive monitor`, `AWLOCK`, `ARLOCK`, `awatop`
+
+Only two hits exist in the whole `hw/` documentation set, and neither is
+about SEP's fabric:
+
+* `hw/sys/smc/doc/dma.adoc:100` -- "Atomic Operations | Atomic command
+  submission and status reading". This is about DMA command submission,
+  not AXI5 atomic transactions.
+* `hw/ip/memory_interface/README.adoc:167` -- a code listing of an AXI
+  request struct that happens to contain `axi_pkg::atop_t atop;`. A field
+  declaration in a quoted struct, not a statement of behaviour.
+
+One near-miss that is not about atomics at all:
+`hw/sys/sep/doc/crypto.adoc:528` -- "There is no atomic reset boundary
+across the entropy consumers."
+
+=== Answering the four sub-questions
+
+Does SEP claim AXI4 atomic support on its inbound/SMN port?::
+Neither claimed nor denied. `hw/sys/sep/doc/overview.adoc:21-22` lists
+"Outbound AXI4 system bus master" and "Inbound AXI4 system bus slave"
+with no attribute qualification. `hw/sys/sep/doc/fabric.adoc:19-33`
+describes the fabric as "a hierarchical AXI4 crossbar fabric" and
+enumerates exactly three things an AXI4-Lite bridge must handle -- bursts,
+WSTRB, and AxID. Atomics are not in that list, and the list is about
+Lite bridges, not about the top-level port.
+
+Is there an interface contract with the SoC/SMU side about atomics?::
+No. `hw/sys/sep/doc/port_table.adoc:76-77` is the only normative
+statement about the inbound port:
++
+----
+|`smn_inbound_axi_req_i` | ... | SMN inbound AXI request (system bus
+slave). | SMN fabric | Tie to '0 if unused
+----
++
+The "Integration note" column carries a tie-off rule for the unused case
+and nothing about permitted transaction attributes. No document tells the
+requester not to issue atomics, and none says SEP will refuse them.
+
+If atomics are out of scope, what does SEP do on receiving one?::
+Undefined by the documents. `hw/ip/axi_filter/doc/index.adoc` (section
+"Blocked Transactions") specifies the filter's only documented error
+behaviour, and it is address/attribute based, not atomic based:
++
+"A blocked transaction is not dropped. It is steered to an AXI error
+subordinate that terminates it with a `DECERR` response on `BRESP` or
+`RRESP`, so the initiator always receives a response and the fabric never
+stalls on a filter denial."
++
+The match conditions the same section lists are `entry_enabled`, address
+range, `prot[1]` vs `allow_ns`, source ID, and `allow_burst`. `atop` is
+not a match input. So the spec does not say SLVERR, does not say DECERR,
+and does not say undefined -- it never raises the case.
+
+Does any spec text imply the atop filters SHOULD be exercised?::
+No. No document names `axi_atop_filter` or any atomic-filtering function.
+There is no documented feature whose verification would require driving a
+non-zero `atop`.
+
+=== RTL findings, re-verified
+
+All four established findings hold.
+
+* `vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:45` -- `if (ATOPs)
+  begin` wrapping an `axi_atop_filter` instance; the parameter defaults to
+  enabled, so every `axi_err_slv` that does not override it carries one.
+* `vendor/pulp-platform/axi/upstream/src/axi_dw_downsizer.sv:188` --
+  instantiates `axi_err_slv` with only `AxiIdWidth`, `Resp`, `axi_req_t`,
+  `axi_resp_t`. `ATOPs` is left at its default, so each downsizer brings a
+  filter with it.
+* `vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:52` --
+  unconditional `axi_atop_filter` instance, no generate guard.
+* `hw/sys/sep/rtl/sep.sv:98` -- `input
+  sep_pkg::sep_system_peripherals_internal_axi_req_t
+  smn_inbound_axi_req_i;`. The type carries an `atop` field
+  (`hw/sys/sep/rtl/sep_pkg.sv:341`, `axi_pkg::atop_t atop;`) and nothing
+  in `sep.sv` ties it.
+* The only `atop` ties in the SEP RTL are `hw/sys/sep/rtl/sep_cpu.sv:467-469`,
+  for the IFU, LSU and DBG masters.
+* `hw/ip/axi_filter/rtl/axi_filter_wrap.sv:242` -- `.AtopSupport (1'b0)` on
+  an `axi_demux`, which reaches
+  `vendor/pulp-platform/axi/upstream/src/axi_demux_simple.sv:570`:
+  `OCAH_PULP_ASSUME(NoAtopAllowed, !AtopSupport && slv_req_i.aw_valid |->
+  slv_req_i.aw.atop == '0)`. Note this is an *assume*, so it constrains a
+  formal environment rather than flagging the simulation stimulus; in
+  simulation it still reports, but it encodes an input contract that no
+  document states.
+* `ATOPs(1'b0)` crossbars confirmed at
+  `hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv:116` and
+  `hw/sys/sep/rtl/sep_local_axi_xbar.sv:266`. Note the path given in the
+  question, `hw/sys/sep/rtl/sep_system_peripherals_xbar.sv`, does not
+  exist; the file is under `rtl/crossbars/`. Four further `ATOPs(1'b0)`
+  sites exist: `sep_cpu.sv:596`, `sep_crypto.sv:560`,
+  `sep_crypto_axi_interconnect.sv:275`, `axi_filter_wrap.sv:277`.
+
+=== What to ask the designer
+
+. Is the SMN inbound port specified as AXI4 *without* atomics, and if so
+  where is that written down for the SoC integrator? Today the only
+  statement of the contract is an `assume` inside a vendor file.
+. If the SoC may legally drive a non-zero `atop`, what is the intended
+  response -- SLVERR from the crossbar error slave, DECERR from the
+  filter's error subordinate, or is the fabric permitted to misbehave?
+  The `AtopSupport(1'b0)` demux and the `ATOPs(1'b0)` crossbars mean the
+  RTL has chosen "not supported" without a documented response.
+. Should `port_table.adoc` gain an integration constraint on the inbound
+  port, in the same column that already carries the tie-off rule?
+. If atomics are out of scope, the `axi_atop_filter` instances reached
+  through `axi_to_axi_lite`, `axi_err_slv` and `axi_dw_downsizer` are
+  unreachable by construction and should be waived as such, not left as
+  an open coverage hole. Confirm that reading before waiving.
+
+== Question 2 -- out-of-bounds eFuse addresses
+
+=== Verdict: (a) for the register spec vs the datapath RTL; (d) for the register spec vs the assertions
+
+The specification *does* define behaviour for an out-of-range address, and
+it defines it in the register documentation rather than the prose chapters.
+The datapath RTL implements exactly that behaviour. The two assertions
+forbid the stimulus that the specified behaviour exists to handle, so the
+assertions contradict the spec.
+
+=== The spec text
+
+`hw/ip/efuse/regs/efuse_interface_ctrl.rdl` is the canonical register
+source, and `hw/ip/efuse/doc/memmap.adoc` (section "eFuse Control
+Registers") includes its generated output into the shipped IP
+documentation. The generated copy is
+`hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc`.
+
+`EFUSE_INTERFACE_CTRL_STATUS`, register description
+(`efuse_interface_ctrl.rdl:9`):
+
+----
+eFuse interface status and error-clear register. Reports the sense-done
+flag and request/address error conditions, and provides write-1 strobes
+to clear those errors.
+----
+
+Bit 5, `efuse_program_addr_error` (`efuse_interface_ctrl.rdl:28-29`,
+generated at `efuse_interface_ctrl.adoc:27`):
+
+----
+Indicates that an invalid eFuse program address was used (address exceeds
+the implemented eFuse size). The error must be cleared by writing 1 to
+efuse_program_addr_error_clear.
+----
+
+Bit 6, `efuse_read_addr_error` (`efuse_interface_ctrl.rdl:34-35`,
+generated at `efuse_interface_ctrl.adoc:26`):
+
+----
+Indicates that an invalid eFuse read address was used (address exceeds
+the implemented eFuse size). The error must be cleared by writing 1 to
+efuse_read_addr_error_clear.
+----
+
+Their clear strobes, bits 9 and 10 (`efuse_interface_ctrl.rdl:48` and
+`:55`), name the condition again: "Clears the program out of bounds error
+bit" and "Clears the read out of bounds error bit".
+
+And `EFUSE_READ_CTRL.read_status`, bit 26
+(`efuse_interface_ctrl.rdl:147`, generated at
+`efuse_interface_ctrl.adoc:56`):
+
+----
+0: No Error.  1: Error. Set when read_go is asserted while read is not
+enabled, the address is out of bounds, or the read request times out.
+----
+
+This is decisive on the three sub-questions:
+
+Does the spec define behaviour for an out-of-range address?::
+Yes. Three status bits and two clear strobes, with "address exceeds the
+implemented eFuse size" stated as the setting condition. The behaviour is
+a sticky, software-cleared error flag, not a refusal that goes unreported.
+
+Or is the range a software contract the hardware need not police?::
+No. The opposite. The hardware is specified to police it and to report
+the violation. There is no text anywhere declaring a legal range that
+software must respect on its own.
+
+Is there a register description of the address-error status bit?::
+Yes -- quoted above -- and it is fed. `efuse_interface_controller.sv:531-533`
+computes `reg_interface_program_addr_oob` from the untruncated 16-bit CSR
+field against `SHADOW_REG_BITS`, and passes it as `program_addr_oob_i`
+into `efuse_program_interface.sv:39-41`, which returns
+`program_addr_error_o` and takes `program_addr_error_clear_i`. The read
+side mirrors it exactly at `efuse_interface_controller.sv:612-614` and
+`efuse_read_interface.sv:34-36`. So this is not the "documented bit with
+no reachable producer" case: the producer exists and is reachable. The
+gap is that it is never *driven* in simulation, because of the assertions.
+
+=== The contradiction
+
+`efuse_interface_controller.sv:835` and `:839`:
+
+----
+`OCAH_OT_ASSERT(ProgramAddrValid_A, reg_interface_program_go |->
+                !reg_interface_program_addr_oob, clk_i, !rst_ni)
+`OCAH_OT_ASSERT(ReadAddrValid_A, reg_interface_read_go |->
+                !reg_interface_read_addr_oob, clk_i, !rst_ni)
+----
+
+These are `assert property`, not `assume property`. An assert declares
+that the condition cannot occur; the register spec declares that it can,
+and specifies what the hardware reports when it does. Both cannot be
+right. Since the register spec is the contract and the datapath
+implements it, the assertions are the wrong artefact -- they should be
+assumes at most, or deleted, so that the specified error path can be
+covered without a `$assertoff`.
+
+The RTL comment at `:829-833` says the same thing in the code's own
+voice, but per the method note that comment is evidence about the code,
+not about the specification. The specification evidence is the RDL field
+descriptions quoted above, and they stand on their own.
+
+The consequence for SMC is the visible symptom: SMC must `$assertoff`
+both assertions behind a plusarg to run its boundary test, which means a
+behaviour the shipped register documentation promises to software can
+only be demonstrated with a piece of the RTL's own checking switched off.
+
+=== A secondary documentation defect found along the way
+
+`hw/ip/efuse/doc/programming.adoc` never mentions the address-error bits.
+Its "Program Operation Sequence" step 3 enumerates `program_status` as a
+four-value code:
+
+----
+* Read `program_status` field:
+** 0: Success
+** 1: Bad data (data was not 1)
+** 2: Bad enables (program_enable not set or lock active)
+** 3: Programming failure (verification failed)
+----
+
+`program_status` is a *one-bit* field in the RDL
+(`efuse_interface_ctrl.rdl:105`, `program_status [26:26]`, "0: No Error.
+1: Error"), and the example code at the top of the same file reads it as
+`(EFUSE_PROGRAM_CTRL >> 26) & 0x3`, which straddles bit 27
+(`program_enable`). The prose chapter is stale against the register
+source. Neither the read nor the program sequence tells firmware to check
+`EFUSE_INTERFACE_CTRL_STATUS` bits 5 and 6 after an operation, so a
+documented error report has no documented consumer procedure.
+
+This is a real gap but a different one from the question asked: the
+register spec answers the question, the prose chapter has not been
+updated to match it.
+
+=== What to ask the designer
+
+. Confirm that `ProgramAddrValid_A` and `ReadAddrValid_A` are wrong as
+  asserts, given that `efuse_program_addr_error` and
+  `efuse_read_addr_error` are documented, implemented and exist only to
+  report the condition the asserts forbid. Should they be removed, or
+  demoted to assumes for formal only?
+. With the asserts gone or demoted, both address-error arms become
+  ordinary coverable RTL and the negative test needs no plusarg. Confirm
+  that is the intended end state before the coverage item is closed.
+. Separately: should `programming.adoc` be corrected -- the stale
+  four-value `program_status` enumeration and the `& 0x3` mask -- and
+  should both operation sequences gain a step that reads
+  `EFUSE_INTERFACE_CTRL_STATUS` bits 5 and 6?

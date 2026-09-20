@@ -1072,7 +1072,7 @@ one.
   without ATOP support that assume the field is zero: the `axi_filter_wrap`
   demux (`axi_filter_wrap.sv:242` -> `NoAtopAllowed`,
   `axi_demux_simple.sv:570`) and the `ATOPs(1'b0)` crossbars at
-  `sep_system_peripherals_xbar.sv:116` and `sep_local_axi_xbar.sv:266`. Those
+  `rtl/crossbars/sep_system_peripherals_xbar.sv:116` and `sep_local_axi_xbar.sv:266`. Those
   assumes sit behind `ifndef VERILATOR`, so a leaf looks clean on Verilator and
   fires them on VCS -- which is where coverage is measured. A test was written,
   run against that evidence, and withdrawn.
