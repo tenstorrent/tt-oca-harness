@@ -279,10 +279,8 @@ module entropy_source_tb_top (
     $assertoff(0, u_fifo);
     $assertoff(0, u_health_test);
     // SHA-256-only prim_sha2_32 ties its internal mode flag to SHA2_None.
-    $assertoff(
-        0, u_sha256.u_sha2.gen_sha256_logic.u_prim_sha2_256.ValidDigestModeFlag_A);
-    $assertoff(
-        0, u_sha256.u_sha2.gen_sha256_logic.u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
+    $assertoff(0, u_sha256.u_sha2.gen_sha256_logic.u_prim_sha2_256.ValidDigestModeFlag_A);
+    $assertoff(0, u_sha256.u_sha2.gen_sha256_logic.u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
   end
 `endif
 
