@@ -370,6 +370,7 @@ sources:
   - target: any(dtp, sep, smc, key_manager)
     include_dirs:
       - hw/common/assert
+      - hw/common/defs
       - hw/ip/efuse/rtl/svh
     files:
       - hw/common/och_prim/rtl/prim_jtag_pkg.sv
@@ -1005,7 +1006,7 @@ sources:
       #   vendor/chipsalliance/adams-bridge : chipsalliance/adams-bridge @ e59eba9
       #   vendor/chipsalliance/caliptra-rtl : caliptra-rtl @ ec349a89 (KV clients only;
       #                               kv.sv vault NOT compiled -- sep_abr_kv_shim replaces it)
-      # Two defines, deliberately set together here so they can never disagree:
+      # Defines, deliberately set together here so they can never disagree:
       #   CALIPTRA   - required BY THE VENDORED RTL; gates abr_top's Caliptra
       #                Key-Vault ports and the kv_* client helpers. Do not use it
       #                as a feature switch in OCAH code.
@@ -1014,11 +1015,14 @@ sources:
       #                hw/top/sep_ip_integration.sv (engine + SRAMs). Enabling ABR
       #                therefore always brings CALIPTRA along; sep_crypto.sv also
       #                carries an elaboration check that rejects the mismatch.
+      #   TECH_SPECIFIC_ICG - skip the latch in abr_icg.sv; overlay abr_clk_gate
+      #                instantiates prim_clkgater (foundry cell under `-t synth`).
       # File order follows vendor/chipsalliance/adams-bridge/upstream/src/abr_top/config/abr_top.vf.
       # =====================================================================
       - defines:
           CALIPTRA: ~
           SEP_ABR_EN: ~
+          TECH_SPECIFIC_ICG: ~
         include_dirs:
           - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl
           - vendor/chipsalliance/caliptra-rtl/upstream/src/caliptra_prim/rtl
@@ -1067,6 +1071,7 @@ sources:
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_1r1w_be_ram.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_1r1w_512x4_ram.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ram_regout.sv
+          - vendor/chipsalliance/adams-bridge/overlay/prim_shim/abr_clk_gate.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_icg.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_2ff_sync.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_piso_multi.sv
@@ -1102,9 +1107,11 @@ sources:
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_cipher_pkg.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_pkg.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sparse_fsm_pkg.sv
-          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim_generic/rtl/abr_prim_generic_flop_en.sv
-          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim_generic/rtl/abr_prim_generic_flop.sv
-          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim_generic/rtl/abr_prim_generic_buf.sv
+          # Overlay shims keep the vendor module names and instantiate
+          # prim_flop / prim_buf / prim_flop_en (`not(synth)` / `-t synth`).
+          - vendor/chipsalliance/adams-bridge/overlay/prim_shim/abr_prim_generic_flop_en.sv
+          - vendor/chipsalliance/adams-bridge/overlay/prim_shim/abr_prim_generic_flop.sv
+          - vendor/chipsalliance/adams-bridge/overlay/prim_shim/abr_prim_generic_buf.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_flop_en.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_cdc_rand_delay.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_flop_2sync.sv

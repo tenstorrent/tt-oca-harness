@@ -6,9 +6,12 @@
 # any optimization runs. Assumes common.tcl and init_tech.tcl have already
 # been sourced (see synth.tcl) for
 # $sv_flist/$top_design/$proj_name/$tmp_dir/$rep_dir.
+# --single-unit: slang defaults to one compilation unit per file in -f, so
+# macros defined in one file (including ocah_vendor_defines.svh) are not
+# visible in another.
 yosys plugin -i slang.so
 yosys read_slang --top $top_design -f $sv_flist \
-    --compat-mode --keep-hierarchy \
+    --compat-mode --keep-hierarchy --single-unit \
     --allow-use-before-declare --ignore-unknown-modules \
     --timescale=$timescale
 

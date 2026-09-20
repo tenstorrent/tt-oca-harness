@@ -72,6 +72,29 @@ runs:
     - name: Install bender
       uses: pulp-platform/pulp-actions/bender-install@v2.5.1
 
+    - name: Verify bender
+      shell: bash
+      run: |
+        # pulp-actions/bender-install pipes `curl -f` into bash without
+        # pipefail, so a GitHub Pages 500 still reports success and leaves
+        # /tools/bender on PATH with no binary. Retry the init once with
+        # pipefail when that happens.
+        if command -v bender >/dev/null 2>&1; then
+          bender --version
+          exit 0
+        fi
+        echo "bender-install left no binary; retrying the init once"
+        sudo mkdir -p /tools/bender && sudo chmod 777 /tools/bender
+        (
+          set -o pipefail
+          cd /tools/bender
+          curl --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 -sSf \
+            https://pulp-platform.github.io/bender/init | bash
+        )
+        echo "/tools/bender" >> "$GITHUB_PATH"
+        command -v bender >/dev/null
+        bender --version
+
     - name: Cache Verilator
       id: cache-verilator
       uses: actions/cache@v4

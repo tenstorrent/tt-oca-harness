@@ -60,6 +60,7 @@ ocah-lint-verilator: ocah-lint-verilator-flist
 		--timescale $(OCAH_FLOW_TIMESCALE) \
 		--top-module $(OCAH_LINT_VERILATOR_TOP) \
 		$(OCAH_LINT_VERILATOR_DEFINES) \
+		-FI $(OCAH_VENDOR_DEFINES_SVH) \
 		$(OCAH_LINT_VERILATOR_EXTRA_FLAGS) \
 		-Wno-fatal \
 		+define+ASSERTS_OFF \

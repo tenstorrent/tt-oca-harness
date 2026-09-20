@@ -24,7 +24,7 @@ its checker-gated Python ledger (`env/dtp_fcov.py`).
 |Field |Value
 |Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned)
 |Reference VPLAN |`DTP_VPLAN.adoc`
-|Coverage policy |`cov/config/verilator/coverage_policy.toml` (hole dispositions, waivers, threshold rules)
+|Coverage policy |`cov/config/verilator/coverage_policy.toml` (hole dispositions, waivers, threshold rules); `cov/config/vcs/coverage_policy.toml` (the VCS thresholds) and `cov/config/vcs/dtp_cov_scope.hier` (the VCS compile-time scope)
 |Open-source framework |PyUVM on cocotb
 |Open-source simulator |Verilator
 |Commercial simulator |VCS, the cocotb and SV-UVM realizations
@@ -51,6 +51,16 @@ waiver moves, is reported beside the effective one.
 |Toggle coverage |98% effective, scoped to the DUT instance |Not collected under Verilator, where toggle instrumentation multiplies the per-test database size |`-cm tgl`
 |Assertion coverage |Every enabled assertion attempted; every `cover` directive of the SVA and coverage modules hit |The two-state assertion set stops the simulation on a failure and records no coverage |`-cm assert` in the merged database
 |===
+
+On VCS the scope is applied at compile time by `cov/config/vcs/dtp_cov_scope.hier`
+(`-cm_hier` with `-cm_common_hier`): the code-coverage families grade the DUT
+instance `dtp_uvm_top.u_dut` with everything it instantiates, the vendored
+cells included, and assertion coverage grades the DUT, the `cov/sv/` modules
+and the shared protocol checker instances under the bench top. Nets a
+constant drives leave the toggle denominator (`-cm_noconst`,
+`-cm_seqnoconst`) and continuous assignments count as lines
+(`-cm_line contassign`); condition coverage is URG's `basic` mode. The
+covergroups are unaffected by the scope file.
 
 === Coverage Summary
 
@@ -371,10 +381,15 @@ the DTP policy file; the runner's schema and grading behavior are in
   against a finished run with `run_dv.py --dut dtp --run-dir <run> --waive`,
   which rewrites the grade without a simulation.
 * **Commercial path.** The cocotb `all` and SV-UVM `all` regressions on
-  VCS with the full `-cm` set, each merged by the runner, then merged
-  across frameworks into one database scoped to the DUT instance; the
-  report of that merge is the code-coverage evidence and carries the
-  covergroup bins of the same points.
+  VCS with the full `-cm` set and the compile-time scope, each merged by the
+  runner, then merged across frameworks into one database; the report of
+  that merge is the code-coverage evidence and carries the covergroup bins
+  of the same points. URG hands the runner family totals and no per-point
+  list, so `cov/config/vcs/coverage_policy.toml` carries `[[thresholds]]`
+  only and a VCS hole closes through a scenario, a design or model change,
+  or an entry in a URG exclusion list that `[coverage.vcs].exclude_files`
+  names; the runner passes that list to `urg -elfile` and records its
+  checksum. Covergroup bins take no exclusion.
 * A metric is applicable on the path that collects it, and a point that
   both paths collect is one point: a hole on either path needs one
   disposition, and a waiver written for one path names the same
@@ -441,10 +456,13 @@ the entry's status returning to `open` or the entry being removed, when:
 The compatibility threshold (`--fail-under`, else
 `[coverage.<tool>].fail_under`) grades the tool's raw figure and no waiver
 moves it. The signoff gate is one `pass:[[[thresholds]]]` rule per applicable
-metric family in the policy file, with `population = "effective"` and the
-DUT instance as its `scope`; the hosted weekly publishes the figures
-without a threshold, so the gate runs on the qualification regression and
-on every `--waive` re-grade of its run tree.
+metric family in the policy file of each path: on Verilator with
+`population = "effective"` and the DUT instance as its `scope`, on VCS over
+the family total of the compile-time scope, at 98 percent for the
+code-coverage families and 100 percent for assertion and functional
+coverage. The hosted weekly publishes the figures without a threshold, so
+the gate runs on the qualification regression and on every `--waive`
+re-grade of its run tree.
 
 === VPLAN to FCOV Traceability
 

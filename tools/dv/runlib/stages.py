@@ -128,7 +128,69 @@ REDACTED_ENV_PATTERN = re.compile(
     r"LICENSE|LM_LICENSE|SNPSLMD|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|PRIVATE_KEY|AUTH",
     re.IGNORECASE,
 )
+
 REDACTED_VALUE = "<redacted>"
+
+# Adopters set the OCAH names; these are the vendor aliases ocah_vendor_defines.svh
+# derives. Flows expand them onto the command line so tools without a force-include
+# still see the vendor spelling. Do not emit VERILATOR / TARGET_VERILATOR from Bender.
+OCAH_VENDOR_DEFINE_ALIASES: dict[str, tuple[str, ...]] = {
+    "SYNTHESIS": ("TARGET_SYNTHESIS",),
+    "SIMULATION": ("ABR_SIMULATION",),
+    "VERILATOR": ("TARGET_VERILATOR",),
+    "XSIM": ("TARGET_XSIM",),
+}
+
+
+def _ocah_define_token(item: str) -> str | None:
+    s = item.strip()
+    if s.startswith("+define+"):
+        return s[len("+define+") :].split("=", 1)[0]
+    if s.startswith("-D"):
+        rest = s[2:].lstrip()
+        return rest.split("=", 1)[0] if rest else None
+    if not s or s.startswith("-") or s.startswith("+"):
+        return None
+    return s.split("=", 1)[0]
+
+
+def expand_ocah_vendor_define_aliases(items: list[str]) -> list[str]:
+    """Append vendor aliases for any OCAH view name already present in *items*.
+
+    *items* are bare ``NAME`` / ``NAME=value`` define entries or ``+define+`` /
+    ``-D`` fragments mixed with other flags. Each alias is emitted in the same
+    form as the first source item that triggered it.
+    """
+    present: set[str] = set()
+    plusdefine = False
+    dash_d = False
+    for item in items:
+        tok = _ocah_define_token(item)
+        if tok:
+            present.add(tok)
+        stripped = item.strip()
+        if stripped.startswith("+define+"):
+            plusdefine = True
+        elif stripped.startswith("-D"):
+            dash_d = True
+    extra: list[str] = []
+    for src, aliases in OCAH_VENDOR_DEFINE_ALIASES.items():
+        if src not in present:
+            continue
+        src_form_plus = plusdefine
+        src_form_dash = dash_d and not plusdefine
+        for alias in aliases:
+            if alias in present:
+                continue
+            if src_form_plus:
+                extra.append(f"+define+{alias}")
+            elif src_form_dash:
+                extra.append(f"-D{alias}")
+            else:
+                extra.append(alias)
+            present.add(alias)
+    return [*items, *extra]
+
 
 _STAGE_CANCELLATION = threading.Event()
 _ACTIVE_SUBPROCESS_LOCK = threading.Lock()
@@ -341,6 +403,44 @@ def _target_build_metadata(
     if status:
         metadata["status"] = status
     return metadata
+
+
+def _stamp_provenance(
+    root: Path,
+    log_path: Path,
+    metadata: dict[str, Any],
+    *,
+    fingerprint: str | None,
+    filelist: Path | None,
+    dry_run: bool,
+) -> None:
+    """Bind a per-test log to the sources and build that produced it.
+
+    Records the commit, the dirty flag, the build fingerprint and the filelist
+    digest in the stage metadata (so they reach ``result.json``) and appends the
+    same facts as one ``PROVENANCE`` line at the end of the per-test log, so the
+    log on its own names the build it came from.
+    """
+    from .results import git_info
+
+    git = git_info(root)
+    flist_sha = None
+    if filelist is not None and filelist.is_file():
+        flist_sha = hashlib.sha256(filelist.read_bytes()).hexdigest()[:16]
+    prov: dict[str, Any] = {
+        "commit": git.get("commit", ""),
+        "branch": git.get("branch", ""),
+        "dirty": git.get("dirty", ""),
+        "build_fingerprint": fingerprint or "",
+        "filelist": repo_rel(root, filelist) if filelist is not None else "",
+        "filelist_sha256": flist_sha or "",
+    }
+    metadata["provenance"] = prov
+    if dry_run or not log_path.is_file():
+        return
+    line = "PROVENANCE " + " ".join(f"{key}={value}" for key, value in prov.items() if value != "")
+    with log_path.open("a", encoding="utf-8") as log:
+        log.write(f"\n{line}\n")
 
 
 def _cocotb_target_build_metadata(
@@ -1158,7 +1258,12 @@ def generate_filelist(
                 bender_out.write_text("\n".join(kept) + "\n", encoding="utf-8")
 
     incdirs = [
-        repo_path(root, value) for value in as_str_list(build.get("incdirs"), "build.incdirs")
+        repo_path(root, "hw/common/defs"),
+        *[
+            repo_path(root, value)
+            for value in as_str_list(build.get("incdirs"), "build.incdirs")
+            if value != "hw/common/defs"
+        ],
     ]
     # `stubs` are DUT-local OVERRIDE sources that replace the real RTL for a module. `sources` are
     # ADDITIVE tb components (e.g. SEP's mem responders) that may reference DUT package types, so they
@@ -1235,10 +1340,14 @@ def verilator_compile(
     )
     if build.get("top_module"):
         argv.extend(["--top-module", str(build["top_module"])])
-    argv.extend(target_flags(compile_target, "verilator"))
+    argv.extend(expand_ocah_vendor_define_aliases(target_flags(compile_target, "verilator")))
     argv.extend(args.comp_arg or [])
-    argv.extend(f"+define+{define}" for define in config_list(compile_target, "defines"))
-    argv.extend(f"+define+{define}" for define in (args.define or []))
+    argv.extend(
+        expand_ocah_vendor_define_aliases(
+            [f"+define+{define}" for define in config_list(compile_target, "defines")]
+            + [f"+define+{define}" for define in (args.define or [])]
+        )
+    )
     argv.extend(["-Mdir", str(mdir)])
     argv.extend(["-f", str(repo_path(root, str(build.get("filelist", ""))))])
     wave_format = _wave_format(args, tool)
@@ -1279,11 +1388,13 @@ def _cocotb_build_args(
     filelist: Path,
     args: argparse.Namespace,
 ) -> list[str]:
-    defines = [
-        f"+define+{d}"
-        for d in (config_list(run_target, "defines") or config_list(compile_target, "defines"))
-    ]
-    defines += [f"+define+{d}" for d in (args.define or [])]
+    defines = expand_ocah_vendor_define_aliases(
+        [
+            f"+define+{d}"
+            for d in (config_list(run_target, "defines") or config_list(compile_target, "defines"))
+        ]
+        + [f"+define+{d}" for d in (args.define or [])]
+    )
     if tool == "verilator":
         verilator_cfg = build_verilator_cfg(build)
         return [
@@ -1291,7 +1402,7 @@ def _cocotb_build_args(
                 as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
                 or ["--timing", "-sv", "--language", "1800-2023"]
             ),
-            *target_flags(run_target, "verilator"),
+            *expand_ocah_vendor_define_aliases(target_flags(run_target, "verilator")),
             *(args.comp_arg or []),
             *defines,
             *option_build_args(options, verilator_cfg, _build_jobs_arg(args)),
@@ -2245,9 +2356,10 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
 
 
 def _vcs_defines(compile_target: dict[str, Any], args: argparse.Namespace) -> list[str]:
-    defines = [f"+define+{d}" for d in config_list(compile_target, "defines")]
-    defines += [f"+define+{d}" for d in (args.define or [])]
-    return defines
+    return expand_ocah_vendor_define_aliases(
+        [f"+define+{d}" for d in config_list(compile_target, "defines")]
+        + [f"+define+{d}" for d in (args.define or [])]
+    )
 
 
 # VCS's bare "-ntb_opts uvm" resolves to uvm-1.1, whose global
@@ -2637,9 +2749,10 @@ def vcs_sim(
 
 
 def _xcelium_defines(compile_target: dict[str, Any], args: argparse.Namespace) -> list[str]:
-    defines = [f"+define+{d}" for d in config_list(compile_target, "defines")]
-    defines += [f"+define+{d}" for d in (args.define or [])]
-    return defines
+    return expand_ocah_vendor_define_aliases(
+        [f"+define+{d}" for d in config_list(compile_target, "defines")]
+        + [f"+define+{d}" for d in (args.define or [])]
+    )
 
 
 def _xcelium_common(xcelium_cfg: dict[str, Any], framework: str) -> list[str]:
@@ -3459,7 +3572,7 @@ def run_stage(
         "kind": flow.kind,
         "framework": flow.framework,
         "tool": tool,
-        "executor": "local",
+        "executor": str(getattr(args, "executor", None) or "local"),
         "target": target_name,
         "item": item or "",
         "seed": str(seed),
@@ -3656,9 +3769,15 @@ def run_stage(
                 ),
                 "rebuild": bool(args.rebuild),
             }
-            metadata["target_build"] = _cocotb_target_build_metadata(
-                _cocotb_build_info(flow, root, sim_cfg, args, tool),
-                tool,
+            sim_info = _cocotb_build_info(flow, root, sim_cfg, args, tool)
+            metadata["target_build"] = _cocotb_target_build_metadata(sim_info, tool)
+            _stamp_provenance(
+                root,
+                log_path,
+                metadata,
+                fingerprint=str(sim_info.get("fingerprint", "")) or None,
+                filelist=sim_info.get("filelist"),
+                dry_run=bool(args.dry_run),
             )
         elif kind == "vcs_filelist":
             rc = generate_filelist(
@@ -3749,6 +3868,14 @@ def run_stage(
                 tool="vcs",
                 build_dir=info["build_dir"],
                 fingerprint=info["fingerprint"],
+            )
+            _stamp_provenance(
+                root,
+                log_path,
+                metadata,
+                fingerprint=str(info.get("fingerprint", "")) or None,
+                filelist=None,
+                dry_run=bool(args.dry_run),
             )
         elif kind == "xrun_filelist":
             rc = generate_filelist(
