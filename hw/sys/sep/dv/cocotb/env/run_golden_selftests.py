@@ -23,18 +23,16 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-_SHARED = (
-    _HERE.parents[5] / "hw" / "ip" / "entropy_source" / "dv" / "cocotb" / "entropy_source_models"
-)
+_MODELS = _HERE.parents[5] / "hw" / "ip" / "entropy_source" / "dv" / "cocotb" / "models"
 
 # The goldens with an executable self-test (KAT/NIST/FIPS/RFC or hand vectors).
 _GOLDENS = (
     _HERE / "sep_aes_golden.py",
     _HERE / "sep_hmac_golden.py",
     _HERE / "sep_ctr_drbg_golden.py",
-    _SHARED / "entropy_conditioning_model.py",
-    _SHARED / "entropy_decorrelator_model.py",
-    _SHARED / "entropy_noise_model.py",
+    _MODELS / "entropy_conditioning_model.py",
+    _MODELS / "entropy_decorrelator_model.py",
+    _MODELS / "entropy_noise_model.py",
     _HERE / "sep_entropy_golden.py",
     _HERE / "sep_lcc_golden.py",
     _HERE / "sep_crc_golden.py",
@@ -43,7 +41,7 @@ _GOLDENS = (
 
 def main() -> int:
     failures = []
-    python_path = [str(_SHARED.parent), str(_HERE)]
+    python_path = [str(_MODELS.parent), str(_HERE)]
     if current := os.environ.get("PYTHONPATH"):
         python_path.append(current)
     child_env = {**os.environ, "PYTHONPATH": ":".join(python_path)}

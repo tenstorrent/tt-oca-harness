@@ -4,7 +4,7 @@
 
 import cocotb
 from entropy_source_base_test import EntropySourceTb
-from register_scenarios import register_specs
+from entropy_source_register_scenarios import register_specs
 
 
 @cocotb.test()

@@ -6,7 +6,7 @@ import random
 
 import cocotb
 from entropy_source_base_test import EntropySourceTb, random_seed
-from register_scenarios import register_specs
+from entropy_source_register_scenarios import register_specs
 
 
 @cocotb.test()

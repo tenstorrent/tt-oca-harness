@@ -3,6 +3,8 @@
 
 schema_version = 1
 
+# Entropy Source IP-level scenarios.
+
 [[tests]]
 name = "entropy_source_sanity_test"
 module = { cocotb = "entropy_source_sanity_test" }
@@ -12,88 +14,88 @@ tags = ["smoke", "ci", "entropy_source", "csr"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "register_walk"
-module = { cocotb = "test_reg_walk" }
+name = "entropy_source_register_walk_test"
+module = { cocotb = "entropy_source_register_walk_test" }
 seed = 1
 timeout_sec = 600
 tags = ["entropy_source", "csr"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "axi_random"
-module = { cocotb = "test_axi_random" }
+name = "entropy_source_axi_random_test"
+module = { cocotb = "entropy_source_axi_random_test" }
 seed = 1
 timeout_sec = 600
 tags = ["entropy_source", "csr", "axi"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "decorrelator_modes"
-module = { cocotb = "test_decorrelator_modes" }
+name = "entropy_source_decorrelator_modes_test"
+module = { cocotb = "entropy_source_decorrelator_modes_test" }
 seed = 1
 timeout_sec = 1200
 tags = ["entropy_source", "datapath", "decorrelator", "biw"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "entropy_fifo"
-module = { cocotb = "test_entropy_fifo" }
+name = "entropy_source_fifo_test"
+module = { cocotb = "entropy_source_fifo_test" }
 seed = 1
 timeout_sec = 1200
 tags = ["entropy_source", "fifo", "security"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "health_tests"
-module = { cocotb = "test_health_tests" }
+name = "entropy_source_health_test"
+module = { cocotb = "entropy_source_health_test" }
 seed = 1
 timeout_sec = 1200
 tags = ["entropy_source", "health", "tuning"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "health_algorithms"
-module = { cocotb = "test_health_algorithms" }
+name = "entropy_source_health_algorithms_test"
+module = { cocotb = "entropy_source_health_algorithms_test" }
 seed = 1
 timeout_sec = 600
 tags = ["entropy_source", "health", "window"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "debug_monitor"
-module = { cocotb = "test_debug_monitor" }
+name = "entropy_source_debug_monitor_test"
+module = { cocotb = "entropy_source_debug_monitor_test" }
 seed = 1
 timeout_sec = 600
 tags = ["entropy_source", "debug"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "downsample_rate"
-module = { cocotb = "test_misc" }
+name = "entropy_source_downsample_rate_test"
+module = { cocotb = "entropy_source_downsample_rate_test" }
 seed = 1
 timeout_sec = 600
 tags = ["entropy_source", "downsample"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "pipeline_integration"
-module = { cocotb = "test_pipeline_integration" }
+name = "entropy_source_pipeline_integration_test"
+module = { cocotb = "entropy_source_pipeline_integration_test" }
 seed = 1
 timeout_sec = 1200
 tags = ["entropy_source", "datapath", "sha", "fifo"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "sampling"
-module = { cocotb = "test_sampling" }
+name = "entropy_source_sampling_test"
+module = { cocotb = "entropy_source_sampling_test" }
 seed = 1
 timeout_sec = 600
 tags = ["entropy_source", "ring", "clock"]
 run_modes = ["functional"]
 
 [[tests]]
-name = "entropy_sanity"
-module = { cocotb = "test_entropy_sanity" }
+name = "entropy_source_conditioning_test"
+module = { cocotb = "entropy_source_conditioning_test" }
 seed = 1
 timeout_sec = 1200
 tags = ["entropy_source", "sha", "csr"]
@@ -107,15 +109,15 @@ tests = ["entropy_source_sanity_test"]
 name = "all"
 tests = [
   "entropy_source_sanity_test",
-  "register_walk",
-  "axi_random",
-  "decorrelator_modes",
-  "entropy_fifo",
-  "health_tests",
-  "health_algorithms",
-  "debug_monitor",
-  "downsample_rate",
-  "pipeline_integration",
-  "sampling",
-  "entropy_sanity",
+  "entropy_source_register_walk_test",
+  "entropy_source_axi_random_test",
+  "entropy_source_decorrelator_modes_test",
+  "entropy_source_fifo_test",
+  "entropy_source_health_test",
+  "entropy_source_health_algorithms_test",
+  "entropy_source_debug_monitor_test",
+  "entropy_source_downsample_rate_test",
+  "entropy_source_pipeline_integration_test",
+  "entropy_source_sampling_test",
+  "entropy_source_conditioning_test",
 ]

@@ -3,6 +3,10 @@
 
 `timescale 1ns / 1ps
 
+// Pin-level cocotb harness. The production entropy_source instance exposes its
+// AXI4-Lite CSR interface as flattened axil_* ports. Deterministic leaf
+// instances expose FIFO, health-test, decorrelator, conditioner, noise-source,
+// sampler-clock, and debug-monitor behavior without depending on analog timing.
 module entropy_source_tb_top (
   input  wire         clk,
   input  wire         rst_n,

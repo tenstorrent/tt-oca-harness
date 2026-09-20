@@ -201,7 +201,7 @@ the protocol SVA cannot see it.
 ==== Entropy / crypto goldens and `SepDrbgScoreboard`
 
 Entropy noise, decorrelator, BIW, and SHA models come from
-`hw/ip/entropy_source/dv/cocotb/entropy_source_models/`; the standalone
+`hw/ip/entropy_source/dv/cocotb/models/`; the standalone
 entropy-source and SEP environments import that same package. SEP-specific
 goldens remain under `cocotb/env/` (`sep_ctr_drbg_golden`, AES/HMAC/KMAC, LCC,
 …). The DRBG

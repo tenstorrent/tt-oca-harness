@@ -5,9 +5,9 @@
 import cocotb
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 from entropy_source_base_test import EntropySourceTb
-from entropy_source_models.entropy_decorrelator_model import EntropyDecorrelatorModel
-from entropy_source_models.entropy_noise_model import EntropyNoiseModel
 from entropy_source_scenarios import run_decorrelator_scenario
+from models.entropy_decorrelator_model import EntropyDecorrelatorModel
+from models.entropy_noise_model import EntropyNoiseModel
 
 
 async def _run(dut, bypass: int, divider: int, *, mask: int = 0xFF, cycles: int = 320):

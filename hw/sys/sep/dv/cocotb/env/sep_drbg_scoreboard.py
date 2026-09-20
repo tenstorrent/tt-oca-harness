@@ -29,7 +29,7 @@ from collections import Counter, deque
 import cocotb
 from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
-from entropy_source_models.entropy_noise_model import EntropyNoiseModel
+from models.entropy_noise_model import EntropyNoiseModel
 from sep_entropy_golden import SepEntropyGolden
 from sep_spec_tables import CRYPTO_EDN_SINKS
 

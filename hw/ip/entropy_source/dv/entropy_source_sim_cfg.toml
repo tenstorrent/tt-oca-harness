@@ -3,6 +3,11 @@
 
 schema_version = 1
 
+# Launch entry: selected by `--dut entropy_source` (discovered by the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the entropy source:
+# the DUT's AXI4-Lite CSR port is driven by the AXI VIP, while deterministic
+# leaf instances expose FIFO, health-test, decorrelator, conditioner,
+# noise-source, sampler-clock, and debug-monitor behavior.
 name = "entropy_source"
 profile = "native"
 default_framework = "cocotb"
@@ -29,6 +34,7 @@ common_bender_targets = [
   "axi_rtl",
   "common_cells_rtl",
 ]
+# Entropy-source RTL plus its OpenTitan primitive closure.
 bender_targets = ["entropy_source"]
 
 [frameworks.cocotb]

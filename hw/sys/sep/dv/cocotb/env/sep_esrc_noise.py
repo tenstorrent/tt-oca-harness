@@ -26,7 +26,7 @@ right here.
 from __future__ import annotations
 
 from cocotb.triggers import ClockCycles
-from entropy_source_models.entropy_noise_model import EntropyNoiseModel
+from models.entropy_noise_model import EntropyNoiseModel
 
 # Comfortably under the ROM's /64 decorrelator sample period, so each sample sees
 # a value the previous one did not.

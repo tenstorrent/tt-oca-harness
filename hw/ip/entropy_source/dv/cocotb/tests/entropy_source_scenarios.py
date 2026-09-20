@@ -8,12 +8,12 @@ from collections.abc import Iterable
 
 from cocotb.triggers import FallingEdge, RisingEdge, Timer
 from entropy_source_base_test import EntropySourceTb
-from entropy_source_models.entropy_conditioning_model import (
+from models.entropy_conditioning_model import (
     EntropyBiwModel,
     EntropySha256Model,
 )
-from entropy_source_models.entropy_decorrelator_model import EntropyDecorrelatorModel
-from entropy_source_models.entropy_noise_model import EntropyNoiseModel
+from models.entropy_decorrelator_model import EntropyDecorrelatorModel
+from models.entropy_noise_model import EntropyNoiseModel
 
 FIFO_DEPTH = 64
 

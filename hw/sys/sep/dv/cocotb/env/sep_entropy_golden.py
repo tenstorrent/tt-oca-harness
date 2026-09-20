@@ -43,15 +43,15 @@
 
 from collections import deque
 
-from entropy_source_models.entropy_conditioning_model import (
+from models.entropy_conditioning_model import (
     EntropyBiwModel,
     EntropySha256Model,
 )
-from entropy_source_models.entropy_decorrelator_model import (
+from models.entropy_decorrelator_model import (
     MAX_LANES,
     EntropyDecorrelatorModel,
 )
-from entropy_source_models.entropy_noise_model import EntropyNoiseModel
+from models.entropy_noise_model import EntropyNoiseModel
 from sep_ctr_drbg_golden import BLOCK_LEN, SEED_LEN, SepCtrDrbgGolden
 
 SEED_WORDS = SEED_LEN // 32  # 12 compressor words make one 384b seed

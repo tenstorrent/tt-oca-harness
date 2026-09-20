@@ -128,9 +128,7 @@ sequence items and scoreboards.
 
 No shared APB package ships. No DUT exposes an APB surface to a testbench;
 a shared APB VIP is introduced only when a DUT regression gates real APB
-traffic. The APB master under `hw/ip/entropy_source/dv/tb_vcs/apb_vip/`
-belongs to that IP's standalone VCS bench, outside the native runner, and is not
-a shared package.
+traffic.
 
 [[shared-vip-jtag]]
 === JTAG
