@@ -129,6 +129,7 @@ row runs on `--dut smu`.
 |`smu_boundary_port_composition_test` |smu |The SEP=1 SMU boundary ports are present at the widths the specifications state, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP data inputs the wrapper ties off stay inert.
 |`smu_composition_parameter_test` |smu |The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 |`smu_smc_boundary_io_test` |smu |The SMC-facing wrapper boundary signals that `port_table.adoc` declares are proved through the SMC register map or, for the external interrupts, the SMC CPU interrupt vector `interrupts.adoc` defines, each leg comparing a DUT-produced value against the contract.
+|`smu_smc_cool_reset_pin_test` |smu |`rst_cool_n_from_pin_i` is filtered inside the reset unit's deglitch window and asserts the SMC primary reset when held past it; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
 |`smu_telemetry_atb_capture_test` |smu |One complete ATB telemetry message entered at the wrapper pins is captured by receiver 0 and read back, and the ATB flush handshake completes at the pins.
 |`smu_smc_peripheral_irq_test` |smu |The raw GPIO and UART interrupt vectors `port_table.adoc` brings out of the wrapper follow their sources both ways.
 |`smu_dtp_bsr_extest_loopback_test` |dtp |EXTEST BSR scan loopback
@@ -1786,7 +1787,7 @@ check.
 
 *Test Coverage*:
 
-* The NDM reset request and process pair, an external interrupt lane, the reset-unit terminations (SS_CONFIG, SYNC_REG, ISOLATE_REQ_REG), the two DFT abort status pins, and the FLR isolation path that raises both `isolate_req_o` and `skip_mem_repair_o`.
+* The NDM reset request and process pair, an external interrupt lane, the reset-unit terminations (SS_CONFIG, SYNC_REG, ISOLATE_REQ_REG), the two DFT abort status pins, the subsystem reset-complete vector, the primary-chiplet strap, and the FLR isolation path that raises both `isolate_req_o` and `skip_mem_repair_o`.
 * Every leg compares an SMC CSR read, the boundary output or the SMC CPU interrupt vector against the contract, never against the value the bench drove; the FLR latch is required to hold when the pin drops and to release only on a software write.
 * The NDM lane count comes from NDM_RESET.NDMRESET_CLUSTER_COUNT, which `ndm_reset.rdl` defines as the number of NDM clusters and the mask for the request register and bounds at 32; no specification document states the count numerically, so the register is the only owner of the width and the NDM compares are masked to what it reports.
 * The PLIC sits on the CPU cluster's local path (`fabric.adoc`) and is not reachable from the bench's JTAG2AXI manager; the external-interrupt leg observes the `cpu_interrupts_o` bits the SMC CPU interrupt vector map assigns to `smc_ext_interrupts_i` and does not claim PLIC pending state.
@@ -1798,6 +1799,7 @@ check.
 . Drive `smc_ext_interrupts_i` lane 0, the top driven lane and an alternating pattern, sample `cpu_interrupts_o[31:0]` after each, drop the pins and sample it clear.
 . Write and clear RESET_UNIT.SS_CONFIG, SYNC_REG and ISOLATE_REQ_REG and read `ss_config_o`, `sync_irq_o` and `isolate_req_o` after each.
 . Pulse `mem_repair_abort_i` and `mbist_abort_i` and read DFX_CTRL.STATUS_SMU after release.
+. Drive `ss_reset_complete_i` through three patterns and back to all-ones, reading RESET_UNIT.SS_RESET_COMPLETE after each; take `chiplet_is_primary_i` low and back, reading CPU_CTRL.SMC_ATTRIBUTES after each.
 . Raise `cfg_flr_pf_active_i`, read ISOLATE_REQ_SMC_REG, `isolate_req_o` and `skip_mem_repair_o`, drop the pin and require the latch to hold; release it by software write.
 
 *Checkers*:
@@ -1813,6 +1815,8 @@ check.
 |`CHK-SMU-ISOLATE-REQ` |isolate_req_o carries the ISOLATE_REQ_REG software term
 |`CHK-SMU-DFT-ABORT` |mem_repair_abort_i and mbist_abort_i reach DFX_CTRL.STATUS_SMU and the fields hold after both pins are released
 |`CHK-SMU-FLR-ISOLATE` |a cfg_flr_pf_active_i rising edge sets ISOLATE_REQ_SMC_REG, which raises isolate_req_o through ISOLATE_REQ_SMCEN_REG and skip_mem_repair_o; the latch holds when the pin drops and only a software write releases both
+|`CHK-SMU-SS-RESET-COMPLETE` |RESET_UNIT.SS_RESET_COMPLETE mirrors ss_reset_complete_i lane for lane over three patterns and returns to all-ones with the pins released
+|`CHK-SMU-CHIPLET-STRAP` |CPU_CTRL.SMC_ATTRIBUTES.chiplet_is_primary follows chiplet_is_primary_i low and back to set; the strap's OCTS system-timer role is not claimed
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
@@ -4198,6 +4202,43 @@ Two things are worth reading before the entries:
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_chain`.
+
+'''''
+[[sec-103-smu_smc_cool_reset_pin_test]]
+===== 103 `smu_smc_cool_reset_pin_test`
+
+*Source Module*: `smu_smc_cool_reset_pin_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_jtag_vip` (SMC fabric JTAG2AXI for the CSR reads); TB pin drive on `rst_cool_n_from_pin_i` and the four DFT done/pass straps; `elaboration` firmware mode
+
+*Objective*: `rst_cool_n_from_pin_i` is filtered inside the reset unit's deglitch window and asserts the SMC primary reset when held past it; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
+
+*Test Coverage*:
+
+* Both halves of the cool-reset contract `port_table.adoc` gives the pin: a pulse shorter than the 32-`clk_ref` deglitch window leaves the SMC running, a hold past it asserts the SMC primary reset, and the SMC leaves reset after the pin releases. The reset is observed on `obs_smc_rst_n_o`, the bench's view of the SMC primary reset.
+* `mem_repair_done_i`, `mem_repair_success_i`, `mbist_done_i` and `mbist_pass_i` against the set-only DFX_CTRL.STATUS_SMU fields that mirror them. The bench asserts the straps at bring-up, so the fields are already set when any leaf starts; this leaf holds the straps low across the pin reset, reads the fields at their reset value, and then raises the pairs one at a time so each field is attributed to its own strap. The fields are required to hold when the straps drop again.
+* The cool reset is asserted through the pin only; `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` stays at its reset value of zero, so the FLR-driven cool reset is not part of this leaf.
+
+*Test Procedure*:
+
+[arabic]
+. Read DFX_CTRL.STATUS_SMU and require the four done/pass fields set and `obs_smc_rst_n_o` high.
+. Hold `rst_cool_n_from_pin_i` low for 28 `clk_ref`, release it, and sample `obs_smc_rst_n_o` every `clk_ref` for 128 cycles.
+. Take the four straps low, hold the pin low, and wait for `obs_smc_rst_n_o` to fall; require the fall no earlier than the pulse length that was filtered, and require the reset to stay asserted while the pin is held.
+. Release the pin and wait for `obs_smc_rst_n_o` to rise; re-check the SMC JTAG2AXI path is open.
+. Read STATUS_SMU with the straps still low, raise the memory-repair pair and read, raise the MBIST pair and read, take all four low again and read.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMU-COOL-PIN-DEGLITCH` |a rst_cool_n_from_pin_i pulse shorter than the reset unit's 32-clk_ref deglitch window leaves the SMC primary reset released
+|`CHK-SMU-COOL-PIN-RESET` |rst_cool_n_from_pin_i held past the window asserts the SMC primary reset, holds it while low, and the SMC leaves reset after the pin releases
+|`CHK-SMU-DFT-DONE-STATUS` |DFX_CTRL.STATUS_SMU reads mem_repair_done, mem_repair_success, mbist_done and mbist_pass clear after a primary reset with the straps low; each pair sets when its straps rise and holds when they drop again
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
 
 '''''
 === Formal Verification Plan
