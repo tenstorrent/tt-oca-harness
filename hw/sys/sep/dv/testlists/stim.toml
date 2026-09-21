@@ -19,12 +19,18 @@ schema_version = 1
 # sep_cov_scope.hier. The `sep_cov_` test prefix marks what a test IS; `stim`
 # names the group you run.
 #
+# WHICH GROUP RUNS THESE. They are NOT members of `all`: `all` is the set
+# SEP_VPLAN grades, and a stimulus leaf grades nothing. Run them through
+# `stim` on their own, or through `all_cov` (cpu + cpu_stub + stim), which is
+# the set a coverage run measures.
+#
 # TO REMOVE THIS SUITE:
 #   1. drop "stim.toml" from `includes` in all.toml
-#   2. delete the BEGIN/END coverage-stimulus block in the `all` group
-#   3. restore `expected_count = 80` on the `all` group
-#   4. delete this file, cocotb/tests/**/sep_cov_*.py, cocotb/seq_lib/sep_cov_*.py
+#   2. delete the whole `all_cov` group from all.toml
+#   3. delete this file, cocotb/tests/**/sep_cov_*.py, cocotb/seq_lib/sep_cov_*.py
 #      and cocotb/tests/km_rom_cov_*.parhex
+#
+# `all` needs no edit: it never held these tests.
 
 
 # Code-coverage stimulus leaves for the SEP system fabric, system CSR and
