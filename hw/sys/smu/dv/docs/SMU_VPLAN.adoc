@@ -131,6 +131,7 @@ row runs on `--dut smu`.
 |`smu_smc_boundary_io_test` |smu |The SMC-facing wrapper boundary signals that `port_table.adoc` declares are proved through the SMC register map or, for the external interrupts, the SMC CPU interrupt vector `interrupts.adoc` defines, each leg comparing a DUT-produced value against the contract.
 |`smu_smc_cool_reset_pin_test` |smu |A 28-`clk_ref` pulse on `rst_cool_n_from_pin_i` is filtered and a hold past that pulse asserts the SMC primary reset; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
 |`smu_smc_boundary_lane_sweep_test` |smu |Every lane of the multi-lane SMC-facing wrapper buses is driven both ways and compared against the SMC register or interrupt vector that owns it, and each aggregate names the lane count it expects.
+|`smu_smc_efuse_shadow_sense_reset_test` |smu |After a real SMC fuse sense, `smc_shadow_regs_o` carries the sensed eFuse image at every register offset `smc_addr.h` gives the map, and it reads the zero every `smc_efuse_map.rdl` field resets to while `rst_cold_ni` is held; the image programs every fuse bit, so both samples are taken on the full width of the port.
 |`smu_telemetry_atb_capture_test` |smu |One complete ATB telemetry message entered at the wrapper pins is captured by receiver 0 and read back, and the ATB flush handshake completes at the pins.
 |`smu_smc_peripheral_irq_test` |smu |The raw GPIO and UART interrupt vectors `port_table.adoc` brings out of the wrapper follow their sources both ways.
 |`smu_dtp_bsr_extest_loopback_test` |dtp |EXTEST BSR scan loopback
@@ -4241,6 +4242,47 @@ Two things are worth reading before the entries:
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
 
 '''''
+[[sec-105-smu_smc_efuse_shadow_sense_reset_test]]
+===== 105 `smu_smc_efuse_shadow_sense_reset_test`
+
+*Source Module*: `smu_smc_efuse_shadow_sense_reset_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `efuse_bank_model` loaded from `dv/assets/smc_efuse_all_ones.hex`; TB pin drive of `rst_cold_ni`; `elaboration` firmware mode; run mode `sep_rtl_fuse_sense`, which leaves `+skip_fuse_sense` unset
+
+*Objective*: After a real SMC fuse sense, `smc_shadow_regs_o` carries the sensed eFuse image at every register offset `smc_addr.h` gives the map, and it reads the zero every `smc_efuse_map.rdl` field resets to while `rst_cold_ni` is held; the image programs every fuse bit, so both samples are taken on the full width of the port.
+
+*Test Coverage*:
+
+* The sense is the claim, so the leaf runs on the fuse-sense run mode and requires `+skip_fuse_sense` to be absent; `smc_fuse_sense_done_o` has to be observed rising 0 -> 1, and a run that begins with it already high fails.
+* The expected value comes from the image file the leaf loads and from `smc_addr.h`, both DV-owned; no RTL package or module supplies a golden or a walk.
+* `SMC_TOP_SMC_EFUSE_MAP_SIZE` sets the map at 1024 bytes and the fuse word at 4 bytes, so fuse word `i` is shadow bits `32i+31..32i`. The register base addresses in `smc_addr.h` are required to tile that map with no hole and no overlap, and each register's slice of the port is compared against its own bytes of the image: LOCKS, JTAG_PUBLIC_IDENTITY, the nine I2C_I3C_ID elements, SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and the twenty-eight SPARE regions.
+* Every field of every register in `smc_efuse_map.rdl` resets to `0x0`, so the reset value of the whole map is zero; that is the value required before the sense completes and again while the cold reset is held, each over a 64-cycle window rather than at one instant.
+* The image sets all 8192 fuse bits, which the leaf requires of it before it compares anything. Both directions are then counted: the sense has to move all 8192 bits 0 -> 1 and the cold reset all 8192 bits 1 -> 0, so a port stuck at either value fails rather than passing on a partial match.
+* A uniform image cannot distinguish one word of the map from another. The word-for-word claim here is that each register's slice carries its own bytes of the image at the port's full width; distinct data at named offsets is placed by `smu_dtp_otp_smc_map_rw_test` and `smu_otp_vs_fabric_map_race_test`.
+
+*Test Procedure*:
+
+[arabic]
+. Bring the wrapper up on the fuse-sense run mode and require `+skip_fuse_sense` to be absent and `smc_shadow_regs` to be as wide as the map size declares.
+. Read the image `+smc_efuse_hex` names, require it to program every bit of the map, and sample `smc_shadow_regs` before the sense completes.
+. Wait for `smc_fuse_sense_done_o` to rise, then compare each register's slice of `smc_shadow_regs` against its bytes of the image, count the bits that moved 0 -> 1, and require the port to hold that value for 64 clk_smu.
+. Assert `rst_cold_ni`, wait for `smc_fuse_sense_done_o` to fall, and require `smc_shadow_regs` to read the map reset value, all 8192 bits having moved 1 -> 0.
+. Require that reset value to hold for a further 64 clk_smu with `rst_cold_ni` still asserted.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMU-EFUSE-SHADOW-SENSE` |with `+skip_fuse_sense` unset, smc_shadow_regs carries the whole SMC_TOP_SMC_EFUSE_MAP_SIZE-wide sensed image, register slice by register slice at the byte offsets smc_addr.h gives them, and holds it after the sense
+|`CHK-SMU-EFUSE-SHADOW-RESET` |smc_shadow_regs reads the zero every smc_efuse_map.rdl field resets to, both before the sense completes and for the whole time rst_cold_ni is held after it
+|`CHK-SMU-EFUSE-SHADOW-TOGGLE` |the image programs every bit of the map, and every one of them is observed going 0 -> 1 on the sense and 1 -> 0 on the cold reset
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
+
+'''''
+
 [[sec-106-smu_smc_boundary_lane_sweep_test]]
 ===== 106 `smu_smc_boundary_lane_sweep_test`
 
@@ -4284,6 +4326,7 @@ Two things are worth reading before the entries:
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
 
 '''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no

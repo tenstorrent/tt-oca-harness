@@ -374,9 +374,9 @@ feature rows.
 |===
 |Testcase |Objective
 |`smc_external_window_pad_ctrl_decode_test` |The six mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
-|`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL 46-entry full sweep.
+|`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
-|`smc_gpio_intf_full_sweep_test` |GPIO_INTF full 65-entry sweep.
+|`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
 |`smc_gpio_irq_active_test` |Run GPIO CSR plus IRQ-control decode precheck.
 |`smc_gpio_irq_type_matrix_test` |Drive GPIO0 for both level polarities and check the IRQ aggregate.
 |`smc_gpio_multi_sample_test` |Run the SMC OSS GPIO multi-sample observability scenario.
@@ -860,6 +860,7 @@ Drive `smc_register_sanity_test_seq`. Each checker below is a named compare the 
 |`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
 |`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
 |`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): non-vacuity count of real SEP_IN CSR accesses in `smc_register_sanity_test_seq.svh`
+|— |cocotb shape (default framework): emits no `CHK-*` token. Every SEP_IN read in `smc_register_sanity_test_seq.py` carries the value it must return (RDL reset value, the written pattern, the restored reset value; five accesses per register) and the scoreboard fails the run on a mismatch; the sequence also asserts the access count against the register list
 |===
 
 
@@ -1126,6 +1127,7 @@ Drive `smc_telemetry_receiver_csr_test_seq`. Each checker below is a named compa
 |===
 |Checker |Description
 |`CHK-TELEMETRY-RECEIVER-CSR` |Named compare in `smc_telemetry_receiver_csr_test_seq.py`; the run fails if it mismatches
+|`CHK-TELEMETRY-RECEIVER-<rx>-ATB` |Per receiver: after its ATB message STATUS leaves EMPTY within a bounded poll and TELEMETRY_PROBE_ID reads back the probe ID framed into that receiver, in `smc_telemetry_receiver_csr_test_seq.py`; expiry or a mismatch fails the run
 |===
 
 
@@ -1222,6 +1224,7 @@ Drive `smc_zeroer_dma_timeout_test_seq`. Each checker below is a named compare t
 |===
 |Checker |Description
 |`CHK-NONVAC` |Non-vacuity count in `smc_zeroer_dma_timeout_test_seq.py`
+|`CHK-ZEROER-CMD-READBACK` |DEST_ADDR and SIZE read back the values the trigger step wrote, in `smc_zeroer_dma_timeout_test_seq.py`; the assert fails the run on a mismatch
 |`CHK-ZEROER-CTRL-STATUS` |CTRL_STATUS with STATUS masked equals the packed INT_EN=1 word exactly, in `smc_zeroer_dma_timeout_test_seq.py`; STATUS's resting level is recorded, not asserted (#1234)
 |`CHK-ZEROER-REGION-DECODE` |Named compare in `smc_zeroer_dma_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-ZEROER-REGION-ZEROED` |Named compare in `smc_zeroer_dma_timeout_test_seq.py`; the run fails if it mismatches
@@ -1260,6 +1263,7 @@ Drive `smc_zeroer_sanity_test_seq`. Each checker below is a named compare the DU
 |===
 |Checker |Description
 |`CHK-NONVAC` |Non-vacuity count in `smc_zeroer_dma_timeout_test_seq.py`
+|`CHK-ZEROER-CMD-READBACK` |DEST_ADDR and SIZE read back the values the trigger step wrote, in `smc_zeroer_dma_timeout_test_seq.py`; the assert fails the run on a mismatch
 |`CHK-ZEROER-CTRL-STATUS` |CTRL_STATUS with STATUS masked equals the packed INT_EN=1 word exactly, in `smc_zeroer_dma_timeout_test_seq.py`; STATUS's resting level is recorded, not asserted (#1234)
 |`CHK-ZEROER-REGION-DECODE` |Named compare in `smc_zeroer_dma_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-ZEROER-REGION-ZEROED` |Named compare in `smc_zeroer_dma_timeout_test_seq.py`; the run fails if it mismatches
@@ -4829,7 +4833,7 @@ Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compar
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: GPIO_CTRL 46-entry full sweep.
+*Objective*: GPIO_CTRL full sweep over every external GPIO_CTRL entry (65, from `external_gpio_ctrl_indices()`).
 
 *Test Coverage*:
 
@@ -4898,7 +4902,7 @@ Drive `smc_gpio_filter_access_sep_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: GPIO_INTF full 65-entry sweep.
+*Objective*: GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
 
 *Test Coverage*:
 
@@ -5585,6 +5589,7 @@ Drive `smc_i2c_error_fifo_depth_test_seq`. Each checker below is a named compare
 |===
 |Checker |Description
 |`CHK-I2C0-HOST-WRITE` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C0-HOST-REPEATED-START` |Two DUT-host write frames joined by a repeated START: the EEPROM VIP frames exactly two STARTs against one STOP on `tb_i2c0_*`, in `smc_i2c_master_target_test_seq.py`; the run fails otherwise
 |`CHK-I2C0-OVRD-PAD` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
 |`CHK-I2C0-SMBUS-ARA` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
 |`CHK-I2C0-SMBUS-PEC` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
@@ -5655,6 +5660,7 @@ Drive `smc_i2c_master_target_test_seq`. Each checker below is a named compare th
 |===
 |Checker |Description
 |`CHK-I2C0-HOST-WRITE` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C0-HOST-REPEATED-START` |Two DUT-host write frames joined by a repeated START: the EEPROM VIP frames exactly two STARTs against one STOP on `tb_i2c0_*`, in `smc_i2c_master_target_test_seq.py`; the run fails otherwise
 |`CHK-I2C0-OVRD-PAD` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
 |`CHK-I2C0-SMBUS-ARA` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
 |`CHK-I2C0-SMBUS-PEC` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
@@ -6017,6 +6023,7 @@ Drive `smc_i2c_p1_rdwr_protocol_test_seq`. Each checker below is a named compare
 |===
 |Checker |Description
 |`CHK-I2C0-HOST-WRITE` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C0-HOST-REPEATED-START` |Two DUT-host write frames joined by a repeated START: the EEPROM VIP frames exactly two STARTs against one STOP on `tb_i2c0_*`, in `smc_i2c_master_target_test_seq.py`; the run fails otherwise
 |`CHK-I2C0-OVRD-PAD` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
 |`CHK-I2C0-SMBUS-ARA` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
 |`CHK-I2C0-SMBUS-PEC` |Named compare in `smc_i2c_master_target_test_seq.py`; the run fails if it mismatches
