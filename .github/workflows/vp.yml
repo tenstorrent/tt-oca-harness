@@ -145,6 +145,23 @@ jobs:
           test -d virtual_platform/tt-oca-harness-model/vp
           test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
 
+      # ocah_deps.nix builds openssl-merged and boost-merged from source -- they
+      # are overlay derivations, so no binary cache has them -- on top of the
+      # RISC-V toolchain, verilator and yosys. That does not fit a hosted
+      # runner's free space, and the failure surfaces deep inside a build as
+      #   ld.bfd: final link failed: No space left on device
+      # rather than as anything about disk. Reclaim the preinstalled toolchains
+      # this job never uses first. vp.yml is the only workflow that builds the
+      # image, which is why nothing else needs this.
+      - name: Free disk space for the nix build
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        run: |
+          echo "before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/share/boost /usr/local/lib/node_modules \
+                      /opt/hostedtoolcache/CodeQL || true
+          echo "after:"; df -h / | tail -1
+
       # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
       # back to pulling docker.io/nixos/nix and building inside it otherwise.
       # The fallback builds the whole closure from scratch on every job and does
@@ -407,6 +424,23 @@ jobs:
       # extra packages. gcc-riscv64-unknown-elf is what the two firmware suites
       # auto-detect; picolibc is not needed for them (they build -ffreestanding
       # -nostdlib) but keeps this list the same as the sep-vp job's.
+      # ocah_deps.nix builds openssl-merged and boost-merged from source -- they
+      # are overlay derivations, so no binary cache has them -- on top of the
+      # RISC-V toolchain, verilator and yosys. That does not fit a hosted
+      # runner's free space, and the failure surfaces deep inside a build as
+      #   ld.bfd: final link failed: No space left on device
+      # rather than as anything about disk. Reclaim the preinstalled toolchains
+      # this job never uses first. vp.yml is the only workflow that builds the
+      # image, which is why nothing else needs this.
+      - name: Free disk space for the nix build
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        run: |
+          echo "before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/share/boost /usr/local/lib/node_modules \
+                      /opt/hostedtoolcache/CodeQL || true
+          echo "after:"; df -h / | tail -1
+
       # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
       # back to pulling docker.io/nixos/nix and building inside it otherwise.
       # The fallback builds the whole closure from scratch on every job and does
