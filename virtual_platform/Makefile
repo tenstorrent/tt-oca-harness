@@ -44,7 +44,7 @@ VP_ENV_TAG ?= $(if $(or $(wildcard /run/.containerenv /.dockerenv),$(OCAH_IN_CON
 VP_TAG_SUFFIX := $(if $(VP_ENV_TAG),-$(VP_ENV_TAG),)
 
 # VP_CONTAINER=1 runs the requested goals inside the ocah-toolchain image via
-# scripts/docker-run.sh vp-run, for hosts with no usable native toolchain. A
+# scripts/docker-run.sh run-here, for hosts with no usable native toolchain. A
 # container-built VP links the container's glibc and must also RUN there, so
 # the forwarding covers the run targets (vp-test, boot-run, fw-run, smoke) as
 # well as the builds.
@@ -65,8 +65,8 @@ _FWD_GOALS := $(or $(MAKECMDGOALS),help)
 _FWD_FIRST := $(firstword $(_FWD_GOALS))
 .PHONY: $(_FWD_GOALS)
 $(_FWD_FIRST):
-	@echo "[VP] VP_CONTAINER=1: running '$(_FWD_GOALS)' in the ocah-toolchain container..."
-	"$(DOCKER_RUN)" vp-run make -C "$(VP_DIR)" $(_FWD_GOALS) \
+	@echo "[VP] VP_CONTAINER=1: running '$(_FWD_GOALS)' in the OCAH container..."
+	"$(DOCKER_RUN)" run-here make -C "$(VP_DIR)" $(_FWD_GOALS) \
 	  VP_ENV_TAG=ctr VP_CONTAINER=0 PYTHON=/usr/bin/python3 \
 	  $(if $(PYTEST_ARGS),PYTEST_ARGS="$(PYTEST_ARGS)") \
 	  $(if $(BOOT_ARGS),BOOT_ARGS="$(BOOT_ARGS)") \

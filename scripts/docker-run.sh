@@ -2,178 +2,114 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
+# Helper for running repo commands in the OCAH nix-built container.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell|vp-build|vp-run CMD...|vp-shell|vp-verify>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
-#   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
-#   build     (re)build the toolchain image + publish to shared tarball cache
-#             (vp-build is an alias: one image serves firmware and the VP)
-#   ensure    make the toolchain image available (local -> cache -> build);
-#             auto-run by run/run-here/shell/verify, so bare `run` works on a
-#             fresh host
-#   verify    gcc version + multilibs      shell     interactive shell
-#   run CMD   run in the toolchain image
-#   run-here CMD  toolchain image, 1:1 host paths and caller's cwd (nonfree DV cgen)
-#   doc-html  build HTML with Antora image doc-pdf  build PDF with Asciidoctor image
-#   eda-run   run in the open EDA image    eda-shell interactive EDA shell
-#   vp-run CMD  same image, 1:1 host paths -- an alias of run-here, spelled for
-#               the VP (build AND run sep-vp in here: a container-built sep-vp
-#               links the container glibc and cannot run on older hosts)
-#   vp-shell    interactive shell with 1:1 host paths
-#   vp-verify   native compiler + cmake versions (the VP side of `verify`)
-# Env: OCAH_DOCKER_IMAGE       toolchain image tag (default: ocah-toolchain)
-#      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the
-#                               toolchain image; unset disables the cache
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage>
+#   'doc-html all'  builds the real combined multi-book site (antora-playbook.yml) -- this
+#                   is what gets deployed
+#   'doc-stage'     adds PDFs + .nojekyll on top of an already-built combined site -- pure
+#                   file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
+#   build           (re)build nix container image + publish to shared tarball cache
+#   ensure          make nix container image available (cache -> build); auto-run
+#                   by run/run-here/shell/verify, so bare `run` works on a fresh host
+#   verify          gcc version + multilibs
+#   shell           interactive shell
+#   nixos-shell     Open an interactive shell in the NixOS build container - useful
+#                   for debugging the container build
+#   run CMD         run in nix container
+#   run-here CMD    1:1 host paths and caller's cwd (nonfree DV cgen)
+#   doc-html        build HTML with Antora
+#   doc-pdf         build PDF with Asciidoctor-pdf
+# Env: OCAH_NIXOS_IMAGE        base NixOS image for building on nix-less hosts
+#                               (default: docker.io/nixos/nix:latest)
+#      OCAH_IMAGE_WITH_UV      bundle uv-installed dependencies into nix-built
+#                               image (true/false, default: false)
+#      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the nix
+#                               container image; unset disables the cache
 #                               (site CI sets this, e.g. in its env setup)
-#      OCAH_ENGINE             force `podman` or `docker` instead of preferring
-#                               whichever is found first (CI pins this so a
-#                               runner image shipping both is deterministic)
-#      OCAH_DOC_HTML_IMAGE     prebuilt Antora image
-#      OCAH_DOC_PDF_IMAGE      prebuilt Asciidoctor image
-#      OCAH_EDA_IMAGE          prebuilt yosys/slang/verible image (see flows/)
 #      OCAH_DOCKER_UIDGID      container --user (default: empty for rootless
 #                               podman, caller's uid:gid for docker; set empty to
-#                               run as each image's own default user)
-#      OCAH_PODMAN_DIR         base for podman runtime+storage when the default
-#                               /run/user/<uid> is unwritable (default:
-#                               /tmp/ocah-podman-<uid>); used by CI accounts
+#                               run as the image's own default user)
+#      OCAH_PODMAN_DIR         optional base for podman runtime+storage; also
+#                               used when /run/user/<uid> is unwritable, with
+#                               default /tmp/ocah-podman-<uid>
 #      OCAH_SKIP_GID_FIXUP     set to 1 to skip re-running under the passwd
 #                               primary group for rootless podman (see below)
-#      OCAH_TOOLCHAIN_ROOTFS   extracted toolchain-image rootfs; when set (and
-#                               bwrap is present) `run`/`run-here`/`vp-run` use
-#                               bubblewrap instead of podman/docker (see below).
-#                               Must come from the merged image: both the RISC-V
-#                               and the native compiler are probed for
+#      OCAH_TOOLCHAIN_ROOTFS   rootfs extracted from the nix container image;
+#                               when set (and bwrap is present) `run`/`run-here`
+#                               use bubblewrap instead of podman/docker (see below)
 #      OCAH_BWRAP_EXTRA_BINDS  extra host paths to bind into the bwrap sandbox
 #                               (space-separated; each bound at its own path)
 set -euo pipefail
 
-# -P: the physical path. A checkout reached through a symlinked parent would
-# otherwise be bound at a path that resolves under one of the read-only rootfs
-# mounts, where bwrap cannot create the mount point.
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-IMAGE="${OCAH_DOCKER_IMAGE:-ocah-toolchain}"
-DOC_HTML_IMAGE="${OCAH_DOC_HTML_IMAGE:-docker.io/antora/antora:3.1.10}"
-DOC_PDF_IMAGE="${OCAH_DOC_PDF_IMAGE:-docker.io/asciidoctor/docker-asciidoctor:1.106.0@sha256:6266e05784c2d8ece9d9fe5e593b12c3beebebbc467135fd6f4a56269c93cea3}"
-EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
+[[ -n ${OCAH_DOCKER_RUN_CI:-} ]] && set -x
 
-# Toolchain image provisioning. The ocah-toolchain image is built locally and
-# published to no registry, so bare `run` on a fresh host would try (and fail)
-# to pull it. To avoid every CI runner rebuilding it - and to avoid depending on
-# registry/internet access at job time - a built image can be cached as a
-# tarball on shared storage, keyed by the Dockerfile hash: hosts reuse a
-# matching local image, else load the tarball, else build once and publish it
-# for the rest. The cache is only active when OCAH_DOCKER_CACHE_DIR is set
-# (site-specific; e.g. exported by the adopter's CI environment setup).
-DOCKER_CTX="${ROOT}/tools/docker"
+# -P: the physical path, so symlinked checkout parents don't produce a path
+# that fails to resolve inside the container's bind mount.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+
+NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
+IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
+NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
+MANIFEST_SUBMODULE="hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
+
+NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
+
+# The nix container image is built locally and published to no registry. A built
+# image can be cached as a tarball on shared storage, keyed by the flake output
+# hash: hosts reuse a matching local image, else load the tarball, else build.
+# The cache is only active when OCAH_DOCKER_CACHE_DIR is set (site-specific;
+# e.g. exported by the adopter's CI environment setup).
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
 
-DOCKERFILE="${DOCKER_CTX}/Dockerfile"
-ROOTFS_ENV="${OCAH_TOOLCHAIN_ROOTFS:-}"
-
-# One image now carries both toolchains, so an extracted rootfs must too. Probe
-# for both: a rootfs extracted from an older firmware-only image would satisfy a
-# RISC-V-only check and then fail deep inside a VP build instead of here.
-ROOTFS_PROBES=(usr/bin/riscv64-unknown-elf-gcc usr/bin/g++)
-
-# rootfs_missing DIR : echo the first absent probe binary and return 0;
-#                      return 1 when every probe is present.
-rootfs_missing() {
-  local p
-  for p in "${ROOTFS_PROBES[@]}"; do
-    [[ -x "${1}/${p}" ]] || {
-      echo "$p"
-      return 0
-    }
-  done
-  return 1
-}
-
-# Will this invocation actually need a container engine? The toolchain
-# subcommands can be served by the bubblewrap backend (see below), in which case
-# no engine - and none of the rootless-podman preparation underneath - is needed.
-# The doc/EDA subcommands use pulled images and always need an engine.
+# Will this invocation actually need a container engine? run/run-here/verify/shell
+# can be served by the bubblewrap backend (see below), in which case no engine -
+# and none of the rootless-podman preparation underneath - is needed.
 NEEDS_ENGINE=1
 case "${1:-}" in
-run | run-here | verify | shell | vp-run | vp-shell | vp-verify)
-  if [[ -n "$ROOTFS_ENV" ]] &&
-    ! rootfs_missing "$ROOTFS_ENV" >/dev/null &&
+run | run-here | verify | shell)
+  if [[ -n "${OCAH_TOOLCHAIN_ROOTFS:-}" ]] &&
+    [[ -x "${OCAH_TOOLCHAIN_ROOTFS}/bin/riscv64-unknown-elf-gcc" ]] &&
     command -v bwrap >/dev/null 2>&1; then
+    NEEDS_ENGINE=0
+  fi
+  ;;
+nix-fmt | nix-fmt-check | nixos-shell)
+  if command -v nix >/dev/null 2>&1; then
     NEEDS_ENGINE=0
   fi
   ;;
 esac
 
-# OCAH_ENGINE pins the engine; otherwise podman is preferred over docker.
-ENGINE="${OCAH_ENGINE:-}"
-if [[ -n "$ENGINE" ]]; then
-  case "$ENGINE" in
-  podman | docker) ;;
-  *)
-    echo "error: OCAH_ENGINE must be 'podman' or 'docker', not '$ENGINE'" >&2
-    exit 1
-    ;;
-  esac
-  if ! command -v "$ENGINE" >/dev/null 2>&1; then
-    # Only fatal when an engine is actually going to be used: a pinned
-    # engine that is absent must not break a request bwrap can serve.
-    [[ "$NEEDS_ENGINE" == 0 ]] ||
-      {
-        echo "error: OCAH_ENGINE=$ENGINE but $ENGINE is not on PATH" >&2
-        exit 1
-      }
-    ENGINE=none
-  fi
-elif command -v podman >/dev/null 2>&1; then
+if command -v podman >/dev/null 2>&1; then
   ENGINE=podman
+  VOL=":Z"
+  PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true \
+        --storage-opt=mount_program=$(which fuse-overlayfs)"
+  PODMAN_RUN_FLAGS="--userns=keep-id"
 elif command -v docker >/dev/null 2>&1; then
   ENGINE=docker
+  VOL=""
+  PODMAN_STORAGE_FLAGS=""
+  PODMAN_RUN_FLAGS=""
 elif [[ "$NEEDS_ENGINE" == 0 ]]; then
-  ENGINE=none
+  ENGINE=none VOL=""
 else
   echo "error: podman or docker is required" >&2
   exit 1
 fi
 
-if [[ "$ENGINE" == podman ]]; then
-  VOL=":Z"
-  PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true"
-  # Only pass mount_program when fuse-overlayfs is actually installed: an
-  # empty value is not "unset", and podman rejects the malformed flag.
-  if _fuse_overlayfs="$(command -v fuse-overlayfs 2>/dev/null)"; then
-    PODMAN_STORAGE_FLAGS+=" --storage-opt=mount_program=${_fuse_overlayfs}"
+# Create a named network if it does not already exist. Both Docker and Podman
+# support the same syntax; neither auto-removes the network when containers
+# leave, so trap removal on exit
+ensure_network() {
+  local net="$1"
+  if ! "$ENGINE" network ls --format '{{.Name}}' 2>/dev/null | grep -qx "$net"; then
+    "$ENGINE" network create "$net" >/dev/null
+    echo "docker-run: created network '$net'" >&2
   fi
-  # --userns=keep-id makes the container see the caller's own uid rather than
-  # root. It needs the account's subuid allocation to be wide enough to map
-  # that uid inside the namespace: podman maps container uids 0..uid-1 onto
-  # the subuid range before pinning container uid == host uid. A large
-  # (LDAP/AD-assigned) uid with the customary 65536-wide range therefore does
-  # not fit, and podman fails before the container starts:
-  #   chowning container workdir to container root:
-  #   chown .../merged/work: invalid argument
-  # Rootless podman's DEFAULT mapping already maps container root to the
-  # caller's uid, so bind-mounted output comes out caller-owned either way
-  # (that is the same reason --user is not passed below) - so drop the flag
-  # instead of failing. Force it either way with OCAH_PODMAN_KEEP_ID=1/0.
-  PODMAN_RUN_FLAGS=""
-  if [[ -n "${OCAH_PODMAN_KEEP_ID:-}" ]]; then
-    [[ "$OCAH_PODMAN_KEEP_ID" == 1 ]] && PODMAN_RUN_FLAGS="--userns=keep-id"
-  else
-    _uid="$(id -u)"
-    # Sum every range granted to this account (by name or by uid); absent
-    # /etc/subuid or no entry yields 0, which correctly disables the flag.
-    _subuids="$(awk -F: -v u="$(id -un)" -v n="$_uid" \
-      '$1 == u || $1 == n { c += $3 } END { print c + 0 }' \
-      /etc/subuid 2>/dev/null)"
-    if [[ "${_subuids:-0}" -gt "$_uid" ]]; then
-      PODMAN_RUN_FLAGS="--userns=keep-id"
-    fi
-  fi
-else
-  VOL=""
-  PODMAN_STORAGE_FLAGS=""
-  PODMAN_RUN_FLAGS=""
-fi
+  trap '"$ENGINE" network rm "$NETWORK" 2>/dev/null || true' EXIT
+}
 
 # Rootless podman's newuidmap/newgidmap helpers refuse to set up the user
 # namespace unless the process's primary GID matches the account's registered
@@ -210,18 +146,17 @@ fi
 # have no such dir and can't create it ("mkdir /run/user/<uid>: permission
 # denied"), so podman won't even start. When that runtime dir is missing or
 # unwritable, redirect podman's runtime (XDG_RUNTIME_DIR) and image storage
-# (XDG_DATA_HOME) to a node-local, per-uid dir under /tmp: world-writable, fast
-# local disk, and - keyed by uid - stable so a loaded image persists across jobs
-# on the same runner. Hosts with a proper session (writable /run/user/<uid>) are
-# left untouched. Override the base dir with OCAH_PODMAN_DIR.
+# (XDG_DATA_HOME) to a node-local, per-uid directory. OCAH_PODMAN_DIR selects
+# that directory explicitly when the default image store is unsuitable even
+# though the runtime directory itself is writable.
 if [[ "$ENGINE" == podman && "$NEEDS_ENGINE" == 1 ]]; then
   _rt="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-  if [[ ! -w "$_rt" ]]; then
+  if [[ -n "${OCAH_PODMAN_DIR:-}" || ! -w "$_rt" ]]; then
     _base="${OCAH_PODMAN_DIR:-${TMPDIR:-/tmp}/ocah-podman-$(id -u)}"
     export XDG_RUNTIME_DIR="${_base}/run" XDG_DATA_HOME="${_base}/share"
     mkdir -p "$XDG_RUNTIME_DIR" "$XDG_DATA_HOME"
     chmod 700 "$XDG_RUNTIME_DIR"
-    echo "docker-run: default podman runtime dir '$_rt' unwritable; using $_base" >&2
+    echo "docker-run: using podman runtime and storage under $_base" >&2
   fi
 fi
 
@@ -237,68 +172,154 @@ else UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"; fi
 USER_FLAGS=()
 [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
-# Short hash of the Dockerfile; a change forces a rebuild / new cache entry.
-image_hash() { sha256sum "$DOCKERFILE" | cut -c1-16; }
-image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
+# run_image IMAGE [-it] CMD... : engine flags before the image, command after it
+run_image() {
+  local image="$1"
+  shift
+  local f=() net_flags=()
+  [[ "${1:-}" == "--net" ]] && {
+    net_flags=(--network "$2" ${NETWORK_NAME:+--name "$NETWORK_NAME"})
+    ensure_network "$2"
+    shift
+    shift
+  }
+  [[ "${1:-}" == "-it" ]] && {
+    f=(-it)
+    shift
+  }
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
+    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
+}
 
-# Build the firmware image (labeled with the Dockerfile hash) and publish it to
-# the shared tarball cache when one is configured and writable. A publish
-# failure is a warning, not a build failure.
-build_image() {
-  local hash
-  hash="$(image_hash)"
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} build --label "ocah.dockerfile.sha=${hash}" \
-    -f "$DOCKERFILE" -t "$IMAGE" "$DOCKER_CTX"
-  [[ -n "$DOCKER_CACHE_DIR" ]] || return 0
-  local tar
-  tar="$(image_cache_tar)"
-  if mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
-    local tmp="${tar}.$$.tmp"
-    if "$ENGINE" ${PODMAN_STORAGE_FLAGS} save -o "$tmp" "$IMAGE" 2>/dev/null &&
-      mv -f "$tmp" "$tar" 2>/dev/null; then
-      echo "docker-run: published image cache $tar" >&2
+# Run a command in an environment with a nix binary. This will run locally if it
+# detects a nix binary, to be able to make use of cached files in the store. On
+# hosts without nix installed, it will use NIXOS_IMAGE, which defaults to
+# docker.io/nixos/nix
+nixos_run() {
+  # Nix Flakes and Nix-Command are required for this - enable them
+  local NIX_CONFIG="experimental-features = nix-command flakes"
+  local manifest_status=""
+  manifest_status="$(git -C "$ROOT" submodule status -- "$MANIFEST_SUBMODULE" 2>/dev/null || true)"
+  if command -v nix >/dev/null 2>&1; then
+    if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
+      NIX_CONFIG="$NIX_CONFIG" \
+        GIT_CONFIG_COUNT=3 \
+        GIT_CONFIG_KEY_0=protocol.file.allow \
+        GIT_CONFIG_VALUE_0=always \
+        GIT_CONFIG_KEY_1="url.file://${ROOT}/${MANIFEST_SUBMODULE}.insteadOf" \
+        GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git \
+        GIT_CONFIG_KEY_2="url.file://${ROOT}/${MANIFEST_SUBMODULE}.insteadOf" \
+        GIT_CONFIG_VALUE_2=ssh://git@github.com/tenstorrent/tt-oca-manifest.git \
+        bash -c "$*"
     else
-      rm -f "$tmp" 2>/dev/null || true
-      echo "docker-run: warning: could not publish image cache to $tar" >&2
+      NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
     fi
   else
-    echo "docker-run: warning: cache dir $DOCKER_CACHE_DIR not writable; not publishing" >&2
+    # The repo in the container is owned by root, so nix/git will by default give untrusted errors when interacting with it.
+    local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
+            git config --global --add safe.directory \$(pwd)/${MANIFEST_SUBMODULE} &&"
+    local nix_git_env=()
+    if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
+      nix_git_env=(
+        env
+        GIT_CONFIG_COUNT=3
+        GIT_CONFIG_KEY_0=protocol.file.allow
+        GIT_CONFIG_VALUE_0=always
+        "GIT_CONFIG_KEY_1=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
+        GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git
+        "GIT_CONFIG_KEY_2=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
+        GIT_CONFIG_VALUE_2=ssh://git@github.com/tenstorrent/tt-oca-manifest.git
+      )
+    fi
+    run_image "$NIXOS_IMAGE" "${nix_git_env[@]}" sh -c "
+            export NIX_CONFIG=\"$NIX_CONFIG\"
+            export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
+            $GIT_ALLOW_CMD
+            $*
+        "
   fi
 }
 
+image_hash() {
+  local flake_output
+  flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
+  nixos_run "nix eval \$(pwd)#containerHashes.$flake_output" | tr -d '"'
+}
+
+# Open a shell in the Nix Container - even on a nix-enabled host
+nixos_shell() {
+  local NIX_CONFIG="experimental-features = nix-command flakes"
+  local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
+        git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest &&"
+  run_image $NIXOS_IMAGE -it sh -c "
+        export NIX_CONFIG=\"$NIX_CONFIG\"
+        export HISTFILE=/dev/null
+        export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
+        $GIT_ALLOW_CMD
+        bash
+    "
+}
+
+image_cache_tar() {
+  echo "${DOCKER_CACHE_DIR}/${NIX_IMAGE_NAME##*/}-$(image_hash).tar.gz"
+}
+
+# Build the nix container image and publish it to the shared tarball cache when
+# one is configured.
+build_image() {
+  local flake_output image_location
+  flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
+  if [[ -n "$DOCKER_CACHE_DIR" ]]; then
+    image_location="$(image_cache_tar)"
+  else
+    image_location="local/nix-container-image.tar.gz"
+  fi
+  nixos_run "nix build \$(pwd)#dockerContainers.x86_64-linux.$flake_output &&
+        cp -f --update=all \$(readlink result) $image_location &&
+        echo \"Built Container Image\" &&
+        rm -f result ||
+        {
+            echo \"Container Image Build Failed\" >&2;
+            rm -f result;
+            exit 1;
+        }
+    "
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$image_location"
+}
+
 # Ensure $IMAGE is available locally: reuse a matching local image (verified by
-# the Dockerfile-hash label), else load the shared tarball cache, else build and
-# publish. Use `build` to force a rebuild regardless of what is already present.
+# the flake hash), else load the shared tarball cache, else build. Use `build`
+# to force a rebuild regardless of what is already present.
 ensure_image() {
-  local hash tar
-  hash="$(image_hash)"
-  if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect \
-    --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
+  local flake_hash
+  flake_hash=$(image_hash)
+  IMAGE="${NIX_IMAGE_NAME}:${flake_hash}"
+  # Test for loaded image in podman
+  if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then
     return 0
   fi
+  # Check Cache or local image file
   if [[ -n "$DOCKER_CACHE_DIR" ]]; then
+    local tar
     tar="$(image_cache_tar)"
     if [ -r "$tar" ]; then
       echo "docker-run: loading $IMAGE from cache $tar" >&2
       "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$tar"
       return 0
     fi
+  else
+    local_tar="local/nix-container-image.tar.gz"
+    if [[ -f "$local_tar" ]]; then
+      tar_repotag=$(nixos_run "tar -xOf $local_tar manifest.json | nix run nixpkgs#jq -- -r '.[0].RepoTags[0]'")
+      if [[ "$tar_repotag" == "$IMAGE" ]]; then
+        echo "docker-run: loading $IMAGE from $local_tar" >&2
+        "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$local_tar"
+        return 0
+      fi
+    fi
   fi
-  echo "docker-run: $IMAGE (hash $hash) absent locally and in cache; building" >&2
+  echo "docker-run: $IMAGE (hash $flake_hash) absent locally and in cache; building" >&2
   build_image
-}
-
-# run_image IMAGE [-it] CMD... : engine flags before the image, command after it
-run_image() {
-  local image="$1"
-  shift
-  local f=()
-  [[ "${1:-}" == "-it" ]] && {
-    f=(-it)
-    shift
-  }
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
 }
 
 # --- bubblewrap backend -----------------------------------------------------
@@ -321,14 +342,13 @@ run_image() {
 # Paths are 1:1 (the repo is bound at its own host path), which is what the
 # nonfree DV cgen stage needs, so this backend serves `run` and `run-here`
 # identically; `run` just starts in the repo root.
-TOOLCHAIN_ROOTFS="$ROOTFS_ENV"
+TOOLCHAIN_ROOTFS="${OCAH_TOOLCHAIN_ROOTFS:-}"
 
 use_bwrap() {
   [[ -n "$TOOLCHAIN_ROOTFS" ]] || return 1
-  local missing
-  if missing="$(rootfs_missing "$TOOLCHAIN_ROOTFS")"; then
-    echo "docker-run: warning: rootfs '$TOOLCHAIN_ROOTFS' has no" \
-      "${missing}; falling back to $ENGINE" >&2
+  if [[ ! -x "${TOOLCHAIN_ROOTFS}/bin/riscv64-unknown-elf-gcc" ]]; then
+    echo "docker-run: warning: OCAH_TOOLCHAIN_ROOTFS='$TOOLCHAIN_ROOTFS' has no" \
+      "bin/riscv64-unknown-elf-gcc; falling back to $ENGINE" >&2
     return 1
   fi
   if ! command -v bwrap >/dev/null 2>&1; then
@@ -378,23 +398,11 @@ bwrap_run() {
   # sandbox runs its own interpreter, and a caller's values point at host trees
   # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
   # can import 'encodings', which the firmware post-process steps run into.
-  # --die-with-parent: killing the outer bwrap (e.g. a test harness
-  # terminating a spawned simulator) must not orphan the sandboxed process,
-  # which may never exit on its own.
-  # RISCV_TOOLCHAIN is unset for the same reason PATH is replaced: it names a
-  # host toolchain path that is not bound here; the sandbox's own toolchain
-  # (on the reset PATH) is the one to use.
-  # OCAH_IN_CONTAINER lets sandboxed makes detect containment (bwrap creates
-  # neither /run/.containerenv nor /.dockerenv, the usual markers).
   bwrap "${binds[@]}" --chdir "$workdir" \
-    --die-with-parent \
     --setenv PATH /usr/local/bin:/usr/bin:/bin \
     --setenv HOME /tmp \
-    --setenv OCAH_IN_CONTAINER 1 \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
-    --unsetenv RISCV_TOOLCHAIN \
-    --unsetenv TMPDIR \
     "$@"
 }
 
@@ -426,25 +434,19 @@ run_here() {
 run_image_1to1() {
   local image="$1"
   shift
-  local f=()
+  local f=() net_flags=()
+  [[ "${1:-}" == "--net" ]] && {
+    net_flags=(--network "$2" ${NETWORK_NAME:+--name "$NETWORK_NAME"})
+    ensure_network "$2"
+    shift
+    shift
+  }
   [[ "${1:-}" == "-it" ]] && {
     f=(-it)
     shift
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
-}
-
-# hpretl/iic-osic-tools's entrypoint launches a UI (X11/VNC) by default;
-# `--skip` (must come first) tells it to exec the given command instead.
-eda_run() {
-  local f=()
-  [[ "${1:-}" == "-it" ]] && {
-    f=(-it)
-    shift
-  }
-  run_image_1to1 "$EDA_IMAGE" "${f[@]}" --skip "$@"
-  exit 0
+    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
 doc_product_paths() {
@@ -472,7 +474,7 @@ doc_release_enabled() {
 doc_setup() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-  run_image "$DOC_PDF_IMAGE" env \
+  run env \
     OCAH_DOC_REGEN_REGS=0 \
     OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
     make "$setup_target"
@@ -487,7 +489,7 @@ doc_stage_dashboard_data() {
 
 doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target companion
-  local release_args=()
+  local release_args=() kroki_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
   doc_setup "$product"
   if [ "$product" = trm ]; then
@@ -496,11 +498,8 @@ doc_html() {
     done
   fi
   doc_release_enabled && release_args=(--attribute release)
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}" \
-    --entrypoint sh \
-    -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-    -c 'npm install --no-save --no-package-lock asciidoctor-kroki@0.18.1 && antora "$@"' \
-    sh "${release_args[@]}" --attribute "basedir=${basedir}" "$playbook"
+  [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]] && kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
+  run --net "$NETWORK" antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" --attribute "basedir=${basedir}" "$playbook"
   # Only the TRM carries the dashboard page; staging elsewhere would leave a
   # stray ocah-docs/ tree inside another book's site.
   if [ "$product" = trm ]; then
@@ -509,8 +508,12 @@ doc_html() {
 }
 
 doc_html_all() {
-  local release_arg=""
-  doc_release_enabled && release_arg="--attribute release"
+  local release_args=() kroki_args=() net_args=()
+  doc_release_enabled && release_args=(--attribute release)
+  if [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]]; then
+    kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
+    net_args=(--net "$NETWORK")
+  fi
   # This is the combined-architecture build.
   doc_setup trm
   doc_setup integrator
@@ -518,23 +521,15 @@ doc_html_all() {
   doc_setup appnotes
   doc_setup home
   doc_setup starting
-  # The prebuilt antora/antora:3.1.10 image has Antora pre-installed but
-  # NOT the Node extensions used by the npx-based OCAH_ANTORA path in
-  # doc/doc.mk, which real CI uses via `make ocah-doc-combined-html`.
-  # This direct-image path is separate and needs its own install.
-  # `npm install` here writes into the
-  # bind-mounted repo root, so it only needs to happen once per checkout
-  # (harmless to repeat). Make sure node_modules/ is gitignored.
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm \
-    -e SITE_SEARCH_PROVIDER=lunr -e OCAH_DOC_RELEASE_ARG="$release_arg" \
-    -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-    sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 asciidoctor-kroki@0.18.1 && antora $OCAH_DOC_RELEASE_ARG antora-playbook.yml'
+  run "${net_args[@]}" env \
+    SITE_SEARCH_PROVIDER=lunr \
+    antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" antora-playbook.yml
 }
 
 doc_pdf() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-  run_image "$DOC_PDF_IMAGE" env \
+  run_image "$IMAGE" env \
     OCAH_DOC_REGEN_REGS=0 \
     OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
     make "$pdf_target"
@@ -598,8 +593,22 @@ doc_stage() {
   echo "Preview locally with: cd $ghpages_dir && python3 -m http.server 8000"
 }
 
+doc_kroki() {
+  ensure_network "$NETWORK"
+  KROKI_PORT="${OCAH_KROKI_PORT:-8001}"
+  echo "docker-run: Kroki listening on http://localhost:${KROKI_PORT}; antora containers reach it at http://kroki:8001" >&2
+  PODMAN_RUN_FLAGS="$PODMAN_RUN_FLAGS -p ${KROKI_PORT}:8001" NETWORK_NAME=kroki run --net "$NETWORK" -it kroki
+}
+
 case "${1:-}" in
 build) build_image ;;
+nixos-shell) nixos_shell ;;
+nix-fmt)
+  nixos_run "nix fmt"
+  ;;
+nix-fmt-check)
+  nixos_run "nix fmt -- -f check"
+  ;;
 ensure) ensure_image ;;
 verify)
   run riscv64-unknown-elf-gcc --version
@@ -622,7 +631,8 @@ run-here)
   }
   run_here "$@"
   ;;
-shell) run -it bash ;;
+shell) run -it env HISTFILE=/tmp/bash_history bash ;;
+shell-here) run_here -it env HISTFILE=/tmp/bash_history bash ;;
 doc-html)
   shift
   [[ "${1:-trm}" == "all" ]] && doc_html_all || doc_html "${1:-trm}"
@@ -632,34 +642,8 @@ doc-pdf)
   doc_pdf "${1:-trm}"
   ;;
 doc-stage) doc_stage ;;
-eda-run)
-  shift
-  [[ $# -gt 0 ]] || {
-    echo "error: eda-run requires a command" >&2
-    exit 1
-  }
-  eda_run "$@"
-  ;;
-eda-shell) eda_run -it bash ;;
-# One image serves both toolchains, so these are aliases spelled for the VP:
-# vp-build == build, vp-run == run-here. Kept so virtual_platform/ and its
-# README keep working, and because vp-verify checks the other compiler.
-vp-build) build_image ;;
-vp-run)
-  shift
-  [[ $# -gt 0 ]] || {
-    echo "error: vp-run requires a command" >&2
-    exit 1
-  }
-  run_here "$@"
-  ;;
-vp-shell) run_here -it bash ;;
-vp-verify)
-  run_here g++ --version
-  echo ---
-  run_here cmake --version
-  ;;
-"" | -h | --help | help) sed -n '7,48p' "$0" ;;
+doc-kroki) doc_kroki ;;
+"" | -h | --help | help) sed -n '7,35p' "$0" ;;
 *)
   echo "error: unknown command '$1'" >&2
   exit 1

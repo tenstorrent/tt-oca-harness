@@ -15,14 +15,14 @@ exercised here, each against an expectation the conversion chain fixes:
 * A multi-beat INCR burst is split into consecutive single-beat accesses, so
   the two beats of a 2-beat burst land in two consecutive registers and a
   2-beat burst read returns them in the same order.
-* FIXED and WRAP multi-beat bursts are not supported by the data-width
-  converter: ``axi_dw_downsizer.sv:919`` ("The downsizer does not support fixed
-  bursts") and ``axi_dw_downsizer.sv:925`` ("The DW converter does not support
-  this type of burst") raise ``aw_throw_error``, which its ``axi_err_slv``
-  (``axi_dw_downsizer.sv:188-190``, ``Resp (axi_pkg::RESP_SLVERR)``) answers
-  with SLVERR. The registers the burst addressed must keep the values the INCR
-  burst left, so a converter that errored the response but still wrote is
-  caught.
+* FIXED and WRAP multi-beat bursts: the SMC fabric chapter (``fabric.adoc``)
+  does not state how the SEP_IN path answers a burst type it does not
+  support, so the expectation is the DV-owned one for a refused write -- an
+  AXI error response of either kind, never OKAY and never a wedge -- and the
+  registers the burst addressed must keep the values the INCR burst left, so a
+  path that errored the response but still wrote is caught. The code actually
+  returned is reported, not asserted; a specification statement fixing it
+  would let this become an exact expectation.
 
 SCRATCH_COLD_0/1 are the targets: plain read/write storage with no side
 effects, restored to zero before the sequence ends.
@@ -42,7 +42,6 @@ SCRATCH_COLD_1 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BA
 BURST_FIXED = 0
 BURST_INCR = 1
 BURST_WRAP = 2
-RESP_SLVERR = 2
 
 # Word written first, then partially overwritten by the narrow accesses.
 WORD_SEED = 0x1111_1111
@@ -83,7 +82,7 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
         burst: int = BURST_INCR,
         wdata: int = 0,
         expected: int | None = None,
-        expected_resp: int | None = None,
+        expect_error: bool = False,
     ) -> SmcSysAxiItem:
         item = SmcSysAxiItem(f"{op.value}_{label}")
         item.op = op
@@ -93,10 +92,9 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
         item.burst = burst
         item.wdata = wdata
         item.expected = expected
-        if expected_resp is not None and expected_resp > 1:
+        if expect_error:
             item.allow_error = True
             item.expect_error = True
-            item.expected_resp = expected_resp
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
@@ -131,7 +129,7 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             "incr_burst_rd", SmcSysAxiOp.READ, SCRATCH_COLD_0, beats=2, expected=burst_payload
         )
 
-        # FIXED and WRAP multi-beat bursts: SLVERR, and nothing stored.
+        # FIXED and WRAP multi-beat bursts: an error response, and nothing stored.
         rejected_payload = (REJECTED_BEAT1 << 32) | REJECTED_BEAT0
         fixed = await self._axi(
             "fixed_burst",
@@ -140,7 +138,7 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             beats=2,
             burst=BURST_FIXED,
             wdata=rejected_payload,
-            expected_resp=RESP_SLVERR,
+            expect_error=True,
         )
         wrap = await self._axi(
             "wrap_burst",
@@ -149,7 +147,7 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             beats=2,
             burst=BURST_WRAP,
             wdata=rejected_payload,
-            expected_resp=RESP_SLVERR,
+            expect_error=True,
         )
         await self._axi("after_reject0", SmcSysAxiOp.READ, SCRATCH_COLD_0, expected=BURST_BEAT0)
         await self._axi("after_reject1", SmcSysAxiOp.READ, SCRATCH_COLD_1, expected=BURST_BEAT1)
@@ -180,8 +178,9 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             burst_payload,
         )
         cocotb.log.info(
-            "CHK-SEP-IN-BURST-UNSUPPORTED: AxLEN=1 FIXED answered resp=%s and AxLEN=1 WRAP "
-            "answered resp=%s; SCRATCH_COLD_0/1 still hold 0x%08x / 0x%08x",
+            "CHK-SEP-IN-BURST-UNSUPPORTED: AxLEN=1 FIXED refused with resp=%s and AxLEN=1 WRAP "
+            "refused with resp=%s (error codes reported, not asserted: no specification fixes "
+            "them); SCRATCH_COLD_0/1 still hold 0x%08x / 0x%08x",
             fixed.resp_code,
             wrap.resp_code,
             BURST_BEAT0,

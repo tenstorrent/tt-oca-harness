@@ -17,12 +17,12 @@ ocah_fw_symbol_pins_script := $(OCAH_ROOT)/tools/dv/check_fw_symbol_pins.py
 ## a test that still passes. A missing .sym is a failure.
 .PHONY: ocah-lint-fw-symbol-pins
 ocah-lint-fw-symbol-pins:
-	$(UV) --directory "$(OCAH_ROOT)" run --locked python3 $(ocah_fw_symbol_pins_script)
+	$(OCAH_UV_RUN) python3 $(ocah_fw_symbol_pins_script)
 
 ## Rewrite the pins to match the built .sym. Run after rebuilding the image.
 .PHONY: ocah-lint-fw-symbol-pins-update
 ocah-lint-fw-symbol-pins-update:
-	$(UV) --directory "$(OCAH_ROOT)" run --locked python3 $(ocah_fw_symbol_pins_script) --update
+	$(OCAH_UV_RUN) python3 $(ocah_fw_symbol_pins_script) --update
 
 OCAH_PHONY += ocah-lint-fw-symbol-pins ocah-lint-fw-symbol-pins-update
 

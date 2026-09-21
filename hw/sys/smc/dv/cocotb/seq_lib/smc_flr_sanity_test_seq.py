@@ -147,7 +147,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self._reset_op("cool_rst_lo", SmcResetOp.COOL_RST_LO)
         # Hold rst_cool_ni low until the reset is really taken (mid-assert
         # FAIL-ON), never for a fixed count below the de-glitch window.
-        await self._wait_reset_state(
+        asserted = await self._wait_reset_state(
             "cool_asserted",
             COOL_ASSERT_BOUND_REF,
             expect_powergood_stable=1,
@@ -157,7 +157,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
             expect_left_stable=True,
         )
         await self._reset_op("cool_rst_hi", SmcResetOp.COOL_RST_HI)
-        await self._wait_reset_state(
+        released = await self._wait_reset_state(
             "cool_released",
             COOL_RECOVER_BOUND_REF,
             expect_powergood_stable=1,
@@ -178,7 +178,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         # Cool-effect compare, before any rewrite: the pre-cool pattern must be
         # gone and the mapped reset value back.
-        await self.csr_read(
+        post_cool = await self.csr_read(
             "SCRATCH_COLD_WARM_0_POST_COOL",
             SCRATCH_COLD_WARM_0.addr,
             expected=SCRATCH_COLD_WARM_0.expected,
@@ -190,7 +190,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self.csr_write(
             "SCRATCH_COLD_WARM_0_POST_COOL_RW", SCRATCH_COLD_WARM_0.addr, SCRATCH_PATTERN
         )
-        await self.csr_read(
+        post_cool_rw = await self.csr_read(
             "SCRATCH_COLD_WARM_0_POST_COOL_RW", SCRATCH_COLD_WARM_0.addr, expected=SCRATCH_PATTERN
         )
         await self.csr_write(
@@ -223,4 +223,21 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         assert sb.reset_wait_checks_seen >= 2, (
             "expected the cool assert and release handshakes to be checked, "
             f"scoreboard saw {sb.reset_wait_checks_seen}"
+        )
+        cocotb.log.info(
+            "CHK-FLR-COOL-CSR-RECOVERY: rst_cool_ni pulse with cfg_flr_pf_active_i=0 "
+            "took rst_primary_{ref,smc} low after %d clk_ref_i cycles (bound %d) "
+            "and released them after %d (bound %d); SCRATCH_COLD_WARM_0 read %#010x "
+            "(its reset value) where %#010x was written before the pulse, then "
+            "%#010x on the post-cool write/read-back; the scoreboard checked %d "
+            "value compares and %d reset handshakes",
+            asserted.wait_ref_cycles,
+            COOL_ASSERT_BOUND_REF,
+            released.wait_ref_cycles,
+            COOL_RECOVER_BOUND_REF,
+            post_cool,
+            SCRATCH_PATTERN,
+            post_cool_rw,
+            sb.sys_axi_value_checks_seen,
+            sb.reset_wait_checks_seen,
         )

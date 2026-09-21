@@ -182,7 +182,8 @@ Executable membership is resolved from the testlists; each group's
 |===
 
 `--dut smu` enrols its own DTP-facing scenarios
-(`hw/sys/smu/dv/testlists/dtp.toml` and the `dtp_under_smu` group). Those
+(the `dtp_under_smu` group of `hw/sys/smu/dv/testlists/all.toml`, and the
+block bench's `hw/sys/smu/dv/testlists/block.toml`). Those
 PASSes are SMU integration evidence and are outside this matrix.
 
 [[dtp-credit-rules]]
@@ -7324,7 +7325,12 @@ run is the weekly tier or a run on a developer or licensed host.
 python3 tools/dv/run_dv.py --dut dtp --items all --regress --reseed 3 --cov --sim-jobs <n>
 python3 tools/dv/run_dv.py --dut dtp --items all --regress --reseed 3 --cov --tool vcs --sim-jobs <n>
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items all --regress --reseed 3 --cov --sim-jobs <n>
+python3 tools/dv/run_dv.py --dut dtp --cov-combine <cocotb-vcs-run> <uvm-run>
 ----
+
+The fourth command combines the two VCS runs' databases into one run directory
+whose report is the code-coverage figure of the candidate; its
+`cov/coverage.json` names both input runs and the commit they share.
 
 The run is qualified when all of the following hold in its run-level
 `result.json` and `stages/regress/regression.json`:
@@ -7356,7 +7362,8 @@ run tree of every qualification run is kept as a whole: the run-level
 `stages/regress/regression.json` (every attempt, the rerun command of every
 failed and flaky leaf), each leaf's `result.json`, `logs/`, and
 `results/results.xml`, and `cov/report/` with its `summary.json` and
-`coverage-details.json`. The hosted tiers publish the same tree as the
+`coverage-details.json`; on VCS, the combined run of the two frameworks is
+kept beside them. The hosted tiers publish the same tree as the
 `dv-run-dtp-verilator-<tier>` artifact, with the per-leaf coverage
 databases excluded after the merge; the retention periods are the CI
 contract's. A qualification run on a developer or licensed host is copied

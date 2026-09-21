@@ -110,6 +110,7 @@ include $(OCAH_ROOT)/flows/lint/checkmake.mk
 include $(OCAH_ROOT)/flows/lint/shell.mk
 include $(OCAH_ROOT)/flows/lint/pre-commit.mk
 include $(OCAH_ROOT)/flows/lint/tclint.mk
+include $(OCAH_ROOT)/flows/lint/nix-fmt.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 
 ## Generate the filelist for the OCAH repository.

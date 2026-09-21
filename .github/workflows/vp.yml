@@ -19,7 +19,10 @@ on:
   pull_request:
     paths:
       - 'virtual_platform/**'
-      - 'tools/docker/**'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'ocah_deps.nix'
+      - 'nix/**'
       - 'scripts/docker-run.sh'
       - 'hw/sys/sep/bootrom/**'
       - '.gitmodules'
@@ -28,7 +31,10 @@ on:
     branches: [main]
     paths:
       - 'virtual_platform/**'
-      - 'tools/docker/**'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'ocah_deps.nix'
+      - 'nix/**'
       - 'scripts/docker-run.sh'
       - 'hw/sys/sep/bootrom/**'
       - '.gitmodules'
@@ -164,7 +170,7 @@ jobs:
         id: depkey
         run: |
           if [ "${{ matrix.mode }}" = "container" ]; then
-            cxx_id="dockerfile-${{ hashFiles('tools/docker/Dockerfile') }}"
+            cxx_id="dockerfile-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}"
           else
             cxx_id="$(g++ -dumpmachine)-$(g++ -dumpversion)"
           fi
@@ -175,12 +181,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
-          key: ocah-image-${{ runner.os }}-${{ hashFiles('tools/docker/Dockerfile') }}
+          key: ocah-image-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
 
       # downloads/ is shared between the legs in the tree but cached per leg; the
       # duplicated tarball fetch is a few seconds and not worth a shared-cache race.
+      # Only the native leg builds dependencies. The container carries SystemC,
+      # CCI, Boost, OpenSSL and Whisper from ocah_deps.nix and exports their
+      # prefixes, so the container leg resolves every one as explicit and builds
+      # none of them.
       - name: Cache VP dependencies
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'native'
         uses: actions/cache@v4
         with:
           path: |
@@ -214,7 +224,7 @@ jobs:
         run: |
           if [ "${{ matrix.mode }}" = "container" ]; then
             ./scripts/docker-run.sh verify
-            ./scripts/docker-run.sh vp-verify
+            ./scripts/docker-run.sh run-here sh -c 'g++ --version | head -1; cmake --version | head -1'
           else
             make -C virtual_platform check-cxx
           fi
@@ -224,7 +234,7 @@ jobs:
           # the container, rather than leaving it to a build log.
           probe="echo 'int main(void){return 0;}' | riscv64-unknown-elf-gcc --specs=picolibc.specs -x c -c - -o /dev/null"
           if [ "${{ matrix.mode }}" = "container" ]; then
-            run_probe() { ./scripts/docker-run.sh vp-run sh -c "$probe"; }
+            run_probe() { ./scripts/docker-run.sh run-here sh -c "$probe"; }
             where="in the container"
           else
             run_probe() { sh -c "$probe"; }
@@ -415,7 +425,7 @@ jobs:
         id: depkey
         run: |
           if [ "${{ matrix.mode }}" = "container" ]; then
-            cxx_id="dockerfile-${{ hashFiles('tools/docker/Dockerfile') }}"
+            cxx_id="dockerfile-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}"
           else
             cxx_id="$(g++ -dumpmachine)-$(g++ -dumpversion)"
           fi
@@ -426,14 +436,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
-          key: ocah-image-${{ runner.os }}-${{ hashFiles('tools/docker/Dockerfile') }}
+          key: ocah-image-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
 
       # Its OWN key, not the sep-vp job's: local*/ here also holds the Whisper
       # tree, so a shared key would let whichever job saved first decide whether
       # Whisper is in the cache at all. The key carries the revision, the
       # PIC-ness, and a recipe version to bump when the set of archives changes.
+      # Native leg only; the container gets Whisper from ocah_deps.nix too.
       - name: Cache VP dependencies (including Whisper)
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'native'
         uses: actions/cache@v4
         with:
           path: |
@@ -480,7 +491,7 @@ jobs:
         run: |
           if [ "${{ matrix.mode }}" = "container" ]; then
             ./scripts/docker-run.sh verify
-            ./scripts/docker-run.sh vp-verify
+            ./scripts/docker-run.sh run-here sh -c 'g++ --version | head -1; cmake --version | head -1'
           else
             make -C virtual_platform check-cxx
             # Assert rather than just print: without a cross toolchain the two
@@ -547,7 +558,7 @@ jobs:
           done
           exit $rc'
           if [ "${{ matrix.mode }}" = "container" ]; then
-            ./scripts/docker-run.sh vp-run env -i PATH=/usr/bin:/bin HOME=/tmp \
+            ./scripts/docker-run.sh run-here env -i PATH=/usr/bin:/bin HOME=/tmp \
               bash -c "$probe" probe "$PWD/$tree/bin/smc-vp" "$PWD/$tree/bin/smu-vp"
           else
             env -i PATH=/usr/bin:/bin HOME=/tmp \

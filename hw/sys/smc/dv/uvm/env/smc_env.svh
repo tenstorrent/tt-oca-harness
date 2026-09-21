@@ -17,9 +17,12 @@
 //     the VIP's memory-shadow reference model cannot describe a CSR block
 //     (reset values, read-only fields, side effects), so the bench's own
 //     reference models predict on its item stream;
-//   * one reference model per scoreboard feature, smc_scratch_csr_ref_model
-//     on the SEP_IN stream, and the always-on smc_scoreboard pairing each
-//     feature's expected stream with the observed one.
+//   * one reference model per scoreboard feature on the SEP_IN stream
+//     (smc_scratch_csr_ref_model, smc_default_reg_ref_model,
+//     smc_lock_csr_ref_model, smc_mutex_sema_ref_model,
+//     smc_spm_mem_ref_model), and the
+//     always-on smc_scoreboard pairing each feature's expected stream with
+//     the observed one.
 //
 // The cocotb twin is env/smc_env.py.
 
@@ -45,6 +48,10 @@ class smc_env extends ocah_env;
   // Always-on checking: one reference model per feature and the scoreboard
   // that pairs them; the virtual sequencer every pass runs on.
   smc_scratch_csr_ref_model m_scratch_csr_ref_model;
+  smc_default_reg_ref_model m_default_reg_ref_model;
+  smc_lock_csr_ref_model    m_lock_csr_ref_model;
+  smc_mutex_sema_ref_model  m_mutex_sema_ref_model;
+  smc_spm_mem_ref_model     m_spm_mem_ref_model;
   smc_scoreboard            m_scoreboard;
   smc_virtual_sequencer     m_vseqr;
 
@@ -70,6 +77,18 @@ class smc_env extends ocah_env;
     m_scratch_csr_ref_model =
             smc_scratch_csr_ref_model::type_id::create("m_scratch_csr_ref_model", this);
     m_scratch_csr_ref_model.tb_vif = tb_vif;
+    m_default_reg_ref_model =
+            smc_default_reg_ref_model::type_id::create("m_default_reg_ref_model", this);
+    m_default_reg_ref_model.tb_vif = tb_vif;
+    m_lock_csr_ref_model =
+            smc_lock_csr_ref_model::type_id::create("m_lock_csr_ref_model", this);
+    m_lock_csr_ref_model.tb_vif = tb_vif;
+    m_mutex_sema_ref_model =
+            smc_mutex_sema_ref_model::type_id::create("m_mutex_sema_ref_model", this);
+    m_mutex_sema_ref_model.tb_vif = tb_vif;
+    m_spm_mem_ref_model =
+            smc_spm_mem_ref_model::type_id::create("m_spm_mem_ref_model", this);
+    m_spm_mem_ref_model.tb_vif = tb_vif;
     m_scoreboard = smc_scoreboard::type_id::create("m_scoreboard", this);
 
     m_vseqr = smc_virtual_sequencer::type_id::create("m_vseqr", this);
@@ -84,6 +103,23 @@ class smc_env extends ocah_env;
     m_sep_in_axi_env.item_ap.connect(m_scratch_csr_ref_model.analysis_export);
     m_scratch_csr_ref_model.expected_ap.connect(m_scoreboard.scratch_expected_export);
     m_sep_in_axi_env.item_ap.connect(m_scoreboard.scratch_observed_export);
+    // default_reg: the same monitor stream, judged by its own model against
+    // the generated post-reset content of the catalogued registers.
+    m_sep_in_axi_env.item_ap.connect(m_default_reg_ref_model.analysis_export);
+    m_default_reg_ref_model.expected_ap.connect(m_scoreboard.default_reg_expected_export);
+    m_sep_in_axi_env.item_ap.connect(m_scoreboard.default_reg_observed_export);
+    // lock_csr: woset locks and the registers they mask.
+    m_sep_in_axi_env.item_ap.connect(m_lock_csr_ref_model.analysis_export);
+    m_lock_csr_ref_model.expected_ap.connect(m_scoreboard.lock_expected_export);
+    m_sep_in_axi_env.item_ap.connect(m_scoreboard.lock_observed_export);
+    // mutex_sema: side-effecting reads and accumulating writes.
+    m_sep_in_axi_env.item_ap.connect(m_mutex_sema_ref_model.analysis_export);
+    m_mutex_sema_ref_model.expected_ap.connect(m_scoreboard.mutex_expected_export);
+    m_sep_in_axi_env.item_ap.connect(m_scoreboard.mutex_observed_export);
+    // spm_mem: 64-bit words of the SPM window.
+    m_sep_in_axi_env.item_ap.connect(m_spm_mem_ref_model.analysis_export);
+    m_spm_mem_ref_model.expected_ap.connect(m_scoreboard.spm_expected_export);
+    m_sep_in_axi_env.item_ap.connect(m_scoreboard.spm_observed_export);
   endfunction
 
   // ------------------------------------------------------------------

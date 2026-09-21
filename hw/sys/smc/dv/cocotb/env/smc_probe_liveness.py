@@ -269,7 +269,7 @@ async def watch_probe_liveness(dut=None) -> None:
                 credit_probe(
                     probe,
                     f"{sig} observed at 1 at "
-                    f"{int(get_sim_time(units='ns'))}ns by the passive "
+                    f"{int(get_sim_time(unit='ns'))}ns by the passive "
                     f"probe-liveness watcher",
                 )
             else:

@@ -800,8 +800,8 @@ module smc_uvm_top
     assign s_axi_bid                = sep_axi_in_resp.b.id;
     assign s_axi_bresp              = sep_axi_in_resp.b.resp;
     assign s_axi_buser              = sep_axi_in_resp.b.user;
-    assign s_axi_bvalid             = sep_axi_in_resp.b_valid;
-    assign sep_axi_in_req.b_ready   = s_axi_bready;
+    assign s_axi_bvalid             = sep_axi_in_resp.b_valid & ~tb_sep_axi_b_hold;
+    assign sep_axi_in_req.b_ready   = s_axi_bready & ~tb_sep_axi_b_hold;
 
     assign sep_axi_in_req.ar.id     = s_axi_arid;
     assign sep_axi_in_req.ar.addr   = s_axi_araddr;
@@ -822,8 +822,11 @@ module smc_uvm_top
     assign s_axi_rresp              = sep_axi_in_resp.r.resp;
     assign s_axi_rlast              = sep_axi_in_resp.r.last;
     assign s_axi_ruser              = sep_axi_in_resp.r.user;
-    assign s_axi_rvalid             = sep_axi_in_resp.r_valid & ~tb_sep_axi_r_hold;
-    assign sep_axi_in_req.r_ready   = s_axi_rready & ~tb_sep_axi_r_hold;
+    assign tb_sep_axi_r_raw_valid   = sep_axi_in_resp.r_valid;
+    assign s_axi_rvalid = sep_axi_in_resp.r_valid &
+                          ~(tb_sep_axi_r_hold | tb_sep_axi_r_drop);
+    assign sep_axi_in_req.r_ready = tb_sep_axi_r_drop |
+                                    (s_axi_rready & ~tb_sep_axi_r_hold);
 
     assign sys_axi_in_req.aw.id     = sys_axi_awid;
     assign sys_axi_in_req.aw.addr   = sys_axi_awaddr;
@@ -872,8 +875,11 @@ module smc_uvm_top
     assign sys_axi_rresp            = sys_axi_in_resp.r.resp;
     assign sys_axi_rlast            = sys_axi_in_resp.r.last;
     assign sys_axi_ruser            = sys_axi_in_resp.r.user;
-    assign sys_axi_rvalid           = sys_axi_in_resp.r_valid & ~tb_sys_axi_r_hold;
-    assign sys_axi_in_req.r_ready   = sys_axi_rready & ~tb_sys_axi_r_hold;
+    assign tb_sys_axi_r_raw_valid   = sys_axi_in_resp.r_valid;
+    assign sys_axi_rvalid = sys_axi_in_resp.r_valid &
+                            ~(tb_sys_axi_r_hold | tb_sys_axi_r_drop);
+    assign sys_axi_in_req.r_ready = tb_sys_axi_r_drop |
+                                    (sys_axi_rready & ~tb_sys_axi_r_hold);
 
     assign jtag_axi_in_req.aw.id     = jtag_axi_awid;
     assign jtag_axi_in_req.aw.addr   = jtag_axi_awaddr;
@@ -1228,7 +1234,7 @@ module smc_uvm_top
         .ext_boot_seq_done_i        (ext_boot_seq_done),
         // Tied low: the eFuse sense bypass (sense FSM never routed to the bank,
         // shadow regs exposed unsensed, warm domain held in reset) is unreachable
-        // here; hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
+        // here; docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (lc_sigint_err),
@@ -1466,6 +1472,31 @@ module smc_uvm_top
         .u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr.reg_mepc;
     assign tb_cpu_cluster_isolate =
         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.cluster_boundary_isolate;
+`define SMC_CPU_WRAP u_dut.u_smc.u_smc_cpu_wrapper
+`define SMC_CPU      `SMC_CPU_WRAP.u_smc_cpu
+`define SMC_CPU_CTRL `SMC_CPU_WRAP.u_smc_cpu_ctrl_wrap
+`define SMC_L2_ISO   `SMC_CPU.u_l2_frontend_axi_isolate
+`define SMC_MMIO_ISO `SMC_CPU.u_mmio_axi_isolate
+    assign tb_cpu_isolate_req      = `SMC_CPU_WRAP.isolate_req;
+    assign tb_cpu_drained          = `SMC_CPU_WRAP.drained;
+    assign tb_cpu_reset_timeout    = `SMC_CPU_CTRL.reset_timeout;
+    assign tb_cpu_reset_applied    = `SMC_CPU_CTRL.reset_applied;
+    assign tb_cpu_uncore_reset_n   = `SMC_CPU_WRAP.cluster_uncore_reset_n;
+    assign tb_cpu_l2_isolated      = `SMC_CPU.l2_frontend_isolated;
+    assign tb_cpu_l2_pending_aw    = `SMC_L2_ISO.i_axi_isolate.pending_aw_q;
+    assign tb_cpu_l2_pending_w     = `SMC_L2_ISO.i_axi_isolate.pending_w_q;
+    assign tb_cpu_l2_pending_ar    = `SMC_L2_ISO.i_axi_isolate.pending_ar_q;
+    assign tb_cpu_l2_flush_active  = `SMC_L2_ISO.flush_active_q;
+    assign tb_cpu_mmio_isolated    = `SMC_CPU.mmio_isolated;
+    assign tb_cpu_mmio_pending_aw  = `SMC_MMIO_ISO.i_axi_isolate.pending_aw_q;
+    assign tb_cpu_mmio_pending_w   = `SMC_MMIO_ISO.i_axi_isolate.pending_w_q;
+    assign tb_cpu_mmio_pending_ar  = `SMC_MMIO_ISO.i_axi_isolate.pending_ar_q;
+    assign tb_cpu_mmio_flush_active = `SMC_MMIO_ISO.flush_active_q;
+`undef SMC_MMIO_ISO
+`undef SMC_L2_ISO
+`undef SMC_CPU_CTRL
+`undef SMC_CPU
+`undef SMC_CPU_WRAP
     assign tb_cpu_debug_dmactive =
         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactive;
     assign tb_cpu_debug_dmactive_ack =
@@ -2881,6 +2912,9 @@ module smc_uvm_top
     logic [31:0] cold_rst_assert_count = '0;
     always @(negedge rst_cold_ni) cold_rst_assert_count <= cold_rst_assert_count + 32'd1;
     assign u_tb_if.cold_rst_assert_count = cold_rst_assert_count;
+    logic [31:0] cool_rst_assert_count = '0;
+    always @(negedge rst_cool_ni) cool_rst_assert_count <= cool_rst_assert_count + 32'd1;
+    assign u_tb_if.cool_rst_assert_count = cool_rst_assert_count;
 
     // SEP_IN AXI4 initiator: the shared ocah_axi_vip UVM master agent drives
     // the s_axi_* request side (the agent's driver procedurally drives the
@@ -2936,9 +2970,12 @@ module smc_uvm_top
     assign u_sep_in_master_if.ruser   = 16'(s_axi_ruser);
     assign u_sep_in_master_if.rvalid  = s_axi_rvalid;
 
-    // The SEP_IN R-channel hold is a cocotb hang-detector control; the UVM
-    // shape keeps the channel transparent.
+    // The SEP_IN response holds are cocotb controls; the UVM shape keeps both
+    // channels transparent.
+    assign tb_sep_axi_b_hold = 1'b0;
     assign tb_sep_axi_r_hold = 1'b0;
+    assign tb_sep_axi_r_drop = 1'b0;
+    assign tb_sys_axi_r_drop = 1'b0;
 
     // Passive mirror of the SEP_IN bus for the shared-VIP monitor (the
     // smc_scoreboard predictors consume its item stream) and the protocol
@@ -3138,6 +3175,21 @@ module smc_uvm_top
 
     // SYS_OUT responder control: no response hold.
     assign tb_output_axi_resp_hold = 1'b0;
+    assign tb_cpu_isolate_req       = 1'b0;
+    assign tb_cpu_drained           = 1'b0;
+    assign tb_cpu_reset_timeout     = 1'b0;
+    assign tb_cpu_reset_applied     = 1'b0;
+    assign tb_cpu_uncore_reset_n    = 1'b0;
+    assign tb_cpu_l2_isolated       = 1'b0;
+    assign tb_cpu_l2_pending_aw     = '0;
+    assign tb_cpu_l2_pending_w      = '0;
+    assign tb_cpu_l2_pending_ar     = '0;
+    assign tb_cpu_l2_flush_active   = 1'b0;
+    assign tb_cpu_mmio_isolated     = 1'b0;
+    assign tb_cpu_mmio_pending_aw   = '0;
+    assign tb_cpu_mmio_pending_w    = '0;
+    assign tb_cpu_mmio_pending_ar   = '0;
+    assign tb_cpu_mmio_flush_active = 1'b0;
 
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
     // parked (TMS high, reset asserted); UART0 RX idle-high.
@@ -3392,7 +3444,7 @@ module smc_dual_inst
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
         // Tied low: the eFuse sense bypass is unreachable here;
-        // hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
+        // docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_idle),
         .lc_sigint_err_o            (),

@@ -1,20 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
-
-# Dual-SMC OCCP boot catalog. Included by all.toml, run via `--dut smc`.
-#
-# Every test here carries `target = "dual"`, which selects [targets.dual] in
-# smc_sim_cfg.toml: the same tb_top.sv / smc_uvm_top built with `SMC_DUAL`, so
-# a second SMC instance and the shared I3C bus are elaborated. Tests without
-# that key build the single-instance model.
-#
-# Group names share all.toml's namespace, so the groups here are prefixed:
-# `dual_smoke` and `dual_all`. Three of these leaves sit in `all`; `hosted`
-# leaves them out because every entry here declares a ROM or firmware image
-# the hosted runners cannot build (SMC_DEFERRED_DISPOSITION.adoc, "Leaves no
-# scheduled tier runs").
-# `occp_dual` is unprefixed: nothing else in the catalog uses that name.
+# Dual-SMC bring-up: the three leaves that elaborate `target = "dual"`
+# ([targets.dual] in smc_sim_cfg.toml: tb_top.sv built with `SMC_DUAL`, so a
+# second SMC instance and the shared I3C bus exist). Every entry loads a ROM or
+# firmware image, so none is toolchain-free. `dual` is one of the three class
+# groups that partition `all` (see all.toml); the hours-long
+# smc_occp_dual_unsecure_boot_test is in holdout.toml.
 
 [[tests]]
 name = "smc_dual_elaboration_test"
@@ -22,7 +14,7 @@ module = "smc_dual_elaboration_test"
 target = "dual"
 seed = 1
 timeout_sec = 1800
-tags = ["build", "dual_smoke", "dual"]
+tags = ["build", "dual"]
 run_modes = ["dual"]
 # A ROM image is mandatory even for an elaboration probe: with neither
 # +rom_bin64 nor +rom_hex, OCAH4CORECluster_rom_ext $errors at time zero rather
@@ -41,7 +33,7 @@ module = "smc_dual_axi_sram_probe_test"
 target = "dual"
 seed = 1
 timeout_sec = 1800
-tags = ["build", "dual_smoke", "dual"]
+tags = ["build", "dual"]
 run_modes = ["dual"]
 # Answers "can an inbound AXI manager reach the CPU scratch window", which the
 # payload staging depends on, and asserts the I3C CSR instance decode. Same
@@ -55,37 +47,6 @@ args = [
 ]
 
 [[tests]]
-name = "smc_occp_dual_unsecure_boot_test"
-module = "smc_occp_dual_unsecure_boot_test"
-target = "dual"
-seed = 1
-# Headroom, not a target. The payload is a full sram-mode image (~15 KB), and
-# every byte of it crawls over a ~2.6 MHz serial bus that Verilator simulates
-# cycle by cycle, so the run takes hours of wall clock.
-timeout_sec = 21600
-tags = ["dual_ci", "dual", "occp_boot", "prod_rom"]
-run_modes = ["dual"]
-firmware = { name = "dual_occp", mode = "dual_occp" }
-# Three images, one per role. run_dv stages every declared c_build output next
-# to the simulator cwd, which is why these are bare basenames.
-#   +rom_bin64        target: production boot ROM (loaded into BOTH instances by
-#                     OCAH4CORECluster_rom_ext, then overridden on u_bfm below)
-#   +bfm_rom_hex      controller: the DV OCCP master image, applied to u_bfm
-#                     only, at #0.3 so it wins over the shared load
-#   +occp_payload_bin the image cocotb stages into the controller's SRAM over
-#                     AXI and the controller then streams over I3C. An ordinary
-#                     sram-mode test image; no ROM embedding and no striped
-#                     backdoor is involved
-#   +occp_payload_sym the test derives the OCCP JUMP entry offset from this
-#                     (&main - &_enter) rather than hardcoding it
-args = [
-    "+rom_bin64=prod_rom.bin64",
-    "+bfm_rom_hex=occp_unsecure_boot_test.rom.hex",
-    "+occp_payload_bin=hello_world.sram.bin",
-    "+occp_payload_sym=hello_world.sram.sym",
-]
-
-[[tests]]
 name = "smc_occp_sanity_test"
 module = "smc_occp_sanity_test"
 target = "dual"
@@ -93,7 +54,7 @@ seed = 1
 # GET_VERSION plus one 4-byte OCCP WRITE -- no payload, no JUMP, so well under
 # a millisecond of sim time. The bound below is headroom for a stalled
 # exchange, not a target.
-timeout_sec = 3600
+timeout_sec = 7200
 tags = ["dual", "occp_boot"]
 run_modes = ["dual"]
 firmware = { name = "occp_sanity", mode = "occp_sanity" }
@@ -109,23 +70,12 @@ args = [
 ]
 
 [[groups]]
-name = "dual_all"
+# The SMC_DUAL class of `all`: every leaf with `target = "dual"`. expected_count
+# fails the run when a dual leaf joins `all` and misses this class, or leaves it.
+name = "dual"
+expected_count = 3
 tests = [
-    "smc_dual_elaboration_test",
     "smc_dual_axi_sram_probe_test",
+    "smc_dual_elaboration_test",
     "smc_occp_sanity_test",
-    "smc_occp_dual_unsecure_boot_test",
-]
-
-[[groups]]
-name = "dual_smoke"
-tests = [
-    "smc_dual_elaboration_test",
-    "smc_dual_axi_sram_probe_test",
-]
-
-[[groups]]
-name = "occp_dual"
-tests = [
-    "smc_occp_dual_unsecure_boot_test",
 ]

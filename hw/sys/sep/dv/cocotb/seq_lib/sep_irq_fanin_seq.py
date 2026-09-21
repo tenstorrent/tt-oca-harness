@@ -23,7 +23,7 @@ bit0 = <ip>_done (OpenTitan INTR layout).
 from __future__ import annotations
 
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import sym
+from sep_reg_meta import CSRNG, EDN, HMAC, KMAC, sym
 
 from seq_lib.sep_irq_aggregator_seq import (
     CSRNG_BASE,
@@ -41,10 +41,30 @@ KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 
 # The simultaneous cross-IP set: four IPs, four non-adjacent aggregator bits.
 FANIN_SOURCES = (
-    IrqSrc("hmac_done", HMAC_BASE, 0, agg_from_pic(PIC_HMAC_DONE)),
-    IrqSrc("kmac_done", KMAC_BASE, 0, agg_from_pic(PIC_KMAC_DONE)),
-    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, agg_from_pic(PIC_CSRNG_CMD_REQ_DONE)),
-    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, agg_from_pic(PIC_EDN_CMD_REQ_DONE)),
+    IrqSrc(
+        "hmac_done",
+        HMAC_BASE,
+        HMAC.field_lsb("INTR_STATE", "hmac_done"),
+        agg_from_pic(PIC_HMAC_DONE),
+    ),
+    IrqSrc(
+        "kmac_done",
+        KMAC_BASE,
+        KMAC.field_lsb("INTR_STATE", "kmac_done"),
+        agg_from_pic(PIC_KMAC_DONE),
+    ),
+    IrqSrc(
+        "csrng_cmd_req_done",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_CMD_REQ_DONE"]["bp"],
+        agg_from_pic(PIC_CSRNG_CMD_REQ_DONE),
+    ),
+    IrqSrc(
+        "edn_cmd_req_done",
+        EDN_BASE,
+        EDN.fields("INTR_STATE")["EDN_CMD_REQ_DONE"]["bp"],
+        agg_from_pic(PIC_EDN_CMD_REQ_DONE),
+    ),
 )
 
 # The aggregator region this test owns: sep_internal_interrupts[8:33] (the

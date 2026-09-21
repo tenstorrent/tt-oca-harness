@@ -36,7 +36,7 @@ partial read costs far more time than a full one.
 | `doc/starting/` | Getting Started/Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
 | `.github/ISSUE_CURATION.md` | Project curator; catalog weekly-issue-activity and discussion-task-miner (`automation.enabled`) and compile |
-| `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
+| `flake.nix`, `ocah_deps.nix`, `nix/` | The nix-built container and dev shell: which packages and environment variables the image carries, including the VP's SystemC, CCI, Boost, OpenSSL and Whisper |
 | `virtual_platform/README.md` | Virtual platform: the three VP executables and which need Whisper, dependency resolution, the `sepvp` runner and pytest harness, container vs ambient build |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
@@ -165,9 +165,12 @@ All subsystems compile with `--specs=picolibc.specs`, and a stock or site RISC-V
 often lacks picolibc, so a native build fails with a message pointing you back at the
 container. A host toolchain that does provide it works too — point `RISCV_TOOLCHAIN` at it.
 
-That one image also carries the OCAH virtual platform's toolchain (g++, cmake, Boost,
-OpenSSL, the runner's Python), so `make -C virtual_platform vp VP_CONTAINER=1` builds and
-runs `sep-vp` in it. The `vp-*` subcommands are aliases onto the same image.
+That one image also carries the OCAH virtual platform's toolchain, so
+`make -C virtual_platform vp VP_CONTAINER=1` builds and runs `sep-vp` in it. `ocah_deps.nix`
+provides SystemC, CCI, Boost, OpenSSL and Whisper and exports `SYSTEMC_HOME`, `CCI_HOME`,
+`BOOST_ROOT`, `OPENSSL_ROOT` and `WHISPER_HOME`, so inside the container the VP resolves
+every dependency as explicit and builds none of them. Outside it, `virtual_platform/Makefile`
+still resolves or builds each one -- see `virtual_platform/README.md`.
 
 The model builds three VP executables and the harness builds all three. `sep-vp` is the
 default; `smc-vp` and `smu-vp` (the SMC+SEP integration, which runs both subsystems in
@@ -193,7 +196,7 @@ fails once that tree is gone. Carry both, or source the generated
 ```bash
 ./scripts/docker-run.sh build     # build the image once
 ./scripts/docker-run.sh verify    # prints the compiler version and multilib list
-./scripts/docker-run.sh vp-verify # the VP side: g++ and cmake versions
+./scripts/docker-run.sh run-here sh -c 'g++ --version; cmake --version'  # the VP side
 ```
 
 On a host with both podman and docker installed, `OCAH_ENGINE=docker` (or `podman`) pins
@@ -221,6 +224,17 @@ bwrap: Can't mkdir parents for <repository path>: Read-only file system
 ```
 
 `unset OCAH_TOOLCHAIN_ROOTFS` to fall back to the container engine.
+
+### The toolchain sandbox carries no Python packages
+
+The image and the extracted rootfs both provide a bare `python3` with only the packages
+`tools/docker/Dockerfile` installs. Any build step importing `cryptography`,
+`ruamel.yaml` or similar fails there with `ModuleNotFoundError`.
+
+Keep such steps on the host, run the compile in the sandbox, and order the two so the
+host half produces what the compile consumes — as the SEP boot ROM does with
+`key-digests` and `oca-images` (`hw/sys/sep/bootrom/prod/README.md`). Adding a package
+to the Dockerfile does not reach the bwrap rootfs, which is extracted separately.
 
 ### Rebuilding the image invalidates existing firmware objects
 
@@ -552,8 +566,8 @@ open files to compensate.
 
 | Check | Local command |
 |---|---|
-| SystemVerilog lint (slang) | `make lint-slang-all` lints every block carrying a `flow.mk`, which `flows/common.mk` discovers under `hw/sys/*`, `hw/ip/*` and vendored IP overlays; add `BLOCK=<block…>` to restrict it. `make lint-slang` from a block's own flow lints that block alone |
-| SystemVerilog lint (Verilator) | `make lint-verilator-all` lints every discovered block as its own top; add `BLOCK=<block…>` to restrict it |
+| SystemVerilog lint (slang) | `make lint-slang-all` lints every `flow.mk` top (`dtp`, `sep`, `smc`, `smu`, `aou` today). `flows/common.mk` also globs `hw/ip/*/flow.mk`; none exist. `BLOCK=` is a top, not an IP. `make lint-slang` from a block's own flow lints that block alone |
+| SystemVerilog lint (Verilator) | `make lint-verilator-all` lints each discovered top the same way; add `BLOCK=<block…>` to restrict it |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | C formatting | `make format-c`, `make format-c-check` |
@@ -562,7 +576,7 @@ open files to compensate.
 
 Each of these is an auto-generated alias for the `ocah-`-prefixed target of the same name, so
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
-plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
+plus the matching `./scripts/docker-run.sh run-here make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 The internal GitLab mirror loads its parent pipeline from a separately access-controlled
 configuration project rather than from this repository, so a pull request cannot replace the

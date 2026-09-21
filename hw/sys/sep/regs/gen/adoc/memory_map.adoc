@@ -40,7 +40,7 @@
 |0x10040000 |0x1004FFFF |64 KiB |64 KiB |sep_boot_rom |BL0 immutable instruction memory.
 |0x10050000 |0x107FFFFF |7872 KiB |7872 KiB |Reserved |Reserved
 |0x10800000 |0x10800FFF |4 KiB |336 B |secure_dma |Secure DMA control and status registers.
-|0x10801000 |0x10801FFF |4 KiB |56 B |AON_Timer |Always-On Timer with wakeup and watchdog functionality. Provides a 64-bit wakeup timer with prescaler and a 32-bit watchdog timer with bark and bite thresholds.
+|0x10801000 |0x10801FFF |4 KiB |56 B |Always-On Timer |Wakeup and watchdog timers running on a low-power, always-on clock
 |0x10802000 |0x1080203F |64 B |64 B |sep_scratch_cold |Cold-reset scratch register bank.
 |0x10802040 |0x1080207F |64 B |64 B |Reserved |Reserved
 |0x10802080 |0x108020BF |64 B |64 B |sep_scratch_warm |Warm-reset scratch register bank.
@@ -79,7 +79,7 @@
 |0x10A21200 |0x10A2FFFF |60928 B |60928 B |Reserved |Reserved
 |0x10A30000 |0x10A31FFF |8 KiB |4104 B |sep_cpu_ctrl |SEP CPU control and interrupt registers.
 |0x10A32000 |0x10AFFFFF |824 KiB |824 KiB |Reserved |Reserved
-|0x10B00000 |0x10BFFFFF |1 MiB |56 B |SPI Controller |External I/O SPI controller bridge.
+|0x10B00000 |0x10BFFFFF |1 MiB |56 B |spi_controller |External I/O SPI controller bridge.
 |0x10C00000 |0x10FFFFFF |4 MiB |4 MiB |Reserved |Reserved
 |0x11000000 |0x117FFFFF |8 MiB |8 MiB |ap_region |Remapped regions, either ECAM, M-Mode or XVisor
 |0x11800000 |0x11FFFFFF |8 MiB |8 MiB |stee_region |Remapped regions, either ECAM, M-Mode or XVisor

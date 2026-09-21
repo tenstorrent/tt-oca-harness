@@ -240,7 +240,7 @@ vector. Test firmware gates on `mhartid` and spins the rest in `wfi`; without
 that, four copies of your output interleave.
 
 **Keep the ini inside the repo if you use the container.**
-`docker-run.sh vp-run` bind-mounts only the repository, so an ini under
+`docker-run.sh run-here` bind-mounts only the repository, so an ini under
 `/tmp` or a scratch directory is invisible inside the container and you get
 `WARNING: cannot open ini`. Either keep it in the tree or use a natively built
 `smc-vp`.

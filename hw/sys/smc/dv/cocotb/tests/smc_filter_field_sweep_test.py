@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_filter_field_sweep_test(smc_base_test):
     """Per-filter 3-field sweep x 4 entries x 2 dirs."""
 
+    required_evidence = ("CHK-FILTER-FIELD-RESET-SWEEP",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

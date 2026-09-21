@@ -15,7 +15,7 @@ listed here.
 `axil_okay_slv` is a stand-in that can answer a checker: which retired tests
 would sit behind it, the one live consumer, and what that consumer does and
 does not prove are recorded in the *Bench stand-ins* section of
-`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`. The synchroniser
+`docs/SMC_VPLAN.adoc` (Known Limitations, "SMC deferred and OUT disposition"). The synchroniser
 stand-ins that Verilator and Xcelium compile (VCS drops them) live in
 `tb/verilator_stubs/` and are recorded in the same section.
 

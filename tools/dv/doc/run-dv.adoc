@@ -15,7 +15,7 @@ tool invocation, and results — in contrast to wrapped or external flows.
 
 == Architecture
 
-image::dv-runner-architecture.drawio.svg[Current DV/FV runner control flow,scaledwidth=95.0%]
+image::dv-runner-architecture.drawio.svg[DV/FV runner control flow,scaledwidth=95.0%]
 
 The entry point prepares the Python environment and
 then delegates command parsing and orchestration to `tools/dv/runlib/cli.py`.
@@ -46,6 +46,15 @@ coverage stages, and generated replay material.
 |`runlib/waves.py`
 |Wave format validation, failure-window calculation, retention, viewer
 commands, and same-seed replay metadata.
+
+|`runlib/executors/`
+|The executor contract (submit, poll, cancel, collect), the local executor,
+the cluster executor that runs the registry's argv templates, the LSF and
+Slurm dialects that read scheduler output, and the leaf manifest that
+describes one attempt.
+
+|`runlib/worker.py`
+|The `--worker-manifest` entry point: one leaf attempt on a farm machine.
 |===
 
 The runner and the dashboard do not call each other. Their integration boundary
@@ -150,8 +159,13 @@ first selected group, the single test name, `multi`, or `build`. It is
 recorded in `result.json`.
 
 Executor::
-The dispatch mechanism for leaves, declared in `executors.toml`. Only `local`
-dispatch is implemented.
+The dispatch mechanism for leaves, declared in `executors.toml` and selected
+with `--executor` or the profile's `[scheduler] default_executor`. Every
+executor implements the same four operations, submit, poll, cancel, and
+collect, and the regression loop runs on them (<<runner-executor-registry>>).
+`local` runs leaves in this process; a cluster entry names a scheduler driver,
+`lsf` or `slurm`, and runs each leaf attempt as a scheduler job through the
+commands the registry declares (<<runner-cluster-dispatch>>).
 
 == Prerequisites and bootstrap
 
@@ -182,6 +196,13 @@ file that pins it, and the check behind it.
 pre-provisioned CI or developer environment that already supplies the required
 packages. Repository-root discovery, `OCH_ROOT`, and namespace synchronization
 still occur.
+
+`run_dv.py --worker-manifest <manifest>` is the farm worker a cluster
+executor submits (<<runner-executor-registry>>). That branch neither
+re-executes through `uv` nor synchronizes the bridge: it runs on the
+interpreter the coordinator provisioned, attaches the bridge the coordinator
+wrote, and exits `2` when that bridge is missing, so concurrent workers never
+race on a shared checkout.
 
 [WARNING]
 ====
@@ -637,7 +658,8 @@ Configuration ownership is split:
 build/coverage defaults, and formal launch templates.
 
 |`hw/common/dv/configs/executors.toml`
-|Executor declarations. Only `local` dispatch is implemented.
+|Executor declarations: the `local` executor, and cluster entries that name a
+scheduler driver (<<runner-executor-registry>>).
 
 |`hw/common/dv/configs/site.local.toml` (git-ignored), or the file `OCAH_DV_SITE` names
 |One deployment's tool binaries, launcher prefixes, environment hooks, added
@@ -1104,9 +1126,13 @@ tool. A relative path resolves against the site file; the file must exist.
 for a formal tool); a DUT
 selects it through its config's `tools` and `default_tool`.
 
-|`[executors.<name>]` `binary` / `submit_argv`, or a complete table
+|`[executors.<name>]` any data key (`driver`, `binaries`, the argv
+templates, `defaults`, `limits`, `env_passthrough`, `history_parser`,
+`setup_hook`), or a complete table
 |replaces / adds
-|The same over `executors.toml`.
+|The same over `executors.toml` (<<runner-executor-registry>>); `kind` stays
+with the registry. `setup_hook` is site-only and resolves against the site
+file.
 
 |`[duts.<dut>]` `formal_cfg = "path"`
 |replaces
@@ -1167,6 +1193,237 @@ The container sees the checkout and the run directory at the same paths as
 the host, so the rendered command, the replay script under `scripts/`, and
 the paths the tool prints hold on both sides. `--doctor --tool vcs` then
 checks `podman`, not `vcs`.
+
+[[runner-executor-registry]]
+=== Executor registry
+
+`hw/common/dv/configs/executors.toml` declares where leaves run. Every entry
+implements the same four operations behind the regression loop: submit an
+attempt, poll its state, cancel it, and collect its result. The loop never
+takes a verdict from the executor; the leaf's own `result.json` grades it, and
+an attempt that ends without one grades `ERROR` with a reason that starts with
+`environment_error`.
+
+[cols="<2,<1,<4",options="header"]
+|===
+|Key |Kind |Meaning
+
+|`kind = "local"`
+|both
+|Leaves run in this process. `submit_argv = []` and `wait_mode = "inline"`
+are its only other keys. At `--sim-jobs 1` an attempt runs on the calling
+thread; above that, a thread pool of that size runs them.
+
+|`kind = "cluster"`, `driver`
+|cluster
+|A scheduler driver, `lsf` or `slurm`. The entry validates and appears in
+`--doctor`; selecting an entry whose driver the runner has no dialect for, or
+whose `history_parser` that dialect does not implement, is a configuration
+error.
+
+|`binaries`
+|cluster
+|Every scheduler command the driver runs. `--doctor` looks each one up on
+`PATH` after sourcing `setup_hook`, and a missing one on the executor a run
+would select fails the doctor.
+
+|`submit_argv`, `query_argv`, `cancel_argv` (required); `history_argv`,
+`worker_argv`
+|cluster
+|Argv templates. A string element renders its `{placeholders}`; a nested list
+is an optional group that renders whole when every placeholder in it has a
+value and is dropped otherwise, so `["-q", "{queue}"]` costs nothing when no
+queue is set. `{job_ids_argv}` splices one token per job id.
+
+|`defaults`
+|cluster
+|The normalized resource vocabulary: `queue`, `cores`, `mem_mb`, `walltime`.
+`--queue`, `--cores`, `--mem-mb`, and `--walltime` win over a stage's
+`resources` table in the DUT config, which wins over these.
+
+|`limits`
+|cluster
+|Coordinator knobs, with the value an unset key takes in parentheses:
+`max_in_flight` (unbounded), `submit_batch_size` (25), `query_batch_size`
+(100), `poll_interval_sec` (10), `artifact_grace_sec` (60), `cancel_grace_sec`
+(30), `command_timeout_sec` (120). <<runner-cluster-dispatch>> says what each
+one bounds.
+
+|`env_passthrough`, `history_parser`, `description`
+|cluster
+|Variables whose values at submission the job script exports before the
+worker starts; the named parser for `history_argv` output (`lsf_bhist_long`
+for LSF; `slurm_sacct` or `slurm_scontrol` for Slurm); a free-text note.
+
+|`setup_hook`
+|cluster, site layer only
+|A shell file sourced before every scheduler command, relative to the site
+file.
+|===
+
+[cols="<2,<4",options="header"]
+|===
+|Template |Placeholders
+
+|`submit_argv`
+|`{queue}` `{cores}` `{mem_mb}` `{mem_gb}` `{walltime}` `{walltime_sec}`
+`{walltime_min}` `{walltime_hms}` `{jobname}` `{joblog}` `{image}` `{script}`
+`{manifest}` `{python}` `{run_dir}` `{repo_root}` `{leaf_dir}` `{task_id}`
+`{executor}`
+
+|`query_argv`, `history_argv`, `cancel_argv`
+|`{job_id}` `{job_ids_csv}` `{job_ids_argv}`
+
+|`worker_argv`
+|`{python}` `{manifest}` `{repo_root}` `{run_dir}` `{leaf_dir}` `{task_id}`
+|===
+
+A wall time is written as minutes (`90`), with a unit suffix (`90m`, `2h`),
+or as a clock (`HH:MM`, `HH:MM:SS`, `D-HH:MM:SS`); the template picks the
+rendering its scheduler expects, so one request serves a scheduler that
+counts minutes and one that wants a clock. Memory is requested in megabytes
+and also renders as whole gigabytes, rounded up, for a scheduler whose unit is
+the gigabyte.
+
+The registry's LSF entry, with the values a site adds through
+`site.local.toml`:
+
+[source,toml]
+----
+[executors.lsf]
+kind = "cluster"
+driver = "lsf"
+binaries = ["bsub", "bjobs", "bhist", "bkill"]
+submit_argv = [
+  "bsub", ["-q", "{queue}"], ["-n", "{cores}"], ["-R", "rusage[mem={mem_gb}]"],
+  ["-W", "{walltime_min}"], "-J", "{jobname}", "-o", "{joblog}", "{script}",
+]
+query_argv = ["bjobs", "-json", "-o", "jobid stat exit_code exit_reason", "{job_ids_argv}"]
+history_argv = ["bhist", "-l", "{job_ids_argv}"]
+cancel_argv = ["bkill", "{job_ids_argv}"]
+history_parser = "lsf_bhist_long"
+env_passthrough = ["PATH", "LD_LIBRARY_PATH"]
+defaults = { queue = "regress", cores = 1, mem_mb = 20480, walltime = "02:00" }
+setup_hook = "lsf.env"
+
+[executors.lsf.limits]
+max_in_flight = 200
+poll_interval_sec = 30
+----
+
+The checked-in registry is schema 2: the `local` entry plus generic `lsf`
+and `slurm` tables built from each scheduler's stock flags, carrying no site
+value. A site layer supplies the site's queue names, resource defaults,
+limits and `setup_hook`, replaces a template whose unit or flag differs at
+that site (an LSF cluster that counts memory in gigabytes renders
+`{mem_gb}`), or adds an executor the registry lacks.
+
+[[runner-cluster-dispatch]]
+==== Cluster dispatch
+
+A run selects a cluster executor with `--executor`, and the flow's
+`[scheduler] allowed` list must name it: the shared native profile allows
+`local`, `lsf` and `slurm`, the formal profile `local` only. `--sim-jobs` is
+then the number of attempts queued or running at once, bounded by the
+executor's `limits.max_in_flight`; the coordinator submits at most
+`submit_batch_size` attempts between two polls and asks about at most
+`query_batch_size` job ids per query command. A dry run submits nothing.
+The target build runs on the submitting host before the first submission,
+so an omitted `--build-jobs` derives from `--sim-jobs` capped at that host's
+CPU count.
+
+Every attempt is one job. The coordinator writes the leaf manifest, then a job
+script at `<run>/stages/regress/scripts/<task>.sh` that exports the
+`env_passthrough` values, changes to the checkout, and execs `worker_argv`
+(`run_dv.py --worker-manifest <manifest>` unless the registry says otherwise),
+and renders `submit_argv` with that script as `{script}`,
+`<run>/stages/regress/logs/<task>.log` as `{joblog}`, and
+`ocah.<run>.<task>` as `{jobname}`. Every scheduler command the executor runs,
+with its status and output, is appended to
+`<run>/stages/regress/logs/executor.log`; a leaf graded from a job carries the
+job id and final scheduler state under `metadata.scheduler` and its job log
+under `artifacts.executor_log`.
+
+The scheduler decides only whether an attempt is over. Each poll maps the
+driver's native states onto one lifecycle:
+
+[cols="<2,<5",options="header"]
+|===
+|State |Meaning, and the leaf's grade when the job left no `result.json`
+
+|`QUEUED`, `RUNNING`, `SUSPENDED`
+|Live in the scheduler. `SUSPENDED` waits like `RUNNING`.
+
+|`RECONCILING`
+|Missing from the live query, or reported finished before its `result.json`
+is visible. The completion record and `result.json` settle it first, then
+`history_argv`, and `artifact_grace_sec` without either ends the wait: a
+finished job grades `ERROR` (`environment_error`), a missing one is `LOST`.
+
+|`SUCCEEDED`, `FAILED`
+|The job ran to its end. The leaf's own `result.json` grades it, with the
+exit code recovered from the query or the completion record when the
+scheduler reports none; no `result.json` within the grace is `ERROR`
+(`environment_error`).
+
+|`TIMED_OUT`
+|The scheduler's wall time expired: `TIMEOUT`, with the job log as the
+leaf's log.
+
+|`CANCELLED`
+|Stopped by this run's cancellation: an interrupted leaf, as in a local run.
+
+|`PREEMPTED`, `LOST`
+|Preempted, requeued, or gone without a record: `ERROR`
+(`environment_error`), which `--retry` reruns as a new attempt.
+|===
+
+A query that fails, or hangs past `command_timeout_sec`, leaves every asked
+job in its previous state and doubles the next wait, up to eight times
+`poll_interval_sec`; five consecutive failed queries, or three consecutive
+refused submissions, abort the run, which cancels its jobs and writes the
+interrupted summary with `interruption.kind = "executor"` and exit status
+`2`. A single refused submission grades that attempt `ERROR`. On
+interruption the coordinator renders `cancel_argv` for the run's own job ids
+only, then confirms each within `cancel_grace_sec` by query; a job the
+scheduler reports finished counts as confirmed, and the ids it does not know
+or does not confirm are written to
+`<run>/stages/regress/jobs/cancel-unconfirmed.json` for the operator and
+repeated, with their leaves, under `interruption.cancellation` in the
+interrupted summary. A second signal during that wait ends it; the summary
+is written either way (<<runner-interrupted-checkpoints>>). A `--retry`
+attempt and a `--waves-on-fail` rerun are each their own job, submitted
+when the attempt they follow has been collected.
+
+`tools/dv/tests/test_cluster_executor.py` drives both drivers through
+`tools/dv/tests/fake_scheduler.py`, which answers
+with the output shapes the production schedulers print, including a
+submission filter's stderr banner in both its shapes, with and without a
+memory request, the `ERROR` record `bjobs -json` returns
+for an unknown id, `bkill`'s status 255 for a finished job, `squeue`'s
+failure for an id the controller dropped, and `scancel`'s success for any id.
+The `slurm-qualify` workflow, run by hand, then puts the Slurm driver against
+a live scheduler: a single-node Slurm with accounting that the job installs on
+the hosted runner, submitting the selected tests as jobs of the runner itself
+(<<runner-ci>>). The LSF driver's live qualification runs on the maintainer
+farm outside hosted CI. The state maps and parsers live in
+`runlib/executors/lsf.py` and `runlib/executors/slurm.py`.
+
+==== Leaf manifests and the worker
+
+A cluster driver runs each attempt through `run_dv.py --worker-manifest
+<run>/stages/regress/jobs/<task>.json`, a JSON brief the coordinator writes
+per attempt: DUT, framework, tool, stage, item, seed, attempt, the run and leaf
+directories, the resource request, and the command line the coordinator ran
+with. Its `plan_digest` covers every other key, so an edited manifest is
+refused, and the only command-line attributes a manifest may override are the
+wave and console options a debug rerun changes. The worker verifies the digest,
+the checkout, and the run tree, reloads the configuration from the tree, runs
+exactly one stage, writes the leaf's `result.json` and a `<task>.done.json`
+completion record beside the manifest, and exits with the leaf's status code.
+A manifest that cannot be trusted or run leaves an `ERROR` result whose reason
+starts with `environment_error` and exits `2`. Workers write nothing else: the
+coordinator is the single writer of every aggregate in the run tree.
 
 [[runner-formal]]
 == Formal verification
@@ -1533,10 +1790,20 @@ A cocotb model is built into the target's `build_dir` with the tool name
 appended (`<build_dir>/<tool>`, or the sibling `<build_dir>/<tool>-coverage`
 under `--cov`; VCS adds one more component named after the target) and
 reused by every later run of the same target and tool. The
-`artifact build=<dir> (rebuild=<bool>)` line of a run names the directory it
-used. With `rebuild` off, the existing directory is handed to cocotb's build
-step, which rebuilds only what the simulator's own build system finds out of
-date.
+`artifact build=<dir> (rebuild=<bool> reason=<why>)` line of a run names the
+directory it used and, when the model is rebuilt, why.
+
+cocotb's build step rebuilds a model only when a source it was handed is
+newer than the model, and this flow hands it none: the sources reach the
+compiler through the filelist. The runner therefore decides for it. Every
+build writes `build_record.json` into the model directory with the
+fingerprint of the inputs that produced the model, and the next run compares
+its own fingerprint with the record: a different fingerprint (`reason=inputs
+changed`), or a model directory without a record (`reason=no build record`),
+forces a clean build; `--rebuild` forces one regardless (`reason=requested`).
+An edit to any file the filelist reaches, including its `-f` includes, or to
+any file a build argument names, such as a coverage scope file, therefore
+rebuilds the model on the next run.
 
 `[build.options]` sets the sharing policy:
 
@@ -1544,7 +1811,8 @@ date.
   the build inputs, so configurations that differ never overwrite each
   other's model and an unchanged configuration finds its build again. The
   fingerprint covers the top module, the tool version, the generated filelist
-  text, a digest of the sources the Bender filelist names, the rendered build
+  text, a digest of every source the filelist reaches through its `-f`
+  includes, a digest of every file a build argument names, the rendered build
   arguments, the selected `[targets.<name>]` table, the Verilator
   public-scope list, the wave format, whether coverage is on, and the strings
   in `cache_key_extra`.
@@ -1691,6 +1959,49 @@ with its test, seed, attempt, status, target, and build fingerprint, every
 rejection with its reason, the exclusion files, and the policy file with its
 SHA-256 and `scope_epoch`.
 
+[[runner-cov-combine]]
+==== Combining finished runs
+
+`--cov-combine RUN_DIR...` combines the coverage of two or more finished runs
+into one new run directory and grades it, so a DUT whose scenarios run under
+two frameworks, or whose seeds run on two hosts, gets one signoff figure:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp \
+  --cov-combine hw/sys/dtp/dv/build/runs/<cocotb-run> hw/sys/dtp/dv/build/runs/<uvm-run> \
+  --run-dir hw/sys/dtp/dv/build/runs/<combined-run>
+----
+
+No simulator runs. Each input run must belong to the DUT, have finished, and
+carry a coverage record whose merge and report completed and whose merged
+database exists; its own grade does not matter, since the combined run is
+graded on its own. Every run must use one tool, and all must record one
+commit, since one figure describes one revision of the design. A run
+recorded on a dirty tree is accepted with a warning. The runs may sit in
+another checkout or in a retained copy: their artifact paths resolve against
+the tree that produced them, and a design database that the copy left out is
+skipped, since the merged database its own merge loaded already holds the
+design data.
+
+Two verbs, two operations. The `cov_merge` stage *merges* the leaf databases
+of one run into that run's merged database, and `--stage cov_merge --run-dir X`
+replays that in place. `--cov-combine` *combines* finished runs: the new run
+carries the DUT's `cov_merge` and `cov_report` stages, its merge runs the
+tool's `combine_cmd` over the runs' design databases and merged databases
+(`urg -flex_merge union` on VCS, because runs of different frameworks
+elaborate different harness tops and only the DUT subtree is common), and its
+report grades the result against the same policy, threshold and exclusion
+inputs as any run. `cov/coverage.json` lists the runs as its inputs (`item`
+of `run:<name>`, `selection_source` of `run_dirs`) and names each run's
+directory, framework, commit, tool version and database under
+`combine.input_runs`. `--run-dir` names the new directory; without it the run
+lands under the DUT's run tree with the label `combine`, and `latest` keeps
+pointing at the last simulation run, so the dashboard's default collection is
+unaffected and a combined run is collected by naming its directory.
+`--fail-under` and `--dry-run` apply; selection, seed, wave and build options
+do not.
+
 [[runner-coverage-grading]]
 ==== How the grade forms
 
@@ -1724,6 +2035,16 @@ skipped without an outcome. `max_unclassified_points` fails the rule when
 more uncovered points than that carry no `pass:[[[holes]]]` entry. A rule
 whose metric family has no points is not met.
 |===
+
+A report tool that applies exclusion inputs while it reports (URG with
+`-elfile`) writes the effective figures only. When the report phase has such
+inputs, it runs the report command a second time without them into
+`cov/report_raw/`, and each family's `raw_percent` comes from that report while
+`effective_percent` comes from `cov/report/`; without exclusion inputs the one
+report supplies both. The stage log carries one `COVERAGE FAMILY` line per
+family with both figures, the console prints them on a `coverage` line, the
+manifest points at the raw report as `artifacts.report_raw`, and `result.json`
+carries the figures as `raw_metrics` and `effective_metrics`.
 
 The coverage status is `PASS` when every threshold is met and `FAIL`
 otherwise. A `FAIL` gives the `cov_report` record return code `1` and a
@@ -2119,17 +2440,26 @@ them in automation.
 |Choose terminal rendering. Default: `auto`.
 
 |`--sim-jobs N`
-|Set scheduler fan-out. Default: `1`; must be at least `1`.
+|Set scheduler fan-out. Default: `1`; must be at least `1`. On a cluster
+executor it is the number of attempts queued or running at once, bounded by
+the executor's `limits.max_in_flight`.
 
 |`--build-jobs N`
 |Set backend/model build concurrency when configuration does not supply it;
-otherwise derives from `--sim-jobs`.
+otherwise derives from `--sim-jobs`, capped at this host's CPU count when a
+cluster executor is selected.
 
 |`--executor NAME`
-|Select an allowed executor. Only `local` dispatch is implemented.
+|Select an executor the flow's `[scheduler] allowed` list permits. `local`
+runs leaves in this process; `lsf` and `slurm` submit each attempt as a job
+(<<runner-cluster-dispatch>>). Selecting an entry whose driver the runner
+lacks is a configuration error, and a dry run dispatches nothing.
 
 |`--queue NAME`, `--cores N`, `--mem-mb MB`, `--walltime TIME`
-|Record resource-request metadata. The local executor does not consume it.
+|The leaves' resource request. The command line wins over a stage's
+`resources` table, which wins over the executor's `defaults`
+(<<runner-executor-registry>>). The local executor records the request and
+enforces nothing.
 |===
 
 === Regression, waves, and coverage
@@ -2180,6 +2510,12 @@ accepted waivers do not move it. Valid range: 0 through 100.
 |Re-grade the finished run in `--run-dir` against the DUT's coverage policy,
 or against `FILE`; no simulator or report tool runs. Exits 0, 1, or 2 by the
 coverage grade alone. See <<runner-waive>>.
+
+|`--cov-combine RUN_DIR...`
+|Combine the coverage of two or more finished runs of the DUT into one new
+graded run directory (`--run-dir` names it); the runs must share the tool and
+the commit, and no simulator runs. Exits 0, 1, or 2 by the combined run's
+coverage grade. See <<runner-cov-combine>>.
 |===
 
 === Pass-through and formal options
@@ -2294,6 +2630,33 @@ table, when present, under `overlay_env` in both the run-level `result.json`
 and `regression.json`. When a site layer was active, its path is recorded
 under `site` in the same two files (<<runner-site-layer>>).
 
+[[runner-log-provenance]]
+=== Provenance lines in the per-test log
+
+A cocotb or VCS sim leaf ends its per-test log with one `PROVENANCE` line
+naming the commit, branch, dirty flag, build fingerprint and, where the flow
+has one, the filelist and its digest. The same facts are recorded under
+`provenance` in the leaf's stage record, so a log and its `result.json` name
+the same build.
+
+Every `+key=value` simulator argument whose value is an existing regular file
+(firmware, ROM, eFuse and shadow-register images such as `+rom_hex`,
+`+sep_itcm_hex`, `+smc_efuse_hex` or `+smc_shadow_reg_preload`) is digested
+as well. Each one adds a line directly after `PROVENANCE`:
+
+----
+PROVENANCE commit=<sha> branch=<name> dirty=false build_fingerprint=<fp> filelist=<path> filelist_sha256=<digest>
+FW-PROVENANCE rom_hex=hw/sys/smc/dv/assets/smc_rom_default.hex sha256=<64 hex>
+FW-PROVENANCE smc_efuse_hex=hw/sys/smc/dv/assets/smc_efuse_default.hex sha256=<64 hex>
+----
+
+The path is repo-relative when the image sits inside the checkout and absolute
+otherwise, and the digest is the full SHA-256 of the file's bytes. The stage
+record carries the same map under `provenance.images`, keyed by the plusarg
+name. Bare flags, numeric values and values that do not name a regular file are
+not recorded. An image a testbench opens by a fixed name rather than a plusarg
+is outside this binding; pass it through a plusarg to bring it in.
+
 [[runner-interrupted-checkpoints]]
 === Interrupted-run checkpoints
 
@@ -2308,15 +2671,28 @@ The additive `progress` object records a stable identity for every planned leaf
 `completed`, `active`, `missing`, and `interrupted` lists with matching counts.
 Its `state`, `sequence`, and `updated_at` fields distinguish successive
 snapshots. A running checkpoint uses `active`; a handled interruption moves
-those identities to `interrupted`.
+those identities to `interrupted`. On a cluster executor every `active` or
+`interrupted` leaf also lists its scheduler `jobs`: the task id, attempt,
+whether it is a wave-debug rerun, the executor and driver, the job id, and
+the submission time, and after an interruption `cancel_confirmed`. A
+coordinator that dies without running its handler therefore leaves the ids
+of its live jobs in its last checkpoint.
 
 SIGINT and SIGTERM produce an `ERROR` checkpoint with an `interruption` object
 that records the received signal and reason. External supervisors may use
 SIGTERM for either cancellation or a wall-clock timeout, so the runner records
-the signal rather than guessing which policy sent it. If termination prevents
-the final handler from running, the most recent atomic `UNKNOWN` checkpoint
-still preserves all completed leaves. Normal completion replaces all
-checkpoint-only fields with the ordinary final aggregate.
+the signal rather than guessing which policy sent it. The first signal stops
+new submissions, cancels every attempt in flight, and waits up to the
+executor's cancel grace for the scheduler to confirm each stop; a second
+signal ends that wait, and every signal received is listed under
+`interruption.signals`. `interruption.cancellation` records the executor and
+driver, the number of attempts asked to stop and the number confirmed, the
+unconfirmed attempts with their item, seed, target, attempt, and job id, the
+grace applied, whether the wait was cut short, and the path of the
+`cancel-unconfirmed.json` record when one was written. If termination
+prevents the final handler from running, the most recent atomic `UNKNOWN`
+checkpoint still preserves all completed leaves. Normal completion replaces
+all checkpoint-only fields with the ordinary final aggregate.
 
 Every checkpoint, running or interrupted, carries `tests.completed = false`
 and `tests.pass_rate = null`. A handled interruption also prints
@@ -2350,7 +2726,8 @@ in JSON, while the runner process exits with the conventional
 `128 + signal number` value (`130` or `143`).
 
 `--waive` exits by its coverage grade alone (`0`, `1`, or `2`; see
-<<runner-waive>>), independent of the run status it records.
+<<runner-waive>>), independent of the run status it records, and
+`--cov-combine` exits by the grade of the combined run it writes.
 
 Run-level aggregation uses:
 
@@ -2479,7 +2856,10 @@ and the paths of the files below.
 |The merge manifest (<<runner-coverage-inputs>>) and, once the report has
 run, the grade: `status`, `metrics`, `overall_percent`, `threshold`,
 `threshold_met`, `policy_thresholds`, `holes_summary`, the fingerprints, and
-the merge and report return codes.
+the merge and report return codes, with `artifacts.report_raw` when the
+report ran without its exclusion inputs as well. A combined run's manifest
+lists the runs as its inputs (`selection_source` of `run_dirs`) and carries
+the `combine` block (<<runner-cov-combine>>).
 
 |`cov/report/summary.json`
 |`2`
@@ -2577,12 +2957,23 @@ names `verilator-smoke (<dut>)` are the stable check contexts. Every job
 runs for a documentation-only change too, so the contexts report; each job
 then prints one line and skips the simulation.
 
+|`qualify`
+|`slurm-qualify.yml`: `workflow_dispatch` only, with `dut`, `items` and
+`sim-jobs` inputs
+|Installs a single-node Slurm with accounting on the runner and runs the
+selected tests through `--executor slurm --mem-mb 2000 --walltime 30`; the
+result gate also requires every leaf to carry a Slurm job in a terminal
+state. A live check of the Slurm driver for a change to the driver, the
+registry's Slurm table or the worker; one node adds latency and no capacity,
+so it is not a tier and no pull request runs it.
+
 |`nightly`
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the three
-`cross_trigger` benches' `all` groups. No coverage.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the IP-level
+benches' `all` groups (the three `cross_trigger` benches, the four UART-family
+benches, `system_timer_octs` and `scrambler`). No coverage.
 Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
@@ -2590,7 +2981,7 @@ Nightly is not a merge gate; a red nightly run is a triage signal.
 with `tier=weekly`
 |The regression the dashboard publishes, one random seed per test on every
 row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
-and the three `cross_trigger` benches' `all` groups. A second SMC row
+and the IP-level benches' `all` groups. A second SMC row
 (`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
 `expect_fail` (<<runner-expected-failures>>), so the row is green while the
 filed defects stand and red the week one is fixed. `--sim-jobs` follows the
@@ -2668,9 +3059,10 @@ symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smc` + Verilator; `cross_trigger_port`,
-`cross_trigger_matrix`, `cross_trigger_network` + Verilator (regression
-tiers only)
+|`dtp`, `sep`, `smu`, `smc` + Verilator; the IP-level benches
+`cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
+`uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
+`system_timer_octs`, `scrambler` + Verilator (regression tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
@@ -2678,8 +3070,8 @@ row). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
-run in the same matrix but are not required contexts; the `cross_trigger`
-benches are enrolled in the regression tiers only.
+run in the same matrix but are not required contexts; the IP-level benches
+are enrolled in the regression tiers only.
 
 |Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
@@ -2687,13 +3079,16 @@ benches are enrolled in the regression tiers only.
 tools. A pair joins the workflow matrix only with a qualifying run at head.
 
 |Unsupported in hosted CI
-|VCS/Xcelium anywhere; formal mode; `smu_wrapper` real-SEP group
-(`all_with_sep_exec`); non-local executors
+|VCS/Xcelium anywhere; formal mode; the `smu_wrapper` SEP firmware set
+(the part of its `all` outside `hosted`); the `lsf` executor
 |VCS and Xcelium need licensed self-hosted runners. Formal mode is a
 developer-host flow: hosted CI runs no formal job and no formal result
-reaches the dashboard (<<runner-formal>>). The real-SEP `smu_wrapper` items stay
-out of the default `all` group. Non-local executor dispatch is not
-implemented.
+reaches the dashboard (<<runner-formal>>). The `smu_wrapper` SEP firmware
+items are in its `all` but need the RISC-V toolchain container, which hosted
+runners lack, so the workflows select `hosted`. The `lsf` executor needs the
+maintainer farm; hosted CI checks both cluster drivers against fake scheduler
+commands, and the on-demand `slurm-qualify` workflow runs the `slurm` executor
+on a single-node Slurm it installs (<<runner-cluster-dispatch>>).
 |===
 
 === Framework-aware CI matrices
@@ -2853,8 +3248,12 @@ tool does not need to rerun. See <<runner-waive>>.
 
 The following behaviors are not part of the runner contract:
 
-* Only the `local` executor dispatches work. Queue, core, memory, and wall-time
-  flags are metadata; there is no LSF/SLURM or other non-local dispatch.
+* A cluster executor keeps the coordinator in the foreground and submits one
+  job per attempt: there is no detached mode, no job array, and no
+  scheduler-managed build. The target build runs on the submitting host, and
+  every worker verifies its ready marker before it simulates. Queue, core,
+  memory, and wall-time flags reach a cluster job's submit command; the local
+  executor records them and enforces nothing.
 * The runner writes no `run.json` and has no background execution or job
   lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may

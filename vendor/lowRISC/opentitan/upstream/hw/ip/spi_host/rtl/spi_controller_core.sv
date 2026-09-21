@@ -12,7 +12,7 @@
 //
 
 module spi_controller_core
-    import spi_controller_pkg::*;
+    import spi_host_cmd_pkg::*;
 #(
     parameter  int NumCS = 1,
     localparam int CSW   = prim_util_pkg::vbits(NumCS)

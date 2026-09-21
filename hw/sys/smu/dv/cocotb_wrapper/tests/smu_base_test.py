@@ -19,18 +19,18 @@ _DV_ROOT = Path(__file__).resolve().parents[2]
 _OSS_HW_ROOT = Path(__file__).resolve().parents[5]
 for _path in (
     _COCOTB_ROOT,
-    _DV_ROOT / "common",
+    _DV_ROOT / "cocotb",
     _OSS_HW_ROOT / "common" / "dv" / "vip",
 ):
     _path_text = str(_path)
     if _path_text not in sys.path:
         sys.path.insert(0, _path_text)
 
+from env.smu_env import SmuEnv  # noqa: E402
 from env.smu_env_cfg import SmuEnvCfg  # noqa: E402
 from env.smu_sep_cpu_trace_monitor import SmuSepCpuTraceMonitor  # noqa: E402
 from ocah_axi_vip import OcahAxiSlaveAgent  # noqa: E402
 from seq_lib.sep_fw_common import load_syms  # noqa: E402
-from smu_dv_env.smu_env import SmuEnv  # noqa: E402
 
 
 class smu_base_test(uvm_test):
@@ -218,9 +218,16 @@ class smu_base_test(uvm_test):
         "tb_cfg_flr_pf_active",
         "tb_mem_repair_abort",
         "tb_mbist_abort",
+        "tb_mem_repair_hold",
+        "tb_mbist_hold",
+        "tb_ss_reset_incomplete",
+        "tb_chiplet_secondary",
+        "tb_cool_reset_pin",
         "tb_secure_tm_req",
         "tb_gpio0_drive_en",
         "tb_gpio0_drive_val",
+        "tb_gpio_drive_en",
+        "tb_gpio_drive_val",
         "tb_xtrig_ctp_req_out_din",
         "tb_xtrig_ctp_req_in_din",
         "tb_xtrig_ctp_ack_in_din",
@@ -235,13 +242,11 @@ class smu_base_test(uvm_test):
 
     def start_clocks(self) -> None:
         dut = cocotb.top
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns").start())
         cocotb.start_soon(
-            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(
-            Clock(dut.clk_sep_wdt_i, self.cfg.sep_wdt_clk_period_ns, units="ns").start()
+            Clock(dut.clk_sep_wdt_i, self.cfg.sep_wdt_clk_period_ns, unit="ns").start()
         )
         # ESRC ring-oscillator sample clock, matching hw/sys/sep/dv's 3 ns. The
         # entropy source samples its noise lanes on this clock, so any test that
@@ -258,7 +263,7 @@ class smu_base_test(uvm_test):
                 Clock(
                     dut.entropy_rosc_sample_clk_i,
                     self.cfg.entropy_clk_period_ns,
-                    units="ns",
+                    unit="ns",
                 ).start()
             )
 

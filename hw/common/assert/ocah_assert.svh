@@ -46,10 +46,8 @@
 // synthesis / Verilator (OCAH_INC_ASSERT undefined) they expand to nothing.
 `ifndef SYNTHESIS
 `ifndef VERILATOR
-`ifndef TARGET_VERILATOR
 `ifndef NO_OCAH_ASSERT
 `define OCAH_INC_ASSERT
-`endif
 `endif
 `endif
 `endif

@@ -186,7 +186,7 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
                 )
                 self.stretch_ok = True
                 break
-            await Timer(5, units="us")
+            await Timer(5, unit="us")
         if not self.stretch_ok:
             raise AssertionError(f"STRETCH_TIMEOUT not seen INTR_STATE=0x{intr:08x}")
 
@@ -293,7 +293,7 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
                     ctrl_addr,
                     I2C_CTRL_MULTI_CONTROLLER_MONITOR_EN | I2C_CTRL_ENABLEHOST,
                 )
-                await Timer(1, units="us")
+                await Timer(1, unit="us")
                 fifo_status_addr = self._idx_addr(
                     "SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR", idx
                 )

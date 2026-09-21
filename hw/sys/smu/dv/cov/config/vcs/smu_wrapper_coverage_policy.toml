@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMU wrapper (`--dut smu`) VCS coverage policy, the counterpart of
+# ../verilator/smu_wrapper_coverage_policy.toml on the commercial flow.
+#
+# urg has no `user` family. The `OCAH_FCOV_COVER` points of cov/sv are
+# `cover property` statements, which urg reads under its assert metric
+# together with the `assert property` statements left in scope by
+# smu_wrapper_cov_scope.hier, so the functional-coverage floor is a rule on
+# the `assertion` family. Its report splits the two (`Summary for Cover
+# Properties`, `Summary for Assertions` in cov/report/asserts.txt).
+#
+# No rule is set on `toggle` yet: the wrapper's port toggle is graded on
+# urg's per-field `Ports` view after the exclusions below, and a floor is set
+# only from a measured hosted database once the reset-control, shadow and
+# lane leaves are enrolled. cov/interface_toggle.py reads the same report for
+# the per-port connectivity figure (see README.md beside this file).
+#
+# Two DUTs share this DV root, so the policy is named per DUT rather than
+# discovered at cov/config/vcs/coverage_policy.toml.
+
+schema_version = 1
+dut = "smu"
+scope_epoch = "smu-vcs-cov-v1"
+
+[[thresholds]]
+id = "assertion"
+tool = "vcs"
+metric_family = "assertion"
+population = "effective"
+minimum_percent = 80.0
+
+# Fields urg leaves out of the wrapper's port toggle, each class with its
+# reason in the file's ANNOTATION lines. Regenerated from urg's exclusion
+# template by gen_smu_wrapper_toggle_exclusions.py; README.md lists the classes.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smu_wrapper_toggle_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]

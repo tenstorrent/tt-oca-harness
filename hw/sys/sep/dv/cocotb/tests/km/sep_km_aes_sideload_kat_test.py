@@ -56,7 +56,7 @@ Scope deltas vs the reference suite:
     That is an AES-wrapper-internal masking property, not the KM->AES sideload-consume
     contract this leaf owns; the sibling OTBN KAT (sep_km_otbn_sideload_kat_test
     CHK-F dumps S0/S1) proves it frontdoor.
-  * key-bus isolation is proven by SW_RESET_N read-back (only AES out of the four
+  * key-bus isolation is proven by SW_RESET_N read-back (only AES out of the five
     sideload targets is released) rather than the reference suite bus-AW monitor, which has no
     OSS frontdoor analog; CHK-F additionally proves AES got the correct key.
 
@@ -65,8 +65,8 @@ responder powers up zero+valid-parity; rom_main built PROD_BOOT_WIPE=0).
 
 Entropy ordering mirrors reference suite bringup_real_entropy_and_boot_km + the AES leaf's
 release_consumers_pre_noise(): AES is left RELEASED through entropy bring-up (its
-masking-PRNG reseed is served as EDN starts), while OTBN/KMAC are parked so the KM
-owns the boot/seed stream; HMAC is parked too for key-bus isolation.
+masking-PRNG reseed is served as EDN starts), while OTBN/KMAC/HMAC are parked so
+the KM owns the boot/seed stream and the other sideload targets cannot take the key.
 """
 
 from __future__ import annotations
@@ -122,8 +122,8 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
-        # OTBN/KMAC JTAG-held across rst_ni release, then parked in SW_RESET_N so they never sit ungranted through fuse
-        # sense; HMAC parked for key-bus isolation. AES stays released so its
+        # OTBN/KMAC/HMAC parked in SW_RESET_N so they never sit ungranted
+        # through fuse sense and cannot take the key. AES stays released so its
         # masking-PRNG reseed is served when EDN starts.
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
@@ -164,9 +164,9 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to AES)")
 
-        # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the four KM
-        # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset and
-        # cannot receive the key. OSS analog of the reference suite's per-engine key-bus AW count.
+        # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the five KM
+        # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset
+        # and cannot receive the key. OSS analog of the reference suite's per-engine key-bus AW count.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["otbn"])
@@ -180,8 +180,8 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"AES not released for the transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+AES released, OTBN/KMAC/HMAC "
-            "parked (SW_RESET_N=0x%02x)",
+            "CHK-ISO key-bus isolation PASS: only KM+AES released, "
+            "OTBN/KMAC/HMAC parked (SW_RESET_N=0x%02x)",
             rst,
         )
 

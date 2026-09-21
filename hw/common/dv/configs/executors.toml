@@ -1,9 +1,70 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-schema_version = 1
+# Where leaves run. `local` runs them in the runner's own process. A cluster entry names a
+# scheduler driver and every command the driver runs, as argv templates over the normalized
+# resource vocabulary (`queue`, `cores`, `mem_mb`, `walltime`). The templates below use each
+# scheduler's stock flags and carry no site value: a site layer (site.local.toml) supplies queue
+# names, resource defaults, coordinator limits and the environment hook, and replaces any
+# template whose unit or flag differs at that site. A nested list is an optional group that
+# renders only when every placeholder in it has a value, so a request without a queue submits
+# without `-q`.
+
+schema_version = 2
 
 [local]
 kind = "local"
 submit_argv = []
 wait_mode = "inline"
+
+# IBM Spectrum LSF. `rusage[mem=...]` follows the cluster's LSF_UNIT_FOR_LIMITS; this template
+# assumes megabytes, and a cluster that counts gigabytes overrides `submit_argv` with
+# `{mem_gb}`. `-W` is minutes.
+[lsf]
+kind = "cluster"
+driver = "lsf"
+binaries = ["bsub", "bjobs", "bhist", "bkill"]
+wait_mode = "poll"
+submit_argv = [
+  "bsub",
+  ["-q", "{queue}"],
+  ["-n", "{cores}"],
+  ["-R", "rusage[mem={mem_mb}]"],
+  ["-W", "{walltime_min}"],
+  "-J", "{jobname}",
+  "-o", "{joblog}",
+  "{script}",
+]
+query_argv = ["bjobs", "-json", "-o", "jobid stat exit_code exit_reason", "{job_ids_argv}"]
+history_argv = ["bhist", "-l", "{job_ids_argv}"]
+cancel_argv = ["bkill", "{job_ids_argv}"]
+history_parser = "lsf_bhist_long"
+env_passthrough = ["PATH", "LD_LIBRARY_PATH"]
+
+# Slurm. `--mem` takes megabytes with the `M` suffix; `--time` takes a clock. `--states=all`
+# keeps a finished job in the query for the controller's MinJobAge; `sacct` needs the
+# cluster's accounting database, and a site without one names `scontrol show job {job_id}`
+# with `history_parser = "slurm_scontrol"` instead.
+[slurm]
+kind = "cluster"
+driver = "slurm"
+binaries = ["sbatch", "squeue", "sacct", "scancel"]
+wait_mode = "poll"
+submit_argv = [
+  "sbatch", "--parsable",
+  ["--partition={queue}"],
+  ["--cpus-per-task={cores}"],
+  ["--mem={mem_mb}M"],
+  ["--time={walltime_hms}"],
+  "--job-name={jobname}",
+  "--output={joblog}",
+  "{script}",
+]
+query_argv = ["squeue", "--noheader", "--states=all", "--format=%i|%T|%r", "--jobs={job_ids_csv}"]
+history_argv = [
+  "sacct", "--allocations", "--noheader", "--parsable2",
+  "--format=JobIDRaw,State,ExitCode", "--jobs={job_ids_csv}",
+]
+cancel_argv = ["scancel", "{job_ids_argv}"]
+history_parser = "slurm_sacct"
+env_passthrough = ["PATH", "LD_LIBRARY_PATH"]

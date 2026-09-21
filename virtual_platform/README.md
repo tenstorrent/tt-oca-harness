@@ -110,8 +110,9 @@ No internal tool mounts are required anywhere in the flow.
 
 The boot ROM and DV-engine firmware compile against picolibc, which bare
 riscv-gnu-toolchain installs typically lack; those builds fall back automatically to
-the `ocah-toolchain` container via `scripts/docker-run.sh run-here` (build it once
-with `./scripts/docker-run.sh build`; see `tools/docker/README.md`). That is the
+the OCAH container via `scripts/docker-run.sh run-here` (build it once
+with `./scripts/docker-run.sh build`; the image is defined by `flake.nix` and
+`ocah_deps.nix`). That is the
 same image the containerized flow below uses. If a container will not start on your
 host at all, extract the image rootfs once and set `OCAH_TOOLCHAIN_ROOTFS=<dir>` to
 use the engine-less bubblewrap backend instead.
@@ -119,19 +120,20 @@ use the engine-less bubblewrap backend instead.
 ## Containerized build & run
 
 For hosts with no usable native toolchain at all, the whole VP can be built AND run
-in the `ocah-toolchain` container — one image carries the native C++20 toolchain,
-apt Boost/OpenSSL, the RISC-V firmware toolchain and the runner's Python (see
-`tools/docker/Dockerfile`):
+in the OCAH container. One nix-built image carries the native C++20 toolchain, the
+RISC-V firmware toolchain, the runner's Python, and the VP's own dependencies --
+SystemC, CCI, Boost, OpenSSL and Whisper -- whose prefixes it exports, so nothing is
+built from source in there (see `ocah_deps.nix`):
 
 ```bash
-./scripts/docker-run.sh build         # build the image once (vp-build is an alias)
-make -C virtual_platform vp VP_CONTAINER=1        # deps (SystemC/CCI) + sep-vp
+./scripts/docker-run.sh build         # build the image once
+make -C virtual_platform vp VP_CONTAINER=1        # sep-vp; deps come from the image
 make -C virtual_platform vp-test VP_CONTAINER=1   # pytest suites, in-container
 make -C virtual_platform boot-run VP_CONTAINER=1 BOOT_ARGS="--boot primary"
 make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1   # the SMC/SMU pair
 make -C virtual_platform smc-test VP_CONTAINER=1        # and their suites
 make -C virtual_platform smu-test VP_CONTAINER=1
-./scripts/docker-run.sh vp-shell      # interactive shell, repo bound 1:1
+./scripts/docker-run.sh shell-here    # interactive shell, repo bound 1:1
 ```
 
 The same image carries everything `smc-vp` and `smu-vp` need — no extra packages —

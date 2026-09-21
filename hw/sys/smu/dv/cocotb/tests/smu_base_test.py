@@ -21,9 +21,9 @@ for _path in (_COCOTB_ROOT,):
     if _s not in sys.path:
         sys.path.insert(0, _s)
 
+from env.smu_block_env_cfg import SmuEnvCfg
+from env.smu_env import SmuEnv
 from seq_lib.smu_axi_helpers import wait_signal_high
-from smu_dv_env.smu_env import SmuEnv
-from smu_dv_env.smu_env_cfg import SmuEnvCfg
 
 
 class smu_base_test(uvm_test):
@@ -81,11 +81,9 @@ class smu_base_test(uvm_test):
         ).sequence
         # Must schedule Clock.start() - bare .start() returns an unawaited coroutine
         # and leaves all clocks dead (sim never advances; premature shutdown).
-        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
-        cocotb.start_soon(
-            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns").start())
 
         # Default ungated boot-seq; SMU_006 overrides to 0 for gate proof.
         if hasattr(dut, "ext_boot_seq_done_i"):

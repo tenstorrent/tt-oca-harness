@@ -9,14 +9,14 @@ real source -> PIC source-id map plus ISR delivery to the CPU:
     mailbox[0]     sep_internal_interrupts[0]  -> PIC source 1   (real FIFO push)
     OTBN done      sep_internal_interrupts[29] -> PIC source 30  (INTR_TEST)
     HMAC done      sep_internal_interrupts[17] -> PIC source 18  (INTR_TEST)
-    extras         DMA / KMAC / CSRNG / EDN / KMAC-err (seed-selected)
+    extras         DMA done/chunk/error / HMAC-err / KMAC / CSRNG / EDN / KMAC-err
 
 PIC source id = sep_internal_interrupts index + 1 (VeeR EL2 extintsrc_req is
 1-based). The whole path is internal to bare `sep` -- no testbench injection.
 
 SepPicSrcCfg is the single source of truth: MUST sources walk every seed;
 two extras come from the run seed and are patched into the firmware param
-block. Distinct from `sep_mailbox_plic_test` (ONE source) and from
+block. Distinct from `sep_mailbox_plic_test` (all eight mailbox channels) and from
 `sep_irq_ip_to_aggregator_test` (no_cpu, aggregate vector, no ISR).
 
 Firmware-self-checking: the firmware returns its error count and fw/startup/crt0.s emits
@@ -55,9 +55,11 @@ _PARAM_MAGIC = 0x91C0A11C
 _SRC_MAX = 5
 # MUST every seed: mailbox, OTBN done, HMAC done.
 _MUST = (1, 30, 18)
-# Seed extras from INTR_TEST sources that do not share HMAC's INTR_ENABLE
-# with the MUST HMAC-done row (same-base extras still OR-enable in firmware).
-_POOL = (9, 21, 23, 24, 28)
+# Seed extras from the INTR_TEST catalog minus the MUST trio. HMAC-err shares
+# HMAC's INTR_ENABLE with MUST HMAC-done; arm_sources ORs those bits.
+# DMA chunk/error and HMAC-err are extras: aggregator CHK-AGG walks them every
+# seed; this leaf proves CPU claim when the seed draws them.
+_POOL = (9, 10, 11, 20, 21, 23, 24, 28)
 
 
 def _sample(rng: SepSeededRng, seq: tuple[int, ...], k: int) -> list[int]:
@@ -138,7 +140,7 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
                 "patch was inert or the image is stale)"
             )
         # The whole-run checkers must have reported.
-        for needle in ("CHK-NONVAC PASS:", "CHK-PIC-COMPLETE PASS:"):
+        for needle in ("CHK-NONVAC PASS:", "CHK-PIC-COMPLETE PASS:", "CHK-DUMMY PASS:"):
             if needle not in console:
                 raise AssertionError(f"firmware missing {needle!r}")
         # Cardinality: one line of each per-source checker for every selected
@@ -163,5 +165,10 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
             list(cfg.must),
             list(cfg.extras),
             cfg.seed,
+            want,
+        )
+        self.logger.info(
+            "CHK-FW-REPORTED PASS: every firmware checker line is present, and the "
+            "per-source checkers appear once per selected source (%d)",
             want,
         )

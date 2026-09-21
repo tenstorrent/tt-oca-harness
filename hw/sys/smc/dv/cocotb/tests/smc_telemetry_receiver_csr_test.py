@@ -14,8 +14,12 @@ from smc_base_test import smc_base_test
 class smc_telemetry_receiver_csr_test(smc_base_test):
     """U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any."""
 
-    required_evidence = ("CHK-TELEMETRY-RECEIVER-CSR",)
-    min_evidence = 1
+    required_evidence = (
+        "CHK-TELEMETRY-RECEIVER-1-ATB",
+        "CHK-TELEMETRY-RECEIVER-2-ATB",
+        "CHK-TELEMETRY-RECEIVER-CSR",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 

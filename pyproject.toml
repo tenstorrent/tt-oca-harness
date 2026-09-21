@@ -23,6 +23,7 @@ dependencies = [
   "peakrdl-systemrdl>=1.0.1",
   "pre-commit==4.5.1",  # 4.6+ requires Git 2.31; supported environments include Git 2.26
   "pyelftools>=0.33",
+  "pyyaml>=6.0.3",
   "ruff==0.16.5",
   "semantic-version>=2.10.0",
   "shellcheck-py==0.11.0.1",  # wraps the shellcheck binary; see shfmt-py below for the formatter half
@@ -53,15 +54,17 @@ vp = [
     # sandbox carries a bare python3.
     "cryptography>=41.0",
 ]
+manifest = ["tt-oca-manifest"]
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
 ocah-dv = { workspace = true }
+tt-oca-manifest = { workspace = true }
 
 [tool.uv.workspace]
-members = ["hw/common/dv"]
+members = ["hw/common/dv", "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"]
 
 [tool.ruff]
 target-version = "py311"
@@ -83,6 +86,17 @@ extend-exclude = [
   "virtual_platform/local*",
 ]
 
+# The SMU DV `env` and `seq_lib` packages are namespace packages spanning the
+# block and wrapper framework trees (hw/sys/smu/dv/README.md), so they carry no
+# __init__.py; name them here so isort keeps treating their imports as
+# first-party.
+namespace-packages = [
+  "hw/sys/smu/dv/cocotb/env",
+  "hw/sys/smu/dv/cocotb/seq_lib",
+  "hw/sys/smu/dv/cocotb_wrapper/env",
+  "hw/sys/smu/dv/cocotb_wrapper/seq_lib",
+]
+
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 ignore = ["E501"]
@@ -92,7 +106,6 @@ ignore = ["E501"]
 "**/cocotb/**/*.py" = ["E402"]
 "hw/ip/i3ccore_wrap/dv/tb/*.py" = ["E402"]
 "hw/ip/key_manager/dv/tb/test_firmware.py" = ["E402", "E722", "F841"]
-"hw/ip/entropy_source/dv/cocotb/test_entropy_source.py" = ["F403", "F405"]
 # sep_reg_meta must import before sep_reg (it puts regs/gen/py on sys.path as
 # a side effect); isort's alphabetical sort would put sep_reg first and break it.
 "hw/sys/sep/dv/cocotb/env/sep_efuse_image.py" = ["I001"]

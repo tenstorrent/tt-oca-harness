@@ -82,7 +82,7 @@ class smc_i2c_p0_cfifo_test_seq(SmcCsrSeq):
                 )
                 self.fmt_ok = True
                 return
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"FMT_THRESHOLD not seen FMTLVL={lvl} thresh={_FMT_THRESH} "
             f"INTR=0x{intr:08x} fifo_st=0x{fifo_st:08x}"

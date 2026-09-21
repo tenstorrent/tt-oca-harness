@@ -20,6 +20,9 @@ from smc_base_test import smc_base_test
 class smc_occp_sanity_secure_error_test(smc_base_test):
     """Secure program-fail negative + recovery burn / signature positive."""
 
+    required_evidence = ("CHK-OCCP-SECURE-ERROR-RECOVERY",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

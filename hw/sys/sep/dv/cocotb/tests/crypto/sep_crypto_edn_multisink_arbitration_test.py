@@ -218,9 +218,17 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
             "AES baseline ct != AES-256-ECB golden:\n"
             f"  ct    ={[hex(w) for w in base_ct]}\n  golden={[hex(w) for w in aes_golden]}"
         )
+        assert self._aes_beats() > 0, (
+            "CHK-SINK-BIND FAIL: AES-alone produced no AES-named beats, so the "
+            "sink map is not bound independently of the adapter order"
+        )
         assert self._kmac_beats() == 0, (
             f"KMAC took crypto-EDN beats before it was driven "
             f"({self._kmac_beats()}) -- both-beats check would be vacuous"
+        )
+        self.logger.info(
+            "CHK-SINK-BIND PASS: AES-alone scored %d AES beats and 0 KMAC beats",
+            self._aes_beats(),
         )
         self.logger.info(
             "CHK-NONVAC PASS: AES single-engine baseline reproduces its KAT "

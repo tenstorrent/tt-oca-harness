@@ -4,340 +4,240 @@
 [[avsbus-controller-architecture]]
 == Architecture
 
-The AVSBus Controller implements an Adaptive Voltage Scaling Bus
-(AVSBus) 1.3.1 controller for dynamic voltage and frequency scaling (DVFS)
-in single-target systems. The controller enables
-communication with a single AVS target device through a standardized
+The AVSBus Controller implements an Adaptive Voltage Scaling Bus (AVSBus)
+1.3.1 controller for dynamic voltage and frequency scaling (DVFS) in
+single-target systems, communicating with one AVS target device over a
 two-wire protocol interface.
 
-The modular design includes separate command processing, response
-handling, clock generation, and CRC verification subsystems. FIFO-based
-command queuing enables autonomous operation with monitoring and error
-handling capabilities.
+The design is a register file, a pair of asynchronous FIFOs that carry
+commands and responses between the register and AVS clock domains, a protocol
+FSM that serializes and deserializes subframes, a CRC-3 engine shared between
+transmit and receive, and the AVS clock generation logic.
 
 === AVS Protocol Engine
 
-The protocol engine serves as the heart of AVSBus communication,
-orchestrating all state machine transitions and transaction management.
-Incoming transactions are first queued through an 8-entry command FIFO,
-which supports all AVSBus command types—including commit write, hold
-write, commit, and read—while automatically constructing proper frames
-with built-in CRC calculation. Configurable timeouts and retry logic
-ensure that even in the face of transient failures, reliable
-communication is maintained.
+Software queues commands by writing `AVS_CMD`, which pushes a 32-bit word into
+the command FIFO. The protocol FSM pops each command, prepends the fixed
+preamble, appends a calculated CRC-3, and shifts the resulting 32-bit subframe
+out on `avs_mdata_o`. The target's reply arrives one subframe later: it is
+shifted in from `avs_sdata_i` during the 32 cycles that carry the next
+command, checked for a valid frame bit and a good CRC, and pushed into the
+readback FIFO.
 
-On the response side, an 8-deep readback FIFO buffers data returned from
-the target, allowing for efficient response handling and minimizing
-latency. The protocol engine provides real-time acknowledgment tracking
-for the target device, and each response is immediately subjected
-to hardware CRC verification for error detection. For operations
-demanding the lowest latency, the engine includes a bypass path enabling
-instantaneous access to target responses.
+Retries are automatic. A slave acknowledgment of 1 (resource unavailable) or 2
+(bad CRC) causes the master to resend the command, up to
+`AVS_CFG_0.MAX_RETRIES` times; exhausting that budget raises
+`MAX_RETRIES_ATTEMPTED_INT`. Setting `MAX_RETRIES` to 0 suppresses retries
+altogether, and the failing response is delivered to software instead. A reply
+whose frame valid bit is set means the target did not respond at all and
+raises `SLAVE_UNRESPONSIVE_INT`. There is no separate programmable response
+timeout.
 
-Transaction control is further enhanced by automatic slave resync
-operations, allowing periodic resynchronization with configurable
-intervals. An abort
-function immediately cancels pending operations as needed, while
-automatic idle state detection enables power-efficient clock gating.
-Throughout, the protocol engine offers detailed status monitoring and
-debug access to facilitate robust system integration and
-troubleshooting.
+The master also issues periodic slave resync operations, holding `avs_mdata_o`
+high for 34 AVS clock cycles. `AVS_CFG_0.RESYNC_INTERVAL` sets the interval in
+register-clock cycles, and `AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION` requests
+one immediately. Both take effect three cycles later, after synchronization
+into the AVS clock domain.
 
 === Clock Generation and Management
-
-=== Multi-Source Clock Selection
 
 [width="100%",cols="30%,70%",options="header",]
 |=====================================================================================
 |Clock Source |Description
-|clk_reg_i |Register interface clock, synchronous with system register
-access
 
-|clk_ref_i |Reference clock, independent AVS bus timing
+|clk_reg_i |Register interface clock, synchronous with register access
 
-|Selection |Software-configurable via AVS_CFG_1 register
+|clk_ref_i |Reference clock, independent of AVS bus timing
+
+|Selection |Software-configurable via `AVS_CFG_1.AVS_CLOCK_SELECT`
 |=====================================================================================
 
-The clock generation logic features a programmable divider with 8-bit
-resolution, enabling AVS clock frequencies to be finely adjusted
-anywhere between divide-by-2 and divide-by-255. Both the division ratio
-and the duty cycle (also 8-bit configurable) can be optimized by
-software for signal integrity, with the controller shipping by default
-at a divide-by-4, 50% duty cycle setting. These clock parameters may be
-reprogrammed on the fly without interrupting protocol activity.
+The selected source passes through an anti-glitch mux and then a programmable
+divider, whose ratio and duty cycle are both 8-bit values in `AVS_CFG_1`. Out
+of reset the controller runs on `clk_ref_i` divided by 4 at a 50% duty cycle.
+Both divider fields reset to 0, which is a sentinel: the divider keeps its
+hardware defaults until software writes a non-zero value.
 
-Power efficiency is built in at multiple levels: the AVS clock is
-automatically gated during bus idle conditions, and all unused input
-clocks are selectively disabled to further reduce dynamic power
-consumption.
+Changing the clock configuration is not glitch-free on its own. Set
+`AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS` to gate both source clocks before
+changing the source selection or the divider settings, then clear it
+afterwards.
+
+Power is saved at two levels: `AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE` gates the AVS
+clock whenever the bus is idle, and `TURN_OFF_ALL_PREMUX_CLOCKS` gates the
+clocks entering the mux. Restarting a gated AVS clock always begins with a
+34-cycle slave resync.
 
 === CRC Verification Engine
 
-The controller features a hardware-accelerated CRC-3 engine, implemented
-as the dedicated avsbus_crc3 module. This logic works in real time,
-processing each 32-bit message and generating or checking the required
-3-bit CRC with zero-cycle latency, ensuring continuous protocol
-operation.
-
-CRC calculation runs in parallel for both outgoing and incoming frames,
-automatically verifying all received responses and flagging the
-result—good or bad—on a per-transaction basis. Any CRC errors are
-tracked in dedicated statistics registers, and the CRC system is tightly
-integrated with the retry mechanism to ensure robust error recovery.
+The `avsbus_crc3` module computes a 3-bit CRC combinationally over a 32-bit
+subframe. Two instances are used. The generate instance is fed the outgoing
+master subframe with its CRC field zeroed, and its output becomes the three
+bits shifted out last. The check instance is fed the received slave subframe
+intact, including the CRC the target sent, and reports a good check when the
+result is zero. A failed check prevents the subframe from updating
+`AVS_LATEST_SLAVE_SUBFRAME` and `AVS_SLAVE_STATUS`, and the retry logic
+resends the command.
 
 === Command and Response FIFO System
 
 [width="100%",cols="20%,40%,40%",options="header",]
 |=====================================================================================
-|FIFO |Command FIFO |Response FIFO
-|Depth |8 entries |8 entries
+|FIFO |Command FIFO |Readback FIFO
 
-|Purpose |Command queue for batch operations |Response buffer with
-automatic collection
+|Depth |`COMMAND_FIFO_DEPTH`, 8 entries by default |`READBACK_FIFO_DEPTH`, 8
+entries by default
 
-|Features |Full/empty status, automatic frame formatting, CRC insertion,
-overflow protection |Acknowledgment tracking, CRC
-verification, underflow protection
+|Direction |Register clock domain to AVS clock domain |AVS clock domain to
+register clock domain
+
+|Occupancy |`AVS_FIFOS_STATUS.CMD_FIFO_*` |`AVS_FIFOS_STATUS.READBACK_FIFO_*`
+
+|Overrun behaviour |A write to `AVS_CMD` when full is dropped and raises
+`CMD_FIFO_OVERFLOW_INT` |A response received when full is dropped and raises
+`READBACK_OVERFLOW_INT`
 |=====================================================================================
+
+Both are instances of `avsbus_async_fifo`, which requires a power-of-two
+depth. Pointers cross between the two clock domains as Gray codes through
+three-stage synchronizers.
+
+While the readback FIFO is full the master launches no further commands, so a
+software reader that stops draining `AVS_READBACK` stalls the bus rather than
+losing responses.
 
 === Reset and Initialization
 
-The AVSBus Controller employs a dual reset scheme to ensure robust,
-phased hardware bring-up. The primary reset signal (rst_ni) governs
-all core clocking and register functions; it must be asserted first to
-stabilize the system. Only after this clock and register domain is
-reliably up can configuration begin.
+The controller takes three resets. `rst_clk_div_ni` resets the programmable
+clock divider, `rst_reg_ni` resets the register file and the protocol logic,
+and `rst_ref_ni` resets the `clk_ref_i` leg of the anti-glitch clock mux.
 
-The clock divider reset (rst_clk_div_ni) must be deasserted before
-the main reset to ensure proper clock generation initialization.
+*`rst_clk_div_ni` must be deasserted before `rst_reg_ni`*. The divider has to
+be producing a clock before the logic it feeds leaves reset, otherwise the AVS
+clock domain never starts.
 
-*Initialization Sequence*:
+Because the divider defaults to divide-by-4 on `clk_ref_i` and the protocol
+FSM starts as soon as reset is released, the controller begins issuing slave
+resync operations without any software configuration. Configuration is
+therefore a matter of adjusting defaults rather than enabling the block:
 
-1.  *Clock Configuration Phase*:
-* Configure clock source selection (AVS_CFG_1.AVS_CLOCK_SELECT)
-* Set clock divider and duty cycle parameters (AVS_CFG_1)
-* Enable appropriate clock gating controls
-2.  *Clock Divider Reset Release*:
-* Deassert rst_clk_div_ni to enable clock divider
-* Verify clock divider stability
-3.  *Primary Reset Release*:
-* Deassert rst_ni to enable clocking subsystems
-* Verify clock stability and register access functionality
-* Configure basic controller parameters
-4.  *Protocol Initialization*:
-* Configure retry parameters (AVS_CFG_0.MAX_RETRIES)
-* Configure resync interval (AVS_CFG_0.RESYNC_INTERVAL)
-* Set up interrupt masks and status monitoring
-* Clear any residual FIFO contents
-5.  *Begin Operations*:
-* Enable protocol engine and FIFO operations
-* Begin normal command processing operations
+1.  Release `rst_clk_div_ni`, then `rst_reg_ni`.
+2.  If the default AVS clock is not wanted, set
+`AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS`, write `AVS_CLOCK_SELECT`,
+`CLK_DIVIDER_VALUE` and `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR`, then clear
+`TURN_OFF_ALL_PREMUX_CLOCKS`.
+3.  Set `AVS_CFG_0.MAX_RETRIES` and `AVS_CFG_0.RESYNC_INTERVAL`.
+4.  Clear the `AVS_INTERRUPT_MASK` bits for the sources of interest; all
+sources are masked out of reset.
+5.  Write commands to `AVS_CMD` and collect responses from `AVS_READBACK`.
 
 === Data Flow and Control Path
 
-=== Command Processing Data Flow
+==== Command Path
 
-1.  *Command Initiation*: Software writes transaction parameters to
-AVS_CMD register
-2.  *FIFO Queuing*: Command parameters queued in 8-deep command FIFO
-3.  *Frame Construction*: Protocol engine constructs 32-bit AVSBus frame
-with:
-* Command type and data type encoding
-* 16-bit data payload
-* 3-bit CRC calculated by avsbus_crc3 module
-4.  *Serial Transmission*: Frame transmitted bit-by-bit on avs_mdata_o
-5.  *Response Collection*: Target response collected from
-avs_sdata_i
-6.  *CRC Verification*: Received response verified using CRC-3 engine
-7.  *FIFO Storage*: Valid response queued in readback FIFO for software
-access
+1.  Software writes `AVS_CMD`; the 32-bit word enters the command FIFO. The
+write is dropped if the FIFO is full.
+2.  The protocol FSM pops a command, builds the master subframe as preamble,
+`AVS_CMD[29:3]` and CRC-3, and shifts it out on `avs_mdata_o`.
+3.  The target's reply shifts in on `avs_sdata_i` during the following
+subframe.
+4.  A reply that is valid and passes CRC updates `AVS_SLAVE_STATUS` and
+`AVS_LATEST_SLAVE_SUBFRAME` and is pushed into the readback FIFO; otherwise
+the retry logic resends the command.
+5.  Software reads `AVS_READBACK`, which pops the readback FIFO.
 
-*Command Flow Control*:
+Because writes to a full command FIFO are silently dropped, software that
+queues commands in a burst should check `AVS_NORMAL_STATUS.CMD_FIFO_FULL` or
+`AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS` first, or enable
+`CMD_FIFO_OVERFLOW_INT`.
 
-[source,sourceCode,verilog]
-----
-// Typical command processing sequence
-while (!cmd_fifo_full) {
-    // Queue multiple commands
-    write_reg(AVS_CMD, {cmd_type, data_type, rail_sel, data});
-}
+==== Response Inspection
 
-// Monitor command execution
-while (cmd_fifo_not_empty) {
-    status = read_reg(AVS_NORMAL_STATUS);
-    if (status.bus_idle) break;
-}
-----
-
-=== Response Processing Data Flow
-
-1.  *Target Response Reception*: Serial collection from target
-via avs_sdata_i
-2.  *Target Acknowledgment Processing*: ACK/NACK detection
-and status update
-3.  *CRC Validation*: Hardware CRC-3 verification for response
-frame
-4.  *Retry Logic*: Automatic retry for CRC errors or missing
-acknowledgments
-5.  *Status Update*: Real-time update of AVS_SLAVE_STATUS register
-6.  *FIFO Queuing*: Valid response stored in 8-deep readback FIFO
-7.  *Interrupt Generation*: Configurable interrupts for response
-availability
-
-*Response Bypass Mode*: - AVS_LATEST_SLAVE_SUBFRAME provides immediate
-access to target responses - Bypasses FIFO for real-time monitoring
-applications - Useful for debugging and system commissioning
+`AVS_READBACK` is the normal path and advances the FIFO on every read.
+`AVS_DEBUG_READBACK` mirrors the top of the FIFO without advancing it, and
+reads 0xFFFFFFFF when the FIFO is empty. `AVS_LATEST_SLAVE_SUBFRAME` holds the
+most recent valid subframe regardless of FIFO state, which is what to read
+when the question is what the target is doing now rather than what it said
+several commands ago.
 
 === Clock Domain Architecture
 
-The AVSBus Controller is designed around a multi-clock domain
-architecture to balance performance, flexibility, and safe communication
-across hardware boundaries. At its heart is the Register Interface
-Domain, clocked by clk_reg_i, which orchestrates all register accesses,
-manages FIFO write operations, updates status registers, and handles the
-generation of interrupts. This domain is responsible for interfacing
-with software and ensuring that the system configuration and state
-reporting remain responsive and reliable.
+Two domains carry functional logic. The register domain, clocked by
+`clk_reg_i`, holds the AXI4-Lite bridge, the register file, the command FIFO
+write side, the readback FIFO read side and interrupt generation. The AVS
+domain, clocked by the generated `avs_clock_o`, holds the protocol FSM, the
+shift registers and the CRC engines.
 
-Parallel to this, the AVS Protocol Domain operates using its own clock
-(clk_avs), which is flexibly derived from either the register interface
-clock (clk_reg_i) or a separate reference clock (clk_ref_i). The choice
-of source, along with programmable division ratios and tunable duty
-cycles, enables precise control over protocol timing and ensures the
-protocol engine state machine can meet demanding bit-level timing
-requirements. This separation allows the protocol core to run
-independently of software activity, optimizing throughput and timing
-closure.
-
-To ensure robust operation between these asynchronous domains, the
-design employs classic cross-domain synchronization strategies.
-Gray-coded counters facilitate the safe passage of FIFO pointer
-information, minimizing hazards from metastability. Control signals
-crossing domain boundaries are handled through two-stage synchronizers,
-guarding against timing violations. With these measures in place, all
-domain crossings benefit from strong metastability protection,
-maintaining data integrity and system stability even as the domains
-operate at different rates.
-
-*Clock Generation*:
-
-The AVSBus Controller's clock generation subsystem is both flexible and
-power-efficient, adapting seamlessly to system requirements. Clock
-source selection is based on a straightforward logic: when the
-AVS_CLOCK_SELECT signal is set to 00 or 01, the register interface clock
-(clk_reg_i) is chosen as the protocol clock; when set to 10 or 11, the
-controller selects the reference clock (clk_ref_i). This mechanism
-enables precise control over protocol timing, allowing the designer to
-align the AVS domain with either the register clock or an external
-reference source as system needs dictate.
-
-To further refine clock characteristics, the controller incorporates a
-programmable divider. This divider accepts an 8-bit value, enabling
-clock ratios from 2 up to 255, and supports fine-grained duty cycle
-adjustment via another 8-bit parameter that maps directly to a 0–100%
-range. These features together allow for highly accurate protocol clock
-generation and make it possible to match stringent timing requirements
-or optimize interface throughput.
-
-The design includes automatic clock gating that disables the protocol
-clock during idle periods, complemented by software controls that can
-explicitly turn off the protocol clock when needed to conserve energy.
-This strategy minimizes unnecessary clock activity, reducing overall
-power consumption and ensuring that the clock tree is only as active as
-required by ongoing operations.
+FIFO pointers cross between the domains as Gray codes. Individual control and
+status bits cross through `prim_sync3` three-stage synchronizers, and pulses
+through `prim_sync3_pulse`. The reset synchronizers are six stages deep and
+take their scan bypass from `scan_rst_ni`.
 
 === Protocol State Machine
 
-The protocol engine implements a state machine for AVSBus communication:
+`cur_state_debug_o` exposes the FSM state as a 17-bit one-hot vector,
+resynchronized to `clk_reg_i`. The states, in bit order from 0, are:
 
-*IDLE State*: - Waiting for commands from software - AVS clock
-optionally gated for power savings - Monitoring for FIFO empty/full
-conditions
-
-*FRAME_SETUP State*: - Frame construction and CRC calculation - Clock
-enable assertion and timing setup - Command
-preparation
-
-*TRANSMIT State*: - Bit-by-bit frame transmission on avs_mdata_o -
-Parallel bit counter and frame position tracking - Clock generation and
-data synchronization
-
-*RESPONSE_WAIT State*: - Target response collection from
-avs_sdata_i - Acknowledgment detection and timeout monitoring -
-CRC verification preparation
-
-*RESPONSE_PROCESS State*: - CRC validation and error detection -
-Response data extraction and formatting - FIFO write operations and
-status updates
-
-*RETRY_DECISION State*: - Error analysis and retry determination - Retry
-counter management - Abort condition evaluation
-
-*RESYNC State*: - Slave resynchronization operation (34 clock cycles) -
-Automatic periodic resync with configurable intervals
-
-=== Performance Characteristics
-
-[width="100%",cols="35%,65%",options="header",]
+[width="100%",cols="10%,45%,45%",options="header",]
 |=====================================================================================
-|Characteristic |Value
-|*Protocol Timing* |
+|Bit |State |Meaning
 
-|Max AVS clock frequency |system clock / 2
+|0 |AVS_RESET |Out of reset, before the first resync
 
-|Frame transmission time |32 AVS clock cycles minimum
+|1 |AVS_SLAVE_RESYNC |Holding `avs_mdata_o` high for 34 cycles
 
-|Response processing |2-5 AVS clock cycles
+|2 |AVS_LAUNCH_FRAME_POST_RESYNC |First command launch after a resync
 
-|Command-to-response latency |40-80 AVS clock cycles (including
-retries)
+|3 |AVS_IDLE |No command queued; the AVS clock may be gated
 
-|Sustainable throughput |~1 command per 50 AVS clock cycles
+|4, 5 |AVS_SHIFT_1ST_SUBFRAME, AVS_END_1ST_SUBFRAME |First subframe after
+idle or resync, launching a command
 
-|*Resource Utilization (estimates)* |
+|6, 7 |AVS_SHIFT_MID_SUBFRAME, AVS_END_MID_SUBFRAME |Transmitting one command
+while receiving the reply to the previous one
 
-|Logic resources |~1200 LUTs total (protocol: ~400, FIFO: ~300, clock:
-~200, CRC: ~100, register: ~200)
+|8, 9 |AVS_SHIFT_LAST_SUBFRAME, AVS_END_LAST_SUBFRAME |Final subframe, draining
+the last reply with no new command to send
 
-|Memory |576 bits (command FIFO: 320, response FIFO: 256), register
-file: 128-256 bytes
+|10-15 |AVS_RETRY_* |The same shift and end pairs used while retrying a failed
+command, split into transmit-and-receive, transmit-only and receive-only
+variants
 
-|Clock resources |2-4 global clocks, 8-16 local enables, 4-8 gating
-cells
-
-|*Error Handling* |
-
-|Configurable retry count |1-255 attempts (via AVS_CFG_0.MAX_RETRIES)
-
-|Error recovery time |3-10 AVS clock cycles per retry
-
-|Max transaction latency |(retry_count + 1) × base_latency
+|16 |AVS_PROCESS_PREVIOUS_SDATA |Evaluating a received subframe
 |=====================================================================================
+
+Command transmission and response reception overlap: the reply to a command
+arrives during the subframe that carries the next command, which is why the
+mid-subframe states do both at once.
 
 === Error Handling and Diagnostics
 
-Robust error handling in the AVSBus Controller is achieved through a
-combination of proactive detection, on-the-fly diagnostics, and
-versatile recovery strategies. The controller continuously monitors for
-common protocol errors such as CRC mismatches, missed acknowledgments,
-and protocol violations. CRC errors trigger automatic retry, while
-target response timeouts are detected using programmable thresholds.
-Additional safeguards guard against FIFO overflow or underflow, errors
-in clock domain crossings, and excessive retry attempts, ensuring
-resilient bus operation even under adverse conditions.
+[width="100%",cols="35%,65%",options="header",]
+|=====================================================================================
+|Condition |Handling
 
-To aid diagnostics, the controller offers real-time visibility into
-internal protocol states and maintains detailed target response
-status. A transaction history and error logging subsystem assist with
-deeper debugging, supplemented by a comprehensive register interface
-designed for both system monitoring and low-level inspection. Real-time
-metrics on bus utilization further augment the visibility available to
-software and hardware integrators.
+|Bad CRC from the target |Automatic retry, up to `AVS_CFG_0.MAX_RETRIES`
 
-When recovery is necessary, the controller combines automatic
-mechanisms—including configurable retry, slave resync operations,
-transaction aborts, and FIFO flushing—with software-intervenable
-controls such as manual abort triggers, direct diagnostic
-access, and customization of error thresholds. This multi-tiered
-approach provides both rapid error response and ample opportunity for
-system-level management and adaptation.
+|Resource unavailable acknowledgment |Automatic retry, up to
+`AVS_CFG_0.MAX_RETRIES`
+
+|Bad data, data type or selector acknowledgment |No retry; the response is
+delivered to software
+
+|Retry budget exhausted |`MAX_RETRIES_ATTEMPTED_INT`;
+`AVS_NORMAL_STATUS.TOTAL_RETRIES` counts every retry attempted
+
+|Target not responding |`SLAVE_UNRESPONSIVE_INT`
+
+|Command FIFO overrun |Write dropped, `CMD_FIFO_OVERFLOW_INT`
+
+|Readback FIFO overrun |Response dropped, `READBACK_OVERFLOW_INT`
+
+|Read of an empty readback FIFO |`READBACK_UNDERFLOW_INT`
+|=====================================================================================
+
+For diagnosis, `AVS_NORMAL_STATUS` reports bus idle, resync, retry-in-progress
+and FIFO states; `AVS_FIFOS_STATUS` reports occupied and vacant slots in both
+FIFOs; `AVS_SLAVE_STATUS` and `AVS_LATEST_SLAVE_SUBFRAME` report the target's
+most recent acknowledgment and status response; and `cur_state_debug_o` exposes
+the FSM state to the surrounding system.

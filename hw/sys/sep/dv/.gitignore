@@ -33,6 +33,7 @@ cocotb/tests/.km_rom_wipe_defines
 
 # Assembler-safe field-mask extract, lifted out of the generated km_csr.h by
 # cocotb/tests/km_fw/Makefile at build time.
+cocotb/tests/km_fw/km_fields.inc
 cocotb/tests/km_fw/km_csr_fields.inc
 cocotb/tests/km_fw/*.elf
 cocotb/tests/km_fw/*.bin
