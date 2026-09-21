@@ -3,12 +3,12 @@
 """Sequence for smu_smc_cool_reset_pin_test. No Force.
 
 ``rst_cool_n_from_pin_i`` is the cool reset a primary chiplet sends a
-secondary one. port_table.adoc routes it to the SMC reset unit, where it is
-deglitched over ``RESET_DEGLITCH_REF_CYCLES`` of ``clk_ref_i`` and then
-asserts the SMC primary reset. The bench observes that reset on
-``obs_smc_rst_n_o`` and proves both halves of the contract: a pulse shorter
-than the window leaves the SMC running, a hold longer than it resets the SMC
-and the SMC boots again when the pin releases.
+secondary one. ``hw/sys/smu/doc/port_table.adoc`` routes the pin to the
+SMC reset unit and does not state a deglitch width. The bench observes
+the SMC primary reset on ``obs_smc_rst_n_o`` and proves both halves of
+the pin contract: a ``FILTERED_PULSE_REF_CYCLES`` pulse leaves the SMC
+running, a hold that lasts past that pulse asserts the reset, and the
+SMC boots again when the pin releases.
 
 The primary reset also clears ``DFX_CTRL.STATUS_SMU``, whose done and pass
 fields are set-only mirrors of ``mem_repair_done_i``, ``mem_repair_success_i``,
@@ -43,12 +43,11 @@ MBIST_DONE_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_DONE_bm")
 MBIST_PASS_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_PASS_bm")
 DFT_DONE_BM = MEM_REPAIR_DONE_BM | MEM_REPAIR_SUCCESS_BM | MBIST_DONE_BM | MBIST_PASS_BM
 
-# hw/sys/smc/doc: the cool reset pin is deglitched over 32 reference clocks
-# before it reaches the primary reset.
-RESET_DEGLITCH_REF_CYCLES = 32
-GLITCH_REF_CYCLES = RESET_DEGLITCH_REF_CYCLES - 4
-# The primary reset is resynchronised into clk_smu after the window closes.
-ASSERT_BOUND_REF_CYCLES = 4 * RESET_DEGLITCH_REF_CYCLES
+# Pulse length this leaf proves is filtered. The hold side waits until
+# the primary reset is observed and refuses an assertion earlier than this.
+FILTERED_PULSE_REF_CYCLES = 28
+HOLD_AFTER_ASSERT_REF_CYCLES = 32
+ASSERT_BOUND_REF_CYCLES = 4 * HOLD_AFTER_ASSERT_REF_CYCLES
 RELEASE_BOUND_REF_CYCLES = 8192
 SYNC_CYCLES = 32
 EVIDENCE_DEGLITCH = "CHK-SMU-COOL-PIN-DEGLITCH"
@@ -131,23 +130,26 @@ class smu_smc_cool_reset_pin_seq:
             evidence=EVIDENCE_RESET,
         )
 
-        # S2: a pulse inside the deglitch window never reaches the primary reset.
+        # S2: a pulse of FILTERED_PULSE_REF_CYCLES never reaches the primary reset.
         dut.tb_cool_reset_pin.value = 1
-        await ClockCycles(dut.clk_ref_i, GLITCH_REF_CYCLES)
-        dut.tb_cool_reset_pin.value = 0
         low_samples = 0
+        for _ in range(FILTERED_PULSE_REF_CYCLES):
+            await RisingEdge(dut.clk_ref_i)
+            low_samples += 1 - self._bit("obs_smc_rst_n_o")
+        dut.tb_cool_reset_pin.value = 0
         for _ in range(ASSERT_BOUND_REF_CYCLES):
             await RisingEdge(dut.clk_ref_i)
             low_samples += 1 - self._bit("obs_smc_rst_n_o")
         sb.expect_eq(
-            f"a {GLITCH_REF_CYCLES}-clk_ref pulse on rst_cool_n_from_pin_i is filtered: "
-            f"the SMC stays out of reset for the next {ASSERT_BOUND_REF_CYCLES} clk_ref",
+            f"a {FILTERED_PULSE_REF_CYCLES}-clk_ref pulse on rst_cool_n_from_pin_i is "
+            f"filtered: the SMC stays out of reset during the pulse and the next "
+            f"{ASSERT_BOUND_REF_CYCLES} clk_ref",
             low_samples,
             0,
             evidence=EVIDENCE_DEGLITCH,
         )
 
-        # S3: a hold past the window asserts the primary reset, with the DFT
+        # S3: a hold past that pulse asserts the primary reset, with the DFT
         # straps taken low first so the reset value of STATUS_SMU is observable.
         dut.tb_mem_repair_hold.value = 1
         dut.tb_mbist_hold.value = 1
@@ -155,13 +157,14 @@ class smu_smc_cool_reset_pin_seq:
         dut.tb_cool_reset_pin.value = 1
         asserted_after = await self._wait_smc_reset(0, ASSERT_BOUND_REF_CYCLES, "cool reset assert")
         sb.expect_eq(
-            f"the held pin asserts the SMC primary reset only after the deglitch window "
-            f"({asserted_after} clk_ref, window {RESET_DEGLITCH_REF_CYCLES})",
-            asserted_after >= GLITCH_REF_CYCLES,
+            f"the held pin asserts the SMC primary reset no earlier than the "
+            f"{FILTERED_PULSE_REF_CYCLES}-clk_ref pulse that was filtered "
+            f"({asserted_after} clk_ref)",
+            asserted_after >= FILTERED_PULSE_REF_CYCLES,
             True,
             evidence=EVIDENCE_RESET,
         )
-        await ClockCycles(dut.clk_ref_i, RESET_DEGLITCH_REF_CYCLES)
+        await ClockCycles(dut.clk_ref_i, HOLD_AFTER_ASSERT_REF_CYCLES)
         sb.expect_eq(
             "the SMC stays in reset while the pin is held",
             self._bit("obs_smc_rst_n_o"),

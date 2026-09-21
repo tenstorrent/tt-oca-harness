@@ -560,14 +560,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-COOL-PIN-DEGLITCH",
             "CHK-SMU-COOL-PIN-DEGLITCH",
-            "a rst_cool_n_from_pin_i pulse shorter than the reset unit's 32-clk_ref deglitch "
-            "window leaves the SMC primary reset released",
+            "a 28-clk_ref rst_cool_n_from_pin_i pulse leaves the SMC primary reset "
+            "released, during the pulse and after it",
         ),
         (
             "CHK-SMU-COOL-PIN-RESET",
             "CHK-SMU-COOL-PIN-RESET",
-            "rst_cool_n_from_pin_i held past the window asserts the SMC primary reset, holds "
-            "it while low, and the SMC leaves reset after the pin releases",
+            "rst_cool_n_from_pin_i held past that pulse asserts the SMC primary reset no "
+            "earlier than 28 clk_ref, holds it while low, and the SMC leaves reset after "
+            "the pin releases",
         ),
         (
             "CHK-SMU-DFT-DONE-STATUS",
