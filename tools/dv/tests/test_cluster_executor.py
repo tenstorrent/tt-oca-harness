@@ -852,6 +852,62 @@ class DriverTableTest(unittest.TestCase):
             self.assertIn(executors[name]["history_parser"], dialect.history_parsers)
 
 
+class Signaller:
+    """Sends a signal to this process from a thread once the run has all its jobs submitted.
+
+    The coordinator installs its handler before the first submission and restores the default
+    one when it returns, so a signal is sent only between ``count`` logged submissions followed
+    by a query (every submission complete, the coordinator polling) and ``stop()``. A signal
+    that lands while a scheduler command runs kills that command, which is why the fake
+    scheduler saves its state atomically.
+    """
+
+    def __init__(
+        self, calls_log: Path, count: int, *, signum: int, repeat: int, gap_sec: float
+    ) -> None:
+        self._log = calls_log
+        self._count = count
+        self._signum = signum
+        self._repeat = repeat
+        self._gap_sec = gap_sec
+        self._done = threading.Event()
+        self.sent = 0
+        self._thread = threading.Thread(target=self._fire, daemon=True)
+        self._thread.start()
+
+    def _dispatched(self) -> bool:
+        if not self._log.is_file():
+            return False
+        rows = []
+        for line in self._log.read_text(encoding="utf-8").splitlines():
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                continue
+        submits = sum(1 for row in rows if row.get("command") in {"bsub", "sbatch"})
+        polling = bool(rows) and rows[-1].get("command") in {"bjobs", "squeue"}
+        return submits >= self._count and polling
+
+    def _fire(self) -> None:
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline and not self._done.is_set():
+            if self._dispatched():
+                break
+            time.sleep(0.05)
+        for index in range(self._repeat):
+            if index:
+                time.sleep(self._gap_sec)
+            if self._done.is_set():
+                return
+            os.kill(os.getpid(), self._signum)
+            self.sent += 1
+
+    def stop(self) -> None:
+        """No signal after this point; the run is over and its handler is gone."""
+        self._done.set()
+        self._thread.join(timeout=5)
+
+
 class CoordinatorTest(unittest.TestCase):
     """`run_dv.py` driving a real DUT's leaves through the fake scheduler and the real worker."""
 
@@ -924,39 +980,12 @@ class CoordinatorTest(unittest.TestCase):
             return []
         return [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
 
-    def signal_after_submits(
+    def signaller(
         self, count: int, *, signum: int = signal.SIGINT, repeat: int = 1, gap_sec: float = 1.0
-    ) -> threading.Thread:
-        """Send ``signum`` to this process once the fake scheduler has seen ``count`` submits.
-
-        The coordinator installs its handler before the first submission, so the signal
-        always reaches the run and never the test.
-        """
-        log = self.state / "calls.log"
-
-        def fire() -> None:
-            deadline = time.monotonic() + 120
-            while time.monotonic() < deadline:
-                seen = 0
-                if log.is_file():
-                    for line in log.read_text(encoding="utf-8").splitlines():
-                        try:
-                            row = json.loads(line)
-                        except ValueError:
-                            continue
-                        if row.get("command") in {"bsub", "sbatch"}:
-                            seen += 1
-                if seen >= count:
-                    break
-                time.sleep(0.05)
-            for index in range(repeat):
-                if index:
-                    time.sleep(gap_sec)
-                os.kill(os.getpid(), signum)
-
-        thread = threading.Thread(target=fire, daemon=True)
-        thread.start()
-        return thread
+    ) -> Signaller:
+        return Signaller(
+            self.state / "calls.log", count, signum=signum, repeat=repeat, gap_sec=gap_sec
+        )
 
     def run_dv(
         self, *extra: str, statuses: dict[str, Any] | None = None
@@ -1110,9 +1139,10 @@ class CoordinatorTest(unittest.TestCase):
                 "sim-000001": {**self.LONG_RUNNING, "ignore_kill": True},
             }
         )
-        watcher = self.signal_after_submits(2)
+        signaller = self.signaller(2)
         code, summary = self.run_dv()
-        watcher.join(timeout=5)
+        signaller.stop()
+        self.assertEqual(signaller.sent, 1)
         self.assertEqual(code, 128 + signal.SIGINT)
         self.assertEqual(summary["status"], "ERROR")
         interruption = summary["interruption"]
@@ -1156,11 +1186,12 @@ class CoordinatorTest(unittest.TestCase):
     def test_a_second_signal_ends_the_confirmation_wait(self) -> None:
         self.write_site(cancel_grace_sec=90)
         self.scenario(jobs={"default": {**self.LONG_RUNNING, "ignore_kill": True}})
-        watcher = self.signal_after_submits(2, repeat=2, gap_sec=1.5)
+        signaller = self.signaller(2, repeat=2, gap_sec=3.0)
         started = time.monotonic()
         code, summary = self.run_dv()
-        watcher.join(timeout=5)
-        self.assertLess(time.monotonic() - started, 45)
+        signaller.stop()
+        self.assertEqual(signaller.sent, 2)
+        self.assertLess(time.monotonic() - started, 60)
         self.assertEqual(code, 128 + signal.SIGINT)
         interruption = summary["interruption"]
         self.assertEqual(interruption["signals"], ["SIGINT", "SIGINT"])
