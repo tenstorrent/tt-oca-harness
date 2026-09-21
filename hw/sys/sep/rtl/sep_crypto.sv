@@ -570,11 +570,15 @@ module sep_crypto #(
   // (2) Terminate the KM's private ABR key bus with DECERR. The key CSR block
   //     now lives inside the CALIPTRA-only wrapper, so there is no OKAY
   //     responder here; use an AXI4-Lite err-slave (mirrors u_abr_axi_err_slv).
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH (km_intf_pkg::KM_AXI_DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH (km_intf_pkg::KM_AXI_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (km_intf_pkg::KM_AXI_DATA_WIDTH),
     .axil_req_t     (km_intf_pkg::km_axil_req_t),
-    .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
+    .axil_resp_t    (km_intf_pkg::km_axil_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (km_intf_pkg::KM_AXI_DATA_WIDTH),
+    .RESP_DATA      (32'hBADCAB1E),
+    .MAX_TRANS      (1)
   ) u_abr_key_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),

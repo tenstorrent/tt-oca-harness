@@ -129,11 +129,11 @@
 // The two error slaves are named by INSTANCE, not by module. `-module` matches
 // every elaboration of a name, and both are instantiated elsewhere in SEP RTL
 // where a test states a contract on them: prim_axi_lite_err_slv at
-// sep_efuse_wrapper.sv:259 and sep_system_csr.sv:571, :690, :930, and
-// axi_err_slv at sep_crypto.sv:555, sep_crypto_axi_interconnect.sv:270 and
-// sep_cpu.sv:591. (sep_io.sv:180 and sep_crypto.sv:573 instantiate the
-// separate prim_axil_err_slv, which this rule does not name.) sep_axi_map_refuse_test and the dead-space decode tests grade
-// those refusals, so a name-matched rule would waive live error-response logic.
+// sep_efuse_wrapper.sv:259, sep_system_csr.sv:571, :690, :930, sep_io.sv:179
+// and sep_crypto.sv:573, and axi_err_slv at sep_crypto.sv:555,
+// sep_crypto_axi_interconnect.sv:270 and sep_cpu.sv:591.
+// sep_axi_map_refuse_test and the dead-space decode tests grade those
+// refusals, so a name-matched rule would waive live error-response logic.
 -module efuse_bank_model
 -tree sep_uvm_top.u_dut.u_sep_ip_integration.u_ext_trng_axil_err_slv
 -tree sep_uvm_top.u_dut.u_sep_ip_integration.u_axi_extension_err_slv
@@ -164,10 +164,10 @@
 // jitter model, so a toggle on it states nothing about the design at all.
 //
 // The rest of och_prim stays graded, because a SEP test does name the function:
-// prim_axi_lite_err_slv and prim_axil_err_slv (sep_axi_map_refuse_test and the
-// dead-space decode tests grade the refusal), prim_axi_addr_fixer,
-// prim_axil_addr_fixer, prim_axi_id_converter and prim_axi_user_override
-// (the remap and filter datapath, held for the same reason as pulp axi),
+// prim_axi_lite_err_slv (sep_axi_map_refuse_test and the dead-space decode
+// tests grade the refusal), prim_axi_addr_fixer, prim_axil_addr_fixer,
+// prim_axi_id_converter and prim_axi_user_override (the remap and filter
+// datapath, held for the same reason as pulp axi),
 // prim_axi_lite_to_apb_single (the eFuse interface controller bridge),
 // prim_refclk_count_w_cdc (the reference counter is itself a CSR feature) and
 // prim_ram_1p_scr_ext / prim_ram_1p_adv_ext (OTBN scrambled imem and dmem).

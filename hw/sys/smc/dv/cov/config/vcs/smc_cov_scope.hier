@@ -744,7 +744,6 @@
 -module prim_axi_user_override
 -module prim_axi_user_override_struct
 -module prim_axil_addr_fixer
--module prim_axil_err_slv
 -module prim_axil_prot_filter
 -module prim_bin2gray
 -module prim_buf
