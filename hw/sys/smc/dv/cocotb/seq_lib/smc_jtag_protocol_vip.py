@@ -143,7 +143,7 @@ class SmcJtagTap:
             for _ in range(4):
                 await tap.step_tms(1)
         else:
-            await Timer(self._tck_period_ns * 2, units="ns")
+            await Timer(self._tck_period_ns * 2, unit="ns")
         await tap.reset_tap(10)
         self._dmi_selected = False
 

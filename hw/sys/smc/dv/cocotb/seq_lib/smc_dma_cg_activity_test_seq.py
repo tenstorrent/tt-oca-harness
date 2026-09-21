@@ -254,7 +254,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         self.chk_seen[name] = line
 
     def _mark_fence(self, term: str) -> None:
-        t = int(get_sim_time(units="ns"))
+        t = int(get_sim_time(unit="ns"))
         self.fence.append((term, t))
         cocotb.log.info("FENCE %s @ %dns", term, t)
 
@@ -284,7 +284,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         await ClockCycles(self._dut().clk_smc_i, smc_cycles)
         stop["done"] = True
         # Unblock the counter if it is waiting on a gated edge that never comes.
-        await Timer(1, units="ps")
+        await Timer(1, unit="ps")
         counter.kill()
         return edges["n"]
 
@@ -434,7 +434,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
                 state["be_at"] = state["smc"]
                 break
         stop_pre["done"] = True
-        await Timer(1, units="ps")
+        await Timer(1, unit="ps")
         edge_mon.kill()
 
         if state["be_at"] < 0:
@@ -531,7 +531,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         await RisingEdge(dut.clk_smc_i)
         busy = self._sample_bit("tb_dma_gater_busy")
         if not saw["v"]:
-            await Timer(1, units="ps")
+            await Timer(1, unit="ps")
         watcher.kill()
         return busy, saw["v"]
 

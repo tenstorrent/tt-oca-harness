@@ -140,7 +140,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if _iir_pending(iir):
                 return iir
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         return iir
 
     async def _expect_id(self, label: str, expect: int, iters: int = 64) -> int:
@@ -166,7 +166,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
                     f"{label}: gated source ID=0x{forbidden:x} still pending IIR=0x{iir:08x}"
                 )
             last = _iir_id(iir) if _iir_pending(iir) else None
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         return last
 
     async def _fail_if_id_still_pending(self, label: str, expect_id: int) -> None:
