@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from .smc_addr_map import smc_addr
-from .smc_csr_field_catalog import catalog_entry
+from .smc_csr_field_catalog import catalog_entry, misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 
 SCRATCH_COLD_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
@@ -21,7 +21,7 @@ BOUNDARY_READS = [
     (
         "CHIP_CONFIG_VERSION_LO",
         smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR"),
-        0x0001_00A0,
+        misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset"),
     ),
     ("CHIP_CONFIG_VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0x4, 0),
 ]

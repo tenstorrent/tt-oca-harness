@@ -246,9 +246,9 @@ verifying the block behind the port.
 |===
 |Testcase |Objective
 |`smc_external_window_pad_ctrl_decode_test` |The six mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
-|`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL 46-entry full sweep.
+|`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
-|`smc_gpio_intf_full_sweep_test` |GPIO_INTF full 68-entry sweep.
+|`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
 |`smc_gpio_irq_active_test` |Run GPIO CSR plus IRQ-control decode precheck.
 |`smc_gpio_irq_type_matrix_test` |Drive GPIO0 for both level polarities and check the IRQ aggregate.
 |`smc_gpio_multi_sample_test` |Run the SMC OSS GPIO multi-sample observability scenario.
@@ -4704,7 +4704,7 @@ Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compar
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: GPIO_CTRL 46-entry full sweep.
+*Objective*: GPIO_CTRL full sweep over every external GPIO_CTRL entry (65, from `external_gpio_ctrl_indices()`).
 
 *Test Coverage*:
 
@@ -4773,7 +4773,7 @@ Drive `smc_gpio_filter_access_sep_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: GPIO_INTF full 68-entry sweep.
+*Objective*: GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
 
 *Test Coverage*:
 

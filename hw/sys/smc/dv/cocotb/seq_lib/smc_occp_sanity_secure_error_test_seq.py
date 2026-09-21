@@ -19,8 +19,11 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_addr_map import smc_addr
+from .smc_csr_field_catalog import misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
+
+VERSION_LO_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 
 EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
@@ -55,7 +58,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
         map0 = await self.csr_read("EFUSE_MAP_0", EFUSE_MAP_0)
         assert map0 == OTP_WORD0_MARKER, f"positive signature gate failed: map0=0x{map0:08x}"
         ver = await self.csr_read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO)
-        assert ver == 0x0001_00A0, f"CHIP_CONFIG_VERSION_LO unexpected 0x{ver:08x}"
+        assert ver == VERSION_LO_RESET, f"CHIP_CONFIG_VERSION_LO unexpected 0x{ver:08x}"
 
         # Negative: first PROGRAM fails under +smc_efuse_prog_fail_count=1.
         prog_before = int(dut.tb_efuse_programmed_word0.value)
