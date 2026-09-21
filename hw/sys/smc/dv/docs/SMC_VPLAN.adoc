@@ -3616,7 +3616,7 @@ Drive `smc_cpu_ecc_lint_pint_depth_test_seq`. Each checker below is a named comp
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared. The programmer's guide states this harness reads 4
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_any_master_activity`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===
@@ -3805,7 +3805,7 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared. The programmer's guide states this harness reads 4
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_any_master_activity`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===
@@ -4070,7 +4070,7 @@ Drive `smc_dbs_idle_test_seq`. Each checker below is a named compare the DUT can
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared. The programmer's guide states this harness reads 4
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_any_master_activity`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===
@@ -4108,7 +4108,7 @@ Drive `smc_dfd_sanity_test_seq`. Each checker below is a named compare the DUT c
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared. The programmer's guide states this harness reads 4
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_any_master_activity`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===

@@ -9,9 +9,10 @@ bank type/instance ID pair, the NDM-reset registers, and the DFX debug
 control/bus-mux registers.
 
 Every expectation is taken from the RDL / PeakRDL-generated headers under
-``hw/sys/smc/regs/``; nothing is read from the RTL under test. The one register
-whose value the documents do not fix, ``NDMRESET_CLUSTER_COUNT``, is checked
-against the bounds the RDL declares and its ``sw = r`` contract only.
+``hw/sys/smc/regs/``; nothing is read from the RTL under test.
+``NDMRESET_CLUSTER_COUNT`` is checked against the RDL bounds and its ``sw = r``
+contract. The programmer's guide states that this harness reads 4; this
+sequence reports the observed count and does not compare it to that value.
 """
 
 from __future__ import annotations
@@ -24,23 +25,17 @@ from .smc_diagnostic_vip_utils import prove_axil_any_master_activity
 
 _MISC_WRAP_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "misc_wrap.h"
 
-# NDMRESET_CLUSTER_COUNT: no document states its value. ``ndm_reset.rdl``
-# describes it as "Number of NDM Clusters supported" for "the debug module in
-# each Ascalon cluster"; ``hw/sys/smc/doc/memmap.adoc`` counts one RISC-V Debug
-# Module instance and ``fabric.adoc`` one CPU cluster, while ``cpu.adoc`` counts
-# four cores -- none of them names the quantity this register reports. So the
-# count is not value-compared here: the checks are the RDL bounds and the
-# ``sw = r`` access contract, and the observed count is carried in the evidence
-# token.
+# NDMRESET_CLUSTER_COUNT. The programmer's guide states that this harness
+# reads 4. This sequence does not compare against that value: the checks are
+# the RDL bounds and the ``sw = r`` access contract, and the observed count is
+# carried in the evidence token.
 #
 # Field framing from the generated header of the ``ndm_reset`` block:
 # ``ndmreset_cluster_count[7:0]`` is the only field of the register, so the
-# bits above it are reserved and must read 0. The field itself states no
-# ceiling below its 8-bit width; the ceiling comes from the register it
-# qualifies. The RDL says the count "Can be read to mask the ndmreset_request
-# register", and ``ndmreset_request[31:0]`` is one bit per cluster ("Supports
-# up to 32 CPU Clusters"), so a count above that register's width could not
-# mask it. The ceiling is therefore the request field's generated width.
+# bits above it are reserved and must read 0. The RDL says software masks
+# NDMRESET_REQUEST with this value, and that field holds up to 32 clusters, so
+# a count above that width could not mask it. The ceiling is the request
+# field's generated width.
 _CLUSTER_COUNT_MASK = _field_mask(
     _MISC_WRAP_H, "NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_bm"
 )
@@ -134,10 +129,10 @@ class smc_ecc_dfd_dbs_sanity_test_seq(SmcCsrSeq):
             )
 
         # --- NDMRESET_CLUSTER_COUNT: RDL bounds, then RDL access contract ------
-        # Leg 1: the count has no documented value (see NDMRESET_CLUSTER_COUNT_MAX),
-        # so the read is bounded by what the RDL does declare: a nonzero count,
-        # at most the width of the request register it masks, inside the
-        # generated field with the reserved bits at 0.
+        # Leg 1: the programmer's guide states this harness reads 4. This
+        # sequence reports that value and checks the RDL bounds: a nonzero
+        # count, at most the width of the request register it masks, inside
+        # the generated field with the reserved bits at 0.
         count = await self.csr_read("NDMRESET_CLUSTER_COUNT", NDMRESET_CLUSTER_COUNT_ADDR)
         assert (count & ~_CLUSTER_COUNT_MASK) == 0, (
             f"NDMRESET_CLUSTER_COUNT reads 0x{count:08x}: bits above the "
@@ -152,9 +147,8 @@ class smc_ecc_dfd_dbs_sanity_test_seq(SmcCsrSeq):
             "CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS: NDMRESET_CLUSTER_COUNT "
             "@ 0x%08x reads 0x%08x -- a nonzero count within the %d-bit RDL "
             "field and at most the %d request bits it masks, reserved bits 0. "
-            "SCOPE: bounds check only; no document states the count itself "
-            "(memmap.adoc counts one Debug Module, fabric.adoc one CPU cluster, "
-            "cpu.adoc four cores), so its value is reported, not compared",
+            "SCOPE: bounds check only. The programmer's guide states this "
+            "harness reads 4; the count is reported, not compared",
             NDMRESET_CLUSTER_COUNT_ADDR,
             count,
             _CLUSTER_COUNT_WIDTH,

@@ -1791,7 +1791,7 @@ check.
 
 * The NDM reset request and process pair, an external interrupt lane, the reset-unit terminations (SS_CONFIG, SYNC_REG, ISOLATE_REQ_REG), the two DFT abort status pins, the subsystem reset-complete vector, the primary-chiplet strap, and the FLR isolation path that raises both `isolate_req_o` and `skip_mem_repair_o`.
 * Every leg compares an SMC CSR read, the boundary output or the SMC CPU interrupt vector against the contract, never against the value the bench drove; the FLR latch is required to hold when the pin drops and to release only on a software write.
-* The NDM lane count comes from NDM_RESET.NDMRESET_CLUSTER_COUNT, which `ndm_reset.rdl` defines as the number of NDM clusters and the mask for the request register and bounds at 32; no specification document states the count numerically, so the register is the only owner of the width and the NDM compares are masked to what it reports.
+* The NDM lane count comes from NDM_RESET.NDMRESET_CLUSTER_COUNT. The programmer's guide states that this harness reads 4. The RDL bounds the field at 32 clusters and says to mask the request register with the count. The NDM compares use the value the register reports.
 * The PLIC sits on the CPU cluster's local path (`fabric.adoc`) and is not reachable from the bench's JTAG2AXI manager; the external-interrupt leg observes the `cpu_interrupts_o` bits the SMC CPU interrupt vector map assigns to `smc_ext_interrupts_i` and does not claim PLIC pending state.
 
 *Test Procedure*:
