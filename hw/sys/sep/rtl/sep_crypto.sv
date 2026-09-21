@@ -883,9 +883,7 @@ module sep_crypto #(
   // A crypto-client reset flushes the shared adapter for one cycle so a request
   // cancelled by that reset cannot leave arbitration or acknowledgement state.
 
-  assign crypto_edn_client_rst_n = {
-    gated_rst_ni.otbn, gated_rst_ni.kmac, gated_rst_ni.aes
-  };
+  assign crypto_edn_client_rst_n = {gated_rst_ni.otbn, gated_rst_ni.kmac, gated_rst_ni.aes};
 
   prim_edge_detector #(
     .Width      (3),
