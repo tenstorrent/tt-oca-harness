@@ -185,6 +185,7 @@ module = "smc_cpu_l2_read_wedge_test"
 seed = 1
 timeout_sec = 1800
 tags = ["cpu", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_cpu_l2_write_wedge_test"
@@ -192,6 +193,7 @@ module = "smc_cpu_l2_write_wedge_test"
 seed = 1
 timeout_sec = 1800
 tags = ["cpu", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_cpu_mmio_read_wedge_test"
@@ -199,6 +201,7 @@ module = "smc_cpu_mmio_read_wedge_test"
 seed = 1
 timeout_sec = 3600
 tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
 firmware = "mmio_wedge"
 args = [
     "+smc_hold_cpu_boot",
@@ -211,6 +214,7 @@ module = "smc_cpu_mmio_write_wedge_test"
 seed = 1
 timeout_sec = 3600
 tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
 firmware = "mmio_wedge"
 args = [
     "+smc_hold_cpu_boot",
