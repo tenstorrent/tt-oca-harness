@@ -31,8 +31,11 @@ SepInboundFilterWidenCfg covers the widen itself: with allow_burst=1 and
 START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
 whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
-is write-once. A further write of a locked entry completes SLVERR, so the
-frozen allow_burst keeps governing the granule.
+is write-once per fabric.adoc, so the field must not change once set. That
+document does not say how a write to a locked entry completes; SEP refuses it
+with BRESP=SLVERR, steering AW/W to a separate AXI-Lite error slave, so the
+frozen allow_burst keeps governing the granule. The held field is the
+specified contract, the SLVERR is SEP's choice of completion code.
 """
 
 from __future__ import annotations
@@ -397,8 +400,8 @@ class SepInboundFilter(SepAxiRegDriver):
     async def write_tolerant(self, addr: int, data: int) -> int:
         """Write tolerating a non-OKAY response; return the AXI resp_code.
 
-        A locked entry's further writes complete SLVERR, so the proof is
-        the resp code plus the read-back.
+        A locked entry refuses further writes, which SEP completes as
+        SLVERR, so the proof is the resp code plus the read-back.
         """
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",
