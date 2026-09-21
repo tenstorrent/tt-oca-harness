@@ -561,19 +561,26 @@ nets it declares between them</p></td>
 per-edge toggle points whose hierarchy is <code>smu_wrapper_uvm_top.u_dut</code> and
 whose name is in the port list of <code>hw/top/smu_wrapper.sv</code>, and folds them
 into one figure per port; every port is live because the single target
-elaborates SEP. <code>--list</code> names the ports that never toggled. It is run by
-hand on a finished database; no CI job invokes it</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">on any finished <code>--cov</code>
-run of <code>--dut smu</code>, without a simulator</p></td>
+elaborates SEP. <code>--list</code> names the ports that never toggled. It is the
+documented second step after any <code>--cov</code> run, on either simulator; no CI job
+invokes it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">on any finished <code>--cov</code> run of <code>--dut smu</code>, without a simulator</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Commercial</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">toggle / code / assertion databases under the licensed flow;
-<code>smu_wrapper_cov_scope.hier</code> drops the same trees and collects toggle as
-<code>tgl(portsonly)</code> on <code>u_dut</code>, which is urg&#8217;s own per-port view (see
-<code>cov/config/vcs/README.md</code>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">not a public CI job and not yet measured; not a
-substitute for the public weekly</p></td>
+<code>smu_wrapper_cov_scope.hier</code> drops the same trees, <code>-cm_tgl portsonly</code>
+keeps toggle on the wrapper&#8217;s ports and <code>-cm_noconst</code> leaves tied-off nets
+out. <code>cov/config/vcs/smu_wrapper_coverage_policy.toml</code> floors the <code>assertion</code>
+family at 80 percent, which is where urg reads the <code>cover property</code> points.
+urg&#8217;s <code>Ports</code> row, after the exclusions
+<code>cov/config/vcs/smu_wrapper_toggle_exclusions.el</code> names with a reason per
+class, is the graded port toggle: a struct field counts when every bit of it
+toggled both ways. The per-port connectivity figure comes from the same
+<code>cov/interface_toggle.py</code> fed the run&#8217;s <code>cov/report/modinfo.txt</code>, so both
+simulators are read on one definition (see <code>cov/config/vcs/README.md</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not
+a public CI job; not a substitute for the public weekly</p></td>
 </tr>
 </tbody>
 </table>
