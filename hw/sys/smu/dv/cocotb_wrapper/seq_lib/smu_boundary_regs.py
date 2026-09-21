@@ -25,6 +25,7 @@ _DFX_CTRL_STATUS_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
 )
 _NDM_RESET_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "ndm_reset.h"
+_CPU_CTRL_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
 _TELEMETRY_RECEIVER_H = (
     _REPO_ROOT / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
 )
@@ -75,6 +76,11 @@ def dfx_ctrl_status_u32(symbol: str) -> int:
 def ndm_reset_u32(symbol: str) -> int:
     """Return an ``NDM_RESET__*`` integer ``#define``."""
     return c_header_u32(_NDM_RESET_H, symbol)
+
+
+def cpu_ctrl_u32(symbol: str) -> int:
+    """Return a ``CPU_CTRL__*`` integer ``#define``."""
+    return c_header_u32(_CPU_CTRL_H, symbol)
 
 
 def telemetry_receiver_u32(symbol: str) -> int:
