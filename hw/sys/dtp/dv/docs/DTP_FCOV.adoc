@@ -382,14 +382,16 @@ the DTP policy file; the runner's schema and grading behavior are in
   which rewrites the grade without a simulation.
 * **Commercial path.** The cocotb `all` and SV-UVM `all` regressions on
   VCS with the full `-cm` set and the compile-time scope, each merged by the
-  runner, then merged across frameworks into one database; the report of
-  that merge is the code-coverage evidence and carries the covergroup bins
+  runner, then combined across frameworks into one run with
+  `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>`; the report
+  of that combined run is the code-coverage evidence and carries the covergroup bins
   of the same points. URG hands the runner family totals and no per-point
   list, so `cov/config/vcs/coverage_policy.toml` carries `[[thresholds]]`
   only and a VCS hole closes through a scenario, a design or model change,
   or an entry in a URG exclusion list that `[coverage.vcs].exclude_files`
-  names; the runner passes that list to `urg -elfile` and records its
-  checksum. Covergroup bins take no exclusion.
+  names; the runner passes that list to `urg -elfile`, records its checksum,
+  and reports the figures with and without it as `effective_metrics` and
+  `raw_metrics`. Covergroup bins take no exclusion.
 * A metric is applicable on the path that collects it, and a point that
   both paths collect is one point: a hole on either path needs one
   disposition, and a waiver written for one path names the same
@@ -493,7 +495,7 @@ re-grade of its run tree.
 |Verilator open-source CI |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
 |Per-group reporting |The DV dashboard ingests the merged run's `coverage-details.json` (policy dispositions included), keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
 |Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage and leaves toggle out; the weekly regression merges every leaf and seed into one report
-|Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer); both frameworks collect through the runner — `run_dv.py --cov --tool vcs` for cocotb, `run_dv.py --framework uvm --cov` for SV-UVM — with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are merged again into one DUT-scoped report for signoff
+|Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer); both frameworks collect through the runner — `run_dv.py --cov --tool vcs` for cocotb, `run_dv.py --framework uvm --cov` for SV-UVM — with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report for signoff
 |Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage, scoped to the DUT instance
 |Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file, each stating the structural reason the point cannot fire
 |===
