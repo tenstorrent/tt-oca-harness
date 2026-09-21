@@ -467,11 +467,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "REGION_SIZE shrunk so the local aperture ends at the window sends the "
             "same shim read out of the chiplet instead",
         ),
-        (
-            "CHK-PERIPH-EXT-APERTURE-ZERO",
-            "CHK-PERIPH-EXT-APERTURE-ZERO",
-            "REGION_SIZE zero leaves no local aperture: a core SMC CSR read leaves the chiplet too",
-        ),
     ],
     "smu_sep_smoke_test": [
         (
