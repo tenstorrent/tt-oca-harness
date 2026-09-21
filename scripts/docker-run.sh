@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH nix-built container.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage>
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|shell-here|nixos-shell|nix-fmt|nix-fmt-check|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage>
 #   'doc-html all'  builds the real combined multi-book site (antora-playbook.yml) -- this
 #                   is what gets deployed
 #   'doc-stage'     adds PDFs + .nojekyll on top of an already-built combined site -- pure

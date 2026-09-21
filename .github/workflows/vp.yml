@@ -67,8 +67,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # container: VP_CONTAINER=1, everything inside ocah-toolchain, for hosts
-        #            with no usable native C++20 toolchain.
+        # container: VP_CONTAINER=1, everything inside the nix-built OCAH
+        #            image, for hosts with no usable native C++20 toolchain.
+        #            Its SystemC, CCI, Boost, OpenSSL and Whisper come from
+        #            ocah_deps.nix, so this leg builds no dependencies.
         # native:    built on the runner against apt g++/Boost/OpenSSL, the path
         #            virtual_platform/README.md leads most users down.
         #
@@ -176,14 +178,15 @@ jobs:
       # VP_CONFIG_SIG invalidation only wipes build*/, never local*/. A local/
       # restored from a cache built by a different compiler would be reused
       # as-is and could ODR-mismatch, so the compiler identity is part of the
-      # key: the Dockerfile hash for the container leg, the runner's own g++ for
-      # the native one.
+      # key: the nix inputs for the container leg, since they pin its compiler,
+      # and the runner's own g++ for the native one. Only the native leg uses
+      # the result -- see the cache step below.
       - name: Compute dependency cache key
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         id: depkey
         run: |
           if [ "${{ matrix.mode }}" = "container" ]; then
-            cxx_id="dockerfile-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}"
+            cxx_id="nixinputs-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}"
           else
             cxx_id="$(g++ -dumpmachine)-$(g++ -dumpversion)"
           fi
@@ -196,9 +199,8 @@ jobs:
           path: ${{ runner.temp }}/ocah-image-cache
           key: ocah-image-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
 
-      # downloads/ is shared between the legs in the tree but cached per leg; the
-      # duplicated tarball fetch is a few seconds and not worth a shared-cache race.
-      # Only the native leg builds dependencies. The container carries SystemC,
+      # Only the native leg builds dependencies, so only it has anything to
+      # cache. The container carries SystemC,
       # CCI, Boost, OpenSSL and Whisper from ocah_deps.nix and exports their
       # prefixes, so the container leg resolves every one as explicit and builds
       # none of them.
@@ -453,7 +455,7 @@ jobs:
         id: depkey
         run: |
           if [ "${{ matrix.mode }}" = "container" ]; then
-            cxx_id="dockerfile-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}"
+            cxx_id="nixinputs-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}"
           else
             cxx_id="$(g++ -dumpmachine)-$(g++ -dumpversion)"
           fi

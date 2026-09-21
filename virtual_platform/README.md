@@ -158,9 +158,21 @@ needs.
 Both paths are supported for all three executables. On a host whose system
 compiler is too old (RHEL 8's g++ 8.5 has no C++20), activate a newer one
 first — e.g. `source /opt/rh/gcc-toolset-<N>/enable`, or
-`scl enable gcc-toolset-<N> bash` — and the Makefile picks it up; there,
-Boost and OpenSSL are also too old, so both get built from source into
-`local/` and the whole flow is hermetic.
+`scl enable gcc-toolset-<N> bash` — and the Makefile picks it up; there, the
+system Boost and OpenSSL are also too old (the floors are Boost >= 1.74 and
+OpenSSL >= 3.0, the latter for the `EVP_MAC` API the hmac/kmac peripherals
+use), so both get built from source into `local/` and the whole flow is
+hermetic.
+
+If the site provides newer ones outside `/usr`, point at them instead and the
+two source builds drop out, leaving only SystemC and CCI to compile:
+
+```bash
+export BOOST_ROOT=/path/to/boost-1.8x  OPENSSL_ROOT=/path/to/openssl-3.x
+make deps-info      # both should read "explicit (environment)"
+```
+
+`ldd` on the built `sep-vp` is the check that they were the ones linked.
 
 The `sepvp` runner's design — status channels, overlay `.ini` generation, fuse maps —
 is documented in [`sepvp/README.md`](sepvp/README.md).

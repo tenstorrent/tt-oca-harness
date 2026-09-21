@@ -52,7 +52,9 @@ python -m sepvp.cli --bin <elf> [--boot primary|secondary] [--recovery] [--rotat
 ## Two decoded status channels (both land on sep-vp stdout)
 
 - **`[SEP_STATUS]`** — production status (`report_status` → SMC-SRAM ring), always on, symbolic:
-  `[<t>] [INFO 2] [SEP_STATUS] - BL0 INFO 0x0044 SEP_MSG_BOOTROM_START`. Assert with
+  `BL0 INFO 0x0044 SEP_MSG_BOOTROM_START`, with a leading
+  `[<t>] [INFO 2] [SEP_STATUS] - ` or without it depending on the model
+  generation -- the harness matches either. Assert with
   `harness.expect_status("SEP_MSG_...", type=..., fwid=...)`. Prefer this for stable boot-flow
   and error assertions. The symbolic names come from the checked-in bootrom header
   `hw/sys/sep/bootrom/prod/include/status_values.h`, baked into sep-vp at configure time.
@@ -92,4 +94,4 @@ Straps are `och_sep_ss1.smc.*` bools; OTP is translated from a fuse-map into
   split into `*_lo`/`*_hi`, 256-bit tokens/keys split into little-endian 8-word arrays, and
   `locks_lo` is reconstructed from the per-register lock flags. Requires the `toml` package
   (in the `vp` dependency group; `make vp-py-deps`). Registers with no VP counterpart
-  (`RESERVED_*`, `SEP_SPI_CTRL.smu_pll_sysclk`) are ignored.
+  (`RESERVED_*`) are ignored.
