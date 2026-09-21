@@ -1,7 +1,11 @@
 [submodule "virtual_platform/tt-oca-harness-model"]
 	path = virtual_platform/tt-oca-harness-model
 	url = git@github.com:tenstorrent/tt-oca-harness-model.git
-	branch = main
+	# TEMPORARY: the pinned revision lives on this topic branch, not main. nix
+	# resolves the submodule against this ref when it evaluates the flake, so a
+	# pin outside it fails the image build with "Cannot find Git revision ... in
+	# ref 'main'". Restore `main` once the model work lands there.
+	branch = inmcm/fix-double-boot-reset-hold
 [submodule "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"]
 	path = hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 	url = git@github.com:tenstorrent/tt-oca-manifest.git
