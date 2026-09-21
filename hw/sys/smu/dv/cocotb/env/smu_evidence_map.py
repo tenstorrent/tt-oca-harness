@@ -633,6 +633,52 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_security_demote_pm_test": [
         ("CHK-DEMOTE-TIEOFF", "DEMOTE_TIEOFF_OBS", "SEP=0 demote hardwire observe"),
     ],
+    "smu_smc_boundary_lane_sweep_test": [
+        (
+            "CHK-SMU-LANE-EXT-IRQ",
+            "CHK-SMU-LANE-EXT-IRQ",
+            "all 256 smc_ext_interrupts_i lanes appear bit for bit on the "
+            "external-interrupt slice of cpu_interrupts_o for all-ones, all-zeros "
+            "and both alternating patterns, and every lane is observed both high "
+            "and low",
+        ),
+        (
+            "CHK-SMU-LANE-ISOLATE-REQ",
+            "CHK-SMU-LANE-ISOLATE-REQ",
+            "isolate_req_o carries the RESET_UNIT.ISOLATE_REQ_REG software term on "
+            "all 32 lanes, each lane observed set and cleared against the CSR "
+            "read-back",
+        ),
+        (
+            "CHK-SMU-LANE-SS-CONFIG",
+            "CHK-SMU-LANE-SS-CONFIG",
+            "with SS_CONFIG_LOCK read open, ss_config_o carries RESET_UNIT.SS_CONFIG "
+            "on all 32 lanes for all-ones, both alternating patterns and the RDL "
+            "reset value it is restored to",
+        ),
+        (
+            "CHK-SMU-LANE-MBX-IRQ",
+            "CHK-SMU-LANE-MBX-IRQ",
+            "each of the 32 outbound mailboxes raises its own "
+            "smc_ext_mailbox_interrupts_o bit through IRQEN.WTIRQ and an outbound "
+            "push, and clearing IRQEN retires that bit alone",
+        ),
+        (
+            "CHK-SMU-LANE-GPIO",
+            "CHK-SMU-LANE-GPIO",
+            "with all 65 pads taken from their LSIO owners and armed as active-high "
+            "levels, driving every pad raises every gpio_interrupt_o lane and sets "
+            "DATA_CTRL.PAD2CORE on every interface, and both follow the pads back "
+            "down",
+        ),
+        (
+            "CHK-SMU-LANE-UART-IRQ",
+            "CHK-SMU-LANE-UART-IRQ",
+            "each of the four UART instances raises uart_interrupt_o on its own lane "
+            "from IER.ETBEI, reports the transmitter-holding-register-empty code in "
+            "IIR, and retires that lane on the IIR read",
+        ),
+    ],
     "smu_smc_peripheral_irq_test": [
         (
             "CHK-SMU-GPIO-IRQ",
