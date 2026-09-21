@@ -33,6 +33,7 @@ class CoverageRunPaths:
     cov_dir: Path
     merged: Path
     report_dir: Path
+    raw_report_dir: Path
     manifest: Path
     summary: Path
     raw_details: Path
@@ -94,6 +95,7 @@ def coverage_run_paths(run_dir: Path, merged_name: str) -> CoverageRunPaths:
         cov_dir=cov_dir,
         merged=cov_dir / merged_name,
         report_dir=report_dir,
+        raw_report_dir=cov_dir / "report_raw",
         manifest=cov_dir / "coverage.json",
         summary=report_dir / "summary.json",
         raw_details=report_dir / "coverage-details.raw.json",
@@ -131,8 +133,14 @@ def parse_coverage_run(
     merged: Path,
     report_dir: Path,
     log_path: Path | None,
+    raw_report_dir: Path | None = None,
 ) -> ParsedCoverage:
-    """Normalize the vendor report into scalar metrics and closure details."""
+    """Normalize the vendor report into scalar metrics and closure details.
+
+    ``raw_report_dir`` is the report the tool wrote without its exclusion inputs; when
+    present, each metric family's raw percentage comes from it and the effective one from
+    ``report_dir``.
+    """
 
     scalar_metrics, total_percent = parse_coverage_report(
         parser=parser,
@@ -149,6 +157,7 @@ def parse_coverage_run(
         report_dir=report_dir,
         merged=merged,
         log_path=log_path,
+        raw_report_dir=raw_report_dir,
     )
     return ParsedCoverage(
         scalar_metrics=scalar_metrics,
@@ -242,6 +251,10 @@ def grade_coverage_run(
         manifest["artifacts"] = artifacts
     artifacts["merged"] = repo_rel(root, paths.merged)
     artifacts["report"] = repo_rel(root, paths.report_dir)
+    if paths.raw_report_dir.is_dir():
+        artifacts["report_raw"] = repo_rel(root, paths.raw_report_dir)
+    else:
+        artifacts.pop("report_raw", None)
     artifacts["summary"] = repo_rel(root, paths.summary)
     artifacts["coverage_details_raw"] = repo_rel(root, paths.raw_details)
     artifacts["coverage_details"] = repo_rel(root, paths.details)

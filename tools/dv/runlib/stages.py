@@ -128,7 +128,69 @@ REDACTED_ENV_PATTERN = re.compile(
     r"LICENSE|LM_LICENSE|SNPSLMD|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|PRIVATE_KEY|AUTH",
     re.IGNORECASE,
 )
+
 REDACTED_VALUE = "<redacted>"
+
+# Adopters set the OCAH names; these are the vendor aliases ocah_vendor_defines.svh
+# derives. Flows expand them onto the command line so tools without a force-include
+# still see the vendor spelling. Do not emit VERILATOR / TARGET_VERILATOR from Bender.
+OCAH_VENDOR_DEFINE_ALIASES: dict[str, tuple[str, ...]] = {
+    "SYNTHESIS": ("TARGET_SYNTHESIS",),
+    "SIMULATION": ("ABR_SIMULATION",),
+    "VERILATOR": ("TARGET_VERILATOR",),
+    "XSIM": ("TARGET_XSIM",),
+}
+
+
+def _ocah_define_token(item: str) -> str | None:
+    s = item.strip()
+    if s.startswith("+define+"):
+        return s[len("+define+") :].split("=", 1)[0]
+    if s.startswith("-D"):
+        rest = s[2:].lstrip()
+        return rest.split("=", 1)[0] if rest else None
+    if not s or s.startswith("-") or s.startswith("+"):
+        return None
+    return s.split("=", 1)[0]
+
+
+def expand_ocah_vendor_define_aliases(items: list[str]) -> list[str]:
+    """Append vendor aliases for any OCAH view name already present in *items*.
+
+    *items* are bare ``NAME`` / ``NAME=value`` define entries or ``+define+`` /
+    ``-D`` fragments mixed with other flags. Each alias is emitted in the same
+    form as the first source item that triggered it.
+    """
+    present: set[str] = set()
+    plusdefine = False
+    dash_d = False
+    for item in items:
+        tok = _ocah_define_token(item)
+        if tok:
+            present.add(tok)
+        stripped = item.strip()
+        if stripped.startswith("+define+"):
+            plusdefine = True
+        elif stripped.startswith("-D"):
+            dash_d = True
+    extra: list[str] = []
+    for src, aliases in OCAH_VENDOR_DEFINE_ALIASES.items():
+        if src not in present:
+            continue
+        src_form_plus = plusdefine
+        src_form_dash = dash_d and not plusdefine
+        for alias in aliases:
+            if alias in present:
+                continue
+            if src_form_plus:
+                extra.append(f"+define+{alias}")
+            elif src_form_dash:
+                extra.append(f"-D{alias}")
+            else:
+                extra.append(alias)
+            present.add(alias)
+    return [*items, *extra]
+
 
 _STAGE_CANCELLATION = threading.Event()
 _ACTIVE_SUBPROCESS_LOCK = threading.Lock()
@@ -229,6 +291,120 @@ def _bender_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
             digest.update(b"<missing>")
         digest.update(b"\0")
     return [f"bender_sources={len(sources)}:{digest.hexdigest()[:16]}"]
+
+
+def _filelist_sources(root: Path, filelist: Path, seen: set[Path] | None = None) -> list[Path]:
+    """Every source file a compile filelist names, following ``-f``/``-F`` includes.
+
+    Plain lines are sources; ``+incdir+``/``+define+`` options and ``//``/``#`` comments carry
+    no content of their own. An include that does not resolve contributes nothing here and is
+    reported as missing by the compile itself.
+    """
+    if seen is None:
+        seen = set()
+    if not filelist.is_file() or filelist in seen:
+        return []
+    seen.add(filelist)
+    sources: list[Path] = []
+    for line in filelist.read_text(encoding="utf-8", errors="replace").splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith(("//", "#", "+")):
+            continue
+        if entry.startswith(("-f ", "-F ")):
+            sources.extend(_filelist_sources(root, repo_path(root, entry[3:].strip()), seen))
+            continue
+        if entry.startswith("-"):
+            continue
+        path = repo_path(root, entry)
+        if path not in seen:
+            seen.add(path)
+            sources.append(path)
+    return sources
+
+
+def _content_digest(root: Path, paths: list[Path]) -> str:
+    digest = hashlib.sha256()
+    for path in paths:
+        digest.update((repo_rel(root, path) or str(path)).encode("utf-8"))
+        digest.update(b"\0")
+        try:
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1 << 20), b""):
+                    digest.update(chunk)
+        except OSError:
+            digest.update(b"<missing>")
+        digest.update(b"\0")
+    return digest.hexdigest()[:16]
+
+
+def _filelist_sources_fingerprint(root: Path, filelist: Path) -> list[str]:
+    """One digest over the CONTENT of every source the compile filelist reaches.
+
+    The filelist text names its sources and its ``-f`` includes by path only, so this digest
+    is what moves the build identity on an edit to a testbench file, a coverage module, or a
+    DUT source the Bender filelist names.
+    """
+    sources = _filelist_sources(root, filelist)
+    if not sources:
+        return []
+    return [f"filelist_sources={len(sources)}:{_content_digest(root, sources)}"]
+
+
+def _file_args_fingerprint(root: Path, build_args: list[str]) -> list[str]:
+    """One digest over the CONTENT of every build argument that names an existing file.
+
+    Coverage scope files and similar side inputs reach the compiler as a path, so an edit to
+    one of them leaves the argument text unchanged.
+    """
+    files: list[Path] = []
+    for arg in build_args:
+        text = str(arg)
+        if not text or text.startswith(("-", "+")):
+            continue
+        path = repo_path(root, text)
+        if path.is_file() and path not in files:
+            files.append(path)
+    if not files:
+        return []
+    return [f"file_args={len(files)}:{_content_digest(root, files)}"]
+
+
+BUILD_RECORD_NAME = "build_record.json"
+
+
+def _build_record_decision(
+    record_path: Path, fingerprint: str, requested: bool
+) -> tuple[bool, str]:
+    """Whether the cocotb build must run clean, and why.
+
+    cocotb's runner rebuilds only when a listed source is newer than the model, and this
+    flow lists no sources (they arrive through the filelist), so an existing model is
+    otherwise reused whatever changed. The record written after each build carries the
+    fingerprint of the inputs that produced the model; a different fingerprint, or no
+    record beside an existing model, forces the clean build.
+    """
+    if requested:
+        return True, "requested"
+    if not record_path.parent.is_dir():
+        return False, ""
+    try:
+        recorded = json.loads(record_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return True, "no build record"
+    if not isinstance(recorded, dict) or recorded.get("fingerprint") != fingerprint:
+        return True, "inputs changed"
+    return False, ""
+
+
+def _write_build_record(
+    record_path: Path, fingerprint: str, tool_version: str, dry_run: bool
+) -> None:
+    payload = {
+        "fingerprint": fingerprint,
+        "tool_version": tool_version,
+        "written_at": datetime.now(UTC).isoformat(),
+    }
+    write_text_file(record_path, json.dumps(payload, indent=2) + "\n", dry_run)
 
 
 def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
@@ -1196,7 +1372,12 @@ def generate_filelist(
                 bender_out.write_text("\n".join(kept) + "\n", encoding="utf-8")
 
     incdirs = [
-        repo_path(root, value) for value in as_str_list(build.get("incdirs"), "build.incdirs")
+        repo_path(root, "hw/common/defs"),
+        *[
+            repo_path(root, value)
+            for value in as_str_list(build.get("incdirs"), "build.incdirs")
+            if value != "hw/common/defs"
+        ],
     ]
     # `stubs` are DUT-local OVERRIDE sources that replace the real RTL for a module. `sources` are
     # ADDITIVE tb components (e.g. SEP's mem responders) that may reference DUT package types, so they
@@ -1273,10 +1454,14 @@ def verilator_compile(
     )
     if build.get("top_module"):
         argv.extend(["--top-module", str(build["top_module"])])
-    argv.extend(target_flags(compile_target, "verilator"))
+    argv.extend(expand_ocah_vendor_define_aliases(target_flags(compile_target, "verilator")))
     argv.extend(args.comp_arg or [])
-    argv.extend(f"+define+{define}" for define in config_list(compile_target, "defines"))
-    argv.extend(f"+define+{define}" for define in (args.define or []))
+    argv.extend(
+        expand_ocah_vendor_define_aliases(
+            [f"+define+{define}" for define in config_list(compile_target, "defines")]
+            + [f"+define+{define}" for define in (args.define or [])]
+        )
+    )
     argv.extend(["-Mdir", str(mdir)])
     argv.extend(["-f", str(repo_path(root, str(build.get("filelist", ""))))])
     wave_format = _wave_format(args, tool)
@@ -1317,11 +1502,13 @@ def _cocotb_build_args(
     filelist: Path,
     args: argparse.Namespace,
 ) -> list[str]:
-    defines = [
-        f"+define+{d}"
-        for d in (config_list(run_target, "defines") or config_list(compile_target, "defines"))
-    ]
-    defines += [f"+define+{d}" for d in (args.define or [])]
+    defines = expand_ocah_vendor_define_aliases(
+        [
+            f"+define+{d}"
+            for d in (config_list(run_target, "defines") or config_list(compile_target, "defines"))
+        ]
+        + [f"+define+{d}" for d in (args.define or [])]
+    )
     if tool == "verilator":
         verilator_cfg = build_verilator_cfg(build)
         return [
@@ -1329,7 +1516,7 @@ def _cocotb_build_args(
                 as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
                 or ["--timing", "-sv", "--language", "1800-2023"]
             ),
-            *target_flags(run_target, "verilator"),
+            *expand_ocah_vendor_define_aliases(target_flags(run_target, "verilator")),
             *(args.comp_arg or []),
             *defines,
             *option_build_args(options, verilator_cfg, _build_jobs_arg(args)),
@@ -1722,12 +1909,19 @@ def _cocotb_build_info(
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, run_target),
             *public_scope_extra,
-            *_bender_sources_fingerprint(root, build),
+            *_filelist_sources_fingerprint(root, filelist),
+            *_file_args_fingerprint(root, build_args),
             f"waves={wave_format}",
             f"cov={bool(args.cov)}",
         ],
     )
     sim_build = resolve_build_dir(base_build, options, fingerprint)
+    build_record = sim_build / BUILD_RECORD_NAME
+    rebuild, rebuild_reason = _build_record_decision(
+        build_record,
+        fingerprint,
+        bool(args.rebuild) or bool(options.get("rebuild", False)),
+    )
     return {
         "build": build,
         "target_name": target_name,
@@ -1741,7 +1935,10 @@ def _cocotb_build_info(
         "fingerprint": fingerprint,
         "build_args": build_args,
         "wave_format": wave_format,
-        "rebuild": bool(args.rebuild) or bool(options.get("rebuild", False)),
+        "tool_version": tool_ver,
+        "rebuild": rebuild,
+        "rebuild_reason": rebuild_reason,
+        "build_record": build_record,
     }
 
 
@@ -1791,7 +1988,10 @@ def cocotb_build(
         if _scope_rel:
             public_scope_vlt = str(repo_path(root, _scope_rel))
             console.artifact("public_scope", public_scope_vlt)
-    console.artifact("build", f"{info['sim_build']} (rebuild={info['rebuild']})")
+    rebuild_note = f"rebuild={info['rebuild']}"
+    if info["rebuild_reason"]:
+        rebuild_note += f" reason={info['rebuild_reason']}"
+    console.artifact("build", f"{info['sim_build']} ({rebuild_note})")
     write_script(
         script_path,
         root,
@@ -1829,6 +2029,7 @@ def cocotb_build(
                         waves=bool(_wave_format(args, tool)),
                         always=info["rebuild"],
                     )
+    _write_build_record(info["build_record"], info["fingerprint"], info["tool_version"], False)
     _mark_cocotb_prebuilt(args, target_name)
     return 0
 
@@ -2054,6 +2255,9 @@ def cocotb_sim(
         "seed": int(seed),
         "do_build": not _is_cocotb_prebuilt(args, target_name),
         "rebuild": bool(rebuild),
+        "build_record": str(info["build_record"]),
+        "fingerprint": str(info["fingerprint"]),
+        "tool_version": str(info["tool_version"]),
         "python_paths": [str(path) for path in python_paths if str(path)],
         "public_scope_vlt": public_scope_vlt,
         "binary": launch.binary,
@@ -2061,9 +2265,11 @@ def cocotb_sim(
         "runner_class": COCOTB_RUNNER_CLASS.get(tool, ""),
     }
     runner_body = f"""#!/usr/bin/env python3
+import json
 import os
 import sys
 from contextlib import contextmanager
+from datetime import datetime, timezone
 
 payload = {payload!r}
 
@@ -2232,6 +2438,17 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
             waves=payload["waves"],
             always=payload["rebuild"],
         )
+        with open(payload["build_record"], "w", encoding="utf-8") as record:
+            json.dump(
+                {{
+                    "fingerprint": payload["fingerprint"],
+                    "tool_version": payload["tool_version"],
+                    "written_at": datetime.now(timezone.utc).isoformat(),
+                }},
+                record,
+                indent=2,
+            )
+            record.write("\\n")
     else:
         print(f"# cocotb {{payload['tool']}} build skipped: pre-built during elaborate", flush=True)
         # `runner.build()` is what normally populates the runner's source
@@ -2283,9 +2500,10 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
 
 
 def _vcs_defines(compile_target: dict[str, Any], args: argparse.Namespace) -> list[str]:
-    defines = [f"+define+{d}" for d in config_list(compile_target, "defines")]
-    defines += [f"+define+{d}" for d in (args.define or [])]
-    return defines
+    return expand_ocah_vendor_define_aliases(
+        [f"+define+{d}" for d in config_list(compile_target, "defines")]
+        + [f"+define+{d}" for d in (args.define or [])]
+    )
 
 
 # VCS's bare "-ntb_opts uvm" resolves to uvm-1.1, whose global
@@ -2675,9 +2893,10 @@ def vcs_sim(
 
 
 def _xcelium_defines(compile_target: dict[str, Any], args: argparse.Namespace) -> list[str]:
-    defines = [f"+define+{d}" for d in config_list(compile_target, "defines")]
-    defines += [f"+define+{d}" for d in (args.define or [])]
-    return defines
+    return expand_ocah_vendor_define_aliases(
+        [f"+define+{d}" for d in config_list(compile_target, "defines")]
+        + [f"+define+{d}" for d in (args.define or [])]
+    )
 
 
 def _xcelium_common(xcelium_cfg: dict[str, Any], framework: str) -> list[str]:
@@ -3077,14 +3296,22 @@ def coverage_stage(
         "design_db": str(design_db or ""),
     }
 
-    key = "merge_cmd" if phase == "merge" else "report_cmd"
+    # `--cov-combine` hands the merge phase finished runs instead of this run's leaves.
+    run_plan = getattr(args, "_cov_combine_plan", None) if phase == "merge" else None
+    if phase == "merge":
+        key = "combine_cmd" if run_plan is not None else "merge_cmd"
+    else:
+        key = "report_cmd"
     template = as_str_list(tool_cov.get(key), f"coverage.{tool}.{key}")
     if not template:
         raise ConfigError(f"coverage.{tool}.{key} must not be empty")
     launch = stage_tool_launch(args, tool)
 
     if args.dry_run:
-        dry_inputs = [str(run_dir / "<coverage-input>")] if phase == "merge" else []
+        if run_plan is not None:
+            dry_inputs = run_plan.input_paths()
+        else:
+            dry_inputs = [str(run_dir / "<coverage-input>")] if phase == "merge" else []
         policy_args = [
             *native_policy_args(policy, tool=tool, phase=phase),
             *_legacy_coverage_policy_args(
@@ -3109,20 +3336,23 @@ def coverage_stage(
 
     cov_dir.mkdir(parents=True, exist_ok=True)
     if phase == "merge":
-        glob_pattern = str(tool_cov.get("input_glob", ""))
-        discovery = discover_coverage_inputs(
-            root=root,
-            run_dir=run_dir,
-            flow=flow.name,
-            tool=tool,
-            fallback_glob=glob_pattern,
-        )
+        if run_plan is not None:
+            discovery = run_plan.discovery(root)
+        else:
+            glob_pattern = str(tool_cov.get("input_glob", ""))
+            discovery = discover_coverage_inputs(
+                root=root,
+                run_dir=run_dir,
+                flow=flow.name,
+                tool=tool,
+                fallback_glob=glob_pattern,
+            )
         if not discovery.inputs:
             raise CoverageError(
                 f"coverage was requested but no usable inputs were found under "
                 f"{repo_rel(root, run_dir)}"
             )
-        if "{design_db}" in " ".join(template):
+        if run_plan is None and "{design_db}" in " ".join(template):
             if design_db is None or not artifact_ready(design_db):
                 raise CoverageError(
                     f"required design coverage database is missing or empty: {design_db}"
@@ -3155,10 +3385,16 @@ def coverage_stage(
             ],
             "legacy_waivers": [],
         }
-        if design_db is not None:
-            manifest["artifacts"]["design_db"] = repo_rel(root, design_db)
+        if run_plan is not None:
+            manifest["target"] = run_plan.target
+            manifest["build_fingerprint"] = run_plan.build_fingerprint
+            manifest["combine"] = run_plan.manifest_payload(root)
+            input_paths = run_plan.input_paths()
+        else:
+            if design_db is not None:
+                manifest["artifacts"]["design_db"] = repo_rel(root, design_db)
+            input_paths = [str(repo_path(root, entry.path)) for entry in discovery.inputs]
         write_json(manifest_path, manifest)
-        input_paths = [str(repo_path(root, entry.path)) for entry in discovery.inputs]
         argv = [
             *render_tokens(template, ctx, input_paths),
             *native_policy_args(policy, tool=tool, phase="merge"),
@@ -3226,6 +3462,34 @@ def coverage_stage(
         write_json(manifest_path, manifest)
         return rc
 
+    # The tool applies its exclusion inputs while it reports, so the report above carries the
+    # effective figures only. A second report without those inputs supplies the raw figures;
+    # without exclusion inputs the one report is both, and a raw report left by an earlier
+    # grading would misstate this one.
+    raw_report_dir = paths.raw_report_dir
+    if report_policy_args:
+        raw_report_dir.mkdir(parents=True, exist_ok=True)
+        rc = run_subprocess(
+            render_tokens(template, {**ctx, "report": str(raw_report_dir)}),
+            root,
+            log_path.with_name(f"{log_path.stem}.raw{log_path.suffix}"),
+            False,
+            script_path.with_name(f"{script_path.stem}.raw{script_path.suffix}"),
+            env_path.with_name(f"{env_path.stem}.raw{env_path.suffix}"),
+            quiet,
+            cwd=cov_dir,
+            verbose=args.verbose,
+            timeout_sec=args.timeout,
+            launch=launch,
+        )
+        if rc != 0:
+            manifest["status"] = "ERROR"
+            manifest["report_return_code"] = rc
+            write_json(manifest_path, manifest)
+            return rc
+    elif raw_report_dir.exists():
+        shutil.rmtree(raw_report_dir)
+
     threshold = args.fail_under
     if threshold is None:
         threshold = coverage_fail_under(tool, tool_cov)
@@ -3238,6 +3502,7 @@ def coverage_stage(
         merged=merged,
         report_dir=report_dir,
         log_path=log_path,
+        raw_report_dir=raw_report_dir if report_policy_args else None,
     )
     write_json(paths.raw_details, parsed.details.to_dict())
     grade = grade_coverage_run(
@@ -3253,6 +3518,7 @@ def coverage_stage(
         tool_version=_coverage_tool_version(tool, root),
         supported_metrics=supported_metrics,
     )
+    _report_metric_families(parsed.details.metrics, log_path, console_from_args(args))
     if not grade.threshold_met:
         with log_path.open("a", encoding="utf-8") as log:
             if not grade.compatibility_threshold_met:
@@ -3268,6 +3534,25 @@ def coverage_stage(
                     )
         return 1
     return 0
+
+
+def _report_metric_families(metrics: list[Any], log_path: Path, console: Console) -> None:
+    """One `raw=` / `effective=` pair per metric family, in the stage log and on the console."""
+    pairs = []
+    for record in metrics:
+        raw = "-" if record.raw_percent is None else f"{record.raw_percent:.2f}"
+        effective = "-" if record.effective_percent is None else f"{record.effective_percent:.2f}"
+        pairs.append((record.metric_family, raw, effective))
+    if not pairs:
+        return
+    with log_path.open("a", encoding="utf-8") as log:
+        for family, raw, effective in pairs:
+            log.write(f"# COVERAGE FAMILY: {family} raw={raw} effective={effective}\n")
+    console.event(
+        "coverage",
+        " ".join(f"{family}={raw}/{effective}" for family, raw, effective in pairs)
+        + " (raw/effective)",
+    )
 
 
 def clean_stage(stage: dict[str, Any], root: Path, ctx: dict[str, str], dry_run: bool) -> int:
@@ -4078,6 +4363,8 @@ def run_stage(
             }
         if report_dir.is_dir():
             artifacts["coverage_report"] = repo_rel(root, report_dir)
+        if (run_dir / "cov" / "report_raw").is_dir():
+            artifacts["coverage_report_raw"] = repo_rel(root, run_dir / "cov" / "report_raw")
         if summary_path.is_file():
             artifacts["coverage_summary"] = repo_rel(root, summary_path)
         if details_path.is_file():

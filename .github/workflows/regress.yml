@@ -133,7 +133,8 @@ jobs:
             reseed: 1
             coverage: false
             runner: ubuntu-latest
-          # Cross-trigger IP-level benches: small single-IP DUTs, seconds per
+          # IP-level benches (cross-trigger family, UART family, system timer,
+          # scrambler): small single-IP DUTs, seconds to a few minutes per
           # full group; nightly is their only scheduled enrollment besides
           # the weekly.
           - dut: cross_trigger_port
@@ -147,6 +148,41 @@ jobs:
             coverage: false
             runner: ubuntu-latest
           - dut: cross_trigger_network
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_16550
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: log_engine
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_log_engine_wrap
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_wrap
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: system_timer_octs
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: scrambler
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: entropy_source
             items: all
             reseed: 1
             coverage: false
@@ -272,6 +308,41 @@ jobs:
             coverage: false
             runner: ubuntu-latest
           - dut: cross_trigger_network
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_16550
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: log_engine
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_log_engine_wrap
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_wrap
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: system_timer_octs
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: scrambler
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: entropy_source
             items: all
             reseed: 1
             coverage: false

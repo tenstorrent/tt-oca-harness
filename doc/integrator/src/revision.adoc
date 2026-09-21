@@ -31,4 +31,7 @@ full-window AXI-Lite passthrough whose intra-aperture decode (SLVERR on
 unmapped offsets, no aliasing onto live registers) is an adopter constraint.
 |0.0.7 |2026-09-11 |Alessandro Ottaviano |Noted that `smc_ext_interrupts_i` is
 an active-high level or a pulse long enough to be sampled on `clk_smc`.
+|0.0.8 |2026-09-18 |Ben Melton |Documented the OCAH view, tool, and native-DV
+defines, the vendor-alias map in `ocah_vendor_defines.svh`, and that adopters
+set OCAH names only.
 |=======================================================================

@@ -12,7 +12,7 @@ up correctly then correctly refuses to boot.
 Only `SepDrbgScoreboard` drove this port before, and no ROM test instantiates it
 (it also brings a bit-exact golden chain that a ROM boot cannot predict). This
 module is the small piece those tests actually need: the same
-`SepNoiseGolden` generator, driven into the port, with no golden and no checking.
+`EntropyNoiseModel` generator, driven into the port, with no golden and no checking.
 
 Update rate: the decorrelator samples `noise_i` on its divided sample clock, so
 the port only has to change faster than that to look random downstream. The ROM
@@ -26,8 +26,7 @@ right here.
 from __future__ import annotations
 
 from cocotb.triggers import ClockCycles
-
-from env.sep_noise_golden import SepNoiseGolden
+from models.entropy_noise_model import EntropyNoiseModel
 
 # Comfortably under the ROM's /64 decorrelator sample period, so each sample sees
 # a value the previous one did not.
@@ -53,7 +52,7 @@ async def esrc_noise_task(
             logger.warning("no esrc_noise_ext_i port; entropy source will see no noise")
         return
 
-    gen = SepNoiseGolden()
+    gen = EntropyNoiseModel()
     gen.configure(mode, seed_base=seed_base)
     if logger:
         logger.info(

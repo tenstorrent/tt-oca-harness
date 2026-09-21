@@ -232,8 +232,8 @@ test_dir = "hw/sys/sep/dv/cocotb/tests"
 # add it to the import path so tests can `from ocah_spi_vip import OcahSpiFlash`.
 python_paths = [
   "hw/common/dv/vip",
-  # env/ on the path so env golden models can import siblings by bare name
-  # (e.g. sep_entropy_golden -> sep_noise_golden) and keep standalone self-tests.
+  "hw/ip/entropy_source/dv/cocotb",
+  # env/ on the path so SEP-only golden models can import siblings by bare name.
   "hw/sys/sep/dv/cocotb/env",
 ]
 results_dir = "{run_dir}/{item}/results"

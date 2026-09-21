@@ -200,8 +200,11 @@ the protocol SVA cannot see it.
 
 ==== Entropy / crypto goldens and `SepDrbgScoreboard`
 
-Pure-Python stage goldens under `cocotb/env/` (`sep_decor_golden`,
-`sep_compress_golden`, `sep_ctr_drbg_golden`, AES/HMAC/KMAC, LCC, …). The DRBG
+Entropy noise, decorrelator, BIW, and SHA models come from
+`hw/ip/entropy_source/dv/cocotb/models/`; the standalone
+entropy-source and SEP environments import that same package. SEP-specific
+goldens remain under `cocotb/env/` (`sep_ctr_drbg_golden`, AES/HMAC/KMAC, LCC,
+…). The DRBG
 scoreboard consumes the same config object the sequence programs into the DUT
 and compares against the datapath probes (CHK1–CHK5). Details of noise
 staging and SR seeding are in the VPLAN entropy procedures.

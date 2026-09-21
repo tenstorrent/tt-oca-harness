@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut system_timer_octs` (discovered by the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the System Timer
+# OCTS: two timer instances on separate clocks, a primary wired to a
+# secondary, each with its AXI4-Lite CSR port driven by the shared AXI VIP's
+# AXI4-Lite master on the pin-exposed ports of tb/tb_top.sv.
+name = "system_timer_octs"
+profile = "native"
+default_framework = "cocotb"
+description = "System Timer OCTS IP-level cocotb DV flow (primary + secondary pair)"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/system_timer_octs/dv/build"]
+
+[build]
+top_module = "system_timer_octs_tb_top"
+top_file = "hw/ip/system_timer_octs/dv/tb/tb_top.sv"
+filelist = "hw/ip/system_timer_octs/dv/build/system_timer_octs_dut_compile.f"
+bender_filelist = "hw/ip/system_timer_octs/dv/build/system_timer_octs_bender.f"
+work_dir = "hw/ip/system_timer_octs/dv/build"
+# Shared dependency targets: the pulp AXI package/typedefs plus the
+# common-cells closure the axi_rtl group parses against.
+common_bender_targets = [
+  "axi_rtl",
+  "common_cells_rtl",
+]
+# The system_timer_octs target (Bender.yml): the timer's packages and RTL
+# plus the vendored OpenTitan prim closure.
+bender_targets = ["system_timer_octs"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/system_timer_octs/dv/cocotb"
+test_dir = "hw/ip/system_timer_octs/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+  "hw/ip/system_timer_octs/regs/gen/py",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Timer register sanity and primary free-running count"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "Primary-to-secondary synchronization at equal and skewed clocks"
+timeout_sec = 900
+args = []
+
+[targets.default]
+description = "System Timer OCTS IP-level cocotb target"
+build_dir = "hw/ip/system_timer_octs/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+]

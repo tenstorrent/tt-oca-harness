@@ -29,8 +29,8 @@ from collections import Counter, deque
 import cocotb
 from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from models.entropy_noise_model import EntropyNoiseModel
 from sep_entropy_golden import SepEntropyGolden
-from sep_noise_golden import SepNoiseGolden
 from sep_spec_tables import CRYPTO_EDN_SINKS
 
 
@@ -184,7 +184,7 @@ class SepDrbgScoreboard:
         self._warmup["CHK1_decor"] = warmup
 
         # One noise source feeds both the DUT drive and the golden chain.
-        self.noise_gen = SepNoiseGolden()
+        self.noise_gen = EntropyNoiseModel()
         self.noise_gen.configure(noise_mode, seed_base=noise_seed_base)
         self._gk = dict(golden_kwargs or {})
         # Scoreboard-only knob: consumed here, never forwarded to SepEntropyGolden.
