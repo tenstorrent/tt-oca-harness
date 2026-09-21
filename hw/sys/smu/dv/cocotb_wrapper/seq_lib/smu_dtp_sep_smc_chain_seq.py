@@ -41,6 +41,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from seq_lib.sep_fw_common import addr_of, load_syms
+from seq_lib.smu_addr_map import smc_indexed_addr
 from seq_lib.smu_lifecycle_table import lc_raw_from_shadow_preload, lc_state_name, posture
 from seq_lib.wrapper_jtag import (
     J2A_OP_READ,
@@ -57,7 +58,9 @@ from seq_lib.wrapper_jtag import (
 
 # SMC CPU_CTRL scratch0, SMC-local. The SMC arm firmware writes its marker here,
 # so a correct read returns something the SMC put there rather than a reset value.
-SMC_SCRATCH0_ADDR = 0xC003_9080
+SMC_SCRATCH0_ADDR = smc_indexed_addr(
+    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
+)  # SMC CPU_CTRL scratch0
 
 PASS_SYM = "sep_smu_lcc_flow_pass_loop"
 SETTLE_CYCLES = 2000

@@ -39,6 +39,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from seq_lib.smu_addr_map import smc_indexed_addr
 from seq_lib.smu_lifecycle_table import (
     LC_STATE_PRESENSE,
     lc_raw_from_shadow_preload,
@@ -56,7 +57,9 @@ from seq_lib.wrapper_jtag import (
 
 # SMC CPU_CTRL scratch0, SMC-local. A benign, always-mapped read target: the
 # point is whether the transaction is launched, not what it returns.
-J2A_READ_ADDR = 0xC003_9080
+J2A_READ_ADDR = smc_indexed_addr(
+    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
+)  # SMC CPU_CTRL scratch0
 
 SETTLE_CYCLES = 4000
 

@@ -5,9 +5,12 @@
 The complement of smu_sram_auto_init_done_test. That leaf runs with
 ``smc_disable_sram_auto_init_i`` low and watches the SMC scratch-RAM zeroing
 sweep run to completion; this one runs the same cold reset with the input
-high, where ``smc_4core_cpu.sv``'s MEM_ZERO FSM leaves MEM_ZERO_IDLE straight
-for MEM_ZERO_DONE: the initialisation enable must never rise, no zeroing write
-may reach the scratch RAM, and ``smc_init_mem_done_o`` must still assert.
+high: the initialisation enable must never rise and no zeroing write may
+reach the scratch RAM, which is the input's stated purpose (``smu.adoc``,
+``cpu.adoc``). That ``smc_init_mem_done_o`` still asserts is not stated by
+either document; the expectation is transcribed from ``smc_4core_cpu.sv``'s
+MEM_ZERO FSM, which leaves MEM_ZERO_IDLE straight for MEM_ZERO_DONE, so that
+leg is a drift check on the implementation until the specification says it.
 
 The bench raises the input when a test supplies ``+smc_scratch_ram_hex``,
 because the sweep would otherwise overwrite the image; the testlist entry
