@@ -15,13 +15,14 @@ class smc_i2c_p1_rdwr_protocol_test(smc_base_test):
     """U4-2 alias: DUT I2C0 host write proof (same sequence as master_target)."""
 
     required_evidence = (
+        "CHK-I2C0-HOST-REPEATED-START",
         "CHK-I2C0-HOST-WRITE",
         "CHK-I2C0-OVRD-PAD",
         "CHK-I2C0-SMBUS-ARA",
         "CHK-I2C0-SMBUS-PEC",
         "CHK-I2C0-U4-2-SMBUS",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     auto_protocol_vip = False
 
