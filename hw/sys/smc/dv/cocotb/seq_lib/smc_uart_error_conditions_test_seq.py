@@ -142,7 +142,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{tag}_IIR", r["iir"])
             if _iir_pending(iir) and _iir_id(iir) == expect:
                 return True
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         return False
 
     async def _test_parity(self) -> None:
@@ -173,7 +173,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
                     saw_lsr_irq = True
                 if saw_pe and saw_lsr_irq:
                     break
-                await Timer(100, units="ns")
+                await Timer(100, unit="ns")
             if not saw_pe:
                 raise AssertionError(f"parity PE not seen for byte 0x{tx:02x}")
             if not saw_lsr_irq:
@@ -228,7 +228,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             if lsr & LSR_OE:
                 saw_oe = True
                 break
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         if not saw_oe:
             raise AssertionError("LSR.OE never set after FIFO overflow")
         if not await self._wait_iir_id(r, "OE_LSR", _INTR_LSR, 32):
@@ -258,7 +258,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             if lsr & LSR_BI:
                 saw_bi = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not saw_bi:
             raise AssertionError("LSR.BI never set under SET_BREAK loopback")
         if not await self._wait_iir_id(r, "BRK_LSR", _INTR_LSR, 32):
@@ -271,7 +271,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             await self.csr_read("BRK_CLR_IIR", r["iir"])
             if not (lsr & (LSR_FE | LSR_BI)):
                 break
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         else:
             raise AssertionError(f"FE/BI sticky after break clear LSR=0x{lsr:08x}")
         lsr = await self.csr_read("BRK_POST", r["lsr"])

@@ -10,6 +10,8 @@ call would. With more workers the attempts run on a thread pool bounded by the s
 
 from __future__ import annotations
 
+import threading
+import time
 from collections.abc import Callable, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
@@ -101,7 +103,13 @@ class LocalExecutor(Executor):
         if futures:
             wait(futures, timeout=timeout_sec, return_when=FIRST_COMPLETED)
 
-    def cancel(self, handles: Sequence[JobHandle], *, grace_sec: float) -> dict[str, bool]:
+    def cancel(
+        self,
+        handles: Sequence[JobHandle],
+        *,
+        grace_sec: float,
+        stop: threading.Event | None = None,
+    ) -> dict[str, bool]:
         futures = {
             handle.task_id: self._futures[handle.task_id]
             for handle in handles
@@ -113,7 +121,12 @@ class LocalExecutor(Executor):
                 running = True
         if running:
             request_stage_cancellation()
-            wait(list(futures.values()), timeout=grace_sec)
+            deadline = time.monotonic() + max(0.0, grace_sec)
+            while any(not future.done() for future in futures.values()):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0 or (stop is not None and stop.is_set()):
+                    break
+                wait(list(futures.values()), timeout=min(remaining, 0.5))
         confirmed = {task_id: future.done() for task_id, future in futures.items()}
         for handle in handles:
             confirmed.setdefault(handle.task_id, True)

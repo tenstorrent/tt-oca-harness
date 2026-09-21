@@ -173,7 +173,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             lvl = lvl_fn(await self.csr_read(f"{label}_{i}", lvl_a))
             if lvl >= want:
                 return lvl
-            await Timer(_BUS_POLL_STEP_US, units="us")
+            await Timer(_BUS_POLL_STEP_US, unit="us")
         raise AssertionError(
             f"{label}: FIFO level reached only {lvl}, expected >= {want} -- "
             f"the positive control never filled the FIFO, so a following "
@@ -194,7 +194,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             st = await self.csr_read(f"{label}_{i}", status_a)
             if (st & want_set) == want_set and (st & want_clear) == 0:
                 return st
-            await Timer(_STATUS_POLL_STEP_NS, units="ns")
+            await Timer(_STATUS_POLL_STEP_NS, unit="ns")
         raise AssertionError(
             f"{label} timeout STATUS=0x{st:08x} want_set=0x{want_set:x} want_clear=0x{want_clear:x}"
         )
@@ -205,7 +205,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             lvl = lvl_fn(await self.csr_read(f"{label}_{i}", lvl_a))
             if lvl == 0:
                 return
-            await Timer(_STATUS_POLL_STEP_NS, units="ns")
+            await Timer(_STATUS_POLL_STEP_NS, unit="ns")
         raise AssertionError(f"{label} level stuck at {lvl}")
 
     async def _test_fmt(self) -> None:

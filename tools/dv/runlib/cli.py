@@ -89,9 +89,11 @@ from .executors.base import (
     resolve_resources,
     task_identifier,
 )
+from .executors.cluster import UNCONFIRMED_CANCELS_NAME
 from .executors.manifest import (
     attempt_args,
     execute_attempt,
+    jobs_dir,
     manifest_path,
     manifest_payload,
     repo_identity,
@@ -390,7 +392,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--build-jobs",
         type=int,
         metavar="N",
-        help="Backend compile/build job count; uses --sim-jobs when omitted",
+        help=(
+            "Backend compile/build job count; uses --sim-jobs when omitted, capped at this "
+            "host's CPU count on a cluster executor"
+        ),
     )
     parallel.add_argument(
         "--executor",
@@ -3061,6 +3066,7 @@ def run_flow(
     tool = selected_tool(flow, args, simulators)
     executor = selected_executor(flow, args, registries.executors)
     executor_cfg = registries.executors[executor]
+    setattr(args, "_cluster_executor", executor_cfg.get("kind") == "cluster")
     if getattr(args, "walltime", None):
         parse_walltime_sec(str(args.walltime))
     validate_selected_tool_available(tool, simulators, args, flow)
@@ -3237,11 +3243,26 @@ def run_flow(
     final_failures = 0
     progress_lock = threading.Lock()
     interruption_requested = threading.Event()
+    # A signal that arrives while the interruption is being handled sets this: the
+    # cancellation stops waiting for confirmations and the summary is written with what it has.
+    cleanup_hurry = threading.Event()
     interruption_signal: list[int] = []
     args._cancellation_event = interruption_requested
     active_leaf_ids: set[int] = set()
     completed_leaves_by_id: dict[int, dict[str, Any]] = {}
+    # Scheduler jobs of the leaves in flight, by leaf id then task id; a leaf drops its jobs
+    # once it is recorded. The checkpoint lists them: after the coordinator dies, they are the
+    # only record of which jobs are live.
+    leaf_jobs: dict[int, dict[str, dict[str, Any]]] = {}
+    cancellation: dict[str, Any] = {}
     checkpoint_sequence = 0
+
+    def with_leaf_jobs(leaf: dict[str, Any]) -> dict[str, Any]:
+        entry = dict(leaf)
+        jobs = leaf_jobs.get(int(leaf["id"]))
+        if jobs:
+            entry["jobs"] = [dict(job) for job in jobs.values()]
+        return entry
 
     def checkpoint_progress(state: str) -> dict[str, Any]:
         nonlocal checkpoint_sequence
@@ -3254,7 +3275,9 @@ def run_flow(
                 for leaf in expected_leaves
                 if int(leaf["id"]) in completed_ids
             ]
-            active = [dict(leaf) for leaf in expected_leaves if int(leaf["id"]) in active_ids]
+            active = [
+                with_leaf_jobs(leaf) for leaf in expected_leaves if int(leaf["id"]) in active_ids
+            ]
             missing = [
                 dict(leaf)
                 for leaf in expected_leaves
@@ -3295,6 +3318,25 @@ def run_flow(
         with progress_lock:
             active_leaf_ids.discard(leaf_id)
             completed_leaves_by_id[leaf_id] = completed
+            leaf_jobs.pop(leaf_id, None)
+
+    def note_leaf_job(task: LeafTask, handle: JobHandle) -> None:
+        with progress_lock:
+            leaf_jobs.setdefault(task.leaf_id, {})[task.task_id] = {
+                "task_id": task.task_id,
+                "attempt": task.attempt,
+                "debug_only": task.debug_only,
+                "executor": handle.executor,
+                "driver": handle.driver,
+                "job_id": handle.native_job_id,
+                "submitted_at": handle.submitted_at,
+            }
+
+    def note_cancel_confirmed(task: LeafTask, confirmed: bool) -> None:
+        with progress_lock:
+            job = leaf_jobs.get(task.leaf_id, {}).get(task.task_id)
+            if job is not None:
+                job["cancel_confirmed"] = confirmed
 
     def leaf_is_completed(leaf: dict[str, Any]) -> bool:
         with progress_lock:
@@ -3540,6 +3582,55 @@ def run_flow(
             handle = executor_impl.submit(task)
             tasks[task.task_id] = task
             handles[task.task_id] = handle
+            if executor_impl.requires_manifest and handle.native_job_id:
+                note_leaf_job(task, handle)
+
+        def record_cancellation(
+            outstanding: list[JobHandle], confirmed: dict[str, bool], finished: set[str]
+        ) -> None:
+            requested = [handle for handle in outstanding if handle.task_id not in finished]
+            unconfirmed: list[dict[str, Any]] = []
+            for handle in outstanding:
+                task = tasks[handle.task_id]
+                stopped = bool(confirmed.get(handle.task_id, False))
+                note_cancel_confirmed(task, stopped)
+                if stopped or handle.task_id in finished:
+                    continue
+                unconfirmed.append(
+                    {
+                        "task_id": task.task_id,
+                        "item": task.item,
+                        "seed": task.seed,
+                        "target": task.target,
+                        "attempt": task.attempt,
+                        "debug_only": task.debug_only,
+                        "executor": handle.executor,
+                        "driver": handle.driver,
+                        "job_id": handle.native_job_id,
+                    }
+                )
+            record = jobs_dir(run_dir) / UNCONFIRMED_CANCELS_NAME
+            cancellation.clear()
+            cancellation.update(
+                {
+                    "executor": executor_impl.name,
+                    "driver": executor_impl.driver,
+                    "requested": len(requested),
+                    "confirmed": len(requested) - len(unconfirmed),
+                    "unconfirmed": unconfirmed,
+                    "grace_sec": cancel_grace,
+                    "wait_cut_short": cleanup_hurry.is_set(),
+                    "record": repo_rel(root, record) if record.is_file() else None,
+                }
+            )
+            if unconfirmed:
+                ids = ", ".join(str(job["job_id"]) for job in unconfirmed)
+                console.event(
+                    "executor",
+                    f"{len(unconfirmed)} of {len(requested)} cancelled job(s) unconfirmed "
+                    f"(job ids {ids}); check them with the scheduler by id",
+                    force=True,
+                )
 
         def finish_leaf(
             leaf: dict[str, Any], final: StageResult, jobs: list[dict[str, Any]]
@@ -3665,6 +3756,8 @@ def run_flow(
                     task = tasks.pop(task_id)
                     attempt_done(task, collect_result(handle, task, observation.reason))
         except BaseException:
+            # From here on a signal unwinds nothing more; it ends the confirmation wait.
+            interruption_requested.set()
             outstanding = list(handles.values())
             # Only an attempt that had ended before the interruption counts as a completed
             # leaf; whatever the cancellation ends is interrupted, whichever result it wrote.
@@ -3680,10 +3773,14 @@ def run_flow(
                 if seen.state.terminal and seen.state is not JobState.CANCELLED
             }
             try:
-                executor_impl.cancel(outstanding, grace_sec=cancel_grace)
+                confirmed = executor_impl.cancel(
+                    outstanding, grace_sec=cancel_grace, stop=cleanup_hurry
+                )
             except Exception as exc:  # noqa: BLE001
                 console.event("executor", f"cancel failed: {exc}", force=True)
+                confirmed = {}
             request_stage_cancellation()
+            record_cancellation(outstanding, confirmed, finished)
             for handle in outstanding:
                 if handle.task_id not in finished:
                     continue
@@ -3751,8 +3848,11 @@ def run_flow(
     previous_signal_handlers: dict[int, Any] = {}
 
     def interrupt_handler(signum: int, _frame: Any) -> None:
-        interruption_requested.set()
         interruption_signal.append(signum)
+        if interruption_requested.is_set():
+            cleanup_hurry.set()
+            return
+        interruption_requested.set()
         raise RunInterrupted(signum)
 
     try:
@@ -3996,6 +4096,7 @@ def run_flow(
         )
         return exit_code_for_status(status)
     except (RunInterrupted, ClusterError) as exc:
+        interruption_requested.set()
         # The signal unwound run_stage past its console.suppress exit, so this thread is
         # still muted; everything below is for the operator.
         console.clear_suppression()
@@ -4018,6 +4119,9 @@ def run_flow(
                 "recorded_at": datetime.now(UTC).isoformat(),
             }
             exit_code = exit_code_for_status("ERROR")
+        interruption["signals"] = [signal.Signals(num).name for num in interruption_signal]
+        if cancellation:
+            interruption["cancellation"] = dict(cancellation)
         progress = checkpoint_progress("interrupted")
         elapsed_sec = time.monotonic() - run_started
         if nest and checkpoint_enabled:

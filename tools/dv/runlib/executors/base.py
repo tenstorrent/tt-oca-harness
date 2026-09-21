@@ -14,6 +14,7 @@ for every executor, so scheduler state never decides a DV verdict: a leaf's own 
 from __future__ import annotations
 
 import re
+import threading
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
@@ -314,8 +315,17 @@ class Executor(ABC):
             time.sleep(timeout_sec)
 
     @abstractmethod
-    def cancel(self, handles: Sequence[JobHandle], *, grace_sec: float) -> dict[str, bool]:
-        """Ask the backend to stop every handle; True per ``task_id`` once the stop is confirmed."""
+    def cancel(
+        self,
+        handles: Sequence[JobHandle],
+        *,
+        grace_sec: float,
+        stop: threading.Event | None = None,
+    ) -> dict[str, bool]:
+        """Ask the backend to stop every handle; True per ``task_id`` once the stop is confirmed.
+
+        The confirmation wait lasts at most ``grace_sec``; ``stop``, once set, ends it sooner.
+        """
 
     @abstractmethod
     def collect(self, handle: JobHandle) -> ExecutionResult:

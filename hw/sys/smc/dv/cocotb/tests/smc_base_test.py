@@ -1023,31 +1023,7 @@ class _EvidenceRecorder:
     # set at introduction); a new name fails the run. To remove an entry, make
     # the check that already runs log a ``CHK-<ID>:`` line where it happens --
     # in the sequence, not here.
-    NO_OWN_EVIDENCE = {
-        # Scoreboard protocol-VIP record with a stimulus floor, plus expected=
-        # compares on every CSR read the sequence issues.
-        "smc_filter_field_sweep_test": "protocol-VIP floor and scoreboard compares",
-        "smc_gpio_ctrl_full_sweep_test": "protocol-VIP floor and scoreboard compares",
-        "smc_gpio_intf_full_sweep_test": "protocol-VIP floor and scoreboard compares",
-        "smc_i2c_multi_instance_test": "protocol-VIP floor and scoreboard compares",
-        "smc_mailbox_inbound_test": "protocol-VIP floor and scoreboard compares",
-        "smc_occp_sanity_secure_error_test": "protocol-VIP floor and sequence asserts",
-        "smc_register_boundary_depth_test": "protocol-VIP floor and scoreboard compares",
-        "smc_register_sanity_test": "protocol-VIP floor and scoreboard compares",
-        "smc_spi_pad_bfm_test": "protocol-VIP floor and sequence asserts",
-        "smc_uart_loopback_test": "protocol-VIP floor and sequence asserts",
-        "smc_xvisor_remap_test": "protocol-VIP floor and scoreboard compares",
-        # Asserts in the sequence the leaf starts; the log line carries no ID.
-        "smc_flr_sanity_test": "sequence asserts, unlabelled",
-        "smc_gpio_irq_type_matrix_test": "sequence asserts, unlabelled",
-        "smc_gpio_output_driveback_test": "sequence asserts, unlabelled",
-        "smc_smbus_alert_ara_test": "in-leaf asserts on sequence flags, unlabelled",
-        # Asserts in the leaf on the scoreboard's memory-model compare counters.
-        "smc_output_fabric_wr_rd_responder_test": "in-leaf asserts, unlabelled",
-        # Sequence asserts; the protocol-VIP record it books is an activity
-        # stamp (csr_accesses=0, auto_evidence=True) and is not evidence.
-        "smc_octs_dual_sync_test": "sequence asserts, unlabelled",
-    }
+    NO_OWN_EVIDENCE: dict[str, str] = {}
 
     # Past this date, ``_finalize_evidence`` warns on every run while the set is
     # non-empty. Move it only after re-reading each entry that remains.
@@ -1465,11 +1441,9 @@ class smc_base_test(uvm_test):
             size=SYS_OUT_MEM_SIZE,
             name="smc_sys_out",
         ).sequence
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
-        cocotb.start_soon(
-            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns").start())
 
         await ClockCycles(dut.clk_ref_i, 10)
         self.logger.info("Asserting powergood")

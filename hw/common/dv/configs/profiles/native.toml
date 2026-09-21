@@ -18,9 +18,10 @@ license = "none"
 default_tool = "verilator"
 tools = ["verilator", "xcelium", "vcs"]
 
+# A cluster executor takes its queue, resource defaults and limits from the site layer.
 [scheduler]
 default_executor = "local"
-allowed = ["local"]
+allowed = ["local", "lsf", "slurm"]
 
 [defaults]
 seed = 1

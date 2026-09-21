@@ -109,6 +109,7 @@ class smu_dtp_io_stap_smoke_test_seq:
         sb.expect_true(
             "CHK-DTP-IO-STAP-SCAN",
             edges >= MIN_TCK_EDGES and edges > idle_edges,
+            evidence="CHK-DTP-IO-STAP-SCAN",
         )
 
         # S2: BYPASS + non-zero DR payload
@@ -132,6 +133,7 @@ class smu_dtp_io_stap_smoke_test_seq:
         sb.expect_true(
             "CHK-DTP-IO-STAP-SCAN-PAYLOAD",
             edges2 >= MIN_TCK_EDGES and edges2 > idle_edges,
+            evidence="CHK-DTP-IO-STAP-SCAN",
         )
 
         self._log(f"PASS DTP-IO-STAP s1={self.s1_ok} s2={self.s2_ok} edges={edges}/{edges2}")

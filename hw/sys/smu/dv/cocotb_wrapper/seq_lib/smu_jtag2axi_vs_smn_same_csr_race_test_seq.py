@@ -143,7 +143,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
             # count, so each stamp is pulled back by one period.
             while "j_b" not in ts:
                 await RisingEdge(dut.clk_smu_i)
-                now = float(get_sim_time(units="ns")) - period_ns
+                now = float(get_sim_time(unit="ns")) - period_ns
                 if "j_aw" not in ts and self._sample_int("dtp_smc_dbg_aw_count_o") > aw0:
                     ts["j_aw"] = now
                     j_aw_seen.set()
@@ -153,7 +153,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         async def _watch_smn_port():
             while "s_b" not in ts:
                 await RisingEdge(dut.clk_smu_i)
-                now = float(get_sim_time(units="ns"))
+                now = float(get_sim_time(unit="ns"))
                 if "s_aw" not in ts and int(smn_awvalid.value) and int(smn_awready.value):
                     ts["s_aw"] = now
                 if "s_b" not in ts and int(smn_bvalid.value) and int(smn_bready.value):
@@ -180,7 +180,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         t_j = cocotb.start_soon(_jtag_writer())
         t_watch_j = cocotb.start_soon(_watch_j2a_port())
         # Gate the second writer on the first writer's issue.
-        await First(j_aw_seen.wait(), Timer(J2A_AW_TIMEOUT_NS, units="ns"))
+        await First(j_aw_seen.wait(), Timer(J2A_AW_TIMEOUT_NS, unit="ns"))
         if "j_aw" not in ts:
             raise AssertionError(
                 f"race J2A write: no AW handshake on the DTP->SMC debug port within "
@@ -190,8 +190,8 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         t_s = cocotb.start_soon(_smn_writer())
         await t_j
         await t_s
-        await First(t_watch_j.join(), Timer(J2A_AW_TIMEOUT_NS, units="ns"))
-        await First(t_watch_s.join(), Timer(J2A_AW_TIMEOUT_NS, units="ns"))
+        await First(t_watch_j.join(), Timer(J2A_AW_TIMEOUT_NS, unit="ns"))
+        await First(t_watch_s.join(), Timer(J2A_AW_TIMEOUT_NS, unit="ns"))
         if j_result.get("st") != J2A_STATUS_SUCCESS:
             raise AssertionError(f"race J2A write status={j_result.get('st')}")
         if s_result.get("resp") != RESP_OKAY:

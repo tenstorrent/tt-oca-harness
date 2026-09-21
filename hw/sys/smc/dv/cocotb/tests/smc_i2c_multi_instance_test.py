@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_i2c_multi_instance_test(smc_base_test):
     """I2C_1/2 + I2C_CTRL CSR sweep."""
 
+    required_evidence = ("CHK-I2C-INSTANCE-RESET-DECODE",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -288,7 +288,9 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             )
         self.s1_ok = True
         self._log("CHK-FILTER-IN-INSTANCES-S1: inst=0,1,7,14,15 DECODE bases=smc_indexed_addr")
-        sb.expect_eq("CHK-FILTER-IN-INSTANCES-S1", True, True)
+        sb.expect_eq(
+            "CHK-FILTER-IN-INSTANCES-S1", True, True, evidence="CHK-FILTER-IN-INSTANCES-S1"
+        )
 
         # ---- S2 isolation pairwise ----
         for inst in (7, 14, 15, 1):

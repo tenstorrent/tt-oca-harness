@@ -27,6 +27,9 @@ from smc_base_test import smc_base_test
 class smc_flr_sanity_test(smc_base_test):
     """Run the SMC OSS FLR post-release sanity scenario."""
 
+    required_evidence = ("CHK-FLR-COOL-CSR-RECOVERY",)
+    min_evidence = 1
+
     async def run_scenario(self) -> None:
         seq = smc_flr_sanity_test_seq("flr_sanity_seq")
 

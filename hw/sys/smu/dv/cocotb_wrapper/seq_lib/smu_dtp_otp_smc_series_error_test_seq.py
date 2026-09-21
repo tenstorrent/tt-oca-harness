@@ -159,6 +159,7 @@ class smu_dtp_otp_smc_series_error_test_seq:
             "CHK-OTP-SMC-DECODE-SLVERR",
             (hole_st, hole_data),
             (J2A_STATUS_SLVERR, SMC_OTP_ERR_DECODE_DATA),
+            evidence="CHK-OTP-SMC-DECODE-SLVERR",
         )
 
         stab_st, stab_data = await self._single_rd(jtag, SPARE0, "SPARE0-STABLE")

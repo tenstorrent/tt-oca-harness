@@ -126,7 +126,7 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
             raise AssertionError(f"DEBUG_CONTROL readback=0x{rb:02x} want 0x{stall:02x}")
         self.s2_ok = True
         self._log(f"CHK-CPU-REG-STALL DEBUG_CONTROL=0x{rb:02x} boot_stall=1 boot_stall_ovrd=1")
-        sb.expect_eq("CHK-CPU-REG-STALL", rb, stall)
+        sb.expect_eq("CHK-CPU-REG-STALL", rb, stall, evidence="CPU_REG_STALL")
 
         observed = []
         for pat in PATTERNS:
@@ -141,7 +141,7 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
                 f"SCRATCH_15 two-pattern compare collapsed to one value 0x{observed[0]:08x}"
             )
         self.s3_ok = True
-        sb.expect_eq("CHK-JTAG2AXI-RW", tuple(observed), PATTERNS)
+        sb.expect_eq("CHK-JTAG2AXI-RW", tuple(observed), PATTERNS, evidence="JTAG2AXI_RW_OK")
 
         self._log(
             f"PASS DTP-JTAG-SMC-CPU-REGISTER s1={self.s1_ok} s2={self.s2_ok} "

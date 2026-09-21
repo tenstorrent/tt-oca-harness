@@ -12,7 +12,7 @@ from enum import Enum
 
 import cocotb
 from cocotb.handle import Immediate
-from cocotb.triggers import RisingEdge, with_timeout
+from cocotb.triggers import RisingEdge, SimTimeoutError, with_timeout
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence, clear_profile
 from pyuvm import (
     ConfigDB,
@@ -22,12 +22,6 @@ from pyuvm import (
     uvm_sequence_item,
     uvm_sequencer,
 )
-
-try:
-    from cocotb.result import SimTimeoutError
-except ImportError:
-    from cocotb.triggers import SimTimeoutError
-
 
 # How long a DUT-generated reset is given to take a defined value before the VIP
 # is attached to it. The reset tree settles within a few clocks of the cold reset
