@@ -109,6 +109,7 @@ class smu_dtp_io_stap_smoke_test_seq:
         sb.expect_true(
             "CHK-DTP-IO-STAP-SCAN",
             edges >= MIN_TCK_EDGES and edges > idle_edges,
+            evidence="CHK-DTP-IO-STAP-SCAN",
         )
 
         # S2: BYPASS + non-zero DR payload

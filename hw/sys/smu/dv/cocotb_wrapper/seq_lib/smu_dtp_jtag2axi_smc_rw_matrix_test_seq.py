@@ -220,6 +220,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
                 apply_axi_wstrb(0, PARTIAL_EVEN, 0x55, 8),
                 apply_axi_wstrb(0, PARTIAL_ODD, 0xAA, 8),
             ),
+            evidence="J2A_RW_MATRIX_OK",
         )
 
         capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)

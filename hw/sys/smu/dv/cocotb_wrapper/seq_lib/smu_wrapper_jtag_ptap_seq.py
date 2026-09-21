@@ -43,10 +43,18 @@ TCK_PERIODS_NS = (100, 200)
 class SmuWrapperJtagPtapSeq:
     """IDCODE + BYPASS on the wrapper PTAP, without disturbing the SEP."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = (
+        "SMU_WRAPPER_PTAP_OK",
+        "SMU_WRAPPER_PTAP_SEP_UNDISTURBED_OK",
+        "SMU_WRAPPER_IC_RESET_CLEAR_OK",
+    )
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     async def _idcode(self, jtag) -> int:
         got = await jtag.read_idcode()
@@ -139,11 +147,7 @@ class SmuWrapperJtagPtapSeq:
             "0 -- the base test TAP reset walk really does clear the TDR)",
             smc_ovrd,
         )
-        for token in (
-            "SMU_WRAPPER_PTAP_OK",
-            "SMU_WRAPPER_PTAP_SEP_UNDISTURBED_OK",
-            "SMU_WRAPPER_IC_RESET_CLEAR_OK",
-        ):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

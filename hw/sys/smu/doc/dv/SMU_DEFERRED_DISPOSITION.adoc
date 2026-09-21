@@ -10,20 +10,21 @@ credit set `hosted`; <<smu-bench-standins>> is the record of every
 stand-in, force, skip and waiver on a proof path of an enrolled test. The
 table first. Three kinds of name are in it. Fifteen have a test body and are
 enrolled in `testlists/all.toml`; their bucket says which group holds them
-and why that group is not credit. Seven have a test body under
-`hw/sys/smu/dv/cocotb_wrapper/tests/` or `cocotb/tests/` and are enrolled in
-no testlist, because they cannot run or cannot pass on either bench; their
-bucket says what each needs. The rest have no test body in this tree. None of
-the last two kinds is reportable as PASS. Enrolled names outside `hosted`
+and why that group is not credit. Eight were written against one of the two
+benches and are enrolled in no testlist, because they cannot run or cannot
+pass on either bench; their bucket says what each needs. A deferred body, and
+its sequence where it had one, is kept in git history rather than on disk and
+is restored when the blocker named in its row clears. The rest never had a
+test body here. None of the last two kinds is reportable as PASS. Enrolled names outside `hosted`
 that carry neither classification — the lifecycle, debug-gating, chain and
 elaboration leaves — are not in this table: each is carded in
 `SMU_VPLAN.adoc` and enrolled in a named group of `testlists/all.toml`.
 
 Buckets:
 
-* `SEP1-enrolled` — has a body and runs in the wrapper `all` group with real SEP instruction retirement (`sep_real_fw`, `sep_entropy`, or `fw_smoke` for the SEP smoke). Not `hosted` credit, and no CI workflow schedules those groups.
-* `SEP1-blocked` — has a body under `cocotb_wrapper/tests/`, enrolled in no testlist: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction. Re-enrols in `all` the day the SMC SRAM path exists.
-* `not-runnable` — has a body, enrolled in no testlist: the claim it checks is not met by the RTL as built, or the bench cannot produce the condition it needs. The row names the condition.
+* `SEP1-enrolled` — has a body and runs in the wrapper `all` group with real SEP instruction retirement (`sep_real_fw`, `sep_entropy`, or `fw_boot` for the SEP smoke). Not `hosted` credit, and no CI workflow schedules those groups.
+* `SEP1-blocked` — written against the wrapper bench, enrolled in no testlist: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction. Re-enrols in `all` the day the SMC SRAM path exists.
+* `not-runnable` — written against a bench, enrolled in no testlist: the claim it checks is not met by the RTL as built, or the bench cannot produce the condition it needs. The row names the condition.
 * `OUT-until-SEP1` — no body; needs real SEP instruction retirement under SMU and SEP=1 TB ports.
 * `child-TB-owned` — protocol or CPU depth belongs to the SMC, SEP, or DTP TB.
 * `waived` — superseded, toggle-as-pass, stimulus-pin gap, or leftover catalog name.
@@ -32,14 +33,14 @@ Enrolled names outside this catalog:
 
 * The JTAG2AXI / OTP / filter set in `hosted` is recorded in the Component Signoff section of `hw/sys/smu/dv/docs/SMU_VPLAN.adoc`, which also records ATOP reject as OUT.
 * `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are enrolled in `hosted` (`testlists/all.toml`).
-* The one unenrolled body under `cocotb/tests/`, `smu_ext_axi_global_addr_smoke_test`, is in the table below under `not-runnable`.
+* `smu_ext_axi_global_addr_smoke_test`, written against the block bench, is in the table below under `not-runnable`.
 
 [cols="3,2,5",options="header"]
 |===
 |Name |Bucket |Constraint
 |smu_sep_smoke_test
 |SEP1-enrolled
-|Enrolled in `all`, `fw_smoke`.
+|Enrolled in `all`, `fw_boot`.
 |smu_sep_sanity_test
 |SEP1-enrolled
 |Enrolled in `all`, `sep_real_fw`.
@@ -78,7 +79,7 @@ Enrolled names outside this catalog:
 |Needs real SEP instruction retirement and SEP=1 TB ports.
 |smu_sep_wdt_reset_to_smc_test
 |SEP1-blocked
-|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
+|Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
 |smu_sep_spi_bridge_test
 |OUT-until-SEP1
 |Needs real SEP instruction retirement and SEP=1 TB ports.
@@ -99,13 +100,13 @@ Enrolled names outside this catalog:
 |Needs real SEP instruction retirement and SEP=1 TB ports.
 |smu_sep_debug_bus_test
 |SEP1-blocked
-|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
+|Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
 |smu_sep_lc_handoff_test
 |SEP1-blocked
-|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
+|Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
 |smu_cla_sep_cpu_debug_test
 |SEP1-blocked
-|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
+|Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
 |smu_fuse_sense_handshake_test
 |OUT-until-SEP1
 |Needs real SEP instruction retirement and SEP=1 TB ports.
@@ -417,19 +418,19 @@ Enrolled names outside this catalog:
 |`smu_otp_vs_fabric_map_race_test` carries a `_race_` name it does not earn, and this row is the reason it keeps it. Both writers are JTAG2AXI bridges behind the one TAP, so their DR shifts are serialised by construction and the OTP op has completed before the fabric write can be issued; the enrolled test therefore claims back-to-back coherence, not overlap, and says so in its header and plan entry. Genuine overlap needs a second, independent master on the shadow-map word, which the wrapper's product interfaces do not provide. Not renamed here because the name is carried by the testlist, the evidence map, the feature list and the plan anchor, and the rename would ride inside a branch already this large; it belongs in a standalone change.
 |smu_sep_smc_xbar_test
 |SEP1-blocked
-|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. The SEP brings the SMC up from an SMC SRAM image no sys-inbound master can load; `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` ("SMC firmware image disposition") holds the SMC half.
+|Enrolled in no testlist; the body is in git history. The SEP brings the SMC up from an SMC SRAM image no sys-inbound master can load; `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` ("SMC firmware image disposition") holds the SMC half.
 |smu_sep_ext_axi_test
 |SEP1-blocked
-|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. Same SRAM-private blockage as `smu_sep_smc_xbar_test`; the three-party protocol header stays with the firmwares.
+|Enrolled in no testlist; the body is in git history. Same SRAM-private blockage as `smu_sep_smc_xbar_test`; the three-party protocol header stays with the firmwares.
 |smu_cold_reset_async_assert_test
 |not-runnable
-|Body kept under `cocotb_wrapper/tests/`; enrolled in no testlist. Holds every wrapper clock static and asserts `rst_cold_ni`, expecting the cold-stable and primary-reset outputs to fall without a clock edge (`port_table.adoc`: "Asynchronous assertion"); the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch shift register, so with the clocks stopped no output moves. Enrols when the specification or the RTL settles which is right; that decision needs a tracker issue naming `port_table.adoc` and `smc_reset_ctrl`.
+|Enrolled in no testlist; the body is in git history. Holds every wrapper clock static and asserts `rst_cold_ni`, expecting the cold-stable and primary-reset outputs to fall without a clock edge (`port_table.adoc`: "Asynchronous assertion"); the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch shift register, so with the clocks stopped no output moves. Enrols when the specification or the RTL settles which is right; that decision needs a tracker issue naming `port_table.adoc` and `smc_reset_ctrl`.
 |smu_dtp_jtag2axi_abort_mid_op_test (wrapper)
 |not-runnable
 |The scenario is enrolled on `--dut smu_block` (`testlists/block.toml`, `all`). On the wrapper the real SMC eFuse model answers a SINGLE_OP in tens of `clk_smu` against a 39-bit DR shift, so the BUSY window the abort needs never exists; a wrapper enrolment needs a stallable eFuse hook in `tb/tb_wrapper_top.sv`.
 |smu_ext_axi_global_addr_smoke_test
 |not-runnable
-|Body under `cocotb/tests/`; enrolled in no testlist. The OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs; `cocotb/env/smu_evidence_map.py` `UNMAPPED_TESTS` records the same reason.
+|Enrolled in no testlist; the body is in git history. The OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs.
 |smu_smc_gpio_strap_sanity_test
 |waived
 |No body. It read the retired `SMC_TOP_SMC_RESET_UNIT_STRAPS_LO` symbol, which the captured-straps move took out of the generated SMC header, and `smc_wrapper` declares no `captured_straps_i`, so the strap feature has no testcase on either bench (the SMC package records the same in its `depth.toml`). Do not re-enroll this name.

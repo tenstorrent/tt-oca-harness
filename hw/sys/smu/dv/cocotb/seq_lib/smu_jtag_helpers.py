@@ -188,20 +188,33 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # ss_warm[0..31]. The external slice type is adopter-defined; the SMU bench
 # elaborates one port.
 SMU_IC_RESET_NUM_SMC_PORTS = 68
-# The SEP slice is one port per field of sep_pkg::jtag_sep_reset_ctrl_val_t
-# (hw/sys/sep/rtl/sep_pkg.sv): abr, trng, sep_reset_n, kmac, hmac, aes, otbn,
-# km. jtag_ptap sizes it as $bits(ic_reset_sep_t)/2, so a field added to that
-# struct moves every SMC port index up by one and this count with it.
-SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = 8
+# doc/integrator/src/smu.adoc "SEP slice (TDI to TDO)": the ports the SEP
+# slice carries at SEP=1, in scan order from TDI (abr_jtag_rst_n) to the
+# external slice (km_jtag_rst_n). The same document's "IC_RESET TDR
+# Structure" table gives the slice 8 ports at SEP=1 and 0 otherwise, so the
+# count is this tuple's length. A port added to the SEP slice moves every
+# SMC port index up by one.
+SMU_IC_RESET_SEP_PORTS = (
+    "abr_jtag_rst_n",
+    "trng_jtag_rst_n",
+    "sep_reset_n",
+    "kmac_jtag_rst_n",
+    "hmac_jtag_rst_n",
+    "aes_jtag_rst_n",
+    "otbn_jtag_rst_n",
+    "km_jtag_rst_n",
+)
+SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = len(SMU_IC_RESET_SEP_PORTS)
 
 
 def _smu_ic_reset_sep_ports() -> int:
     """SEP IC_RESET slice width for the DUT this run elaborated.
 
-    smu.sv ties IC_RESET_SEP_ENABLE to its SEP parameter. The production
-    wrapper (tb_wrapper_top.sv, top module smu_wrapper_uvm_top) elaborates
-    SEP=1 and carries the full SEP slice; the bare block bench (tb_top.sv,
-    smu_uvm_top) instantiates smu #(.SEP(0)) and has no SEP slice. Resolved
+    doc/integrator/src/smu.adoc "IC_RESET TDR Structure" enables the SEP
+    slice only at SEP=1. The production wrapper (tb_wrapper_top.sv, top module
+    smu_wrapper_uvm_top) elaborates SEP=1 and carries the full SEP slice; the
+    bare block bench (tb_top.sv, smu_uvm_top) elaborates SEP=0 and has no SEP
+    slice. Resolved
     from the cocotb top handle so one helper serves both DUTs; outside a
     simulation it falls back to the SEP=0 shape.
     """

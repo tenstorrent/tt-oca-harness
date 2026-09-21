@@ -176,6 +176,7 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
             "CHK-J2A-ABORT",
             (otp_st_after != J2A_STATUS_BUSY, *recovered),
             (True, VERSION_LO_RESET, VERSION_LO_RESET),
+            evidence="J2A_ABORT_RECOVER",
         )
 
         self._log(

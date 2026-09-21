@@ -65,6 +65,12 @@ FABCFG_DESTS = (
 )
 
 
+# JTAG2AXI operations _wr_rd_prove issues per destination: the original read,
+# the ones and zeros write/readback pairs, the pattern write/readback, and the
+# restoring write. Each must answer SUCCESS at the consumer.
+J2A_OPS_PER_DEST = 8
+
+
 def _width_mask(width: int) -> int:
     if width not in (4, 8):
         raise AssertionError(f"unsupported width={width}")
@@ -86,6 +92,7 @@ class smu_fabric_reg_bar_wr_test_seq:
         self.cfg = test.cfg
         self.s1_ok = False
         self.observed: list[str] = []
+        self.okay_ops = 0
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -102,12 +109,14 @@ class smu_fabric_reg_bar_wr_test_seq:
         )
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A WR {name} @0x{addr:08x} status={st}")
+        self.okay_ops += 1
 
     async def _j2a_rd(self, jtag, addr: int, width: int, name: str) -> int:
         size, _ = _j2a_size_wstrb(width)
         st, rdata = await jtag2axi_single_read(jtag, addr, size=size, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A RD {name} @0x{addr:08x} status={st}")
+        self.okay_ops += 1
         return int(rdata) & _width_mask(width)
 
     async def _wr_rd_prove(self, jtag, dest: str, addr: int, width: int) -> None:
@@ -165,7 +174,23 @@ class smu_fabric_reg_bar_wr_test_seq:
             await self._wr_rd_prove(jtag, dest, addr, width)
             self.observed.append(dest)
 
+        dests = [dest for dest, _, _ in FABCFG_DESTS]
+        want_ops = J2A_OPS_PER_DEST * len(FABCFG_DESTS)
         cells = ",".join(f"dest={d}" for d in self.observed)
-        self._log(f"CHK-SUB-AXIL-LOCAL-S2: {cells} observed=OKAY at consumer")
-        sb.expect_eq("CHK-SUB-AXIL-LOCAL-S2", True, True)
+        self._log(
+            f"CHK-SUB-AXIL-LOCAL-S2: {cells} write/readback held; "
+            f"SUCCESS responses at the consumer={self.okay_ops} (expect {want_ops})"
+        )
+        sb.expect_eq(
+            "CHK-SUB-AXIL-LOCAL-S2 destinations with write/readback held",
+            self.observed,
+            dests,
+            evidence="CHK-SUB-AXIL-LOCAL-S2",
+        )
+        sb.expect_eq(
+            "CHK-SUB-AXIL-LOCAL-S2 SUCCESS responses at the consumer",
+            self.okay_ops,
+            want_ops,
+            evidence="CHK-SUB-AXIL-LOCAL-S2",
+        )
         self.s1_ok = True

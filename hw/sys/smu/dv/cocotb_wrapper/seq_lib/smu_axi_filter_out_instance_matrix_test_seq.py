@@ -138,7 +138,13 @@ class smu_axi_filter_out_instance_matrix_test_seq:
         hi: int,
         cfg: int,
         tag: str,
-    ) -> None:
+    ) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        """Read one instance back and return its (observed, wanted) values.
+
+        Each is (CONFIG, START, END) under the compare masks. The mismatch
+        raise names the register; S1 also folds every instance's pair into one
+        scoreboard compare.
+        """
         rb = await self._j2a_rd(jtag, smc_indexed_addr(_OUT_CFG, inst), f"{tag}_RB")
         if (rb & _CFG_CMP_MASK) != (cfg & _CFG_CMP_MASK):
             raise AssertionError(f"{tag} CONFIG rb mismatch want=0x{cfg:x} got=0x{rb:x}")
@@ -148,6 +154,9 @@ class smu_axi_filter_out_instance_matrix_test_seq:
             raise AssertionError(f"{tag} START rb 0x{rb_lo:x} want 0x{lo:x}")
         if (rb_hi & 0xFFF_FFFF_FFFF_FFFF) != (hi & 0xFFF_FFFF_FFFF_FFFF):
             raise AssertionError(f"{tag} END rb 0x{rb_hi:x} want 0x{hi:x}")
+        observed = (rb & _CFG_CMP_MASK, rb_lo & 0xFFF_FFFF_FFFF_FFFF, rb_hi & 0xFFF_FFFF_FFFF_FFFF)
+        wanted = (cfg & _CFG_CMP_MASK, lo & 0xFFF_FFFF_FFFF_FFFF, hi & 0xFFF_FFFF_FFFF_FFFF)
+        return observed, wanted
 
     async def run(self) -> None:
         dut = self.dut
@@ -181,9 +190,11 @@ class smu_axi_filter_out_instance_matrix_test_seq:
             )
             programmed[inst] = (lo, hi, cfg)
 
+        s1_observed: dict[int, tuple[int, int, int]] = {}
+        s1_wanted: dict[int, tuple[int, int, int]] = {}
         for inst, (lo, hi, src_id, allow_ns) in S1_SIGNATURES.items():
             p_lo, p_hi, cfg = programmed[inst]
-            await self._readback_inst(
+            s1_observed[inst], s1_wanted[inst] = await self._readback_inst(
                 jtag,
                 inst,
                 lo=p_lo,
@@ -201,7 +212,12 @@ class smu_axi_filter_out_instance_matrix_test_seq:
         self._log(
             "CHK-FILTER-OUT-INSTANCES-S1: out_filter_inst=0,1,8,15 DECODE bases=smc_indexed_addr"
         )
-        sb.expect_eq("CHK-FILTER-OUT-INSTANCES-S1", True, True)
+        sb.expect_eq(
+            "CHK-FILTER-OUT-INSTANCES-S1",
+            s1_observed,
+            s1_wanted,
+            evidence="CHK-FILTER-OUT-INSTANCES-S1",
+        )
 
         # S2/S3 need an ext_out peer: log the not-reachable notes without a CHK token.
         self._log(f"DEFERRED-NOTE(S2): {DEFERRED_S2_TEXT}")

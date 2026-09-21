@@ -180,7 +180,9 @@ class smu_system_timer_octs_test_seq:
             )
         self.s1_ok = True
         self._log(f"CHK-OCTS-PRIMARY-STRAP: csr=1 tb_tie=chiplet_is_primary_i attrs=0x{attrs:08x}")
-        sb.expect_eq("CHK-OCTS-PRIMARY-STRAP", is_primary, ATTR_PRIMARY_BM)
+        sb.expect_eq(
+            "CHK-OCTS-PRIMARY-STRAP", is_primary, ATTR_PRIMARY_BM, evidence="CHK-OCTS-PRIMARY-STRAP"
+        )
 
         # S2: preset + start; prove free-run via product pin (not J2A COUNT).
         await self._j2a_wr32(jtag, ADDR_PRESET_LO, PRESET, "PRESET_LO")
@@ -204,7 +206,7 @@ class smu_system_timer_octs_test_seq:
         self.s2_ok = True
         self.pin_ok = True
         self._log(f"CHK-OCTS-COUNT-MONOTONIC: pin {pin0} -> {pin1}")
-        sb.expect_true("CHK-OCTS-COUNT-MONOTONIC", pin1 > pin0)
+        sb.expect_true("CHK-OCTS-COUNT-MONOTONIC", pin1 > pin0, evidence="CHK-OCTS-COUNT-MONOTONIC")
         csr_count, pin_pre, pin_post = await self._read_csr_count_bracketed(jtag)
         if not pin_pre <= csr_count <= pin_post:
             raise AssertionError(

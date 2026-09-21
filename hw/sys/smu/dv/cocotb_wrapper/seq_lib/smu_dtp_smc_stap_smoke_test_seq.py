@@ -248,7 +248,12 @@ class smu_dtp_smc_stap_smoke_test_seq:
             f"ptap_edges={sel['ptap_edges']} mismatch={sel['mismatch']} "
             f"oen_tcks={sel['oen_tcks']} unsel_smc={unsel['smc_edges']}"
         )
-        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE", sel["smc_edges"], sel["ptap_edges"])
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-IDCODE",
+            sel["smc_edges"],
+            sel["ptap_edges"],
+            evidence="CHK-DTP-SMC-STAP-IDCODE",
+        )
         sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-OEN", sel["oen_tcks"], EXPECTED_SHIFT_TCKS)
         sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH", sel["mismatch"], 0)
 
