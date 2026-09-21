@@ -123,5 +123,4 @@ include::smn.placeholder.adoc[leveloffset=+2]
 include::aou.adoc[leveloffset=+2]
 
 include::ip-reference.adoc[leveloffset=+1]
-include::dashboard.adoc[leveloffset=+1]
 endif::backend-pdf[]

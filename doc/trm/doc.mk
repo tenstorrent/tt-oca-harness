@@ -43,7 +43,9 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh"
 	@if [ "$(if $(OCAH_DOC_RELEASE_ENABLED),1,0)" = "1" ]; then \
 		rm -f "$(OCAH_TRM_BUILD)/html_antora/ocah-docs/latest/revision.html" \
-			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-docs/latest/revision.html"; \
+			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-docs/latest/revision.html" \
+			"$(OCAH_TRM_BUILD)/html_antora/ocah-docs/latest/aou-records-of-changes.html" \
+			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-docs/latest/aou-records-of-changes.html"; \
 	fi
 
 .PHONY: ocah-doc-trm-html

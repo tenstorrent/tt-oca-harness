@@ -117,7 +117,7 @@ for f in "$SRC"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/"
 done
 if [ "${OCAH_DOC_PRODUCT_INCLUDE_REVISION:-1}" != "1" ]; then
-  rm -f "$MOD/ROOT/pages/revision.adoc"
+  rm -f "$MOD/ROOT/pages/revision.adoc" "$MOD/ROOT/pages/aou-records-of-changes.adoc"
 fi
 mkdir -p "$MOD/ROOT/pages/meta"
 for f in "$META"/*.adoc; do
@@ -149,17 +149,26 @@ rm -rf "$MOD/aou"
 mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
 case "$(basename "$PRODUCT")" in
 trm)
-  aou_pages="overview architecture interrupts-errors ppa-appendices"
   mkdir -p "$MOD/aou/partials/pdf"
-  for page in $aou_pages; do
+  for page in overview architecture interrupts-errors ppa-appendices; do
     cp -f "$AOU_DOC/$page.adoc" "$MOD/aou/partials/"
     # The PDF inherits book numbering instead of the standalone specification's numbers.
     sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /' "$AOU_DOC/$page.adoc" \
       >"$MOD/aou/partials/pdf/$page.adoc"
+  done
+  # The web appendices have separate pages; the PDF keeps the complete section.
+  sed '/^ifndef::release\[\]/,$d' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/ppa-appendices.adoc"
+  sed -n '/^ifndef::release\[\]/,/^endif::release\[\]/p' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/records-of-changes.adoc"
+  sed -n '/^\[\[appendix-b-referenced-documents\]\]/,$p' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/referenced-documents.adoc"
+  aou_pages="overview architecture interrupts-errors ppa-appendices records-of-changes referenced-documents"
+  for page in $aou_pages; do
     # Published fragments land beside the link to their owning topic page.
     {
       echo '++++'
-      sed -nE 's/^\[\[([^],]+)\]\]$/<span id="\1"><\/span>/p' "$AOU_DOC/$page.adoc"
+      sed -nE 's/^\[\[([^],]+)\]\]$/<span id="\1"><\/span>/p' "$MOD/aou/partials/$page.adoc"
       echo '++++'
     } >"$MOD/aou/partials/$page-anchors.adoc"
   done
@@ -167,9 +176,9 @@ trm)
   sed -i -f <(
     for page in $aou_pages; do
       sed -nE "s/^\[\[([^],]+)\]\]$/s@xref:\1\\\\[@xref:ROOT:aou-$page.adoc#\1[@g/p" \
-        "$AOU_DOC/$page.adoc"
+        "$MOD/aou/partials/$page.adoc"
     done
-  ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices}.adoc
+  ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices,records-of-changes,referenced-documents}.adoc
   ;;
 integrator)
   cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"

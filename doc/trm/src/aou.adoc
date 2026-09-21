@@ -45,8 +45,17 @@ include::aou:partial$interrupts-errors-anchors.adoc[]
 
 include::aou:partial$ppa-appendices-anchors.adoc[]
 
-* xref:aou-ppa-appendices.adoc[PPA and Appendices] -- performance, power,
-  area, revision history, and referenced documents.
+* xref:aou-ppa-appendices.adoc[PPA] -- performance, power, and area.
+
+ifndef::release[]
+include::aou:partial$records-of-changes-anchors.adoc[]
+
+* xref:aou-records-of-changes.adoc[Appendix A. Records of Changes] -- revision history.
+endif::release[]
+
+include::aou:partial$referenced-documents-anchors.adoc[]
+
+* xref:aou-referenced-documents.adoc[Appendix B. Referenced Documents] -- reference list.
 
 Integration details are in the xref:ocah-integrator-guide:ROOT:aou.adoc[Integrator Guide].
 Register programming and activation flows are in the
