@@ -143,6 +143,19 @@ jobs:
           test -d virtual_platform/tt-oca-harness-model/vp
           test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
 
+      # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
+      # back to pulling docker.io/nixos/nix and building inside it otherwise.
+      # The fallback builds the whole closure from scratch on every job and does
+      # not finish inside the budget, so install nix on the runner -- the same
+      # step and action lint.yml uses. access-tokens lets nix reach the private
+      # submodule repositories when it resolves the flake's inputs.
+      - name: Install Nix
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
       - name: Install VP build dependencies
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'native'
         run: |
@@ -392,6 +405,19 @@ jobs:
       # extra packages. gcc-riscv64-unknown-elf is what the two firmware suites
       # auto-detect; picolibc is not needed for them (they build -ffreestanding
       # -nostdlib) but keeps this list the same as the sep-vp job's.
+      # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
+      # back to pulling docker.io/nixos/nix and building inside it otherwise.
+      # The fallback builds the whole closure from scratch on every job and does
+      # not finish inside the budget, so install nix on the runner -- the same
+      # step and action lint.yml uses. access-tokens lets nix reach the private
+      # submodule repositories when it resolves the flake's inputs.
+      - name: Install Nix
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
       - name: Install VP build dependencies
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'native'
         run: |
@@ -409,11 +435,13 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         id: whisper
         run: |
-          # Read the Makefile's own pin so the cache key can never describe a
-          # different revision than the build actually uses.
-          rev="$(sed -n 's/^WHISPER_REV[[:space:]]*?\?=[[:space:]]*\([^[:space:]]*\).*/\1/p' \
-                   virtual_platform/Makefile | head -1)"
-          [ -n "$rev" ] || { echo "::error::could not read WHISPER_REV from virtual_platform/Makefile"; exit 1; }
+          # Ask make for the resolved value rather than parsing the Makefile:
+          # WHISPER_REV is read from the model's own CI workflow at expansion
+          # time, so there is no literal here to grep. Resolving it the same way
+          # the build does keeps the cache key from ever describing a different
+          # revision than the one built.
+          rev="$(make -s -C virtual_platform print-WHISPER_REV)"
+          [ -n "$rev" ] || { echo "::error::WHISPER_REV resolved empty; is the tt-oca-harness-model submodule checked out?"; exit 1; }
           echo "rev=$rev" >> "$GITHUB_OUTPUT"
           echo "WHISPER_REV=$rev" >> "$GITHUB_STEP_SUMMARY"
 

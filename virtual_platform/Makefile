@@ -483,6 +483,12 @@ check-whisper-rev:
 # =============================================================================
 # Compiler capability check (order-only prereq of every compile step)
 # =============================================================================
+## Print one variable's resolved value, for scripts that would otherwise parse
+## this file: `make -s print-WHISPER_REV`. Resolved, so a value computed at
+## expansion time reads the same here as it does in a build.
+print-%:
+	@echo "$($*)"
+
 ## Verify the compiler on PATH can build the C++ standard the VP requires.
 check-cxx:
 	@if ! echo 'int main(){return 0;}' | $(CXX) -std=c++$(CXX_STD) -x c++ - -o /dev/null 2>/dev/null; then
