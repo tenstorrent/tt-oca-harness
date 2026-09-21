@@ -238,7 +238,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         for _ in range(self.SLAVE_STOP_TIMEOUT_US):
             if slave.stops > base_stops:
                 return
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"{label}: EEPROM VIP framed no STOP on tb_i2c0_* within "
             f"{self.SLAVE_STOP_TIMEOUT_US} us of hostidle "
@@ -265,7 +265,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             if not (status & I2C_STATUS_HOSTIDLE):
                 left_idle = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not left_idle:
             cevents = await self.csr_read(f"{label}_CEVENTS_STUCK", I2C0_CONTROLLER_EVENTS)
             raise AssertionError(
@@ -277,7 +277,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             status = await self.csr_read(f"{label}_STATUS", I2C0_STATUS)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         cevents = await self.csr_read(f"{label}_CEVENTS", I2C0_CONTROLLER_EVENTS)
         raise AssertionError(
             f"{label}: DUT I2C0 host did not reach hostidle "
@@ -445,7 +445,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 rdata = await self.csr_read("I2C0_RDATA_ARA", I2C0_RDATA) & 0xFF
                 self.obs_smbus_ara = bytes([rdata])
                 break
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         else:
             raise AssertionError(f"DUT SMBus ARA: RX FIFO stayed empty (STATUS=0x{status:08x})")
 

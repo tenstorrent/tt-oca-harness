@@ -912,7 +912,7 @@ row's EXPECT sentence is worth, read the check.
 
 * EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME, at the EFUSE_SHIM_CTRL block base the generated SMC map gives, is read at its RDL reset value over the eFuse bank-control AXI-Lite port, written, read back and restored, so the shim window is proven both ways.
 * The straps pair in the supplementary region answers, and the first 4 KiB page above every allocation the sources record, still inside the window, returns DECERR.
-* REGION_SIZE shrunk so the local aperture ends exactly at the window sends the same shim read out of the chiplet instead, and REGION_SIZE zero leaves no local aperture at all: a core SMC CSR read leaves the chiplet too. Both legs are observed on the outbound boundary, not inferred from the response alone.
+* REGION_SIZE shrunk so the local aperture ends exactly at the window sends the same shim read out of the chiplet instead, observed on the outbound boundary rather than inferred from the response alone. REGION_SIZE zero is not driven: `fabric.adoc` forbids firmware from programming it, and the crossbar's address decoder assumes every rule spans at least one byte, so a zero-size aperture is outside the design's contract rather than a state to prove.
 * Golden sources: the window base and size from `hw/sys/smc/regs/gen/c/smc_addr.h` (`SMC_TOP_SMC_EXTERNAL_*`) and the mandatory / supplementary split from `hw/sys/smc/doc/memmap.adoc` ("AXI-Lite External Window"); the EFUSE_SHIM_CTRL block base, both region bases and the allocated extent from the register map generated from `smc.rdl` for the boot ROM (`hw/sys/smc/bootrom/prod/registers/smc_top_regs.h`); the EFUSE_BANK_INIT_TIME offset and reset from the PeakRDL headers of `hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl`; the straps addresses transcribed from `hw/sys/smc/bootrom/prod/doc/hardware-initialization.adoc` ("Straps and eFuses"), with `straps.rdl` fixing STRAPS_HI at STRAPS_LO + 4; the REGION_SIZE and LOCAL_BASE resets from `smc_base_config.h`. The sequence refuses to run if these sources disagree about the window.
 * Specification gap: `hw/sys/smc/doc/memmap.adoc` leaves every placement inside the window to the adopter and `hw/ip/efuse/doc/memmap.adoc` says the SHIM sits at no fixed address, so the shim base rests on the generated boot-ROM map (which describes a vendor shim layout; only the block base is taken from it, and the register inside follows `efuse_shim_ctrl.rdl`) and the straps address on the boot-ROM documentation. Neither is an SMC memory-map statement. The map passes the unallocated remainder through to the adopter external port without saying what answers it; `hw/sys/smu/doc/port_table.adoc` ties an unused port to DECERR, and the DV rule is that an address no source allocates must not be answered by a live register. `CHK-PERIPH-EXT-UNMAPPED` is graded against that rule, not against a decode boundary a document states.
 
@@ -922,7 +922,6 @@ row's EXPECT sentence is worth, read the check.
 . Over JTAG2AXI read, write, read back and restore EFUSE_BANK_INIT_TIME at the EFUSE_SHIM_CTRL base the generated SMC map gives.
 . Read STRAPS_LO and STRAPS_HI at the boot-ROM documented address, then the first page above every recorded allocation, and compare the responses.
 . Shrink REGION_SIZE so LOCAL_BASE + size ends at the window and repeat the shim read; require the transaction on the outbound boundary.
-. Write REGION_SIZE zero and repeat with a core SMC CSR; require that read to leave the chiplet as well.
 
 *Checkers*:
 
@@ -933,7 +932,6 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-PERIPH-EXT-STRAPS` |STRAPS_LO and STRAPS_HI at the boot-ROM documented supplementary-region address both answer SUCCESS
 |`CHK-PERIPH-EXT-UNMAPPED` |the first page above every allocation the sources record, still inside the window, DECERRs (DV rule; see the specification gap above)
 |`CHK-PERIPH-EXT-APERTURE` |REGION_SIZE shrunk so the local aperture ends at the window sends the same shim read out of the chiplet instead
-|`CHK-PERIPH-EXT-APERTURE-ZERO` |REGION_SIZE zero leaves no local aperture: a core SMC CSR read leaves the chiplet too
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
@@ -1421,6 +1419,7 @@ row's EXPECT sentence is worth, read the check.
 
 * The complement of <<sec-031-smu_sram_auto_init_done_test>> on the same composition: the same consumer nodes that are required to move there are required to stay idle here, and the same done output is required to assert.
 * The preloaded image must survive to first fetch, which is what the hold-off exists for; the leaf reads the enable high at the SMU boundary rather than assuming it.
+* EXPECT-SOURCE: the no-sweep and no-write legs follow from the input's stated purpose (`smu.adoc`, `cpu.adoc`). Neither document states that `smc_init_mem_done_o` asserts when the sweep is held off; that expectation is transcribed from the MEM_ZERO FSM in `smc_4core_cpu.sv`, so the done leg is a drift check on the implementation until the specification states it.
 
 *Test Procedure*:
 

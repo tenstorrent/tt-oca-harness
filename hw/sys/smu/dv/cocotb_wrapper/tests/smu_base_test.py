@@ -291,13 +291,11 @@ class smu_base_test(uvm_test):
 
     def start_clocks(self) -> None:
         dut = cocotb.top
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns").start())
         cocotb.start_soon(
-            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(
-            Clock(dut.clk_sep_wdt_i, self.cfg.sep_wdt_clk_period_ns, units="ns").start()
+            Clock(dut.clk_sep_wdt_i, self.cfg.sep_wdt_clk_period_ns, unit="ns").start()
         )
         # ESRC ring-oscillator sample clock, matching hw/sys/sep/dv's 3 ns. The
         # entropy source samples its noise lanes on this clock, so any test that
@@ -314,7 +312,7 @@ class smu_base_test(uvm_test):
                 Clock(
                     dut.entropy_rosc_sample_clk_i,
                     self.cfg.entropy_clk_period_ns,
-                    units="ns",
+                    unit="ns",
                 ).start()
             )
 

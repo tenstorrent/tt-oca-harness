@@ -10,6 +10,8 @@ reset defaults.
 
 from __future__ import annotations
 
+import cocotb
+
 from .smc_addr_map import smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
@@ -23,8 +25,21 @@ I2C_INSTANCE_READS = [
 
 class smc_i2c_multi_instance_test_seq(SmcCsrSeq):
     async def body(self) -> None:
+        sb = self.env.scoreboard
+        value_checks_before = sb.sys_axi_value_checks_seen
         for name, addr, expected in I2C_INSTANCE_READS:
             await self.csr_read(name, addr, expected=expected)
-        assert self.accesses == len(I2C_INSTANCE_READS), (
-            "I2C multi-instance precheck count mismatch"
+        self.assert_all_reachable(len(I2C_INSTANCE_READS), "I2C_MULTI_INSTANCE")
+        value_checks = sb.sys_axi_value_checks_seen - value_checks_before
+        assert value_checks == len(I2C_INSTANCE_READS), (
+            f"I2C_MULTI_INSTANCE: the scoreboard booked {value_checks} exact-value compares "
+            f"for {len(I2C_INSTANCE_READS)} reads that each carry an expected word"
+        )
+        cocotb.log.info(
+            "CHK-I2C-INSTANCE-RESET-DECODE: %d I2C instance base reads (%s) each returned "
+            "OKAY and matched its reset word in a scoreboard value compare; %d value "
+            "compares booked",
+            len(I2C_INSTANCE_READS),
+            ", ".join(f"{name}@0x{addr:08x}=0x{exp:x}" for name, addr, exp in I2C_INSTANCE_READS),
+            value_checks,
         )

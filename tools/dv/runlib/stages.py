@@ -231,7 +231,14 @@ def _target_fingerprint_extra(target_name: str, target: dict[str, Any]) -> list[
 
 
 def _build_jobs_arg(args: argparse.Namespace) -> int:
-    return int(getattr(args, "build_jobs", None) or args.sim_jobs)
+    explicit = getattr(args, "build_jobs", None)
+    if explicit:
+        return int(explicit)
+    jobs = int(args.sim_jobs)
+    # A cluster fan-out counts scheduler jobs; the build runs on the submitting host.
+    if getattr(args, "_cluster_executor", False):
+        return max(1, min(jobs, os.cpu_count() or 1))
+    return jobs
 
 
 def _bender_filelist_sources(root: Path, build: dict[str, Any]) -> list[Path]:

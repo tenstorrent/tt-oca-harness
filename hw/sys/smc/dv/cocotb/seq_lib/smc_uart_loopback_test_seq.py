@@ -30,6 +30,8 @@ LCR_DLAB = 0x80
 LCR_8N1 = 0x03  # WLS=8, no parity, 1 stop
 TX_BYTE = 0xA5
 BAUD = 115200
+# One 8N1 frame is about 87 us at 115200 baud; the bound is a ceiling only.
+CAPTURE_TIMEOUT_US = 5000
 
 
 class smc_uart_loopback_test_seq(SmcCsrSeq):
@@ -71,16 +73,21 @@ class smc_uart_loopback_test_seq(SmcCsrSeq):
             raise AssertionError(f"UART VIP bind failed: {exc}") from exc
 
         await self.csr_write("UART0_THR", UART0_THR, TX_BYTE)
-        # One 8N1 frame ~= 87 us @ 115200; allow generous margin.
-        self.captured = await vip.capture_frame(timeout_us=5000)
+        self.captured = await vip.capture_frame(timeout_us=CAPTURE_TIMEOUT_US)
         assert self.captured == TX_BYTE, (
             f"DUT UART0 TX mismatch: got 0x{self.captured:02X}, "
             f"expected 0x{TX_BYTE:02X} (divisor={self.divisor})"
         )
         cocotb.log.info(
-            "UART DUT TX OK: THR 0x%02X captured on pad12 @ %d baud",
+            "CHK-UART-TX-PAD-CAPTURE: THR write 0x%02X to UART0 came out on pad12 "
+            "as 0x%02X, decoded 8N1 at %d baud (divisor=%d, periph_clk=%dns) "
+            "within the %d us capture bound",
+            TX_BYTE,
             self.captured,
             BAUD,
+            self.divisor,
+            periph_ns,
+            CAPTURE_TIMEOUT_US,
         )
 
         await self.csr_write("UART_CG_RESTORE", CLOCK_GATE_CONTROL, cg)

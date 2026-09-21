@@ -12,8 +12,8 @@
 // internal logic -- `smu.sv` and its crossbar, and SMC, DTP and SEP in their
 // own DV packages -- and grading it here would attribute their holes to
 // SMU and bury the interface inside a denominator two orders of magnitude
-// larger. The VCS counterpart is `tgl(portsonly)` in
-// ../vcs/smu_wrapper_cov_scope.hier.
+// larger. The VCS counterpart is ../vcs/smu_wrapper_cov_scope.hier with
+// `-cm_tgl portsonly`.
 //
 // GLOB NOTE: the pattern is matched against the path as Verilator OPENED the
 // file, not the absolute path it records in the generated code, and

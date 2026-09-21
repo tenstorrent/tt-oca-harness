@@ -24,16 +24,11 @@ are named and left open.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, with_timeout
+from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, SimTimeoutError, with_timeout
 from cocotb.utils import get_sim_time
 
 from .smc_addr_map import CLOCK_GATE_CONTROL, UART_CG_EN, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-
-try:
-    from cocotb.result import SimTimeoutError
-except ImportError:  # cocotb 2.x
-    from cocotb.triggers import SimTimeoutError
 
 UART0_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", 0

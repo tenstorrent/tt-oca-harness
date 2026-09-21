@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_xvisor_remap_test(smc_base_test):
     """Hypervisor remap table (0xC001_4000) sweep."""
 
+    required_evidence = ("CHK-XVISOR-REMAP-RESET-DEFAULT",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

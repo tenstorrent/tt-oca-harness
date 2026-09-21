@@ -254,8 +254,18 @@ class smu_dtp_smc_stap_smoke_test_seq:
             sel["ptap_edges"],
             evidence="CHK-DTP-SMC-STAP-IDCODE",
         )
-        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-OEN", sel["oen_tcks"], EXPECTED_SHIFT_TCKS)
-        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH", sel["mismatch"], 0)
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-IDCODE-OEN",
+            sel["oen_tcks"],
+            EXPECTED_SHIFT_TCKS,
+            evidence="CHK-DTP-SMC-STAP-IDCODE",
+        )
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH",
+            sel["mismatch"],
+            0,
+            evidence="CHK-DTP-SMC-STAP-IDCODE",
+        )
 
         # S3: TRST restores 2-bit PTAP 3DCR (config_hold blocks TLR), then
         # re-select and IDCODE with a non-zero DR payload.
@@ -302,7 +312,12 @@ class smu_dtp_smc_stap_smoke_test_seq:
             f"ptap_edges={byp['ptap_edges']} mismatch={byp['mismatch']} "
             f"oen_tcks={byp['oen_tcks']} payload=0x{PAYLOAD:08x}"
         )
-        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-BFM", byp["smc_edges"], byp["ptap_edges"])
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-IDCODE-BFM",
+            byp["smc_edges"],
+            byp["ptap_edges"],
+            evidence="CHK-DTP-SMC-STAP-IDCODE",
+        )
         sb.expect_eq("CHK-DTP-SMC-STAP-PAYLOAD-OEN", byp["oen_tcks"], EXPECTED_SHIFT_TCKS)
         sb.expect_eq("CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH", byp["mismatch"], 0)
 

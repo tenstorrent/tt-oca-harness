@@ -16,27 +16,92 @@ source path; the two are kept in step by hand.
     -tree smu_wrapper_uvm_top.u_dut.u_smu                the SMU block
     -tree smu_wrapper_uvm_top.u_dut.u_smc_ip_integration SMC and its adopter-side collateral
     -tree smu_wrapper_uvm_top.u_dut.u_sep_ip_integration SEP and its adopter-side collateral
+    -tree smu_wrapper_uvm_top.u_axi_out_bridge           bench-side AXI egress glue: the struct
+    -tree smu_wrapper_uvm_top.u_axi_out_cut               bridge, register cut and interface that
+    -tree smu_wrapper_uvm_top.u_axi_out_if                carry the DUT's outbound port to the
+                                                          bench slave; testbench code, not DUT
+    begin assert / -tree axi_pkg / end                    package-level assertions of the vendored
+                                                          AXI package
 
 The wrapper is graded on its interface. Everything it instantiates is internal
 logic: SMC, DTP and SEP are graded in their own DV packages, and the SMU
 block's own nets are the wiring between them. Grading any of it here would
 attribute their holes to SMU and bury the interface inside a denominator two
 orders of magnitude larger. What remains is `hw/top/smu_wrapper.sv` itself and the
-`cov/sv` functional-coverage modules under the TB top.
+`cov/sv` functional-coverage modules under the TB top. urg's `hierarchy.txt`
+for a finished run is the check: it lists `u_dut` and the ten `u_smu_*_fcov`
+instances and nothing under `u_dut`.
 
 ## Toggle on the ports only
 
-    begin tgl(portsonly)
-      +tree smu_wrapper_uvm_top.u_dut 0
-    end
+`-cm_tgl portsonly` in `[coverage.vcs]` keeps toggle on module ports, and with
+the subtrees above dropped the ports that remain are `smu_wrapper`'s. urg then
+reports two toggle figures for the module, and they answer different
+questions:
 
-Toggle is collected on the ports of `smu_wrapper` and nothing else: `portsonly`
-is urg's per-port view, in which a port has toggled when any of its bits has.
-It is the same figure `../../interface_toggle.py` derives from a Verilator
-database, where the per-bit points have to be folded back to the port by
-hand. `-cm_common_hier` extends the scope to assertion coverage, which is what
-carries the `cover property` points of the functional-coverage modules, so
-`assert` stays in the `-cm` list.
+* `Port Bits`: every bit of every port, each in both directions. This is the
+  number urg puts in its `TOGGLE` column and in the dashboard score.
+* `Ports`: urg's per-field view. A struct port is split into its fields and
+  bit slices, and a row counts covered only when every bit of it toggled in
+  both directions.
 
-No public CI job runs the VCS flow for this DUT; the scope is written to
-mirror the Verilator one and has not been measured.
+The interface figure in `SMU_COVERAGE_POLICY.adoc` is a third one: a port of
+`smu_wrapper` has toggled when any bit of it moved in either direction, so a
+256-bit struct port is one interface. `../../interface_toggle.py` derives it
+from the urg text report (`urg -dir merged.vdb -report <dir> -format text
+-metric tgl -show tests`, then pass its `modinfo.txt`) exactly as it does from
+a Verilator database, so the two simulators are compared on one definition.
+
+A `begin tgl(portsonly) ... end` block in the hierarchy file does not do this:
+VCS keeps the excluded subtrees' toggle points when the metric block is
+present, so the option is given on the command line instead.
+
+`-cm_noconst` and `-cm_seqnoconst` drop nets a constant drives from the toggle
+population, so a port the wrapper ties off is not a hole; the DTP scope sets
+the same two options.
+
+## Port toggle exclusions
+
+`smu_wrapper.sv` is wiring: three instances, no assign, no process, no
+generate. Every port is a point-to-point connection to a subsystem port, so
+the wrapper's toggle is graded on urg's per-field `Ports` view of its own
+ports, with the fields below left out through
+`smu_wrapper_toggle_exclusions.el` (`-elfile`, named by the policy's
+`[[native_files]]`). `gen_smu_wrapper_toggle_exclusions.py` writes that file
+from urg's `-dump full_exclusions tgl` template of the merged database, so the
+module checksum and every field signature come from urg, and `--check` tells
+whether the committed file is stale.
+
+| Class | Fields | Why they are not the wrapper's to toggle |
+|---|---|---|
+| `AXI-USER` | `aw/ar/w/r/b.user` on both crossbar ports | the SMU neither reads nor writes the user sideband |
+| `AXI-DATA` | `w.data`, `w.strb`, `r.data` on both crossbar ports | the data path passes through untouched; address and id stay graded because the crossbar decodes and remaps them |
+| `ATB-PAYLOAD` | `telemetry_atdata_i`, `telemetry_atid_i` | consumed by the SMC telemetry receivers, graded there |
+| `DFT` | `test_en_i`, `scan_rst_ni` | held at their functional value in simulation |
+| `RTL-CONSTANT` | `lcc_demote_state_*_o`, `lsio_interface_select_o` | driven from a constant inside the SMU |
+| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_global_base_o`, `sep_region_size_o`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
+| `PARTIAL` | `timer_count_o[63:20]` | bit k first rises after 2^k reference clocks |
+
+Everything else on the port list is graded per field, both directions, and a
+field that stays uncovered is a stimulus gap for a leaf on this bench.
+
+## Reading a finished run
+
+```
+python3 tools/dv/run_dv.py --dut smu --tool vcs --items hosted --cov --rebuild
+python3 hw/sys/smu/dv/cov/interface_toggle.py <run dir>/cov/report/modinfo.txt \
+    --module hw/top/smu_wrapper.sv
+```
+
+The first command prints the runner's families and grades them against
+`smu_wrapper_coverage_policy.toml`, which floors `assertion` at 80 percent:
+urg reads the cov/sv `cover property` points under its assert metric together
+with the `assert property` statements left in scope, and
+`cov/report/asserts.txt` splits the two. The report's `Toggle Coverage for Module : smu_wrapper` section carries the
+graded figure in its `Ports` row, after the exclusions above; the runner's
+own `toggle` column is the `Port Bits` row of the same section. The second
+command folds the `Port Details` rows into the per-port connectivity figure,
+a port counting once any bit of it moved; `--list` names the ports that never
+did.
+
+No public CI job runs the VCS flow for this DUT.

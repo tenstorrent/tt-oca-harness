@@ -100,7 +100,9 @@ SMC_EFUSE_SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 
 #: SMC CPU_CTRL scratch0, SMC-local. A benign always-mapped fabric target; the
 #: point is whether the bridge launches, not what it returns.
-FABRIC_PROBE_ADDR = 0xC003_9080
+FABRIC_PROBE_ADDR = smc_indexed_addr(
+    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
+)  # SMC CPU_CTRL scratch0
 
 SEP_SPARE_PATTERN = 0x5A5A_A5A5
 SMC_SPARE_PATTERN = 0x1234_ABCD
