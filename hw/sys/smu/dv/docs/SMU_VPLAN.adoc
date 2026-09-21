@@ -1360,7 +1360,7 @@ check.
 
 *Test Coverage*:
 
-* Measured against `hw/sys/smu/doc/port_table.adoc`: the `rst_cold_ni` row states "Asynchronous assertion, synchronous deassertion", and the `rst_cold_stable_ref_clk_no` / `rst_primary_ref_clk_no` / `rst_primary_smc_clk_no` rows name the domain each output is synchronised to.
+* Measured against `hw/sys/smu/doc/port_table.adoc`: deassertion of `rst_cold_ni` is synchronous to `clk_ref_i`, and the `rst_cold_stable_ref_clk_no` / `rst_primary_ref_clk_no` / `rst_primary_smc_clk_no` rows name the domain each output is synchronised to.
 * `rst_cold_ni` is released at a random phase that lies on no clock edge, and the release is retried until it does; the deassertion of the reference-domain outputs must land on a `clk_ref_i` rising edge and the SMC-domain primary reset on a `clk_smu_i` rising edge, none at the release instant.
 * Only alignment is asserted: the synchroniser depth is unstated, so the cycle count is logged, not compared.
 * `obs_smc_rst_n_o` and `obs_dtp_rst_n_o` are two taps on one net -- `smu.sv` wires the DTP's `rst_n_i` to the SMC primary reset -- so their agreement is logged as a composition fact and is not a checker.

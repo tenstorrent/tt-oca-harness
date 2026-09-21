@@ -1037,7 +1037,7 @@ Connect `clk_smu_i` to the primary system clock and `clk_ref_i` to a stable
 reference source. The DTP operates on TCK for JTAG logic and on the system clock
 for cross-trigger and AXI bridges. Reset sequencing follows the SMC flow; the
 DTP JTAG state machine uses `pwr_on_rst_ni`, which the SMU connects to
-`rst_cold_ni`. The SMU internally connects DTP debug paths to the SMC and
+the SMC `powergood_stable` output. The SMU internally connects DTP debug paths to the SMC and
 optionally instantiates the SEP when the `SEP` parameter is set to 1. The full
 interconnection details are described in <<smc-dtp-interconnection>> and
 <<sep-conditional-wiring>> below.
@@ -1340,7 +1340,7 @@ wired internally within the SMU.
 
 |`clk_i` |input |1 |SMU `clk_smu_i` (shared with SMC `clk_smc_i`)
 |`rst_n_i` |input |1 |SMC `rst_primary_smc_clk_no`
-|`pwr_on_rst_ni` |input |1 |SMU `rst_cold_ni` (power-on reset for JTAG logic)
+|`pwr_on_rst_ni` |input |1 |SMC `powergood_stable_o` (power-on reset for JTAG logic)
 |===
 
 ==== Primary JTAG TAP Interface
