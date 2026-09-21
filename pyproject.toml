@@ -134,6 +134,10 @@ exclude = '''(?x)^(
 [tool.codespell]
 # - regs/gen is generated from the .rdl sources next to it; a typo fix there
 #   is reverted by the next `regen-regs` run, so the real fix belongs upstream.
+# - tt-oca-harness-model is another repo, vendored as a submodule, so a finding
+#   in it is fixable only by a pull request there -- the same reasoning as
+#   tools/tt-oca-manifest above. virtual_platform's downloads/ and local*/ hold
+#   extracted SystemC, Boost and CCI sources, which are build output.
 # - chipyard_generated_files/crossbars/ot_pkg mirror flows/lint/verible.mk's
 #   own excludes: generated or OpenTitan-origin RTL this repo doesn't hand-edit.
 # - integration collateral is a symlink index over sources covered here or
@@ -148,6 +152,8 @@ exclude = '''(?x)^(
 #   by a PR there, so a finding in it cannot gate this repo.
 skip = """\
 vendor,nonfree,.git,*/tools/tt-oca-manifest,\
+*/virtual_platform/tt-oca-harness-model,\
+*/virtual_platform/downloads,*/virtual_platform/local,*/virtual_platform/local-ctr,\
 */integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
 */dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
