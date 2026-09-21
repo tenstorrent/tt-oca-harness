@@ -63,6 +63,8 @@ default, and the runner sets the first three):
 | `OCAH_SIM_BUILD_DIR` | exported sim build directory, used to locate the elaborated model |
 | `SMC_DV_RUN_LOGDIR` | where a sequence writes its coverage artefact |
 | `COCOTB_RESULTS_FILE` | cocotb `results.xml` path; PASS/FAIL classification reads it |
+| `RISCV_TOOLCHAIN` | directory of a picolibc-enabled RISC-V GCC; when unset the `c_compile` stage builds the `fw` and `dual` images through `scripts/docker-run.sh` |
+| `OCAH_TOOLCHAIN_ROOTFS` | a toolchain rootfs extracted from the `ocah-toolchain` image; when set and `bwrap` is present, `scripts/docker-run.sh` runs the firmware builds in a bubblewrap sandbox instead of a container (`scripts/docker.md`) |
 
 The SV-UVM loop knobs (`SMC_TEST_LOOPS`, `SMC_<TEST>_LOOPS`) are **plusargs**,
 not environment variables — see the `--framework uvm` section.
@@ -123,6 +125,14 @@ picolibc-enabled RISC-V GCC (or `scripts/docker-run.sh`) must be available: the
 ```bash
 ./scripts/docker-run.sh run-here make -f ocah.mk ocah-dv-fw-tests TARGET=smc
 ```
+
+On a host where `scripts/docker-run.sh` cannot build or start the container
+(no container engine, or a nix-less host that cannot build the image), extract
+the toolchain rootfs once and point `OCAH_TOOLCHAIN_ROOTFS` at it; the script
+then runs the same builds under `bwrap`. The extraction commands and the
+sandbox's limits are in `scripts/docker.md` ("bubblewrap"). A host RISC-V GCC
+with picolibc works too: set `RISCV_TOOLCHAIN` to its directory and no
+container or rootfs is needed.
 
 Hosted GitHub nightly and weekly (`.github/workflows/regress.yml`) run
 `--items hosted` with three seeds per leaf instead, because those runners have

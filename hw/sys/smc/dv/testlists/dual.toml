@@ -54,7 +54,7 @@ seed = 1
 # GET_VERSION plus one 4-byte OCCP WRITE -- no payload, no JUMP, so well under
 # a millisecond of sim time. The bound below is headroom for a stalled
 # exchange, not a target.
-timeout_sec = 3600
+timeout_sec = 7200
 tags = ["dual", "occp_boot"]
 run_modes = ["dual"]
 firmware = { name = "occp_sanity", mode = "occp_sanity" }

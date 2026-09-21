@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_gpio_ctrl_full_sweep_test(smc_base_test):
     """P1 coverage-gap depth: GPIO_CTRL 46-entry full sweep."""
 
+    required_evidence = ("CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

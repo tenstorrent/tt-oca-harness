@@ -18,6 +18,9 @@ class smc_spi_pad_bfm_test(smc_base_test):
     Bare smc has no SPI host IP; this is not a DUT-controller JEDEC proof.
     """
 
+    required_evidence = ("CHK-SPI-PAD-JEDEC-PRELOAD",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

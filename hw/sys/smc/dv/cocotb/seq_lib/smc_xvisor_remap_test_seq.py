@@ -13,6 +13,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import cocotb
+
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
@@ -50,10 +52,24 @@ class smc_xvisor_remap_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         # XVISOR_REMAP 0..7 (ATTRS-only per entry). Asserting reset=0 verifies
         # per-entry decode AND the spec-defined reset content, not merely OKAY.
+        observed = []
         for i, addr in enumerate(XVISOR_REMAP_ATTRS_ADDRS):
-            await self.csr_read(
-                f"XVISOR_REMAP_{i}_ATTRS",
-                addr,
-                expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+            observed.append(
+                await self.csr_read(
+                    f"XVISOR_REMAP_{i}_ATTRS",
+                    addr,
+                    expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+                    length=8,
+                )
             )
         assert self.accesses == len(XVISOR_REMAP_ATTRS_ADDRS), "XVISOR_REMAP sweep count mismatch"
+        cocotb.log.info(
+            "CHK-XVISOR-REMAP-RESET-DEFAULT: XVISOR_REMAP_0..%d REGION_ATTRS at "
+            "%#x..%#x read %s over SEP_IN AXI, each an OKAY scoreboard value "
+            "compare against the RDL reset %#x",
+            len(XVISOR_REMAP_ATTRS_ADDRS) - 1,
+            XVISOR_REMAP_ATTRS_ADDRS[0],
+            XVISOR_REMAP_ATTRS_ADDRS[-1],
+            [f"{value:#x}" for value in observed],
+            OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+        )

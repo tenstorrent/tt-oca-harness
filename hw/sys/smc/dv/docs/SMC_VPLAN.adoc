@@ -55,7 +55,7 @@ is verified rather than what was once intended.
 * Sequences are `<testcase>_seq`, in `cocotb/seq_lib/`.
 * Evidence tokens are `CHK-<AREA>-<CLAIM>`, upper kebab case.
 
-=== Open-Source BFM Policy
+=== BFM Policy
 
 Shared and vendored components are used where they exist. A local model is
 written only where none fits, and every one carries a README beside it
@@ -64,6 +64,134 @@ naming what it replaces and why -- see `dv/models/README.md`.
 Bus terminators answer a port that a real integration fills with the
 adopter's CSRs. They are declared as terminators, never presented as
 verifying the block behind the port.
+
+=== Verification Scope
+
+This plan claims SMC behaviour at the `smc_wrapper` boundary and over the
+SEP_IN AXI and JTAG-AXI ports, with the DUT elaborated at the open-source
+integration's parameter defaults (four CPU cores, 256 external interrupts,
+32 mailbox pairs, the 1 KiB eFuse map). The behaviours below sit behind
+that boundary or belong to another level's plan; a green SMC regression says
+nothing about them, and Known Limitations records the disposition of each.
+
+[cols="1,2",options="header",]
+|===
+|Behaviour |Why it is out of scope here
+|The adopter's PLL and PVT blocks |Placeholder RTL in this harness; there is no design behind the register interface
+|Everything behind the mandatory external AXI-Lite window (per-pad controls, clock-observation and pad-bias blocks) |Adopter implementation; this plan proves only the decode into the window
+|The DTP CSR window and the raw OTP window |No responder on `smc_wrapper`; the boundary is left idle rather than answered by a placeholder
+|The cluster PLIC register file from the external port |The aperture accepts no writes from SEP_IN; PLIC programming is proven only by the firmware leaves that run on the CPU
+|I3C CCC and IBI scenarios needing device-address-table state |No DAT/DCT RAM in `tb_top`; the I3C leaf is decode-only
+|The eFuse macro and the SEP lifecycle policy behind `lc_state_i` |An `efuse_bank_model` answers the sense; the lifecycle policy is SEP-level verification and the bench drives the resolved state
+|The SMU integration of the SMC (`smu_wrapper` straps, cool-reset pin, boundary I/O) |The SMU plan (`hw/sys/smu/dv/docs/SMU_VPLAN.adoc`)
+|===
+
+[[smc-scope-traceability-candidate]]
+=== Scope and Traceability
+
+This section is the requirement-to-test-to-coverage matrix. Live group
+membership is `hw/sys/smc/dv/testlists/all.toml` and the lists it includes;
+`hw/sys/smc/dv/docs/SMC_VPLAN.adoc` states what each testcase verifies. This
+file is the reconciliation between the two — which of those testcases count as
+feature credit, and which are bring-up or decode-only names that must not be
+counted twice.
+
+[cols=",",options="header",]
+|===
+|Field |Value
+|DUT |`--dut smc` → `smc_wrapper` under `smc_uvm_top`
+|Spec / plan |`hw/sys/smc/dv/docs/SMC_VPLAN.adoc` plus the groups
+`hw/sys/smc/dv/testlists/all.toml` resolves
+|Coverage intent |`hw/sys/smc/dv/docs/SMC_FCOV.adoc` (Python counters; no
+Verilator covergroup)
+|Checker |`SmcScoreboard` non-vacuous SAMPLE/AXI/VIP counts + `results.xml`
+|CI |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly `hosted`
+|===
+
+[[smc-live-groups]]
+==== Live groups versus credit
+
+Executable membership is resolved from the testlists; the groups and their
+`expected_count` guards are in `hw/sys/smc/dv/testlists/all.toml`:
+
+[cols="2,3",options="header",]
+|===
+|Group |Role
+|`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
+|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the seventeen leaves that need the RISC-V toolchain (fourteen `fw` leaves, three dual-target leaves that run a ROM or firmware image)
+|`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
+|`all` |The package regression, `hosted` + `fw` + `dual`; `holdout.toml` defines the leaves outside it and <<smc-held-out-testcases>> records each
+|===
+
+`smoke` is the three-leaf PR gate (`smc_canonical_smoke_test`,
+`smc_cold_reset_test`, `smc_register_sanity_test`). `smc_i3c_to_fabric_test`
+is in `hosted` but not `smoke`, and receives no feature credit.
+
+[[smc-credit-rules]]
+==== Credit rules
+
+* Feature credit requires active CSR/fabric/pin stimulus and a
+  non-vacuous `SmcScoreboard` count. SAMPLE-only bring-up stays in
+  `hosted` (`smc_cold_reset_test` is also in `smoke`) and is not a
+  requirement row.
+* `smc_i3c_to_fabric_test` is HCI_VERSION decode (`proxy=True`). It
+  remains runnable by name. It is not
+  stub-signature SLVERR, and it is not I3C protocol credit.
+* Names in <<smc-deferred-disposition>>, adopter PLL/PVT OKAY+0 wraps, and
+  TB-glue DFD tokens are OUT.
+* UART loopback / ROM firmware stay on their existing intake issues.
+  They are not re-scoped here.
+* `--dut smc` already instantiates `smc_wrapper`. There is no separate
+  `wrapper.toml` and no test named `main_wrapper` or `main_wrapper_por`.
+  Bring-up / POR successors are `smc_canonical_smoke_test` and the reset
+  cluster (`smc_cold_reset_test`, `smc_powergood_glitch_test`,
+  `smc_multi_reset_csr_persistence_test`).
+
+[[smc-traceability-matrix]]
+==== Matrix (feature-credit subset)
+
+Requirement IDs are the VPLAN TC rows or the canonical scenario those
+tests actually run. Coverage bins are the `hw/sys/smc/dv/docs/SMC_FCOV.adoc`
+families the scoreboard can hit; Verilator does not close SV covergroups.
+
+The Groups column is resolved membership, not intent. Every feature-credit row
+below is in `all` and `hosted`, and every one but `smc_cpu_to_sep_axi_test` is
+the column names the feature groups that also carry it, so a
+reviewer can run one feature without the whole regression.
+
+[cols="2,3,2,2,3,1",options="header",]
+|===
+|Requirement |Test |Feature groups besides `all` and its class |Coverage intent |Checker evidence |Credit
+|Reset / power-good bring-up |`smc_canonical_smoke_test` |combined, smoke |reset + combined SAMPLE |Scoreboard SAMPLE counts; `results.xml` |YES
+|SMC misc / scratch / chip-config CSR |`smc_register_sanity_test` |smoke |axil_csr |AXI readback vs expected; non-vacuous AXI |YES
+|Default / RO register read |`smc_default_reg_rd_test` |-- |axil_csr |AXI RO data match |YES
+|Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |-- |mailbox |IRQ observe + mailbox CSR |YES
+|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |-- |fabric |AXI wr/rd on input+output windows |YES
+|Function-level reset |`smc_flr_sanity_test` |-- |reset |FLR then CSR recover |YES
+|I2C master/target active |`smc_i2c_master_target_test` |i2c |i2c (active, not SAMPLE-only) |I2C agent + scoreboard |YES
+|iJTAG / TAP-adjacent |`smc_ijtag_basic_test` |-- |jtag |JTAG VIP / CSR precheck |YES
+|CPU-control / SEP_IN path |`smc_cpu_to_sep_axi_test` |-- |cpu_traffic |AXI to CPU_CTRL window |YES
+|eFuse / OTP clock observe |`smc_efuse_otp_clock_test` |-- |efuse_otp |Clock/CSR observe (not burn) |YES
+|GPIO IRQ active |`smc_gpio_irq_active_test` |gpio |gpio + interrupt |Active GPIO IRQ, not SAMPLE-only |YES
+|AVSBus / sideband smoke |`smc_sideband_protocol_smoke_test` |-- |avsbus |Sideband CSR/status |YES
+|UART/SPI/log-engine CSR |`smc_uart_spi_log_engine_test` |-- |uart_spi (CSR; not loopback) |CSR window; protocol loopback is a P2 intake row |YES
+|Zeroer payload clear |`smc_zeroer_dma_timeout_test` |-- |zeroer datapath |Output-fabric responder readback of the zeroed region; CTRL_STATUS follows the zeroer (no timeout path is exercised) |YES
+|Outbound filter / remap |`smc_output_filter_remap_security_test` |-- |fabric filter |AXI filter/remap |YES
+|ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |-- |dbs_dfd_ecam_ecc |CSR sanity; fault-inject is deferred |YES
+|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |-- |reset |Scratch persist across reset classes |YES
+|I3C window decode |`smc_i3c_to_fabric_test` |-- |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
+|PLL/PVT clock config |none; `smc_pll_pvt_clock_config_test` is dispositioned in <<smc-deferred-disposition>> |none |macro handshake |OKAY+0 wrap |NO
+|I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in <<smc-deferred-disposition>> |none |— |child I3C TB |NO
+|DTP CSR on smc_wrapper |idle port; no terminator |none — no terminator |— |do not add a placeholder slave for credit |NO
+|UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |protocol / firmware |UART/ROM intake |NO
+|===
+
+The SAMPLE-only observe names are (`smc_cold_reset_test`,
+`smc_clk_running_test`, `smc_gpio_observe_test`, `smc_i2c_cg_sanity_test`,
+`smc_irq_observe_test`, `smc_mailbox_idle_test`,
+`smc_input_fabric_axi_wr_rd_test`, `smc_avsbus_sanity_test`,
+`smc_dbs_idle_test`). Those stay category aliases. They are not extra
+feature rows.
 
 === Scenario-Expanded Test Summary
 
@@ -248,7 +376,7 @@ verifying the block behind the port.
 |`smc_external_window_pad_ctrl_decode_test` |The six mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL 46-entry full sweep.
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
-|`smc_gpio_intf_full_sweep_test` |GPIO_INTF full 68-entry sweep.
+|`smc_gpio_intf_full_sweep_test` |GPIO_INTF full 65-entry sweep.
 |`smc_gpio_irq_active_test` |Run GPIO CSR plus IRQ-control decode precheck.
 |`smc_gpio_irq_type_matrix_test` |Drive GPIO0 for both level polarities and check the IRQ aggregate.
 |`smc_gpio_multi_sample_test` |Run the SMC OSS GPIO multi-sample observability scenario.
@@ -692,11 +820,11 @@ Drive `smc_register_boundary_depth_test_seq`. Each checker below is a named comp
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-CSR-BOUNDARY-SWEEP` |First/last registers of the SCRATCH_COLD and SCRATCH_COLD_WARM windows and the first register of CHIP_CONFIG read their RDL value over SEP_IN AXI; the last CHIP_CONFIG register, LC_STATE (`sw = r; hw = w`, the lifecycle value the SEP drives), is derived from the window size, answers OKAY and is reported, not compared; the last register of each scratch window reads back its written pattern and then its saved value; all 16 accesses were checked by the scoreboard. Fails on a read mismatch, a non-OKAY response, a wrong access count, or traffic that never reached the scoreboard
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CSR-BOUNDARY-SWEEP` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-009-smc_register_sanity_test]]
@@ -724,6 +852,7 @@ Drive `smc_register_sanity_test_seq`. Each checker below is a named compare the 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-CSR-SCRATCH-RW-RESTORE` |Each of the 3 scratch CSRs reads its generated RDL reset, reads back its written pattern, and reads back the reset again after the restore write, over 15 SEP_IN AXI accesses (cocotb shape). Fails on any readback mismatch, a non-OKAY response, a missing catalog reset constant, or a wrong access count
 |`CHK-CSR-IDLE-VALUE` |SV-UVM shape only (`--framework uvm`): idle read of each scratch register is zero after warm-reset release
 |`CHK-CSR-RANDOM-READBACK` |SV-UVM shape only (`--framework uvm`): each seeded random pattern reads back on the same register
 |`CHK-CSR-READBACK` |SV-UVM shape only (`--framework uvm`): directed write pattern reads back on the same register
@@ -734,7 +863,7 @@ Drive `smc_register_sanity_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-CSR-IDLE-VALUE`, `CHK-CSR-RANDOM-READBACK`, `CHK-CSR-READBACK`, `CHK-CSR-RESP`, `CHK-CSR-RESTORE`, `CHK-FUSE-SENSE-DONE` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`, `smoke`.
+*Pass Criteria*: `CHK-CSR-SCRATCH-RW-RESTORE` holds after its compares on the cocotb shape; on the SV-UVM shape `CHK-CSR-IDLE-VALUE`, `CHK-CSR-RANDOM-READBACK`, `CHK-CSR-READBACK`, `CHK-CSR-RESP`, `CHK-CSR-RESTORE`, `CHK-FUSE-SENSE-DONE` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`, `smoke`.
 '''''
 
 ==== POWER
@@ -895,11 +1024,11 @@ Drive `smc_octs_dual_sync_test_seq`. Each checker below is a named compare the D
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-OCTS-DUAL-SYNC` |As SECONDARY, a pad-injected sync then 2 credits sets STATUS.MODE and STATUS.RUNNING and lands COUNT in [PRESET+CREDIT_VAL, PRESET+2*CREDIT_VAL+16]; as PRIMARY, STATUS.MODE clears, the DUT drives >= 1 sync_load and >= 2 cnt_credit rising edges within 256 clk_smc_i, and TIMER_START reloads COUNT into [PRESET, PRESET + read slack] after which it advances 1..1024. Fails on a wrong MODE, RUNNING not set, COUNT outside the bound, missing pad edges, a COUNT that does not drop on TIMER_START, or one that does not advance
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-OCTS-DUAL-SYNC` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-015-smc_octs_sanity_test]]
@@ -1335,11 +1464,11 @@ Drive `smc_filter_field_sweep_test_seq`. Each checker below is a named compare t
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-FILTER-FIELD-RESET-SWEEP` |Every FILTER_CONFIG, START_ADDR and END_ADDR read of inbound and outbound filter entries 0-3 (24 64-bit reads) returned OKAY and matched its RDL reset word in a scoreboard value compare, and the scoreboard checked every access and booked exactly 24 value compares; a non-OKAY response, a mismatched field word, traffic that never reached the scoreboard or a compare that never ran fails it
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-FILTER-FIELD-RESET-SWEEP` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -1524,7 +1653,7 @@ Drive `smc_output_fabric_slverr_inject_test_seq`. Each checker below is a named 
 
 *Test Procedure*:
 
-Drive `smc_output_fabric_wr_rd_responder_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive the JTAG-AXI write and read from the test module (`smc_output_fabric_wr_rd_responder_test.py`; this leaf has no sequence of its own). Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -1532,11 +1661,11 @@ Drive `smc_output_fabric_wr_rd_responder_test_seq`. Each checker below is a name
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-OUTPUT-FABRIC-WR-RD-GOLDEN` |A JTAG-AXI 64-bit write to 0x0200_0000 followed by a read through the output fabric advances the SYS_OUT responder write counter by exactly 1 and the read counter by at least 1, leaves last_addr/last_wdata equal to the write, and the read data matches the scoreboard memory-model golden (updates >= 1, checks >= 1). Fails on an extra or missing responder write beat, a missing read beat, a stale last_addr/last_wdata, an X/Z observability counter, a golden mismatch, or a read the scoreboard never checked
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-OUTPUT-FABRIC-WR-RD-GOLDEN` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-034-smc_output_filter_remap_security_test]]
@@ -1673,11 +1802,11 @@ Drive `smc_xvisor_remap_test_seq`. Each checker below is a named compare the DUT
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-XVISOR-REMAP-RESET-DEFAULT` |All eight `SMC_XVISOR_REMAP_<n>` REGION_ATTRS 64-bit reads over SEP_IN AXI return OKAY and the full RDL reset word as scoreboard value compares; a non-OKAY response, a non-reset value or a short sweep fails
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-XVISOR-REMAP-RESET-DEFAULT` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -2342,11 +2471,11 @@ Drive `smc_flr_sanity_test_seq`. Each checker below is a named compare the DUT c
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-FLR-COOL-CSR-RECOVERY` |A `rst_cool_ni` pulse with `cfg_flr_pf_active_i` inactive drives the primary resets low and back within their bounds, `SCRATCH_COLD_WARM_0` then reads its reset value in place of the pre-cool pattern and takes a fresh write/read-back; an unobserved reset, a surviving pattern or a dead CSR path fails
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-FLR-COOL-CSR-RECOVERY` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-046-smc_gpio_boot_stall_test]]
@@ -3899,11 +4028,11 @@ Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-OCCP-SECURE-ERROR-RECOVERY` |EFUSE_MAP word0 matches the preload marker and CHIP_CONFIG_VERSION_LO its constant; the injected program failure reaches PROGRAM_DONE within the poll bound with word0 unchanged; the recovery burn reaches PROGRAM_DONE and sticky-ORs bit0 of word0. Fails on any mismatch, a poll that expires, or a non-OKAY SEP_IN response
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-OCCP-SECURE-ERROR-RECOVERY` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== JTAG
@@ -4718,11 +4847,11 @@ Drive `smc_gpio_ctrl_full_sweep_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP` |Every bootrom EXTERNAL_MANDATORY GPIO_CTRL window address answered with an AXI error response (SLVERR/DECERR) and an all-zero data word, and the scoreboard checked every access the sequence issued; an OKAY response, a non-zero word (a neighbouring register or stale bus data) or traffic that never reached the scoreboard fails it
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -4769,7 +4898,7 @@ Drive `smc_gpio_filter_access_sep_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: GPIO_INTF full 68-entry sweep.
+*Objective*: GPIO_INTF full 65-entry sweep.
 
 *Test Coverage*:
 
@@ -4786,11 +4915,11 @@ Drive `smc_gpio_intf_full_sweep_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-GPIO-INTF-DATA-CTRL-SWEEP` |Every GPIO_INTF DATA_CTRL entry returned OKAY and a reset word of exactly 0x0 or exactly the lsio_enable bit (0x0200_0000), and the scoreboard checked every access; a non-OKAY response, any other word or traffic that never reached the scoreboard fails it
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-GPIO-INTF-DATA-CTRL-SWEEP` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -4855,11 +4984,11 @@ Drive `smc_gpio_irq_type_matrix_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-GPIO-IRQ-TYPE-POLARITY` |With GPIO0 programmed active-high level, `tb_gpio_irq_any` is 0/1/0 for pad 0/1/0; reprogrammed active-low level, it is 0/1/0 for pad 1/0/1, each sampled after the settle; an aggregate that ignores the polarity or fails to clear fails
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`, `gpio`.
+*Pass Criteria*: `CHK-GPIO-IRQ-TYPE-POLARITY` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
 [[sec-107-smc_gpio_multi_sample_test]]
@@ -4953,11 +5082,11 @@ Drive `smc_gpio_output_driveback_test_seq`. Each checker below is a named compar
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-GPIO-OUTPUT-DRIVEBACK` |Programming GPIO wrap 0 DATA_CTRL as TX raises exactly one new `core2pad_en_o` bit, that pad's `core2pad_o` follows core2pad 1 then 0 with the enable held, and the enable releases after interface disable; all 3 CSR writes reach the scoreboard. Fails on no new enable bit, more than one pad touched, a pad value that does not track the register, an enable that drops early or never releases, or a CSR write the scoreboard never saw
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`, `gpio`.
+*Pass Criteria*: `CHK-GPIO-OUTPUT-DRIVEBACK` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
 [[sec-110-smc_gpio_p0_int_test]]
@@ -5561,11 +5690,11 @@ Drive `smc_i2c_multi_instance_test_seq`. Each checker below is a named compare t
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-I2C-INSTANCE-RESET-DECODE` |The I2C_1 and I2C_2 INTR_STATE bases and the I2C_CTRL base each returned OKAY and matched the reset word 0x0 in a scoreboard value compare, with the scoreboard checking all 3 accesses and booking exactly 3 value compares; a non-OKAY response, a non-zero word or a compare that never ran fails it
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-I2C-INSTANCE-RESET-DECODE` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -5958,11 +6087,11 @@ Drive `smc_smbus_alert_ara_test_seq`. Each checker below is a named compare the 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-SMBUS-ALERT-ARA` |SMBALERT# (pad39) idles high, goes low after SMBUS_CTRL.SMBALERT, the VIP host's ARA read at 0x0C returns the alerting address byte 0x20 (0x10 << 1), and hwclr returns the pad high after the address match. Fails on a pad that idles low, never asserts within the poll bound, an ARA reply other than 0x20, or a pad still low after the ARA
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-SMBUS-ALERT-ARA` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -6343,11 +6472,11 @@ Drive `smc_mailbox_inbound_test_seq`. Each checker below is a named compare the 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-MAILBOX-INBOUND-RESET-SURFACE` |With the mailbox clock gate enabled, inbound mailbox 0 STATUS read 0x1 (FIFO empty), ERROR_FLAGS read 0x0 and IRQEN read 0x0, each in a scoreboard value compare, with all 6 accesses checked by the scoreboard and exactly 3 value compares booked; a non-OKAY response, a mismatched word or a compare that never ran fails it
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-MAILBOX-INBOUND-RESET-SURFACE` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -6447,11 +6576,11 @@ Drive `smc_spi_pad_bfm_test_seq`. Each checker below is a named compare the DUT 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-SPI-PAD-JEDEC-PRELOAD` |JEDEC 0x9F driven by the tb_spi_* host returns 0x20BA18 from OcahSepSpiFlash and READ 0x03 @0 returns the 4-byte preload, both through tb_spi_miso_ext -> pad2core[0] -> spi_rxd[0]. Fails on a JEDEC or preload byte mismatch, or when the SPI VIP or lifted pads are absent
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-SPI-PAD-JEDEC-PRELOAD` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== UART
@@ -6686,11 +6815,11 @@ Drive `smc_uart_loopback_test_seq`. Each checker below is a named compare the DU
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-UART-TX-PAD-CAPTURE` |The byte written to UART0 THR over SEP_IN AXI is decoded 8N1 on pad12 by the UART VIP at 115200 baud and equals the written value; a capture timeout or any other byte fails
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-UART-TX-PAD-CAPTURE` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -7476,17 +7605,15 @@ checked by inverting one assertion. `--validate-configs` then lists
 |`hosted` |Toolchain-free class of `all`, single-instance model; the nightly and weekly tiers on the hosted runners, three seeds per leaf
 |`fw` |Firmware class of `all`: the fourteen CPU-boot leaves whose image the `c_compile` stage builds with a picolibc-enabled RISC-V GCC or the toolchain container
 |`dual` |SMC_DUAL class of `all`: the three `target = "dual"` leaves, each loading a ROM or firmware image
-|`axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` |Feature subsets of `all` for a local run of one area; each lives in its feature testlist
+|`axil`, `clock`, `combined`, `cpu`, `gpio`, `i2c`, `irq`, `reset`, `uart` |Feature subsets of `all` for a local run of one area; each lives in its feature testlist
 |`rtl_issue` |Filed-defect reproducers, expected to fail; the weekly tier's own row. Not in `all` (`testlists/holdout.toml`)
 |`occp_boot`, `occp_dual` |Runtime hold-outs run on demand: the production ROM to its OCCP loop, and the dual-SMC unsecure boot. Not in `all`
 |`held_out` |Leaves waiting on an RTL fix or ruling, run on demand to re-measure. Not in `all`
 |===
 
-Canonical entry point: `python3 tools/dv/run_dv.py --dut smc ...` (see `README.md`).
-The nightly command is `--items all --regress`; the hosted GitHub schedule runs
-`--items hosted --regress --reseed 3` because those runners have no RISC-V
-toolchain. Every leaf outside `all` is defined in `testlists/holdout.toml`
-and has its card under <<smc-held-out-testcases>>.
+`README.md` owns the commands that run these groups (CI, nightly, hosted and
+single-test forms). Every leaf outside `all` is defined in
+`testlists/holdout.toml` and has its card under <<smc-held-out-testcases>>.
 
 
 === Signoff Package
@@ -7495,114 +7622,7 @@ The SMC signoff package is this book plus the tracker: the plans, contracts,
 dispositions and scope exclusions below hold across candidates, and the
 tracker's signoff item carries what belongs to one candidate (the commit, the
 run trees it was qualified with, the open issues and their release dispositions).
-Feature credit is the scope and traceability record that follows.
-
-[[smc-scope-traceability-candidate]]
-==== SMC scope and traceability
-
-This chapter is the requirement-to-test-to-coverage matrix. Live group
-membership is `hw/sys/smc/dv/testlists/all.toml` and the lists it includes;
-`hw/sys/smc/dv/docs/SMC_VPLAN.adoc` states what each testcase verifies. This
-file is the reconciliation between the two — which of those testcases count as
-feature credit, and which are bring-up or decode-only names that must not be
-counted twice.
-
-[cols=",",options="header",]
-|===
-|Field |Value
-|DUT |`--dut smc` → `smc_wrapper` under `smc_uvm_top`
-|Spec / plan |`hw/sys/smc/dv/docs/SMC_VPLAN.adoc` plus the groups
-`hw/sys/smc/dv/testlists/all.toml` resolves
-|Coverage intent |`hw/sys/smc/dv/docs/SMC_FCOV.adoc` (Python counters; no
-Verilator covergroup)
-|Checker |`SmcScoreboard` non-vacuous SAMPLE/AXI/VIP counts + `results.xml`
-|CI |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly `hosted`
-|===
-
-[[smc-live-groups]]
-===== Live groups versus credit
-
-Executable membership is resolved from the testlists; the groups and their
-`expected_count` guards are in `hw/sys/smc/dv/testlists/all.toml`:
-
-[cols="2,3",options="header",]
-|===
-|Group |Role
-|`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
-|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the seventeen leaves that need the RISC-V toolchain (fourteen `fw` leaves, three dual-target leaves that run a ROM or firmware image)
-|`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
-|`all` |The package regression, `hosted` + `fw` + `dual`; `holdout.toml` defines the leaves outside it and <<smc-held-out-testcases>> records each
-|===
-
-`smoke` is the three-leaf PR gate (`smc_canonical_smoke_test`,
-`smc_cold_reset_test`, `smc_register_sanity_test`). `smc_i3c_to_fabric_test`
-is in `hosted` but not `smoke`, and receives no feature credit.
-
-[[smc-credit-rules]]
-===== Credit rules
-
-* Feature credit requires active CSR/fabric/pin stimulus and a
-  non-vacuous `SmcScoreboard` count. SAMPLE-only bring-up stays in
-  `hosted` (`smc_cold_reset_test` is also in `smoke`) and is not a
-  requirement row.
-* `smc_i3c_to_fabric_test` is HCI_VERSION decode (`proxy=True`). It
-  remains runnable by name. It is not
-  stub-signature SLVERR, and it is not I3C protocol credit.
-* Names in <<smc-deferred-disposition>>, adopter PLL/PVT OKAY+0 wraps, and
-  TB-glue DFD tokens are OUT.
-* UART loopback / ROM firmware stay on their existing intake issues.
-  They are not re-scoped here.
-* `--dut smc` already instantiates `smc_wrapper`. There is no separate
-  `wrapper.toml` and no test named `main_wrapper` or `main_wrapper_por`.
-  Bring-up / POR successors are `smc_canonical_smoke_test` and the reset
-  cluster (`smc_cold_reset_test`, `smc_powergood_glitch_test`,
-  `smc_multi_reset_csr_persistence_test`).
-
-[[smc-traceability-matrix]]
-===== Matrix (feature-credit subset)
-
-Requirement IDs are the VPLAN TC rows or the canonical scenario those
-tests actually run. Coverage bins are the `hw/sys/smc/dv/docs/SMC_FCOV.adoc`
-families the scoreboard can hit; Verilator does not close SV covergroups.
-
-The Groups column is resolved membership, not intent. Every feature-credit row
-below is in `all` and `hosted`, and every one but `smc_cpu_to_sep_axi_test` is
-the column names the feature groups that also carry it, so a
-reviewer can run one feature without the whole regression.
-
-[cols="2,3,2,2,3,1",options="header",]
-|===
-|Requirement |Test |Feature groups besides `all` and its class |Coverage intent |Checker evidence |Credit
-|Reset / power-good bring-up |`smc_canonical_smoke_test` |combined, smoke |reset + combined SAMPLE |Scoreboard SAMPLE counts; `results.xml` |YES
-|SMC misc / scratch / chip-config CSR |`smc_register_sanity_test` |smoke |axil_csr |AXI readback vs expected; non-vacuous AXI |YES
-|Default / RO register read |`smc_default_reg_rd_test` |-- |axil_csr |AXI RO data match |YES
-|Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |-- |mailbox |IRQ observe + mailbox CSR |YES
-|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |-- |fabric |AXI wr/rd on input+output windows |YES
-|Function-level reset |`smc_flr_sanity_test` |-- |reset |FLR then CSR recover |YES
-|I2C master/target active |`smc_i2c_master_target_test` |i2c |i2c (active, not SAMPLE-only) |I2C agent + scoreboard |YES
-|iJTAG / TAP-adjacent |`smc_ijtag_basic_test` |-- |jtag |JTAG VIP / CSR precheck |YES
-|CPU-control / SEP_IN path |`smc_cpu_to_sep_axi_test` |-- |cpu_traffic |AXI to CPU_CTRL window |YES
-|eFuse / OTP clock observe |`smc_efuse_otp_clock_test` |-- |efuse_otp |Clock/CSR observe (not burn) |YES
-|GPIO IRQ active |`smc_gpio_irq_active_test` |gpio |gpio + interrupt |Active GPIO IRQ, not SAMPLE-only |YES
-|AVSBus / sideband smoke |`smc_sideband_protocol_smoke_test` |-- |avsbus |Sideband CSR/status |YES
-|UART/SPI/log-engine CSR |`smc_uart_spi_log_engine_test` |-- |uart_spi (CSR; not loopback) |CSR window; protocol loopback is a P2 intake row |YES
-|Zeroer payload clear |`smc_zeroer_dma_timeout_test` |-- |zeroer datapath |Output-fabric responder readback of the zeroed region; CTRL_STATUS follows the zeroer (no timeout path is exercised) |YES
-|Outbound filter / remap |`smc_output_filter_remap_security_test` |-- |fabric filter |AXI filter/remap |YES
-|ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |-- |dbs_dfd_ecam_ecc |CSR sanity; fault-inject is deferred |YES
-|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |-- |reset |Scratch persist across reset classes |YES
-|I3C window decode |`smc_i3c_to_fabric_test` |-- |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
-|PLL/PVT clock config |none; `smc_pll_pvt_clock_config_test` is dispositioned in <<smc-deferred-disposition>> |none |macro handshake |OKAY+0 wrap |NO
-|I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in <<smc-deferred-disposition>> |none |— |child I3C TB |NO
-|DTP CSR on smc_wrapper |idle port; no terminator |none — no terminator |— |do not add a placeholder slave for credit |NO
-|UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |protocol / firmware |UART/ROM intake |NO
-|===
-
-The SAMPLE-only observe names are (`smc_cold_reset_test`,
-`smc_clk_running_test`, `smc_gpio_observe_test`, `smc_i2c_cg_sanity_test`,
-`smc_irq_observe_test`, `smc_mailbox_idle_test`,
-`smc_input_fabric_axi_wr_rd_test`, `smc_avsbus_sanity_test`,
-`smc_dbs_idle_test`). Those stay category aliases. They are not extra
-feature rows.
+Feature credit is the <<smc-scope-traceability-candidate,Scope and Traceability>> record above.
 
 === Release Qualification
 
@@ -7658,7 +7678,7 @@ disposition of every row whose realisation differs from its plan text.
 ==== SMC canonical bring-up and CSR signoff
 
 This chapter defines the canonical bring-up and CSR signoff. Feature credit is
-the SCOPE matrix in <<smc-scope-traceability-candidate,Signoff Package>>. Live membership is
+the SCOPE matrix in <<smc-scope-traceability-candidate,Scope and Traceability>>. Live membership is
 `hw/sys/smc/dv/testlists/all.toml`. Launch is `--dut smc` (the TB instantiates
 `smc_wrapper`); there is no `--dut smc_wrapper`.
 
@@ -7700,7 +7720,7 @@ I3C protocol credit.
 ==== SMC fabric and peripheral honesty signoff
 
 This chapter defines the fabric and peripheral honesty signoff. Feature credit
-is the SCOPE matrix in <<smc-scope-traceability-candidate,Signoff Package>>. A green fabric or I3C
+is the SCOPE matrix in <<smc-scope-traceability-candidate,Scope and Traceability>>. A green fabric or I3C
 name is not protocol proof. OUT rows live in <<smc-deferred-disposition>>.
 
 [[smc-fabric-credit]]
@@ -7734,7 +7754,7 @@ above is named in <<smc-deferred-disposition>>.
 ==== SMC reset, clock, and interrupt signoff
 
 This chapter defines the reset, clock and interrupt signoff. Feature credit is
-the SCOPE matrix in <<smc-scope-traceability-candidate,Signoff Package>>, not every name in
+the SCOPE matrix in <<smc-scope-traceability-candidate,Scope and Traceability>>, not every name in
 `reset.toml` / `clock.toml` / `irq.toml`. SAMPLE-only observe tests
 stay in `hosted` (only `smc_cold_reset_test` is also in `smoke`) and are
 not requirement rows.

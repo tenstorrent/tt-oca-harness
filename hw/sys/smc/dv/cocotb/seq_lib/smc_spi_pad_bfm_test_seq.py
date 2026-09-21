@@ -124,10 +124,6 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
             f"SPI pad BFM JEDEC mismatch: got 0x{jedec:06X}, expected 0x{SPI_JEDEC_ID:06X}"
         )
         self.observed_bytes = bytes([b0, b1, b2])
-        cocotb.log.info(
-            "SPI pad BFM JEDEC OK: 0x%06X (host on tb_spi_* + OcahSepSpiFlash)",
-            jedec,
-        )
 
         # U2-4: READ 0x03 @0 proves preload path (same as +spi_flash_preload).
         dut.tb_spi_dq_oe_n.value = 0xFE
@@ -149,8 +145,13 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
         )
         self.preload_ok = True
         cocotb.log.info(
-            "SPI pad BFM preload READ OK: %s (+spi_flash_preload path)",
-            _PRELOAD.hex(),
+            "CHK-SPI-PAD-JEDEC-PRELOAD: JEDEC 0x9F over the tb_spi_* host returned "
+            "0x%06X (expected 0x%06X) and READ 0x03 @0 returned %s matching the "
+            "%d-byte preload, both through tb_spi_miso_ext -> pad2core[0] -> spi_rxd[0]",
+            jedec,
+            SPI_JEDEC_ID,
+            bytes(rd).hex(),
+            len(_PRELOAD),
         )
 
         await flash.stop()
