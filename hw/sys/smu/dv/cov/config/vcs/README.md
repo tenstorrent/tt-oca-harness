@@ -60,6 +60,31 @@ present, so the option is given on the command line instead.
 population, so a port the wrapper ties off is not a hole; the DTP scope sets
 the same two options.
 
+## Port toggle exclusions
+
+`smu_wrapper.sv` is wiring: three instances, no assign, no process, no
+generate. Every port is a point-to-point connection to a subsystem port, so
+the wrapper's toggle is graded on urg's per-field `Ports` view of its own
+ports, with the fields below left out through
+`smu_wrapper_toggle_exclusions.el` (`-elfile`, named by the policy's
+`[[native_files]]`). `gen_smu_wrapper_toggle_exclusions.py` writes that file
+from urg's `-dump full_exclusions tgl` template of the merged database, so the
+module checksum and every field signature come from urg, and `--check` tells
+whether the committed file is stale.
+
+| Class | Fields | Why they are not the wrapper's to toggle |
+|---|---|---|
+| `AXI-USER` | `aw/ar/w/r/b.user` on both crossbar ports | the SMU neither reads nor writes the user sideband |
+| `AXI-DATA` | `w.data`, `w.strb`, `r.data` on both crossbar ports | the data path passes through untouched; address and id stay graded because the crossbar decodes and remaps them |
+| `ATB-PAYLOAD` | `telemetry_atdata_i`, `telemetry_atid_i` | consumed by the SMC telemetry receivers, graded there |
+| `DFT` | `test_en_i`, `scan_rst_ni` | held at their functional value in simulation |
+| `RTL-CONSTANT` | `lcc_demote_state_*_o`, `lsio_interface_select_o` | driven from a constant inside the SMU |
+| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_global_base_o`, `sep_region_size_o`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
+| `PARTIAL` | `timer_count_o[63:20]` | bit k first rises after 2^k reference clocks |
+
+Everything else on the port list is graded per field, both directions, and a
+field that stays uncovered is a stimulus gap for a leaf on this bench.
+
 ## Reading a finished run
 
 ```
@@ -72,9 +97,11 @@ The first command prints the runner's families and grades them against
 `smu_wrapper_coverage_policy.toml`, which floors `assertion` at 80 percent:
 urg reads the cov/sv `cover property` points under its assert metric together
 with the `assert property` statements left in scope, and
-`cov/report/asserts.txt` splits the two. The second command folds the
-`Port Details` rows of the report the first one wrote into the interface
-figure; `--list` names the ports that never toggled. The runner's own
-`toggle` column stays `Port Bits`.
+`cov/report/asserts.txt` splits the two. The report's `Toggle Coverage for Module : smu_wrapper` section carries the
+graded figure in its `Ports` row, after the exclusions above; the runner's
+own `toggle` column is the `Port Bits` row of the same section. The second
+command folds the `Port Details` rows into the per-port connectivity figure,
+a port counting once any bit of it moved; `--list` names the ports that never
+did.
 
 No public CI job runs the VCS flow for this DUT.
