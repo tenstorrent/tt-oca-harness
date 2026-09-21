@@ -9,7 +9,12 @@
 This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
-that carry one. The enrolled testcases and the membership of the `all`
+that carry one. No run in this package executes the SV-UVM view: every
+`result.json` under `build/runs/` records `framework: cocotb`. The checker
+rows marked `SV-UVM shape only` therefore describe that view and close
+nothing for this plan's sign-off; a card's cocotb checkers alone carry its
+Pass Criteria here, and a card whose checkers were all SV-UVM would be
+unclosed. The enrolled testcases and the membership of the `all`
 sign-off group are defined in `testlists/all.toml`; `all` is every test this
 plan grades, partitioned into the `hosted`, `fw` and `dual` classes by what a
 leaf needs to build. Every defined leaf outside `all` is in
@@ -256,7 +261,7 @@ feature rows.
 |`smc_output_fabric_wr_rd_responder_test` |Drive JTAG AXI through output fabric; scoreboard checks memory golden.
 |`smc_output_filter_remap_security_test` |Verify output filter allows reads and blocks writes at protocol level.
 |`smc_peripheral_instance_decode_test` |Every declared peripheral block reads a non-zero generated reset, multi-instance blocks at their first and last instance.
-|`smc_region_size_plic_clint_beu_decode_test` |The PLIC offset folds onto the local window at the 16 MiB `REGION_SIZE` reset; at 256 MiB the PLIC, CLINT and four BEUs decode.
+|`smc_region_size_plic_clint_beu_decode_test` |At 256 MiB `REGION_SIZE` the PLIC, CLINT and four BEUs decode with co-resident patterns; what the PLIC address answers above the 16 MiB reset aperture is reported, not claimed.
 |`smc_remap_cla_test` |ALIAS_REMAP address translation, remap-table reset sweep, CLA window.
 |`smc_sep_in_axi_flow_control_test` |SEP_IN keeps writes and reads outstanding while the manager holds BREADY and RREADY low; every access still returns its own address's word.
 |`smc_sep_in_axi_shape_test` |Narrow AxSIZE with byte strobes, a multi-beat INCR burst, and the FIXED and WRAP bursts the data-width converter rejects.
@@ -464,7 +469,7 @@ feature rows.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_uart_baud_word_parity_format_test` |UART0 loopback divisor × frame-format sweep with masked RX check.
+|`smc_uart_baud_word_parity_format_test` |UART0 divisor x frame-format sweep decoded on the TX pad and driven on the RX pad, with the parity and framing detectors shown to assert.
 |`smc_uart_error_conditions_test` |UART parity / overrun / break line-status proofs.
 |`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |UART0 IER gating, natural clears, and multi-source IIR priority.
@@ -709,17 +714,17 @@ the DUT can fail; a token is emitted only after that compare holds. The SV-UVM v
 |`CHK-DEFAULT-REG-SWEEP` |Named compare in `smc_default_reg_rd_test_seq.py`; the run fails if it mismatches
 |`CHK-DEFAULT-REG-VALUE` |Named compare in `smc_default_reg_rd_test_seq.py`; the run fails if it mismatches
 |`CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` |Named compare in `smc_default_reg_rd_test.py`; the run fails if it mismatches
-|`CHK-REG-DEFAULT` |SV-UVM shape only (`--framework uvm`): each catalogued register reads back its generated `*_REG_DEFAULT`. Two expectations are non-zero (`CHIP_CONFIG.VERSION_LO` = 0x000100A0, `RESET_UNIT.SS_WARM_RESET_N` = 0xFFFFFFFF), so a read path stuck at zero cannot satisfy the catalogue. One compared entry, `NDM_RESET.NDMRESET_REQUEST`, is `sw=r; hw=w` and its value arrives from the harness tie-off `tb_ndmreset_request = '0` at a DUT primary input -- the specified source for such a field, so the register block's decode and read path are in the loop, but the value is not register storage
+|`CHK-REG-DEFAULT` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): each catalogued register reads back its generated `*_REG_DEFAULT`. Two expectations are non-zero (`CHIP_CONFIG.VERSION_LO` = 0x000100A0, `RESET_UNIT.SS_WARM_RESET_N` = 0xFFFFFFFF), so a read path stuck at zero cannot satisfy the catalogue. One compared entry, `NDM_RESET.NDMRESET_REQUEST`, is `sw=r; hw=w` and its value arrives from the harness tie-off `tb_ndmreset_request = '0` at a DUT primary input -- the specified source for such a field, so the register block's decode and read path are in the loop, but the value is not register storage
 |(decode-only entries) |SV-UVM: registers whose read value this bench does not establish carry no checker of their own -- the OKAY claim on the access is `CHK-CSR-RESP`, and the observed word is logged as an `OBSERVED-ONLY` observation rather than a check. `CHIP_CONFIG.LC_STATE` is driven by the harness, `NDM_RESET.NDMRESET_CLUSTER_COUNT` by a design-side count; both read something other than their RDL default, so comparing against it would be an invented claim
-|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
-|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
-|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `default_reg` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (one predicted read per catalogue entry carrying a default)
-|`CHK-SB-DEFAULT-REG` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `default_reg`: `smc_default_reg_ref_model` predicts every catalogued read from the generated defaults plus the writes it observed. A required feature with zero comparisons fails the run
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the `default_reg` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (one predicted read per catalogue entry carrying a default)
+|`CHK-SB-DEFAULT-REG` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): always-on scoreboard, feature `default_reg`: `smc_default_reg_ref_model` predicts every catalogued read from the generated defaults plus the writes it observed. A required feature with zero comparisons fails the run
 |===
 
 
-*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and `+SMC_DEFAULT_REG_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Under `--framework uvm` -- a framework no run in this package executes, so the SV-UVM rows above are not closed by any run here -- the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and `+SMC_DEFAULT_REG_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-006-smc_ext_interrupts_pin_test]]
@@ -853,18 +858,17 @@ Drive `smc_register_sanity_test_seq`. Each checker below is a named compare the 
 |===
 |Checker |Description
 |`CHK-CSR-SCRATCH-RW-RESTORE` |Each of the 3 scratch CSRs reads its generated RDL reset, reads back its written pattern, and reads back the reset again after the restore write, over 15 SEP_IN AXI accesses (cocotb shape). Fails on any readback mismatch, a non-OKAY response, a missing catalog reset constant, or a wrong access count
-|`CHK-CSR-IDLE-VALUE` |SV-UVM shape only (`--framework uvm`): idle read of each scratch register is zero after warm-reset release
-|`CHK-CSR-RANDOM-READBACK` |SV-UVM shape only (`--framework uvm`): each seeded random pattern reads back on the same register
-|`CHK-CSR-READBACK` |SV-UVM shape only (`--framework uvm`): directed write pattern reads back on the same register
-|`CHK-CSR-RESTORE` |SV-UVM shape only (`--framework uvm`): restore write of zero reads back
-|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
-|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): non-vacuity count of real SEP_IN CSR accesses in `smc_register_sanity_test_seq.svh`
-|— |cocotb shape (default framework): emits no `CHK-*` token. Every SEP_IN read in `smc_register_sanity_test_seq.py` carries the value it must return (RDL reset value, the written pattern, the restored reset value; five accesses per register) and the scoreboard fails the run on a mismatch; the sequence also asserts the access count against the register list
+|`CHK-CSR-IDLE-VALUE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): idle read of each scratch register is zero after warm-reset release
+|`CHK-CSR-RANDOM-READBACK` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): each seeded random pattern reads back on the same register
+|`CHK-CSR-READBACK` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): directed write pattern reads back on the same register
+|`CHK-CSR-RESTORE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): restore write of zero reads back
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): non-vacuity count of real SEP_IN CSR accesses in `smc_register_sanity_test_seq.svh`
 |===
 
 
-*Pass Criteria*: `CHK-CSR-SCRATCH-RW-RESTORE` holds after its compares on the cocotb shape; on the SV-UVM shape `CHK-CSR-IDLE-VALUE`, `CHK-CSR-RANDOM-READBACK`, `CHK-CSR-READBACK`, `CHK-CSR-RESP`, `CHK-CSR-RESTORE`, `CHK-FUSE-SENSE-DONE` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`, `smoke`.
+*Pass Criteria*: `CHK-CSR-SCRATCH-RW-RESTORE` holds after its compares: every SEP_IN read carries the value it must return (RDL reset, written pattern, restored reset; five accesses per register), the scoreboard fails the run on a mismatch, and the sequence asserts the access count against the register list. The seven `SV-UVM shape only` rows are the UVM shape's checkers; no run in this package executes `--framework uvm` (every `result.json` under `build/runs/` records `framework: cocotb`), so they close nothing here and are listed for that shape only. Enrolled in: `all`, `hosted`, `smoke`.
 '''''
 
 ==== POWER
@@ -1718,7 +1722,7 @@ Drive `smc_output_filter_remap_security_test_seq`. Each checker below is a named
 *Test Coverage*:
 
 * **ALIAS_REMAP address translation** -- entry 0 is programmed (`REGION_START` / `REGION_END` / `REGION_ATTRS.offset|valid`) and a JTAG AXI write issued at the source address is observed **landing at the translated address** on the SYS_OUT responder (`tb_output_axi_last_addr`). The un-programmed identity case is the same-run positive control and the entry-disabled re-read is the same-run negative control, so "the remap moved the access" is distinguishable from "nothing happened".
-* **SMC_MMODE_REMAP_0..7 / SMC_ALIAS_REMAP_0..7** -- per-entry decode *and* the RDL reset content (`expected=` on every read, not merely an OKAY response).
+* **SMC_MMODE_REMAP_0..7 / SMC_ALIAS_REMAP_0..7 / SMC_XVISOR_REMAP_0..7** -- the RDL reset content of every entry (`expected=` on every read, not merely an OKAY response), and per-entry decode: every register of each table holds a distinct pattern inside its writable field while the rest of the table holds theirs, reads it back exactly and is restored, so an aliased pair or an undecoded window answering OKAY with zeros fails the readback. The reset reads alone cannot make that distinction, since every remap register resets to zero.
 * **SMC_CLA_REG** -- the Cluster Local Aggregator window: an allow leg on real CLA registers (RDL reset values + a scratch write/readback) paired with the in-window-hole leg. Unallocated offsets inside the map complete OKAY with data 0; the five non-zero reset rows and the scratch write/readback distinguish a live aperture from a hole.
 
 *Test Procedure*:
@@ -1737,11 +1741,12 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 |`CHK-REMAP-ALIAS0-IDENTITY` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
 |`CHK-REMAP-ALIAS0-LANDING` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
 |`CHK-REMAP-ALIAS0-OFF` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
-|`CHK-REMAP-TABLE-RESET` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
+|`CHK-REMAP-TABLE-CORESIDENT` |The 8 XVISOR ATTRS, 8 MMODE ATTRS and 24 ALIAS START/END/ATTRS registers each held a distinct pattern written before any of its table was read back, read it back exactly and read back the RDL reset after the restore write, every readback a scoreboard value compare (`smc_remap_cla_test_seq.py`); an aliased pair or an OKAY-zero hole fails the first readback of the pair
+|`CHK-REMAP-TABLE-RESET` |All 40 MMODE/ALIAS/XVISOR remap registers answer OKAY and match their generated RDL reset value in a scoreboard value compare (`smc_remap_cla_test_seq.py`)
 |===
 
 
-*Pass Criteria*: `CHK-CLA-RESET-SWEEP`, `CHK-CLA-WINDOW-ALLOW`, `CHK-CLA-WINDOW-DENY`, `CHK-REMAP-ALIAS0-IDENTITY`, `CHK-REMAP-ALIAS0-LANDING`, `CHK-REMAP-ALIAS0-OFF`, `CHK-REMAP-TABLE-RESET` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CLA-RESET-SWEEP`, `CHK-CLA-WINDOW-ALLOW`, `CHK-CLA-WINDOW-DENY`, `CHK-REMAP-ALIAS0-IDENTITY`, `CHK-REMAP-ALIAS0-LANDING`, `CHK-REMAP-ALIAS0-OFF`, `CHK-REMAP-TABLE-CORESIDENT`, `CHK-REMAP-TABLE-RESET` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-036-smc_sys_out_aw_w_split_test]]
@@ -1791,10 +1796,9 @@ Drive `smc_sys_out_aw_w_split_test_seq`. Each checker below is a named compare t
 
 *Test Coverage*:
 
-* SMC_XVISOR_REMAP full sweep.
-* RTL exposes an 8-entry hypervisor remap table (PeakRDL map SMC_XVISOR_REMAP_0..7, ATTRS-only per entry).
-* This is a direct sibling of the ALIAS_REMAP and MMODE_REMAP tables, which `smc_remap_cla_test` sweeps.
-* Strict reads (each requiring an OKAY AXI response) prove per-entry CSR decode + reset invariants without any BFM/firmware.
+* SMC_XVISOR_REMAP full sweep over the 8-entry hypervisor remap table the generated map declares (SMC_XVISOR_REMAP_0..7, ATTRS-only per entry), a direct sibling of the ALIAS_REMAP and MMODE_REMAP tables that `smc_remap_cla_test` sweeps.
+* Reset content: every entry reads its generated RDL reset as a scoreboard value compare with an OKAY response.
+* Per-entry decode: all eight entries hold distinct patterns inside the `offset` field at the same time and each reads back its own, so an entry aliased onto a neighbour or an undecoded window answering OKAY with zeros fails the readback; every entry is restored to its reset and re-read. A reset read alone cannot make that distinction, since the reset word is zero.
 
 *Test Procedure*:
 
@@ -1806,11 +1810,12 @@ Drive `smc_xvisor_remap_test_seq`. Each checker below is a named compare the DUT
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-XVISOR-REMAP-CORESIDENT` |All eight entries hold distinct `offset` patterns written before any is read back, each reads back its own pattern and then its RDL reset after the restore write, every readback a scoreboard value compare; an aliased pair or an OKAY-zero hole fails the first readback of the pair
 |`CHK-XVISOR-REMAP-RESET-DEFAULT` |All eight `SMC_XVISOR_REMAP_<n>` REGION_ATTRS 64-bit reads over SEP_IN AXI return OKAY and the full RDL reset word as scoreboard value compares; a non-OKAY response, a non-reset value or a short sweep fails
 |===
 
 
-*Pass Criteria*: `CHK-XVISOR-REMAP-RESET-DEFAULT` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-XVISOR-REMAP-CORESIDENT` and `CHK-XVISOR-REMAP-RESET-DEFAULT` hold after their compares and every sequence assert holds, including the exact access count of 40. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -1856,16 +1861,17 @@ Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The 
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP)
 
-*Objective*: The last word of every SEP_IN-reachable window `memmap.adoc` pins answers, and answers from its own block: a window sized short bus-errors there and one sized long is answered by the next block.
+*Objective*: The last word of every SEP_IN-reachable window `memmap.adoc` pins -- through the table the register generator writes from the RDL address map -- answers, and answers from its own block: a window sized short bus-errors there and one sized long is answered by the next block.
 
 *Test Coverage*:
 
-* Scratchpad memory: the first and the last 64-bit word of the 128 KiB window hold distinct co-resident patterns and each reads back exactly, so the window reaches its last word without aliasing.
-* Boot ROM: the last word of the 128 KiB region answers, returns neither resident scratchpad pattern, refuses a write with an error response, and still holds the same word afterwards -- which is what read-only means at this boundary.
-* DMA controller and memory zeroer: with distinct patterns resident in `DMA_CTRL.DST_ADDRESS_LO` and `ZEROER_CTRL.DEST_ADDR`, the last word of each 512 B aperture answers and returns neither pattern.
-* DMA stream banks: `NEXT_ID_1` through `NEXT_ID_15` read exactly 0 as `dma.adoc` states, each checked to sit at the 8-byte stream-bank stride from `NEXT_ID_0`. `NEXT_ID_0` is read last and for an OKAY response only, because reading it is the one access that launches a transfer.
-* CLA: the trace-sink `TRDSTRAMIMPL` identification word, in the first 8 bytes of the window, reads its generated reset.
-* The two window tops the chapter pins that the reference RTL sizes shorter -- the miscellaneous wrapper and the CLA -- are read with the error response tolerated and left open with their measured response and the chapter line they disagree with. They are recorded gaps, not claims.
+* Every window top is derived from the generated memory-map table (`regs/gen/adoc/memory_map.adoc`, included into `memmap.adoc`) and `LOCAL_BASE` from the generated `SMC_BASE_CONFIG.LOCAL_BASE` reset; no window extent is hand-copied.
+* Scratchpad memory: the first and the last 64-bit word of the 1 MiB `spm_memory` window hold distinct co-resident patterns and each reads back exactly, so the window reaches its last word without aliasing.
+* Boot ROM: the last word of the 128 KiB `spm_rom_memory` window (the extent `rom.adoc` states) answers OKAY, returns neither resident scratchpad pattern, refuses a write with an error response, and still holds the same word afterwards -- which is what read-only means at this boundary. No specification pins the word an unprogrammed ROM offset holds, so that value is reported, not compared.
+* DMA controller and memory zeroer: with distinct patterns resident in `DMA_CTRL.DST_ADDRESS_LO` and `ZEROER_CTRL.DEST_ADDR`, the last word of the 512 B `dma_ctrl` window and of the 256 B `zeroer_ctrl` window answers OKAY and returns neither pattern. Both words lie past the registers each unit implements and no specification pins them, so their values are reported, not compared.
+* DMA stream banks: `NEXT_ID_1` through `NEXT_ID_15` each answer OKAY with exactly 0 as `dma.adoc` states for a reserved bank, each checked to sit at the 8-byte stream-bank stride from `NEXT_ID_0`. `NEXT_ID_0` is read last and for an OKAY response only, because reading it is the one access that launches a transfer. The reserved banks hold no writable state (`STATUS` and `DONE` are tied to 0 too), so this leg proves that every reserved bank address answers as specified and does not claim to tell one reserved bank from another.
+* CLA: the trace-sink `TRDSTRAMIMPL` identification word, in the first 8 bytes of the 16 KiB `smc_cla` window, reads its generated reset, and the window's last 8-byte word -- the trace destination's `ScratchLo`/`ScratchHi` pair -- holds distinct co-resident patterns and reads them back.
+* One window top is not a register: the miscellaneous wrapper's 2 KiB window carries 524 B of registers, so its last word is an in-window offset past the register file. It is read with the error response tolerated and left open with its measured response -- a recorded gap, not a claim.
 
 *Test Procedure*:
 
@@ -1876,12 +1882,12 @@ Drive `smc_address_window_top_decode_test_seq` on the SEP_IN AXI sequencer, then
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ADDRESS-WINDOW-TOP` |The cell ledger: one line per window top closed with the measured evidence, plus one line per top left NOT closed with the response it actually gave and the chapter line it disagrees with. Cells are entered only after their compare passed; the NOT-closed lines are recorded gaps
-|`CHK-ADDRESS-WINDOW-TOP-DECODE` |Summary line: window tops closed, the scoreboard exact-value compare count against its floor, the access count, and how many tops the reference RTL does not answer. Logged after the per-window compares and the floor have held
+|`CHK-ADDRESS-WINDOW-TOP` |The cell ledger: one line per window top closed with the measured evidence, plus one line for the top left NOT closed with the response it actually gave. Cells are entered only after their compare passed; the NOT-closed line is a recorded gap
+|`CHK-ADDRESS-WINDOW-TOP-DECODE` |Summary line: window tops closed, the scoreboard exact-value compare count against its floor, the access count, and how many tops are in-window offsets past their unit's registers. Logged after the per-window compares and the floor have held
 |`CHK-ADDRESS-WINDOW-TOP-FLOOR` |The leaf requires `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
 
-*Pass Criteria*: every closed window top matched its generated reset or its co-resident pattern exactly, the ROM write was refused and left the word unchanged, and the scoreboard booked at least `EXPECTED_VALUE_CHECKS` compares. The two short window tops are reported, not claimed. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: every closed window top answered OKAY; the scratchpad, CLA and stream-bank tops matched their co-resident pattern, generated reset or specified 0 exactly; the ROM, DMA and zeroer tops returned neither resident pattern and have no specified value to compare; the ROM write was refused and left the word unchanged; and the scoreboard booked at least `EXPECTED_VALUE_CHECKS` compares. The miscellaneous-wrapper top is reported, not claimed. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -1961,11 +1967,11 @@ Drive `smc_dual_base_addressing_test_seq` on the SEP_IN AXI sequencer: read `REG
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP)
 
-*Objective*: At the 16 MiB `REGION_SIZE` reset the PLIC offset folds onto the bottom of the local window; with `REGION_SIZE` programmed to 256 MiB the PLIC, the CLINT and the four bus error units decode at the addresses the chapters give them.
+*Objective*: With `REGION_SIZE` programmed to 256 MiB the PLIC, the CLINT and the four bus error units decode at the addresses the chapters give them; at the 16 MiB reset those addresses lie above the local aperture, where the specification does not define the response, so what they answer there is reported and not claimed.
 
 *Test Coverage*:
 
-* The fold is measured rather than assumed: at the reset aperture the PLIC priority word at window offset 0x20 returns the watchdog `CMP` reset, and once the aperture is widened the same address no longer returns it. Both halves are exact compares.
+* `REGION_SIZE` reads its generated reset and `WDT0.CMP` inside the reset aperture reads its generated reset. The PLIC priority word at the same window offset is read above the reset aperture with the response tolerated: `fabric.adoc` and `memmap.adoc` size the aperture but do not say what an inbound access above it returns, so the answer is recorded in the cell ledger and not compared. The proof that the aperture widened is the PLIC, CLINT and BEU legs themselves: co-resident patterns and generated resets at addresses that are outside the aperture at reset.
 * 256 MiB is the smallest legal power of two whose aperture contains the whole documented map up to BASE + 0x801_3FFF; the sequence asserts that relation against the generated reset size rather than hard-coding a verdict.
 * PLIC: the priority and per-core enable words hold distinct co-resident patterns, are then written to the priority-0 / disabled state `interrupts.adoc` requires of firmware and read back exactly; the top word of the 4 MiB window and the first word above it must answer without returning either pattern.
 * CLINT: `MSIP_0` and `MTIMECMP_0` hold distinct co-resident patterns, and the top word of the 64 KiB window must not return them.
@@ -1974,19 +1980,19 @@ Drive `smc_dual_base_addressing_test_seq` on the SEP_IN AXI sequencer: read `REG
 
 *Test Procedure*:
 
-Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequencer: measure the fold at the reset aperture, widen `REGION_SIZE` and show the same address no longer folds, drive the PLIC, its window edges, the CLINT and the four BEUs, restore `REGION_SIZE` and re-read a local-window register, then require the exact-value compare floor and print the cell ledger. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
+Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequencer: read `REGION_SIZE` and a local-window register at reset and record what the PLIC word answers above the aperture, widen `REGION_SIZE`, drive the PLIC, its window edges, the CLINT and the four BEUs, restore `REGION_SIZE` and re-read a local-window register, then require the exact-value compare floor and print the cell ledger. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-REGION-SIZE-PLIC-CLINT-BEU` |The cell ledger: one line per cell closed with the measured evidence -- the 16 MiB fold, the PLIC base, edge and firmware-init cells, the CLINT base and top, and the four BEU instances. A cell is entered only after its compare passed
-|`CHK-REGION-SIZE-PLIC-CLINT-BEU-DECODE` |Summary line: the folded word at the reset aperture, the unfolded word at 256 MiB, cells closed, accesses issued and the scoreboard exact-value compare count against its floor. Logged after those compares and the floor have held
+|`CHK-REGION-SIZE-PLIC-CLINT-BEU` |The cell ledger: one line per cell closed with the measured evidence -- the reset-aperture reads with the recorded above-aperture answer, the PLIC base, edge and firmware-init cells, the CLINT base and top, and the four BEU instances. A cell is entered only after its compare passed
+|`CHK-REGION-SIZE-PLIC-CLINT-BEU-DECODE` |Summary line: the response and word the PLIC address gave above the reset aperture (reported), the word it gave at 256 MiB, cells closed, accesses issued and the scoreboard exact-value compare count against its floor. Logged after those compares and the floor have held
 |`CHK-REGION-SIZE-PLIC-CLINT-BEU-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
 
-*Pass Criteria*: the fold at the reset aperture and its absence at 256 MiB both hold as exact compares, every PLIC, CLINT and BEU co-resident pattern reads back exactly, the window-edge reads return neither resident pattern, `REGION_SIZE` is restored and the local-window register reads its reset afterwards, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `REGION_SIZE` and `WDT0.CMP` read their generated resets at the reset aperture, every PLIC, CLINT and BEU co-resident pattern reads back exactly at 256 MiB, the window-edge reads return neither resident pattern, `REGION_SIZE` is restored and the local-window register reads its reset afterwards, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -2143,13 +2149,13 @@ Drive `smc_axil_downstream_concurrency_test_seq` on the SEP_IN AXI sequencer wit
 *Test Coverage*:
 
 * Single-instance blocks are closed by a register whose generated reset is non-zero, so the compare can tell a decoded block from an absent window that reads 0.
-* Multi-instance peripherals are additionally proven with distinct patterns written to all probed instances before any is read back, so a stride that aliases two instances returns a neighbour's pattern and fails: the I3C CSR windows, the GPIO interfaces, the mailbox pairs, the watchdog instances and the log engines are each driven at their first and last instance.
+* Multi-instance peripherals are additionally proven with distinct patterns written to all probed instances before any is read back, so a stride that aliases two instances returns a neighbour's pattern and fails: the I3C CSR windows, the GPIO interfaces, the mailbox pairs and the log engines at their first and last instance, and the four watchdogs (`CMP` through the `KEY` unlock, one key write per register write), the three I2C controllers (`TARGET_ID`), the four UARTs (`SCR`) and the three telemetry receivers (`INTR_ENABLE`) at every instance. A reset read alone cannot tell N registers from one aliased register or from an undecoded window answering OKAY with the reset word, so every multi-instance block carries a co-resident leg.
 * The PVT wrapper is proven at its consumer: the access must drive `smc_external_req_o` while in flight, not merely complete.
 * Left open and named, not claimed: the DTP control window (`tb_top` leaves its AXI-Lite response idle, so an access there would never complete) and the bus error units (behind the bit-25 fold of `smc_local_fabric`, so no SEP_IN access reaches one).
 
 *Test Procedure*:
 
-Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: sweep the I3C, GPIO, mailbox, watchdog and log-engine instances, then the single-instance blocks, then route the PVT access; name the two unreachable cells, require the exact-value compare count and the access count to have reached their floors, and print the cell ledger. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
+Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: sweep the I3C, GPIO, mailbox, watchdog and log-engine instances, then the single-instance blocks with the I2C, UART and telemetry co-resident legs, then route the PVT access; name the two unreachable cells, require the exact-value compare count and the access count to have reached their floors, and print the cell ledger. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
 
 *Checkers*:
 
@@ -2237,16 +2243,16 @@ The scenario has two implementations that share this claim: the cocotb
 |`CHK-RESET-LOCK-ARM[<pair>]` |The target accepts a write with the lock clear, so "unchanged" later cannot be explained by a register that never changes
 |`CHK-RESET-LOCK-WOSET[<pair>]` |A set lock bit survives an all-zeroes write, per `onwrite = woset`
 |`CHK-RESET-LOCK-MASKS-WRITE[<pair>]` |In one write carrying both bits, the locked bit does not follow software while the unlocked bit does -- so the write demonstrably reached the register
-|`CHK-LOCK-TARGET-WRITABLE` |SV-UVM shape only (`--framework uvm`): positive control: the target accepts a write at this pass's bit while the lock is still clear, so "unchanged" later cannot be satisfied by a register that never changes
-|`CHK-LOCK-SET` |SV-UVM shape only (`--framework uvm`): the written bit appears in the lock register, which accumulates the bits earlier passes locked
-|`CHK-LOCK-STICKY` |SV-UVM shape only (`--framework uvm`): an all-zeroes write does not release any set lock bit, per `onwrite = woset`
-|`CHK-LOCK-MASKS-TARGET` |SV-UVM shape only (`--framework uvm`): after the lock is taken, a write clearing the locked bit leaves it set -- the lock filters the write bit-enables before they reach the storage flop (`smc_subsystem_resets.sv:81`, `:100`)
-|`CHK-LOCK-FREE-BIT-MOVED` |SV-UVM shape only (`--framework uvm`): the same write carries never-locked bit 0, and that bit is required to change in both directions -- so "unchanged" cannot be explained by the write being dropped
-|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
-|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
-|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `lock_csr` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (five predicted reads per lock pair per pass)
-|`CHK-SB-LOCK-CSR` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `lock_csr`: `smc_lock_csr_ref_model` applies `woset` to the lock and lock-filtered bit-enables to the guarded register, rebuilt from the traffic the passive monitor saw rather than from the sequence's own bookkeeping. Note the asymmetry in where the two rules come from: `woset` is specification-sourced (`reset_unit.rdl:18-26`, `:87-95`), but the bit-enable filtering is transcribed from the RTL it checks (`smc_subsystem_resets.sv:81`, `:100`), so on that half the model would be wrong in the same direction as a wrong design. It corroborates; the primary proof of masking is the sequence-side `CHK-LOCK-MASKS-TARGET`, whose expectation comes from the bench's own accumulation
+|`CHK-LOCK-TARGET-WRITABLE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): positive control: the target accepts a write at this pass's bit while the lock is still clear, so "unchanged" later cannot be satisfied by a register that never changes
+|`CHK-LOCK-SET` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the written bit appears in the lock register, which accumulates the bits earlier passes locked
+|`CHK-LOCK-STICKY` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): an all-zeroes write does not release any set lock bit, per `onwrite = woset`
+|`CHK-LOCK-MASKS-TARGET` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): after the lock is taken, a write clearing the locked bit leaves it set -- the lock filters the write bit-enables before they reach the storage flop (`smc_subsystem_resets.sv:81`, `:100`)
+|`CHK-LOCK-FREE-BIT-MOVED` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the same write carries never-locked bit 0, and that bit is required to change in both directions -- so "unchanged" cannot be explained by the write being dropped
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the `lock_csr` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (five predicted reads per lock pair per pass)
+|`CHK-SB-LOCK-CSR` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): always-on scoreboard, feature `lock_csr`: `smc_lock_csr_ref_model` applies `woset` to the lock and lock-filtered bit-enables to the guarded register, rebuilt from the traffic the passive monitor saw rather than from the sequence's own bookkeeping. Note the asymmetry in where the two rules come from: `woset` is specification-sourced (`reset_unit.rdl:18-26`, `:87-95`), but the bit-enable filtering is transcribed from the RTL it checks (`smc_subsystem_resets.sv:81`, `:100`), so on that half the model would be wrong in the same direction as a wrong design. It corroborates; the primary proof of masking is the sequence-side `CHK-LOCK-MASKS-TARGET`, whose expectation comes from the bench's own accumulation
 |===
 
 *Pass Criteria*: all six checkers hold, three per pair: each lock holds 0x2 through an all-zeroes write, and a 0x3 write to its target reads back 0x1. This testcase leaves one bit set in each lock for the rest of its simulation, which is what `woset` means; each testcase runs its own simulation.
@@ -2263,7 +2269,7 @@ difference is part of the claim:
   write of 0x00000001 to its target read back 0x0001FFFF. A loop knob that would run past the
   lockable bits fails the run rather than aliasing silently.
 
-Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and
+Under `--framework uvm` -- a framework no run in this package executes, so the SV-UVM rows above are not closed by any run here -- the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and
 `+SMC_LOCK_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`, `reset`.
 
 '''''
@@ -2708,7 +2714,7 @@ Drive `smc_mixed_boot_stall_test_seq`. Each checker below is a named compare the
 * CSR behaviour across the public cool-reset control.
 * Addresses and expected defaults both come from the generated PeakRDL map via `smc_csr_field_catalog` (which also cross-checks the address that is actually driven against the cataloged symbol).
 * Reset synchronization is handshake-based, never a fixed settle: `smc_reset_ctrl` de-glitches `rst_cool_ni` over `RESET_DEGLITCH_WIDTH` `clk_ref_i` samples, so the pin is held low until the DUT is *observed* to enter cool reset (`rst_warm_smc_clk_n` / `rst_primary_smc_clk_no` drop), and released only until the same observables are back and the fuse-sense/warm release pipe has completed. Measured on VCS at seed 1: `rst_primary_smc_clk_n` fell 94 smc clocks after the pin, and `rst_warm_smc_clk_n` came back 2346 smc clocks after release -- a fixed delay short of either would prove nothing.
-* Reset TOPOLOGY, read from the RTL rather than from the register names: `smc_peripherals.sv:1077` wires `smc_misc_wrap.rst_ni` to `rst_primary_smc_clk_no`, and `smc_misc_wrap` resets `SCRATCH_COLD` on `rst_ni` alone (`:106-108`) and `SCRATCH_COLD_WARM` on `rst_ni && rst_warm_ni` (`:133`). A cool reset drops `rst_primary`, so BOTH scratch windows clear -- the "COLD" in `SCRATCH_COLD` names the reset it is reset BY, not a reset it survives.
+* Reset topology, taken from the specification and the register map rather than the RTL: `clk_rst.adoc` (SMC Reset Sources, Primary Reset Activation Sources) lists the cool reset as a Primary Reset activation source, and Primary Reset covers "SMC control and configuration registers"; `misc_wrap.rdl` instantiates the two scratch windows as `scratch_cold` and `scratch_cold_warm`, naming the reset domains each belongs to. A cool pulse therefore returns `SCRATCH_COLD_WARM[1]` to its RDL reset, which is what `CHK-COOL-RESET-CLEARS-WARM-SCRATCH` compares. Which register a warm-only reset would leave intact is not claimed here.
 * NOT claimed: either scratch window surviving a reset the other one takes. No stimulus here drops `rst_warm_ni` without also dropping `rst_primary_ni`, so separating the two domains needs a warm-only source (the `SS_WARM_RESET_N` control or the SEP WDT pin) and is left to a testcase that has one.
 * Both waits are bounded and fail on expiry.
 
@@ -2737,20 +2743,20 @@ sequence drives and polls them directly. Each checker below is a named compare t
 |`CHK-CSR-PRE-COOL-READBACK` |SV-UVM: both scratch windows hold a NON-ZERO pass-specific pattern before the pulse. Required non-zero, because "reads 0 after the reset" says nothing if the register held 0 going in
 |`CHK-COOL-RESET-ASSERTED` |SV-UVM: the pin pulse survives the de-glitch and both `rst_primary_smc_clk_n` and `rst_warm_smc_clk_n` are polled down -- not waited out with a fixed delay
 |`CHK-COOL-RESET-RELEASED` |SV-UVM: both observables are polled back up after the pin is released
-|`CHK-COOL-CLEARS-SCRATCH` |SV-UVM shape only (`--framework uvm`): both `SCRATCH_COLD[1]` and `SCRATCH_COLD_WARM[1]` read their reset value afterwards, which is the reset topology cited under Test Coverage
-|`CHK-CSR-PATH-RECOVERED` |SV-UVM shape only (`--framework uvm`): the read path returns real content, not just OKAY -- `CHIP_CONFIG.VERSION_LO` reads its non-zero generated default (0x000100A0) again, so a path that came back dead or stuck at zero fails
-|`CHK-CSR-RW-RECOVERED` |SV-UVM shape only (`--framework uvm`): a fresh write and readback lands after the reset, and the restore leaves the register at its reset value
-|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
-|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes, checked before the pulse and again after it
-|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
-|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `scratch_csr` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (six predicted scratch reads per pass)
-|`CHK-SB-SCRATCH-CSR` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `scratch_csr`: `smc_scratch_csr_ref_model` re-baselines on the same cool reset through `smc_csr_reset_epoch`, so a predictor that ignored the cool reset fails here
+|`CHK-COOL-CLEARS-SCRATCH` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): both `SCRATCH_COLD[1]` and `SCRATCH_COLD_WARM[1]` read their reset value afterwards, which is the reset topology cited under Test Coverage
+|`CHK-CSR-PATH-RECOVERED` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the read path returns real content, not just OKAY -- `CHIP_CONFIG.VERSION_LO` reads its non-zero generated default (0x000100A0) again, so a path that came back dead or stuck at zero fails
+|`CHK-CSR-RW-RECOVERED` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): a fresh write and readback lands after the reset, and the restore leaves the register at its reset value
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): warm-reset domain release after fuse sense completes, checked before the pulse and again after it
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the `scratch_csr` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (six predicted scratch reads per pass)
+|`CHK-SB-SCRATCH-CSR` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): always-on scoreboard, feature `scratch_csr`: `smc_scratch_csr_ref_model` re-baselines on the same cool reset through `smc_csr_reset_epoch`, so a predictor that ignored the cool reset fails here
 |===
 
 
 *Pass Criteria*: `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-COOL-RESET-RELEASED`, `CHK-CSR-BASELINE-RO`, `CHK-CSR-POST-COOL-RECOVERY`, `CHK-CSR-PRE-COOL-READBACK` (and 2 more) hold after their compares.
 
-Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and
+Under `--framework uvm` -- a framework no run in this package executes, so the SV-UVM rows above are not closed by any run here -- the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and
 `+SMC_CSR_SCOREBOARD_NEGATIVE` must fail the run. Each of the 16 scenario passes drives its own
 complete write / pulse / check / restore cycle with a fresh pattern, so back-to-back recovery is
 re-proved rather than assumed. Enrolled in: `all`, `hosted`.
@@ -2768,6 +2774,7 @@ re-proved rather than assumed. Enrolled in: `all`, `hosted`.
 *Test Coverage*:
 
 * NDM request pin and AXI PROCESS CSR.
+* `NDMRESET_CLUSTER_COUNT` is compared against the DV-owned table value `NDM_CLUSTER_COUNT` (4) in the sequence module, and the bench's request port is declared from that value. Specification gap, recorded here: `ndm_reset.rdl` declares the field hardware-driven with reset 0 and the SMU port table sizes `smc_ndmreset_request_i` by `CPU_CLUSTER_COUNT` without giving the number, so no specification document in the tree pins the count; the table value is the DV owner's statement of the integration and is not derived from the RTL.
 
 *Test Procedure*:
 
@@ -2780,7 +2787,7 @@ Drive `smc_ndm_reset_test_seq`. Each checker below is a named compare the DUT ca
 |===
 |Checker |Description
 |`CHK-NDM-CLR-<bit>` |Named compare in `smc_ndm_reset_test_seq.py`, one per request line `<bit>` below `NDMRESET_CLUSTER_COUNT`; the run fails if it mismatches
-|`CHK-NDM-COUNT` |Named compare in `smc_ndm_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-NDM-COUNT` |`NDMRESET_CLUSTER_COUNT` reads exactly the DV table value `NDM_CLUSTER_COUNT` (scoreboard value compare), and with every request line high `NDMRESET_REQUEST` reads exactly `(1 << NDM_CLUSTER_COUNT) - 1` (`smc_ndm_reset_test_seq.py`); the run fails if either mismatches
 |`CHK-NDM-DROP-<bit>` |Named compare in `smc_ndm_reset_test_seq.py`, one per request line `<bit>` below `NDMRESET_CLUSTER_COUNT`; the run fails if it mismatches
 |`CHK-NDM-IDLE` |Named compare in `smc_ndm_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-NDM-PROC-<bit>` |Named compare in `smc_ndm_reset_test_seq.py`, one per request line `<bit>` below `NDMRESET_CLUSTER_COUNT`; the run fails if it mismatches
@@ -2949,7 +2956,7 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 |`CHK-UART-FIFO-TRIG-1B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-FIFO-TRIG-32B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-FIFO-TRIG-4B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-FIFO-TRIG-ABOVE-DEPTH` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-FIFO-TRIG-ABOVE-DEPTH` |With the RX FIFO filled to its 32-entry depth through loopback (LSR.DR set, no overrun), each unsupported encoding 64 through 4096 is programmed in turn, the level is re-evaluated by popping one character and looping one back so the 32nd arrival is compared against that encoding, and RECEIVED_DATA_READY is absent across the IIR samples taken right after the arrival (before a Reception Timeout can replace it); the same refill raises RECEIVED_DATA_READY at the 32-character encoding immediately before and again immediately after the sweep, so the level compare is proven live in the same run (`smc_uart_fifo_basic_trigger_reset_test_seq.py`)
 |===
 
 
@@ -3847,8 +3854,8 @@ Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ECC-INJECT` |Named compare in `smc_ecc_fault_inject_test_seq.py`; the run fails if it mismatches
-|`CHK-ECC-INJECT-NO-DUT-SECDED` |Named compare in `smc_ecc_fault_inject_test_seq.py`; the run fails if it mismatches
+|`CHK-ECC-INJECT` |Emitted only after three asserted compares on `tb_cpu_ecc_inject_fire_count`: it advanced while SBE inject was armed, held while both inject pins were clear across further scratch reads, and advanced again while DBE inject was armed (`smc_ecc_fault_inject_test_seq.py`); any of the three failing fails the run before the token
+|`CHK-ECC-INJECT-NO-DUT-SECDED` |Carries no compare of its own: a scope statement that this leaf proves the inject hook and its enable gating, not the DUT's SECDED detector, which `smc_ecc_codeword_corrupt_test` covers
 |`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over
 |===
 
@@ -3890,15 +3897,15 @@ the DUT can fail; a token is emitted only after that compare holds.
 |`CHK-MUTEX-REL` |Named compare in `smc_mutex_semaphore_test_seq.py`; the run fails if it mismatches
 |`CHK-MUTEX-TAKE` |Named compare in `smc_mutex_semaphore_test_seq.py`; the run fails if it mismatches
 |`CHK-SEMA-ACCUMULATE` |Named compare in `smc_mutex_semaphore_test_seq.py`; the run fails if it mismatches
-|`CHK-MUTEX-DENY` |SV-UVM shape only (`--framework uvm`): the second read of a held `MUTEX[0]` returns 0. Only meaningful because the first read expected the available encoding and got it -- a mutex stuck at 0 fails the take leg, one stuck at 1 fails this one
-|`CHK-MUTEX-INDEP` |SV-UVM shape only (`--framework uvm`): `MUTEX[1]` still reports available while `MUTEX[0]` is held, so "acquired" is a property of one lock rather than of the block
-|`CHK-MUTEX-RELEASE` |SV-UVM shape only (`--framework uvm`): after a write, `MUTEX[0]` reports available again. The RDL permits *any* value to release; both implementations write zero, so the property is proved for that value and the wider claim is not exercised
-|`CHK-SEMA-ACCUM` |SV-UVM shape only (`--framework uvm`): `SEMA[0]` accumulates a signed 16-bit increment; +N then -N returns it to its baseline, and the baseline expectation of zero is also the check that the previous pass restored it
-|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
-|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- twelve per pass, seven reads and five writes. A control-flow invariant, not a DUT-failable compare: it catches a truncated pass, and `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
-|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `mutex_sema` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (seven predicted reads per pass)
-|`CHK-SB-MUTEX-SEMA` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `mutex_sema`: `smc_mutex_sema_ref_model` models acquire-on-read and the signed accumulator, computing each expected value BEFORE the state advances, and compares under the RDL field mask
+|`CHK-MUTEX-DENY` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the second read of a held `MUTEX[0]` returns 0. Only meaningful because the first read expected the available encoding and got it -- a mutex stuck at 0 fails the take leg, one stuck at 1 fails this one
+|`CHK-MUTEX-INDEP` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): `MUTEX[1]` still reports available while `MUTEX[0]` is held, so "acquired" is a property of one lock rather than of the block
+|`CHK-MUTEX-RELEASE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): after a write, `MUTEX[0]` reports available again. The RDL permits *any* value to release; both implementations write zero, so the property is proved for that value and the wider claim is not exercised
+|`CHK-SEMA-ACCUM` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): `SEMA[0]` accumulates a signed 16-bit increment; +N then -N returns it to its baseline, and the baseline expectation of zero is also the check that the previous pass restored it
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): reconciles the accesses the body issued against its own loop bounds -- twelve per pass, seven reads and five writes. A control-flow invariant, not a DUT-failable compare: it catches a truncated pass, and `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the `mutex_sema` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (seven predicted reads per pass)
+|`CHK-SB-MUTEX-SEMA` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): always-on scoreboard, feature `mutex_sema`: `smc_mutex_sema_ref_model` models acquire-on-read and the signed accumulator, computing each expected value BEFORE the state advances, and compares under the RDL field mask
 |===
 
 
@@ -3910,8 +3917,9 @@ rather than given an invented expectation.
 
 A mutex read acquires, so the SV-UVM view -- 16 scenario passes in one simulation -- hands the
 block back as it found it: `MUTEX[0]` is released again after the read that proves the release,
-`MUTEX[1]` is released, and `SEMA[0]` is returned to its baseline. Under `--framework uvm` the
-SV-UVM checkers above hold instead, and `+SMC_MUTEX_SCOREBOARD_NEGATIVE` must fail the run.
+`MUTEX[1]` is released, and `SEMA[0]` is returned to its baseline. Under `--framework uvm` -- a
+framework no run in this package executes, so the SV-UVM rows above are not closed by any run
+here -- the SV-UVM checkers above hold instead, and `+SMC_MUTEX_SCOREBOARD_NEGATIVE` must fail the run.
 Enrolled in: `all`, `hosted`.
 '''''
 
@@ -3985,13 +3993,13 @@ DUT can fail; a token is emitted only after that compare holds.
 |`CHK-SPM-MEM-SPM_HI` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
 |`CHK-SPM-MEM-SPM_LO` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
 |`CHK-SPM-MEM-SPM_LO_NEXT` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
-|`CHK-SPM-MEM-EDGE` |SV-UVM shape only (`--framework uvm`): each window edge reads back the 64-bit word written to it while the other two edge patterns are still resident
-|`CHK-SPM-CO-RESIDENT` |SV-UVM shape only (`--framework uvm`): each edge's readback is required NOT to equal any other edge's pattern -- the shape a collapsed decode would produce. Addresses and patterns are asserted pairwise distinct before the legs run, since identical patterns would make aliasing indistinguishable from correctness
-|`CHK-MEM-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN full-width access completes with an OKAY response
-|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
-|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `spm_mem` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (one predicted readback per window edge per pass)
-|`CHK-SB-SPM-MEM` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `spm_mem`: `smc_spm_mem_ref_model` shadows the window per 64-bit word address, so an aliased decode disagrees with the model that keeps the edges apart
+|`CHK-SPM-MEM-EDGE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): each window edge reads back the 64-bit word written to it while the other two edge patterns are still resident
+|`CHK-SPM-CO-RESIDENT` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): each edge's readback is required NOT to equal any other edge's pattern -- the shape a collapsed decode would produce. Addresses and patterns are asserted pairwise distinct before the legs run, since identical patterns would make aliasing indistinguishable from correctness
+|`CHK-MEM-RESP` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): every SEP_IN full-width access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): the `spm_mem` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (one predicted readback per window edge per pass)
+|`CHK-SB-SPM-MEM` |SV-UVM shape only (`--framework uvm`; no run in this package executes that framework, so this row is not closed by any run here): always-on scoreboard, feature `spm_mem`: `smc_spm_mem_ref_model` shadows the window per 64-bit word address, so an aliased decode disagrees with the model that keeps the edges apart
 |===
 
 
@@ -4001,7 +4009,7 @@ Accesses are full-width 64-bit single beats (AxSIZE = 3, every byte lane strobed
 CSR-shaped access would leave half of each word untouched and could not discriminate the
 addresses. The SV-UVM view draws a fresh pattern set per pass from the scenario seed, so its 16
 passes exercise different data and each pass also re-proves that the previous pass's words were
-replaced rather than merely re-read. Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds
+replaced rather than merely re-read. Under `--framework uvm` -- a framework no run in this package executes, so the SV-UVM rows above are not closed by any run here -- the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds
 instead, and `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`.
 '''''
 
@@ -5678,13 +5686,13 @@ Drive `smc_i2c_master_target_test_seq`. Each checker below is a named compare th
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: I2C_1/2 + I2C_CTRL CSR sweep.
+*Objective*: I2C_1/2 + I2C_CTRL reset sweep and per-instance TARGET_ID co-resident patterns.
 
 *Test Coverage*:
 
-* I2C multi-instance CSR precheck.
-* RTL exposes 3 controllers (I2C_0/1/2) plus a top-level I2C_CTRL block.
-* Sweeps a compact set of representative CSR reads at each instance base to prove per-instance address decode + reset defaults.
+* I2C multi-instance CSR precheck over the three controllers (I2C_0/1/2) and the top-level I2C_CTRL block the generated map declares.
+* Reset content: the I2C_1 and I2C_2 INTR_STATE bases and the I2C_CTRL base read their generated reset word as scoreboard value compares.
+* Per-instance decode: every controller's `TARGET_ID` (plain rw storage, reset 0) holds a distinct target-address pattern at the same time and reads back its own before being restored, so a stride that aliases two controllers or an undecoded window answering OKAY with zeros fails the readback. The reset reads alone cannot make that distinction, since their reset word is zero.
 
 *Test Procedure*:
 
@@ -5696,11 +5704,12 @@ Drive `smc_i2c_multi_instance_test_seq`. Each checker below is a named compare t
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-I2C-INSTANCE-CORESIDENT` |`TARGET_ID` of I2C_0, I2C_1 and I2C_2 hold three distinct patterns written before any is read back, each reads back its own and then its reset after the restore write, every readback a scoreboard value compare; an aliased pair or an OKAY-zero hole fails the first readback of the pair
 |`CHK-I2C-INSTANCE-RESET-DECODE` |The I2C_1 and I2C_2 INTR_STATE bases and the I2C_CTRL base each returned OKAY and matched the reset word 0x0 in a scoreboard value compare, with the scoreboard checking all 3 accesses and booking exactly 3 value compares; a non-OKAY response, a non-zero word or a compare that never ran fails it
 |===
 
 
-*Pass Criteria*: `CHK-I2C-INSTANCE-RESET-DECODE` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-I2C-INSTANCE-CORESIDENT` and `CHK-I2C-INSTANCE-RESET-DECODE` hold after their compares and every sequence assert holds, including the exact access and value-compare counts. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -6324,11 +6333,12 @@ Drive `smc_mailbox_data_error_test_seq`. Each checker below is a named compare t
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Run mailbox IRQ-control decode plus real sync IRQ injection.
+*Objective*: Mailbox IRQ-control decode plus SEP mailbox interrupt injection observed on the mailbox interrupt aggregate.
 
 *Test Coverage*:
 
-* SMC OSS mailbox event IRQ source test.
+* SMC OSS mailbox event IRQ source test: `tb_sep_mailbox_interrupts` is driven and the aggregate `tb_mailbox_irq_any` (the OR of the mailbox peripheral interrupts) is proven idle, asserted and cleared in one run.
+* Not claimed: `tb_sync_irq` is a different DUT output and is not sampled by this leaf.
 
 *Test Procedure*:
 
@@ -6599,15 +6609,18 @@ Drive `smc_spi_pad_bfm_test_seq`. Each checker below is a named compare the DUT 
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: UART0 loopback divisor × frame-format sweep with masked RX check.
+*Objective*: UART0 divisor x frame-format sweep, every axis observed where it is visible: frame timing and content on the TX pad, a driven frame on the RX pad, and the parity and framing detectors shown able to assert.
 
 *Test Coverage*:
 
-* UART0 MCR.LOOP sweep of baud × WLS/STB/parity; RX matches TX masked to word length.
+* Divisors 1 and 8 x the 16 WLS/STB/PEN/EPS combinations (stick parity excluded), 32 in all, with `MCR.LOOP` clear so the frames leave on pad 12 and enter on pad 11. Under `MCR.LOOP` the transmitter and receiver share one setting and every combination deframes the same byte, so the divisor, stop-bit and parity axes would be unfalsifiable there.
+* TX pad: three queued bytes are decoded at simulation-time resolution on `tb_uart0_tx_from_dut` -- start bit, every data bit, parity bit and stop bit sampled at their bit centres -- and the shortest interval between consecutive start bits is compared with `(1 + data + parity + stop) x 16 x (DLL + 1)` `clk_periph_i` periods, with the stop count 1, 2 or 1.5 per `LCR.STB` and the word length and parity polarity per `LCR.WLS`/`LCR.PEN`/`LCR.EPS` (`uart_16550_main.rdl`). Each axis moves that measurement, so a DUT ignoring `DLL`, `STB`, `PEN` or `EPS` fails.
+* RX pad: one frame in the same format is driven on `tb_uart0_rx_ext_drive` and read back through `RBR` with `LSR` clear of OE/PE/FE/BI.
+* Error detectors: at each divisor a frame with the wrong parity bit raises `LSR.PE` and a frame with a low stop bit raises `LSR.FE`, both cleared again after the character is popped, so the no-error compares rest on detectors shown to fire in the same run.
 
 *Test Procedure*:
 
-Drive `smc_uart_baud_word_parity_format_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_uart_baud_word_parity_format_test_seq`: ungate the UART clock and enable the UART0 pad function, then for each divisor and format program `DLL`/`DLH`/`LCR`, reset both FIFOs, queue three bytes and decode them on the TX pad, drive one frame on the RX pad and read it back, and after the sixteen formats drive the parity-error and framing-error frames. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -6615,12 +6628,14 @@ Drive `smc_uart_baud_word_parity_format_test_seq`. Each checker below is a named
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-UART-BAUD-BASIC` |Named compare in `smc_uart_baud_word_parity_format_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-BAUD-FMT` |Named compare in `smc_uart_baud_word_parity_format_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-BAUD-BASIC` |All 32 combinations completed, each with its frame length measured, and both error controls asserted (`smc_uart_baud_word_parity_format_test_seq.py`)
+|`CHK-UART-BAUD-FMT` |One per combination: the three TX pad frames decoded to the queued bytes masked to the word length with the parity bit matching `EPS`, the shortest start-to-start interval equals one frame of the programmed format within two baud ticks, no interval is shorter than a frame, and the RX pad frame read back exactly through `RBR` with no LSR error (`smc_uart_baud_word_parity_format_test_seq.py`)
+|`CHK-UART-FMT-FE-ASSERTS` |At each divisor a frame with a low stop bit sets `LSR.FE` with `DR`, and `FE` is clear after the pop (`smc_uart_baud_word_parity_format_test_seq.py`)
+|`CHK-UART-FMT-PE-ASSERTS` |At each divisor an 8E1 frame with the parity bit inverted sets `LSR.PE` with `DR`, and `PE` is clear after the pop (`smc_uart_baud_word_parity_format_test_seq.py`)
 |===
 
 
-*Pass Criteria*: `CHK-UART-BAUD-BASIC`, `CHK-UART-BAUD-FMT` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: `CHK-UART-BAUD-BASIC`, `CHK-UART-BAUD-FMT`, `CHK-UART-FMT-FE-ASSERTS`, `CHK-UART-FMT-PE-ASSERTS` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 '''''
 
 [[sec-150-smc_uart_error_conditions_test]]
@@ -6891,12 +6906,12 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-UART-LOG-UART_IIR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-LOG-UART_LOG_ENGINE_CTRL` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-LOG-UART_LSR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-CTS-PAD0` |After this test drives UART0 CTS pad 14 to 0, a bounded poll of `UART_MSR` reads either the pre-change word or exactly the transition word CTS=1 (the inverse of `cts_ni`) with DCTS=1 for the change since the last read, and the transition word arrives within the bound (`smc_uart_spi_log_engine_test_seq.py`)
-|`CHK-UART-MSR-CTS-PAD1` |After this test drives UART0 CTS pad 14 to 1, the same bounded poll reads the pre-change word or exactly CTS=0 with DCTS=1, and the transition word arrives within the bound (`smc_uart_spi_log_engine_test_seq.py`)
-|`CHK-UART-MSR-DELTA-CLEAR` |The second back-to-back `UART_MSR` read equals exactly 0x10: CTS still asserted with DCTS cleared by the preceding read, as the delta-since-last-read contract in `uart_16550_main.rdl` requires (`smc_uart_spi_log_engine_test_seq.py`)
-|`CHK-UART-MSR-DELTA-CLEAR-PAD0` |The read after the pad-0 transition read equals exactly the settled word: DCTS cleared, CTS 1 (`smc_uart_spi_log_engine_test_seq.py`)
-|`CHK-UART-MSR-DELTA-CLEAR-PAD1` |The read after the pad-1 transition read equals exactly the settled word: DCTS cleared, CTS 0 (`smc_uart_spi_log_engine_test_seq.py`)
-|`CHK-UART-MSR-FIRST` |The first `UART_MSR` read of the run equals exactly DCTS OR CTS (0x11), a full-word compare: CTS=1 because this test drives pad 14 low, DCTS=1 because it is the first read, and DSR/RI/DCD with their delta bits 0 because `smc_peripherals.sv` ties `uart_dsr_ni`, `uart_ri_ni` and `uart_dcd_ni` high (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-CTS-PAD0` |After this test drives UART0 CTS pad 14 to 0, a bounded poll of the CTS and DCTS bits of `UART_MSR` reads either the pre-change word or exactly the transition word CTS=1 (the inverse of `cts_ni`) with DCTS=1 for the change since the last read, and the transition word arrives within the bound (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-CTS-PAD1` |After this test drives UART0 CTS pad 14 to 1, the same bounded poll of the CTS and DCTS bits reads the pre-change word or exactly CTS=0 with DCTS=1, and the transition word arrives within the bound (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-DELTA-CLEAR` |The CTS and DCTS bits of the second back-to-back `UART_MSR` read equal exactly 0x10: CTS still asserted with DCTS cleared by the preceding read, as the delta-since-last-read contract in `uart_16550_main.rdl` requires (`smc_uart_spi_log_engine_test_seq.py`). Every MSR compare in this card is masked to CTS and DCTS, the two bits this test drives through pad 14; DSR, RI, DCD and their delta bits are logged, not compared, because the integrator pin table (`ocah_gpio_table.csv`) pins no pad for them and the bench has no specification for their level
+|`CHK-UART-MSR-DELTA-CLEAR-PAD0` |The CTS and DCTS bits of the read after the pad-0 transition read equal exactly the settled word: DCTS cleared, CTS 1 (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-DELTA-CLEAR-PAD1` |The CTS and DCTS bits of the read after the pad-1 transition read equal exactly the settled word: DCTS cleared, CTS 0 (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-FIRST` |The CTS and DCTS bits of the first `UART_MSR` read of the run equal exactly DCTS OR CTS (0x11): CTS=1 because this test drives pad 14 low, DCTS=1 because it is the first read (`smc_uart_spi_log_engine_test_seq.py`). DSR, RI, DCD and their delta bits are outside the compare (see `CHK-UART-MSR-DELTA-CLEAR`)
 |===
 
 
@@ -7434,13 +7449,13 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 *Test Coverage*:
 
-* Scenarios A..E on wrap 0: A, an 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request into a 64-byte slot that overfills the 32-entry UART TX FIFO so the write FSM runs against `uart_tx_ready` low; C, a completion check against a defined UART offset (the write-error path is unreachable, as the image documents); D, a 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to one 8-byte beat. A, D and E read back exactly the requested or clamped byte count from RBR and require no extra byte. Those compares are the firmware's.
-* What the bench observes on its own: the SPM source holds E's 0xE0..0xEF in its first 16 bytes and B's 0x50..0x7F behind them -- B was the only scenario to write past byte 16 -- and the engine reads back programmed as E left it, with CTRL.EN and MCR.LOOP cleared by the cleanup.
+* Scenarios A..E on wrap 0: A, an 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request into a 64-byte slot written against `uart_tx_ready` low -- the transmitter reports ready only while its TX FIFO holds no data, so each byte the engine fetches waits for the serialiser -- its 64 bytes read back in order from RBR while the transfer runs and no 65th byte accepted; C, a completion check against a defined UART offset (the write-error path is unreachable, as the image documents); D, a 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to one 8-byte beat. A, D and E read back exactly the requested or clamped byte count from RBR and require no extra byte. Those compares are the firmware's.
+* What the bench observes on its own: `tb_uart0_log_write_stalled`, published by `tb_top` as a fetched byte waiting at the wrap-0 log engine's read-data FIFO while its UART transmit-ready input is low, is sampled on every `clk_smc_i` edge while the image runs and must be 1 on at least one cycle and not on all of them: the engine's write FSM was held off with a byte waiting. The transmit-ready input alone is not the observable, because it is also low on cycles where the engine has nothing to write. The count covers the whole image; A, D and E queue eight to twenty-four bytes and can stall the same way, so the count is evidence that the log-write FSM honours `uart_tx_ready`, and B's 64-byte transfer is the scenario whose bytes the firmware compares under it. After the PASS word the SPM source holds E's 0xE0..0xEF in its first 16 bytes and B's 0x50..0x7F behind them -- B was the only scenario to write past byte 16 -- and the engine reads back programmed as E left it, with CTRL.EN and MCR.LOOP cleared by the cleanup.
 
 *Test Procedure*:
 
 [arabic]
-. Build `uart_log_engine_boundary_backpressure` through `[c_build.default]`, stage `uart_log_engine_boundary_backpressure.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back.
+. Build `uart_log_engine_boundary_backpressure` through `[c_build.default]`, stage `uart_log_engine_boundary_backpressure.ecc.hex`, hold `boot_stall` from t=0, start sampling `tb_uart0_log_write_stalled`, clear CPU_CTRL SCRATCH_0 and read the clear back.
 . Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
 . Read wrap 0's engine registers and UART0's MCR over SEP_IN and compare with scenario E's programming.
 . Read the 64-byte SPM source and compare bytes 0..15 with 0xE0..0xEF and bytes 16..63 with 0x50..0x7F.
@@ -7453,9 +7468,10 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-FW-LOG-ENGINE-BOUNDARY-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
 |`CHK-FW-LOG-ENGINE-CSR-STATE` |Wrap 0 reads back as scenario E left it: REGION_SIZE 0xF0 at SPM + 0x40000, WRITE_ADDR = UART0 offset 0 (THR/RBR), CTRL.EN and UART0 MCR.LOOP cleared
 |`CHK-FW-LOG-ENGINE-SPM-PATTERN` |Bytes 0..15 of the source read 0xE0..0xEF and bytes 16..63 read 0x50..0x7F over SEP_IN AXI
+|`CHK-FW-LOG-ENGINE-TX-BACKPRESSURE` |`tb_uart0_log_write_stalled` sampled 1 on at least one and not every `clk_smc_i` cycle while the image ran: a fetched byte waited at the engine's read-data FIFO while the UART reported not ready, so the log-write FSM honours `uart_tx_ready`; the firmware's own compare of B's 64 looped-back bytes is what shows the writes held off during the longest transfer were not dropped
 |===
 
-*Pass Criteria*: all three checkers hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+*Pass Criteria*: all four checkers hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
 
 '''''
 
@@ -7844,6 +7860,7 @@ in <<smc-deferred-disposition>>.
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
 |`smc_octs_sanity_test` carries an OCTS name but drives the AVSBus status CSR path and the sideband observability probe |Its PASS is evidence for the AVS status window decode and the bench sideband probes, not for any OCTS register or pad; its protocol-VIP record is booked as a proxy. OCTS is covered by `smc_octs_dual_sync_test` (`dual`) and `smc_fw_octs_p0_primary_test` (`fw`) |Rename the leaf to what it drives, or give it OCTS stimulus and re-review the card
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
+|UART0 transmits two stop bits for a 5-bit word with `LCR.STB` set, where `uart_16550_main.rdl` describes 1.5 (#2121) |`smc_uart_baud_word_parity_format_test` measures the frame length on the TX pad for every format; for the two 5-bit `STB = 1` formats it admits either 1.5 or 2 stop bits, records which one was measured, and so does not claim the RDL count for them (one stop bit still fails). Every other format is held to the RDL count |Fix the transmitter or the RDL description under #2121, then drop the admitted alternative so the two formats are held to one count
 |===
 
 [[smc-held-out-testcases]]

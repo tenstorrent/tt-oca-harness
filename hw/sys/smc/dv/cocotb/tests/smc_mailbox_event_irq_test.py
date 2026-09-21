@@ -13,7 +13,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_mailbox_event_irq_test(smc_base_test):
-    """Run mailbox IRQ-control decode plus real sync IRQ injection."""
+    """Mailbox IRQ-control decode plus SEP mailbox interrupt injection on the mailbox aggregate."""
 
     required_evidence = (
         "CHK-MAILBOX-IRQ-ASSERT",

@@ -6,12 +6,13 @@ Closes SMC-MAP-DECODE.S1 (plic-region, timer-buserror-region),
 SMC-INT-PLICID.S3, SMC-CLINT.S1, SMC-BEU.S1, SMC-PERIPH-DECODE.S2
 (beu-instance-3) and SMC-PLIC-INIT.S1 (memmap.adoc: SMC Address Space Layout,
 SMC Component Address Map; interrupts.adoc: Interrupt Controller Address Map,
-PLIC initialisation; fabric.adoc: Local and Remote Resource Access). The 16 MiB
-reset aperture is shown to fold the PLIC offset onto the watchdog window,
-REGION_SIZE is then programmed to 256 MiB -- the smallest legal power of two
-that contains the whole documented map -- and the three windows are driven at
-their base, their spec top and one word beyond with co-resident patterns that
-fail on an alias. REGION_SIZE is restored before the test ends.
+PLIC initialisation; fabric.adoc: Local and Remote Resource Access). What the
+PLIC address answers above the 16 MiB reset aperture is reported, not claimed
+(the specification leaves it undefined); REGION_SIZE is then programmed to
+256 MiB -- the smallest legal power of two that contains the whole documented
+map -- and the three windows are driven at their base, their spec top and one
+word beyond with co-resident patterns that fail on an alias. REGION_SIZE is
+restored before the test ends.
 
 Run:
     CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smc \\

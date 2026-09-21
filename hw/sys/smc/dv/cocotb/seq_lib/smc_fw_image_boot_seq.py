@@ -62,6 +62,30 @@ class _RisingEdgeCounter:
         return self.count
 
 
+class _LowLevelCounter:
+    """Count clk_smc_i cycles on which one published TB signal samples 0, until stopped."""
+
+    def __init__(self, signal, clk) -> None:
+        self.low = 0
+        self.total = 0
+        self._signal = signal
+        self._clk = clk
+        self._task = cocotb.start_soon(self._run())
+
+    async def _run(self) -> None:
+        while True:
+            await RisingEdge(self._clk)
+            if not self._signal.value.is_resolvable:
+                continue
+            self.total += 1
+            if int(self._signal.value) == 0:
+                self.low += 1
+
+    def stop(self) -> tuple[int, int]:
+        self._task.cancel()
+        return self.low, self.total
+
+
 class smc_fw_image_boot_seq(SmcCsrSeq):
     """Scratch-image boot to the firmware PASS word, then a bench observation."""
 
@@ -75,6 +99,7 @@ class smc_fw_image_boot_seq(SmcCsrSeq):
         super().__init__(name)
         self.boot: dict[str, object] = {}
         self._edge_counters: dict[str, _RisingEdgeCounter] = {}
+        self._low_counters: dict[str, _LowLevelCounter] = {}
 
     async def before_boot(self) -> None:
         """Bench setup while the cores are still held. Default: nothing."""
@@ -92,6 +117,15 @@ class smc_fw_image_boot_seq(SmcCsrSeq):
     def edges_counted(self, signal_name: str) -> int:
         return self._edge_counters.pop(signal_name).stop()
 
+    def count_low_cycles_from_now(self, signal_name: str) -> None:
+        dut = cocotb.top
+        assert hasattr(dut, signal_name), f"{signal_name} is not a published TB signal"
+        self._low_counters[signal_name] = _LowLevelCounter(getattr(dut, signal_name), dut.clk_smc_i)
+
+    def low_cycles_counted(self, signal_name: str) -> tuple[int, int]:
+        """Return ``(low, total)`` clk_smc_i cycles sampled since the counter started."""
+        return self._low_counters.pop(signal_name).stop()
+
     async def body(self) -> None:
         await self.before_boot()
         # require_image=True: without the staged image there is nothing to
@@ -108,3 +142,5 @@ class smc_fw_image_boot_seq(SmcCsrSeq):
         await self.after_pass()
         for name in list(self._edge_counters):
             self.edges_counted(name)
+        for name in list(self._low_counters):
+            self.low_cycles_counted(name)

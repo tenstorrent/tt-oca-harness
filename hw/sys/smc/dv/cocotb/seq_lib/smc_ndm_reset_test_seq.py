@@ -13,13 +13,19 @@ from .smc_csr_seq_utils import SmcCsrSeq
 NDM_REQUEST = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR")
 NDM_PROCESS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR")
 NDM_CLUSTERS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR")
-# NDMRESET_CLUSTER_COUNT carries no golden here: `ndm_reset.rdl:33-39` declares
-# it `sw = r; hw = w` with reset 0x0, i.e. the value is driven by the
-# integration's cluster count and no SPEC table in this repository pins it to a
-# number ([INDEPENDENT-EXPECTED-MODEL]).
+# NDMRESET_CLUSTER_COUNT golden: `ndm_reset.rdl:33-39` declares the field
+# `sw = r; hw = w` with reset 0x0, so the RDL supplies no value; the SMU port
+# table (`hw/sys/smu/doc/port_table.adoc`, `smc_ndmreset_request_i
+# [CPU_CLUSTER_COUNT-1:0]`) sizes the request port by CPU_CLUSTER_COUNT without
+# pinning the number. The expected count is therefore the DV-owned value below,
+# which the bench's own request-port declaration follows
+# (`tb/smc_tb_signal_list.svh`, `tb_ndmreset_request [NDM_CLUSTER_COUNT-1:0]`);
+# the specification gap is recorded on the VPLAN card. The port width is derived
+# from this table value, not the other way round, so the compare below is
+# DV-owned golden against DUT register, never RTL against RTL.
+NDM_CLUSTER_COUNT = 4
 #
-# What the RDL DOES state is the register's contract, and that is what is
-# checked instead:
+# What the RDL DOES state is the register's contract, and that is checked too:
 #   * the field is `ndmreset_cluster_count[7:0]`, and REQUEST/PROCESS
 #     "Supports up to 32 CPU Clusters" -- so 1 <= count <= 32;
 #   * "Number of NDM Clusters supported. Can be read to mask the
@@ -70,27 +76,21 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
         assert hasattr(dut, "tb_ndmreset_request"), "tb_ndmreset_request missing"
         assert int(dut.tb_ndmreset_request.value) == 0, "NDM request must idle 0"
 
-        nclu = await self.csr_read("NDM_CLUSTER_COUNT", NDM_CLUSTERS)
+        nclu = await self.csr_read("NDM_CLUSTER_COUNT", NDM_CLUSTERS, expected=NDM_CLUSTER_COUNT)
         count = nclu & _NDM_CLUSTER_COUNT_MASK
         assert 1 <= count <= _NDM_MAX_CLUSTERS, (
             f"NDMRESET_CLUSTER_COUNT=0x{nclu:x} -> {count} clusters, outside the "
             f"1..{_NDM_MAX_CLUSTERS} range ndm_reset.rdl declares for the "
             f"REQUEST/PROCESS registers"
         )
+        # The bench's request port is declared from the same DV-owned table
+        # value; a bench whose port did not follow the table could not drive
+        # the lines the table says exist, so that integration is checked too.
         port_width = len(dut.tb_ndmreset_request.value)
-        # `port_width` is the width of the TB observation port
-        # `tb_ndmreset_request`, a hard-coded `[3:0]` in tb_top.sv that mirrors
-        # `smc_config_pkg.sv`, not the DUT's parameterised `smc.sv` port. The
-        # compare is a TB/DUT integration check -- the bench cannot observe more
-        # lines than it declares -- and, with no spec value for the count in
-        # the tree (module comment above), it does not claim the count is
-        # correct; the all-lines leg below proves the count agrees with the
-        # request bits that reach the register.
-        assert count == port_width, (
-            f"NDMRESET_CLUSTER_COUNT reports {count} cluster(s) but the TB "
-            f"observation port tb_ndmreset_request is {port_width} bit(s) wide "
-            f"(tb_top.sv:149, hard-coded [3:0]) -- the bench cannot observe the "
-            f"lines the DUT says exist"
+        assert port_width == NDM_CLUSTER_COUNT, (
+            f"tb_ndmreset_request is {port_width} bit(s) wide but the DV table "
+            f"NDM_CLUSTER_COUNT is {NDM_CLUSTER_COUNT}; the bench port must be declared "
+            f"from the table"
         )
         self.cluster_count = count
 
@@ -107,19 +107,13 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
 
         # The RDL's stated use of CLUSTER_COUNT -- "can be read to mask the
         # ndmreset_request register" -- made falsifiable: with every request
-        # line driven high, NDMRESET_REQUEST must read exactly that mask.
+        # line driven high, NDMRESET_REQUEST must read exactly the table's mask.
         #
-        # The STIMULUS is all-ones across the whole TB port, independent of
-        # `count`. Deriving the drive value from `count` as well would make the
-        # leg blind in one direction: a CSR that under-reports would drive only
-        # the bits it claims, read them back and pass. Driving every line the
-        # bench has makes the readback report how many request bits reach the
-        # register, so `expected=all_mask` separates a count that over-reports
-        # (extra bits read 0) from one that matches. Both sides of the compare
-        # are DUT-sourced -- the CSR count against the CSR request reflection --
-        # rather than a DUT value against a TB literal
-        # ([INDEPENDENT-EXPECTED-MODEL]).
-        all_mask = (1 << count) - 1
+        # The STIMULUS is all-ones across the whole TB port and the expectation
+        # is the DV table value, so a register that under- or over-reports the
+        # request bits fails here independently of the CLUSTER_COUNT compare
+        # above.
+        all_mask = (1 << NDM_CLUSTER_COUNT) - 1
         drive_all = (1 << len(dut.tb_ndmreset_request.value)) - 1
         dut.tb_ndmreset_request.value = drive_all
         await self._await_pins(dut, irq=1, process=0, label="COUNT_ALL")
@@ -130,21 +124,20 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
         await self._await_pins(dut, irq=0, process=0, label="COUNT_ALL_DROP")
         await self.csr_read("NDM_REQUEST_ALL_DROP", NDM_REQUEST, expected=0)
         cocotb.log.info(
-            "CHK-NDM-COUNT: NDMRESET_CLUSTER_COUNT=%d (ndm_reset.rdl field "
-            "[7:0]; the RDL reset is 0x0 and hw-driven, so the RDL supplies NO "
-            "expected count -- this testcase does not claim the count is "
-            "correct). TB observation port tb_ndmreset_request is %d bits "
-            "(tb_top.sv:149 hard-coded [3:0], an RTL mirror, NOT the DUT's "
-            "parameterised port). With ALL %d bench-driven lines high, "
-            "NDMRESET_REQUEST read exactly 0x%x == (1<<%d)-1, so every request "
-            "line the bench drives reaches the register and bits above the "
-            "reported count read zero. Request bits beyond the bench's port "
-            "width are outside this leg's reach",
+            "CHK-NDM-COUNT: NDMRESET_CLUSTER_COUNT read %d == the DV table value "
+            "NDM_CLUSTER_COUNT %d (ndm_reset.rdl field [7:0] is hw-driven with reset "
+            "0x0 and port_table.adoc sizes the request port by CPU_CLUSTER_COUNT "
+            "without a number, so the table is the golden and the gap is recorded on "
+            "the card); the bench request port declared from that table is %d bits "
+            "wide. With ALL %d lines high, NDMRESET_REQUEST read exactly 0x%x == "
+            "(1<<%d)-1, so every request line reaches the register and no bit above "
+            "the count reads 1",
             count,
+            NDM_CLUSTER_COUNT,
             port_width,
             drive_all.bit_count(),
             self.all_request_readback,
-            count,
+            NDM_CLUSTER_COUNT,
         )
 
         for bit in range(count):
