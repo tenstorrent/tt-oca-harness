@@ -108,12 +108,12 @@ python3 tools/dv/run_dv.py --dut smu --list
 python3 tools/dv/run_dv.py --dut smu --items smoke
 
 # 2. Nightly and weekly. `.github/workflows/regress.yml` runs this as the
-#    release qualification set: 64 toolchain-free leaves, one seed nightly,
+#    release qualification set: 65 toolchain-free leaves, one seed nightly,
 #    three weekly with --cov on the large runner. Their `elaboration` firmware
 #    stage only writes zero-filled preload images (Python, no toolchain).
 python3 tools/dv/run_dv.py --dut smu --items hosted
 
-# 3. The whole package: `all` adds the SEP firmware set (96 leaves). The
+# 3. The whole package: `all` adds the SEP firmware set (97 leaves). The
 #    firmware c_build stages build every image in the toolchain container
 #    (unless RISCV_TOOLCHAIN names a picolibc gcc), so build that image once
 #    first. Nothing schedules this group: the hosted runners have Verilator
@@ -302,8 +302,8 @@ feature reuses that IP bench's reference model and scoreboard through
 ## Enrollment
 
 `--dut smu` carries the regression: `all` is every entry of
-`testlists/all.toml` (96), `hosted` is the toolchain-free subset the workflows
-run (64), and the rest of `all` is the SEP firmware set. The SEP=0 composition
+`testlists/all.toml` (97), `hosted` is the toolchain-free subset the workflows
+run (65), and the rest of `all` is the SEP firmware set. The SEP=0 composition
 proofs are enrolled on `--dut smu_block` (`nosep`, in `testlists/block.toml`),
 beside `smu_dtp_jtag2axi_abort_mid_op_test`, which runs there because it needs
 an OTP interface that holds SINGLE_OP in BUSY, and `smu_dtp_jtag_smoke_test`,
