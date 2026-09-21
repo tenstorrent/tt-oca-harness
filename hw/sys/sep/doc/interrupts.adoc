@@ -23,6 +23,12 @@ and `meigwclr` at `+0x5000`. Pending status is the exception -- `meip` at
 `+0x1000` is a bitmap rather than a per-source array, so source `N` is bit
 `N % 32` of `meip[N / 32]`.
 
+The vector driven to the core, `sep_internal_interrupts`, is indexed from 0.
+Bit `i` of that vector is PIC source `i + 1`. The core's `extintsrc_req` port
+is numbered from 1, and the core ties source 0 to zero, so the low bit of the
+driven vector is the first programmable source. Comments on
+`NUM_INTERNAL_IRQS` use the vector index.
+
 Each per-source array carries an entry 0, so that the array index is the source
 ID and no off-by-one applies: `meipl[7]` is source 7. That entry is reserved and
 has no hardware behind it -- the PIC decodes the address but ties the register
