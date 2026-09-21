@@ -241,6 +241,16 @@ SMC reset override enables and active-low values. The DTP drives this input
 through the JTAG IC_RESET mechanism (see <<smc-dtp-interconnection>>); most
 integrations leave all override enables deasserted.
 
+[[smc-ndm-cluster-reset]]
+=== External CPU cluster NDM reset
+
+Connect `smc_ndmreset_request_i[i]` to the NDM reset request from
+external CPU cluster `i`, and return `smc_ndmreset_process_o[i]` to
+that cluster. Set `CPU_CLUSTER_COUNT` in `smc_config_pkg` to the number
+of clusters. This harness sets it to 4. The parameter sizes both ports,
+and `NDMRESET_CLUSTER_COUNT` reads that value back. The register fields
+stay 32 bits wide. Tie unused request inputs to 0.
+
 [[smc-address-map-integration]]
 === Address Map and Aperture
 

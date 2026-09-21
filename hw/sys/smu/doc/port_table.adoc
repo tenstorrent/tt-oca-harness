@@ -131,8 +131,8 @@
 |`lc_state_o` |`logic` |Output |`[2*LC_STATE_WIDTH-1:0]` |Lifecycle state output (driven by SEP when `SEP=1`, else `8'hf0`). |External systems |N/A
 |`lc_sigint_err_o` |`logic` |Output |1 |Lifecycle signal integrity error. |External systems |N/A
 
-|`smc_ndmreset_request_i` |`logic` |Input |`[CPU_CLUSTER_COUNT-1:0]` |Non-debug-module reset requests. |Debug infrastructure |Tie to '0 if unused
-|`smc_ndmreset_process_o` |`logic` |Output |`[CPU_CLUSTER_COUNT-1:0]` |Non-debug-module reset process indicators. |Debug infrastructure |N/A
+|`smc_ndmreset_request_i` |`logic` |Input |`[CPU_CLUSTER_COUNT-1:0]` |NDM reset request from external CPU cluster `i` on bit `i`. |External CPU clusters |Tie to '0 if unused
+|`smc_ndmreset_process_o` |`logic` |Output |`[CPU_CLUSTER_COUNT-1:0]` |Firmware response to external CPU cluster `i` on bit `i`. |SMC → external CPU clusters |N/A
 
 |`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NUM_MAILBOXES-1:0]` |External mailbox interrupt outputs. |External targets |N/A
 

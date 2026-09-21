@@ -13,18 +13,16 @@ from .smc_csr_seq_utils import SmcCsrSeq
 NDM_REQUEST = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR")
 NDM_PROCESS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR")
 NDM_CLUSTERS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR")
-# NDMRESET_CLUSTER_COUNT carries no golden here: `ndm_reset.rdl:33-39` declares
-# it `sw = r; hw = w` with reset 0x0, i.e. the value is driven by the
-# integration's cluster count and no SPEC table in this repository pins it to a
-# number ([INDEPENDENT-EXPECTED-MODEL]).
+# NDMRESET_CLUSTER_COUNT is `sw = r; hw = w` with reset 0x0. The programmer's
+# guide states that this harness reads 4. This sequence does not compare
+# against that value ([INDEPENDENT-EXPECTED-MODEL]).
 #
-# What the RDL DOES state is the register's contract, and that is what is
-# checked instead:
-#   * the field is `ndmreset_cluster_count[7:0]`, and REQUEST/PROCESS
-#     "Supports up to 32 CPU Clusters" -- so 1 <= count <= 32;
-#   * "Number of NDM Clusters supported. Can be read to mask the
-#     ndmreset_request register" -- so driving every request line high must
-#     make NDMRESET_REQUEST read exactly the count's mask, no more and no less.
+# What the RDL states, and what is checked instead:
+#   * the field is `ndmreset_cluster_count[7:0]`, and the request and process
+#     fields hold up to 32 clusters -- so 1 <= count <= 32;
+#   * software masks NDMRESET_REQUEST with the count -- so driving every
+#     request line high must make NDMRESET_REQUEST read exactly the count's
+#     mask, no more and no less.
 # The scope of the second property is bounded by the bench: the TB can only
 # drive the request lines it declares, so the leg proves that every request
 # line the bench can drive reaches NDMRESET_REQUEST and that the bits above the
@@ -32,7 +30,7 @@ NDM_CLUSTERS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_
 # bits the DUT actually implements; it cannot detect a DUT that implements more
 # request bits than the bench drives.
 _NDM_CLUSTER_COUNT_MASK = 0xFF  # ndm_reset.rdl ndmreset_cluster_count[7:0]
-_NDM_MAX_CLUSTERS = 32  # ndm_reset.rdl "Supports up to 32 CPU Clusters"
+_NDM_MAX_CLUSTERS = 32  # ndm_reset.rdl: the request field holds up to 32 clusters
 _PIN_BOUND = 64
 
 

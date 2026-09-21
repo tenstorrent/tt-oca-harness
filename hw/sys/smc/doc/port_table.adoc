@@ -74,6 +74,8 @@ endif::backend-html5[]
 |`lc_state_i` |`logic` |Input |`[2*LC_STATE_WIDTH-1:0]` (8 bits) |Lifecycle state input, differentially encoded. |Lifecycle controller → SMC Internal Registers |From SEP; tie to 8'hf0 if unused (encoded TEST_DEV)
 |`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NUM_MAILBOXES-1:0]` |External mailbox interrupt outputs (32 interrupts, mapped to IDs 156-187). |Mailbox controller → External targets |N/A
 |`cfg_flr_pf_active_i` |`logic` |Input |1 |Function Level Reset (FLR) PF active signal. |PCIe/System → Reset Unit |N/A, tie to '0 if unused
+|`smc_ndmreset_request_i` |`logic` |Input |`[CPU_CLUSTER_COUNT-1:0]` |NDM reset request from external CPU cluster `i` on bit `i`. Synchronized onto `clk_smc`. |External CPU clusters → SMC |Tie to '0 if unused
+|`smc_ndmreset_process_o` |`logic` |Output |`[CPU_CLUSTER_COUNT-1:0]` |Firmware response to external CPU cluster `i` on bit `i`. |SMC → external CPU clusters |N/A
 |`isolate_req_o` |`logic` |Output |`[31:0]` |Isolation request output for 32 subsystems. |Reset Unit → 32 subsystems |N/A
 |`ss_reset_complete_i` |`logic` |Input |`[31:0]` |Subsystem reset completion status. |32 subsystems → Reset Unit |32'hFFFFFFFF
 |`ss_config_o` |`logic` |Output |`[31:0]` |Subsystem configuration output. |Reset Unit → 32 subsystems |N/A
