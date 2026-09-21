@@ -65,6 +65,55 @@ exactly **one** descriptor, `hw/<tree>/<block>/flow.mk`
 (`FLOW_DESIGN`/`FLOW_BENDER_TARGETS`), consumed by both engines, instead of
 two near-duplicate per-block files.
 
+## Structural readiness without technology mapping
+
+From the repository root, select the structural-only driver and a separate output
+directory:
+
+```bash
+make synth-yosys-all BLOCK=dtp OCAH_SYNTH_DIR=build/readiness \
+  OCAH_YOSYS_SYNTH_TCL="$PWD/flows/synth/yosys/scripts/readiness.tcl"
+```
+
+Run each block independently when collecting a full status matrix: the normal
+multi-block dispatcher stops at the first failure. The driver elaborates with
+strict module resolution, records pre-cleanup checks and cell statistics, rejects
+inferred latch cells and blackboxes, then flattens and checks the cleaned design.
+It stops before technology mapping or ABC; `TECH` does not affect this driver.
+Frontend and lint warnings still require review even if the structural check
+passes. Assertions are ignored, enum conversions are strict unless a block declares
+the audited compatibility path below, and the Slang unroll limit is 100000. This is
+not CDC or timing sign-off.
+
+The flow loads the SystemVerilog frontend when Yosys starts (`yosys -m slang`);
+individual Tcl drivers do not load a version-specific plugin filename. Unknown
+modules remain fatal. Blocks that require a vendor compatibility exception declare
+an owner-local diagnostic pattern file through `FLOW_SYNTH_SLANG_EXPECTED_ERRORS`
+and the corresponding lowering option through `FLOW_SYNTH_SLANG_COMPAT_FLAGS`.
+Before Yosys runs, full standalone Slang elaboration requires every listed
+path-and-message pattern exactly once and rejects every additional error. Yosys then
+uses the lowering option because accepting a diagnostic alone cannot turn the
+strictly invalid enum assignment into a lowerable AST.
+
+### Reviewed latch definition
+
+A latch is reviewed only when all of these are recorded and verified:
+
+1. The RTL expresses intentional storage (`always_latch` or an explicit latch
+   primitive); an incomplete combinational assignment is not eligible.
+2. Its functional purpose and enable behaviour are identified, including reset,
+   test and power-state expectations where applicable.
+3. A site-specific rule identifies the owning source location and expected latch
+   cell type. Broad module-tree or count-only rules are not acceptable.
+4. The synthesized latch cells retain source attribution to that reviewed site,
+   and every other latch remains a failure.
+5. The rule has an owner, rationale and review reference, and becomes stale when
+   its source match is unused.
+
+Cell counts are evidence for detecting change, not the basis for acceptance. The
+current structural driver reports all latches and rejects them all; reviewed-latch
+rules must not be added until this policy is implemented with unused-rule checking.
+
 ## Scaling across PDKs: `TECH=`
 
 `TECH` (default `ihp-sg13g2`) is completely independent of `BLOCK`, so adding

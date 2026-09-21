@@ -1,18 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Elaboration stage: load the yosys-slang plugin, elaborate the design from
+# Elaboration stage: elaborate the design from
 # the bender-generated filelist, and report the as-elaborated design before
 # any optimization runs. Assumes common.tcl and init_tech.tcl have already
 # been sourced (see synth.tcl) for
 # $sv_flist/$top_design/$proj_name/$tmp_dir/$rep_dir.
+set slang_compat_args {}
+if { [info exists ::env(OCAH_SLANG_COMPAT_FLAGS)] } {
+    set slang_compat_args $::env(OCAH_SLANG_COMPAT_FLAGS)
+}
 # --single-unit: slang defaults to one compilation unit per file in -f, so
 # macros defined in one file (including ocah_vendor_defines.svh) are not
-# visible in another.
-yosys plugin -i slang.so
+# visible in another. scripts/run.sh loads the plugin before this driver runs.
 yosys read_slang --top $top_design -f $sv_flist \
-    --compat-mode --keep-hierarchy --single-unit \
-    --allow-use-before-declare --ignore-unknown-modules \
+    --single-unit --keep-hierarchy \
+    --allow-use-before-declare \
+    {*}$slang_compat_args \
     --timescale=$timescale
 
 # map the dont_touch attribute commonly applied to output nets of async regs
@@ -26,7 +30,7 @@ yosys attrmvcp -copy -attr keep
 # can extend this file with the usual `setattr -set keep_hierarchy` /
 # `blackbox` commands.
 
-yosys hierarchy -top $top_design
+yosys hierarchy -check -top $top_design
 yosys check
 yosys proc
 yosys tee -q -o "$rep_dir/${proj_name}_elaborated.rpt" stat

@@ -16,6 +16,7 @@ include $(OCAH_YOSYS_DIR)/pdks.mk
 # worker).
 
 OCAH_YOSYS_SYNTH_TCL := $(OCAH_YOSYS_DIR)/scripts/synth.tcl
+OCAH_YOSYS_RUN := $(OCAH_YOSYS_DIR)/scripts/run.sh
 
 ## @section Synthesis (yosys)
 
@@ -34,6 +35,9 @@ ifdef FLOW_DESIGN
 # TECH-scoped so different PDKs don't clobber each other's build output.
 OCAH_SYNTH_DIR := build/synth/$(TECH)
 OCAH_SYNTH_FLIST := $(OCAH_SYNTH_DIR)/$(FLOW_DESIGN).f
+FLOW_SYNTH_SLANG_EXPECTED_ERRORS ?=
+FLOW_SYNTH_SLANG_COMPAT_FLAGS ?=
+OCAH_SYNTH_SLANG_EXPECTED_ERRORS := $(addprefix $(OCAH_ROOT)/,$(FLOW_SYNTH_SLANG_EXPECTED_ERRORS))
 
 # The prim_assert.sv shim is yosys-only and must win the +incdir search against
 # the vendored OpenTitan copy it delegates to, so it has to come first. It also
@@ -50,7 +54,8 @@ ocah-synth-yosys: ${PDK_SENTINEL}
 	$(call ocah_eda_flist,$(FLOW_BENDER_TARGETS),$(OCAH_SYNTH_FLIST))
 	@sed -i '1i +incdir+$(OCAH_YOSYS_ASSERT_INCDIR)' $(OCAH_SYNTH_FLIST)
 	$(call ocah_require_host_tool,yosys,./scripts/docker-run.sh run-here make ocah-synth-yosys)
-	PDK=$(TECH) PDK_ROOT=$(PDK_ROOT) PROJ_NAME=$(FLOW_DESIGN) TOP_DESIGN=$(FLOW_DESIGN) SV_FLIST=$(OCAH_SYNTH_FLIST) OUT_DIR=$(OCAH_SYNTH_DIR) TIMESCALE=$(OCAH_FLOW_TIMESCALE) yosys -c $(OCAH_YOSYS_SYNTH_TCL)
+	$(call ocah_require_host_tool,slang,./scripts/docker-run.sh run-here make ocah-synth-yosys)
+	PDK=$(TECH) PDK_ROOT=$(PDK_ROOT) PROJ_NAME=$(FLOW_DESIGN) TOP_DESIGN=$(FLOW_DESIGN) SV_FLIST=$(OCAH_SYNTH_FLIST) OUT_DIR=$(OCAH_SYNTH_DIR) TIMESCALE=$(OCAH_FLOW_TIMESCALE) OCAH_YOSYS_SYNTH_TCL=$(OCAH_YOSYS_SYNTH_TCL) OCAH_SLANG_EXPECTED_ERROR_FILES="$(OCAH_SYNTH_SLANG_EXPECTED_ERRORS)" OCAH_SLANG_COMPAT_FLAGS="$(FLOW_SYNTH_SLANG_COMPAT_FLAGS)" $(OCAH_YOSYS_RUN)
 
 endif
 
