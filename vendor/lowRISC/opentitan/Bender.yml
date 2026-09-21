@@ -14,7 +14,7 @@ export_include_dirs:
   - upstream/hw/ip/prim/rtl
 
 sources:
-  - target: any(dtp, cross_trigger, entropy_source, sep, smc, opentitan_smu, smu, key_manager)
+  - target: any(dtp, cross_trigger, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager)
     files:
       - upstream/hw/ip/prim/rtl/prim_util_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_count_pkg.sv
@@ -25,7 +25,7 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
   # prim_generic cells that the current synth overlay replaces.
   # Add a cell here only if the overlay supplies a replacement.
-  - target: all(any(dtp, cross_trigger, entropy_source, sep, smc, opentitan_smu, smu, key_manager), not(synth))
+  - target: all(any(dtp, cross_trigger, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager), not(synth))
     files:
       - upstream/hw/ip/prim_generic/rtl/prim_and2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
@@ -35,10 +35,10 @@ sources:
       - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
   # prim_flop_2sync instantiates prim_cdc_rand_delay when SIMULATION is
-  # defined; the dtp and cross_trigger graphs receive prim_flop_2sync above
-  # but not the any(opentitan_smu, sep, smu) file set that carries the delay
-  # model.
-  - target: all(any(dtp, cross_trigger), simulation)
+  # defined; the dtp, cross_trigger, uart and system_timer_octs graphs receive
+  # prim_flop_2sync above but not the any(opentitan_smu, sep, smu) file set
+  # that carries the delay model.
+  - target: all(any(dtp, cross_trigger, uart, system_timer_octs), simulation)
     files:
       - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 
@@ -66,7 +66,7 @@ sources:
   # the big any(opentitan_smu, sep, smu) list below: that list also carries
   # hw/sys/sep RTL (sep_pkg.sv), which the smc and key_manager builds must not
   # pull in.
-  - target: any(sep, smc, opentitan_smu, smu, key_manager)
+  - target: any(sep, smc, opentitan_smu, smu, key_manager, uart)
     files:
       - upstream/hw/ip/prim/rtl/prim_alert_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_sec_anchor_buf.sv

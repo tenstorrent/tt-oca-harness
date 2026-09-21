@@ -21,3 +21,9 @@ Replace `<io-port-type>` with one of the following options:
 - `axi4-lite`
 - `apb4-flattened`
 - `axi4-lite-flattened`
+
+== Verification
+
+Block-level bench on the unified DV flow: link:dv/README.md[dv/README.md]
+(`python3 tools/dv/run_dv.py --dut uart_log_engine_wrap`). SMC-level scenarios live under
+`hw/sys/smc/dv/`.
