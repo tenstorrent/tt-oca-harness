@@ -4270,7 +4270,7 @@ enrolled `hosted` set, which runs on `--dut smu` — the wrapper, whose
 PASSes carry `DUT_TAG=WRAPPER`. `--dut smu_block` PASSes (`DUT_TAG=BARE`)
 and the names in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` are OUT.
 
-[[smu-signoff-490]]
+[[smu-signoff-jtag2axi-otp-filter]]
 ==== JTAG2AXI / OTP / filter depth
 
 The JTAG2AXI, OTP and filter depth tests are enrolled in `hosted`:
@@ -4304,7 +4304,7 @@ The JTAG2AXI, OTP and filter depth tests are enrolled in `hosted`:
 that need the SEP=1 lifecycle controller have OUT rows in
 `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
 
-[[smu-signoff-491]]
+[[smu-signoff-atop-reject-filter-allow]]
 ==== ATOP reject and filter-allow
 
 Filter-allow positive control is enrolled:
@@ -4319,7 +4319,7 @@ DUT. ATOP reject / err_slv poison is **OUT** for the hosted set: a negative chec
 needs a positive control, and no legal ATOP stimulus exists on this DUT.
 A green atomic test is not ATOP non-support credit.
 
-[[smu-signoff-481]]
+[[smu-signoff-smc-under-smu]]
 ==== SMC-under-SMU
 
 Release-group (`hosted`) SMC-under-SMU names:
@@ -4342,7 +4342,7 @@ eFuse / burn under SMU is OUT (SEP=1 / child-TB).
 The GPIO strap feature has no testcase on either bench (`smc_wrapper` declares
 no `captured_straps_i`); it is not release credit.
 
-[[smu-signoff-482]]
+[[smu-signoff-dtp-under-smu]]
 ==== DTP-under-SMU
 
 JTAG smoke, boot-stall, IC_RESET, clock-stop, STAP, BSR, illegal-phase CTM
@@ -4352,12 +4352,12 @@ DTP-under-SMU set in `hosted`. Block-level DTP signoff is the DTP package.
 `feat_ctrl` scenarios that need the SEP=1 lifecycle controller are OUT in
 `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
 
-[[smu-signoff-483]]
+[[smu-signoff-hosted-fabric]]
 ==== Hosted fabric
 
 ID-width, crossbar error, prot decode, alias remap, and fabric BAR are
 checked through `ocah_axi_vip`
-(`common/seq_lib/smu_axi_helpers.py`). Filter-allow and ATOP reject are
+(`cocotb/seq_lib/smu_axi_helpers.py`). Filter-allow and ATOP reject are
 covered above. SEP=1 3×3 xbar receives no release credit.
 
 [[smu-known-limitations]]
