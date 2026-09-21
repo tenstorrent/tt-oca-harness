@@ -32,6 +32,12 @@ bench drove:
 * ``cfg_flr_pf_active_i``     -> ``ISOLATE_REQ_SMC_REG``, ``isolate_req_o`` via
   ``ISOLATE_REQ_SMCEN_REG`` and ``skip_mem_repair_o``. The latch is set by
   hardware and cleared by software, which is what the clear leg checks.
+* ``ss_reset_complete_i``     -> ``RESET_UNIT.SS_RESET_COMPLETE``, lane for
+  lane through the reset unit's synchroniser, and back to all-ones when the
+  pins are released.
+* ``chiplet_is_primary_i``    -> ``CPU_CTRL.SMC_ATTRIBUTES.chiplet_is_primary``.
+  The strap also selects the OCTS system-timer role; only the mirror is
+  claimed here.
 
 The FLR leg runs last: it leaves an isolation request asserted until the
 sequence clears it, and ``ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`` is left at its
@@ -45,7 +51,7 @@ from cocotb.triggers import ClockCycles
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_addr
-from seq_lib.smu_boundary_regs import dfx_ctrl_status_u32, ndm_reset_u32
+from seq_lib.smu_boundary_regs import cpu_ctrl_u32, dfx_ctrl_status_u32, ndm_reset_u32
 from seq_lib.smu_compose_helpers import hier, sample
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -75,12 +81,15 @@ ISOLATE_REQ_FLR_RESET_COUNTER = smc_addr(
     "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR"
 )
 DFX_STATUS_SMU = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
+SS_RESET_COMPLETE = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_RESET_COMPLETE_BASE_ADDR")
+SMC_ATTRIBUTES = smc_addr("SMC_TOP_SMC_CPU_CTRL_SMC_ATTRIBUTES_BASE_ADDR")
 SMC_BASE_PATH = "u_smc.u_smc_base"
 
 MEM_REPAIR_ABORT_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MEM_REPAIR_ABORT_bm")
 MBIST_ABORT_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bm")
 MEM_REPAIR_DONE_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MEM_REPAIR_DONE_bm")
 MBIST_DONE_BM = dfx_ctrl_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_DONE_bm")
+CHIPLET_IS_PRIMARY_BM = cpu_ctrl_u32("CPU_CTRL__SMC_ATTRIBUTES__CHIPLET_IS_PRIMARY_bm")
 
 NDMRESET_CLUSTER_COUNT_BM = ndm_reset_u32(
     "NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_bm"
@@ -97,6 +106,7 @@ SYNC_CYCLES = 32
 EXT_IRQ_LANE = 0
 EXT_IRQ_PATTERN = 0xA5A5_5A5A
 SS_CONFIG_PATTERN = 0xA5A5_5A5A
+SS_RESET_INCOMPLETE_PATTERNS = (0x5555_5555, 0xAAAA_AAAA, 0xFFFF_FFFF)
 ISOLATE_SW_BIT = 0
 ISOLATE_FLR_BIT = 1
 
@@ -168,6 +178,8 @@ class smu_smc_boundary_io_seq:
         await self._ext_interrupt()
         await self._reset_unit_outputs()
         await self._dft_abort_status()
+        await self._ss_reset_complete()
+        await self._chiplet_strap()
         await self._flr_isolate()
 
     # ------------------------------------------------------------------
@@ -408,7 +420,71 @@ class smu_smc_boundary_io_seq:
         )
 
     # ------------------------------------------------------------------
-    # S6: the FLR isolation path. Runs last -- it leaves an isolation request
+    # S6: the subsystem reset-complete vector as the reset unit mirrors it.
+    # ------------------------------------------------------------------
+    async def _ss_reset_complete(self) -> None:
+        dut = self.dut
+        idle = await self._rd32(SS_RESET_COMPLETE, "SS_RESET_COMPLETE")
+        self.sb.expect_eq(
+            "SS_RESET_COMPLETE reads all lanes complete while no pin is held",
+            idle,
+            0xFFFF_FFFF,
+            evidence="CHK-SMU-SS-RESET-COMPLETE",
+        )
+        for pattern in SS_RESET_INCOMPLETE_PATTERNS:
+            dut.tb_ss_reset_incomplete.value = pattern
+            await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
+            got = await self._rd32(SS_RESET_COMPLETE, "SS_RESET_COMPLETE")
+            self.sb.expect_eq(
+                f"SS_RESET_COMPLETE mirrors ss_reset_complete_i lane for lane "
+                f"(incomplete=0x{pattern:08x})",
+                got,
+                pattern ^ 0xFFFF_FFFF,
+                evidence="CHK-SMU-SS-RESET-COMPLETE",
+            )
+        dut.tb_ss_reset_incomplete.value = 0
+        await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
+        released = await self._rd32(SS_RESET_COMPLETE, "SS_RESET_COMPLETE")
+        self.sb.expect_eq(
+            "SS_RESET_COMPLETE follows the pins back to all-ones",
+            released,
+            0xFFFF_FFFF,
+            evidence="CHK-SMU-SS-RESET-COMPLETE",
+        )
+
+    # ------------------------------------------------------------------
+    # S7: the primary-chiplet strap as SMC_ATTRIBUTES mirrors it.
+    # ------------------------------------------------------------------
+    async def _chiplet_strap(self) -> None:
+        dut = self.dut
+        primary = await self._rd32(SMC_ATTRIBUTES, "SMC_ATTRIBUTES")
+        self.sb.expect_eq(
+            "SMC_ATTRIBUTES.chiplet_is_primary reads set with the strap released",
+            primary & CHIPLET_IS_PRIMARY_BM,
+            CHIPLET_IS_PRIMARY_BM,
+            evidence="CHK-SMU-CHIPLET-STRAP",
+        )
+        dut.tb_chiplet_secondary.value = 1
+        await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
+        secondary = await self._rd32(SMC_ATTRIBUTES, "SMC_ATTRIBUTES")
+        self.sb.expect_eq(
+            "SMC_ATTRIBUTES.chiplet_is_primary clears while chiplet_is_primary_i is low",
+            secondary & CHIPLET_IS_PRIMARY_BM,
+            0,
+            evidence="CHK-SMU-CHIPLET-STRAP",
+        )
+        dut.tb_chiplet_secondary.value = 0
+        await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
+        restored = await self._rd32(SMC_ATTRIBUTES, "SMC_ATTRIBUTES")
+        self.sb.expect_eq(
+            "SMC_ATTRIBUTES.chiplet_is_primary follows the strap back to set",
+            restored & CHIPLET_IS_PRIMARY_BM,
+            CHIPLET_IS_PRIMARY_BM,
+            evidence="CHK-SMU-CHIPLET-STRAP",
+        )
+
+    # ------------------------------------------------------------------
+    # S8: the FLR isolation path. Runs last -- it leaves an isolation request
     # asserted until this leg clears it.
     # ------------------------------------------------------------------
     async def _flr_isolate(self) -> None:
