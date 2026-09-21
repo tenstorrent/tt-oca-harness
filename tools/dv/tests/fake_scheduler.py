@@ -11,7 +11,8 @@ through its scripted state list, and a job entering ``RUN`` runs its submitted s
 then, so the leaf's result appears exactly when a real worker would have written it.
 
 The output shapes are the ones the production schedulers were observed to print, including
-the ones a driver must not misread: the submission filter's stderr banner, the ``ERROR``
+the ones a driver must not misread: the submission filter's stderr banner in both its shapes
+(with and without a memory request), the ``ERROR``
 record ``bjobs -json`` returns for an unknown id, ``bkill``'s status 255 for a job that has
 already finished, ``squeue``'s failure for an id the controller dropped, ``scancel``'s
 success for anything at all.
@@ -57,6 +58,9 @@ COMMANDS = {
 }
 TERMINAL = {"DONE", "TIMEOUT", "KILLED", "PREEMPTED", "MEMLIMIT"}
 ESUB_NOISE = "*** INFO *** Setting a memory hard limit of 32G"
+ESUB_NOISE_UNSIZED = (
+    "*** WARNING *** No memory usage or limits specified - setting memory hard limit to 32G"
+)
 LSF_STAMP = "Sat Sep 20 12:00:0{step}: "
 
 
@@ -152,7 +156,10 @@ class Fake:
             "script_rc": None,
             "terminal_queries": 0,
         }
-        stderr = f"{ESUB_NOISE}\n" if self.knob("submit", "stderr_noise") else ""
+        stderr = ""
+        if self.knob("submit", "stderr_noise"):
+            sized = any("rusage[mem=" in token or token.startswith("--mem") for token in argv)
+            stderr = f"{ESUB_NOISE if sized else ESUB_NOISE_UNSIZED}\n"
         if driver == "lsf":
             shown = f"queue <{queue}>" if queue else "default queue <normal>"
             return 0, f"Job <{job_id}> is submitted to {shown}.\n", stderr

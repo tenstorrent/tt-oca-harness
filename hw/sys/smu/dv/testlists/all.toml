@@ -1336,6 +1336,7 @@ tests = [
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
   "smu_smc_boundary_lane_sweep_test",
+  "smu_smc_cool_reset_pin_test",
   "smu_smc_peripheral_irq_test",
   "smu_sram_auto_init_disabled_test",
   "smu_telemetry_atb_capture_test",
@@ -2224,6 +2225,7 @@ tests = [
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
   "smu_smc_boundary_lane_sweep_test",
+  "smu_smc_cool_reset_pin_test",
   "smu_dtp_scan_chain_boundary_test",
   "smu_telemetry_atb_capture_test",
   "smu_xtrig_ctp_pad_test",
@@ -2232,7 +2234,7 @@ tests = [
   "smu_smc_peripheral_irq_test",
   "smu_sep_secure_tm_test",
 ]
-expected_count = 65
+expected_count = 66
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -2332,6 +2334,7 @@ tests = [
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
   "smu_smc_boundary_lane_sweep_test",
+  "smu_smc_cool_reset_pin_test",
   "smu_dtp_scan_chain_boundary_test",
   "smu_telemetry_atb_capture_test",
   "smu_xtrig_ctp_pad_test",
@@ -2340,7 +2343,7 @@ tests = [
   "smu_smc_peripheral_irq_test",
   "smu_sep_secure_tm_test",
 ]
-expected_count = 97
+expected_count = 98
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -2477,6 +2480,51 @@ args = [
 [[tests]]
 name = "smu_smc_boundary_lane_sweep_test"
 module = "smu_smc_boundary_lane_sweep_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["smc", "sep", "p0", "real_rtl"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+# The cool reset pin against the SMC primary reset it asserts, and the DFT
+# done/pass straps read through that reset, where DFX_CTRL.STATUS_SMU is at
+# its reset value.
+[[tests]]
+name = "smu_smc_cool_reset_pin_test"
+module = "smu_smc_cool_reset_pin_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["smc", "sep", "p0", "real_rtl"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
