@@ -60,9 +60,9 @@ from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
-from env.sep_noise_golden import SepNoiseGolden
 from env.sep_smc_mem import SMC_AXI_GEOMETRY, SMC_MEM_SIZE, preload_smc_mem
 from env.sep_verdict import decode_verdict
+from models.entropy_noise_model import EntropyNoiseModel
 
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
 # no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
@@ -1101,7 +1101,7 @@ class sep_base_test(uvm_test):
         up as a non-zero exit on an otherwise passing test.
         """
         dut = cocotb.top
-        gen = SepNoiseGolden()
+        gen = EntropyNoiseModel()
         gen.configure(noise_mode, seed_base=seed_base)
 
         async def _drive() -> None:

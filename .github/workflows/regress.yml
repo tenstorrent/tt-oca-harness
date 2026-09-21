@@ -182,6 +182,11 @@ jobs:
             reseed: 1
             coverage: false
             runner: ubuntu-latest
+          - dut: entropy_source
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -333,6 +338,11 @@ jobs:
             coverage: false
             runner: ubuntu-latest
           - dut: scrambler
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: entropy_source
             items: all
             reseed: 1
             coverage: false
