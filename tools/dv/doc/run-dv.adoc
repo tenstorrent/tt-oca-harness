@@ -15,7 +15,7 @@ tool invocation, and results — in contrast to wrapped or external flows.
 
 == Architecture
 
-image::dv-runner-architecture.drawio.svg[Current DV/FV runner control flow,scaledwidth=95.0%]
+image::dv-runner-architecture.drawio.svg[DV/FV runner control flow,scaledwidth=95.0%]
 
 The entry point prepares the Python environment and
 then delegates command parsing and orchestration to `tools/dv/runlib/cli.py`.
@@ -1322,11 +1322,15 @@ that site (an LSF cluster that counts memory in gigabytes renders
 ==== Cluster dispatch
 
 A run selects a cluster executor with `--executor`, and the flow's
-`[scheduler] allowed` list must name it. `--sim-jobs` is then the number of
-attempts queued or running at once, bounded by the executor's
-`limits.max_in_flight`; the coordinator submits at most `submit_batch_size`
-attempts between two polls and asks about at most `query_batch_size` job ids
-per query command. A dry run submits nothing.
+`[scheduler] allowed` list must name it: the shared native profile allows
+`local`, `lsf` and `slurm`, the formal profile `local` only. `--sim-jobs` is
+then the number of attempts queued or running at once, bounded by the
+executor's `limits.max_in_flight`; the coordinator submits at most
+`submit_batch_size` attempts between two polls and asks about at most
+`query_batch_size` job ids per query command. A dry run submits nothing.
+The target build runs on the submitting host before the first submission,
+so an omitted `--build-jobs` derives from `--sim-jobs` capped at that host's
+CPU count.
 
 Every attempt is one job. The coordinator writes the leaf manifest, then a job
 script at `<run>/stages/regress/scripts/<task>.sh` that exports the
@@ -1389,7 +1393,8 @@ or does not confirm are written to
 Hosted CI has no scheduler, so `tools/dv/tests/test_cluster_executor.py`
 drives both drivers through `tools/dv/tests/fake_scheduler.py`, which answers
 with the output shapes the production schedulers print, including a
-submission filter's stderr banner, the `ERROR` record `bjobs -json` returns
+submission filter's stderr banner in both its shapes, with and without a
+memory request, the `ERROR` record `bjobs -json` returns
 for an unknown id, `bkill`'s status 255 for a finished job, `squeue`'s
 failure for an id the controller dropped, and `scancel`'s success for any id.
 The state maps and parsers live in `runlib/executors/lsf.py` and
@@ -2432,7 +2437,8 @@ the executor's `limits.max_in_flight`.
 
 |`--build-jobs N`
 |Set backend/model build concurrency when configuration does not supply it;
-otherwise derives from `--sim-jobs`.
+otherwise derives from `--sim-jobs`, capped at this host's CPU count when a
+cluster executor is selected.
 
 |`--executor NAME`
 |Select an executor the flow's `[scheduler] allowed` list permits. `local`
@@ -2614,6 +2620,33 @@ When an adopter overlay was applied, its path is recorded under `overlay`
 table, when present, under `overlay_env` in both the run-level `result.json`
 and `regression.json`. When a site layer was active, its path is recorded
 under `site` in the same two files (<<runner-site-layer>>).
+
+[[runner-log-provenance]]
+=== Provenance lines in the per-test log
+
+A cocotb or VCS sim leaf ends its per-test log with one `PROVENANCE` line
+naming the commit, branch, dirty flag, build fingerprint and, where the flow
+has one, the filelist and its digest. The same facts are recorded under
+`provenance` in the leaf's stage record, so a log and its `result.json` name
+the same build.
+
+Every `+key=value` simulator argument whose value is an existing regular file
+(firmware, ROM, eFuse and shadow-register images such as `+rom_hex`,
+`+sep_itcm_hex`, `+smc_efuse_hex` or `+smc_shadow_reg_preload`) is digested
+as well. Each one adds a line directly after `PROVENANCE`:
+
+----
+PROVENANCE commit=<sha> branch=<name> dirty=false build_fingerprint=<fp> filelist=<path> filelist_sha256=<digest>
+FW-PROVENANCE rom_hex=hw/sys/smc/dv/assets/smc_rom_default.hex sha256=<64 hex>
+FW-PROVENANCE smc_efuse_hex=hw/sys/smc/dv/assets/smc_efuse_default.hex sha256=<64 hex>
+----
+
+The path is repo-relative when the image sits inside the checkout and absolute
+otherwise, and the digest is the full SHA-256 of the file's bytes. The stage
+record carries the same map under `provenance.images`, keyed by the plusarg
+name. Bare flags, numeric values and values that do not name a regular file are
+not recorded. An image a testbench opens by a fixed name rather than a plusarg
+is outside this binding; pass it through a plusarg to bring it in.
 
 [[runner-interrupted-checkpoints]]
 === Interrupted-run checkpoints
@@ -3182,10 +3215,12 @@ tool does not need to rerun. See <<runner-waive>>.
 
 The following behaviors are not part of the runner contract:
 
-* Only the `local` executor dispatches work. A cluster executor validates and
-  is checked by `--doctor`, and selecting one is a configuration error while
-  the runner has no driver for it; queue, core, memory, and wall-time flags
-  are recorded metadata that the local executor does not enforce.
+* A cluster executor keeps the coordinator in the foreground and submits one
+  job per attempt: there is no detached mode, no job array, and no
+  scheduler-managed build. The target build runs on the submitting host, and
+  every worker verifies its ready marker before it simulates. Queue, core,
+  memory, and wall-time flags reach a cluster job's submit command; the local
+  executor records them and enforces nothing.
 * The runner writes no `run.json` and has no background execution or job
   lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may

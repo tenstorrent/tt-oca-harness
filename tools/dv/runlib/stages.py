@@ -231,7 +231,14 @@ def _target_fingerprint_extra(target_name: str, target: dict[str, Any]) -> list[
 
 
 def _build_jobs_arg(args: argparse.Namespace) -> int:
-    return int(getattr(args, "build_jobs", None) or args.sim_jobs)
+    explicit = getattr(args, "build_jobs", None)
+    if explicit:
+        return int(explicit)
+    jobs = int(args.sim_jobs)
+    # A cluster fan-out counts scheduler jobs; the build runs on the submitting host.
+    if getattr(args, "_cluster_executor", False):
+        return max(1, min(jobs, os.cpu_count() or 1))
+    return jobs
 
 
 def _bender_filelist_sources(root: Path, build: dict[str, Any]) -> list[Path]:
@@ -527,13 +534,22 @@ def _stamp_provenance(
     fingerprint: str | None,
     filelist: Path | None,
     dry_run: bool,
+    sim_args: list[str] | None = None,
+    cwd: Path | None = None,
 ) -> None:
-    """Bind a per-test log to the sources and build that produced it.
+    """Bind a per-test log to the sources, build and images that produced it.
 
     Records the commit, the dirty flag, the build fingerprint and the filelist
     digest in the stage metadata (so they reach ``result.json``) and appends the
     same facts as one ``PROVENANCE`` line at the end of the per-test log, so the
     log on its own names the build it came from.
+
+    ``sim_args`` are the simulator arguments the leaf ran with. Every
+    ``+key=value`` whose value names a regular file (firmware, ROM, eFuse and
+    shadow-register images) is digested into ``provenance.images`` and written
+    as one ``FW-PROVENANCE`` line after the ``PROVENANCE`` line, so the log
+    names the bytes the simulation loaded. ``cwd`` is the directory the
+    simulator ran in, which is how it resolves a relative image path.
     """
     from .results import git_info
 
@@ -549,12 +565,76 @@ def _stamp_provenance(
         "filelist": repo_rel(root, filelist) if filelist is not None else "",
         "filelist_sha256": flist_sha or "",
     }
+    images = _image_provenance(root, sim_args or [], cwd=cwd)
+    prov["images"] = images
     metadata["provenance"] = prov
     if dry_run or not log_path.is_file():
         return
-    line = "PROVENANCE " + " ".join(f"{key}={value}" for key, value in prov.items() if value != "")
+    line = "PROVENANCE " + " ".join(
+        f"{key}={value}" for key, value in prov.items() if key != "images" and value != ""
+    )
     with log_path.open("a", encoding="utf-8") as log:
         log.write(f"\n{line}\n")
+        for key, image in images.items():
+            log.write(f"FW-PROVENANCE {key}={image['path']} sha256={image['sha256']}\n")
+
+
+def _image_provenance(
+    root: Path, sim_args: list[str], *, cwd: Path | None = None
+) -> dict[str, dict[str, str]]:
+    """Digest every ``+key=value`` simulator argument whose value is a regular file.
+
+    Returns ``{key: {"path", "sha256"}}`` keyed by the plusarg name without its
+    ``+``. The path is repo-relative when the file sits inside the checkout and
+    absolute otherwise; the digest covers the whole file. A relative value is
+    resolved the way the simulator resolves it, against ``cwd`` first and the
+    repository root second. Arguments that are not ``+key=value``, whose value
+    is empty, or whose value is not an existing regular file contribute nothing.
+    """
+    images: dict[str, dict[str, str]] = {}
+    for arg in sim_args:
+        key = _plusarg_key(arg)
+        if key is None:
+            continue
+        value = arg.split("=", 1)[1]
+        if not value:
+            continue
+        candidate = Path(value).expanduser()
+        if not candidate.is_absolute():
+            for base in (cwd, root):
+                if base is not None and (base / candidate).is_file():
+                    candidate = base / candidate
+                    break
+        if not candidate.is_file():
+            continue
+        images[key.lstrip("+")] = {
+            "path": repo_rel(root, candidate) or str(candidate),
+            "sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+        }
+    return images
+
+
+def _sim_test_args(
+    sim_cfg: dict[str, Any],
+    run_mode: dict[str, Any],
+    test: TestEntry,
+    args: argparse.Namespace,
+    seed: int,
+    root: Path,
+) -> list[str]:
+    """Return the config- and CLI-owned simulator arguments of one leaf.
+
+    Every sim site passes them in this order: `sim_global_args`, the rendered
+    run-mode and test args, then `--sim-arg` and `--plusarg`. Sharing the list
+    between the launch and the provenance stamp keeps the digested images equal
+    to the ones the simulator was handed.
+    """
+    return [
+        *sim_global_args(sim_cfg),
+        *_render_run_test_args(run_mode, test, seed, root),
+        *(args.sim_arg or []),
+        *(args.plusarg or []),
+    ]
 
 
 def _cocotb_target_build_metadata(
@@ -2094,6 +2174,7 @@ def cocotb_sim(
     script_path: Path,
     env_path: Path,
     seed: int,
+    test_args: list[str] | None = None,
 ) -> int:
     if tool not in COCOTB_RUNNER_TOOLS:
         raise ConfigError(f"cocotb sim supports tool verilator|xcelium|vcs, got `{tool}`")
@@ -2116,12 +2197,11 @@ def cocotb_sim(
     sim_build = info["sim_build"]
     rebuild = bool(info["rebuild"])
     wave_format = str(info["wave_format"])
-    test_args = [
-        *sim_global_args(sim_cfg),
-        *_render_run_test_args(run_mode, test, seed, root),
-        *(args.sim_arg or []),
-        *(args.plusarg or []),
-    ]
+    test_args = (
+        list(test_args)
+        if test_args is not None
+        else _sim_test_args(sim_cfg, run_mode, test, args, seed, root)
+    )
 
     # Coverage: same cocotb test, simulator-native collection. Verilator does line/toggle only;
     # Xcelium collects full SV coverage. Both controlled by --cov and overridable via [coverage].
@@ -2804,6 +2884,7 @@ def vcs_sim(
     script_path: Path,
     env_path: Path,
     seed: int,
+    test_args: list[str] | None = None,
 ) -> int:
     """Run a built simv for one test/seed. The simv is reused across all seeds."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
@@ -2815,12 +2896,11 @@ def vcs_sim(
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
-    extra_args = [
-        *sim_global_args(sim_cfg),
-        *_render_run_test_args(run_mode, test, seed, root),
-        *(args.sim_arg or []),
-        *(args.plusarg or []),
-    ]
+    extra_args = (
+        list(test_args)
+        if test_args is not None
+        else _sim_test_args(sim_cfg, run_mode, test, args, seed, root)
+    )
     argv = [str(simv)]
     if bool(vcs_cfg.get("uvm", flow.framework == "uvm")) and not _uvm_testname_override(extra_args):
         argv.append(f"+UVM_TESTNAME={uvm_test}")
@@ -3079,6 +3159,7 @@ def xcelium_sim(
     script_path: Path,
     env_path: Path,
     seed: int,
+    test_args: list[str] | None = None,
 ) -> int:
     """Run a built snapshot for one test/seed with xmsim. The snapshot is reused across all seeds."""
     info = _xcelium_resolve_build(flow, root, sim_cfg, args)
@@ -3092,12 +3173,11 @@ def xcelium_sim(
     argv = ["xmsim", "-svseed", str(seed), "-xmlibdirpath", str(info["build_dir"])]
     if bool(xcelium_cfg.get("uvm", flow.framework == "uvm")):
         argv.append(f"+UVM_TESTNAME={uvm_test}")
-    argv += [
-        *sim_global_args(sim_cfg),
-        *_render_run_test_args(run_mode, test, seed, root),
-        *(args.sim_arg or []),
-        *(args.plusarg or []),
-    ]
+    argv += (
+        list(test_args)
+        if test_args is not None
+        else _sim_test_args(sim_cfg, run_mode, test, args, seed, root)
+    )
     wave_format = _wave_format(args, "xcelium")
     if wave_format:
         if not args.dry_run:
@@ -3957,6 +4037,14 @@ def run_stage(
         elif kind in {"cocotb_verilator", "cocotb_sim"}:
             if item is None:
                 raise ConfigError(f"{kind} stage requires a test item")
+            sim_args = _sim_test_args(
+                sim_cfg,
+                selected_run_mode(sim_cfg, catalog.tests[item], args),
+                catalog.tests[item],
+                args,
+                seed,
+                root,
+            )
             rc = cocotb_sim(
                 flow,
                 root,
@@ -3970,6 +4058,7 @@ def run_stage(
                 script_path,
                 env_path,
                 seed,
+                test_args=sim_args,
             )
             # Mirror the documented metadata shape enough for cache/debug consumers. Detailed cache
             # decisions are made inside `cocotb_sim`; this records the invariant stage-level inputs.
@@ -3988,6 +4077,8 @@ def run_stage(
                 fingerprint=str(sim_info.get("fingerprint", "")) or None,
                 filelist=sim_info.get("filelist"),
                 dry_run=bool(args.dry_run),
+                sim_args=sim_args,
+                cwd=stage_dir,
             )
         elif kind == "vcs_filelist":
             rc = generate_filelist(
@@ -4059,6 +4150,14 @@ def run_stage(
         elif kind == "vcs_sim":
             if item is None:
                 raise ConfigError("vcs_sim stage requires a test item")
+            sim_args = _sim_test_args(
+                sim_cfg,
+                selected_run_mode(sim_cfg, catalog.tests[item], args),
+                catalog.tests[item],
+                args,
+                seed,
+                root,
+            )
             rc = vcs_sim(
                 flow,
                 root,
@@ -4071,6 +4170,7 @@ def run_stage(
                 script_path,
                 env_path,
                 seed,
+                test_args=sim_args,
             )
             info = _vcs_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
@@ -4086,6 +4186,8 @@ def run_stage(
                 fingerprint=str(info.get("fingerprint", "")) or None,
                 filelist=None,
                 dry_run=bool(args.dry_run),
+                sim_args=sim_args,
+                cwd=stage_dir,
             )
         elif kind == "xrun_filelist":
             rc = generate_filelist(
