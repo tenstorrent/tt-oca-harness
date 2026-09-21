@@ -307,7 +307,7 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
             )
         lines.append("</ul>")
     lines += [
-        "<h2>Register List:</h2>",
+        "<p><strong>Register List:</strong></p>",
         "<table>",
         "<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>",
     ]
@@ -316,7 +316,7 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
         lines.append(
             f'<tr><td>{escape(r.addr)}</td><td><a href="#{anchor}">{escape(r.name)}</a></td><td>{escape(r.access)}</td><td>{desc_html_text(r.desc)}</td></tr>'
         )
-    lines += ["</table>", "<h2>Register Details:</h2>"]
+    lines += ["</table>", "<p><strong>Register Details:</strong></p>"]
     for r in data.regs:
         anchor = escape(r.name.replace("[", "_").replace("]", "_"))
         lines += [

@@ -36,7 +36,7 @@
     var sections = [];
 
     // Table styling must not depend on the heading depth of the host page.
-    block.querySelectorAll(':scope > h2 + table').forEach(function (table) {
+    block.querySelectorAll(':scope > p + table').forEach(function (table) {
       table.classList.add('register-list');
     });
     block.querySelectorAll(':scope > h3 + table').forEach(function (table) {
@@ -57,7 +57,7 @@
         return;
       }
 
-      var depth = Math.min(level + (node === title ? 0 : node.tagName === 'H2' ? 1 : 2), 5);
+      var depth = Math.min(level + (node === title ? 0 : 1), 5);
       var id = node.id;
       if (id) {
         if (document.getElementById(id) !== node) id = uniqueId(mapId + '-' + id);
