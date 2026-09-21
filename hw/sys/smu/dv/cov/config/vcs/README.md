@@ -101,7 +101,13 @@ with the `assert property` statements left in scope, and
 graded figure in its `Ports` row, after the exclusions above; the runner's
 own `toggle` column is the `Port Bits` row of the same section. The second
 command folds the `Port Details` rows into the per-port connectivity figure,
-a port counting once any bit of it moved; `--list` names the ports that never
-did.
+a port counting once any bit of a graded field moved; a port whose every
+field is excluded is left out of that figure, and `--list` names the ports
+that never moved.
+
+The policy floors `assertion` at 80 percent of the `hosted` group. A smaller
+selection, `smoke` or a single leaf, reaches far fewer cover properties and
+reports `coverage=FAIL` on that floor; the leaf results are still graded
+normally.
 
 No public CI job runs the VCS flow for this DUT.

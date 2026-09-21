@@ -91,17 +91,27 @@ def port_toggles(dat: Path, scope: str, ports: set[str]) -> dict[str, bool]:
 
 _URG_MODULE = re.compile(r"^Toggle Coverage for Module : (\S+)")
 _URG_DIRS = {"INPUT", "OUTPUT", "INOUT"}
+_URG_STATES = {"Yes", "No", "Excluded"}
 
 
 def urg_port_toggles(modinfo: Path, module: str, ports: set[str]) -> dict[str, bool]:
-    """Fold urg's per-field, per-slice "Port Details" rows onto the module's ports."""
+    """Fold urg's per-field, per-slice "Port Details" rows onto the module's ports.
+
+    A row reads `<field> <toggle> <1->0> <0->1> <direction> [annotation]`, with a
+    `Tests` column after each edge when the report was written with `-show tests`
+    and `Excluded` in the three state columns when an exclusion file dropped the
+    field. An excluded field says nothing about its port: a port whose every field
+    is excluded is left out of the result, and one that keeps a graded field is
+    folded over the graded fields alone.
+    """
     lines = modinfo.read_text(encoding="utf-8", errors="replace").splitlines()
     hits: dict[str, bool] = {}
+    graded: set[str] = set()
     i = 0
     while i < len(lines):
         m = _URG_MODULE.match(lines[i])
         i += 1
-        if m is None or m.group(1) != module:
+        if m is None or m.group(1).split("(")[0] != module:
             continue
         while i < len(lines) and not lines[i].startswith("Port Details"):
             i += 1
@@ -109,15 +119,23 @@ def urg_port_toggles(modinfo: Path, module: str, ports: set[str]) -> dict[str, b
         while i < len(lines) and lines[i].strip():
             cols = lines[i].split()
             i += 1
-            if len(cols) < 5 or cols[-1] not in _URG_DIRS:
+            direction = next((k for k, c in enumerate(cols) if c in _URG_DIRS), None)
+            if direction is None or direction < 4:
+                continue
+            states = [c for c in cols[1:direction] if c in _URG_STATES]
+            if len(states) < 3:
                 continue
             name = _NAME.match(cols[0])
             if name is None or name.group(0) not in ports:
                 continue
             port = name.group(0)
-            hits[port] = hits.get(port, False) or cols[2] == "Yes" or cols[3] == "Yes"
+            if states[0] == "Excluded":
+                hits.setdefault(port, False)
+                continue
+            graded.add(port)
+            hits[port] = hits.get(port, False) or states[1] == "Yes" or states[2] == "Yes"
         break
-    return hits
+    return {port: hit for port, hit in hits.items() if port in graded}
 
 
 def _repo_root(start: Path) -> Path | None:
