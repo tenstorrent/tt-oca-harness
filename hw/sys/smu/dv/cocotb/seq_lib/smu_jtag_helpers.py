@@ -21,7 +21,6 @@ from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 from seq_lib.smu_tb_pins import smu_scope
 
 # Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
-# On SEP=0 there is no lifecycle controller; the J2A gate opens after TCK sync.
 
 
 def dtp_ir_opcode(name: str) -> int:
@@ -211,12 +210,10 @@ def _smu_ic_reset_sep_ports() -> int:
     """SEP IC_RESET slice width for the DUT this run elaborated.
 
     doc/integrator/src/smu.adoc "IC_RESET TDR Structure" enables the SEP
-    slice only at SEP=1. The production wrapper (tb_wrapper_top.sv, top module
-    smu_wrapper_uvm_top) elaborates SEP=1 and carries the full SEP slice; the
-    bare block bench (tb_top.sv, smu_uvm_top) elaborates SEP=0 and has no SEP
-    slice. Resolved
-    from the cocotb top handle so one helper serves both DUTs; outside a
-    simulation it falls back to the SEP=0 shape.
+    slice only at SEP=1. The wrapper (tb_wrapper_top.sv, top module
+    smu_wrapper_uvm_top) elaborates SEP=1 and carries the full SEP slice.
+    Resolved from the cocotb top handle; outside a simulation, or under any
+    other top, it falls back to the SEP=0 shape.
     """
     try:
         name = str(getattr(cocotb.top, "_name", "") or "")

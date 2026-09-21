@@ -13,16 +13,18 @@ no code compares it against an observed value. It says what the bound compare
 proved, not what the test as a whole claims.
 
 Keys name the pyuvm type name of the test body. Every key names a test that
-is enrolled in a testlist or has a body under ``cocotb/tests`` or
+is enrolled in ``testlists/all.toml`` or has a body under
 ``cocotb_wrapper/tests``. This package is the ``env`` namespace package: the
-shared half lives here under ``cocotb/env`` and the wrapper-only half under
-``cocotb_wrapper/env``; both directories are on the wrapper flow's path. A testcase that builds an ``SmuScoreboard`` and
-carries no rows here must be listed in ``UNMAPPED_TESTS``;
+scoreboard, this map and the FCOV ledger live here under ``cocotb/env`` and
+the wrapper's env config, boot scoreboard and trace monitor under
+``cocotb_wrapper/env``; both directories are on the flow's path. A testcase
+that builds an ``SmuScoreboard`` and carries no rows here must be listed in
+``UNMAPPED_TESTS``;
 ``prove_mapped_features`` raises otherwise, and it also raises for a row whose
 token reached the log only through a check-name match with no ``evidence=``.
-Both base tests call ``prove_mapped_features`` after the scenario for leaves
+The base test calls ``prove_mapped_features`` after the scenario for leaves
 that score through the shared ``SmuScoreboard``. The wrapper-native leaves
-(``use_shared_env = False``) are gated by the wrapper base test instead: every
+(``use_shared_env = False``) are gated by the base test another way: every
 token their sequence declares in its ``EVIDENCE`` tuple, every
 ``required_evidence`` token on the test, and every row here must have been
 logged as an ``EVIDENCE: <TOKEN>`` line before the leaf passes.
@@ -52,28 +54,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "PTAP leave-TLR with power-good + TRST released",
         ),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<PASS after leave-TLR"),
-    ],
-    "smu_axi_external_port_connectivity_test": [
-        (
-            "CHK-SMU-PORT-SMN-AXI-S1",
-            "CHK-SMU-PORT-SMN-AXI-S1",
-            "SEP=0 inbound smu_axi_in reaches SMC via direct IW: BlockByDefault "
-            "DECERR with matching BID/RID, paired with the S1-CONTROL row",
-        ),
-        (
-            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL",
-            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL",
-            "same master, same probe: inbound0 window opened by JTAG2AXI, read "
-            "returns OKAY and the VERSION_LO RDL reset value; window cleared "
-            "afterwards and the DECERR returns",
-        ),
-        (
-            "CHK-SMU-SEP-PARAM-S2",
-            "CHK-SMU-SEP-PARAM-S2",
-            "SEP=0 direct SMC↔external ID converters elaborated",
-        ),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded AXI waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_axi_filter_allow_ns_test": [
         ("CHK-SMU-ALLOW-NS-S1", "CHK-SMU-ALLOW-NS-S1", "allow_ns=0 secure OKAY / NS DECERR"),
@@ -132,15 +112,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-PROT-S9-MATRIX",
             "CHK-SMU-PROT-S9-MATRIX",
             "eight-way AxPROT matrix on VERSION_LO",
-        ),
-    ],
-    "smu_axi_xbar_structure_test": [
-        ("CHK-XBAR-POS-NO-GEN-SEP", "CHK-XBAR-POS-NO-GEN-SEP", "gen_sep absent under SEP=0"),
-        ("CHK-XBAR-POS-IW", "CHK-XBAR-POS-IW", "gen_no_sep ID converters resolve"),
-        (
-            "CHK-XBAR-ABSENT-NO-SEP",
-            "CHK-XBAR-ABSENT-NO-SEP",
-            "smu_axi_xbar absent under gen_no_sep",
         ),
     ],
     "smu_boot_stall_jtag_cold_reset_matrix_test": [
@@ -244,9 +215,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_dtp_io_stap_smoke_test": [
         ("CHK-DTP-IO-STAP-SCAN", "CHK-DTP-IO-STAP-SCAN", "IO STAP host TCK observe"),
     ],
-    "smu_dtp_jtag2axi_abort_mid_op_test": [
-        ("CHK-J2A-ABORT", "J2A_ABORT_RECOVER", "abort mid-BUSY recovers"),
-    ],
     "smu_dtp_jtag2axi_back_to_back_error_ok_test": [
         ("CHK-J2A-B2B", "J2A_B2B_OK", "DECERR then immediate SUCCESS"),
     ],
@@ -290,15 +258,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-OTP-SMC-DECODE-SLVERR",
             "CHK-OTP-SMC-DECODE-SLVERR",
             "OTP decode hole returns SLVERR",
-        ),
-    ],
-    "smu_dtp_ptap_otp_instr_scan_test": [
-        ("CHK-PTAP-SEP-OTP-CAPS", "PTAP_SEP_OTP_CAPS_OK", "SEP OTP CAPS packing"),
-        ("CHK-PTAP-JTAG-CAPS-SEP-DBG", "PTAP_SEP_DBG_EN_0", "JTAG_CAPS sep_dbg_en=0"),
-        (
-            "CHK-PTAP-OTP-SINGLE-OP-IRDR",
-            "PTAP_OTP_SINGLE_OP_IRDR_OK",
-            "SMC SINGLE_OP TDR echo + SEP IR BYPASS",
         ),
     ],
     "smu_dtp_smc_stap_smoke_test": [
@@ -382,17 +341,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_jtag_reset_override_test": [
         ("CHK-IC-DEFAULT", "IC_RESET_DEFAULT", "IC_RESET default all-ones"),
         ("CHK-IC-DOMAIN", "IC_RESET_DOMAIN_EXCL", "single domain override exclusive"),
-    ],
-    "smu_no_sep_configuration_test": [
-        ("CHK-SEP0-LC", "CHK-SEP0-LC", "lc_state_o==0xf0 stable >=16 cycles"),
-        (
-            "CHK-SEP0-EGRESS",
-            "CHK-SEP0-EGRESS",
-            "a J2A write outside both SMC apertures advances the outbound write "
-            "counter and the read brings the pattern back",
-        ),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_otp_bridges_under_dbg_disable_test": [
         (
@@ -562,9 +510,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_reset_ctrl_test": [
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
-    ],
-    "smu_smc_security_demote_pm_test": [
-        ("CHK-DEMOTE-TIEOFF", "DEMOTE_TIEOFF_OBS", "SEP=0 demote hardwire observe"),
     ],
     "smu_smc_peripheral_irq_test": [
         (
@@ -772,10 +717,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "telemetry stays released and clocked while primary/periph fall",
         ),
     ],
-    # Both testlist entries (SEP=1 and SEP=0) run this one body, and
-    # bind_testcase keys the map on the body name, so only the tokens both
-    # legs log can be rows here. CHK-SMU-SEC-TOKEN-S1 and CHK-SMU-LC-SECDIS-S1
-    # are emitted on the SEP=1 leg alone and are therefore not enforced.
+    # CHK-SMU-SEC-TOKEN-S1 and CHK-SMU-LC-SECDIS-S1 are logged by the body as
+    # observations the card does not claim, so they are not rows here.
     "smu_composition_parameter_test": [
         (
             "CHK-SMU-SEC-TOKEN-S2",
@@ -914,10 +857,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-XT-CTM-REMAP", "XT_CTM_REMAP", "product-pin CTM remap"),
     ],
 }
-
-# The block bench runs the SMU_ALL_005 PTAP scenario as its own leaf; both leaves
-# emit one row set, so both names resolve to it.
-TEST_EVIDENCE["smu_dtp_jtag_smoke_bare_test"] = TEST_EVIDENCE["smu_dtp_jtag_smoke_test"]
 
 
 def primary_token(testcase: str) -> str | None:

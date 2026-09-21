@@ -9,9 +9,8 @@
 
 module smu_wrapper_uvm_top (
   input  wire logic clk_smu_i,
-  // Primary JTAG TAP, driven from cocotb exactly as the bare `--dut smu_block`
-  // harness drives it (tb/tb_top.sv), so OcahJtagMasterDriver works against
-  // either DUT; the base test's TAP reset walk runs in every wrapper test.
+  // Primary JTAG TAP, driven from cocotb through OcahJtagMasterDriver; the
+  // base test's TAP reset walk runs in every wrapper test.
   input  wire logic jtag_tck,
   input  wire logic jtag_tms,
   input  wire logic jtag_trst,   // active-low
@@ -202,7 +201,7 @@ module smu_wrapper_uvm_top (
   input  wire logic [3:0]  ext_in_arqos,
   input  wire logic [3:0]  ext_in_arregion,
   output logic [11:0]      ext_in_ruser,
-  // Observables the shared seq_lib reads by name, matching tb/tb_top.sv.
+  // Observables the seq_lib reads by name.
   output jtag_tap_pkg::tap_state_e                      jtag_ptap_state,
   output jtag_inst_reg_pkg::jtag_instruction_decoded_e  jtag_ptap_inst_decoded,
   output logic [55:0]                                   sep_global_base_o,
@@ -213,14 +212,13 @@ module smu_wrapper_uvm_top (
   output logic                                          rst_primary_periph_clk_no,
   output logic                                          rst_cold_stable_ref_clk_no,
   output logic                                          lc_sigint_err_o,
-  // PTAP security-disable taps, reached hierarchically exactly as the bare TB
-  // does -- one level deeper here, since u_dut is the wrapper.
+  // PTAP security-disable taps, reached hierarchically through u_dut.u_smu.
   output logic                                          tb_smc_jtag2axi_security_disable,
   output logic                                          tb_otp_jtag2axi_security_disable,
   input  wire logic                                     ext_boot_seq_done_i,
   output logic [63:0]                                   tb_timer_count,
   output logic                                          tb_bsr_select,
-  // DTP boot-stall / IC-reset / cross-trigger surface, matching tb_top.sv.
+  // DTP boot-stall / IC-reset / cross-trigger surface.
   output logic                                          jtag_boot_stall,
   output logic                                          jtag_boot_stall_ovrd,
   output logic                                          jtag_ic_reset_ext_ovrd,
@@ -233,8 +231,7 @@ module smu_wrapper_uvm_top (
   input  wire logic                                     xtrig_clk_stop_req,
   output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_dst_ack,
   output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_src_req,
-  // DTP clock-stop grant, as tb/tb_top.sv exposes it. Sampled by
-  // smu_clock_stop_coordination_test.
+  // DTP clock-stop grant, sampled by smu_clock_stop_coordination_test.
   output logic                                          dtp_stop_clks_o,
   // The CLA's own clock-stop enable, one level inside smu. Paired with
   // dtp_stop_clks_o above: the test proves the aggregate grant follows the
@@ -295,8 +292,7 @@ module smu_wrapper_uvm_top (
   // SMU_ALL_001 compose / clk-domain / lifecycle observe surface
   output logic [7:0]  lc_state_o,
   // Hierarchical SEP lifecycle source (for lc_state=from_sep identity). This
-  // bench elaborates SEP, so the tap is live; the SEP=0 composition is proved
-  // on --dut smu_block, whose testlists/block.toml `nosep` group holds those leaves.
+  // bench elaborates SEP, so the tap is live.
   output logic [7:0]  obs_sep_lc_state_o,
   // Compile-time present flags, diagnostic only: SMU_ALL_001 proves presence
   // from the hierarchical clk/rst identity observes below.
@@ -323,9 +319,9 @@ module smu_wrapper_uvm_top (
   output logic        obs_smu_axi_awready_o,
   output logic        obs_xtrig_src_req0_o,
   // Secondary-TAP and iJTAG scan-chain hosts. smu_wrapper is the scan master
-  // on all of them, so the bench has to supply the client side; tb_top.sv
-  // closes each chain with scan_in <- scan_out and this does the same, so a
-  // shift through the primary TAP leaves the wrapper at its boundary pins and
+  // on all of them, so the bench has to supply the client side: each chain
+  // is closed with scan_in <- scan_out, so a shift through the primary TAP
+  // leaves the wrapper at its boundary pins and
   // re-enters there. The select and TDO-enable taps are what separates
   // "the chain shifted" from "the host was never selected".
   output logic        tb_dfd_select,
@@ -394,10 +390,9 @@ module smu_wrapper_uvm_top (
   localparam bit SEP_PRESENT = 1'b1;
   localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::DefaultCfg;
 
-  // Same override tb_top.sv applies: exercise the most-significant configured
-  // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
-  // is wire-OR here and point-to-point there, so the CTM leaves would score a
-  // different design on the two DUTs.
+  // Exercise the most-significant configured DTP cross-trigger mode bit while
+  // [1:0] stay SMC-reserved; under SMU_BASE_CFG lane 7 is wire-OR, and the
+  // CTM leaves score the point-to-point lane.
   function automatic smu_pkg::smu_cfg_t make_tb_cfg();
     smu_pkg::smu_cfg_t cfg = SMU_BASE_CFG;
     cfg.XTRIG_INT_CT_MODE = 8'h80;
@@ -592,8 +587,8 @@ module smu_wrapper_uvm_top (
   logic [31:0] smc_scratch_0_q;
   logic        rst_cold_stable_ref_clk_n;
   prim_jtag_pkg::jtag_scan_ctrl_t bsr_ctrl_w;
-  // BSR scan out folded back to scan in, as tb_top.sv does: the EXTEST
-  // loopback test compares TDO against what it shifted in.
+  // BSR scan out folded back to scan in: the EXTEST loopback test compares
+  // TDO against what it shifted in.
   logic bsr_scan_loop;
   logic smu_scope_boot_stall_val, smu_scope_boot_stall_ovrd;
   jtag_tap_pkg::jtag_ic_reset_default_t ic_reset_ext_w;
@@ -617,9 +612,8 @@ module smu_wrapper_uvm_top (
   logic [31:0] smu_axi_in_awvalid_count, smu_axi_out_awvalid_count;
   logic tb_axil_external_active;
 
-  // Scan-chain closures. Each host's scan_in is its own scan_out, as
-  // tb_top.sv does for the same ports, so the path a shift takes runs out of
-  // the wrapper and back in.
+  // Scan-chain closures. Each host's scan_in is its own scan_out, so the
+  // path a shift takes runs out of the wrapper and back in.
   prim_jtag_pkg::jtag_scan_ctrl_t stap_scan_ctrl_w, dfd_ctrl_w, dft_ctrl_w, dft_sec_ctrl_w;
   logic stap_scan_loop, dfd_scan_loop, dft_scan_loop, dft_sec_scan_loop;
   logic stap_io_tdo_w, stap_io_tdo_oen_w;
@@ -1225,15 +1219,14 @@ module smu_wrapper_uvm_top (
   assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
   assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
   // Boot-stall GPIO pad (smc_padring: boot_stall_o = lsio_pad2core_data[57]).
-  // Unlike tb_top.sv, which ORs the TB value into a pad2core vector at the
-  // smu boundary, smu_wrapper brings out a real bidirectional pad bus --
+  // smu_wrapper brings out a real bidirectional pad bus --
   // smc_ip_integration puts a prim_pad_shim on every pin -- so the drive goes
   // onto the wire itself, weak (pull) elsewhere so a core output still wins.
   assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
   assign gpio_pad_io[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : 1'bz;
 
   // smu.sv does not forward the peripheral-domain primary reset to its own
-  // boundary, so read it off the SMC the way tb_top.sv does.
+  // boundary, so it is read off the SMC.
   assign rst_primary_periph_clk_no = u_dut.u_smu.u_smc.rst_primary_periph_clk_no;
 
   assign dtp_cla_clock_stop_en = u_dut.u_smu.dtp_cla_clock_stop_en;
@@ -1593,11 +1586,9 @@ module smu_wrapper_uvm_top (
   );
 
   // ------------------------------------------------------------------
-  // Functional coverage (cov/sv/): the same modules tb_top.sv carries, on
-  // this bench's names, plus smu_clk_fcov, which needs the hierarchical
-  // clock and reset mirrors only this bench exposes. Every port is a signal
-  // of this module; the one hierarchical reference, tb_axil_external_active,
-  // reads a window smu_wrapper keeps inside itself.
+  // Functional coverage (cov/sv/), bound on this bench's names. Every port
+  // is a signal of this module; the one hierarchical reference,
+  // tb_axil_external_active, reads a window smu_wrapper keeps inside itself.
   // ------------------------------------------------------------------
   assign jtag_ptap_state_w = 32'(jtag_ptap_state);
 
@@ -1640,9 +1631,9 @@ module smu_wrapper_uvm_top (
     .lcc_demote_state_2_i        (lcc_demote_state_2_o)
   );
 
-  // Macro AXI-Lite activity (OR of aw/w/ar valid), as tb_top.sv builds it at
-  // its own boundary. smu_wrapper keeps that window inside itself, between
-  // the SMC peripheral crossbar and smc_ip_integration, so it is read there.
+  // Macro AXI-Lite activity (OR of aw/w/ar valid). smu_wrapper keeps that
+  // window inside itself, between the SMC peripheral crossbar and
+  // smc_ip_integration, so it is read there.
   assign tb_axil_external_active = u_dut.smc_external_req.aw_valid
                                  | u_dut.smc_external_req.w_valid
                                  | u_dut.smc_external_req.ar_valid;

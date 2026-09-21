@@ -25,14 +25,11 @@ elaboration, so a regression pays one Verilator build and coverage merges across
 the whole selection. `smu_wrapper` is a registered
 alias of `smu` (`hw/common/dv/configs/duts.toml`), so the two names resolve to
 one config, one build cache and one identity; logs carry `DUT_TAG=WRAPPER`.
-The bare block bench, `--dut smu_block`, builds `smu #(.SEP(0))` with its
-technology interfaces tied off under `tb/tb_top.sv` (`smu_uvm_top`,
-`DUT_TAG=BARE`) and holds the leaves that need `SEP=0`
-(`testlists/block.toml`): the five SEP=0 composition proofs (`nosep`: no
-crossbar, direct ID converters, SEP aperture and lifecycle tie-offs, DTP
-without its SEP debug slice), the JTAG2AXI abort test, which needs an OTP
-interface that hangs, and `smu_dtp_jtag_smoke_bare_test`, the block-bench run
-of the PTAP smoke that carries the SV-UVM binding.
+The `SEP=0` composition (`smu #(.SEP(0))`: no crossbar, direct ID converters,
+SEP aperture and lifecycle tie-offs) is not elaborated by this package; the
+names that need it, and the JTAG2AXI abort scenario, which needs an OTP
+interface that hangs, are catalogued in
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
 
 **What it verifies.** With `elaboration` firmware, four surfaces of the SMU at its
 own boundary: the fabric and address decode (external SMN AXI into SMC,
@@ -58,10 +55,9 @@ approval fields, in the *Bench stand-ins and exceptions* section of
 `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
 
 **Simulators.** Verilator runs every enrolled group and is the only
-simulator with a build and a coverage section in either sim config; it is
-what CI runs. VCS runs the SystemVerilog UVM view of `--dut smu_block`
-(`--framework uvm`; Verilator has no SV-UVM support). `smu_sim_cfg.toml`
-lists `vcs` and `xcelium` as selectable tools, but no enrolled cocotb group
+simulator with a build and a coverage section in the sim config; it is
+what CI runs. `smu_sim_cfg.toml`
+lists `vcs` and `xcelium` as selectable tools, but no enrolled group
 runs on them: the cocotb targets on VCS fail the runner on live RTL
 assertions while every test passes (issue #1755, open), and `smu_sim_cfg.toml`
 declares no Xcelium target of its own -- only the shared
@@ -81,7 +77,6 @@ from, and a value with no pin says so.
 | Bender | whatever `pulp-platform/pulp-actions/bender-install@v2.5.1` installs; no Bender version is pinned in this repository | `.github/actions/dv-run/action.yml` |
 | g++ | the `g++` package of `ubuntu-latest` at run time; no version pinned. cocotb 2.x compiles with `-fcoroutines`, so a C++20 compiler is required | `.github/actions/dv-run/action.yml` |
 | RISC-V GCC (firmware leaves only) | `gcc-riscv64-unknown-elf` + `picolibc-riscv64-unknown-elf` from Debian trixie in the `ocah-toolchain` image; the base image is pinned by digest, the package version floats | `tools/docker/Dockerfile`; `tools/docker/README.md` |
-| VCS (`--framework uvm` only) | not pinned in this repository | `hw/common/dv/configs/simulators.toml` names the tool |
 
 Environment variables the package reads:
 
@@ -132,13 +127,8 @@ python3 tools/dv/run_dv.py --dut smu --items all
 `fw_boot` (the elaboration leaf plus `smu_smc_smoke_test` and
 `smu_sep_smoke_test`) is the firmware boot smoke; it needs the SMC and SEP
 firmware compiles, so it is not the CI tier. `elaboration` is the elaboration
-leaf alone. The block bench is
-`python3 tools/dv/run_dv.py --dut smu_block --items all` (seven leaves, no
-toolchain; `nosep` is the five SEP=0 composition proofs); `sim.yml` runs its
-`smoke` group (two leaves) on every hardware PR, and `regress.yml` is the
-schedule of record for the rest. Every group of both testlists, with its size
-and what it is for, is the *Regression Groups* section of
-`docs/SMU_VPLAN.adoc`.
+leaf alone. Every group of the testlist, with its size and what it is for,
+is the *Regression Groups* section of `docs/SMU_VPLAN.adoc`.
 
 ### Firmware toolchain
 
@@ -180,39 +170,33 @@ Every directory and top-level file under `dv/` is listed here.
 |---|---|
 | `README.md` | this file: build, run, layout |
 | `assets/` | the five SEP eFuse shadow preload images: `default_sep_efuse_shadow_reg.preload` and `sep_efuse_shadow_lc_{test_dev,prod,prod_end,rma_chiplet}.preload`, which set the diff-encoded lifecycle state word. Each carries its SPDX header as `//` comment lines, which the preload readers skip |
-| `cocotb/{env,seq_lib,tests}/` | the `--dut smu_block` framework tree: `tests/` holds its test bodies and base test; `env/` the PyUVM env both DUTs share (`SmuEnv`, `SmuScoreboard`, the evidence map, `smu_fcov.py`, the block bench's `SmuEnvCfg`); `seq_lib/` the sequences and helpers both DUTs share |
-| `cocotb_wrapper/{env,seq_lib,tests}/` | the `--dut smu` framework tree: `tests/` holds its test bodies and base test; `env/` the wrapper-only env pieces (`smu_boot_scoreboard.py`, `smu_sep_cpu_trace_monitor.py`, `smu_env_cfg.py`); `seq_lib/` the wrapper-only sequences. `env` and `seq_lib` are namespace packages spanning this tree and `cocotb/`, so a wrapper import resolves in either |
-| `cov/` | coverage collateral: `config/verilator/smu_cov_scope.vlt` and `smu_block_coverage_policy.toml`, and `sv/` with the two cover-property modules; intent in `docs/SMU_FCOV.adoc` |
+| `cocotb/{env,seq_lib}/` | the shared half of the PyUVM environment: `env/` holds `SmuEnv`, `SmuScoreboard`, the evidence map and `smu_fcov.py`; `seq_lib/` the sequences and helpers written against the SMU's own interfaces (address map, lifecycle table, AXI, JTAG and filter helpers, the PTAP smoke sequence) |
+| `cocotb_wrapper/{env,seq_lib,tests}/` | the `--dut smu` framework tree: `tests/` holds every test body and the base test; `env/` the wrapper env pieces (`smu_boot_scoreboard.py`, `smu_sep_cpu_trace_monitor.py`, `smu_env_cfg.py`); `seq_lib/` the wrapper sequences. `env` and `seq_lib` are namespace packages spanning this tree and `cocotb/`, so an import resolves in either |
+| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (its README explains the mirror), `interface_toggle.py`, and `sv/` with the ten cover-property modules; intent in `docs/SMU_FCOV.adoc` |
 | `docs/` | `index.adoc` and the three chapters: `SMU_TB_ARCH.adoc`, `SMU_VPLAN.adoc`, `SMU_FCOV.adoc` |
 | `fw/` | this root's own firmware: `build_firmware.py`, `common/` (SMC and SEP start-up and linker files), `tests/` (the SMC smoke, the SEP smoke and the two SEP arm images). The `sep_real_fw` images come from `hw/sys/sep/dv/fw/` instead |
-| `tb/` | `tb_wrapper_top.sv` (`--dut smu`), `tb_top.sv` (`--dut smu_block`; one module with a cocotb pin shape and an SV-UVM harness shape), `smu_tb_signal_list.svh`, `smu_tb_if.sv`, `smu_wrapper_public_scope.vlt` |
-| `testlists/` | `all.toml` (`--dut smu`: the SMU regression) and `block.toml` (`--dut smu_block`); each sim config selects its own root. `block.toml` is not an `includes` of `all.toml`: the runner merges an include into one catalog under one DUT elaboration, the block leaves need `smu #(.SEP(0))` under `tb/tb_top.sv`, which `smu_sim_cfg.toml`'s compile profile cannot build, and both roots declare `all` and `smoke`, which an include rejects as duplicates |
+| `tb/` | `tb_wrapper_top.sv` (the HDL top, `smu_wrapper_uvm_top`) and `smu_wrapper_public_scope.vlt` (the Verilator public-signal scope `smu_sim_cfg.toml` `[build.verilator].public_scope` names) |
+| `testlists/` | `all.toml`, the SMU regression and the one root `smu_sim_cfg.toml` selects |
 | `tools/` | `smu_wrapper_tb_readiness_test.py`, the static readiness gates below |
-| `uvm/{env,seq_lib,tests}/` | the SV-UVM realization (`--dut smu_block --framework uvm`, VCS) |
-| `smu_sim_cfg.toml` | `--dut smu` launch config: Bender targets, the single compile profile, run modes, `c_build` stages |
-| `smu_block_sim_cfg.toml` | `--dut smu_block` launch config: `[frameworks.cocotb]` + `[frameworks.uvm]` |
-| `smu_public_scope.vlt` | Verilator public-signal scope of the block bench (`smu_block_sim_cfg.toml` `[build.verilator].public_scope`); the wrapper's is `tb/smu_wrapper_public_scope.vlt` |
+| `smu_sim_cfg.toml` | the `--dut smu` launch config: Bender targets, the single compile profile, run modes, `c_build` stages, the coverage scope and policy files |
 | `build/` | generated: models, firmware, `build/runs/`; gitignored |
 
-`assets/`, `cocotb_wrapper/`, `fw/`, `tools/` and `uvm/` are additional to
-the shared DV directory set (`cocotb/`, `cov/`, `docs/`, `tb/`, `testlists/`);
-each is held here because:
+`assets/`, `cocotb_wrapper/`, `fw/` and `tools/` are additional to the shared
+DV directory set (`cocotb/`, `cov/`, `docs/`, `tb/`, `testlists/`); each is
+held here because:
 
 * `assets/` -- a preload image is an input to a scenario, so it belongs beside
   the testlist that names it; the lifecycle leaves select their image by name.
-* `cocotb_wrapper/` -- two DUTs share this root, and each has its own
-  framework tree with `env/`, `seq_lib/` and `tests/`. The wrapper's test
-  bodies cannot live in `cocotb/tests/`, which the runner resolves for
-  `--dut smu_block`, without the two benches' base tests colliding; the env and
-  sequences both DUTs share live once, under `cocotb/`, and the wrapper flow
-  puts that tree on its path.
+* `cocotb_wrapper/` -- `smu_sim_cfg.toml` names it as the framework tree of
+  `--dut smu`, so the runner resolves the test bodies there, and the env and
+  sequences written against the SMU's own interfaces stay under `cocotb/`,
+  which the same config puts on the import path as the other half of the
+  `env` and `seq_lib` namespace packages.
 * `fw/` -- the SMC smoke and the SEP smoke/arm images are stimulus whose source
   must be versioned with the tests that boot it; `build_firmware.py` builds
   them into `build/firmware/`.
 * `tools/` -- the readiness gates check the wrapper TB against its source and
   its filelist without a simulation, and are not tests.
-* `uvm/` -- the SV-UVM shape of the same scenarios, selected by
-  `--framework uvm`; it shares `tb/tb_top.sv` with the cocotb shape.
 
 ## Compile profile and images (`--dut smu`)
 
@@ -280,77 +264,17 @@ python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
   --seed 1 --stage c_compile --stage sim
 ```
 
-## SystemVerilog UVM framework (`--framework uvm`)
-
-The SV-UVM view shares this DV root, sim config and testlist with the cocotb
-flow: `smu_block_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay
-(same Bender RTL recipe), and `--dut smu_block --framework uvm` selects it on
-VCS. A testlist scenario carries both implementations in its `module` binding
-map (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
-selects the same VPLAN scenario in either framework; the UVM class name is the
-`uvm` entry (`+UVM_TESTNAME`). A scenario declared `uvm = false` in its map is
-skipped from group selections under the UVM view; selecting one with no `uvm`
-entry errors, and `--skip-unimplemented` skips those from a group selection as
-well.
-The bound testlist entry is `smu_dtp_jtag_smoke_bare_test`, whose `uvm`
-binding names the SV class `smu_dtp_jtag_smoke_test`; its architecture is in
-`docs/SMU_TB_ARCH.adoc` ("SystemVerilog UVM Realization") and the framework
-conventions in `hw/common/dv/docs/uvm-framework.adoc`.
-
-
-```bash
-# SV-UVM build only (VCS); the default selection is the smoke group
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only
-
-# PyUVM (cocotb) and SV-UVM, same logical scenario name
-python3 tools/dv/run_dv.py --dut smu_block --items smu_dtp_jtag_smoke_bare_test --tool verilator
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_bare_test --seed 1
-
-# Smoke group; `all` needs the flag while any of its scenarios lacks a uvm entry
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items all --skip-unimplemented
-
-# Negative validation: a wrong expected IDCODE in both the reference model and
-# the scenario evidence must FAIL the run
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_bare_test \
-  --plusarg +SMU_PTAP_IDCODE_NEGATIVE
-
-# Loop-count knobs, resolved specific-first (per test, per group, suite-wide);
-# every looped test runs at least 16 seeded passes by default
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_bare_test \
-  --plusarg +SMU_DTP_JTAG_SMOKE_TEST_LOOPS=4
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke \
-  --plusarg +SMU_TEST_LOOPS=1
-```
-
-To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
-`smu_base_test_seq` (JTAG operations through `load_ir` / `dr_scan` /
-`step`, named evidence through `attach_evidence` / `check_evidence` /
-`finalize_evidence`), add `uvm/tests/<name>.svh` on `smu_base_test`
-(override `create_scenario_seq()`, the loop-knob hooks, and
-`configure_test_cfg()` for the scoreboard features it requires), add both
-`include`s to the package and the manifest, and change the scenario's
-testlist entry to the binding map. A pin the scenario needs that the harness
-ties off is promoted into `tb/smu_tb_if.sv` first; a new embedded-IP
-feature reuses that IP bench's reference model and scoreboard through
-`smu_env` and `smu_scoreboard`.
-
 ## Enrollment
 
 `--dut smu` carries the regression: `all` is every entry of
 `testlists/all.toml` (96), `hosted` is the toolchain-free subset the workflows
-run (64), and the rest of `all` is the SEP firmware set. The SEP=0 composition
-proofs are enrolled on `--dut smu_block` (`nosep`, in `testlists/block.toml`),
-beside `smu_dtp_jtag2axi_abort_mid_op_test`, which runs there because it needs
-an OTP interface that holds SINGLE_OP in BUSY, and
-`smu_dtp_jtag_smoke_bare_test`, the block-bench run of the PTAP smoke that
-carries the SV-UVM binding; the wrapper's run of the same scenario is
-`smu_dtp_jtag_smoke_test` in `dtp_under_smu`. The two names keep the two
-benches' runs apart under the shared `build/runs/` tree.
+run (64), and the rest of `all` is the SEP firmware set.
 
-Every test entry of both testlists is in its `all`, and every test module
-under `cocotb/tests/` and `cocotb_wrapper/tests/` is enrolled. Names that
-cannot run or cannot pass on either bench are enrolled nowhere and have no
-module in the tree: `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`
-catalogues each with the condition it needs, and a body written for one of
-them is kept in git history and restored when that condition clears.
+Every test entry of the testlist is in `all`, and every test module under
+`cocotb_wrapper/tests/` is enrolled. Names that cannot run or cannot pass on
+this bench -- among them the SEP=0 composition proofs, which need the
+`smu #(.SEP(0))` elaboration this package does not build -- are enrolled
+nowhere and have no module in the tree:
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` catalogues each with the
+condition it needs, and a body written for one of them is kept in git history
+and restored when that condition clears.

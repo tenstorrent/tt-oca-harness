@@ -15,13 +15,6 @@ schema_version = 1
 # `all` is every test in this file. `smoke` is the toolchain-free PR gate,
 # `hosted` the toolchain-free nightly set, `fw_boot` the firmware boot smokes
 # and `elaboration` the elaboration leaf alone.
-# testlists/block.toml is the second root of this DV package, for the bare
-# `--dut smu_block` bench (smu #(.SEP(0)) under tb/tb_top.sv); its leaves need
-# SEP=0 or an eFuse interface that hangs, which this wrapper does not provide.
-# It is a root and not an `includes` of this file: the runner merges an
-# include into this catalog under this file's DUT elaboration, which cannot
-# build those leaves, and both roots declare `all` and `smoke`, which an
-# include rejects as duplicate groups.
 #
 # The EL2 ICCM/DCCM macros come from the upstream VeeR mem_lib.sv already on
 # the Bender closure, and tb_wrapper_top.sv backdoor-loads +sep_itcm_hex /

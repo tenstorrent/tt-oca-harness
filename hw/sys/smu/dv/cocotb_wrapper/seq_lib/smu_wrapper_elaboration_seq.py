@@ -20,8 +20,7 @@ class SmuWrapperElaborationSeq:
 
     Executes the SMU_ALL_001 card steps and emits the card's ``CHK-*`` lines.
     ``+expected_sep`` is required and must be 1: the wrapper's one compile
-    profile elaborates SEP, and the SEP=0 composition is proved on
-    ``--dut smu_block``.
+    profile elaborates SEP.
     """
 
     BOUND_REF_CYCLES = 500
@@ -622,9 +621,7 @@ class SmuWrapperElaborationSeq:
         assert expected_sep_arg is not None, "missing required +expected_sep profile contract"
         expected_sep = int(expected_sep_arg, 0)
         # The wrapper has a single compile profile and it elaborates SEP, so
-        # this is a contract check rather than a branch: a SEP=0 build of this
-        # bench no longer exists, and the SEP=0 composition is proved on
-        # --dut smu_block (the `nosep` group of testlists/block.toml).
+        # this is a contract check rather than a branch.
         assert expected_sep == 1, (
             f"+expected_sep={expected_sep} on the wrapper: the only profile is "
             "compile_smu_chiplet, which elaborates SEP=1"

@@ -82,8 +82,8 @@ NO_EVIDENCE_LEAVES: dict[str, str] = {}
 class smu_base_test(uvm_test):
     """Clock/reset bring-up and scenario hook shared by every SMU OSS test."""
 
-    #: Set True by a leaf that scores through self.env.scoreboard, the shared
-    #: SmuEnv the bare-smu catalog scores against.
+    #: Set True by a leaf that scores through self.env.scoreboard, the
+    #: SmuEnv under cocotb/env.
     use_shared_env = False
 
     #: Evidence tokens a wrapper-native leaf (use_shared_env=False) must log
@@ -126,7 +126,7 @@ class smu_base_test(uvm_test):
     async def arm_async_resets(self) -> None:
         """Create a falling TRST edge so IC_RESET TDR reset-values load.
 
-        Same contract as the bare tb_top.sv base test: Verilator two-state
+        Verilator two-state
         powers jtag_trst up at 0, which is not a falling edge, and the IC_RESET
         reset_hold flop resets only on TRST with RESET_VAL=1. Left at 0 it
         keeps the override asserted and SMC cold reset never releases.
@@ -194,7 +194,7 @@ class smu_base_test(uvm_test):
         self.sep_trace_mon = SmuSepCpuTraceMonitor("sep_trace_mon", self)
         ConfigDB().set(None, "*", "sep_trace_mon", self.sep_trace_mon)
         self._attach_sep_symbols()
-        # The PyUVM env the bare-smu catalog scores against. Opt-in: SmuScoreboard
+        # The PyUVM env under cocotb/env. Opt-in: SmuScoreboard
         # refuses a run that registered no checks ("zero checks executed -
         # refusing vacuous PASS"), and the wrapper-native leaves carry their own
         # scoreboard.
@@ -363,7 +363,7 @@ class smu_base_test(uvm_test):
         dut.rst_cold_ni.value = 1
         # A driven input, so smu_ext_boot_seq_gate_test can hold it low; every
         # other leaf needs the asserted default set here or it sees the boot
-        # sequence incomplete. The bare bring-up does the same.
+        # sequence incomplete.
         dut.ext_boot_seq_done_i.value = 1
         # TRST follows cold reset.
         dut.jtag_tck.value = 0

@@ -25,14 +25,12 @@ native families and the policy's `[[holes]]`, and the interface figure is
 reported beside them
 |===
 
-`cov/sv/` carries eleven cover-property modules, 115 points in all; the counts
-are the `OCAH_FCOV_COVER` invocations in each file. The block bench
-`tb/tb_top.sv` instantiates nine of them and 84 points elaborate there; the
-wrapper bench `tb/tb_wrapper_top.sv` instantiates ten and 107 points elaborate
-on its single target, `compile_smu_chiplet`, which has SEP present.
-`smu_alias_fcov.sv` and `smu_clk_fcov.sv` are wrapper-bench only --
-`smu_clk_fcov` reads clock mirrors that only that bench publishes;
-`smu_nosep_fcov.sv` is block-bench only, its points exist without SEP.
+`cov/sv/` carries ten cover-property modules, 111 points in all; the counts
+are the `OCAH_FCOV_COVER` invocations in each file. `tb/tb_wrapper_top.sv`
+instantiates all ten, and 107 points elaborate on its single target,
+`compile_smu_chiplet`, which has SEP present: the four inside `g_nosep`
+generate blocks exist only on a SEP=0 elaboration, which this package does
+not build.
 
 [cols="2,1,4",options="header",]
 |===
@@ -46,12 +44,10 @@ order, powergood
 |`smu_dbg_fcov.sv` |13 |JTAG2AXI debug paths, security-disable, TAP state
 |`smu_ext_fcov.sv` |10 |External boot-sequence gate and the external AXI
 boundary
-|`smu_nosep_fcov.sv` |4 |The SEP=0 composition: the direct converter path
-that replaces the crossbar, in each direction
 |`smu_dtp_fcov.sv` |7 |Cross-trigger ports and XTRIG mode
 |`smu_lc_fcov.sv` |6 |Lifecycle state broadcast and demotion
 |`smu_alias_fcov.sv` |6 |Alias / remap manager scope at the SMU boundary
-|`smu_clk_fcov.sv` |3 |Clock mirrors the wrapper bench exposes
+|`smu_clk_fcov.sv` |3 |Clock mirrors `tb/tb_wrapper_top.sv` exposes
 |`smu_clkstop_fcov.sv` |3 |Clock-stop request and grant
 |===
 
@@ -63,8 +59,7 @@ that replaces the crossbar, in each direction
 |Path |What it collects |Where it runs
 |Public Verilator |line / expr / toggle / user over
 `smu_wrapper_cov_scope.vlt`, which drops everything the wrapper instantiates
-at compile time -- the SMU block (graded on `--dut smu_block`), the SEP, SMC
-and DTP trees, the `hw/top` integration shells, vendored and generated RTL --
+at compile time -- the SMU block, the SEP, SMC and DTP trees, the `hw/top` integration shells, vendored and generated RTL --
 so the toggle points that remain are `smu_wrapper`'s own: its ports and the
 nets it declares between them |weekly `--cov` on the large runner
 (`regress.yml`). Nightly does not collect.
@@ -104,8 +99,8 @@ Three mechanisms. Do not mix them.
 |Structural OUT, by elaboration |the point is not elaborated, so it never
 enters the database and no waiver names it |the `SepPresent` parameter and
 its `g_sep` generate blocks in `cov/sv/*_fcov.sv`; a point whose observable
-exists only with SEP elaborated is absent from a SEP=0 build, which is what
-lets one Verilator policy grade both wrapper targets
+exists only with SEP elaborated is absent from a SEP=0 build; the wrapper's
+single target elaborates SEP, so every `g_sep` point exists there
 |Waiver hole |the point exists and is not hit |`[[holes]]` with the
 fields below
 |===
@@ -122,8 +117,7 @@ ConfigError on the first run.
 Every `[[holes]]` row must carry:
 
 * `tool`, `metric_family` (the family that database holds: `user` and the
-wrapper's own `toggle` on `--dut smu`; toggle and `user` on
-`--dut smu_block`), `hierarchy` or file selector
+wrapper's own `toggle`), `hierarchy` or file selector
 * `category` (one of the runner's hole categories, such as
 `missing_stimulus`, `config_disabled`, `out_of_scope` or `unreachable`)
 * `disposition`

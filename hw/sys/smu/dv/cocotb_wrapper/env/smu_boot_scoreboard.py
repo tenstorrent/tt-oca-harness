@@ -61,7 +61,7 @@ class SmuSmcBootScoreboard(uvm_component):
         if self.max_scratch_writes == 0:
             errors.append("SMC scratch SRAM had no write activity")
         assert not errors, "SMC boot scoreboard: " + "; ".join(errors)
-        # Evidence tokens of the wrapper firmware smoke (distinct from the bare-DUT smoke)
+        # Evidence tokens of the wrapper firmware smoke
         self._log_evidence(self.logger, "SMC_ROM_READ_OK")
         self._log_evidence(self.logger, "SMC_SCRATCH_WRITE_OK")
         self._log_evidence(self.logger, "SMC_TEST_PASS_OK")

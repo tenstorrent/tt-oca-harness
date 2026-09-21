@@ -70,8 +70,7 @@ class SmuWrapperJtagPtapSeq:
         require_tdo_resolved("BYPASS")
         mask = (1 << BYPASS_WIDTH) - 1
         # The shift register captures 0 and then returns TDI one bit later, so
-        # over an 8-bit scan TDO is the pattern shifted up by one, matching the
-        # bare `--dut smu_block` PTAP checker.
+        # over an 8-bit scan TDO is the pattern shifted up by one.
         want = (BYPASS_PATTERN << 1) & mask
         assert (captured & mask) == want, (
             f"BYPASS tdi=0x{BYPASS_PATTERN:02x} tdo=0x{captured & mask:02x} "

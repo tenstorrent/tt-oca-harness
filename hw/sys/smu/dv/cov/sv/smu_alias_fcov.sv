@@ -8,10 +8,8 @@
 // traffic does not use.
 //
 // One passive, signal-driven module. The remap port and the crossbar SEP
-// initiator port exist only in the SEP=1 elaboration, so the wrapper bench
-// drives these inputs from its own flattened copies and ties them off in its
-// no-SEP profile; the block bench, which is SEP=0, does not carry the
-// instance.
+// initiator port exist only in the SEP=1 elaboration, so the bench drives
+// these inputs from its own flattened copies.
 //
 // SEP PRESENCE: the entire point set sits in the `g_sep` generate block, so a
 // SEP=0 build carries no unhittable point and one coverage policy can grade

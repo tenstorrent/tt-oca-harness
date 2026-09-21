@@ -182,8 +182,7 @@ Executable membership is resolved from the testlists; each group's
 |===
 
 `--dut smu` enrols its own DTP-facing scenarios
-(the `dtp_under_smu` group of `hw/sys/smu/dv/testlists/all.toml`, and the
-block bench's `hw/sys/smu/dv/testlists/block.toml`). Those
+(the `dtp_under_smu` group of `hw/sys/smu/dv/testlists/all.toml`). Those
 PASSes are SMU integration evidence and are outside this matrix.
 
 [[dtp-credit-rules]]
