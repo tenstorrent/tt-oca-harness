@@ -130,6 +130,7 @@ row runs on `--dut smu`.
 |`smu_composition_parameter_test` |smu |The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 |`smu_smc_boundary_io_test` |smu |The SMC-facing wrapper boundary signals that `port_table.adoc` declares are proved through the SMC register map or, for the external interrupts, the SMC CPU interrupt vector `interrupts.adoc` defines, each leg comparing a DUT-produced value against the contract.
 |`smu_smc_cool_reset_pin_test` |smu |A 28-`clk_ref` pulse on `rst_cool_n_from_pin_i` is filtered and a hold past that pulse asserts the SMC primary reset; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
+|`smu_smc_boundary_lane_sweep_test` |smu |Every lane of the multi-lane SMC-facing wrapper buses is driven both ways and compared against the SMC register or interrupt vector that owns it, and each aggregate names the lane count it expects.
 |`smu_smc_efuse_shadow_sense_reset_test` |smu |After a real SMC fuse sense, `smc_shadow_regs_o` carries the sensed eFuse image at every register offset `smc_addr.h` gives the map, and it reads the zero every `smc_efuse_map.rdl` field resets to while `rst_cold_ni` is held; the image programs every fuse bit, so both samples are taken on the full width of the port.
 |`smu_telemetry_atb_capture_test` |smu |One complete ATB telemetry message entered at the wrapper pins is captured by receiver 0 and read back, and the ATB flush handshake completes at the pins.
 |`smu_smc_peripheral_irq_test` |smu |The raw GPIO and UART interrupt vectors `port_table.adoc` brings out of the wrapper follow their sources both ways.
@@ -4281,6 +4282,51 @@ Two things are worth reading before the entries:
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
 
 '''''
+
+[[sec-106-smu_smc_boundary_lane_sweep_test]]
+===== 106 `smu_smc_boundary_lane_sweep_test`
+
+*Source Module*: `smu_smc_boundary_lane_sweep_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_jtag_vip` (SMC fabric JTAG2AXI for the CSR reads and writes); TB pin drive on the external interrupt vector and the GPIO pad bus; `elaboration` firmware mode
+
+*Objective*: Every lane of the multi-lane SMC-facing wrapper buses is driven both ways and compared against the SMC register or interrupt vector that owns it, and each aggregate names the lane count it expects.
+
+*Test Coverage*:
+
+* `smu_smc_boundary_io_test` proves each of these contracts on one or two lanes. This anchor takes the same contracts across every lane, so no lane of any of these buses rests on a neighbour's result.
+* The 256 external interrupt lanes on the external-interrupt slice of `cpu_interrupts_o`; the 32 isolation-request and 32 subsystem-configuration lanes of the reset unit; the 32 outbound mailbox interrupt lanes; the 65 GPIO pads on `gpio_interrupt_o` and on their `DATA_CTRL.PAD2CORE` mirrors; and the four UART interrupt lanes.
+* Every lane count comes from the generated SMC register header -- the enumerated outbound mailbox instances, `SMC_TOP_GPIO_INTF_DATA_CTRL_NUM`, the UART instance count and the reset-unit field widths -- or from the DV-owned port table in `seq_lib/smu_compose_helpers.py`, and the bench-side width is required to match it before any lane is driven, so a narrowed port fails rather than reducing the sweep.
+* Each group ends in an aggregate that states its lane count, so a bus that never moved fails on the count rather than passing on an empty sweep.
+* `smc_global_base_o` and `smc_region_size_o` are out of scope: the SMC aperture routes the bench's own JTAG2AXI accesses, and `smc_base_config.rdl` constrains `REGION_SIZE.size` to a non-zero power of two that `LOCAL_BASE` is aligned to, so no all-lanes sweep of either port is a legal stimulus.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smc_ext_interrupts_i` all-ones, all-zeros and both alternating patterns, sampling the external-interrupt slice of `cpu_interrupts_o` after each.
+. Write RESET_UNIT.ISOLATE_REQ_REG all-ones, both alternating patterns and zero, reading the register back and `isolate_req_o` after each.
+. Read SS_CONFIG_LOCK, then write RESET_UNIT.SS_CONFIG all-ones, both alternating patterns and its RDL reset value, reading the register back and `ss_config_o` after each.
+. For each outbound mailbox in turn, enable IRQEN.WTIRQ and push one outbound word, and require exactly that bit of `smc_ext_mailbox_interrupts_o` to rise; then clear IRQEN mailbox by mailbox and require exactly that bit to fall.
+. Arm every GPIO interface away from its LSIO owner as an active-high level, drive every pad high, and read `gpio_interrupt_o` and `DATA_CTRL.PAD2CORE` on every interface; drive every pad low and read both again.
+. For each UART instance in turn, set IER.ETBEI, require its own `uart_interrupt_o` lane alone to rise, read IIR for the pending flag and the transmitter-holding-register-empty code, and require the lane to fall on that read.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMU-LANE-EXT-IRQ` |all 256 smc_ext_interrupts_i lanes appear bit for bit on the external-interrupt slice of cpu_interrupts_o for all-ones, all-zeros and both alternating patterns, and every lane is observed both high and low
+|`CHK-SMU-LANE-ISOLATE-REQ` |isolate_req_o carries the RESET_UNIT.ISOLATE_REQ_REG software term on all 32 lanes, each lane observed set and cleared against the CSR read-back
+|`CHK-SMU-LANE-SS-CONFIG` |with SS_CONFIG_LOCK read open, ss_config_o carries RESET_UNIT.SS_CONFIG on all 32 lanes for all-ones, both alternating patterns and the RDL reset value it is restored to
+|`CHK-SMU-LANE-MBX-IRQ` |each of the 32 outbound mailboxes raises its own smc_ext_mailbox_interrupts_o bit through IRQEN.WTIRQ and an outbound push, and clearing IRQEN retires that bit alone
+|`CHK-SMU-LANE-GPIO` |with all 65 pads taken from their LSIO owners and armed as active-high levels, driving every pad raises every gpio_interrupt_o lane and sets DATA_CTRL.PAD2CORE on every interface, and both follow the pads back down
+|`CHK-SMU-LANE-UART-IRQ` |each of the four UART instances raises uart_interrupt_o on its own lane from IER.ETBEI, reports the transmitter-holding-register-empty code in IIR, and retires that lane on the IIR read
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
