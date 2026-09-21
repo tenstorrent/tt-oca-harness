@@ -1232,8 +1232,8 @@ module smu_wrapper_uvm_top (
   // see the same idle bus. A pull-up would stall boot: pad 57 is the
   // active-high boot-stall input (smc_padring: boot_stall_o =
   // lsio_pad2core_data[57]).
-  for (genvar gpio_idx = 0; gpio_idx < smc_pkg::NUM_GPIO_WRAPS; gpio_idx++) begin : gen_gpio_pad_pull
-    pulldown u_pad_pulldown (gpio_pad_io[gpio_idx]);
+  for (genvar gi = 0; gi < smc_pkg::NUM_GPIO_WRAPS; gi++) begin : gen_gpio_pad_pull
+    pulldown u_pad_pulldown (gpio_pad_io[gi]);
   end
   assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
   assign gpio_pad_io[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : 1'bz;
