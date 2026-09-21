@@ -20,7 +20,8 @@ every bit of every port of `smu_wrapper` in both directions after
 and `assertion` is where urg reads the same cover properties
 |Numeric target |VCS `toggle` 80 percent effective and `assertion` 80 percent
 effective, both gated by `cov/config/vcs/smu_wrapper_coverage_policy.toml`
-(97 and 84 percent on the `hosted` group when this chapter was written);
+(`toggle` 96.03/95.93 raw/effective and `assertion` 84.11 on the `hosted`
+group when this chapter was written);
 `user` 95 percent effective on Verilator, reported and not yet gated
 |===
 

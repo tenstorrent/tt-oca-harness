@@ -22,7 +22,7 @@ grading rules and the waiver fields are in
 |Simulator that collects |Verilator (`--cov`) in public CI; a `[coverage.vcs]` table and `cov/config/vcs/smu_wrapper_cov_scope.hier` mirror the wrapper's scope for the licensed flow, which no public job runs
 |What each DUT collects |`--dut smu_block`: toggle plus `user` over its scope file. `--dut smu` (the release group, weekly `--cov` in `regress.yml`): line, expression and `user` over a scope that drops everything the wrapper instantiates; toggle on the VCS flow only, over the wrapper's ports after `cov/config/vcs/smu_wrapper_toggle_exclusions.el`
 |Scope files |`cov/config/verilator/smu_cov_scope.vlt` (`--dut smu_block`); `cov/config/verilator/smu_wrapper_cov_scope.vlt` (`--dut smu`)
-|Policy file |`cov/config/verilator/smu_block_coverage_policy.toml` (`--dut smu_block`); `cov/config/verilator/smu_wrapper_coverage_policy.toml` (`--dut smu`)
+|Policy file |`cov/config/verilator/smu_block_coverage_policy.toml` (`--dut smu_block`); `cov/config/verilator/smu_wrapper_coverage_policy.toml` (`--dut smu`, Verilator `user`); `cov/config/vcs/smu_wrapper_coverage_policy.toml` (`--dut smu`, VCS `toggle` / `assertion`)
 |Cover-property modules |11 under `cov/sv/`, 115 points in all; see <<smu-fcov-points>>
 |===
 
