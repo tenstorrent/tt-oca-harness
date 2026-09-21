@@ -97,7 +97,12 @@ jobs:
       # The runner context is not available in a job's env: block, so the value
       # is set here instead.
       - name: Point the image cache at the runner temp dir
-        run: echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
+        run: |
+          # Created here, not by actions/cache: a cache miss restores nothing and
+          # leaves no directory, and docker-run.sh copies the built image into
+          # this path without creating it.
+          mkdir -p "$RUNNER_TEMP/ocah-image-cache"
+          echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
 
       - name: Skip when the submodule token is unavailable
         if: env.HAVE_SUBMODULE_TOKEN != 'true'
@@ -387,7 +392,12 @@ jobs:
     steps:
       # See the sep-vp job: the runner context is not available in env:.
       - name: Point the image cache at the runner temp dir
-        run: echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
+        run: |
+          # Created here, not by actions/cache: a cache miss restores nothing and
+          # leaves no directory, and docker-run.sh copies the built image into
+          # this path without creating it.
+          mkdir -p "$RUNNER_TEMP/ocah-image-cache"
+          echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
 
       - name: Skip when the submodule token is unavailable
         if: env.HAVE_SUBMODULE_TOKEN != 'true'
