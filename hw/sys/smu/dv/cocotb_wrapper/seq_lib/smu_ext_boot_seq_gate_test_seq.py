@@ -69,7 +69,8 @@ class smu_ext_boot_seq_gate_test_seq:
         while True:
             await RisingEdge(self.dut.clk_smu_i)
             if self._sample(signal, name) == 1:
-                self._first_high_ns[name] = get_sim_time("ns")
+                if self._first_high_ns[name] is None:
+                    self._first_high_ns[name] = get_sim_time("ns")
                 return
 
     def _arm_trackers(self) -> None:
@@ -93,17 +94,24 @@ class smu_ext_boot_seq_gate_test_seq:
         clk,
         bound: int,
         label: str,
+        first_high: str | None = None,
     ) -> int:
         """Poll until expect or bound; return last sample (never raise on mismatch).
 
         Callers must sb.expect_eq the returned sample so the compare can fail.
-        The wait is recorded in ``_waits`` for CHK-TIMEOUT-PATHS.
+        The wait is recorded in ``_waits`` for CHK-TIMEOUT-PATHS. ``first_high``
+        names the edge tracker whose signal this is: the tracker and this poll
+        sample the same clock edge, and the caller's compare can run before the
+        tracker task resumes, so the poll stamps the edge itself when it is the
+        first to see the 1.
         """
         last = None
         for cycles in range(1, bound + 1):
             await RisingEdge(clk)
             last = self._sample(signal, label)
             if last == expect:
+                if first_high is not None and last == 1 and self._first_high_ns[first_high] is None:
+                    self._first_high_ns[first_high] = get_sim_time("ns")
                 self._waits.append(_BoundedWait(label, bound, cycles, False, last))
                 return last
         last = last if last is not None else -1
@@ -164,6 +172,7 @@ class smu_ext_boot_seq_gate_test_seq:
             clk=dut.clk_smu_i,
             bound=self.RELEASE_BOUND,
             label=self.WAIT_LABELS[0],
+            first_high=self.PRIMARY,
         )
         self._log(
             "CHK-PRIMARY-NOT-GATED: rst_primary_smc_clk_no releases to 1'b1 while "
@@ -189,6 +198,7 @@ class smu_ext_boot_seq_gate_test_seq:
             clk=dut.clk_smu_i,
             bound=self.RELEASE_BOUND,
             label=self.WAIT_LABELS[1],
+            first_high=self.FUSE,
         )
         self._log(
             "CHK-BOOT-SEQ-GATE: with ext_boot_seq_done_i=0, smc_fuse_reset_n_delayed_o "
