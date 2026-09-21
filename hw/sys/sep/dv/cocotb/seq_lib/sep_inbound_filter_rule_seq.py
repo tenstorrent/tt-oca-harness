@@ -65,7 +65,12 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     OUTFILT_BASE,
     STEE_BASE,
 )
-from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
+from seq_lib.sep_scratch_reset_seq import (
+    SCRATCH_COLD_0,
+    SCRATCH_N,
+    SCRATCH_STRIDE,
+    SCRATCH_WARM_0,
+)
 
 # Same-page allow_burst=1 rewrites START down and END up to the 4 KB page
 # (hw/ip/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
@@ -125,8 +130,6 @@ BURST_ALLOW_SPAN = 0x2000
 PAGE_SHIFT = 12
 PAGE_SIZE = 1 << PAGE_SHIFT
 GRANULE_BYTES = 1 << DBW_RO_VAL
-SCRATCH_STRIDE = 0x8  # sep_scratch.rdl: 8 x 64-bit per bank
-SCRATCH_BANK_REGS = 8
 # The dual scratch banks are the widen page: both banks are plain RW storage, so
 # every probe lands on a real register and an OKAY/DECERR split can only come
 # from the filter, never from an address-decode hole.
@@ -181,8 +184,8 @@ class SepInboundFilterWidenCfg:
     def from_rng(cls, rng: SepSeededRng) -> "SepInboundFilterWidenCfg":
         # Cold scratch 0 stays outside the programmed window on every seed so it
         # is always a valid widen probe.
-        window_idx = rng.randrange(1, SCRATCH_BANK_REGS)
-        warm_idx = rng.randrange(SCRATCH_BANK_REGS)
+        window_idx = rng.randrange(1, SCRATCH_N)
+        warm_idx = rng.randrange(SCRATCH_N)
         below_addr = rng.choice(list(WIDEN_ADJ_BELOW))
         vals: list[int] = []
         for i in range(3):

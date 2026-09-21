@@ -30,10 +30,38 @@ SCRATCH_WARM_0 = sym(
 )  # warm domain: .arst_n(rst_ni && rst_warm_ni)
 SCRATCH_RESET_DEFAULT = 0x0000_0000
 
-# Both banks hold SCRATCH[8] (sep_scratch.rdl), 0x8 stride.
-SCRATCH_N = 8
-SCRATCH_COLD_ADDRS = tuple(sym(f"SEP_SCRATCH_COLD_SCRATCH_{i}__REG_ADDR") for i in range(SCRATCH_N))
-SCRATCH_WARM_ADDRS = tuple(sym(f"SEP_SCRATCH_WARM_SCRATCH_{i}__REG_ADDR") for i in range(SCRATCH_N))
+def _bank_addrs(bank: str) -> tuple[int, ...]:
+    """Every SCRATCH register of one bank, in index order, from the register export.
+
+    The depth is the array the RDL declares, not a number a sequence carries: a
+    sweep with its own literal silently stops short of the tail the day
+    ``sep_scratch.rdl`` grows the array, and reports a clean pass over the part
+    it still reaches.
+    """
+    addrs: list[int] = []
+    while True:
+        try:
+            addrs.append(sym(f"SEP_SCRATCH_{bank}_SCRATCH_{len(addrs)}__REG_ADDR"))
+        except KeyError:
+            break
+    if not addrs:
+        raise RuntimeError(
+            f"no SEP_SCRATCH_{bank}_SCRATCH_<n>__REG_ADDR symbols in the register "
+            "export; the scratch sweep would walk nothing"
+        )
+    return tuple(addrs)
+
+
+SCRATCH_COLD_ADDRS = _bank_addrs("COLD")
+SCRATCH_WARM_ADDRS = _bank_addrs("WARM")
+SCRATCH_N = len(SCRATCH_COLD_ADDRS)
+if len(SCRATCH_WARM_ADDRS) != SCRATCH_N:
+    raise RuntimeError(
+        f"scratch banks differ in depth (cold {SCRATCH_N}, warm "
+        f"{len(SCRATCH_WARM_ADDRS)}); the paired sweeps assume one depth"
+    )
+# Register pitch, taken from the export so a width change moves it.
+SCRATCH_STRIDE = SCRATCH_COLD_ADDRS[1] - SCRATCH_COLD_ADDRS[0]
 
 # Test patterns (mirror the reference sep_clock_uvm_warm_reset_vs_cold_reset_test_seq).
 COLD_PATTERN = 0xCAFE_BABE
