@@ -52,8 +52,8 @@ module hmac_wrapper (
 
   // OpenTitan HMAC has fixed BlockAw=13 (8KB internal address space)
   localparam logic [31:0] HMAC_ADDR_MASK = 32'h0000_1FFF;  // 13 bits for AW=13
-  // Extract lower 13 bits of system base address (from och_sep_top_reg.svh via sep_pkg)
-  localparam logic [31:0] HMAC_BASE_LOWER = och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_BASE_ADDR & HMAC_ADDR_MASK;
+  // Extract lower 13 bits of system base address (from sep_top_reg.svh via sep_pkg)
+  localparam logic [31:0] HMAC_BASE_LOWER = sep_top_addrmap_pkg::SEP_TOP_HMAC_BASE_ADDR & HMAC_ADDR_MASK;
 
   always_comb begin
     hmac_axil_req_masked = hmac_axil_req_i;

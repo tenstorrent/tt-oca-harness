@@ -35,16 +35,16 @@ static int wr_rd32(uint32_t addr, uint32_t expect) {
 }
 
 void sep_smu_wdt_reset_to_smc_nmi_handler(void) {
-    uint32_t st = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    uint32_t st = READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
     if ((st & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) == 0u) {
         g_wdt_status = -20;
         return;
     }
     g_bark_seen = 1u;
     __asm__ volatile("csrr %0, mepc" : "=r"(g_interrupted_pc));
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
               AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
-    if ((READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR) &
+    if ((READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR) &
          AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) != 0u) {
         g_wdt_status = -21;
         return;
@@ -95,25 +95,25 @@ static int arm_wdt_and_wait_bite(void) {
     }
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(1), rb);
 
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0u) != 0) {
+    if (wr_rd32(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0u) != 0) {
         return -1;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0u) != 0) {
+    if (wr_rd32(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0u) != 0) {
         return -2;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT_RESET_BARK_THOLD) != 0) {
+    if (wr_rd32(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT_RESET_BARK_THOLD) != 0) {
         return -3;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT_RESET_BITE_THOLD) != 0) {
+    if (wr_rd32(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT_RESET_BITE_THOLD) != 0) {
         return -4;
     }
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
               AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
-    if ((READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR) &
+    if ((READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR) &
          AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) != 0u) {
         return -5;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm) != 0) {
+    if (wr_rd32(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm) != 0) {
         return -6;
     }
 

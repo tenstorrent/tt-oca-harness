@@ -47,7 +47,7 @@ void wdt_nmi_handler(void) {
     interrupt_count++;
 
     /* Clear watchdog bark interrupt (generated field bitmask). */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
               AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
 
     if (interrupt_count == 1) {
@@ -63,10 +63,10 @@ void wdt_nmi_handler(void) {
         printf("//////////////////////////////////////////////////\n\n");
 
         /* Disable watchdog to prevent re-triggering */
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+        WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
 
         // Read back the WDT count to verify it is non-zero (not petted yet)
-        uint32_t wdt_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        uint32_t wdt_count = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
         if (wdt_count == 0) {
             printf("ERROR: WDT count is 0! Expected non-zero\n");
             test_fail(1);
@@ -76,10 +76,10 @@ void wdt_nmi_handler(void) {
         }
 
         // Pet WDT
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
+        WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
 
         // Read back the WDT count to verify it was petted
-        wdt_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        wdt_count = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
         if (wdt_count != 0) {
             printf("ERROR: WDT count was not petted! Expected 0, got 0x%08x\n", wdt_count);
             test_fail(1);
@@ -97,9 +97,9 @@ void wdt_nmi_handler(void) {
         printf("//////////////////////////////////////////////////\n\n");
 
         /* Positive control: with enable ON, count must advance within AON window. */
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
+        WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
         wait_multiple_aon_ticks();
-        wdt_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        wdt_count = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
         if (wdt_count == 0) {
             printf("ERROR: positive-control count did not advance (still 0)\n");
             test_fail(1);
@@ -108,16 +108,16 @@ void wdt_nmi_handler(void) {
         printf("SUCCESS: positive control — count advanced to 0x%08x\n", wdt_count);
 
         /* Disable, confirm enable cleared, pet to 0, then prove count stays 0. */
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
-        uint32_t wdog_ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
+        WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+        uint32_t wdog_ctrl = READ_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
         if ((wdog_ctrl & AON_TIMER__WDOG_CTRL__ENABLE_bm) != 0) {
             printf("ERROR: WDOG_CTRL.enable still set after disable (0x%08x)\n", wdog_ctrl);
             test_fail(1);
             return;
         }
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
+        WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
         wait_multiple_aon_ticks();
-        wdt_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        wdt_count = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
         if (wdt_count != 0) {
             printf("ERROR: WDT count advanced while disabled! got 0x%08x\n", wdt_count);
             test_fail(1);
@@ -178,16 +178,16 @@ int main(void) {
     printf("// STEP 2: Initialize WDT\n");
     printf("//////////////////////////////////////////////////\n\n");
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
 
     uint32_t bark_threshold = 5000;
     uint32_t bite_threshold = 10000;
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, bite_threshold);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, bark_threshold);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, bite_threshold);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, bark_threshold);
 
     printf("Enabling watchdog...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     printf("SUCCESS: WDT initialized\n");
 
@@ -214,7 +214,7 @@ int main(void) {
 
     // Re-enable WDT
     printf("Reenabling watchdog...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     // Wait for BITE
     while (interrupt_count == 1) {

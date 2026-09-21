@@ -47,8 +47,8 @@
  * destination sits at +0x20010 rather than +0x20000 so a 64-KiB source payload
  * and its trailing guard cannot overlap it.
  */
-#define SRAM_SRC_BASE (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x00010000u)
-#define SRAM_DST_BASE (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x00020010u)
+#define SRAM_SRC_BASE (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x00010000u)
+#define SRAM_DST_BASE (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x00020010u)
 #define SRC_GUARD_BEFORE 0x51A0B001u
 #define SRC_GUARD_AFTER 0x51A0A001u
 #define DST_GUARD_BEFORE 0xD57AB001u
@@ -108,7 +108,7 @@ static int km_wait_inbound_space(void) {
     uint32_t timeout = KM_TIMEOUT;
 
     while (timeout-- != 0u) {
-        if ((READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR) & KM_STATUS_IN_FULL) == 0u)
+        if ((READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR) & KM_STATUS_IN_FULL) == 0u)
             return 0;
     }
     return -1;
@@ -127,8 +127,8 @@ static int km_send_frame(uint8_t id, const uint32_t *payload, uint8_t payload_le
     for (uint32_t i = 0; i < total; i++) {
         if (km_wait_inbound_space() != 0) return -1;
         if (i == total - 1u)
-            WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
-        WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, words[i]);
+            WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
+        WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, words[i]);
     }
     km_cmd_seq++;
     return 0;
@@ -139,13 +139,13 @@ static int km_recv_frame(uint32_t *words, uint32_t capacity, uint32_t *count) {
     uint32_t n = 0u;
 
     while (timeout-- != 0u) {
-        uint32_t status = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
+        uint32_t status = READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
 
         if ((status & KM_STATUS_OUT_EMPTY) != 0u) continue;
         if (n >= capacity) return -1;
 
-        words[n++] = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
-        status = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
+        words[n++] = READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
+        status = READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
         if ((status & KM_STATUS_OUT_SEP) != 0u) {
             *count = n;
             return 0;
@@ -210,12 +210,12 @@ static int km_command(uint8_t id, const uint32_t *payload, uint8_t payload_len,
 }
 
 static int release_km_reset(void) {
-    uint32_t reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    uint32_t reset_n = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
     reset_n |= SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm;
-    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, reset_n);
+    WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, reset_n);
     __asm__ volatile("fence" ::: "memory");
-    return (READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
+    return (READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
             SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm)
                ? 0
                : -1;
@@ -242,8 +242,8 @@ static int configure_sideload_aes(uint32_t operation) {
     ctrl.f.KEY_LEN = 0x1u;
     ctrl.f.SIDELOAD = negative_disable_sideload ? 0u : 1u;
     ctrl.f.MANUAL_OPERATION = 0u;
-    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
-    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
     if (negative_disable_sideload) {
         printf("EXPECTED NEGATIVE: AES sideload disabled; rejecting operation\n");
         return -1;
@@ -292,7 +292,7 @@ static int process_payload(uint32_t operation, uint32_t blocks) {
         write_data_in(input);
         if (wait_for_output_valid() != 0) return -1;
 
-        aes__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+        aes__STATUS_t status = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
         if (status.f.OUTPUT_LOST || status.f.STALL || check_no_alert("SRAM-AES") != 0) return -1;
 
         read_data_out(output);
@@ -339,10 +339,10 @@ static int get_config(uint32_t *operation, uint32_t *blocks) {
     uint32_t timeout = CONFIG_TIMEOUT;
     uint32_t config = 0u;
 
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0u);
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), FW_READY_MAGIC);
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0u);
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), FW_READY_MAGIC);
     while (timeout-- != 0u) {
-        config = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7));
+        config = READ_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7));
         if (config != 0u) break;
     }
     if (config == 0u) return -1;

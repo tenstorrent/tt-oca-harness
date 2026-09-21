@@ -17,93 +17,93 @@ package sep_crypto_pkg;
 
   parameter axi_pkg::xbar_rule_32_t otbn_rule = '{
       idx: 0,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_OTBN_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_OTBN_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_OTBN_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_OTBN_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_OTBN_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_OTBN_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t hmac_rule = '{
       idx: 1,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_HMAC_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_HMAC_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_HMAC_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t aes_rule = '{
       idx: 2,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_AES_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_AES_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_AES_SIZE  // 256 bytes for AES
+      sep_top_addrmap_pkg::SEP_TOP_AES_SIZE  // 256 bytes for AES
   };
 
   parameter axi_pkg::xbar_rule_32_t kmac_rule = '{
       idx: 3,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_KMAC_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_KMAC_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_KMAC_SIZE
   };
 
   // Contiguous eFuse block: MAP -> INTERFACE CSR -> MMR.
   parameter axi_pkg::xbar_rule_32_t fuse_rule = '{
       idx: 4,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t lifecycle_rule = '{
       idx: 5,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t km_rule = '{
       idx: 6,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t csrng_rule = '{
       idx: 7,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_CSRNG_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_CSRNG_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_CSRNG_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_CSRNG_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t edn_rule = '{
       idx: 8,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_EDN_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_EDN_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_EDN_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t entropy_source_rule = '{
       idx: 9,
-      start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
       end_addr:
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_ENTROPY_SOURCE_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR
       +
-      och_sep_top_addrmap_pkg::OCH_SEP_TOP_ENTROPY_SOURCE_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_SIZE
   };
 
   // TRNG: OCH spec 0x1091_7000–0x1091_7FFF (4 kB) — passthrough to an external TRNG

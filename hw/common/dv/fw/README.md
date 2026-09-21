@@ -75,8 +75,8 @@ macros from the generated address headers).
 
 - **KM.** `key_manager_fw.h` pulls leaf PeakRDL headers (`km_csr.h`, wrapper-key
   headers, etc.) plus `key_manager_addr.h`.
-- **SEP.** `sep_addr.h` (`OCH_SEP_TOP_*_BASE_ADDR`) and per-block headers under
-  `regs/gen/c/blocks/` (`aes__*`, `OCH_SEP_TOP_AES_*`).
+- **SEP.** `sep_addr.h` (`SEP_TOP_*_BASE_ADDR`) and per-block headers under
+  `regs/gen/c/blocks/` (`aes__*`, `SEP_TOP_AES_*`).
 - **SMC.** Umbrella `smc.h` with `SMC_TOP_*_BASE_ADDR`. Two blocks are not
   modeled with open CSRs:
   - *PLL wrap* — placeholder footprint; no generated `SMC_PLL_WRAP_*` / `PLL_CNTL_*`

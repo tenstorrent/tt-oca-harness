@@ -5,9 +5,9 @@ package sep_pkg;
 
   `include "axi/typedef.svh"
 
-  // och_sep_top_reg.svh is intentionally not included here due to an efuse
+  // sep_top_reg.svh is intentionally not included here due to an efuse
   // register naming collision: sep_efuse_map_reg.svh uses the same identifier
-  // names with offset-based addresses, whereas och_sep_top_reg.svh uses
+  // names with offset-based addresses, whereas sep_top_reg.svh uses
   // absolute addresses.
 
   parameter bit EN_EXTERNAL_MST = 1'b1;
@@ -278,7 +278,7 @@ OUTBOUND_FILTER_MUX_PORTS
   // Mailbox
   localparam int unsigned NUM_MAILBOXES = 8;
   localparam int unsigned MAILBOX_DEPTH = 8;
-  localparam int unsigned MAILBOX_SIZE = och_sep_top_addrmap_pkg::OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - och_sep_top_addrmap_pkg::OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb
+  localparam int unsigned MAILBOX_SIZE = sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb
 
   // System CSRs
   localparam int unsigned SYSTEM_CSR_DEMUX_PORTS = 9;

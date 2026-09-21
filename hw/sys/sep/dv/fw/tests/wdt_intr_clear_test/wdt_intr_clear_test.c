@@ -43,10 +43,10 @@ void wdt_nmi_handler(void) {
     nmi_count++;
 
     /* Read INTR_STATE before W1C */
-    uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    uint32_t state = READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
 
     /* Always W1C first to prevent continuous NMI re-entry (level-triggered NMI) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
               AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
 
     printf("  NMI #%d (phase=%d)\n", nmi_count, phase);
@@ -60,7 +60,7 @@ void wdt_nmi_handler(void) {
 
     if (phase == 0) {
         /* First bark: verify W1C worked, signal main to pet and wait for re-trigger */
-        uint32_t after = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+        uint32_t after = READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
         if (after & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
             printf("  FAIL: W1C did not clear INTR_STATE (0x%08x)\n", after);
             nmi_errors++;
@@ -72,7 +72,7 @@ void wdt_nmi_handler(void) {
 
     } else if (phase == 1) {
         /* Re-trigger from posedge after pet: disable WDT to stop further triggers */
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+        WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
         printf("  PASS: Re-trigger fired correctly after pet, WDT disabled\n");
         phase = 2;
     }
@@ -93,10 +93,10 @@ int main(void) {
 
     /* STEP 1: Generate BARK */
     printf("// STEP 1: Generate BARK interrupt\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 2000);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 2000);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* Wait for first bark */
     while (phase == 0) {
@@ -109,7 +109,7 @@ int main(void) {
     printf(
         "\n// STEP 2: Pet (count=0) → wait for re-trigger (count grows back above BARK_THOLD)\n");
     /* Pet: reset count to 0 so wdog_intr_o goes LOW → enables posedge re-trigger */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     /* Wait for count to grow back above bark_thold (2000) and fire second NMI */
     while (phase == 1) {
         __asm__ volatile("wfi");
@@ -136,13 +136,13 @@ int main(void) {
 
     /* STEP 4: Manual INTR_STATE W1C with WDT disabled — require bark set first */
     printf("\n// STEP 4: Manual INTR_STATE W1C (via INTR_TEST)\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
 
     uint32_t st = 0;
     int timeout = 2000000;
     while (timeout-- > 0) {
-        st = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+        st = READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
         if (st & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
             break;
         }
@@ -153,9 +153,9 @@ int main(void) {
         printf("  FAIL: INTR_STATE bark never set after INTR_TEST (0x%08x)\n", st);
         errors++;
     } else {
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+        WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
                   AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
-        uint32_t st2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+        uint32_t st2 = READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
         if (st2 & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
             printf("  FAIL: INTR_STATE bark not cleared by W1C (set=0x%08x, clr=0x%08x)\n", st,
                    st2);

@@ -125,8 +125,8 @@ def lc_raw_from_shadow_preload(path: str) -> int:
     posture can be attributed to it.
     """
     lc_off = c_header_u32(
-        _SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR"
-    ) - c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
+        _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR"
+    ) - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
     words = [int(line, 16) for line in Path(path).read_text().split() if line.strip()]
     word = words[lc_off // 4] & 0xFF
     raw = word & 0xF

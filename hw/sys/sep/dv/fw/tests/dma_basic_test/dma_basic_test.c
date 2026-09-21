@@ -53,8 +53,8 @@
 #include "sep_mailbox.h"
 #include "sep_dma.h"
 
-#define SRAM_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
-#define SRAM_SIZE OCH_SEP_TOP_SEP_SRAM_SIZE
+#define SRAM_BASE SEP_TOP_SEP_SRAM_BASE_ADDR
+#define SRAM_SIZE SEP_TOP_SEP_SRAM_SIZE
 #define DMA_PARAM_MAGIC 0xDA0A11C0u
 #define ASID_OT_BOTH \
     SEP_DMA_ASID_PAIR(SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset, \
@@ -95,24 +95,24 @@ static inline void wr(uint32_t a, uint32_t v) {
 static uint32_t dma_run_asid(uint32_t src, uint32_t dst, uint32_t total, uint32_t chunk,
                              uint32_t width, uint32_t src_cfg, uint32_t dst_cfg, uint32_t opcode,
                              uint32_t asid) {
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, asid);
-    wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, width);
-    wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, total);
-    wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, chunk);
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
-    wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm |
+    wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
+    wr(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
+    wr(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
+    wr(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0);
+    wr(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, asid);
+    wr(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, width);
+    wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, total);
+    wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, chunk);
+    wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
+    wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
+    wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm |
                                                      SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
                                                      (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
 
     uint32_t st = 0;
     int t = POLL_ITERS;
     do {
-        st = rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     } while (!(st & DONE_OR_ERR) && --t > 0);
     return st;
 }
@@ -131,25 +131,25 @@ static uint32_t dma_run(uint32_t src, uint32_t dst, uint32_t total, uint32_t chu
 static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint32_t chunk,
                                 uint32_t width, uint32_t src_cfg, uint32_t dst_cfg,
                                 uint32_t opcode) {
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, ASID_OT_BOTH);
-    wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, width);
-    wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, total);
-    wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, chunk);
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
+    wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
+    wr(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
+    wr(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
+    wr(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0);
+    wr(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, ASID_OT_BOTH);
+    wr(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, width);
+    wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, total);
+    wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, chunk);
+    wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
+    wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
 
     uint32_t st = 0;
     uint32_t initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
     for (uint32_t guard = 0; guard < 64; guard++) { // bounded chunk count
-        wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+        wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
            SECURE_DMA__CONTROL__GO_bm | initial | (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
         int t = POLL_ITERS;
         do {
-            st = rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+            st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         } while (!(st & (DONE_OR_ERR | SECURE_DMA__STATUS__CHUNK_DONE_bm)) && --t > 0);
         if (st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) {
             return st; // whole transfer finished (or errored)
@@ -157,7 +157,7 @@ static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint
         if (!(st & SECURE_DMA__STATUS__CHUNK_DONE_bm)) {
             return st; // timed out with no progress
         }
-        wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
+        wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
            SECURE_DMA__STATUS__CHUNK_DONE_bm); // arm the next chunk
         initial = 0;
     }
@@ -196,24 +196,24 @@ static int chk_reset(void) {
         // CONTROL / SRC_CONFIG / DST_CONFIG / STATUS / ERROR_CODE have only
         // per-field resets, so the whole-register expectation is the OR of
         // those zeros.
-        {"TRANSFER_WIDTH", OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
+        {"TRANSFER_WIDTH", SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
          SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_reset},
-        {"CONTROL", OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x0u},
-        {"SRC_CONFIG", OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x0u},
-        {"DST_CONFIG", OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x0u},
-        {"CFG_REGWEN", OCH_SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_UNLOCKED},
-        {"RANGE_REGWEN", OCH_SEP_TOP_SECURE_DMA_RANGE_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_UNLOCKED},
-        {"RANGE_VALID", OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR,
+        {"CONTROL", SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x0u},
+        {"SRC_CONFIG", SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x0u},
+        {"DST_CONFIG", SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x0u},
+        {"CFG_REGWEN", SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_UNLOCKED},
+        {"RANGE_REGWEN", SEP_TOP_SECURE_DMA_RANGE_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_UNLOCKED},
+        {"RANGE_VALID", SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR,
          SECURE_DMA__RANGE_VALID__RANGE_VALID_reset},
-        {"STATUS", OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, 0x0u},
-        {"ERROR_CODE", OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR, 0x0u},
-        {"SRC_ADDR_LO", OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
+        {"STATUS", SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, 0x0u},
+        {"ERROR_CODE", SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR, 0x0u},
+        {"SRC_ADDR_LO", SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
          SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_reset},
-        {"DST_ADDR_LO", OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
+        {"DST_ADDR_LO", SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
          SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_reset},
-        {"TOTAL_DATA_SIZE", OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR,
+        {"TOTAL_DATA_SIZE", SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR,
          SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_reset},
-        {"CHUNK_DATA_SIZE", OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR,
+        {"CHUNK_DATA_SIZE", SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR,
          SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_reset},
     };
     for (unsigned i = 0; i < sizeof(regs) / sizeof(regs[0]); i++) {
@@ -240,22 +240,22 @@ static int chk_cfg_regwen(void) {
     // lock on its very next CSR read, without bloating sim time.
     const uint32_t len = 0x100u;
     fill_src_words(len / 4, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src_base);
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst_base);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, ASID_OT_BOTH);
-    wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
-    wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
-    wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
-    wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+    wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src_base);
+    wr(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
+    wr(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst_base);
+    wr(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0);
+    wr(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, ASID_OT_BOTH);
+    wr(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
+    wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
+    wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
+    wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
+    wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
+    wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
        SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm | SEP_DMA_OPCODE_COPY);
 
     // Sample BUSY + CFG_REGWEN immediately; the copy must still be running.
-    uint32_t st = rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
-    uint32_t regwen_busy = rd(OCH_SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
+    uint32_t st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    uint32_t regwen_busy = rd(SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__BUSY_bm)) {
         sep_mbx_puts("FAIL: CHK-CFG-REGWEN copy finished too fast to observe BUSY\n");
         return e + 1;
@@ -267,8 +267,8 @@ static int chk_cfg_regwen(void) {
         e++;
     }
     // A config write while locked must be rejected (SRC_ADDR_LO holds src_base).
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0xDEADBEEFu);
-    uint32_t after = rd(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR);
+    wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0xDEADBEEFu);
+    uint32_t after = rd(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR);
     if (after != src_base) {
         sep_mbx_puts("FAIL: CHK-CFG-REGWEN config write not rejected while locked, got ");
         sep_mbx_puthex(after);
@@ -278,11 +278,11 @@ static int chk_cfg_regwen(void) {
     // Drain the copy.
     int t = POLL_ITERS;
     do {
-        st = rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     } while (!(st & DONE_OR_ERR) && --t > 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
 
-    uint32_t regwen_idle = rd(OCH_SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
+    uint32_t regwen_idle = rd(SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
     if (regwen_idle != SEP_DMA_REGWEN_UNLOCKED) {
         sep_mbx_puts("FAIL: CHK-CFG-REGWEN not unlocked when idle, got ");
         sep_mbx_puthex(regwen_idle);
@@ -290,8 +290,8 @@ static int chk_cfg_regwen(void) {
         e++;
     }
     // The same config write now lands.
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0xDEADBEEFu);
-    if (rd(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR) != 0xDEADBEEFu) {
+    wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0xDEADBEEFu);
+    if (rd(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR) != 0xDEADBEEFu) {
         sep_mbx_puts("FAIL: CHK-CFG-REGWEN config write rejected while idle\n");
         e++;
     }
@@ -309,7 +309,7 @@ static int chk_range_regwen(void) {
     uint32_t st = dma_run(src_base, dst_base, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) ||
         !(err & SECURE_DMA__ERROR_CODE__RANGE_VALID_ERROR_bm)) {
         sep_mbx_puts("FAIL: CHK-RANGE-REGWEN RANGE_VALID=0 did not gate (status ");
@@ -319,19 +319,19 @@ static int chk_range_regwen(void) {
         sep_mbx_puts(")\n");
         e++;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C); // clear the error
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C); // clear the error
 
     // (a2) An inverted range: limit below base raises base_limit_error. This has
     // to run here, while the range registers are still writable -- RANGE_REGWEN
     // below is rw0c and one-way until reset, so after it latches, a write to
     // BASE or LIMIT is rejected and the range stays whatever was locked in.
-    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00002000u);
-    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0x00001000u);
-    wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
+    wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00002000u);
+    wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0x00001000u);
+    wr(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
     st = dma_run(src_base, dst_base, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__DST_CONFIG__INCREMENT_bm,
                  SEP_DMA_OPCODE_COPY);
-    err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     // EXCLUSIVE compare: an ERROR_CODE that raises base_limit_error together with
     // an address or width bit means the block mis-classified the fault, and a
     // subset test would call that a pass.
@@ -349,28 +349,28 @@ static int chk_range_regwen(void) {
         sep_mbx_puts("FAIL: CHK-RANGE-REGWEN inverted range set STATUS.done\n");
         e++;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
 
     // (b) Program a full valid range, then lock it via RANGE_REGWEN rw0c.
     // Positive control first: write a NON-reset value and prove it lands. Otherwise the
     // post-lock "still reads the old value" check below is satisfied identically by a
     // working REGWEN, a read-only register, and a missing decode.
-    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00001000u);
-    if (rd(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR) != 0x00001000u) {
+    wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00001000u);
+    if (rd(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR) != 0x00001000u) {
         sep_mbx_puts("FAIL: CHK-RANGE-REGWEN RANGE_BASE not writable before lock\n");
         return e + 1;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0u);
-    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
-    wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
-    wr(OCH_SEP_TOP_SECURE_DMA_RANGE_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_LOCKED);
-    if (rd(OCH_SEP_TOP_SECURE_DMA_RANGE_REGWEN_BASE_ADDR) != SEP_DMA_REGWEN_LOCKED) {
+    wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0u);
+    wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    wr(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
+    wr(SEP_TOP_SECURE_DMA_RANGE_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_LOCKED);
+    if (rd(SEP_TOP_SECURE_DMA_RANGE_REGWEN_BASE_ADDR) != SEP_DMA_REGWEN_LOCKED) {
         sep_mbx_puts("FAIL: CHK-RANGE-REGWEN did not latch locked\n");
         e++;
     }
     // (c) A range-register write must now be rejected (one-way until reset).
-    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0xCAFE0000u);
-    if (rd(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR) != 0x0u) {
+    wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0xCAFE0000u);
+    if (rd(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR) != 0x0u) {
         sep_mbx_puts("FAIL: CHK-RANGE-REGWEN range write not rejected after lock\n");
         e++;
     }
@@ -428,13 +428,13 @@ static int run_mode(const char *tag, uint32_t total, uint32_t chunk, uint32_t sr
         sep_mbx_puts(" no clean DONE, status ");
         sep_mbx_puthex(st);
         sep_mbx_puts(" err ");
-        sep_mbx_puthex(rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
+        sep_mbx_puthex(rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
         sep_mbx_putc('\n');
         bad = 1;
     } else if (check_words(exp, nexp, sentinel, tag)) {
         bad = 1;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     return bad;
 }
 
@@ -507,7 +507,7 @@ static int chk_width(void) {
         // 16 bytes is a whole multiple of 1, 2 and 4, so a TRANSFER_WIDTH that ignored
         // writes and stayed at its 0x2 reset produced a byte-identical copy all three
         // times and the check could not tell 1B from 4B.
-        uint32_t wr_rb = rd(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR) &
+        uint32_t wr_rb = rd(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR) &
                          SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bm;
         if (wr_rb != widths[w]) {
             sep_mbx_puts("FAIL: CHK-WIDTH TRANSFER_WIDTH readback ");
@@ -529,7 +529,7 @@ static int chk_width(void) {
             sep_mbx_puts(")\n");
             e++;
         }
-        wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+        wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     }
     if (!e) {
         sep_mbx_puts("CHK-WIDTH PASS: TRANSFER_WIDTH 1B/2B/4B each read back as written, copies "
@@ -552,8 +552,8 @@ static int chk_done_rw1c(void) {
         sep_mbx_puts("FAIL: CHK-DONE-RW1C STATUS.done not observed\n");
         return e + 1;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm); // W1C
-    uint32_t after = rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm); // W1C
+    uint32_t after = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     if (after & SECURE_DMA__STATUS__DONE_bm) {
         sep_mbx_puts("FAIL: CHK-DONE-RW1C STATUS.done did not clear, got ");
         sep_mbx_puthex(after);
@@ -600,7 +600,7 @@ static int chk_err_addr(void) {
         uint32_t st = dma_run(cells[c].src, cells[c].dst, copy_bytes, copy_bytes, cells[c].width,
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-        uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+        uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
         if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != cells[c].want) {
             sep_mbx_puts("FAIL: CHK-ERR-ADDR ");
             sep_mbx_puts(cells[c].name);
@@ -619,7 +619,7 @@ static int chk_err_addr(void) {
             sep_mbx_puts(" set STATUS.done on a refused transfer\n");
             e++;
         }
-        wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+        wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     }
 
     // Prove the engine still copies after the refusals. The range registers are
@@ -631,7 +631,7 @@ static int chk_err_addr(void) {
     uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-ERR-ADDR recovery copy did not succeed\n");
         e++;
@@ -667,7 +667,7 @@ static int chk_err_opcode(void) {
     uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_INVALID);
-    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     // Exclusive: ONLY opcode_error must be set (no other ERROR_CODE bit), matching
     // the reference suite err_opcode error-exclusivity check.
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__OPCODE_ERROR_bm) {
@@ -683,14 +683,14 @@ static int chk_err_opcode(void) {
         sep_mbx_puts("FAIL: CHK-ERR-OPCODE STATUS.done set on an errored transfer\n");
         e++;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C); // clear error
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C); // clear error
 
     // Recovery: a subsequent good COPY succeeds with no error.
     clear_dst_words(nwords + 1, SENT);
     st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__DST_CONFIG__INCREMENT_bm,
                  SEP_DMA_OPCODE_COPY);
-    err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-ERR-OPCODE recovery copy did not succeed (status ");
         sep_mbx_puthex(st);
@@ -713,7 +713,7 @@ static int chk_err_opcode(void) {
             }
         }
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-ERR-OPCODE PASS: opcode 0xF -> opcode_error EXCLUSIVE + "
                      "STATUS.error, W1C clear, recovery copy matches source\n");
@@ -728,8 +728,8 @@ static int chk_host_intg(void) {
     const uint32_t nwords = copy_bytes / 4u;
     uint32_t snap[MAX_COPY_WORDS];
     const uint32_t host_bit = SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm;
-    const uint32_t status_addr = OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR;
-    const uint32_t clear_addr = OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR;
+    const uint32_t status_addr = SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR;
+    const uint32_t clear_addr = SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR;
 
     uint32_t bus = rd(status_addr);
     if (bus != 0) {
@@ -782,13 +782,13 @@ static int chk_host_intg(void) {
         sep_mbx_puts(", expected 0\n");
         e++;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
 
     clear_dst_words(nwords + 1, SENT);
     uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-HOSTINTG recovery copy did not succeed (status ");
         sep_mbx_puthex(st);
@@ -811,7 +811,7 @@ static int chk_host_intg(void) {
             }
         }
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-HOSTINTG PASS: exclusive host_path_err after injected "
                      "command integrity; CLEAR; recovery copy matches source\n");
@@ -826,11 +826,11 @@ static int chk_host_fabric(void) {
     const uint32_t nwords = copy_bytes / 4u;
     uint32_t snap[MAX_COPY_WORDS];
     const uint32_t host_bit = SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm;
-    const uint32_t status_addr = OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR;
-    const uint32_t clear_addr = OCH_SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR;
+    const uint32_t status_addr = SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR;
+    const uint32_t clear_addr = SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR;
     // First word past the DMA CSR xbar window. RANGE is locked 0..0xFFFFFFFF,
     // so the engine issues the command; the xbar returns DECERR.
-    const uint32_t dead = OCH_SEP_TOP_SECURE_DMA_BASE_ADDR + OCH_SEP_TOP_SECURE_DMA_SIZE;
+    const uint32_t dead = SEP_TOP_SECURE_DMA_BASE_ADDR + SEP_TOP_SECURE_DMA_SIZE;
 
     uint32_t bus = rd(status_addr);
     if (bus != 0) {
@@ -874,13 +874,13 @@ static int chk_host_fabric(void) {
         sep_mbx_puts(", expected 0\n");
         e++;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
 
     clear_dst_words(nwords + 1, SENT);
     uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-HOSTFABRIC recovery copy did not succeed (status ");
         sep_mbx_puthex(st);
@@ -903,7 +903,7 @@ static int chk_host_fabric(void) {
             }
         }
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-HOSTFABRIC PASS: exclusive host_path_err after fabric "
                      "DECERR dest; CLEAR; recovery copy matches source\n");
@@ -940,7 +940,7 @@ static int chk_err_asid(void) {
             dma_run_asid(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                          SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__DST_CONFIG__INCREMENT_bm,
                          SEP_DMA_OPCODE_COPY, cells[c].asid);
-        uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+        uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
         // Exclusive, like the opcode and address cells: an ERROR_CODE that also
         // raises another bit is a different defect and must not read as a pass.
         if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__ASID_ERROR_bm) {
@@ -957,7 +957,7 @@ static int chk_err_asid(void) {
             sep_mbx_puts("FAIL: CHK-ERR-ASID STATUS.done set on an errored transfer\n");
             e++;
         }
-        wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+        wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     }
 
     // Recovery: a good COPY at the legal ASID still succeeds.
@@ -965,7 +965,7 @@ static int chk_err_asid(void) {
     uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-ERR-ASID recovery copy did not succeed (status ");
         sep_mbx_puthex(st);
@@ -984,7 +984,7 @@ static int chk_err_asid(void) {
             }
         }
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-ERR-ASID PASS: unencoded src and dst ASID each raised "
                      "asid_error EXCLUSIVE + STATUS.error, W1C clear, recovery copy "
@@ -1009,7 +1009,7 @@ static int chk_err_size(void) {
     uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, WIDTH_BAD,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__SIZE_ERROR_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-SIZE width 0x3 did not set size_error exclusively (status ");
         sep_mbx_puthex(st);
@@ -1022,13 +1022,13 @@ static int chk_err_size(void) {
         sep_mbx_puts("FAIL: CHK-ERR-SIZE STATUS.done set on an errored transfer\n");
         e++;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
 
     clear_dst_words(nwords + 1, SENT);
     st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__DST_CONFIG__INCREMENT_bm,
                  SEP_DMA_OPCODE_COPY);
-    err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-ERR-SIZE recovery copy did not succeed (status ");
         sep_mbx_puthex(st);
@@ -1045,7 +1045,7 @@ static int chk_err_size(void) {
             }
         }
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-ERR-SIZE PASS: transfer width 0x3 -> size_error EXCLUSIVE + "
                      "STATUS.error, W1C clear, recovery copy matches source\n");
@@ -1068,10 +1068,10 @@ static int chk_err_size(void) {
 // that moved nothing leaves the sentinel in place and fails the compare rather
 // than matching by accident.
 #define ICCM_DMA_OFFSET 0x20000u
-#define ICCM_DMA_DST (OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + ICCM_DMA_OFFSET)
+#define ICCM_DMA_DST (SEP_TOP_SEP_ICCM_BASE_ADDR + ICCM_DMA_OFFSET)
 // Every SRAM offset in main() is range-checked; this one is a constant, so it
 // is checked at build time instead. The copy must also fit above the offset.
-_Static_assert(ICCM_DMA_OFFSET + (MAX_COPY_WORDS * 4u) <= OCH_SEP_TOP_SEP_ICCM_SIZE,
+_Static_assert(ICCM_DMA_OFFSET + (MAX_COPY_WORDS * 4u) <= SEP_TOP_SEP_ICCM_SIZE,
                "ICCM DMA destination runs past the end of the instruction memory");
 static int chk_iccm_copy(void) {
     int e = 0;
@@ -1094,7 +1094,7 @@ static int chk_iccm_copy(void) {
     uint32_t st = dma_run(src_base, ICCM_DMA_DST, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-    uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-ICCM SRAM->ICCM leg did not complete cleanly (status ");
         sep_mbx_puthex(st);
@@ -1102,16 +1102,16 @@ static int chk_iccm_copy(void) {
         sep_mbx_puthex(err);
         sep_mbx_puts(")\n");
         e++;
-        wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+        wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
         return e;
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
 
     // Return: ICCM -> SRAM.
     st = dma_run(ICCM_DMA_DST, ret_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__DST_CONFIG__INCREMENT_bm,
                  SEP_DMA_OPCODE_COPY);
-    err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-ICCM ICCM->SRAM leg did not complete cleanly (status ");
         sep_mbx_puthex(st);
@@ -1145,7 +1145,7 @@ static int chk_iccm_copy(void) {
             e++;
         }
     }
-    wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-ICCM PASS: SRAM->ICCM->SRAM round trip through the DMA "
                      "returned every word equal to the source over the sentinel\n");

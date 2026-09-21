@@ -5,7 +5,7 @@
 //
 // Hand-maintained: fabric_gen's static config cannot express this crossbar, so
 // it is not regenerated. The in-scope rules (dma_csr, sep_wdt) derive their
-// windows from och_sep_top_addrmap_pkg so the RDL stays authoritative for
+// windows from sep_top_addrmap_pkg so the RDL stays authoritative for
 // those extents; the remaining rules are still literal apertures.
 //
 // ============================================================================
@@ -147,24 +147,24 @@ module sep_local_axi_xbar
       // secure_dma_reg_top decodes 9 bits, so a wider window aliases.
       '{
           idx: 2,
-          start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR),
           end_addr:
           33'(
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR
+          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR
           +
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE
+          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE
           )
       },
       // sep_wdt.main: wdt_timer register extent, not the 4 kB spec aperture --
       // aon_timer_reg_top decodes 6 bits, so a wider window aliases.
       '{
           idx: 3,
-          start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR),
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR),
           end_addr:
           33'(
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR
+          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR
           +
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE
+          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE
           )
       },
       // sep_reset_ctrl.main: 0x10803000 - 0x10803008

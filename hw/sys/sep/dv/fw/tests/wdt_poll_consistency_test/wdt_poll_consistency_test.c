@@ -36,13 +36,13 @@ int main(void) {
     /* STEP 1: Enable WDT with high thresholds */
     printf("// STEP 1: Enable WDT and poll WDOG_COUNT %d times\n", POLL_ITERS);
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* STEP 2: Poll monotonicity */
-    uint32_t prev = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    uint32_t prev = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     int monotonic_violations = 0;
     int same_count = 0;
 
@@ -52,7 +52,7 @@ int main(void) {
             __asm__ volatile("nop");
         }
 
-        uint32_t curr = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        uint32_t curr = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
 
         if (curr < prev) {
             /* Should never decrease (unless petted, which we don't do) */
@@ -74,7 +74,7 @@ int main(void) {
 
     /* STEP 3: Verify overall progress */
     printf("\n// STEP 3: Verify overall counter progress\n");
-    uint32_t final_cnt = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    uint32_t final_cnt = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  Final count after %d polls = 0x%08x\n", POLL_ITERS, final_cnt);
     if (final_cnt == 0) {
         printf("  FAIL: Counter stuck at 0 throughout poll\n");
@@ -85,14 +85,14 @@ int main(void) {
 
     /* STEP 4: Counter stops when disabled */
     printf("\n// STEP 4: Counter stops when disabled\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
-    uint32_t snap1 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+    uint32_t snap1 = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
 
     for (volatile int i = 0; i < 100000; i++) {
         __asm__ volatile("nop");
     }
 
-    uint32_t snap2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    uint32_t snap2 = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  Disabled: count before=0x%08x, after=0x%08x\n", snap1, snap2);
     if (snap2 > snap1 + 2) { /* allow small delta for CDC read */
         printf("  FAIL: Counter still incrementing after disable (delta=%u)\n", snap2 - snap1);

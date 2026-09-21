@@ -147,7 +147,7 @@ static int g_entropy_state; // 0 = untried, 1 = up, -1 = failed
 // a downstream CSRNG/EDN one, which have different fixes.
 static int wait_boot_phase_done(void) {
     for (uint32_t i = 0; i < SEP_ENTROPY_SEED_TIMEOUT; ++i) {
-        uint32_t s = mmio_read32(OCH_SEP_TOP_ENTROPY_SOURCE_MAIN_SM_STATUS_BASE_ADDR);
+        uint32_t s = mmio_read32(SEP_TOP_ENTROPY_SOURCE_MAIN_SM_STATUS_BASE_ADDR);
         if (s & ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bm) {
             return 0;
         }
@@ -163,7 +163,7 @@ static int wait_boot_phase_done(void) {
         }
     }
     simputs("ESRC_BOOT_PHASE_TIMEOUT=");
-    simputhex32(mmio_read32(OCH_SEP_TOP_ENTROPY_SOURCE_MAIN_SM_STATUS_BASE_ADDR));
+    simputhex32(mmio_read32(SEP_TOP_ENTROPY_SOURCE_MAIN_SM_STATUS_BASE_ADDR));
     simputs("\n");
     return -1;
 }
@@ -179,7 +179,7 @@ static int edn_instantiate(void) {
     uint32_t i, sts = 0u;
 
     for (i = 0; i < SEP_ENTROPY_CMD_TIMEOUT; ++i) {
-        sts = mmio_read32(OCH_SEP_TOP_EDN_SW_CMD_STS_BASE_ADDR);
+        sts = mmio_read32(SEP_TOP_EDN_SW_CMD_STS_BASE_ADDR);
         if ((sts & ready) == ready) break;
     }
     if (i == SEP_ENTROPY_CMD_TIMEOUT) {
@@ -189,10 +189,10 @@ static int edn_instantiate(void) {
         return -1;
     }
 
-    mmio_write32(OCH_SEP_TOP_EDN_SW_CMD_REQ_BASE_ADDR, CSRNG_CMD_INSTANTIATE);
+    mmio_write32(SEP_TOP_EDN_SW_CMD_REQ_BASE_ADDR, CSRNG_CMD_INSTANTIATE);
 
     for (i = 0; i < SEP_ENTROPY_CMD_TIMEOUT; ++i) {
-        sts = mmio_read32(OCH_SEP_TOP_EDN_SW_CMD_STS_BASE_ADDR);
+        sts = mmio_read32(SEP_TOP_EDN_SW_CMD_STS_BASE_ADDR);
         if (sts & EDN__SW_CMD_STS__CMD_ACK_bm) break;
     }
     if (i == SEP_ENTROPY_CMD_TIMEOUT) {
@@ -223,7 +223,7 @@ static int edn_instantiate(void) {
 // the ESRC configuration, so it is meaningful whichever source was selected.
 static void lock_source_selection(void) {
 #if !SEP_ENTROPY_DEFER_SRC_SEL_LOCK
-    if (apply_lock(OCH_SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_BASE_ADDR,
+    if (apply_lock(SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_BASE_ADDR,
                    SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_LOCK__LOCK_bm, "ENTROPY_SRC_SEL") != 0) {
         entropy_fail();
     }
@@ -257,37 +257,37 @@ int sep_entropy_init(void) {
     // if the chain is already out of reset the write is a no-op and any stale
     // state stays. The pulse covers ESRC, CSRNG, EDN, their control-plane
     // adapters, buffered entropy and the fabric entropy pool.
-    uint32_t rst = mmio_read32(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
-    mmio_write32(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR,
+    uint32_t rst = mmio_read32(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    mmio_write32(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR,
                  rst & ~(uint32_t)SEP_RESET_CTRL__SW_RESET_N__TRNG_SW_RST_N_bm);
     __asm__ volatile("fence" ::: "memory");
-    mmio_write32(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR,
+    mmio_write32(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR,
                  rst | (uint32_t)SEP_RESET_CTRL__SW_RESET_N__TRNG_SW_RST_N_bm);
     __asm__ volatile("fence" ::: "memory");
 
     // --- PHASE A: configure, generators off, EDN staged but not enabled ----
     // Point the crypto-block entropy stream at the internal DRBG.
-    uint32_t sel = mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_BASE_ADDR);
+    uint32_t sel = mmio_read32(SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_BASE_ADDR);
     sel &= ~EXT_TRNG_SEL_CRYPTO_BLOCKS_bm;
-    mmio_write32(OCH_SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_BASE_ADDR, sel);
+    mmio_write32(SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_BASE_ADDR, sel);
 
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR,
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR,
                  ESRC_RING_OSC_SAMPLECLK_ONLY);
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_DECORRELATOR_CTRL_BASE_ADDR, ESRC_DECOR_CTRL_DIV64);
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR, 0x1u);
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_HEALTH_TEST_CTRL_BASE_ADDR, ESRC_HEALTH_CTRL);
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_CTRL_BASE_ADDR, ESRC_CTRL_CONFIGURED);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_DECORRELATOR_CTRL_BASE_ADDR, ESRC_DECOR_CTRL_DIV64);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR, 0x1u);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_HEALTH_TEST_CTRL_BASE_ADDR, ESRC_HEALTH_CTRL);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_CTRL_BASE_ADDR, ESRC_CTRL_CONFIGURED);
 
-    mmio_write32(OCH_SEP_TOP_CSRNG_CTRL_BASE_ADDR, CSRNG_CTRL_CONFIGURED);
+    mmio_write32(SEP_TOP_CSRNG_CTRL_BASE_ADDR, CSRNG_CTRL_CONFIGURED);
     // BOOT_INS_CMD is deliberately not programmed: that is boot-request mode's
     // command, and this brings EDN up in auto-request mode with boot-request
     // false. Instantiate is issued through SW_CMD_REQ once EDN is enabled.
-    mmio_write32(OCH_SEP_TOP_EDN_RESEED_CMD_BASE_ADDR, CSRNG_CMD_RESEED);
-    mmio_write32(OCH_SEP_TOP_EDN_GENERATE_CMD_BASE_ADDR, CSRNG_CMD_GENERATE_GLEN32);
-    mmio_write32(OCH_SEP_TOP_EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_BASE_ADDR, EDN_RESEED_INTERVAL);
+    mmio_write32(SEP_TOP_EDN_RESEED_CMD_BASE_ADDR, CSRNG_CMD_RESEED);
+    mmio_write32(SEP_TOP_EDN_GENERATE_CMD_BASE_ADDR, CSRNG_CMD_GENERATE_GLEN32);
+    mmio_write32(SEP_TOP_EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_BASE_ADDR, EDN_RESEED_INTERVAL);
 
     // --- PHASE B: start the generators, then wait for a seed ---------------
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR, ESRC_RING_OSC_ALL_ON);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR, ESRC_RING_OSC_ALL_ON);
     __asm__ volatile("fence" ::: "memory");
 
     if (wait_boot_phase_done() != 0) {
@@ -300,14 +300,14 @@ int sep_entropy_init(void) {
     // window the programmer guide specifies. Locking earlier would freeze a
     // configuration that had not yet proved itself; later would expose entropy
     // from a still-mutable source. DEBUG_CTRL stays outside this lock by design.
-    if (apply_lock(OCH_SEP_TOP_ENTROPY_SOURCE_FIPS_LOCK_BASE_ADDR,
+    if (apply_lock(SEP_TOP_ENTROPY_SOURCE_FIPS_LOCK_BASE_ADDR,
                    ENTROPY_SOURCE__FIPS_LOCK__LOCK_bm, "ESRC_FIPS") != 0) {
         entropy_fail();
     }
 #endif
 
     // --- PHASE C: enable EDN, then Instantiate ------------------------------
-    mmio_write32(OCH_SEP_TOP_EDN_CTRL_BASE_ADDR, EDN_CTRL_CONFIGURED);
+    mmio_write32(SEP_TOP_EDN_CTRL_BASE_ADDR, EDN_CTRL_CONFIGURED);
     __asm__ volatile("fence" ::: "memory");
 
     if (edn_instantiate() != 0) {

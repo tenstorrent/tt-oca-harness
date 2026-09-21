@@ -142,11 +142,11 @@ static volatile uint32_t g_bss_zero;
 
 // ICCM/IRAM clear configuration.
 #ifndef ROM_ICCM_BASE
-#define ROM_ICCM_BASE ((uint32_t)OCH_SEP_TOP_SEP_ICCM_BASE_ADDR)
+#define ROM_ICCM_BASE ((uint32_t)SEP_TOP_SEP_ICCM_BASE_ADDR)
 #endif
 
 #ifndef ROM_ICCM_SIZE_BYTES
-#define ROM_ICCM_SIZE_BYTES ((uint32_t)OCH_SEP_TOP_SEP_ICCM_SIZE)
+#define ROM_ICCM_SIZE_BYTES ((uint32_t)SEP_TOP_SEP_ICCM_SIZE)
 #endif
 
 // MUST be 1 for release. Off here only because the clear costs ~1.84M cycles in
@@ -723,7 +723,7 @@ void rom_main(void) {
     // shared state.
     bool sboot_dis;
     {
-        uint32_t sboot_dis_reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
+        uint32_t sboot_dis_reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
         sboot_dis = (sboot_dis_reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
         get_bl0_state()->sboot_dis = sboot_dis;
         simputsdec24("FUSE: SBOOT_DIS: ", sboot_dis);

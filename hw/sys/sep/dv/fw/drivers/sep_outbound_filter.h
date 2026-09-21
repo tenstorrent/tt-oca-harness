@@ -38,9 +38,9 @@
  * filter enables atomically over the final range.
  */
 static inline void sep_outbound_filter_init_range(uint64_t start, uint64_t end) {
-    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), start);
-    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), end);
-    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0),
+    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), start);
+    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), end);
+    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0),
                 SEP_OUTBOUND_FILTER_CFG_OPEN);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }

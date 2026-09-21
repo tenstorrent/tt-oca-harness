@@ -95,7 +95,7 @@ static int km_wait_inbound_space(void) {
     uint32_t timeout = KM_MBOX_TIMEOUT;
 
     while (timeout-- != 0u) {
-        if ((READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR) & KM_STATUS_IN_FULL) == 0u)
+        if ((READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR) & KM_STATUS_IN_FULL) == 0u)
             return 0;
     }
     return -1;
@@ -114,8 +114,8 @@ static int km_send_frame(uint8_t id, const uint32_t *payload, uint8_t payload_le
     for (uint32_t i = 0; i < total; i++) {
         if (km_wait_inbound_space() != 0) return -1;
         if (i == total - 1u)
-            WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
-        WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, words[i]);
+            WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
+        WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, words[i]);
     }
     km_cmd_seq++;
     return 0;
@@ -126,13 +126,13 @@ static int km_recv_frame(uint32_t *words, uint32_t capacity, uint32_t *count) {
     uint32_t n = 0u;
 
     while (timeout-- != 0u) {
-        uint32_t status = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
+        uint32_t status = READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
 
         if ((status & KM_STATUS_OUT_EMPTY) != 0u) continue;
         if (n >= capacity) return -1;
 
-        words[n++] = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
-        status = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
+        words[n++] = READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
+        status = READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
         if ((status & KM_STATUS_OUT_SEP) != 0u) {
             *count = n;
             return 0;
@@ -204,12 +204,12 @@ static int km_command(uint8_t id, const uint32_t *payload, uint8_t payload_len,
 
 /* Release the KM out of reset via the SEP reset controller. */
 static int km_release_reset(void) {
-    uint32_t reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    uint32_t reset_n = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
     reset_n |= SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm;
-    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, reset_n);
+    WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, reset_n);
     __asm__ volatile("fence" ::: "memory");
-    return (READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
+    return (READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
             SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm)
                ? 0
                : -1;

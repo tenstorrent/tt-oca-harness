@@ -5,15 +5,15 @@
 <ipxact:component xmlns:ipxact="http://www.accellera.org/XMLSchema/IPXACT/1685-2014" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.accellera.org/XMLSchema/IPXACT/1685-2014 http://www.accellera.org/XMLSchema/IPXACT/1685-2014/index.xsd">
   <ipxact:vendor>tenstorrent.com</ipxact:vendor>
   <ipxact:library>ocah</ipxact:library>
-  <ipxact:name>och_sep_top</ipxact:name>
+  <ipxact:name>sep_top</ipxact:name>
   <ipxact:version>1.0</ipxact:version>
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
-      <ipxact:name>och_sep_top_mmap</ipxact:name>
+      <ipxact:name>sep_top_mmap</ipxact:name>
       <ipxact:addressBlock>
-        <ipxact:name>och_sep_top</ipxact:name>
-        <ipxact:displayName>OCH SEP Top-Level Address Map</ipxact:displayName>
-        <ipxact:description>Complete address map for OCH Security Processor subsystem</ipxact:description>
+        <ipxact:name>sep_top</ipxact:name>
+        <ipxact:displayName>OCAH SEP Top-Level Address Map</ipxact:displayName>
+        <ipxact:description>Complete address map for OCAH Security Processor subsystem</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'hc0085400</ipxact:range>
         <ipxact:width>256</ipxact:width>

@@ -25,7 +25,7 @@ static const uint32_t expected_smoke_digest[8] = {
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for idle\n");
@@ -37,7 +37,7 @@ static int test_entropy_config(void) {
     uint32_t val;
 
     printf("=== Step 1: Read ENTROPY_PERIOD default ===\n");
-    val = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR);
+    val = READ_REG(SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR);
     printf("ENTROPY_PERIOD default = 0x%08x\n", val);
     if (val != 0x00000000) {
         printf("FAIL: expected default 0x00000000\n");
@@ -45,8 +45,8 @@ static int test_entropy_config(void) {
     }
 
     printf("=== Step 2: Write ENTROPY_PERIOD 0x03FF0100 ===\n");
-    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0x03FF0100);
-    val = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR);
+    WRITE_REG(SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0x03FF0100);
+    val = READ_REG(SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR);
     printf("ENTROPY_PERIOD readback = 0x%08x\n", val);
     kmac__ENTROPY_PERIOD_t ep = {.w = val};
     printf("  prescaler=%u wait_timer=%u\n", ep.f.prescaler, ep.f.wait_timer);
@@ -61,12 +61,12 @@ static int test_entropy_config(void) {
     /* HASH_CNT only increments on KMAC keyblock completion, not bare SHA3. */
     kmac__CMD_t clr = {.w = 0};
     clr.f.hash_cnt_clr = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, clr.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, clr.w);
 
     kmac__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t thr = {.w = 0};
     thr.f.threshold = 0; /* disable auto-clear on threshold */
-    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR, thr.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR, thr.w);
+    WRITE_REG(SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR, thr.w);
+    WRITE_REG(SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR, thr.w);
 
     uint32_t digest[8];
     int smoke = sep_kmac128_sw_smoke(digest);
@@ -92,7 +92,7 @@ static int test_entropy_config(void) {
 
     printf("=== Step 7: Read ENTROPY_REFRESH_HASH_CNT (expect == 1 after KMAC) ===\n");
     kmac__ENTROPY_REFRESH_HASH_CNT_t hc = {
-        .w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_HASH_CNT_BASE_ADDR)};
+        .w = READ_REG(SEP_TOP_KMAC_ENTROPY_REFRESH_HASH_CNT_BASE_ADDR)};
     printf("ENTROPY_REFRESH_HASH_CNT = %u\n", hc.f.hash_cnt);
     if (hc.f.hash_cnt == 1) {
         printf("PASS: hash_cnt==1 after one KMAC keyblock\n");

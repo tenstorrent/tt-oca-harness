@@ -16,6 +16,6 @@
 addrmap smu_top {
     // Default address for the SMC and SEP; the base address can be
     // configured using the global base address.
-    och_sep_top #(.BASE_ADDR(0x0000_0000)) sep @0x0000_0000;
+    sep_top     #(.BASE_ADDR(0x0000_0000)) sep @0x0000_0000;
     smc_top     #(.BASE_ADDR(0x0000_0000)) smc @0x4000_0000;
 };

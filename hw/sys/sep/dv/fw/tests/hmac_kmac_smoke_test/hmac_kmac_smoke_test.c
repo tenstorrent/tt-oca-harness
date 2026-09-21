@@ -53,9 +53,9 @@ static const uint32_t kAesZeroIv[4] = {0, 0, 0, 0};
 
 // SRAM staging area for the round trip. Clear of the HMAC/KMAC legs, which do
 // not touch SRAM at all.
-#define AES_SRAM_PT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x400u)
-#define AES_SRAM_CT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x410u)
-#define AES_SRAM_RT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x420u)
+#define AES_SRAM_PT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x400u)
+#define AES_SRAM_CT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x410u)
+#define AES_SRAM_RT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x420u)
 
 static void sram_store_block(uint32_t addr, const uint32_t blk[4]) {
     volatile uint32_t *p = (volatile uint32_t *)addr;

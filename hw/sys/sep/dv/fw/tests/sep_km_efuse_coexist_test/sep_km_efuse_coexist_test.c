@@ -21,24 +21,24 @@
 #include "test_completion.h"
 
 #define SYNC_CPU_READY_REG \
-    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0) /* EL2 -> UVM : ready  */
+    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0) /* EL2 -> UVM : ready  */
 #define SYNC_UVM_DONE_REG \
-    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1) /* UVM -> EL2 : done   */
+    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1) /* UVM -> EL2 : done   */
 #define SYNC_CPU_COUNT_REG \
-    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2) /* host loop count     */
+    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2) /* host loop count     */
 /* Measured-evidence summary (read + checked directly by the UVM): */
 #define SYNC_BAD_UID_REG \
-    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(3) /* CHIPLET_UID corrupt count */
+    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(3) /* CHIPLET_UID corrupt count */
 #define SYNC_MMR_CHANGES_REG \
-    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4) /* KM counter changes seen   */
+    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4) /* KM counter changes seen   */
 #define SYNC_MMR_BACK_REG \
-    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5) /* KM counter went backward  */
+    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5) /* KM counter went backward  */
 #define SYNC_MMR_BADTAG_REG \
-    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6) /* tag/attribution failures  */
+    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6) /* tag/attribution failures  */
 
 /* KM-owned MMR pattern (must match test_efuse_km_coexist.c). */
-#define MMR0_ADDR OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)
-#define MMR1_ADDR OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(1)
+#define MMR0_ADDR SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)
+#define MMR1_ADDR SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(1)
 #define KM_TAG0 0xA5000000u
 #define KM_TAG1 0x5A000000u
 #define KM_TAG_MASK 0xFF000000u
@@ -52,7 +52,7 @@
 #define EL2_GO_TOKEN 0x60600060u   /* EL2 -> KM : start write loop */
 
 /* SEP Reset Controller: release the KM CPU from warm/software reset. */
-#define SW_RESET_N_ADDR OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR
+#define SW_RESET_N_ADDR SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR
 #define SW_RESET_N_KM_MASK 0x1u /* bit0 = km_sw_rst_n */
 
 #define KNOWN_UID 0xDEADBEEFu /* CHIPLET_UID word0 (default_efuse preload) */
@@ -65,9 +65,9 @@
 static int km_mbox_get(uint32_t *word) {
     uint32_t guard = MBOX_WAIT_LIMIT;
     while (guard != 0u) {
-        if ((READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR) &
+        if ((READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR) &
              KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_EMPTY_bm) == 0u) {
-            *word = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
+            *word = READ_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
             return 0;
         }
         guard--;
@@ -77,8 +77,8 @@ static int km_mbox_get(uint32_t *word) {
 
 /* Send one word to the KM (inbound FIFO), separator-terminated. */
 static void km_mbox_send(uint32_t word) {
-    WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
-    WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, word);
+    WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
+    WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, word);
 }
 
 int main(void) {
@@ -124,7 +124,7 @@ int main(void) {
         uint32_t m0, m1, p0, p1;
 
         /* (a) Stable host MAP read must not be corrupted by KM MMR writes. */
-        if (READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR) != KNOWN_UID) {
+        if (READ_REG(SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR) != KNOWN_UID) {
             bad_uid++;
         }
 

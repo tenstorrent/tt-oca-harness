@@ -5,7 +5,7 @@
 //
 // Hand-maintained: fabric_gen's static config cannot express this crossbar, so
 // it is not regenerated. The in-scope constants (dma_csr, sep_wdt) derive their
-// windows from och_sep_top_addrmap_pkg so the RDL stays authoritative for
+// windows from sep_top_addrmap_pkg so the RDL stays authoritative for
 // those extents; the remaining constants are still literal apertures.
 
 `include "axi/typedef.svh"
@@ -133,21 +133,21 @@ package sep_local_axi_xbar_pkg;
 
   // Output: dma_csr
   localparam logic [31:0] DMA_CSR_MAIN_BASE =
-      32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR);
+      32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR);
   localparam logic [31:0] DMA_CSR_MAIN_SIZE =
-      32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE);
+      32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE);
   localparam logic [32:0] DMA_CSR_MAIN_END  =
-      33'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR +
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE);
+      33'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR +
+          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE);
 
   // Output: sep_wdt
   localparam logic [31:0] SEP_WDT_MAIN_BASE =
-      32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR);
+      32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR);
   localparam logic [31:0] SEP_WDT_MAIN_SIZE =
-      32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE);
+      32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE);
   localparam logic [32:0] SEP_WDT_MAIN_END  =
-      33'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR +
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE);
+      33'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR +
+          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE);
 
   // Output: sep_reset_ctrl
   localparam logic [31:0] SEP_RESET_CTRL_MAIN_BASE = 32'h10803000;

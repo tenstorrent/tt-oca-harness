@@ -180,8 +180,8 @@ module sep_dma_wrap #(
   // Convert absolute address to offset by subtracting base address
   always_comb begin
     axi32_slv_req_offset         = axi32_slv_req;
-    axi32_slv_req_offset.ar.addr = axi32_slv_req.ar.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR;
-    axi32_slv_req_offset.aw.addr = axi32_slv_req.aw.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR;
+    axi32_slv_req_offset.ar.addr = axi32_slv_req.ar.addr - sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR;
+    axi32_slv_req_offset.aw.addr = axi32_slv_req.aw.addr - sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR;
   end
 
   // Convert AXI to AXI-Lite (after data width conversion)
