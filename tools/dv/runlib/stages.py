@@ -1038,7 +1038,11 @@ def reset_stage_cancellation() -> None:
 
 
 def request_stage_cancellation() -> None:
-    """Stop registered stage process groups after an interrupted run."""
+    """Stop registered stage process groups after an interrupted run.
+
+    A group this process can no longer signal raises ``PermissionError`` as well as
+    ``ProcessLookupError`` from ``killpg``; the stop is best-effort either way.
+    """
     _STAGE_CANCELLATION.set()
     with _ACTIVE_SUBPROCESS_LOCK:
         processes = list(_ACTIVE_SUBPROCESSES)
@@ -1047,7 +1051,7 @@ def request_stage_cancellation() -> None:
     for proc in processes:
         try:
             os.killpg(proc.pid, signal.SIGTERM)
-        except ProcessLookupError:
+        except OSError:
             pass
     time.sleep(0.2)
     for proc in processes:
@@ -1055,7 +1059,7 @@ def request_stage_cancellation() -> None:
             continue
         try:
             os.killpg(proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
+        except OSError:
             pass
 
 
@@ -1096,7 +1100,7 @@ def run_subprocess(
     def terminate_process_group(proc: subprocess.Popen[bytes]) -> None:
         try:
             os.killpg(proc.pid, signal.SIGTERM)
-        except ProcessLookupError:
+        except OSError:
             pass
         try:
             proc.wait(timeout=5)
@@ -1106,7 +1110,7 @@ def run_subprocess(
         # A final group kill makes timeout/Ctrl-C cleanup deterministic for tool wrappers.
         try:
             os.killpg(proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
+        except OSError:
             pass
         try:
             proc.wait(timeout=1)
