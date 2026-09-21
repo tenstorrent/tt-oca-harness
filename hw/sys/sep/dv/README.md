@@ -259,8 +259,8 @@ CPU trace monitor then writes a Renode-format retired-PC trace into each
 simulation leaf. Generate the report from that exact run directory:
 
 ```bash
-uv run --python 3.11 python tools/dv/fw_coverage/gen_sep_rom_coverage.py \
-  --run-dir <run-dir>
+uv run --locked python3 tools/dv/fw_coverage/gen_sep_rom_coverage.py \
+  --run-dir "$RUN_DIR"
 ```
 
 The generator accepts only passing, complete traces and uses the leaf-local
