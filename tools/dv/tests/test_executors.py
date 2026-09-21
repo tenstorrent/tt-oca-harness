@@ -462,8 +462,23 @@ class RegistrySchemaTest(unittest.TestCase):
         )
         self.assertEqual(
             render_argv(executors["slurm"]["query_argv"], {"job_ids_csv": "11,12"}),
-            ["squeue", "--noheader", "--states=all", "--format=%i|%T|%r", "--jobs=11,12"],
+            [
+                "squeue",
+                "--noheader",
+                "--array",
+                "--states=all",
+                "--format=%i|%T|%r",
+                "--jobs=11,12",
+            ],
         )
+        self.assertNotIn("--array=1-3", slurm)
+        arrayed = render_argv(executors["slurm"]["submit_argv"], {**values, "array_range": "1-3"})
+        self.assertIn("--array=1-3", arrayed)
+        self.assertIn("jobindex", " ".join(executors["lsf"]["query_argv"]))
+        self.assertIn("JobID,", " ".join(executors["slurm"]["history_argv"]))
+        for name in ("lsf", "slurm"):
+            self.assertTrue(executors[name]["arrays"])
+            self.assertEqual(executor_limits(executors[name])["array_chunk_size"], 100)
 
     def test_unknown_schema_version(self) -> None:
         self.write_registry(LOCAL_TABLE.replace("schema_version = 2", "schema_version = 3"))
@@ -498,6 +513,8 @@ class RegistrySchemaTest(unittest.TestCase):
 
     def test_schema_2_rejections(self) -> None:
         self.check_rejected(lambda t: t.update(driver="pbs"), "driver")
+        self.check_rejected(lambda t: t.update(arrays="yes"), "arrays")
+        self.check_rejected(lambda t: t.update(limits={"array_chunk_size": 0}), "array_chunk_size")
         self.check_rejected(lambda t: t.update(binaries=[]), "binaries")
         self.check_rejected(lambda t: t.update(wait_mode="inline"), "wait_mode")
         self.check_rejected(lambda t: t.pop("submit_argv"), "submit_argv")

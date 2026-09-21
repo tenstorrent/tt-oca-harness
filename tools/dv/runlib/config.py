@@ -198,6 +198,7 @@ CLUSTER_EXECUTOR_KEYS = {
     "defaults",
     "limits",
     "setup_hook",
+    "arrays",
 }
 # Executor keys that describe one deployment; the checked-in registry rejects them.
 SITE_ONLY_EXECUTOR_KEYS = {"setup_hook"}
@@ -213,6 +214,7 @@ EXECUTOR_LIMIT_KEYS: dict[str, tuple[type, float]] = {
     "artifact_grace_sec": (float, 0),
     "cancel_grace_sec": (float, 0),
     "command_timeout_sec": (float, 1),
+    "array_chunk_size": (int, 1),
 }
 ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # Placeholders an executor argv template may render. Resource values come in every unit a
@@ -230,6 +232,7 @@ EXECUTOR_RESOURCE_PLACEHOLDERS = {
 EXECUTOR_SUBMIT_PLACEHOLDERS = EXECUTOR_RESOURCE_PLACEHOLDERS | {
     "joblog",
     "jobname",
+    "array_range",
     "image",
     "script",
     "manifest",
@@ -1866,6 +1869,8 @@ def validate_cluster_executor(cfg: dict[str, Any], where: str) -> None:
     for key in ("description", "history_parser", "setup_hook"):
         if key in cfg and (not isinstance(cfg[key], str) or not cfg[key]):
             raise ConfigError(f"{where}.{key} must be a non-empty string")
+    if "arrays" in cfg and not isinstance(cfg["arrays"], bool):
+        raise ConfigError(f"{where}.arrays must be true or false")
 
 
 def load_executors(root: Path) -> dict[str, Any]:
