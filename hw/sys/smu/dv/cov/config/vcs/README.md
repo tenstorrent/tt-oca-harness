@@ -48,5 +48,25 @@ A `begin tgl(portsonly) ... end` block in the hierarchy file does not do this:
 VCS keeps the excluded subtrees' toggle points when the metric block is
 present, so the option is given on the command line instead.
 
-No public CI job runs the VCS flow for this DUT; `run_dv.py --dut smu --tool
-vcs --items hosted --cov` measures it by hand.
+`-cm_noconst` and `-cm_seqnoconst` drop nets a constant drives from the toggle
+population, so a port the wrapper ties off is not a hole; the DTP scope sets
+the same two options.
+
+## Reading a finished run
+
+```
+python3 tools/dv/run_dv.py --dut smu --tool vcs --items hosted --cov --rebuild
+python3 hw/sys/smu/dv/cov/interface_toggle.py <run dir>/cov/report/modinfo.txt \
+    --module hw/top/smu_wrapper.sv
+```
+
+The first command prints the runner's families and grades them against
+`smu_wrapper_coverage_policy.toml`, which floors `assertion` at 80 percent:
+urg reads the cov/sv `cover property` points under its assert metric together
+with the `assert property` statements left in scope, and
+`cov/report/asserts.txt` splits the two. The second command folds the
+`Port Details` rows of the report the first one wrote into the interface
+figure; `--list` names the ports that never toggled. The runner's own
+`toggle` column stays `Port Bits`.
+
+No public CI job runs the VCS flow for this DUT.

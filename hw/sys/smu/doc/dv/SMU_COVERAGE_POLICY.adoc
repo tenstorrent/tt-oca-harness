@@ -72,14 +72,17 @@ nets it declares between them |weekly `--cov` on the large runner
 per-edge toggle points whose hierarchy is `smu_wrapper_uvm_top.u_dut` and
 whose name is in the port list of `hw/top/smu_wrapper.sv`, and folds them
 into one figure per port; every port is live because the single target
-elaborates SEP. `--list` names the ports that never toggled. It is run by
-hand on a finished database; no CI job invokes it |on any finished `--cov`
-run of `--dut smu`, without a simulator
+elaborates SEP. `--list` names the ports that never toggled. It is the
+documented second step after any `--cov` run, on either simulator; no CI job
+invokes it |on any finished `--cov` run of `--dut smu`, without a simulator
 |Commercial |toggle / code / assertion databases under the licensed flow;
-`smu_wrapper_cov_scope.hier` drops the same trees and `-cm_tgl portsonly`
-keeps toggle on the wrapper's ports. urg's own `Port Bits` and `Ports` rows
-count bits and struct fields, both in both directions; the interface figure
-comes from the same `cov/interface_toggle.py` fed urg's text report, so both
+`smu_wrapper_cov_scope.hier` drops the same trees, `-cm_tgl portsonly`
+keeps toggle on the wrapper's ports and `-cm_noconst` leaves tied-off nets
+out. `cov/config/vcs/smu_wrapper_coverage_policy.toml` floors the `assertion`
+family at 80 percent, which is where urg reads the `cover property` points.
+urg's own `Port Bits` and `Ports` rows count bits and struct fields, both in
+both directions; the interface figure comes from the same
+`cov/interface_toggle.py` fed the run's `cov/report/modinfo.txt`, so both
 simulators are read on one definition (see `cov/config/vcs/README.md`) |not
 a public CI job; not a substitute for the public weekly
 |===

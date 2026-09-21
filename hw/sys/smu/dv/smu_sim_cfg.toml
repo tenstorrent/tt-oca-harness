@@ -209,18 +209,25 @@ policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.to
 # extends the same file to assertion coverage, which carries the cov/sv
 # `cover property` points, and needs `-lca`. `-cm_tgl portsonly` keeps toggle
 # on module ports; with the subtrees below dropped that is the ports of
-# smu_wrapper. The coverage database lands
-# next to simv under the wrapper's one compile profile, compile_smu_chiplet;
-# the runner's default looks under a `default` build directory this DUT never
-# compiles into, so design_db names the database the profile writes.
-# cov/config/vcs/README.md explains the scope file.
+# smu_wrapper. `-cm_noconst` and `-cm_seqnoconst` leave nets a constant
+# drives out of the toggle population, as the DTP scope does. The coverage
+# database lands next to simv under the wrapper's one compile profile,
+# compile_smu_chiplet; the runner's default looks under a `default` build
+# directory this DUT never compiles into, so design_db names the database the
+# profile writes. cov/config/vcs/README.md explains the scope file and how a
+# finished run is read.
 # Edit `smu_wrapper_cov_scope.hier` then `--rebuild`.
+# Two DUTs share this dv tree, so the policy is named per DUT rather than
+# discovered at cov/config/vcs/coverage_policy.toml.
+policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_wrapper_coverage_policy.toml"
 design_db = "hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb"
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",
   "-cm_dir",
   "{build_cov_dir}",
+  "-cm_noconst",
+  "-cm_seqnoconst",
   "-cm_hier",
   "{repo_root}/hw/sys/smu/dv/cov/config/vcs/smu_wrapper_cov_scope.hier",
   "-cm_tgl",
