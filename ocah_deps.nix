@@ -28,6 +28,8 @@ in {
       OPENSSL_ROOT = "${pkgs.openssl-merged}";
       WHISPER_HOME = "${pkgs.whisper}";
       CMAKE_CXX_STANDARD = "20";
+      # Nix compilers enforce no -mtune native for reproducibility by default, overridden here
+      NIX_ENFORCE_NO_NATIVE = "0";
     }
     // (
       # When bundling, point UV at the Nix-provided Python/venv and disable all network sync so it
@@ -103,6 +105,9 @@ in {
       systemc-cci
       boost-merged
       whisper
+      bzip2
+      xz
+      zstd
     ]
     ++ (
       if bundle_uv

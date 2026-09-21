@@ -1,8 +1,6 @@
 {
   stdenv,
   fetchFromGitHub,
-  systemc20,
-  systemc-cci,
   boost-merged,
   openssl,
   rapidjson,
@@ -39,31 +37,39 @@ in
     };
 
     buildInputs = [
-      systemc20
-      systemc-cci
       boost-merged
       openssl
       rapidjson
       zlib
     ];
 
-    SYSTEMC_HOME = "${systemc20}";
-    CCI_HOME = "${systemc-cci}";
+    preBuild = ''
+      printf 'smc_vp_whisper_libs: $(BUILD_DIR)/librvcore.a $(soft_float_lib) $(pci_lib) $(virtual_memory_lib)\n' \
+        > whisper-smc-libs.mk
+    '';
 
     enableParallelBuilding = true;
 
     makeFlags = [
-      "BOOST_ROOT=${boost-merged}"
-      "STATIC_LINK=0"
+      "-f GNUmakefile"
+      "-f whisper-smc-libs.mk"
       "MEM_CALLBACKS=1"
-      "EXTRA_CXXFLAGS=-std=gnu++20"
+      "CXX_STD=c++20"
+      "EXTRA_CXXFLAGS=-fPIC"
+      "BOOST_ROOT=${boost-merged}/"
     ];
 
+    buildTarget = "smc_vp_whisper_libs";
+
     installPhase = ''
+      runHook preInstall
       mkdir -p $out
-      cp -r build-Linux $out/build-Linux
-      for f in $(find virtual_memory iommu aplic imsic pci trace-reader third_party -name '*.a'); do
+      for f in $(find build-Linux virtual_memory iommu aplic imsic pci trace-reader third_party -name '*.a' 2>/dev/null); do
         install -Dm644 "$f" "$out/$f"
       done
+      for f in $(find . -name '*.hpp' 2>/dev/null); do
+        install -Dm644 "$f" "$out/$f"
+      done
+      runHook postInstall
     '';
   }
