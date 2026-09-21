@@ -65,7 +65,7 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 	@rm -rf "$(OCAH_TRM_SRC)/assets" && ln -s ../assets "$(OCAH_TRM_SRC)/assets"
 	@cd "$(OCAH_TRM_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
-		-a toc -a toclevels=3 \
+		-a toc -a toclevels=6 -a outlinelevels=6 \
 		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \
 		-o "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" src/index.adoc
 	@cp "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" "$(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)"

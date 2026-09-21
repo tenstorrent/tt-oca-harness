@@ -12,10 +12,18 @@ https://www.openchipletatlas.org/specifications/aou/latest[AXI over UCIe protoco
 ifdef::backend-pdf[]
 :aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
 
-include::../modules/aou/partials/pdf/overview.adoc[leveloffset=+0]
+== Overview and Features
+
+include::../modules/aou/partials/pdf/overview.adoc[leveloffset=+1]
 include::../modules/aou/partials/pdf/architecture.adoc[leveloffset=+0]
-include::../modules/aou/partials/pdf/interrupts-errors.adoc[leveloffset=+0]
-include::../modules/aou/partials/pdf/ppa-appendices.adoc[leveloffset=+0]
+
+== Interrupts and Errors
+
+include::../modules/aou/partials/pdf/interrupts-errors.adoc[leveloffset=+1]
+
+== PPA and Appendices
+
+include::../modules/aou/partials/pdf/ppa-appendices.adoc[leveloffset=+1]
 
 endif::backend-pdf[]
 

@@ -73,5 +73,5 @@ ifdef::backend-html5[]
 * xref:ip:axi_filter/doc/index.adoc[AXI Filter]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-* <<axi-traffic-filter,AXI Filter>>
+include::../../../hw/ip/axi_filter/doc/index.adoc[leveloffset=+2]
 endif::backend-pdf[]
