@@ -16,6 +16,7 @@ SCRATCH_COLD_2 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BA
 SCRATCH_PATTERN = 0x1A7A_0002
 # Generated reset of the scratch data field, the value a taken reset restores.
 SCRATCH_RESET = misc_wrap_reset("SCRATCH__SCRATCH__DATA_reset")
+VERSION_LO_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 
 # Same bounds smc_flr_sanity_test_seq uses for the cool-reset handshake.
 # smc_reset_ctrl de-glitches rst_cool_ni over 32 clk_ref_i samples
@@ -83,7 +84,9 @@ class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
         return item
 
     async def body(self) -> None:
-        await self._read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0)
+        await self._read(
+            "CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO, expected=VERSION_LO_RESET
+        )
         await self._write("SCRATCH_COLD_2", SCRATCH_COLD_2, SCRATCH_PATTERN)
         await self._read("SCRATCH_COLD_2", SCRATCH_COLD_2, expected=SCRATCH_PATTERN)
 
@@ -123,7 +126,7 @@ class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
         # SCRATCH_PATTERN here and fails. smc_multi_reset_csr_persistence_test_seq
         # checks the same direction under CHK-COOL-RESET-CLEARS-WARM-SCRATCH.
         await self._read(
-            "CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0
+            "CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO, expected=VERSION_LO_RESET
         )
         await self._read("SCRATCH_COLD_2_CLEARED", SCRATCH_COLD_2, expected=SCRATCH_RESET)
         # The register is still writable after the reset. Writing the reset
