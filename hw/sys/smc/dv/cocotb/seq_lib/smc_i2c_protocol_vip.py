@@ -413,53 +413,53 @@ class SmcI2cMasterVip:
         for _ in range(100000):
             if int(self._scl.value):
                 return
-            await Timer(self._half_ns, units="ns")
+            await Timer(self._half_ns, unit="ns")
         raise SmcI2cVipError("SCL stayed low (stretch/timeout)")
 
     async def send_start(self) -> None:
         if self._active:
             self._pull_sda(False)
-            await Timer(self._half_ns, units="ns")
+            await Timer(self._half_ns, unit="ns")
             self._pull_scl(False)
             await self._wait_scl_high()
-            await Timer(self._half_ns, units="ns")
+            await Timer(self._half_ns, unit="ns")
         self._pull_sda(True)
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         self._pull_scl(True)
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         self._active = True
 
     async def send_stop(self) -> None:
         if not self._active:
             return
         self._pull_sda(True)
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         self._pull_scl(False)
         await self._wait_scl_high()
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         self._pull_sda(False)
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         self._active = False
 
     async def send_bit(self, bit: int) -> None:
         self._pull_sda(not bool(bit))
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         self._pull_scl(False)
         await self._wait_scl_high()
-        await Timer(self._bit_ns, units="ns")
+        await Timer(self._bit_ns, unit="ns")
         self._pull_scl(True)
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
 
     async def recv_bit(self) -> int:
         self._pull_sda(False)
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         self._pull_scl(False)
         await self._wait_scl_high()
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         val = int(self._sda.value)
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         self._pull_scl(True)
-        await Timer(self._half_ns, units="ns")
+        await Timer(self._half_ns, unit="ns")
         return val
 
     async def send_byte(self, value: int) -> int:

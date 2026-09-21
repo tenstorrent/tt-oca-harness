@@ -21,9 +21,10 @@ S2: the straps pair answers, and the first page above every allocation those
     would answer the straps read too.
 S3: the SMC aperture decides whether any of that is reachable at all. Shrink
     BASE_CONFIG.REGION_SIZE so LOCAL_BASE + size ends at the window and the
-    same read leaves the chiplet through the output fabric instead; set it to
-    zero and no address is local any more. S3 is last because it takes the
-    fabric away.
+    same read leaves the chiplet through the output fabric instead. S3 is last
+    because it takes the window away. REGION_SIZE zero is not driven:
+    fabric.adoc forbids it, and the crossbar's address decoder assumes every
+    rule spans at least one byte.
 
 32-bit CSRs at addr[2]=1 use the upper 64b J2A lane (wstrb=0xF0), matching
 ``wdt_unlock``.
@@ -38,7 +39,6 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
-    SMC_CHIP_CONFIG_VERSION_LO,
     c_header_u32,
     smc_addr,
     smc_bootrom_addr,
@@ -101,9 +101,8 @@ REGION_SIZE_ADDR = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 REGION_SIZE_RESET = smc_base_config_u32("SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
 LOCAL_BASE_RESET = smc_base_config_u32("SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
 # smc_base_config.rdl: REGION_SIZE.size is a non-zero power of two that
-# LOCAL_BASE is aligned to, and zero "leaves no reachable local aperture".
-# This size ends the local aperture exactly at the window, so the shim is the
-# first address outside it.
+# LOCAL_BASE is aligned to. This size ends the local aperture exactly at the
+# window, so the shim is the first address outside it.
 REGION_SIZE_SHRUNK = EXTERNAL_BASE - LOCAL_BASE_RESET
 # Cycles allowed for an outbound-boundary counter to move after a J2A op.
 EGRESS_POLL_CYCLES = 2000
@@ -348,31 +347,9 @@ class smu_periph_ext_window_test_seq:
             evidence="CHK-PERIPH-EXT-APERTURE",
         )
 
-        # Zero: the RDL says this leaves no reachable local aperture, so even
-        # a core SMC CSR is routed out. Nothing after this can reach the
-        # local fabric, so it is the last stimulus.
-        st_zero = await self._j2a_wr32(jtag, REGION_SIZE_ADDR, 0, "REGION_SIZE zero")
-        sb.expect_eq("CHK-PERIPH-EXT-APERTURE-ZERO status", st_zero, J2A_STATUS_SUCCESS)
-        await ClockCycles(self.dut.clk_smu_i, 64)
-        sb.expect_eq(
-            "CHK-PERIPH-EXT-APERTURE-ZERO broadcast",
-            self._sample_int("smc_region_size_o"),
-            0,
-        )
-
-        zero_base = self._egress_reads()
-        _, version_word = await self._j2a_rd32(jtag, SMC_CHIP_CONFIG_VERSION_LO, "VERSION_LO zero")
-        zero_count = await self._await_egress_read(zero_base, "s3_zero_egress")
-        sb.expect_eq(
-            "CHK-PERIPH-EXT-APERTURE-ZERO a core CSR read left the chiplet",
-            zero_count,
-            zero_base + 1,
-            evidence="CHK-PERIPH-EXT-APERTURE-ZERO",
-        )
         self._log(
             f"CHK-PERIPH-EXT-APERTURE: reset=0x{size_at_reset:08x} inside=0x{inside_word:08x} "
-            f"shrunk=0x{size_shrunk:08x} outside=0x{outside_word:08x} "
-            f"zero_version_read=0x{version_word:08x}"
+            f"shrunk=0x{size_shrunk:08x} outside=0x{outside_word:08x}"
         )
         self.s3_ok = True
 

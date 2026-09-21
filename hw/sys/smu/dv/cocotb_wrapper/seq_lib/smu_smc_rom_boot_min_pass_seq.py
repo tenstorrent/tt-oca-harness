@@ -34,6 +34,7 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
+from seq_lib.smu_addr_map import smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
@@ -48,7 +49,9 @@ from seq_lib.smu_jtag_helpers import (
 MIN_PASS_MAGIC = 0xACAF_ACA1
 
 #: SMC CPU_CTRL scratch0, SMC-local: the address the ROM stub builds in t0.
-SMC_SCRATCH0_ADDR = 0xC003_9080
+SMC_SCRATCH0_ADDR = smc_indexed_addr(
+    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
+)  # SMC CPU_CTRL scratch0
 
 BOOT_MAX_CYCLES = 600_000
 HEARTBEAT_CYCLES = 50_000

@@ -351,6 +351,14 @@ module smu_wrapper_uvm_top (
   input  wire  logic        tb_cfg_flr_pf_active,
   input  wire  logic        tb_mem_repair_abort,
   input  wire  logic        tb_mbist_abort,
+  // Active-high holds on the boundary straps the wrapper otherwise sees
+  // asserted: each drives the DUT input low while it is 1, so an undriven
+  // pin leaves the strap at its boot value.
+  input  wire  logic        tb_mem_repair_hold,
+  input  wire  logic        tb_mbist_hold,
+  input  wire  logic [31:0] tb_ss_reset_incomplete,
+  input  wire  logic        tb_chiplet_secondary,
+  input  wire  logic        tb_cool_reset_pin,
   output logic [3:0]        tb_smc_ndmreset_process,
   output logic [31:0]       tb_isolate_req,
   output logic [31:0]       tb_ss_config,
@@ -1224,11 +1232,17 @@ module smu_wrapper_uvm_top (
   assign tb_stap_smc_trst_n  = u_dut.u_smu.dtp_smc_stap_tap_ctrl.trst_n;
   assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
   assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
-  // Boot-stall GPIO pad (smc_padring: boot_stall_o = lsio_pad2core_data[57]).
-  // Unlike tb_top.sv, which ORs the TB value into a pad2core vector at the
-  // smu boundary, smu_wrapper brings out a real bidirectional pad bus --
-  // smc_ip_integration puts a prim_pad_shim on every pin -- so the drive goes
-  // onto the wire itself, weak (pull) elsewhere so a core output still wins.
+  // smu_wrapper brings out a real bidirectional pad bus -- smc_ip_integration
+  // puts a prim_pad_shim on every pin -- so TB stimulus goes onto the wire
+  // itself. A weak pull-down on every pad gives an idle pin a defined 0 on a
+  // four-state simulator without contending with a core output; Verilator
+  // ignores the primitive and reads an undriven pad as 0, so both simulators
+  // see the same idle bus. A pull-up would stall boot: pad 57 is the
+  // active-high boot-stall input (smc_padring: boot_stall_o =
+  // lsio_pad2core_data[57]).
+  for (genvar gi = 0; gi < smc_pkg::NUM_GPIO_WRAPS; gi++) begin : gen_gpio_pad_pull
+    pulldown u_pad_pulldown (gpio_pad_io[gi]);
+  end
   assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
   assign gpio_pad_io[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : 1'bz;
 
@@ -1515,7 +1529,7 @@ module smu_wrapper_uvm_top (
     .smc_shadow_regs_o (smc_shadow_regs),
     .lsio_interface_select_o (),
     .gpio_pad_io (gpio_pad_io),
-    .rst_cool_n_from_pin_i (1'b1),
+    .rst_cool_n_from_pin_i (~tb_cool_reset_pin),
 
     .clk_telemetry_i (clk_ref_i),
     .rst_telemetry_ni (rst_cold_ni),
@@ -1548,26 +1562,26 @@ module smu_wrapper_uvm_top (
 
     .cfg_flr_pf_active_i (tb_cfg_flr_pf_active),
     .isolate_req_o (isolate_req_w),
-    .ss_reset_complete_i ('1),
+    .ss_reset_complete_i (~tb_ss_reset_incomplete),
     .ss_config_o (ss_config_w),
     .ss_reset_ctrl_o (ss_reset_ctrl_w),
     .sync_irq_o (sync_irq_w),
 
     .smc_disable_sram_auto_init_i (smc_disable_sram_auto_init),
     .smc_init_mem_done_o,
-    .chiplet_is_primary_i (1'b1),
+    .chiplet_is_primary_i (~tb_chiplet_secondary),
     .timer_count_o (tb_timer_count),
 
     .test_en_i (1'b0),
     .scan_rst_ni (1'b1),
 
-    // Without an external BISR/MBIST agent the boot sequencer waits forever
-    // if these stay low (CPU never fetches ROM).
-    .mem_repair_done_i (1'b1),
-    .mem_repair_success_i (1'b1),
+    // No external BISR/MBIST agent on this bench: the done and pass straps
+    // read asserted unless a leaf holds them down.
+    .mem_repair_done_i (~tb_mem_repair_hold),
+    .mem_repair_success_i (~tb_mem_repair_hold),
     .mem_repair_abort_i (tb_mem_repair_abort),
-    .mbist_done_i (1'b1),
-    .mbist_pass_i (1'b1),
+    .mbist_done_i (~tb_mbist_hold),
+    .mbist_pass_i (~tb_mbist_hold),
     .mbist_abort_i (tb_mbist_abort),
 
     .sep_cpu_trace_o (sep_cpu_trace),

@@ -467,11 +467,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "REGION_SIZE shrunk so the local aperture ends at the window sends the "
             "same shim read out of the chiplet instead",
         ),
-        (
-            "CHK-PERIPH-EXT-APERTURE-ZERO",
-            "CHK-PERIPH-EXT-APERTURE-ZERO",
-            "REGION_SIZE zero leaves no local aperture: a core SMC CSR read leaves the chiplet too",
-        ),
     ],
     "smu_sep_smoke_test": [
         (
@@ -542,6 +537,40 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "raises isolate_req_o through ISOLATE_REQ_SMCEN_REG and "
             "skip_mem_repair_o; the latch holds when the pin drops and only a "
             "software write releases both",
+        ),
+        (
+            "CHK-SMU-SS-RESET-COMPLETE",
+            "CHK-SMU-SS-RESET-COMPLETE",
+            "RESET_UNIT.SS_RESET_COMPLETE mirrors ss_reset_complete_i lane for lane over "
+            "three patterns and returns to all-ones with the pins released",
+        ),
+        (
+            "CHK-SMU-CHIPLET-STRAP",
+            "CHK-SMU-CHIPLET-STRAP",
+            "CPU_CTRL.SMC_ATTRIBUTES.chiplet_is_primary follows chiplet_is_primary_i low "
+            "and back to set",
+        ),
+    ],
+    "smu_smc_cool_reset_pin_test": [
+        (
+            "CHK-SMU-COOL-PIN-DEGLITCH",
+            "CHK-SMU-COOL-PIN-DEGLITCH",
+            "a 28-clk_ref rst_cool_n_from_pin_i pulse leaves the SMC primary reset "
+            "released, during the pulse and after it",
+        ),
+        (
+            "CHK-SMU-COOL-PIN-RESET",
+            "CHK-SMU-COOL-PIN-RESET",
+            "rst_cool_n_from_pin_i held past that pulse asserts the SMC primary reset no "
+            "earlier than 28 clk_ref, holds it while low, and the SMC leaves reset after "
+            "the pin releases",
+        ),
+        (
+            "CHK-SMU-DFT-DONE-STATUS",
+            "CHK-SMU-DFT-DONE-STATUS",
+            "DFX_CTRL.STATUS_SMU reads mem_repair_done, mem_repair_success, mbist_done and "
+            "mbist_pass clear after a primary reset with the straps low; each pair sets when "
+            "its straps rise and holds when they drop again",
         ),
     ],
     "smu_smc_dtp_jtag2axi_smoke_test": [

@@ -132,7 +132,7 @@ class smc_uart_baud_word_parity_format_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if _iir_pending(iir) and _iir_id(iir) == _INTR_RDR:
                 break
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         else:
             raise AssertionError(
                 f"{label}: RDR not seen IIR=0x{iir:08x} "

@@ -67,7 +67,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
             EFUSE_PROGRAM_CTRL,
             8 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
         )
-        for _ in range(10_000):
+        for fail_polls in range(10_000):
             await RisingEdge(clk)
             st = await self.csr_read("PROGRAM_FAIL_POLL", EFUSE_PROGRAM_CTRL)
             if (st >> 25) & 1:
@@ -108,7 +108,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
             EFUSE_PROGRAM_CTRL,
             0 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
         )
-        for _ in range(10_000):
+        for ok_polls in range(10_000):
             await RisingEdge(clk)
             st = await self.csr_read("PROGRAM_OK_POLL", EFUSE_PROGRAM_CTRL)
             if (st >> 25) & 1:
@@ -118,4 +118,16 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
 
         prog_ok = int(dut.tb_efuse_programmed_word0.value)
         assert (prog_ok & 1) == 1, "recovery burn did not sticky-OR bit0"
-        cocotb.log.info("OCCP/secure public path: fail-then-recover OK")
+        cocotb.log.info(
+            "CHK-OCCP-SECURE-ERROR-RECOVERY: EFUSE_MAP word0 = 0x%08x matched the "
+            "preload marker and CHIP_CONFIG_VERSION_LO = 0x%08x; the injected "
+            "program failure reported PROGRAM_DONE after %d poll(s) with word0 "
+            "held at 0x%08x, and the recovery burn reported PROGRAM_DONE after "
+            "%d poll(s) and sticky-ORed bit0: word0 = 0x%08x",
+            map0,
+            ver,
+            fail_polls + 1,
+            prog_after,
+            ok_polls + 1,
+            prog_ok,
+        )

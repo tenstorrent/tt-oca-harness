@@ -188,10 +188,12 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # ss_warm[0..31]. The external slice type is adopter-defined; the SMU bench
 # elaborates one port.
 SMU_IC_RESET_NUM_SMC_PORTS = 68
-# The SEP slice is one port per field of sep_pkg::jtag_sep_reset_ctrl_val_t
-# (hw/sys/sep/rtl/sep_pkg.sv): abr, trng, sep_reset_n, kmac, hmac, aes, otbn,
-# km. jtag_ptap sizes it as $bits(ic_reset_sep_t)/2, so a field added to that
-# struct moves every SMC port index up by one and this count with it.
+# doc/integrator/src/smu.adoc "IC_RESET TDR Structure" fixes the SEP slice at
+# 8 ports when SEP=1 (else 0) and lists them TDI to TDO: abr, trng, sep_reset,
+# kmac, hmac, aes, otbn, km. The implementation carries them as the fields of
+# sep_pkg::jtag_sep_reset_ctrl_val_t and jtag_ptap sizes the slice as
+# $bits(ic_reset_sep_t)/2, so a field added there without a document change
+# moves every SMC port index up by one and this count with it.
 SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = 8
 
 

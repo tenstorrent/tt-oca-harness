@@ -24,6 +24,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from runlib import cli, site  # noqa: E402
+from runlib import executors as executors_pkg  # noqa: E402
 from runlib.config import (  # noqa: E402
     CLUSTER_DRIVERS,
     load_executors,
@@ -401,7 +402,7 @@ class RegistrySchemaTest(unittest.TestCase):
         self.assertEqual(executors["lsf"]["driver"], "lsf")
         self.assertEqual(executors["slurm"]["driver"], "slurm")
         for name in ("lsf", "slurm"):
-            self.assertIsNotNone(dispatch_blocker(name, executors[name]))
+            self.assertIsNone(dispatch_blocker(name, executors[name]))
             self.assertNotIn("defaults", executors[name], "the public registry names no site value")
 
     def test_checked_in_templates_render_every_placeholder(self) -> None:
@@ -433,7 +434,7 @@ class RegistrySchemaTest(unittest.TestCase):
         )
         self.assertEqual(
             render_argv(executors["slurm"]["query_argv"], {"job_ids_csv": "11,12"}),
-            ["squeue", "--noheader", "--format=%i|%T|%r", "--jobs=11,12"],
+            ["squeue", "--noheader", "--states=all", "--format=%i|%T|%r", "--jobs=11,12"],
         )
 
     def test_unknown_schema_version(self) -> None:
@@ -570,16 +571,21 @@ class DispatchTest(unittest.TestCase):
 
     def test_driver_tables(self) -> None:
         self.assertEqual(set(CLUSTER_DRIVERS), {"lsf", "slurm"})
-        self.assertEqual(set(IMPLEMENTED_DRIVERS), {"local"})
+        self.assertEqual(set(IMPLEMENTED_DRIVERS), {"local", "lsf", "slurm"})
 
     def test_blocker_names_the_undispatchable_executor(self) -> None:
         self.assertIsNone(dispatch_blocker("local", self.executors["local"]))
-        blocker = dispatch_blocker("lsf", self.executors["lsf"])
-        assert blocker is not None
-        self.assertIn("`lsf`", blocker)
-        self.assertIn(NOT_IMPLEMENTED, blocker)
-        with self.assertRaises(ConfigError):
+        self.assertIsNone(dispatch_blocker("lsf", self.executors["lsf"]))
+        with mock.patch.dict(executors_pkg.DIALECTS, {}, clear=True):
+            blocker = dispatch_blocker("lsf", self.executors["lsf"])
+            assert blocker is not None
+            self.assertIn("`lsf`", blocker)
+            self.assertIn(NOT_IMPLEMENTED, blocker)
+            with self.assertRaises(ConfigError):
+                build_executor("lsf", self.executors["lsf"], runner=passing, max_workers=1)
+        with self.assertRaises(ConfigError) as ctx:
             build_executor("lsf", self.executors["lsf"], runner=passing, max_workers=1)
+        self.assertIn("run directory", str(ctx.exception))
         local = build_executor("local", self.executors["local"], runner=passing, max_workers=3)
         self.assertIsInstance(local, LocalExecutor)
         self.assertEqual(local.max_in_flight, 3)
@@ -588,9 +594,13 @@ class DispatchTest(unittest.TestCase):
     def test_selected_executor_checks_allowlist_registry_and_dispatch(self) -> None:
         root = Path("/fixture")
         flow = make_flow(root, {"default_executor": "lsf", "allowed": ["local", "lsf"]})
-        with self.assertRaises(ConfigError) as ctx:
-            cli.selected_executor(flow, Namespace(executor=None), self.executors)
-        self.assertIn(NOT_IMPLEMENTED, str(ctx.exception))
+        self.assertEqual(
+            cli.selected_executor(flow, Namespace(executor=None), self.executors), "lsf"
+        )
+        with mock.patch.dict(executors_pkg.DIALECTS, {}, clear=True):
+            with self.assertRaises(ConfigError) as ctx:
+                cli.selected_executor(flow, Namespace(executor=None), self.executors)
+            self.assertIn(NOT_IMPLEMENTED, str(ctx.exception))
         self.assertEqual(
             cli.selected_executor(flow, Namespace(executor="local"), self.executors), "local"
         )

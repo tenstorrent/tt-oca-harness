@@ -63,7 +63,7 @@ class smu_clock_stop_coordination_test_seq:
         cocotb.log.info(msg)
 
     def _sim_ns(self) -> float:
-        return float(get_sim_time(units="ns"))
+        return float(get_sim_time(unit="ns"))
 
     def _mark_step(self, step_id: str, detail: str) -> None:
         now = self._sim_ns()

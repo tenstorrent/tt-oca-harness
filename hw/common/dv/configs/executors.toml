@@ -41,8 +41,10 @@ cancel_argv = ["bkill", "{job_ids_argv}"]
 history_parser = "lsf_bhist_long"
 env_passthrough = ["PATH", "LD_LIBRARY_PATH"]
 
-# Slurm. `--mem` takes megabytes with the `M` suffix; `--time` takes a clock. `sacct` needs the
-# cluster's accounting database; `squeue` alone covers a job until it leaves the queue.
+# Slurm. `--mem` takes megabytes with the `M` suffix; `--time` takes a clock. `--states=all`
+# keeps a finished job in the query for the controller's MinJobAge; `sacct` needs the
+# cluster's accounting database, and a site without one names `scontrol show job {job_id}`
+# with `history_parser = "slurm_scontrol"` instead.
 [slurm]
 kind = "cluster"
 driver = "slurm"
@@ -58,7 +60,7 @@ submit_argv = [
   "--output={joblog}",
   "{script}",
 ]
-query_argv = ["squeue", "--noheader", "--format=%i|%T|%r", "--jobs={job_ids_csv}"]
+query_argv = ["squeue", "--noheader", "--states=all", "--format=%i|%T|%r", "--jobs={job_ids_csv}"]
 history_argv = [
   "sacct", "--allocations", "--noheader", "--parsable2",
   "--format=JobIDRaw,State,ExitCode", "--jobs={job_ids_csv}",

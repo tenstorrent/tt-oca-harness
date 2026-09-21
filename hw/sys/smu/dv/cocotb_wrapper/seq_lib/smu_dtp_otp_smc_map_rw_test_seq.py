@@ -132,7 +132,7 @@ class smu_dtp_otp_smc_map_rw_test_seq:
                 f"SPARE[0] readback after A want 0x{PATTERN_A:08x} got 0x{got_a:08x}"
             )
         self.s3_ok = True
-        sb.expect_eq("CHK-OTP-SMC-MAP-RW", got_a, PATTERN_A)
+        sb.expect_eq("CHK-OTP-SMC-MAP-RW", got_a, PATTERN_A, evidence="CHK-OTP-SMC-MAP-RW")
 
         await self._otp_wr(jtag, SPARE0, PATTERN_C, "SPARE0-C")
         got_c = await self._otp_rd(jtag, SPARE0, "SPARE0-C")

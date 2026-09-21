@@ -119,14 +119,14 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
             if not (status & I2C_STATUS_HOSTIDLE):
                 left_idle = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not left_idle:
             raise AssertionError(f"{label}: I2C{host} never left hostidle (STATUS=0x{status:08x})")
         for _ in range(400):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         raise AssertionError(f"{label}: I2C{host} stuck busy (STATUS=0x{status:08x})")
 
     async def _drain_acq_until_stop(self, tgt: int) -> list[int]:
@@ -139,7 +139,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
             if status & I2C_STATUS_ACQEMPTY:
                 if saw_stop:
                     return got
-                await Timer(10, units="us")
+                await Timer(10, unit="us")
                 continue
             word = await self.csr_read(f"I2C{tgt}_ACQDATA", acq_addr)
             got.append(int(word) & 0xFFFF)

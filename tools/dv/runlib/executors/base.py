@@ -293,6 +293,8 @@ class Executor(ABC):
     # A driver that runs attempts in another process reads the leaf manifest; the local
     # executor runs them in this one.
     requires_manifest: bool = False
+    # Submissions the coordinator makes between two polls; None leaves it unbounded.
+    submit_batch_size: int | None = None
 
     @property
     @abstractmethod

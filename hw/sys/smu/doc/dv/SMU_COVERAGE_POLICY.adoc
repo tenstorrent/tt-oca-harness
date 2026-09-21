@@ -72,14 +72,21 @@ nets it declares between them |weekly `--cov` on the large runner
 per-edge toggle points whose hierarchy is `smu_wrapper_uvm_top.u_dut` and
 whose name is in the port list of `hw/top/smu_wrapper.sv`, and folds them
 into one figure per port; every port is live because the single target
-elaborates SEP. `--list` names the ports that never toggled. It is run by
-hand on a finished database; no CI job invokes it |on any finished `--cov`
-run of `--dut smu`, without a simulator
+elaborates SEP. `--list` names the ports that never toggled. It is the
+documented second step after any `--cov` run, on either simulator; no CI job
+invokes it |on any finished `--cov` run of `--dut smu`, without a simulator
 |Commercial |toggle / code / assertion databases under the licensed flow;
-`smu_wrapper_cov_scope.hier` drops the same trees and collects toggle as
-`tgl(portsonly)` on `u_dut`, which is urg's own per-port view (see
-`cov/config/vcs/README.md`) |not a public CI job and not yet measured; not a
-substitute for the public weekly
+`smu_wrapper_cov_scope.hier` drops the same trees, `-cm_tgl portsonly`
+keeps toggle on the wrapper's ports and `-cm_noconst` leaves tied-off nets
+out. `cov/config/vcs/smu_wrapper_coverage_policy.toml` floors the `assertion`
+family at 80 percent, which is where urg reads the `cover property` points.
+urg's `Ports` row, after the exclusions
+`cov/config/vcs/smu_wrapper_toggle_exclusions.el` names with a reason per
+class, is the graded port toggle: a struct field counts when every bit of it
+toggled both ways. The per-port connectivity figure comes from the same
+`cov/interface_toggle.py` fed the run's `cov/report/modinfo.txt`, so both
+simulators are read on one definition (see `cov/config/vcs/README.md`) |not
+a public CI job; not a substitute for the public weekly
 |===
 
 The DUT is an integration shell, and an integration level is graded on its

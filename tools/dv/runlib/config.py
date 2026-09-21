@@ -212,7 +212,9 @@ EXECUTOR_LIMIT_KEYS: dict[str, tuple[type, float]] = {
     "poll_interval_sec": (float, 0.1),
     "artifact_grace_sec": (float, 0),
     "cancel_grace_sec": (float, 0),
+    "command_timeout_sec": (float, 1),
 }
+ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # Placeholders an executor argv template may render. Resource values come in every unit a
 # scheduler asks for, so a site template picks `{mem_gb}` or `{walltime_min}` as needed.
 EXECUTOR_RESOURCE_PLACEHOLDERS = {
@@ -515,6 +517,7 @@ COVERAGE_TOOL_KEYS = {
     "fail_under",
     "input_glob",
     "merge_cmd",
+    "combine_cmd",
     "merged_name",
     "parser",
     "policy_file",
@@ -527,6 +530,7 @@ COVERAGE_LIST_KEYS = {
     "compile_args",
     "exclude_files",
     "merge_cmd",
+    "combine_cmd",
     "report_cmd",
     "sim_args",
     "test_args",
@@ -1852,7 +1856,9 @@ def validate_cluster_executor(cfg: dict[str, Any], where: str) -> None:
             allowed,
             required=key in {"submit_argv", "query_argv", "cancel_argv"},
         )
-    as_str_list(cfg.get("env_passthrough"), f"{where}.env_passthrough")
+    for name in as_str_list(cfg.get("env_passthrough"), f"{where}.env_passthrough"):
+        if not ENV_NAME_RE.match(name):
+            raise ConfigError(f"{where}.env_passthrough: {name!r} is not a variable name")
     if "defaults" in cfg:
         validate_resource_table(cfg["defaults"], f"{where}.defaults")
     if "limits" in cfg:

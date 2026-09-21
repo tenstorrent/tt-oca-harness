@@ -144,6 +144,7 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
             "CHK-DTP-BSR-EXTEST-SELECT",
             extest["bsr_tcks"],
             EXPECTED_BSR_SEL_TCK,
+            evidence="CHK-DTP-BSR-EXTEST-SELECT",
         )
 
         # TLR so SAMPLE_PRELOAD IR does not inherit EXTEST decode on Select-DR/IR.

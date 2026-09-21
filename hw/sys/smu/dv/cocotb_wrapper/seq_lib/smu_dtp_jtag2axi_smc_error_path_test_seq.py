@@ -121,7 +121,7 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
             )
         self.s3_ok = True
         self._log(f"CHK-J2A-DECERR @0x{UNMAPPED:08x} status=DECERR data=0x{hole_data:08x}")
-        sb.expect_eq("CHK-J2A-DECERR", hole_st, J2A_STATUS_DECERR)
+        sb.expect_eq("CHK-J2A-DECERR", hole_st, J2A_STATUS_DECERR, evidence="J2A_DECERR_POISON")
 
         rec_st, rec_data = await self._rd32(jtag, VERSION_LO, "VERSION_LO-RECOVERY")
         if rec_st != J2A_STATUS_SUCCESS or rec_data != VERSION_LO_RESET:
@@ -134,7 +134,7 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
             f"CHK-J2A-RECOVERY @0x{VERSION_LO:08x} data=0x{rec_data:08x} "
             f"status=SUCCESS after unmapped=0x{UNMAPPED:08x}"
         )
-        sb.expect_eq("CHK-J2A-RECOVERY", rec_data, VERSION_LO_RESET)
+        sb.expect_eq("CHK-J2A-RECOVERY", rec_data, VERSION_LO_RESET, evidence="J2A_RECOVERY_OK")
 
         mask = smc_series_data_mask(SMC_DBG_AXSIZE_8B)
         want = SERIES_PAT & mask

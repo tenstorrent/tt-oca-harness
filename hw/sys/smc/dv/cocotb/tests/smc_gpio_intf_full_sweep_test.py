@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GPIO_INTF full 68-entry sweep."""
+"""GPIO_INTF full 65-entry sweep."""
 
 from __future__ import annotations
 
@@ -12,7 +12,10 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_gpio_intf_full_sweep_test(smc_base_test):
-    """GPIO_INTF full 68-entry sweep."""
+    """GPIO_INTF full 65-entry sweep."""
+
+    required_evidence = ("CHK-GPIO-INTF-DATA-CTRL-SWEEP",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 
@@ -27,5 +30,5 @@ class smc_gpio_intf_full_sweep_test(smc_base_test):
             min_csr_accesses=65,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="GPIO_INTF full 68-entry sweep",
+            details="GPIO_INTF full 65-entry sweep",
         )
