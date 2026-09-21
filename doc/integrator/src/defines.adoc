@@ -9,7 +9,9 @@ Set the OCAH names in this chapter. Do not set vendor preprocessor names;
 `hw/common/defs/ocah_vendor_defines.svh` derives the aliases those names
 imply. OCAH lint and Yosys force-include that header. Native DV expands the
 same aliases onto the command line. An adopter compile must do one of those
-two.
+two. Block-selection defines are not in this chapter at all: they ride the
+Bender filelist as `+define+` lines (<<synthesis-filelist-defines,Synthesis
+filelist defines>>).
 
 A `` `define `` in a header is visible only in compilation units that include
 it. Command-line `+define+` / `-D` is global. Force-include (or the flow's
@@ -78,11 +80,63 @@ seed with any failure you intend to reproduce.
 `SYNTHESIS` selects the implementation view: simulation-only SVA, `$readmemh`
 preload, procedural delays, and similar non-synthesizable paths are omitted.
 Slang lint, Verilator lint, and Yosys set it (`OCAH_FLOW_COMMON_DEFINES`, or
-`+define+SYNTHESIS=1` for Verilator lint). A Synopsys (Design Compiler,
-Fusion Compiler) or Cadence Genus synthesis compile must set it too; those
-tools may also predefine the name. Native DV does not, except the SMC `dual`
-target, which lists it next to `SMC_DUAL`. The open formal path (`sby` /
-`read_slang`) keeps it defined. Licensed formal backends leave it unset.
+`+define+SYNTHESIS=1` for Verilator lint). The Bender `synth` view emits
+`+define+SYNTHESIS=1` on its filelist, so a synthesis compile that consumes
+the filelist's defines (<<synthesis-filelist-defines,below>>) gets it without
+tool setup; Synopsys tools also predefine the name. Native DV does not set
+it, except the SMC `dual` target, which lists it next to `SMC_DUAL`. The open
+formal path (`sby` / `read_slang`) keeps it defined. Licensed formal backends
+leave it unset.
+
+[[synthesis-filelist-defines]]
+== Synthesis filelist defines
+
+The Bender `synth` view is the authoritative source for the defines a
+synthesis compile needs. `bender script flist-plus <block targets> -t synth`
+— and a release package's filelist, which is generated from that view —
+carries them as `+define+` lines paired with the sources they select:
+`SYNTHESIS=1`, and the blocks' package switches (for SEP:
+`TECH_SPECIFIC_EC_RV_ICG`, `CALIPTRA`, `SEP_ABR_EN`, `TECH_SPECIFIC_ICG`).
+Consume the `+define+` lines from the filelist rather than restating them on
+the tool command line; the set changes as the tree does, and the filelist
+pairs each switch with the overlay sources it selects.
+
+[WARNING]
+====
+A compile that drops the `+define+` lines analyzes and elaborates without
+error. The failure is silent mis-selection: VeeR EL2 clock gates elaborate as
+the behavioural latch model (`clockhdr`) instead of the `prim_clkgater`
+overlay, and Adams Bridge falls out of the SEP hierarchy. After elaboration,
+confirm the netlist instantiates the primitive clock gates and the block
+structure you expect.
+====
+
+Synopsys Design Compiler and Fusion Compiler reject a filelist as a native
+`analyze` argument (VER-294), and `analyze -define` covers only names given
+on that command. Hand the filelist to the VCS-compatible reader, which parses
+its `+define+` and `+incdir+` lines:
+
+[source,tcl]
+----
+analyze -format sverilog -vcs "-f ocah_synth.f"
+----
+
+Cadence Genus parses the same lines through its optionfile reader. `read_hdl
+-f` treats sources as Verilog-2001 regardless of the `hdl_language`
+attribute, so pass `-sv`, and put every source in the filelist — `read_hdl`
+rejects a design file on the same command line as `-f`:
+
+[source,tcl]
+----
+read_hdl -sv -f ocah_synth.f
+----
+
+Synopsys tools predefine `SYNTHESIS`; when the filelist restates it, Design
+Compiler keeps its own value and warns (VER-1051). The value is 1 either way,
+so the warning is harmless. The filelist also lists
+`ocah_vendor_defines.svh`, but vendored packages precede it in compile order,
+so it does not replace the force-include described at the top of this
+chapter.
 
 [[emulation-define]]
 == `EMULATION`
