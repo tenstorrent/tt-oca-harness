@@ -1109,7 +1109,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cold reset input (active low). Asynchronous assertion, synchronous deassertion.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cold reset input (active low). Assertion and deassertion are synchronous to <code>clk_ref_i</code> and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling <code>powergood_i</code> asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System cold reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
@@ -4602,7 +4602,7 @@ synthesis model.</p>
 reference source. The DTP operates on TCK for JTAG logic and on the system clock
 for cross-trigger and AXI bridges. Reset sequencing follows the SMC flow; the
 DTP JTAG state machine uses <code>pwr_on_rst_ni</code>, which the SMU connects to
-<code>rst_cold_ni</code>. The SMU internally connects DTP debug paths to the SMC and
+the SMC <code>powergood_stable</code> output. The SMU internally connects DTP debug paths to the SMC and
 optionally instantiates the SEP when the <code>SEP</code> parameter is set to 1. The full
 interconnection details are described in <a href="#smc-dtp-interconnection">SMC-DTP Internal Interconnection</a> and
 <a href="#sep-conditional-wiring">SEP-Conditional Wiring</a> below.</p>
@@ -5401,7 +5401,7 @@ wired internally within the SMU.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pwr_on_rst_ni</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU <code>rst_cold_ni</code> (power-on reset for JTAG logic)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>powergood_stable_o</code> (power-on reset for JTAG logic)</p></td>
 </tr>
 </tbody>
 </table>
@@ -7670,7 +7670,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cold reset (active low). Asynchronous assertion, synchronous deassertion. Also serves as DTP power-on reset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cold reset (active low). Assertion and deassertion are synchronous to <code>clk_ref_i</code> and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling <code>powergood_i</code> asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System cold reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>

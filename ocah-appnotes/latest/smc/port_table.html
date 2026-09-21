@@ -238,7 +238,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cold reset input (active low). Asynchronous assertion, synchronous deassertion.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cold reset input (active low). Assertion and deassertion are synchronous to <code>clk_ref_i</code> and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling <code>powergood_i</code> asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System cold reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
