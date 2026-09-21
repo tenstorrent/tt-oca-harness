@@ -820,7 +820,7 @@ Drive `smc_register_boundary_depth_test_seq`. Each checker below is a named comp
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CSR-BOUNDARY-SWEEP` |First/last registers of the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows read their expected value over SEP_IN AXI; the last register of each scratch window reads back its written pattern and then its saved value; all 16 accesses were checked by the scoreboard. Fails on a read mismatch, a non-OKAY response, a wrong access count, or traffic that never reached the scoreboard
+|`CHK-CSR-BOUNDARY-SWEEP` |First/last registers of the SCRATCH_COLD and SCRATCH_COLD_WARM windows and the first register of CHIP_CONFIG read their RDL value over SEP_IN AXI; the last CHIP_CONFIG register, LC_STATE (`sw = r; hw = w`, the lifecycle value the SEP drives), is derived from the window size, answers OKAY and is reported, not compared; the last register of each scratch window reads back its written pattern and then its saved value; all 16 accesses were checked by the scoreboard. Fails on a read mismatch, a non-OKAY response, a wrong access count, or traffic that never reached the scoreboard
 |===
 
 
@@ -1024,7 +1024,7 @@ Drive `smc_octs_dual_sync_test_seq`. Each checker below is a named compare the D
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-OCTS-DUAL-SYNC` |As SECONDARY, a pad-injected sync then 2 credits sets STATUS.MODE and STATUS.RUNNING and lands COUNT in [PRESET+CREDIT_VAL, PRESET+2*CREDIT_VAL+16]; as PRIMARY, STATUS.MODE clears, the DUT drives >= 1 sync_load and >= 2 cnt_credit rising edges within 256 clk_smc_i, and TIMER_START reloads COUNT to PRESET (within read slack) after which it advances 1..1024. Fails on a wrong MODE, RUNNING not set, COUNT outside the bound, missing pad edges, a COUNT that does not drop on TIMER_START, or one that does not advance
+|`CHK-OCTS-DUAL-SYNC` |As SECONDARY, a pad-injected sync then 2 credits sets STATUS.MODE and STATUS.RUNNING and lands COUNT in [PRESET+CREDIT_VAL, PRESET+2*CREDIT_VAL+16]; as PRIMARY, STATUS.MODE clears, the DUT drives >= 1 sync_load and >= 2 cnt_credit rising edges within 256 clk_smc_i, and TIMER_START reloads COUNT into [PRESET, PRESET + read slack] after which it advances 1..1024. Fails on a wrong MODE, RUNNING not set, COUNT outside the bound, missing pad edges, a COUNT that does not drop on TIMER_START, or one that does not advance
 |===
 
 
@@ -1802,7 +1802,7 @@ Drive `smc_xvisor_remap_test_seq`. Each checker below is a named compare the DUT
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-XVISOR-REMAP-RESET-DEFAULT` |All eight `SMC_XVISOR_REMAP_<n>` REGION_ATTRS reads over SEP_IN AXI return OKAY and the RDL reset value as scoreboard value compares; a non-OKAY response, a non-reset value or a short sweep fails
+|`CHK-XVISOR-REMAP-RESET-DEFAULT` |All eight `SMC_XVISOR_REMAP_<n>` REGION_ATTRS 64-bit reads over SEP_IN AXI return OKAY and the full RDL reset word as scoreboard value compares; a non-OKAY response, a non-reset value or a short sweep fails
 |===
 
 

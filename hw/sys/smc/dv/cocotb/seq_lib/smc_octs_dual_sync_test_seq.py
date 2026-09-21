@@ -156,7 +156,7 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
             f"OCTS TIMER_START did not reload COUNT: 0x{count_before_start:x} -> "
             f"0x{count_reloaded:x} (a free-running counter only increases)"
         )
-        assert count_reloaded - _OCTS_PRESET_VAL <= _OCTS_RELOAD_SLACK, (
+        assert _OCTS_PRESET_VAL <= count_reloaded <= _OCTS_PRESET_VAL + _OCTS_RELOAD_SLACK, (
             f"OCTS COUNT reloaded to 0x{count_reloaded:x}, not to PRESET "
             f"0x{_OCTS_PRESET_VAL:x} (+{_OCTS_RELOAD_SLACK} read latency)"
         )
