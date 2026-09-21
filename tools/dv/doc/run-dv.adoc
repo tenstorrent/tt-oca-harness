@@ -1390,15 +1390,19 @@ scheduler reports finished counts as confirmed, and the ids it does not know
 or does not confirm are written to
 `<run>/stages/regress/jobs/cancel-unconfirmed.json` for the operator.
 
-Hosted CI has no scheduler, so `tools/dv/tests/test_cluster_executor.py`
-drives both drivers through `tools/dv/tests/fake_scheduler.py`, which answers
+`tools/dv/tests/test_cluster_executor.py` drives both drivers through
+`tools/dv/tests/fake_scheduler.py`, which answers
 with the output shapes the production schedulers print, including a
 submission filter's stderr banner in both its shapes, with and without a
 memory request, the `ERROR` record `bjobs -json` returns
 for an unknown id, `bkill`'s status 255 for a finished job, `squeue`'s
 failure for an id the controller dropped, and `scancel`'s success for any id.
-The state maps and parsers live in `runlib/executors/lsf.py` and
-`runlib/executors/slurm.py`.
+The `slurm-smoke` job of `sim.yml` then runs the Slurm driver against a live
+scheduler: a single-node Slurm with accounting that the job installs on the
+hosted runner, submitting the DTP smoke group as jobs of the runner itself
+(<<runner-ci>>). The LSF driver's live qualification runs on the maintainer
+farm outside hosted CI. The state maps and parsers live in
+`runlib/executors/lsf.py` and `runlib/executors/slurm.py`.
 
 ==== Leaf manifests and the worker
 
@@ -2933,7 +2937,11 @@ change can never alter the pull-request gate:
 tests the hosted runner cannot build; 60-minute budget per job. The job
 names `verilator-smoke (<dut>)` are the stable check contexts. Every job
 runs for a documentation-only change too, so the contexts report; each job
-then prints one line and skips the simulation.
+then prints one line and skips the simulation. `slurm-smoke (dtp)` installs a
+single-node Slurm with accounting on its runner and runs the DTP smoke group
+through `--executor slurm --mem-mb 2000 --walltime 30`; its result gate also
+requires every leaf to carry a Slurm job in a terminal state. It is not a
+required context and does not run for a documentation-only change.
 
 |`nightly`
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
@@ -3027,7 +3035,8 @@ symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smc` + Verilator; the IP-level benches
+|`dtp`, `sep`, `smu`, `smc` + Verilator; `dtp` + Verilator through the
+`slurm` executor (`slurm-smoke`); the IP-level benches
 `cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
 `uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
 `system_timer_octs`, `scrambler` + Verilator (regression tiers only)
@@ -3048,14 +3057,15 @@ tools. A pair joins the workflow matrix only with a qualifying run at head.
 
 |Unsupported in hosted CI
 |VCS/Xcelium anywhere; formal mode; the `smu_wrapper` SEP firmware set
-(the part of its `all` outside `hosted`); non-local executors
+(the part of its `all` outside `hosted`); the `lsf` executor
 |VCS and Xcelium need licensed self-hosted runners. Formal mode is a
 developer-host flow: hosted CI runs no formal job and no formal result
 reaches the dashboard (<<runner-formal>>). The `smu_wrapper` SEP firmware
 items are in its `all` but need the RISC-V toolchain container, which hosted
-runners lack, so the workflows select `hosted`. Hosted runners have no
-scheduler; the cluster executors are checked there against fake scheduler
-commands (<<runner-cluster-dispatch>>).
+runners lack, so the workflows select `hosted`. The `lsf` executor needs the
+maintainer farm; hosted CI checks both cluster drivers against fake scheduler
+commands and runs the `slurm` executor on a single-node Slurm the
+`slurm-smoke` job installs (<<runner-cluster-dispatch>>).
 |===
 
 === Framework-aware CI matrices
