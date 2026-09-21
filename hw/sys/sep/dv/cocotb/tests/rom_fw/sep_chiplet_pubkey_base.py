@@ -67,9 +67,10 @@ then re-signed with dev0 (``env/sep_payload_mutate.reseal``), so each slot is a
 fully valid, provably bootable manifest bound to the fused key -- ``verify_sealed``
 is re-run after the re-seal to prove it. Revocation is therefore the SOLE cause of
 the rejection, which is the strict form of the property. This is stronger than the
-ROM-slot revoke families, where only slot 0 can be strict: there, slots 1-5 have no
-populated digest and their stale dev0 signature is never re-signed, so they prove
-only that revocation preempts the empty-digest arm.
+ROM-slot revoke families, where only slot 0 can be strict: there, a slot-N
+selector leaves the dev0 signature stale and binds to a digest that is another
+key's or absent, so those members prove only that revocation preempts the
+digest arms.
 
 MARKERS. This ROM has no ``SEP_MSG_USING_FUSE_KEY*`` status code at all, and
 ``SEP_MSG_REVOKED_KEY`` (``status_values.h``, 0x0c) is defined and never emitted.

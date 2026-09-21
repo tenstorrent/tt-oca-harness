@@ -104,6 +104,20 @@ def _set_only_fixed(seed: int) -> dict[str, int]:
     return mod.SepEfuseSetOnlyCfg(seed).image_fixed()
 
 
+def _key_revocation_fixed(seed: int) -> dict[str, int]:
+    """Pins for ``sep_key_revocation_bitmap_random_test``, from the SHARED draw.
+
+    The exception to this file's duplicate-and-compare convention, and
+    deliberately so: the revocation bitmap is the stimulus under test, and a
+    hand-copied constraint that drifted would stage a different bitmap than the
+    testcase predicts an outcome for. The draw therefore lives in
+    ``env/sep_key_revocation_draw.py`` and both readers call it.
+    """
+    mod = _load_env_module("sep_key_revocation_draw", "sep_key_revocation_draw.py")
+    fixed: dict[str, int] = mod.efuse_fixed(mod.draw(seed).bitmap)
+    return fixed
+
+
 # Common LC-gated field pins shared by several PROD-lifecycle tests.
 _SIP_SYS_DIS_PINS = {
     "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0F,
@@ -236,6 +250,18 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "locked_field_irq",
     },
+    # TP074 constrained-random key revocation. The entry carries NO
+    # +sep_efuse_preload, so the drawn CHIPLET_PUBK_REVOKE bitmap comes from the
+    # same pure function the testcase predicts its outcome with; see
+    # _key_revocation_fixed(). The image this entry stages is NOT the one the DUT
+    # senses -- the model's $readmemh waits for reset and the testcase's golden
+    # replaces this file at 0 ns -- it is the copy the testcase compares its
+    # golden against, which is what proves both processes ran the same draw.
+    "sep_key_revocation_bitmap_random_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "key_revocation_draw",
+    },
 }
 
 
@@ -316,6 +342,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _lc_transition_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "key_revocation_draw":
+            fixed = _key_revocation_fixed(seed + int(spec.get("seed_offset", 0)))
         extra = spec.get("fixed_extra")
         if extra:
             fixed = {**(fixed or {}), **extra}

@@ -968,8 +968,11 @@ module sep_uvm_top
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
 
     // SMC CPU_CTRL scratch registers: index * 8 from smc_base+0x39080
-    // (sep_smc_interface.h). 13 holds the SEP-safe SRAM offset, 14 its size.
+    // (sep_smc_interface.h). 8 holds the manifest offset the SMC publishes to
+    // SEP, 9 the SMC->SEP status word, 13 the SEP-safe SRAM offset, 14 its size.
     localparam logic [55:0] SmcScratchBaseAddr = 56'h4003_9080;
+    localparam logic [55:0] SmcScratch8Addr = SmcScratchBaseAddr + (8 * 8);
+    localparam logic [55:0] SmcScratch9Addr = SmcScratchBaseAddr + (9 * 8);
     localparam logic [55:0] SmcScratch13Addr = SmcScratchBaseAddr + (13 * 8);
     localparam logic [55:0] SmcScratch14Addr = SmcScratchBaseAddr + (14 * 8);
     localparam int unsigned SmcNumWindows = 7;
@@ -1039,15 +1042,39 @@ module sep_uvm_top
     logic [31:0] straps_lo_ovr;
     logic [31:0] smc_scratch13_ovr;
     logic [31:0] smc_scratch14_ovr;
+    logic [31:0] smc_scratch8_ovr;
     initial begin
         #1;
         // scratch[9] status: SRAM_INIT|MANIFEST_READY|BUFFER_READY|SRAM_PROTECTED
-        u_smc_mem.mem[56'h4003_90C8] = 8'h0F;
         // scratch[8] manifest offset = 0x1000 (TBL1 manifest at that offset in the
         // packed SMC image -> manifest_addr = 0x4006_0000 + 0x1000). No primary
         // strap -> boot_from_spi()=false -> non-SPI (SMC-SRAM) manifest path.
-        u_smc_mem.mem[56'h4003_90C0] = 8'h00;
-        u_smc_mem.mem[56'h4003_90C1] = 8'h10;
+        //
+        // ALL FOUR BYTES of each word are written so the published value is stated
+        // here rather than half-stated here and half-inherited from a vendor
+        // parameter. The ROM reads both words with a 32-bit smc_scratch_read()
+        // (rom_main.c, manifest_load.c), and writing only bytes 0-1 of scratch[8]
+        // left the upper half of that read to whatever the memory model does with
+        // an absent key.
+        //
+        // That is NOT an X hazard, and the earlier version of this comment was
+        // wrong to say so: u_smc_mem is instantiated with
+        // UninitializedData("zeros") above, and axi_sim_mem returns '0 for an
+        // absent byte on its AXI read path, so the ROM always read 0x00001000
+        // whatever the simulator. The X hazard in this block is real but narrower
+        // -- it applies where TB CODE reads mem[] DIRECTLY, which is the
+        // read-modify-write the STRAPS_LO overrides below perform, not the ROM's
+        // AXI reads. Writing these bytes is therefore explicitness and symmetry
+        // with the scratch[13]/[14] blocks, which is worth having on its own, and
+        // NOT a behaviour fix: it changes no simulator's result.
+        u_smc_mem.mem[SmcScratch9Addr + 0] = 8'h0F;
+        u_smc_mem.mem[SmcScratch9Addr + 1] = 8'h00;
+        u_smc_mem.mem[SmcScratch9Addr + 2] = 8'h00;
+        u_smc_mem.mem[SmcScratch9Addr + 3] = 8'h00;
+        u_smc_mem.mem[SmcScratch8Addr + 0] = 8'h00;
+        u_smc_mem.mem[SmcScratch8Addr + 1] = 8'h10;
+        u_smc_mem.mem[SmcScratch8Addr + 2] = 8'h00;
+        u_smc_mem.mem[SmcScratch8Addr + 3] = 8'h00;
         // DFX_CTRL_STATUS_SMU (smc_base+0xB800) = 0x00000113, the healthy part:
         //   bit 0  mem_repair_done     bit 1 mem_repair_success
         //   bit 4  mbist_done          bit 8 mbist_pass
@@ -1184,6 +1211,26 @@ module sep_uvm_top
             u_smc_mem.mem[SmcScratch14Addr + 3] = smc_scratch14_ovr[31:24];
             $display("[tb] SMC scratch[14] SEP-safe SRAM size = 0x%08x (+sep_smc_scratch14)",
                      smc_scratch14_ovr);
+        end
+        // SMC scratch[8]: the manifest offset the SMC publishes to SEP. The ROM
+        // reads it on its non-SPI path and loads the manifest from
+        // sep_get_smc_sram_base() + this value (manifest_load.c), with NO second
+        // slot -- so an offset holding no manifest is terminal rather than a
+        // failover. Needed by the secondary-chiplet rows: the default written at
+        // the top of this block is 0x1000, where the packed SMC image really
+        // carries "TBL1", and pointing it elsewhere is the only way to present an
+        // invalid published manifest without editing the image.
+        //
+        // Whole-word assign, not an OR: the default is non-zero, so ORing could
+        // only ever add bits to 0x1000 and could not express a different offset.
+        // Little-endian: byte 0 holds bits [7:0].
+        if ($value$plusargs("sep_smc_scratch8=%h", smc_scratch8_ovr)) begin
+            u_smc_mem.mem[SmcScratch8Addr + 0] = smc_scratch8_ovr[7:0];
+            u_smc_mem.mem[SmcScratch8Addr + 1] = smc_scratch8_ovr[15:8];
+            u_smc_mem.mem[SmcScratch8Addr + 2] = smc_scratch8_ovr[23:16];
+            u_smc_mem.mem[SmcScratch8Addr + 3] = smc_scratch8_ovr[31:24];
+            $display("[tb] SMC scratch[8] manifest offset = 0x%08x (+sep_smc_scratch8)",
+                     smc_scratch8_ovr);
         end
     end
 

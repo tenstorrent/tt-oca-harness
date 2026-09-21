@@ -1333,3 +1333,537 @@ def corrupt_ciphertext(buf: bytearray, slot: str, *, block: int = 0,
     reseal(buf, slot)
     verify_sealed(buf, slot, check_toc=False)
     return at, buf[at]
+
+
+# ── payload size ─────────────────────────────────────────────────────────────
+# Flash span a manifest slot owns, from the two slot offsets in manifest.h. A
+# payload may not grow past the next slot's manifest, and boot_flash.h bounds a
+# slot read by the same span (OCH_SEP_TOP_SEP_SRAM_SIZE).
+SLOT_FLASH_LIMIT = {
+    "primary": mm.BACKUP_MANIFEST_OFFSET,
+    "backup": mm.BACKUP_MANIFEST_OFFSET + (mm.BACKUP_MANIFEST_OFFSET
+                                           - mm.PRIMARY_MANIFEST_OFFSET),
+}
+
+
+def repack_payload(buf: bytearray, slot: str, payload_length: int, *,
+                   bl1_offset: int | None = None) -> dict:
+    """Rebuild ``slot``'s payload so it is exactly ``payload_length`` bytes, and boots.
+
+    The payload-size stimulus. The shipped payload is one 1840-byte SEP_BL1 inside
+    a 5936-byte region, so a testcase naming any other size has to produce that
+    size rather than declare it: ``manifest_src_read`` transfers
+    ``payload_length`` bytes off the wire (``manifest_load.c``), so a declared
+    length the material does not back would change what the DUT fetches.
+
+    Both copies of the length are written -- the manifest's and the TOC header's --
+    because ``validate_manifest_payload`` requires them to agree, and the region is
+    zero-filled around the one image so every byte outside it is a known value. The
+    ROM zeroes those gaps itself (``explicit_memzero`` in the entry loop), so this
+    only makes the artefact match what the ROM will hold.
+
+    ``bl1_offset`` moves the image body, which a payload SMALLER than the shipped
+    one requires: the packer leaves BL1 at 4096, past the end of a 4 KiB payload.
+    The default keeps the shipped offset whenever the body still fits and otherwise
+    packs the body directly behind the TOC region, which is the lowest offset
+    ``off < prev_end`` accepts.
+
+    ``payload_hashed_length`` stays at the TOC region, exactly as the packer ships
+    it: ``payload_hash`` then covers the TOC header and every entry -- including
+    both length fields and the body digest -- and each body is bound by its own
+    entry digest. What that leaves unbound is the fill, so nothing the ROM verifies
+    depends on the staged copy of it; a caller that needs the whole transfer bound
+    by a digest has to widen this field and give the fill content worth hashing.
+
+    Returns the resulting geometry.
+    """
+    verify_sealed(buf, slot)
+    verify_signing_key(buf, slot)
+
+    p = payload_base(buf, slot)
+    was_len = manifest_payload_length(buf, slot)
+    region = toc_region_bytes(1)
+    entries = toc_entries(buf, slot)
+    if len(entries) != 1:
+        raise AssertionError(
+            f"{slot} TOC holds {len(entries)} images; this helper repacks the "
+            f"single-image payload the packer ships and has no defined meaning "
+            f"for any other starting shape"
+        )
+    bl1 = entries[0]
+    if _u64(buf, bl1 + E_TYPE) != IMAGE_TYPE_SEP_BL1:
+        raise AssertionError(
+            f"{slot} TOC entry 0 is type 0x{_u64(buf, bl1 + E_TYPE):x}, not SEP_BL1"
+        )
+    if payload_hashed_length(buf, slot) != region:
+        raise AssertionError(
+            f"{slot} payload_hashed_length is {payload_hashed_length(buf, slot)}, "
+            f"not the TOC region {region}; this helper preserves the packer's "
+            f"choice and cannot tell which coverage a different value intended"
+        )
+
+    bl1_len = _u64(buf, bl1 + E_LENGTH)
+    bl1_body = read_bytes(buf, p + _u64(buf, bl1 + E_OFFSET), bl1_len)
+    toc_header = read_bytes(buf, p, TOC_HDR_SIZE)
+    bl1_meta = read_bytes(buf, bl1, TOC_ENTRY_SIZE)
+
+    if bl1_offset is None:
+        shipped = _u64(buf, bl1 + E_OFFSET)
+        bl1_offset = shipped if shipped + bl1_len <= payload_length else region
+    if bl1_offset < region:
+        raise ValueError(
+            f"bl1_offset {bl1_offset} is inside the {region}-byte TOC region; "
+            f"validate_manifest_payload refuses it as IMAGE_ORDER_BAD"
+        )
+    if bl1_offset % 8 != 0:
+        raise ValueError(
+            f"bl1_offset {bl1_offset} is not 8-byte aligned; the ROM refuses it as "
+            f"IMAGE_OFF_ALIGN before any bound is evaluated"
+        )
+    if bl1_offset + bl1_len > payload_length:
+        raise ValueError(
+            f"a {payload_length}-byte payload cannot hold the {bl1_len}-byte BL1 at "
+            f"offset {bl1_offset}: the ROM refuses it as IMAGE_OOB_BOUND, which is "
+            f"not the size decision under test"
+        )
+    if payload_length > 0xFFFF_FFFF:
+        raise ValueError("payload_length is read as 32 bits by every consumer")
+    limit = SLOT_FLASH_LIMIT[slot]
+    if p + payload_length > limit:
+        raise ValueError(
+            f"a {payload_length}-byte {slot} payload at flash 0x{p:x} would reach "
+            f"0x{p + payload_length:x}, past the 0x{limit:x} its slot owns; the "
+            f"material would overwrite the next slot and the ROM's own slot bound "
+            f"(boot_flash.h) would refuse the read"
+        )
+    if p + payload_length > len(buf):
+        buf.extend(bytes(p + payload_length - len(buf)))
+
+    buf[p:p + payload_length] = bytes(payload_length)
+    buf[p:p + TOC_HDR_SIZE] = toc_header
+    _put_u64(buf, p + TOC_OFF_PAYLOAD_LENGTH, payload_length)
+    _put_u64(buf, p + TOC_OFF_IMAGE_COUNT, 1)
+    entry = p + TOC_HDR_SIZE
+    buf[entry:entry + TOC_ENTRY_SIZE] = bl1_meta
+    _put_u64(buf, entry + E_OFFSET, bl1_offset)
+    buf[p + bl1_offset:p + bl1_offset + bl1_len] = bl1_body
+
+    _put_u64(buf, mm.slot_base(slot) + OFF_PAYLOAD_LENGTH, payload_length)
+    rehash_image(buf, slot, entry)
+    reseal(buf, slot)
+    verify_sealed(buf, slot)
+
+    if manifest_payload_length(buf, slot) != payload_length:
+        raise AssertionError(
+            f"{slot} payload_length is {manifest_payload_length(buf, slot)} after "
+            f"the repack, expected {payload_length}"
+        )
+    return {
+        "payload_length_before": was_len,
+        "payload_length": payload_length,
+        "payload_flash_offset": p,
+        "toc_region": region,
+        "bl1_offset": bl1_offset,
+        "bl1_length": bl1_len,
+        "payload_hashed_length": payload_hashed_length(buf, slot),
+    }
+
+
+def declare_payload_length(buf: bytearray, slot: str, payload_length: int) -> int:
+    """Declare a payload the destination cannot hold, leaving the slot otherwise sealed.
+
+    The over-capacity stimulus. ``validate_manifest_header`` refuses
+    ``payload_offset + payload_length > SEP SRAM size`` with
+    ``MANIFEST_ERR_PAYLOAD_TOO_LARGE`` (``manifest_load.c``) before the payload is
+    ever fetched, so the material behind the declaration is never read and must
+    not be produced: transferring a quarter-megabyte the ROM has already refused
+    would cost simulation time and prove nothing.
+
+    Both length fields are written and the slot is re-signed, so the declared size
+    is the ONLY thing wrong with it. That matters more here than for a mutation the
+    ROM rejects before RSA: a stale signature would also be refused, on the
+    failover path, by a slot error that looks the same from the console.
+
+    Returns the previous manifest ``payload_length``.
+    """
+    verify_sealed(buf, slot)
+    verify_signing_key(buf, slot)
+    was = manifest_payload_length(buf, slot)
+    if payload_length <= was:
+        raise ValueError(
+            f"declared payload_length {payload_length} does not exceed the packed "
+            f"{was}; this mutator exists to over-declare"
+        )
+    if payload_length > 0xFFFF_FFFF:
+        raise ValueError(
+            "payload_length above 32 bits is refused by the PAYLOAD_LEN_RANGE arm, "
+            "which is a different check from the capacity one"
+        )
+    p = payload_base(buf, slot)
+    _put_u64(buf, p + TOC_OFF_PAYLOAD_LENGTH, payload_length)
+    _put_u64(buf, mm.slot_base(slot) + OFF_PAYLOAD_LENGTH, payload_length)
+    reseal(buf, slot)
+    verify_sealed(buf, slot)
+    return was
+
+
+def set_overlapping_payload_offset(buf: bytearray, slot: str, value: int) -> int:
+    """Declare a ``payload_offset`` that places the payload inside the manifest header.
+
+    ``validate_manifest_header`` (``manifest_load.c``) refuses
+    ``payload_offset < manifest_length`` with ``MANIFEST_ERR_PAYLOAD_OVERLAP``,
+    announcing ``PAYLOAD_OVERLAPS_MANIFEST``: the staged payload would be written
+    over the header whose fields the ROM is still reading.
+
+    NO RE-SEAL, and that is a property of the layout rather than an omission.
+    ``boot_arguments`` sits outside the TBS and outside the bytes ``manifest_hash``
+    covers (``manifest.h``: TBS is [0..743], the hash at [1128..1159]), so both stay
+    valid and the overlap is the only thing wrong with a genuinely signed slot.
+
+    THE PAYLOAD IS NOT MOVED. The refusal is upstream of the payload fetch, so the
+    bytes at the declared offset are never read; relocating material into the
+    manifest header would overwrite the very fields this check reads.
+
+    Refuses any value a DIFFERENT arm claims first -- ``payload_offset <= 0`` and a
+    misaligned one both return ``MANIFEST_ERR_BAD_LENGTH`` -- and any value the ROM
+    would accept. Returns the previous value.
+    """
+    base = mm.slot_base(slot)
+    m_len = mm.manifest_length(buf, slot)
+    if value <= 0:
+        raise ValueError(
+            f"payload_offset {value} is refused by the `p_off <= 0` arm with "
+            f"MANIFEST_ERR_BAD_LENGTH, which is not the overlap verdict"
+        )
+    if value & 7:
+        raise ValueError(
+            f"payload_offset {value} is not 8-byte aligned, so the PAYLOAD_OFF_ALIGN "
+            f"arm fires first and also returns MANIFEST_ERR_BAD_LENGTH"
+        )
+    if value >= m_len:
+        raise ValueError(
+            f"payload_offset {value} is at or above {slot}'s manifest_length "
+            f"{m_len}, so the payload does not overlap the header and "
+            f"validate_manifest_header would ACCEPT it"
+        )
+    was = int.from_bytes(bytes(buf[base + OFF_BOOT_PAYLOAD_OFFSET:
+                                   base + OFF_BOOT_PAYLOAD_OFFSET + 8]),
+                         "little", signed=True)
+    p_len = manifest_payload_length(buf, slot)
+    if value + p_len > SEP_SRAM_SIZE:
+        raise ValueError(
+            f"payload_offset {value} + payload_length {p_len} is {value + p_len}, "
+            f"past the {SEP_SRAM_SIZE}-byte SEP SRAM the capacity arm bounds it to; "
+            f"that arm runs BEFORE the overlap one and returns a different code"
+        )
+    # Prove the slot is fully sealed BEFORE the write, so the overlap is the only
+    # thing wrong with it afterwards. This has to happen here rather than in the
+    # caller: the ROM refuses the slot UPSTREAM of its own integrity check, so a
+    # broken seal would be invisible in the run.
+    verify_sealed(buf, slot)
+    verify_signing_key(buf, slot)
+
+    _put_u64(buf, base + OFF_BOOT_PAYLOAD_OFFSET, value)
+
+    # And prove the write left the seal intact. The claim that boot_arguments sits
+    # outside the TBS and outside the bytes manifest_hash covers is what licenses
+    # not re-signing; assert it against the real bytes, so a future move of
+    # OFF_BOOT_PAYLOAD_OFFSET into the hashed region fails loudly here instead of
+    # turning into a signature rejection the run cannot distinguish.
+    mm.verify_layout(buf, slot)
+    n, _e, _d = load_rsa_private_key()
+    tbs = bytes(buf[base:base + mm.TBS_LEN])
+    sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
+    if not verify_pkcs1v15_sha256(tbs, sig, n):
+        raise AssertionError(
+            f"{slot} signature no longer verifies after writing payload_offset; the "
+            f"field is supposed to sit outside the TBS, so either the offset moved "
+            f"or the layout this mutator assumes is wrong"
+        )
+    return was
+
+
+def corrupt_toc_entry_hash(buf: bytearray, slot: str, index: int, *,
+                           value: bytes = b"\x00" * 32,
+                           reseal: bool = False) -> bytes:
+    """Replace one TOC entry's image digest and leave the body it covers untouched.
+
+    Corrupting the DIGEST rather than the body is what keeps the stimulus a hash
+    stimulus: a modified body changes what ``payload_hash`` covers as well, so the
+    two rules below could no longer be told apart.
+
+    ``reseal`` SELECTS WHICH OF THE ROM'S TWO HASH RULES REFUSES THE SLOT. They are
+    different checks with different codes, and the packer's geometry is what couples
+    them: ``payload_hashed_length`` is the whole TOC region, so the digest field
+    lies INSIDE the bytes ``payload_hash`` covers.
+
+      * ``False`` (default) -- ``payload_hash`` is left describing the SHIPPED
+        bytes, so ``verify_payload_hash`` (``manifest_crypto.c``) refuses the slot
+        with ``PLD_HASH_MISMATCH`` / ``MANIFEST_ERR_PAYLOAD_HASH_MISMATCH``,
+        upstream of the per-entry loop and inside ``manifest_crypto_validate``. This
+        is the mechanism the reference regression uses: its SPI-preload editor
+        rewrites the digest and re-signs nothing. The manifest hash and the
+        signature stay valid because ``payload_hash`` sits inside the TBS, so the
+        stale digest is the only thing wrong with the slot.
+      * ``True`` -- the slot is re-sealed, so ``payload_hash`` covers the planted
+        digest and the rejection moves DOWNSTREAM to the per-entry arm,
+        ``IMAGE_HASH_MISMATCH idx=`` / ``MANIFEST_ERR_IMAGE_HASH_MISMATCH``
+        (``manifest_load.c``). A row wanting that arm must say so explicitly,
+        because it is not the reference's rule.
+
+    The non-resealing form is plaintext-only: an encrypted payload's digest field is
+    ciphertext, and a raw write there would also corrupt the decryption rather than
+    just the hash.
+
+    Returns the bytes stored at the field -- for a re-sealed encrypted payload the
+    ciphertext the re-encryption produced -- so a caller can require the device to
+    have served exactly them.
+    """
+    if len(value) != 32:
+        raise ValueError("a TOC entry digest is 32 bytes")
+    entry = toc_entry_at(index)
+    plain_before = bytes(toc_plaintext(buf, slot))
+    count = int.from_bytes(plain_before[TOC_OFF_IMAGE_COUNT:
+                                        TOC_OFF_IMAGE_COUNT + 8], "little")
+    if not 0 <= index < count:
+        raise ValueError(
+            f"{slot} TOC declares {count} images, so entry {index} does not exist "
+            f"and no hash arm would ever reach it"
+        )
+    was = plain_before[entry + E_HASH:entry + E_HASH + 32]
+    if was == value:
+        raise ValueError(
+            f"{slot} TOC entry {index} already carries this digest, so the hash "
+            f"comparison would SUCCEED; this mutator exists to violate it"
+        )
+    body_off = int.from_bytes(plain_before[entry + E_OFFSET:entry + E_OFFSET + 8],
+                              "little")
+    body_len = int.from_bytes(plain_before[entry + E_LENGTH:entry + E_LENGTH + 8],
+                              "little")
+    body_before = plain_before[body_off:body_off + body_len]
+
+    if reseal:
+        def _write(plain: bytearray) -> None:
+            plain[entry + E_HASH:entry + E_HASH + 32] = value
+
+        # verify_sealed's TOC arm recomputes every image digest, which is exactly
+        # what this mutation breaks, so it must stay off afterwards.
+        edit_toc(buf, slot, _write, post_check_toc=False)
+    else:
+        if is_encrypted(buf, slot):
+            raise ValueError(
+                f"{slot} payload is encrypted, so its TOC entry digest is stored as "
+                f"ciphertext; a raw write there corrupts the decryption as well as "
+                f"the hash. Pass reseal=True, which decrypts, edits and re-encrypts "
+                f"-- and aims at the per-entry arm instead"
+            )
+        # Prove the slot is fully sealed BEFORE the write, so what follows is
+        # attributable to this edit and to nothing already wrong with the image.
+        verify_sealed(buf, slot)
+        verify_signing_key(buf, slot)
+        hashed = payload_hashed_length(buf, slot)
+        if not entry + E_HASH + 32 <= hashed:
+            raise AssertionError(
+                f"{slot} payload_hashed_length is {hashed}, which does not reach "
+                f"entry {index}'s digest at {entry + E_HASH}..{entry + E_HASH + 32}; "
+                f"payload_hash would not cover the edit and verify_payload_hash "
+                f"would ACCEPT it, so the non-resealing form proves nothing here"
+            )
+        p = payload_base(buf, slot)
+        buf[p + entry + E_HASH:p + entry + E_HASH + 32] = value
+
+    now = bytes(toc_plaintext(buf, slot)[entry + E_HASH:entry + E_HASH + 32])
+    if now != value:
+        raise AssertionError(
+            f"{slot} TOC entry {index} digest reads {now.hex()} after the write, "
+            f"expected {value.hex()}; the mutation did not land"
+        )
+    # The docstring's claim that only the digest moved, proved rather than asserted
+    # in prose: the body the digest covers has to be byte-identical.
+    plain_now = bytes(toc_plaintext(buf, slot))
+    body_now = plain_now[body_off:body_off + body_len]
+    if body_now != body_before:
+        raise AssertionError(
+            f"{slot} image {index}'s body at payload[{body_off}:{body_off + body_len}] "
+            f"changed; this mutator corrupts the DIGEST only, and a changed body "
+            f"would make the two hash rules indistinguishable"
+        )
+
+    base = mm.slot_base(slot)
+    if not reseal:
+        # The stale digest must make the ROM's own payload-hash comparison FAIL, and
+        # the manifest hash and signature must still verify -- otherwise the slot
+        # would be refused for a reason this stimulus did not plant.
+        hashed = payload_hashed_length(buf, slot)
+        stored_hash = bytes(buf[base + OFF_PAYLOAD_HASH:base + OFF_PAYLOAD_HASH + 32])
+        if hashlib.sha256(read_bytes(buf, payload_base(buf, slot), hashed)).digest() \
+                == stored_hash:
+            raise AssertionError(
+                f"{slot} payload_hash still matches sha256(payload[:{hashed}]) after "
+                f"the write, so verify_payload_hash would ACCEPT the slot"
+            )
+        mm.verify_layout(buf, slot)
+        n, _e, _d = load_rsa_private_key()
+        tbs = bytes(buf[base:base + mm.TBS_LEN])
+        sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
+        if not verify_pkcs1v15_sha256(tbs, sig, n):
+            raise AssertionError(
+                f"{slot} signature no longer verifies; payload_hash sits inside the "
+                f"TBS and must not have been touched by this write"
+            )
+
+    p = payload_base(buf, slot)
+    return bytes(buf[p + entry + E_HASH:p + entry + E_HASH + 32])
+
+
+# ── payload field width limits ────────────────────────────────────────────────
+# validate_manifest_header range-checks payload_offset and payload_length at
+# their FULL 64-bit width before narrowing either to 32 bits, then re-checks
+# their 32-bit sum for wrap. Three arms return MANIFEST_ERR_PAYLOAD_TOO_LARGE and
+# one returns MANIFEST_ERR_BAD_LENGTH, so a stimulus aimed at one of them has to
+# exclude the others by construction rather than by reading the code:
+#
+#   payload_offset  > +0x7FFFFFFF or < -0x7FFFFFFF  PAYLOAD_OFF_RANGE, BAD_LENGTH
+#   payload_length  > 0xFFFFFFFF                    PAYLOAD_LEN_RANGE, TOO_LARGE
+#   (p_off + p_len) wraps uint32                    silent,            TOO_LARGE
+#   (p_off + p_len) > SRAM_SIZE                     silent,            TOO_LARGE
+PAYLOAD_OFF_RANGE_LIMIT = 0x7FFF_FFFF
+PAYLOAD_LEN_RANGE_LIMIT = 0xFFFF_FFFF
+
+# The procedure's payload_offset boundary values. Every one exceeds the positive
+# range limit, so all three land on the same arm; the draw is logged and its
+# class asserted, so a run says which value it used.
+OFF_RANGE_VALUES = (0xFFFF_F000, 0xFFFF_FFFF, 0x8000_0000)
+
+
+def declare_wrapping_payload_length(buf: bytearray, slot: str) -> dict:
+    """Declare the ``payload_length`` whose 32-bit sum with ``payload_offset`` wraps.
+
+    The arithmetic-wrap stimulus, and the one arm of ``validate_manifest_header``
+    that prints NOTHING: it returns ``MANIFEST_ERR_PAYLOAD_TOO_LARGE`` from
+    ``total < p_off`` after ``total = (uint32_t)p_off + p_len`` has already lost
+    the carry (``manifest_load.c``). So the console cannot attribute this arm and
+    the stimulus has to exclude its three siblings arithmetically instead:
+
+    * ``PAYLOAD_LEN_RANGE`` cannot claim it, because ``0xFFFFFFFF`` is the largest
+      value that arm ACCEPTS -- the test is ``>``, not ``>=``. This is therefore
+      also that arm's accept-side boundary, and the token being absent is what
+      proves the boundary sits where it is supposed to.
+    * the CAPACITY arm cannot claim it, because the wrapped sum is ``p_off - 1``,
+      far below SRAM capacity. Asserted below against the real field values, not
+      argued: if this held, the two silent arms would be interchangeable.
+    * ``PAYLOAD_OFF_RANGE`` and ``PAYLOAD_OFF_ALIGN`` cannot claim it, because
+      ``payload_offset`` is left exactly as the packer sealed it.
+
+    A ROM without the wrap test would compute a small ``total``, find it inside
+    SRAM, and ACCEPT the slot -- which is the silent arithmetic wrap the row
+    exists to refuse. The rejection is therefore the whole result, and the
+    material behind the declaration is NOT produced: the refusal precedes the
+    payload fetch, so 4 GiB of flash would be neither readable nor read.
+
+    Returns the geometry the wrap decision was made on.
+    """
+    base = mm.slot_base(slot)
+    p_off = int.from_bytes(bytes(buf[base + OFF_BOOT_PAYLOAD_OFFSET:
+                                     base + OFF_BOOT_PAYLOAD_OFFSET + 8]),
+                           "little", signed=True)
+    if not 0 < p_off <= PAYLOAD_OFF_RANGE_LIMIT:
+        raise AssertionError(
+            f"{slot} payload_offset is {p_off}, which an earlier arm of "
+            f"validate_manifest_header claims before the sum is ever formed; the "
+            f"wrap arm needs an offset the ROM accepts"
+        )
+    value = PAYLOAD_LEN_RANGE_LIMIT
+    wrapped = (p_off + value) & 0xFFFF_FFFF
+    if wrapped >= p_off:
+        raise AssertionError(
+            f"{slot} (payload_offset {p_off} + payload_length {value}) & 0xFFFFFFFF "
+            f"is {wrapped}, not below the offset, so `total < p_off` does not fire "
+            f"and this is not the wrap stimulus"
+        )
+    if wrapped > SEP_SRAM_SIZE:
+        raise AssertionError(
+            f"{slot} wrapped sum {wrapped} exceeds the {SEP_SRAM_SIZE}-byte SEP "
+            f"SRAM, so the capacity arm would also refuse the slot and the two "
+            f"silent arms become indistinguishable"
+        )
+    was = declare_payload_length(buf, slot, value)
+    return {
+        "payload_offset": p_off,
+        "payload_length_before": was,
+        "payload_length": value,
+        "wrapped_sum": wrapped,
+        "sram_size": SEP_SRAM_SIZE,
+        "len_range_limit": PAYLOAD_LEN_RANGE_LIMIT,
+    }
+
+
+def set_out_of_range_payload_offset(buf: bytearray, slot: str, value: int) -> int:
+    """Declare a ``payload_offset`` wider than the 32 bits every consumer narrows it to.
+
+    ``validate_manifest_header`` refuses ``payload_offset > +0x7FFFFFFF`` (and
+    ``< -0x7FFFFFFF``) with ``MANIFEST_ERR_BAD_LENGTH``, announcing
+    ``PAYLOAD_OFF_RANGE``, before the field is cast to ``int32_t``
+    (``manifest_load.c``). Without that arm a value above 2 GiB would narrow to a
+    small in-range offset and every later bound would be computed against it.
+
+    THE VALUE IS WRITTEN ZERO-EXTENDED, which is the whole difficulty of this
+    stimulus. ``payload_offset`` is ``int64_t``, so sign-extending a 32-bit
+    boundary value such as ``0xFFFFFFFF`` stores ``-1``: that is inside the
+    permitted negative range, narrows to ``-1``, and is then refused by the
+    ``p_off <= 0`` arm -- same ``MANIFEST_ERR_BAD_LENGTH``, different arm, and no
+    token at all. The stored value is read back as a signed 64-bit integer and
+    required to exceed the positive limit, so that mistake fails here instead of
+    passing as a generic length verdict.
+
+    NO RE-SEAL. ``boot_arguments`` sits outside the TBS and outside the bytes
+    ``manifest_hash`` covers (``manifest.h``), so the slot stays genuinely signed
+    and the declared offset is the only thing wrong with it -- proved below
+    against the real bytes rather than asserted in prose.
+
+    THE PAYLOAD IS NOT MOVED: the refusal is the first payload decision the ROM
+    makes, upstream of the fetch, so nothing at the declared offset is ever read.
+
+    Returns the previous value.
+    """
+    base = mm.slot_base(slot)
+    if not PAYLOAD_OFF_RANGE_LIMIT < value <= 0xFFFF_FFFF_FFFF_FFFF:
+        raise ValueError(
+            f"payload_offset {value} does not exceed the +0x{PAYLOAD_OFF_RANGE_LIMIT:x} "
+            f"limit, so the PAYLOAD_OFF_RANGE arm is not the one that would claim it"
+        )
+    # Prove the slot is fully sealed BEFORE the write: the ROM refuses it upstream
+    # of its own integrity check, so a broken seal would be invisible in the run.
+    verify_sealed(buf, slot)
+    verify_signing_key(buf, slot)
+    was = int.from_bytes(bytes(buf[base + OFF_BOOT_PAYLOAD_OFFSET:
+                                   base + OFF_BOOT_PAYLOAD_OFFSET + 8]),
+                         "little", signed=True)
+
+    _put_u64(buf, base + OFF_BOOT_PAYLOAD_OFFSET, value)
+
+    stored = int.from_bytes(bytes(buf[base + OFF_BOOT_PAYLOAD_OFFSET:
+                                      base + OFF_BOOT_PAYLOAD_OFFSET + 8]),
+                            "little", signed=True)
+    if stored <= PAYLOAD_OFF_RANGE_LIMIT:
+        raise AssertionError(
+            f"{slot} payload_offset reads {stored} as int64 after writing "
+            f"0x{value:x}; it must exceed +0x{PAYLOAD_OFF_RANGE_LIMIT:x} or the "
+            f"`p_off <= 0` arm claims the slot instead of PAYLOAD_OFF_RANGE. Write "
+            f"the value zero-extended, not sign-extended"
+        )
+    # The claim that boot_arguments sits outside the signed and hashed regions is
+    # what licenses not re-signing; assert it against the real bytes, so a future
+    # move of the field fails loudly here instead of turning into a signature
+    # rejection the run cannot tell apart from this one.
+    mm.verify_layout(buf, slot)
+    n, _e, _d = load_rsa_private_key()
+    tbs = bytes(buf[base:base + mm.TBS_LEN])
+    sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
+    if not verify_pkcs1v15_sha256(tbs, sig, n):
+        raise AssertionError(
+            f"{slot} signature no longer verifies after writing payload_offset; the "
+            f"field is supposed to sit outside the TBS, so either the offset moved "
+            f"or the layout this mutator assumes is wrong"
+        )
+    return was

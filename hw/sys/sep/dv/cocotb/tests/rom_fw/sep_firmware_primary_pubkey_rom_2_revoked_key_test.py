@@ -18,20 +18,22 @@ grade the primary rejection and end in
 terminal base instead; the shared base measures which of the two applies from the
 image rather than trusting the slot number.
 
-WHAT THIS MEMBER PINS. Slot 2 has no compiled-in digest
-(``key_digests.c`` populates slot 0 only), so without the revocation bit it
-would be refused as ``ROM_KEY_EMPTY``. Here the fuse bit changes the verdict,
+WHAT THIS MEMBER PINS. Slot 2's digest is another key's under ``TEST_BUILD``, not
+the dev0 modulus this manifest carries, so without the revocation bit it
+would be refused as ``PUBK_HASH_MISMATCH``. Here the fuse bit changes the verdict,
 because ``validate_signature`` consults the fuse bitmap
 (``manifest_crypto.c``) BEFORE the digest table.
-``ROM_KEY_EMPTY`` is therefore the load-bearing forbid: seeing it would mean
+``PUBK_HASH_MISMATCH`` is therefore the load-bearing forbid: seeing it would mean
 revocation was evaluated late, or not at all.
 
 A NARROWING. A stronger stimulus would re-sign the primary with slot 2's own
-private key, so that the primary is a fully valid
-manifest bound to slot 2 and its test proves "revocation refuses a provably good
-image". Only ``rsa_private_key.dev0.pem`` ships here, so the selector write leaves
-the dev0 signature stale and this member proves the weaker property that
-revocation PREEMPTS the empty-digest arm. The stale signature is never examined --
+private key from ``bootrom/prod/tools/test_signing_keys/``, so that the primary
+is a fully valid manifest bound to slot 2 and its test proves "revocation refuses
+a provably good image". This member only writes the selector, which leaves
+the dev0 signature stale, so it proves the weaker property that
+revocation PREEMPTS the digest bind;
+``sep_firmware_primary_rom_key_slot1_valid_test`` carries the re-signing the
+stronger form needs. The stale signature is never examined --
 ``RSA_VERIFY_START`` must not appear before the backup read and the total count is
 pinned to 1 -- so the verdict stays attributable to revocation. Slot 0 carries the
 family's strict form.

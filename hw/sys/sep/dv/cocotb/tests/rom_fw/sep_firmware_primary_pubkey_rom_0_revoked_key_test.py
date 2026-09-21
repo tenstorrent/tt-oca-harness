@@ -16,10 +16,11 @@ refuses the primary AND the backup, the retry loop exhausts, and the run ends in
 ``MANIFEST_ALL_FAILED`` (``manifest_load.c``). Slots 1-5 fail over and boot, so
 this member is terminal and its siblings are not: it must end at the revocation
 with no ``COPY_AND_EXEC_IMAGE``, while the slot-1 member ends in
-``COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` (, in a list running).
+``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``.
 
-IT IS ALSO THE STRICTEST MEMBER, not the awkward one. Slot 0 is the only populated
-digest (``key_digests.c``) and the slot the image is signed against, so the
+IT IS ALSO THE STRICTEST MEMBER, not the awkward one. Slot 0 is the slot the
+image is signed against, and the one whose ``key_digests.c`` entry matches the
+modulus both manifests carry, so the
 selector write is a NO-OP: the flash image this testcase runs is byte-identical to
 the shipped ``bootrom/prod/build/secure_boot.bin``, and the base proves both slots
 still pass ``verify_sealed`` and ``verify_public_key`` before the run starts. Two

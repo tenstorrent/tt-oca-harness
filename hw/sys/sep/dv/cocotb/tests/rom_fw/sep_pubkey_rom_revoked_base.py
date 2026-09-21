@@ -19,35 +19,30 @@ slot the testcase did not select -- fails loudly instead of passing.
 
 WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, PER SLOT. ``validate_signature``
 consults the fuse bitmap (``manifest_crypto.c``) BEFORE the compiled-in digest
-table  and before ``rsa_3072_verify``. Slot 0 is the only
-populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
+table and before ``rsa_3072_verify``. What ``key_digests.c`` holds for a slot
+decides which forbidden marker is load-bearing for that member:
 
-  * slots 1-5 would otherwise be rejected as ``ROM_KEY_EMPTY``, and forbidding
-    that marker is what pins the ORDER -- revocation before the digest table;
-  * slot 0 would otherwise boot, because the shipped image genuinely binds to it
-    (``configs/secure_boot_test.yaml``), so revocation is the sole cause
-    of the rejection and ``RSA_VERIFY_START`` / ``SIG_VALID`` are the load-bearing
-    forbids there.
+  * **slot 0** binds to the dev0 modulus the backup actually carries, so it would
+    otherwise boot (``configs/secure_boot_test.yaml``); revocation is the sole
+    cause of the rejection and ``RSA_VERIFY_START`` / ``SIG_VALID`` are the
+    load-bearing forbids there;
+  * **slots 1-5** hold another key's digest under ``TEST_BUILD``, so they would
+    otherwise be rejected as ``PUBK_HASH_MISMATCH``.
 
-**REVOCATION-FIRST IS WHAT SPLITS THIS FAMILY.** A ROM that took the index bound,
-then the digest-populated check (returning
-``SEP_MSG_INVALID_KEY_CONTENTS``), and only THEN revocation. That order
-is invisible there because all six of its slots are populated -- carries a
-``static_assert`` is marked "COVERAGE: exclude, correct by
-construction". This ROM inverts it: revocation first (``manifest_crypto.c``),
-digest table second. The consequence changes what slots 1-5 actually
-prove, so it is stated rather than left implicit: **had this ROM used the
-reference's order, slots 1-5 would return ``ROM_KEY_EMPTY`` /
-``MANIFEST_ERR_SIG_FAILED`` instead of ``KEY_REVOKED``.** On this platform,
-therefore:
+**REVOCATION-FIRST IS WHAT SPLITS THIS FAMILY.** Because the fuse bitmap is read
+before the digest bind, forbidding ``PUBK_HASH_MISMATCH`` is what pins the
+ORDER: a ROM that consulted the digest table first would report it instead of
+``KEY_REVOKED``, and the members for
+slots 1-5 would fail. That order also decides how much each member proves:
 
   * **slot 0** establishes the strong property -- revocation refuses an otherwise
     fully valid, correctly signed, bootable image;
   * **slots 1-5** establish the weaker property that revocation PREEMPTS the
-    empty-digest arm, because this tree ships one signing key and populates one
-    digest (see :func:`select_backup_rom_slot`).
+    digest arms, because only the dev0 signing key ships in this tree, so a
+    slot-N selector cannot be re-bound to slot N's key
+    (see :func:`select_backup_rom_slot`).
 
-Revocation-first is the fail-closed order and is not a defect, but the divergence
+Revocation-first is the fail-closed order and is not a defect, but the narrowing
 is why slot 0 carries this family's real weight.
 
 Slot 0 is therefore the STRICTEST member of this family, not a case to avoid: it
@@ -170,10 +165,12 @@ class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
     expected_error = MANIFEST_ERR_KEY_REVOKED
     # Every other arm of validate_signature, so the KEY_REVOKED verdict cannot be
     # confused with one of them, plus proof the modulus never reached the
-    # verifier. ROM_KEY_EMPTY is load-bearing for slots 1-5 (they ARE empty, so
-    # seeing it would mean the digest table was consulted before the fuse bitmap);
-    # RSA_VERIFY_START and SIG_VALID are load-bearing for slot 0 (its manifest is
-    # otherwise valid, so without them a revocation that did nothing would boot).
+    # verifier. PUBK_HASH_MISMATCH is load-bearing for slots 1-5: seeing it would
+    # mean the digest table was consulted before the fuse bitmap. RSA_VERIFY_START
+    # and SIG_VALID are load-bearing for slot 0, whose manifest is otherwise
+    # valid, so without them a revocation that did nothing would boot.
+    # ROM_KEY_EMPTY cannot occur -- every slot has a digest -- and is forbidden
+    # only so a table that lost an entry fails here instead of silently.
     extra_forbidden = ("ROM_KEY_EMPTY", "PUBK_HASH_MISMATCH", "RSA_VERIFY_START",
                        "SIG_VALID", "CRYPTO_VALIDATE_OK", "BAD_KEY_IDX",
                        "BAD_KEY_SEL", "FUSE_KEY_EMPTY", "VERSION_ROLLBACK",

@@ -67,12 +67,12 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# The only populated entry in key_digests.c, and the slot the shipped image
-# is signed against (configs/secure_boot_test.yaml). Exercising another valid index
-# would need that slot's own private key; this tree ships one RSA key
-# (tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem), so slot 0
-# is the only index that is valid here in the sense the testcase needs -- a
-# populated digest the image actually binds to.
+# The slot the shipped image is signed against
+# (configs/secure_boot_test.yaml), so its digest is the one the image's own
+# modulus binds to. Exercising another valid index would need re-signing with
+# that slot's private key from tools/test_signing_keys/, which is what the
+# primary-side sep_firmware_primary_rom_key_slot1_valid_test does; here the
+# point is a stimulus the shipped bytes already satisfy.
 _VALID_SLOT = 0
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_VALID_SLOT:08x}"
 _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"

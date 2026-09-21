@@ -376,27 +376,6 @@ args = [
 ]
 
 [[tests]]
-# Backup selects a ROM key slot with no compiled-in digest. The verification
-# modulus comes from the manifest, so an unpopulated slot must fail closed:
-# skipping the digest bind would verify a manifest against a modulus it supplied
-# itself. Everything else about the backup is valid, so ROM_KEY_EMPTY is the only
-# available verdict. Same PROD OTP as the sibling key tests -- an unrevoked slot
-# and BL1_VERSION 0, so neither revocation nor rollback preempts the check.
-name = "sep_firmware_backup_unpopulated_rom_key_slot_test"
-module = "rom_fw.sep_firmware_backup_unpopulated_rom_key_slot_test"
-target = "rom_boot"
-firmware = { name = "boot_rom", mode = "boot_rom" }
-seed = 1
-timeout_sec = 7200
-tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
-run_modes = ["cpu"]
-args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
-  "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-]
-
-[[tests]]
 # Single SPI detected at the primary address.
 # Non-secure image and no +sep_efuse_preload: this is a transport test, so the
 # default TEST_DEV OTP keeps the run free of secure-boot failure modes that would
@@ -719,8 +698,9 @@ args = [
 # rom_fw/sep_pubkey_rom_revoked_base.py; this module's only substantive line is
 # _REVOKED_SLOT = 5. Its own OTP image is the rest of the stimulus:
 # sep_efuse_lc_prod_pubk_revoke5.toml is sep_efuse_lc_prod.toml plus exactly that
-# one bit. Slot 5 also has no compiled-in digest, so this entry additionally pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# one bit. Slot 5's digest is another key's under TEST_BUILD, so this entry
+# additionally pins the ORDER -- revocation before the digest bind -- by
+# forbidding PUBK_HASH_MISMATCH.
 #
 # No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
 # never driven and RSA_VERIFY_START is forbidden.
@@ -1036,8 +1016,8 @@ args = [
 # sep_efuse_lc_prod_pubk_revoke1.toml is sep_efuse_lc_prod.toml plus exactly that
 # one bit, and the test asserts the bitmap is EXACTLY that bit, so a rejection
 # cannot come from a slot it did not select.
-# Slot 1 has no compiled-in digest, so this entry also pins the ORDER --
-# revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 1's digest is another key's under TEST_BUILD, so this entry also pins the
+# ORDER -- revocation before the digest bind -- by forbidding PUBK_HASH_MISMATCH.
 #
 # No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
 # never driven and RSA_VERIFY_START is forbidden.
@@ -1064,8 +1044,8 @@ args = [
 # sep_efuse_lc_prod_pubk_revoke2.toml is sep_efuse_lc_prod.toml plus exactly that
 # one bit, and the test asserts the bitmap is EXACTLY that bit, so a rejection
 # cannot come from a slot it did not select.
-# Slot 2 has no compiled-in digest, so this entry also pins the ORDER --
-# revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 2's digest is another key's under TEST_BUILD, so this entry also pins the
+# ORDER -- revocation before the digest bind -- by forbidding PUBK_HASH_MISMATCH.
 #
 # No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
 # never driven and RSA_VERIFY_START is forbidden.
@@ -1092,8 +1072,8 @@ args = [
 # sep_efuse_lc_prod_pubk_revoke3.toml is sep_efuse_lc_prod.toml plus exactly that
 # one bit, and the test asserts the bitmap is EXACTLY that bit, so a rejection
 # cannot come from a slot it did not select.
-# Slot 3 has no compiled-in digest, so this entry also pins the ORDER --
-# revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 3's digest is another key's under TEST_BUILD, so this entry also pins the
+# ORDER -- revocation before the digest bind -- by forbidding PUBK_HASH_MISMATCH.
 #
 # No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
 # never driven and RSA_VERIFY_START is forbidden.
@@ -1120,8 +1100,8 @@ args = [
 # sep_efuse_lc_prod_pubk_revoke4.toml is sep_efuse_lc_prod.toml plus exactly that
 # one bit, and the test asserts the bitmap is EXACTLY that bit, so a rejection
 # cannot come from a slot it did not select.
-# Slot 4 has no compiled-in digest, so this entry also pins the ORDER --
-# revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 4's digest is another key's under TEST_BUILD, so this entry also pins the
+# ORDER -- revocation before the digest bind -- by forbidding PUBK_HASH_MISMATCH.
 #
 # No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
 # never driven and RSA_VERIFY_START is forbidden.
@@ -1347,8 +1327,9 @@ args = [
 # (configs/secure_boot_test.yaml), and bit 1 does not revoke it. The
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
-# Slot 1 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 1's digest is another key's under TEST_BUILD (key_digests.c), so this entry
+# also pins the ORDER -- revocation before the digest bind -- by forbidding
+# PUBK_HASH_MISMATCH.
 # NARROWED, disclosed in the module docstring: proving the stronger form would
 # need a primary re-signed with slot 1's own key, which this tree does not ship,
 # so this member proves only "revocation preempts the empty-digest arm".
@@ -1387,8 +1368,9 @@ args = [
 # (configs/secure_boot_test.yaml), and bit 2 does not revoke it. The
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
-# Slot 2 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 2's digest is another key's under TEST_BUILD (key_digests.c), so this entry
+# also pins the ORDER -- revocation before the digest bind -- by forbidding
+# PUBK_HASH_MISMATCH.
 # NARROWED, disclosed in the module docstring: proving the stronger form would
 # need a primary re-signed with slot 2's own key, which this tree does not
 # ship, so this member proves only "revocation preempts the empty-digest arm".
@@ -1427,8 +1409,9 @@ args = [
 # (configs/secure_boot_test.yaml), and bit 3 does not revoke it. The
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
-# Slot 3 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 3's digest is another key's under TEST_BUILD (key_digests.c), so this entry
+# also pins the ORDER -- revocation before the digest bind -- by forbidding
+# PUBK_HASH_MISMATCH.
 # NARROWED, disclosed in the module docstring: proving the stronger form would
 # need a primary re-signed with slot 3's own key, which this tree does not
 # ship, so this member proves only "revocation preempts the empty-digest arm".
@@ -1467,8 +1450,9 @@ args = [
 # (configs/secure_boot_test.yaml), and bit 4 does not revoke it. The
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
-# Slot 4 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 4's digest is another key's under TEST_BUILD (key_digests.c), so this entry
+# also pins the ORDER -- revocation before the digest bind -- by forbidding
+# PUBK_HASH_MISMATCH.
 # NARROWED, disclosed in the module docstring: proving the stronger form would
 # need a primary re-signed with slot 4's own key, which this tree does not
 # ship, so this member proves only "revocation preempts the empty-digest arm".
@@ -1507,8 +1491,9 @@ args = [
 # (configs/secure_boot_test.yaml), and bit 5 does not revoke it. The
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
-# Slot 5 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# Slot 5's digest is another key's under TEST_BUILD (key_digests.c), so this entry
+# also pins the ORDER -- revocation before the digest bind -- by forbidding
+# PUBK_HASH_MISMATCH.
 # NARROWED, disclosed in the module docstring: proving the stronger form would
 # need a primary re-signed with slot 5's own key, which this tree does not
 # ship, so this member proves only "revocation preempts the empty-digest arm".
@@ -1794,7 +1779,8 @@ args = [
 # (MANIFEST_ALL_FAILED, manifest_load.c).
 #
 # THE STRICT FORM, for BOTH members. The ROM-slot revoke families of R1/R2 could
-# only reach it at slot 0, because slots 1-5 have no populated digest and keep a
+# only reach it at slot 0, because a non-zero slot binds to a digest the
+# manifest's own modulus does not match and keeps a
 # stale signature. Here the fuse digest is programmed and the
 # image is re-signed, so revocation is the sole possible cause of the rejection.
 #
@@ -3831,6 +3817,534 @@ firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Payload image size, EXT SRAM, legal. 4 KiB is smaller than the packer's 5936,
+# so the BL1 body moves behind the TOC region and the ROM has to find it from the
+# entry rather than from the shipped offset.
+name = "sep_firmware_payload_correct_ext_4kb_test"
+module = "rom_fw.sep_firmware_payload_correct_ext_4kb_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Payload image size, EXT SRAM, legal. 29 KiB, five times the packer's payload
+# and still inside the 252 KiB the EXT path allows.
+name = "sep_firmware_payload_correct_ext_29kb_test"
+module = "rom_fw.sep_firmware_payload_correct_ext_29kb_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Payload image size, EXT SRAM, illegal. The primary declares the first whole KiB
+# past this design's 252 KiB EXT capacity, so validate_manifest_header refuses it
+# before the payload fetch and the backup boots. The name carries the reference's
+# 62 KiB, which is that design's boundary and legal here; see the testcase.
+name = "sep_firmware_payload_incorrect_ext_62kb_test"
+module = "rom_fw.sep_firmware_payload_incorrect_ext_62kb_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "error", "failover", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Payload image size, EXT SRAM, illegal declared length drawn at random from 1 to
+# 100 KiB past the EXT capacity. Same refusal and failover as the fixed sibling.
+name = "sep_firmware_payload_incorrect_ext_test"
+module = "rom_fw.sep_firmware_payload_incorrect_ext_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "error", "failover", "random", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Payload image size, SMC SRAM, legal. use_ext_sram is cleared, so the 64 KiB
+# payload is staged in the window scratch[13]/[14] publish. The window is 256 KiB
+# so its capacity check is not what this exercises.
+name = "sep_firmware_payload_correct_smc_64kb_test"
+module = "rom_fw.sep_firmware_payload_correct_smc_64kb_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+  "+sep_smc_scratch13=20000",
+  "+sep_smc_scratch14=40000",
+]
+
+[[tests]]
+# Payload image size, SMC SRAM, legal. 128 KiB is half of SEP's whole SRAM, so a
+# ROM that ignored use_ext_sram could not stage it where this one must not. The
+# timeout is doubled: the serial flash read plus the ROM's byte-wise zeroization
+# of the payload tail dominate the run.
+name = "sep_firmware_payload_correct_smc_128kb_test"
+module = "rom_fw.sep_firmware_payload_correct_smc_128kb_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 28800
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+  "+sep_smc_scratch13=20000",
+  "+sep_smc_scratch14=40000",
+]
+
+[[tests]]
+# Payload image size, SMC SRAM, legal and the largest accepted size in the group.
+# 200 KiB leaves 52 KiB under validate_manifest_header's bound, so with the
+# refused members it brackets the boundary. The timeout is doubled because 200 KiB
+# of serial flash read is most of this run's simulated time.
+name = "sep_firmware_payload_correct_smc_200kb_test"
+module = "rom_fw.sep_firmware_payload_correct_smc_200kb_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 28800
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+  "+sep_smc_scratch13=20000",
+  "+sep_smc_scratch14=40000",
+]
+
+[[tests]]
+# Primary payload declares no images at all: TOC image_count = 0, refused with
+# MANIFEST_ERR_TOC_COUNT after the primary's own signature verified, and the
+# untouched backup boots. The zero half of that arm had no row anywhere before
+# this one; the four *_invalid_payload_image_count_test cells all plant 257.
+name = "sep_firmware_primary_no_payload_images_test"
+module = "rom_fw.sep_firmware_primary_no_payload_images_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup payload declares no images; the primary is refused first by the
+# reference's own trigger, an invalid primary TOC major_version, so the two
+# rejections carry distinct codes. Terminal.
+name = "sep_firmware_backup_no_payload_images_test"
+module = "rom_fw.sep_firmware_backup_no_payload_images_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Both payloads declare no images, so both slots are refused with the SAME code.
+# Position and count attribute one rejection to each slot, which is what the
+# reference's WARNING/ERROR severity pair carries there. Terminal.
+name = "sep_firmware_primary_and_backup_no_payload_images_test"
+module = "rom_fw.sep_firmware_primary_and_backup_no_payload_images_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary payload_offset drawn at random from the 8-byte-aligned values inside
+# the manifest header, so the payload would be staged over the header the ROM is
+# still reading. PAYLOAD_OVERLAPS_MANIFEST, refused upstream of the integrity
+# check and of any staging, and the backup boots. boot_arguments sits outside
+# the signed TBS, so the slot needs no re-signing.
+name = "sep_firmware_payload_overlaps_manifest_test"
+module = "rom_fw.sep_firmware_payload_overlaps_manifest_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "error", "failover", "random", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary's cleartext image digest is zeroed while its body is left as shipped and
+# NOTHING is re-sealed, which is the reference's own mechanism. For a cleartext
+# payload payload_hashed_length is the whole TOC region, so the digest sits inside
+# the bytes payload_hash covers and verify_payload_hash refuses the slot:
+# PLD_HASH_MISMATCH, CRYPTO_FAIL=0x00030017, MANIFEST_ERR=0x00030017, then the
+# backup boots. The per-image digest arm a re-seal would reach instead
+# (IMAGE_HASH_MISMATCH, 0x00030019) and PLD_HASH_TIMEOUT, which returns a
+# different code from the same comparison, are both forbidden.
+name = "sep_firmware_cleartext_image_corrupt_hash_test"
+module = "rom_fw.sep_firmware_cleartext_image_corrupt_hash_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "hash", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary clears use_ext_sram and declares more than the SMC window holds, so the
+# staging block refuses it with PAYLOAD_NO_ROOM= and the backup boots. The window
+# MUST stay at 0x20000/0x20000 to match sep_use_ext_sram_base: a window wider than
+# the 252 KiB validate_manifest_header allows puts this arm out of reach, which is
+# why the accepted SMC size members cannot cover it. No payload is transferred --
+# the refusal precedes the fetch -- so this is a short run despite the size.
+name = "sep_firmware_payload_incorrect_smc_test"
+module = "rom_fw.sep_firmware_payload_incorrect_smc_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "error", "failover", "random", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+  "+sep_smc_scratch13=20000",
+  "+sep_smc_scratch14=20000",
+]
+
+[[tests]]
+# Secondary chiplet, valid published manifest. No +sep_boot_from_spi, so
+# STRAPS_LO[25] stays clear, boot_from_spi() is false and the recovery arm is
+# unreachable too -- rom_main.c lands on its else branch and prints
+# BOOT_SECONDARY.
+#
+# The SMC responder publishes manifest offset 0x1000 in scratch[8] by default,
+# which is where the packed smc_mem.hex really carries "TBL1". No
+# +sep_smc_scratch8: the testcase asserts the plusarg is ABSENT for this member,
+# so a stray one cannot turn it into a copy of its sibling.
+#
+# No efuse preload and no +sep_crypto_edn_force. The SMC image is the unsigned
+# one and the zero OTP senses TEST_DEV, which the manifest permits, so secure
+# boot is off by the manifest's own flag and there is no RSA work to feed entropy
+# to. A PROD preload would force authentication of an unsigned image and this
+# would become a signature test.
+name = "sep_firmware_secondary_chiplet_bootcode_test"
+module = "rom_fw.sep_firmware_secondary_chiplet_bootcode_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "secondary", "strap", "manifest", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+]
+
+[[tests]]
+# Secondary chiplet, published manifest invalid. Same straps and same SMC image
+# as the row above; the only difference is +sep_smc_scratch8=00005000, which
+# republishes scratch[8] so the ROM loads from 0x4006_5000 instead of
+# 0x4006_1000.
+#
+# 0x5000 is deliberate, not an arbitrary hole. smc_mem.hex is based at
+# @40060000 and covers 276272 bytes, so the offset is INSIDE the loaded span and
+# reads eight bytes this image really commits, which is what makes the verdict
+# attributable to the image under test rather than to a memory-model default.
+# The testcase re-derives that from the hex file itself, and also that 0x1000
+# still holds a valid "TBL1" the run never used.
+#
+# The SMC path has one slot (num_retries = 0, manifest_load.c), so this is
+# terminal: MANIFEST_ERR=0x00030002 once, MANIFEST_ALL_FAILED, and a FAIL
+# verdict. The shorter timeout than its sibling reflects that it never fetches a
+# payload.
+name = "sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test"
+module = "rom_fw.sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "secondary", "strap", "manifest", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+  "+sep_smc_scratch8=00005000",
+]
+
+[[tests]]
+# Fuse lock, cell 1 of 4: TEST_DEV + SBOOT_DIS=0.
+#
+# The four rows share one flow and differ only in the OTP preload, so each
+# preload is the whole identity of its row and the testcase asserts both fields
+# it stages. This cell is the one in which the manifest flag decides secure boot,
+# so it authenticates and needs +sep_crypto_edn_force for OTBN's URND -- the same
+# entropy grant sep_rom_ot_secure_boot_test uses, hence the dv_shortcut tag.
+#
+# The preload is named even though an unprogrammed OTP senses this exact cell:
+# without the plusarg dv_sim_prestage.stage() is a no-op and the sense-time
+# shadow compare would have no independent golden.
+name = "sep_firmware_fuse_lock_secure_test_dev_test"
+module = "rom_fw.sep_firmware_fuse_lock_secure_test_dev_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "efuse", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Fuse lock, cell 2 of 4: PROD + SBOOT_DIS=0. Authenticates because the
+# lifecycle enforces it, not because the manifest asked, which is what the
+# LC=PROD echo separates from cell 1. Same entropy grant for the same reason.
+name = "sep_firmware_fuse_lock_secure_prod_test"
+module = "rom_fw.sep_firmware_fuse_lock_secure_prod_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "efuse", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Fuse lock, cell 3 of 4: TEST_DEV + SBOOT_DIS=1. The chicken bit short-circuits
+# secure_boot_enabled() ahead of both the lifecycle and the manifest flag, so
+# there is no RSA work and NO +sep_crypto_edn_force -- adding it would grant
+# entropy nothing asks for and would blur the distinction from the two secure
+# cells. That also makes this the cheapest of the four.
+name = "sep_firmware_fuse_lock_non_secure_test_dev_test"
+module = "rom_fw.sep_firmware_fuse_lock_non_secure_test_dev_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "efuse", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_sboot_dis.toml",
+]
+
+[[tests]]
+# Fuse lock, cell 4 of 4: PROD + SBOOT_DIS=1. The chicken bit against the
+# lifecycle that would otherwise enforce authentication. Shares the preload with
+# sep_firmware_device_cntl_non_secure_boot_flow_test, which grades the override
+# itself; this row grades the fuse lock, the manifest hash and the lifecycle
+# closure under the same fuses. No entropy grant, for the same reason as cell 3.
+name = "sep_firmware_fuse_lock_non_secure_prod_test"
+module = "rom_fw.sep_firmware_fuse_lock_non_secure_prod_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "efuse", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
+]
+
+[[tests]]
+# Payload field LIMITS: the 32-bit boundaries of payload_offset and
+# payload_length, which validate_manifest_header range-checks at full 64-bit
+# width and then re-checks for wrap after narrowing. One arm per slot, because
+# the two must produce different error codes for the terminal verdict to be
+# attributable: the primary declares payload_length = 0xFFFFFFFF, the largest
+# value the range arm ACCEPTS, so it survives to the wrap test and is caught
+# there silently; the backup declares an out-of-range payload_offset drawn from
+# the procedure's three values and is refused with PAYLOAD_OFF_RANGE.
+#
+# Both slots are refused before the manifest hash, so no payload is fetched, no
+# RSA runs and no entropy grant is needed -- which is also why this is a short
+# run despite naming a 4 GiB length. PAYLOAD_LEN_RANGE is forbidden: its absence
+# is the accept-side evidence that the length-range boundary sits where it should.
+name = "sep_manifest_payload_limits_test"
+module = "rom_fw.sep_manifest_payload_limits_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "error", "failover", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+]
+
+[[tests]]
+# MIXED-CLASS failover: the primary fails integrity (manifest SHA-256) and the
+# backup fails authentication (one signature bit). The two neighbours each cover
+# one half -- sep_firmware_bad_manifest_hash_test cannot be terminal, and
+# sep_firmware_backup_invalid_signature_test leaves the primary on a structural
+# BAD_MAGIC -- so no existing row has a primary that reached its own integrity
+# check and a backup that reached the verifier in one run.
+#
+# +sep_crypto_edn_force for the one OTBN modexp the backup runs; hence the
+# dv_shortcut tag. PROD preload because the crypto chain must be enforced, or the
+# backup's signature is never examined and the run becomes a failover-and-boot.
+name = "sep_mixed_failure_primary_backup_test"
+module = "rom_fw.sep_mixed_failure_primary_backup_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "manifest", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Key revocation bitmap, CONSTRAINED-RANDOM. The seed draws the whole stimulus --
+# the 8-bit CHIPLET_PUBK_REVOKE bitmap and both manifests' ROM key slots -- and
+# the run lands in one of four classes: clean proceed, noisy proceed, primary
+# failover, or both-revoked terminal. The last is the one nothing else here
+# reaches: it is the only evidence that the revocation check is applied on the
+# BACKUP path and not on the primary alone.
+#
+# NO +sep_efuse_preload ON PURPOSE. A committed preload short-circuits both the
+# pre-sim staging hook and the runtime selector, so the bitmap could not vary per
+# seed. Without it both readers take the randomized path and derive the same
+# image from one shared draw (cocotb/env/sep_key_revocation_draw.py):
+# dv_sim_prestage before the simulator starts, the testcase through
+# select_efuse_image at run time. The DUT senses the TESTCASE's image -- the
+# efuse model's $readmemh waits for reset, which releases long after the
+# testcase writes its golden at 0 ns -- and the hook's copy is what the testcase
+# compares that golden against, so two processes disagreeing about the draw
+# fails loudly instead of testing a bitmap nothing predicted.
+#
+# The seed is the signoff seed: it draws the both-revoked terminal class with two
+# DIFFERENT non-zero slots, which is the strongest single point in the space.
+# Closure is a 27-bin model accumulated across seeds and is what gates
+# regression_stable; raising `reseed` is the knob for it, at roughly 26 minutes
+# per additional seed.
+#
+# +sep_crypto_edn_force because the proceed and failover classes run a real OTBN
+# modexp; hence the dv_shortcut tag.
+name = "sep_key_revocation_bitmap_random_test"
+module = "rom_fw.sep_key_revocation_bitmap_random_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 17
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "crypto", "revocation", "efuse", "random", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary selects ROM key slot 1, carries slot 1's modulus and its signature, and
+# boots. The first case to prove a non-zero ROM slot can verify: slots 1-5 carry
+# digests only under TEST_BUILD, so before that every non-zero slot could only be
+# tested as a refusal.
+name = "sep_firmware_primary_rom_key_slot1_valid_test"
+module = "rom_fw.sep_firmware_primary_rom_key_slot1_valid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",

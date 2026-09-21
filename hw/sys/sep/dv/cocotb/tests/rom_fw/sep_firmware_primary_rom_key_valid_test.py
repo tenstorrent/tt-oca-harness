@@ -66,13 +66,13 @@ Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto chain reached
 ``SIG_VALID`` and nothing at all about key selection; this one adds the selector and
 revocation echoes with exact counts and their ordering against the verifier. Third,
 that test has no device-side assertion; this one requires the backup span to be
-untouched. The narrowing is real and is disclosed: slot 0 is the only
-index that is valid HERE, because the only RSA signing key that ships is
-``rsa_private_key.dev0.pem``
+untouched. The narrowing is real and is disclosed: slot 0 is the only index this
+testcase can exercise WITHOUT re-signing, because the shipped image is signed
+with ``rsa_private_key.dev0.pem``
 (``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/``, which also holds an
-unusable ``ec_private_key.pem``) and only slot 0's
-digest is populated (``key_digests.c``), so slot 0 is the only valid index this
-tree can exercise.
+unusable ``ec_private_key.pem``) and slot 0 is the digest that key binds to.
+A proceed case on another slot needs the manifest re-signed with that slot's key;
+``sep_firmware_primary_rom_key_slot1_valid_test`` does exactly that for slot 1.
 
 MARKER. There is no positive status code for the ROM-key path. This ROM
 *defines* ``SEP_MSG_USING_ROM_KEY`` (``status_values.h``,
@@ -115,8 +115,9 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# The only populated entry in key_digests.c, and the slot the shipped image
-# is signed against (configs/secure_boot_test.yaml).
+# The slot the shipped image is signed against
+# (configs/secure_boot_test.yaml), and the only entry in key_digests.c that a
+# release build populates -- slots 1-5 carry test digests under TEST_BUILD only.
 _VALID_SLOT = 0
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_VALID_SLOT:08x}"
 _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"

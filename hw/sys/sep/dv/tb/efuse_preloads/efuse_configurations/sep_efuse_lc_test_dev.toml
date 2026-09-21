@@ -1,0 +1,27 @@
+# TEST_DEV lifecycle, everything else at zero.
+#
+# The lifecycle an unprogrammed OTP already senses, declared explicitly so that
+# the fuse-lock 2x2's four cells all name their OTP the same way and
+# `check_efuse()` has a file to assert against. Without a plusarg,
+# `dv_sim_prestage.stage()` is a no-op and the sensed image would rest on the RTL
+# array default instead.
+#
+# WHAT THIS FILE CANNOT WITNESS, stated because the opposite is easy to assume.
+# `shadow_word()` regenerates LC_STATE's shadow from `lc_encode(lc_raw())`, and
+# every other field here is zero, so the shadow this image produces is
+# bit-identical to the one a blank array produces. The sense-time compare is
+# therefore a real whole-image check, but for THIS cell it cannot tell the file
+# apart from a blank array: `LC_STATE=0x00000000` on the console is also the blank
+# value. What identifies the cell is the OTHER axis -- SBOOT_DIS -- which the
+# blank array senses as 0 and the sibling `sep_efuse_lc_test_dev_sboot_dis.toml`
+# as 1, and which the ROM echoes.
+#
+# SBOOT_DIS stays 0 here, so secure_boot_enabled() defers to the manifest flag --
+# this is the only cell in which the manifest decides.
+#
+# LC_STATE is the differentially encoded byte {~raw, raw}; 0xF0 is raw 0x0. See
+# README.md.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xF0   # TEST_DEV (raw=0x0)

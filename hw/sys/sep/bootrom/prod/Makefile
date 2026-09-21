@@ -54,6 +54,12 @@ PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0
 BUILD_TYPE ?= test
 
+# MUST be 0 for release. It compiles the five committed test signing keys into
+# ROM key slots 1-5 (key_digests.c), whose private halves are in the repository
+# in the clear. A release build leaves those slots NULL, where the same selector
+# is refused with ROM_KEY_EMPTY.
+TEST_BUILD ?= 1
+
 # OpenTitan RX-FIFO drain method: 0 = secure DMA (default), 1 = CPU programmed
 # I/O. The unused drain path is dropped by --gc-sections at link time.
 BOOT_OT_SPI_USE_PIO ?= 0
@@ -118,7 +124,7 @@ CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections 
 	--specs=picolibc.specs \
 	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
-	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
+	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=$(TEST_BUILD) -DSEP_BL0 -DDEBUG \
 	-DROM_ICCM_CLEAR_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
 	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
@@ -160,7 +166,7 @@ $(BUILD_DIR):
 # without this stamp a variant rebuild silently hands back the previous image.
 BUILD_FLAGS := USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	PROFILE=$(BOOT_OT_SPI_PROFILE) BUILD_TYPE=$(BUILD_TYPE) \
-	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
+	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) TEST_BUILD=$(TEST_BUILD) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
 	NONFREE=$(if $(NONFREE_ROOT),1,0)
 FLAGS_STAMP := $(BUILD_DIR)/.build_flags

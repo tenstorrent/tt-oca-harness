@@ -268,7 +268,6 @@ tests = [
     "sep_firmware_backup_invalid_signature_test",
     "sep_firmware_backup_invalid_security_version_test",
     "sep_firmware_backup_invalid_public_key_selection_test",
-    "sep_firmware_backup_unpopulated_rom_key_slot_test",
     "sep_spi_detect_success_test",
     "sep_spi_primary_fail_backup_test",
     # Subclass of the entry above; adds an SRAM scoreboard to the same failover.
@@ -509,4 +508,67 @@ tests = [
     "sep_firmware_backup_encrypted_toc_payload_size_mismatch_test",
     "sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test",
     "sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test",
+    # Payload image SIZE, as opposed to the image-inside-payload bounds above:
+    # how big the whole payload may be, and where it is staged. Five accepted
+    # sizes bracket the bound from 4 KiB up to 200 KiB, and two refused ones sit
+    # past it. The EXT and SMC halves are the same size question against
+    # different capacities -- SEP SRAM minus payload_offset, versus the window
+    # scratch[13]/[14] publish -- so the destination markers are required and the
+    # other branch's are forbidden. These are the longest runs in this group: the
+    # payload is really transferred, so simulated time scales with the size under
+    # test.
+    "sep_firmware_payload_correct_ext_4kb_test",
+    "sep_firmware_payload_correct_ext_29kb_test",
+    "sep_firmware_payload_incorrect_ext_62kb_test",
+    "sep_firmware_payload_incorrect_ext_test",
+    "sep_firmware_payload_correct_smc_64kb_test",
+    "sep_firmware_payload_correct_smc_128kb_test",
+    "sep_firmware_payload_correct_smc_200kb_test",
+    # Payload ABSENCE, OVERLAP and payload HASH, each closing an arm that had no
+    # row before: the zero half of the TOC image-count bound, the
+    # payload-inside-the-manifest-header refusal, the manifest payload_hash
+    # comparison, and the SMC staging window's own capacity. The last one is only
+    # reachable with a window NARROWER than the payload, which is why the accepted
+    # SMC size members above cannot cover it. The per-image TOC digest arm is NOT
+    # among them and still has no row. All six refuse before or just after staging,
+    # so they are short runs.
+    "sep_firmware_primary_no_payload_images_test",
+    "sep_firmware_backup_no_payload_images_test",
+    "sep_firmware_primary_and_backup_no_payload_images_test",
+    "sep_firmware_payload_overlaps_manifest_test",
+    "sep_firmware_cleartext_image_corrupt_hash_test",
+    "sep_firmware_payload_incorrect_smc_test",
+    # Secondary chiplet and fuse lock. The first pair pins the THIRD arm of
+    # rom_main.c's boot-mode branch -- neither SPI nor recovery -- and the
+    # property that is unique to it: the SMC path has one manifest slot, so a
+    # published offset holding no manifest is terminal where the same rejection
+    # on flash would fail over. The four fuse-lock rows are a 2x2 of sensed
+    # LC_STATE against the SBOOT_DIS chicken bit; they share one flow, so each is
+    # pinned to the two values the ROM itself echoes and forbids the other three
+    # cells' values. All six end in the ROM's fuse-secret lock or, for the
+    # terminal one, deliberately short of it.
+    "sep_firmware_secondary_chiplet_bootcode_test",
+    "sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test",
+    "sep_firmware_fuse_lock_secure_test_dev_test",
+    "sep_firmware_fuse_lock_secure_prod_test",
+    "sep_firmware_fuse_lock_non_secure_test_dev_test",
+    "sep_firmware_fuse_lock_non_secure_prod_test",
+    # Payload field LIMITS and the MIXED-CLASS failover, each closing a cross no
+    # single-defect row can reach. The first pairs the two 32-bit boundary arms of
+    # validate_manifest_header one per slot, so the wrap arm -- which prints
+    # nothing and shares its code with two siblings -- becomes attributable; the
+    # second pairs a primary that fails integrity with a backup that fails
+    # authentication, which is the only run where the retry path completes its
+    # full check sequence against a different failure class. Both are short: the
+    # limits row fetches no payload at all, and the mixed row runs one modexp.
+    "sep_manifest_payload_limits_test",
+    "sep_mixed_failure_primary_backup_test",
+    # Key revocation, constrained-random: the seed draws the bitmap AND both
+    # manifests' ROM key slots, so one row covers the shapes no directed revoke row
+    # reaches. With a single bit set, `revoke & (1 << index)` and `revoke != 0`
+    # behave identically; a drawn multi-bit bitmap separates them. The both-revoked
+    # class is the only place the revocation check is exercised on the BACKUP path.
+    # This is the only row here with no +sep_efuse_preload -- the bitmap has to
+    # vary per seed, so the OTP image is generated from a shared draw instead.
+    "sep_key_revocation_bitmap_random_test",
 ]

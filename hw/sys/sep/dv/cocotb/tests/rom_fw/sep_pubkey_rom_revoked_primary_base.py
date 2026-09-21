@@ -54,21 +54,22 @@ the slot-1 backup echoed ``PUBK_REVOKE=0x00000002``, the same word the primary s
 
 WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, PER SLOT. ``validate_signature``
 consults the fuse bitmap (``manifest_crypto.c``) BEFORE the compiled-in digest
-table  and before ``rsa_3072_verify``. Slot 0 is the only
-populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
+table and before ``rsa_3072_verify``. What ``key_digests.c`` holds for a slot
+decides which forbidden marker is load-bearing for that member:
 
-  * slots 1-5 would otherwise be rejected as ``ROM_KEY_EMPTY``, and forbidding that
-    marker is what pins the ORDER -- revocation before the digest table;
-  * slot 0 would otherwise boot, because the shipped image genuinely binds to it,
-    so revocation is the sole cause of the rejection and ``RSA_VERIFY_START`` /
-    ``SIG_VALID`` are the load-bearing forbids there.
+  * **slot 0** binds to the dev0 modulus the primary actually carries, so it would
+    otherwise boot; revocation is the sole cause of the rejection and
+    ``RSA_VERIFY_START`` / ``SIG_VALID`` are the load-bearing forbids there;
+  * **slots 1-5** hold another key's digest under ``TEST_BUILD``, so they would
+    otherwise be rejected as ``PUBK_HASH_MISMATCH``.
 
 **REVOCATION-FIRST IS WHAT MAKES SLOTS 1-5 WEAKER THAN SLOT 0.** Because this ROM
-consults the fuse bitmap before the digest-populated check, slots 1-5 report
-``KEY_REVOKED`` rather than the ``ROM_KEY_EMPTY`` / ``MANIFEST_ERR_SIG_FAILED``
-they would report under the opposite order. So slot 0 establishes the strong
-property -- revocation refuses a fully valid, correctly signed, bootable image --
-while slots 1-5 establish only that revocation PREEMPTS the empty-digest arm. The
+consults the fuse bitmap before the digest bind, slots 1-5 report
+``KEY_REVOKED`` rather than the ``PUBK_HASH_MISMATCH``
+verdict they would report under the opposite order, and forbidding that
+marker is what pins the order. So slot 0 establishes the strong property --
+revocation refuses a fully valid, correctly signed, bootable image -- while
+slots 1-5 establish only that revocation PREEMPTS the digest arms. The
 same holds for the backup-side family. Revocation-first is the fail-closed order
 and is not a defect.
 
@@ -330,9 +331,11 @@ class sep_primary_pubkey_rom_revoked_failover_base(
     # the primary must never drive the verifier.
     primary_expected_rsa_starts = 0
     # Every other rejecting arm of validate_signature, so the KEY_REVOKED verdict
-    # cannot be confused with one of them. ROM_KEY_EMPTY is the load-bearing one:
-    # slots 1-5 have no compiled-in digest, so seeing it would mean the digest
-    # table was consulted before the fuse bitmap. RSA_VERIFY_FAIL must not appear
+    # cannot be confused with one of them. PUBK_HASH_MISMATCH is the load-bearing
+    # one: slots 1-5 hold another key's digest, so seeing it would mean the digest
+    # table was consulted before the fuse bitmap. ROM_KEY_EMPTY cannot occur --
+    # every slot has a digest -- and is forbidden only so a table that lost an
+    # entry fails here instead of silently. RSA_VERIFY_FAIL must not appear
     # either -- the backup is valid, so the only verifier run in this scenario
     # succeeds.
     extra_forbidden = ("ROM_KEY_EMPTY", "PUBK_HASH_MISMATCH", "BAD_KEY_IDX",

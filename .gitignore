@@ -11,14 +11,13 @@ __pycache__/
 # that happens to be named nonfree is not.
 /nonfree
 
-# Transient per-block build outputs. The build_ot* variants come from the SEP
-# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images); build_dual is
-# the dual-SMC DV tree, kept separate from build/ so concurrent --rebuild runs do
-# not race on bender filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
+# Transient per-block build outputs. build_pio comes from the SEP boot ROM
+# BUILD_DIR override (the CPU-PIO drain variant); build_dual is the dual-SMC DV
+# tree, kept separate from build/ so concurrent --rebuild runs do not race on
+# bender filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
 **/build/
 **/build_dual/
-**/build_ot/
-**/build_ot_pio/
+**/build_pio/
 
 # Legacy generated register markdown is not part of the current doc flow.
 **/regs/gen/adoc/**/*.md
@@ -104,3 +103,6 @@ vendor/**/Bender.lock
 # npm install target for a11y
 tools/a11y/node_mo#dules/
 tools/a11y/report/
+
+/.dv/artifacts/
+/.dv/lsf/

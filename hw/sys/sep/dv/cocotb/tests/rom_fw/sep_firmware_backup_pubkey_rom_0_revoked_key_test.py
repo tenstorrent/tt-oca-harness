@@ -8,9 +8,10 @@ chooses the slot. Its OTP image is the whole of the rest of the stimulus:
 ``sep_efuse_lc_prod_pubk_revoke0.toml`` is ``sep_efuse_lc_prod.toml`` plus
 exactly ``CHIPLET_PUBK_REVOKE`` bit 0.
 
-WHY SLOT 0 IS THE STRICTEST MEMBER. Slot 0 is the only populated entry in
-``key_digests.c`` and it is the slot the shipped image is signed against
-(``configs/secure_boot_test.yaml``), so the backup manifest here is valid
+WHY SLOT 0 IS THE STRICTEST MEMBER. Slot 0 is the slot the shipped image is
+signed against (``configs/secure_boot_test.yaml``), so it is the only member
+whose selector already matches the modulus the manifest carries and the digest
+``key_digests.c`` holds. The backup manifest here is therefore valid
 in every respect -- correct magic, correct TBS hash, a modulus that matches the
 ROM's compiled-in digest, and a dev0 signature that still verifies. The stimulus
 does not corrupt it at all: it re-writes the selector to the value it already
