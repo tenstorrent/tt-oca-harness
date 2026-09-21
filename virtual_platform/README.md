@@ -174,6 +174,11 @@ make deps-info      # both should read "explicit (environment)"
 
 `ldd` on the built `sep-vp` is the check that they were the ones linked.
 
+Building on your own host rather than in the container — what the host must
+provide, pointing the build at existing Boost/OpenSSL, and which suites run
+without a RISC-V toolchain — is in
+[`BUILDING_NATIVELY.md`](BUILDING_NATIVELY.md).
+
 The `sepvp` runner's design — status channels, overlay `.ini` generation, fuse maps —
 is documented in [`sepvp/README.md`](sepvp/README.md).
 
