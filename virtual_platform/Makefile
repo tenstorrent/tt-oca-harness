@@ -67,7 +67,7 @@ _FWD_FIRST := $(firstword $(_FWD_GOALS))
 $(_FWD_FIRST):
 	@echo "[VP] VP_CONTAINER=1: running '$(_FWD_GOALS)' in the OCAH container..."
 	"$(DOCKER_RUN)" run-here make -C "$(VP_DIR)" $(_FWD_GOALS) \
-	  VP_ENV_TAG=ctr VP_CONTAINER=0 PYTHON=/usr/bin/python3 \
+	  VP_ENV_TAG=ctr VP_CONTAINER=0 \
 	  $(if $(PYTEST_ARGS),PYTEST_ARGS="$(PYTEST_ARGS)") \
 	  $(if $(BOOT_ARGS),BOOT_ARGS="$(BOOT_ARGS)") \
 	  $(if $(FW_ARGS),FW_ARGS="$(FW_ARGS)") \
@@ -95,11 +95,14 @@ SYSTEMC_VERSION ?= 3.0.2
 BOOST_VERSION   ?= 1.84.0
 OPENSSL_VERSION ?= 3.3.2
 CCI_VERSION     ?= 1.0.2
-# Whisper ISS revision for smc-vp/smu-vp, pinned like the versions above. The
-# reference value is WHISPER_REV in the model's own
-# .github/workflows/ci-rhel8.yml, the commit its SMC VP was validated against;
-# re-read it when uprevving the tt-oca-harness-model submodule.
-WHISPER_REV     ?= a53d0f3e
+# Whisper ISS revision for smc-vp/smu-vp. Read from the model's own CI workflow
+# rather than pinned here: that file records the commit its SMC VP was validated
+# against, so a submodule uprev carries the new revision with it and the two
+# cannot drift. Empty when the submodule is not checked out, which the whisper
+# target below reports rather than building an unpinned tree.
+# Deferred: SIM_DIR is derived further down.
+WHISPER_REV_SOURCE = $(SIM_DIR)/.github/workflows/ci-rhel8.yml
+WHISPER_REV     ?= $(shell sed -n 's/^[[:space:]]*WHISPER_REV:[[:space:]]*"\{0,1\}\([0-9a-f]\{7,\}\)"\{0,1\}.*/\1/p' $(WHISPER_REV_SOURCE) 2>/dev/null)
 NPROC           ?= $(shell nproc)
 # SW_TEST: used by the optional `smoke` target
 SW_TEST         ?= sep-gpio-test
@@ -156,6 +159,12 @@ SMU_CLUSTER_LIB := $(SMC_BUILD_DIR)/platform/smu/libsmc_cluster_smu.so
 # via `uv sync --inexact --group vp`).
 UV            ?= uv
 PYTHON        ?= $(OCAH_ROOT)/.venv/bin/python
+# Interpreter for the harness itself. uv resolves the vp group from the repo
+# root, so this works against the repo venv, the container's own UV environment
+# or a bare checkout without assuming where the interpreter lives -- PYTHON
+# above stays a plain path because FW_ENV puts its directory on PATH for the
+# bootrom's OTBN codegen, which calls a bare python3.
+VP_PYTHON     ?= $(UV) --directory "$(OCAH_ROOT)" run --group vp --locked python3
 BOOTCODE_DIR  := $(OCAH_ROOT)/hw/sys/sep/bootrom/prod
 # SEP_MSG_* status-name table baked into sep-vp's sep_scratch_cold decoder;
 # tt-oca-harness-model takes it as a CMake cache variable (TSV rows or a C
@@ -460,7 +469,16 @@ openssl: $(OPENSSL_SENTINEL)
 ## Resolve or build CCI alone.
 cci:     $(CCI_SENTINEL)
 ## Resolve or build the Whisper ISS alone (smc-vp/smu-vp only).
-whisper: $(WHISPER_SENTINEL)
+whisper: check-whisper-rev $(WHISPER_SENTINEL)
+
+# WHISPER_REV comes from the model's CI workflow, so an uninitialised submodule
+# yields an empty revision and a whisper-*-pic prefix that pins nothing.
+.PHONY: check-whisper-rev
+check-whisper-rev:
+	@[ -n "$(WHISPER_REV)" ] || { \
+	  echo "error: WHISPER_REV is empty; no revision found in $(WHISPER_REV_SOURCE)." >&2; \
+	  echo "       Initialise the submodule first: make submodule-init" >&2; \
+	  exit 1; }
 
 # =============================================================================
 # Compiler capability check (order-only prereq of every compile step)
@@ -990,7 +1008,7 @@ boot-build:
 boot-run: boot-build $(SEP_VP_BIN)
 	@echo "[VP] Running boot_rom.elf on sep-vp ($(BOOT_ARGS))..."
 	export SEP_VP_BIN="$(SEP_VP_BIN)"
-	cd $(VP_DIR) && $(PYTHON) -m sepvp.cli --bin $(BOOT_ELF) $(BOOT_ARGS)
+	cd $(VP_DIR) && $(VP_PYTHON) -m sepvp.cli --bin $(BOOT_ELF) $(BOOT_ARGS)
 
 # Tests live in hw/sys/sep/dv/fw/tests/ and are built by the shared DV firmware
 # engine (default link mode tcm -> build/tests/<t>/<t>.tcm.elf).
@@ -1005,17 +1023,17 @@ fw-run: $(SEP_VP_BIN)
 	$(call fw_make,-C $(OCAH_ROOT) ocah-dv-fw-tests TARGET=sep TEST=$(FW_TEST))
 	echo "[VP] Running $(FW_TEST) on sep-vp ($(FW_ARGS))..."
 	export SEP_VP_BIN="$(SEP_VP_BIN)"
-	cd $(VP_DIR) && $(PYTHON) -m sepvp.cli --bin $(OCAH_ROOT)/hw/sys/sep/dv/fw/build/tests/$(FW_TEST)/$(FW_TEST).tcm.elf $(FW_ARGS)
+	cd $(VP_DIR) && $(VP_PYTHON) -m sepvp.cli --bin $(OCAH_ROOT)/hw/sys/sep/dv/fw/build/tests/$(FW_TEST)/$(FW_TEST).tcm.elf $(FW_ARGS)
 
 # One invocation: every suite lives under virtual_platform/tests, whose rootdir
 # is virtual_platform.
 ## Run the pytest harness suite; builds firmware unless told not to.
 ## @param PYTEST_ARGS=--no-build Extra pytest arguments, e.g. "--no-build -k bootcode"
 vp-test: $(SEP_VP_BIN)
-	@$(PYTHON) -c "import pexpect, yaml, pytest, toml, elftools" 2>/dev/null || $(MAKE) vp-py-deps
+	@$(VP_PYTHON) -c "import pexpect, yaml, pytest, toml, elftools" 2>/dev/null || $(MAKE) vp-py-deps
 	$(FW_ENV)
 	export SEP_VP_BIN="$(SEP_VP_BIN)"
-	cd $(VP_DIR) && $(PYTHON) -m pytest tests $(PYTEST_ARGS)
+	cd $(VP_DIR) && $(VP_PYTHON) -m pytest tests $(PYTEST_ARGS)
 
 # =============================================================================
 # SMC / SMU firmware suites

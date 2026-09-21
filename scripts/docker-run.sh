@@ -27,6 +27,12 @@
 #      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the nix
 #                               container image; unset disables the cache
 #                               (site CI sets this, e.g. in its env setup)
+#      OCAH_ENGINE             force `podman` or `docker` instead of preferring
+#                               whichever is found first (CI pins this so a
+#                               runner image shipping both is deterministic)
+#      OCAH_PODMAN_KEEP_ID     1/0 to force --userns=keep-id on or off; default
+#                               enables it only when /etc/subuid grants a range
+#                               wider than the caller's uid
 #      OCAH_DOCKER_UIDGID      container --user (default: empty for rootless
 #                               podman, caller's uid:gid for docker; set empty to
 #                               run as the image's own default user)
@@ -127,22 +133,77 @@ nix-fmt | nix-fmt-check | nixos-shell)
   ;;
 esac
 
-if command -v podman >/dev/null 2>&1; then
+# OCAH_ENGINE pins the engine; otherwise podman is preferred over docker. A
+# host with both installed otherwise changes engine depending on PATH order,
+# and CI pins this so a runner image shipping both stays deterministic.
+ENGINE="${OCAH_ENGINE:-}"
+if [[ -n "$ENGINE" ]]; then
+  case "$ENGINE" in
+  podman | docker) ;;
+  *)
+    echo "error: OCAH_ENGINE must be 'podman' or 'docker', not '$ENGINE'" >&2
+    exit 1
+    ;;
+  esac
+  if ! command -v "$ENGINE" >/dev/null 2>&1; then
+    # Only fatal when an engine is actually going to be used: a pinned engine
+    # that is absent must not break a request bwrap can serve.
+    [[ "$NEEDS_ENGINE" == 0 ]] ||
+      {
+        echo "error: OCAH_ENGINE=$ENGINE but $ENGINE is not on PATH" >&2
+        exit 1
+      }
+    ENGINE=none
+  fi
+elif command -v podman >/dev/null 2>&1; then
   ENGINE=podman
-  VOL=":Z"
-  PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true \
-        --storage-opt=mount_program=$(which fuse-overlayfs)"
-  PODMAN_RUN_FLAGS="--userns=keep-id"
 elif command -v docker >/dev/null 2>&1; then
   ENGINE=docker
-  VOL=""
-  PODMAN_STORAGE_FLAGS=""
-  PODMAN_RUN_FLAGS=""
 elif [[ "$NEEDS_ENGINE" == 0 ]]; then
-  ENGINE=none VOL=""
+  ENGINE=none
 else
   echo "error: podman or docker is required" >&2
   exit 1
+fi
+
+if [[ "$ENGINE" == podman ]]; then
+  VOL=":Z"
+  PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true"
+  # Only pass mount_program when fuse-overlayfs is actually installed: an empty
+  # value is not "unset", and podman rejects the malformed flag.
+  if _fuse_overlayfs="$(command -v fuse-overlayfs 2>/dev/null)"; then
+    PODMAN_STORAGE_FLAGS+=" --storage-opt=mount_program=${_fuse_overlayfs}"
+  fi
+  # --userns=keep-id makes the container see the caller's own uid rather than
+  # root. It needs the account's subuid allocation to be wide enough to map that
+  # uid inside the namespace: podman maps container uids 0..uid-1 onto the
+  # subuid range before pinning container uid == host uid. A large
+  # (LDAP/AD-assigned) uid with the customary 65536-wide range therefore does
+  # not fit, and podman fails before the container starts:
+  #   chowning container workdir to container root:
+  #   chown .../merged/work: invalid argument
+  # Rootless podman's DEFAULT mapping already maps container root to the
+  # caller's uid, so bind-mounted output comes out caller-owned either way --
+  # the same reason --user is not passed below -- so drop the flag instead of
+  # failing. Force it either way with OCAH_PODMAN_KEEP_ID=1/0.
+  PODMAN_RUN_FLAGS=""
+  if [[ -n "${OCAH_PODMAN_KEEP_ID:-}" ]]; then
+    [[ "$OCAH_PODMAN_KEEP_ID" == 1 ]] && PODMAN_RUN_FLAGS="--userns=keep-id"
+  else
+    _uid="$(id -u)"
+    # Sum every range granted to this account (by name or by uid); absent
+    # /etc/subuid or no entry yields 0, which correctly disables the flag.
+    _subuids="$(awk -F: -v u="$(id -un)" -v n="$_uid" \
+      '$1 == u || $1 == n { c += $3 } END { print c + 0 }' \
+      /etc/subuid 2>/dev/null)"
+    if [[ "${_subuids:-0}" -gt "$_uid" ]]; then
+      PODMAN_RUN_FLAGS="--userns=keep-id"
+    fi
+  fi
+else
+  VOL=""
+  PODMAN_STORAGE_FLAGS=""
+  PODMAN_RUN_FLAGS=""
 fi
 
 # Create a named network if it does not already exist. Both Docker and Podman
