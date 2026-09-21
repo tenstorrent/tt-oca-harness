@@ -532,7 +532,18 @@ integrations leave all override enables deasserted.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="smc-address-map-integration"><a class="anchor" href="#smc-address-map-integration"></a><a class="link" href="#smc-address-map-integration">3.2. Address Map and Aperture</a></h3>
+<h3 id="smc-ndm-cluster-reset"><a class="anchor" href="#smc-ndm-cluster-reset"></a><a class="link" href="#smc-ndm-cluster-reset">3.2. External CPU cluster NDM reset</a></h3>
+<div class="paragraph">
+<p>Connect <code>smc_ndmreset_request_i[i]</code> to the NDM reset request from
+external CPU cluster <code>i</code>, and return <code>smc_ndmreset_process_o[i]</code> to
+that cluster. Set <code>CPU_CLUSTER_COUNT</code> in <code>smc_config_pkg</code> to the number
+of clusters. This harness sets it to 4. The parameter sizes both ports,
+and <code>NDMRESET_CLUSTER_COUNT</code> reads that value back. The register fields
+stay 32 bits wide. Tie unused request inputs to 0.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-address-map-integration"><a class="anchor" href="#smc-address-map-integration"></a><a class="link" href="#smc-address-map-integration">3.3. Address Map and Aperture</a></h3>
 <div class="paragraph">
 <p>The SMC has a chiplet-visible aperture and an internal local address
 view. Internally, the SMC uses a fixed local base address of
@@ -617,7 +628,7 @@ refer to the SMC Memory Map documentation (<code>hw/sys/smc/doc/memmap.adoc</cod
 </div>
 </div>
 <div class="sect2">
-<h3 id="axi-interface-configuration"><a class="anchor" href="#axi-interface-configuration"></a><a class="link" href="#axi-interface-configuration">3.3. AXI Interface Configuration</a></h3>
+<h3 id="axi-interface-configuration"><a class="anchor" href="#axi-interface-configuration"></a><a class="link" href="#axi-interface-configuration">3.4. AXI Interface Configuration</a></h3>
 <div class="paragraph">
 <p>The SMC provides three distinct AXI interface groups serving different access
 paths. The <code>sys_axi_in</code> interface accepts requests from external system masters
@@ -648,7 +659,7 @@ infrastructure.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="gpio-pad-integration"><a class="anchor" href="#gpio-pad-integration"></a><a class="link" href="#gpio-pad-integration">3.4. GPIO Pad Integration</a></h3>
+<h3 id="gpio-pad-integration"><a class="anchor" href="#gpio-pad-integration"></a><a class="link" href="#gpio-pad-integration">3.5. GPIO Pad Integration</a></h3>
 <div class="paragraph">
 <p>GPIO pad integration requires careful attention to function assignment and pull
 requirements. The GPIO table below lists each signal, bump location, function,
@@ -671,14 +682,14 @@ the decoded bit assignments, including <code>BYPASS_SRAM_REPAIR</code> at
 </div>
 </div>
 <div class="sect2">
-<h3 id="smc-peripheral-connections"><a class="anchor" href="#smc-peripheral-connections"></a><a class="link" href="#smc-peripheral-connections">3.5. Peripheral Interface Connections</a></h3>
+<h3 id="smc-peripheral-connections"><a class="anchor" href="#smc-peripheral-connections"></a><a class="link" href="#smc-peripheral-connections">3.6. Peripheral Interface Connections</a></h3>
 <div class="paragraph">
 <p>The SMC exposes logic-level interfaces to several technology-specific
 subsystem components that the adopter instantiates externally. The
 subsections below describe each connection in turn.</p>
 </div>
 <div class="sect3">
-<h4 id="smc-external-connection"><a class="anchor" href="#smc-external-connection"></a><a class="link" href="#smc-external-connection">3.5.1. Adopter Peripheral Window</a></h4>
+<h4 id="smc-external-connection"><a class="anchor" href="#smc-external-connection"></a><a class="link" href="#smc-external-connection">3.6.1. Adopter Peripheral Window</a></h4>
 <div class="paragraph">
 <p>The <code>smc_external_req_o</code> and <code>smc_external_resp_i</code> signals form a 32-bit
 AXI-Lite interface to the adopter&#8217;s own peripheral register maps. Any
@@ -703,7 +714,7 @@ full register layout, refer to the SMC Memory Map documentation
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-efuse-connection"><a class="anchor" href="#smc-efuse-connection"></a><a class="link" href="#smc-efuse-connection">3.5.2. eFuse Interface</a></h4>
+<h4 id="smc-efuse-connection"><a class="anchor" href="#smc-efuse-connection"></a><a class="link" href="#smc-efuse-connection">3.6.2. eFuse Interface</a></h4>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -803,14 +814,14 @@ indicates completion of this sensing operation.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="memory-subsystem-integration"><a class="anchor" href="#memory-subsystem-integration"></a><a class="link" href="#memory-subsystem-integration">3.6. Memory Subsystem Integration</a></h3>
+<h3 id="memory-subsystem-integration"><a class="anchor" href="#memory-subsystem-integration"></a><a class="link" href="#memory-subsystem-integration">3.7. Memory Subsystem Integration</a></h3>
 <div class="paragraph">
 <p>The SMC includes an embedded RISC-V CPU cluster with associated memory
 interfaces. See <a href="#immutable-rom-fw-integration">Immutable ROM FW Integration</a> for the ROM FW integration
 contract.</p>
 </div>
 <div class="sect3">
-<h4 id="smc-sram-cache-integration"><a class="anchor" href="#smc-sram-cache-integration"></a><a class="link" href="#smc-sram-cache-integration">3.6.1. SRAM and Cache Array Integration</a></h4>
+<h4 id="smc-sram-cache-integration"><a class="anchor" href="#smc-sram-cache-integration"></a><a class="link" href="#smc-sram-cache-integration">3.7.1. SRAM and Cache Array Integration</a></h4>
 <div class="paragraph">
 <p>Scratch RAM interfaces (<code>smc_scratch_ram_intf_req_o</code> and <code>smc_scratch_ram_intf_rsp_i</code>)
 connect to 32 independent RAM banks totaling the scratchpad memory space. Cache
@@ -829,7 +840,7 @@ SRAM contents across resets.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="memory-repair-integration"><a class="anchor" href="#memory-repair-integration"></a><a class="link" href="#memory-repair-integration">3.7. Memory Repair Integration</a></h3>
+<h3 id="memory-repair-integration"><a class="anchor" href="#memory-repair-integration"></a><a class="link" href="#memory-repair-integration">3.8. Memory Repair Integration</a></h3>
 <div class="paragraph">
 <p>The SMC implements Built-In Redundancy Analysis (BIRA) memory repair to address
 manufacturing defects in SRAM arrays. Repair uses redundant memory elements
@@ -938,7 +949,7 @@ execute repair unless isolation is already asserted.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="interrupt-integration"><a class="anchor" href="#interrupt-integration"></a><a class="link" href="#interrupt-integration">3.8. Interrupt Integration</a></h3>
+<h3 id="interrupt-integration"><a class="anchor" href="#interrupt-integration"></a><a class="link" href="#interrupt-integration">3.9. Interrupt Integration</a></h3>
 <div class="paragraph">
 <p>The SMC aggregates interrupts from multiple sources into <code>cpu_interrupts_o</code>, which feeds
 the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
@@ -970,7 +981,7 @@ Reference Manual.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="telemetry-and-debug-integration"><a class="anchor" href="#telemetry-and-debug-integration"></a><a class="link" href="#telemetry-and-debug-integration">3.9. Telemetry and Debug Integration</a></h3>
+<h3 id="telemetry-and-debug-integration"><a class="anchor" href="#telemetry-and-debug-integration"></a><a class="link" href="#telemetry-and-debug-integration">3.10. Telemetry and Debug Integration</a></h3>
 <div class="paragraph">
 <p>For system-level debug and telemetry, the SMC implements ATB (Advanced Trace Bus) receiver
 interfaces. The telemetry interface group (<code>telemetry_atdata_i</code>, <code>telemetry_atid_i</code>,
@@ -992,7 +1003,7 @@ RAM instances that can be adapted to your debug requirements.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="bring-up-sequence"><a class="anchor" href="#bring-up-sequence"></a><a class="link" href="#bring-up-sequence">3.10. Bring-Up Sequence</a></h3>
+<h3 id="bring-up-sequence"><a class="anchor" href="#bring-up-sequence"></a><a class="link" href="#bring-up-sequence">3.11. Bring-Up Sequence</a></h3>
 <div class="paragraph">
 <p>The recommended bring-up sequence begins with asserting <code>rst_cold_ni</code> while stabilizing
 power supplies and clocks. Once all supplies reach nominal voltages, deassert <code>rst_cold_ni</code>
@@ -1028,7 +1039,7 @@ bring-up wiring examples covering clock, reset, strap, and peripheral connection
 </div>
 </div>
 <div class="sect2">
-<h3 id="smc-port-interface"><a class="anchor" href="#smc-port-interface"></a><a class="link" href="#smc-port-interface">3.11. SMC Port Interface</a></h3>
+<h3 id="smc-port-interface"><a class="anchor" href="#smc-port-interface"></a><a class="link" href="#smc-port-interface">3.12. SMC Port Interface</a></h3>
 <div class="paragraph">
 <p>The SMC exposes a comprehensive set of interfaces for system integration. The following
 table defines all SMC top-level ports including clocks, resets, AXI interfaces, peripheral
@@ -1564,6 +1575,24 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_request_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NDM reset request from external CPU cluster <code>i</code> on bit <code>i</code>. Synchronized onto <code>clk_smc</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CPU clusters → SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_process_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Firmware response to external CPU cluster <code>i</code> on bit <code>i</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → external CPU clusters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>isolate_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
@@ -1874,7 +1903,7 @@ signal descriptions and timing requirements.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="gpio-pin-requirements"><a class="anchor" href="#gpio-pin-requirements"></a><a class="link" href="#gpio-pin-requirements">3.12. GPIO Pin Requirements</a></h3>
+<h3 id="gpio-pin-requirements"><a class="anchor" href="#gpio-pin-requirements"></a><a class="link" href="#gpio-pin-requirements">3.13. GPIO Pin Requirements</a></h3>
 <div class="paragraph">
 <p>The SMC provides GPIO functionality with multiplexed peripheral functions and
 test interfaces. The following table lists the signal and bump location,
@@ -8552,8 +8581,8 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Non-debug-module reset requests.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NDM reset request from external CPU cluster <code>i</code> on bit <code>i</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CPU clusters</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
 <tr>
@@ -8561,8 +8590,8 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Non-debug-module reset process indicators.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Firmware response to external CPU cluster <code>i</code> on bit <code>i</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → external CPU clusters</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>

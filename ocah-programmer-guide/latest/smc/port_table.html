@@ -97,6 +97,9 @@
   <li class="nav-item" data-depth="3">
     <a class="nav-link" href="../index.html#smc-per-core-reset">Per-Core Reset</a>
   </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-ndm-reset">External CPU cluster NDM reset</a>
+  </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
@@ -718,6 +721,24 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">Function Level Reset (FLR) PF active signal.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PCIe/System → Reset Unit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_request_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NDM reset request from external CPU cluster <code>i</code> on bit <code>i</code>. Synchronized onto <code>clk_smc</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CPU clusters → SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_process_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Firmware response to external CPU cluster <code>i</code> on bit <code>i</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → external CPU clusters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>isolate_req_o</code></p></td>

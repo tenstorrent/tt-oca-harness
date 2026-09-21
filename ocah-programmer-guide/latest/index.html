@@ -97,6 +97,9 @@
   <li class="nav-item" data-depth="3">
     <a class="nav-link" href="#smc-per-core-reset">Per-Core Reset</a>
   </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#smc-ndm-reset">External CPU cluster NDM reset</a>
+  </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
@@ -247,6 +250,25 @@ address. Before they join normal coherent operation, software can program a
 parked hart&#8217;s <code>RESET_VECTOR[n]</code> and pulse its reset to start it at that address.
 Avoid this flow where possible for the reasons described in the Technical
 Reference Manual.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-ndm-reset"><a class="anchor" href="#smc-ndm-reset"></a><a class="link" href="#smc-ndm-reset">1.2. External CPU cluster NDM reset</a></h3>
+<div class="paragraph">
+<p>Read <code>NDMRESET_REQUEST</code> bit <code>i</code> as the NDM reset request from external
+CPU cluster <code>i</code>. Write <code>NDMRESET_PROCESS</code> bit <code>i</code> to answer that
+cluster. Read <code>NDMRESET_CLUSTER_COUNT</code> and mask both registers with
+that value.</p>
+</div>
+<div class="paragraph">
+<p>This harness reports 4 in <code>NDMRESET_CLUSTER_COUNT</code>. Bits of
+<code>NDMRESET_REQUEST</code> at and above the count read as 0. Writes to those
+bits of <code>NDMRESET_PROCESS</code> stay in the register.</p>
+</div>
+<div class="paragraph">
+<p>The register block is
+<a href="../../ocah-docs/latest/smc/memmap.html#smc-ndm-reset-block" class="xref page">Chip Config, Scratch, NDM Reset, and Misc Wrap</a>
+in the Technical Reference Manual.</p>
 </div>
 </div>
 </div>
