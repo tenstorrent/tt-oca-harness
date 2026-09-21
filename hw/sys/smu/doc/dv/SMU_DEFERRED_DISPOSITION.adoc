@@ -30,7 +30,7 @@ Buckets:
 
 Enrolled names outside this catalog:
 
-* The JTAG2AXI / OTP / filter set in `hosted` is recorded in `SMU_HOSTED_COMPONENT_SIGNOFF.adoc`, which also records ATOP reject as OUT.
+* The JTAG2AXI / OTP / filter set in `hosted` is recorded in the Component Signoff section of `hw/sys/smu/dv/docs/SMU_VPLAN.adoc`, which also records ATOP reject as OUT.
 * `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are enrolled in `hosted` (`testlists/all.toml`).
 * The one unenrolled body under `cocotb/tests/`, `smu_ext_axi_global_addr_smoke_test`, is in the table below under `not-runnable`.
 

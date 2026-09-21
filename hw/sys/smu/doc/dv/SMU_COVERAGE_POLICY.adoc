@@ -11,8 +11,8 @@ needs a measured database first.
 [cols=",",options="header",]
 |===
 |Field |Value
-|Release group |`--dut smu --items hosted` (live size in
-`SMU_RELEASE_MATRIX.adoc`)
+|Release group |`--dut smu --items hosted` (live size in the Release
+Qualification section of `hw/sys/smu/dv/docs/SMU_VPLAN.adoc`)
 |Public metric |interface toggle: the ports of `smu_wrapper`
 (`smu_wrapper_uvm_top.u_dut`), a port counting once any of its bits has
 toggled, read from the run's `cov/merged.dat` by `cov/interface_toggle.py`;

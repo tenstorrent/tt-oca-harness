@@ -9,10 +9,11 @@ integration level that wires the SMC, the DTP, the SEP and the AXI crossbar
 together. This file owns the build-and-run recipes and the package layout.
 The other owners are `docs/SMU_TB_ARCH.adoc` (testbench architecture and the
 BFM table), `docs/SMU_VPLAN.adoc` (what every enrolled test intends and
-checks), `docs/SMU_FCOV.adoc` (coverage intent), and the decision records
-under `hw/sys/smu/doc/dv/` (`SMU_FEATURE_LIST`, `SMU_SCOPE_TRACEABILITY`,
-`SMU_DEFERRED_DISPOSITION`, `SMU_RELEASE_MATRIX`, `SMU_COVERAGE_POLICY`,
-`SMU_HOSTED_COMPONENT_SIGNOFF`). `docs/index.adoc` is the chapter set.
+checks, and under its Signoff Package the feature list, the scope and
+traceability matrix, the release matrix and the component scope),
+`docs/SMU_FCOV.adoc` (coverage intent), and the two decision records under
+`hw/sys/smu/doc/dv/` (`SMU_DEFERRED_DISPOSITION`, `SMU_COVERAGE_POLICY`).
+`docs/index.adoc` is the chapter set.
 
 ## What the bench is
 
@@ -92,6 +93,7 @@ Environment variables the package reads:
 | `SMU_SEP_BOOT_MAX_CYCLES` | `smu_sep_smoke_seq.py`, `smu_sep_boot_health_seq.py` | SEP boot budget |
 | `SMU_SEP_FW_MAX_CYCLES` | the `sep_real_fw`, lifecycle and chain sequences | terminal-loop budget for a SEP firmware image |
 | `SMU_SEP_SANITY_MAX_CYCLES`, `SMU_SEP_MODULES_MAX_CYCLES`, `SMU_SEP_ENTROPY_MAX_CYCLES` | the sequence of the same name | per-image budgets for the longer firmware runs |
+| `OCAH_TOOLCHAIN_ROOTFS` | `scripts/docker-run.sh`, i.e. every `[c_build.*]` stage when `RISCV_TOOLCHAIN` is unset | a toolchain rootfs extracted from the `ocah-toolchain` image; when set and `bwrap` is present the firmware builds run in a bubblewrap sandbox instead of a container (`scripts/docker.md`) |
 
 ## Quick start
 
