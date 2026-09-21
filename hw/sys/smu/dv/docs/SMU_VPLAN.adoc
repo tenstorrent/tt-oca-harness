@@ -1429,6 +1429,7 @@ check.
 
 * The complement of <<sec-031-smu_sram_auto_init_done_test>> on the same composition: the same consumer nodes that are required to move there are required to stay idle here, and the same done output is required to assert.
 * The preloaded image must survive to first fetch, which is what the hold-off exists for; the leaf reads the enable high at the SMU boundary rather than assuming it.
+* EXPECT-SOURCE: the no-sweep and no-write legs follow from the input's stated purpose (`smu.adoc`, `cpu.adoc`). Neither document states that `smc_init_mem_done_o` asserts when the sweep is held off; that expectation is transcribed from the MEM_ZERO FSM in `smc_4core_cpu.sv`, so the done leg is a drift check on the implementation until the specification states it.
 
 *Test Procedure*:
 
