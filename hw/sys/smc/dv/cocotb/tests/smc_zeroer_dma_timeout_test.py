@@ -38,6 +38,7 @@ class smc_zeroer_dma_timeout_test(smc_base_test):
 
     required_evidence = (
         "CHK-NONVAC",
+        "CHK-ZEROER-CMD-READBACK",
         "CHK-ZEROER-CTRL-STATUS",
         "CHK-ZEROER-REGION-DECODE",
         "CHK-ZEROER-REGION-ZEROED",
@@ -45,7 +46,7 @@ class smc_zeroer_dma_timeout_test(smc_base_test):
         "CHK-ZEROER-STATUS-LIFECYCLE",
         "CHK-ZEROER-TRIGGER-STARTS",
     )
-    min_evidence = 7
+    min_evidence = 8
 
     auto_protocol_vip = False
 
