@@ -1224,11 +1224,17 @@ module smu_wrapper_uvm_top (
   assign tb_stap_smc_trst_n  = u_dut.u_smu.dtp_smc_stap_tap_ctrl.trst_n;
   assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
   assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
-  // Boot-stall GPIO pad (smc_padring: boot_stall_o = lsio_pad2core_data[57]).
-  // Unlike tb_top.sv, which ORs the TB value into a pad2core vector at the
-  // smu boundary, smu_wrapper brings out a real bidirectional pad bus --
-  // smc_ip_integration puts a prim_pad_shim on every pin -- so the drive goes
-  // onto the wire itself, weak (pull) elsewhere so a core output still wins.
+  // smu_wrapper brings out a real bidirectional pad bus -- smc_ip_integration
+  // puts a prim_pad_shim on every pin -- so TB stimulus goes onto the wire
+  // itself. A weak pull-down on every pad gives an idle pin a defined 0 on a
+  // four-state simulator without contending with a core output; Verilator
+  // ignores the primitive and reads an undriven pad as 0, so both simulators
+  // see the same idle bus. A pull-up would stall boot: pad 57 is the
+  // active-high boot-stall input (smc_padring: boot_stall_o =
+  // lsio_pad2core_data[57]).
+  for (genvar gpio_idx = 0; gpio_idx < smc_pkg::NUM_GPIO_WRAPS; gpio_idx++) begin : gen_gpio_pad_pull
+    pulldown u_pad_pulldown (gpio_pad_io[gpio_idx]);
+  end
   assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
   assign gpio_pad_io[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : 1'bz;
 
