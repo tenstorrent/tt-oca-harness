@@ -13,4 +13,5 @@ Authoritative description and register maps: `hw/ip/system_timer_octs/doc/` (pub
 
 ## Verification
 
-See `dv/README.md`.
+Block-level bench on the unified DV flow: `dv/README.md`
+(`python3 tools/dv/run_dv.py --dut system_timer_octs`). SMC-level scenarios live under `hw/sys/smc/dv/`.

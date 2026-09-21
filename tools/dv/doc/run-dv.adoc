@@ -2744,8 +2744,9 @@ then prints one line and skips the simulation.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the three
-`cross_trigger` benches' `all` groups. No coverage.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the IP-level
+benches' `all` groups (the three `cross_trigger` benches, the four UART-family
+benches, `system_timer_octs` and `scrambler`). No coverage.
 Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
@@ -2753,7 +2754,7 @@ Nightly is not a merge gate; a red nightly run is a triage signal.
 with `tier=weekly`
 |The regression the dashboard publishes, one random seed per test on every
 row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
-and the three `cross_trigger` benches' `all` groups. A second SMC row
+and the IP-level benches' `all` groups. A second SMC row
 (`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
 `expect_fail` (<<runner-expected-failures>>), so the row is green while the
 filed defects stand and red the week one is fixed. `--sim-jobs` follows the
@@ -2831,9 +2832,10 @@ symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smc` + Verilator; `cross_trigger_port`,
-`cross_trigger_matrix`, `cross_trigger_network` + Verilator (regression
-tiers only)
+|`dtp`, `sep`, `smu`, `smc` + Verilator; the IP-level benches
+`cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
+`uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
+`system_timer_octs`, `scrambler` + Verilator (regression tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
@@ -2841,8 +2843,8 @@ row). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
-run in the same matrix but are not required contexts; the `cross_trigger`
-benches are enrolled in the regression tiers only.
+run in the same matrix but are not required contexts; the IP-level benches
+are enrolled in the regression tiers only.
 
 |Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow

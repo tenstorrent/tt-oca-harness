@@ -74,3 +74,18 @@ root = "hw/ip/cross_trigger/cross_trigger_matrix/dv"
 
 [duts.cross_trigger_network]
 root = "hw/ip/cross_trigger/cross_trigger_network/dv"
+
+# UART-family IP-level benches: the family nests one level below the
+# hw/ip/<name>/dv convention (hw/ip/uart/<name>/dv), so each IP is registered
+# here.
+[duts.uart_16550]
+root = "hw/ip/uart/uart_16550/dv"
+
+[duts.log_engine]
+root = "hw/ip/uart/log_engine/dv"
+
+[duts.uart_log_engine_wrap]
+root = "hw/ip/uart/uart_log_engine_wrap/dv"
+
+[duts.uart_wrap]
+root = "hw/ip/uart/uart_wrap/dv"
