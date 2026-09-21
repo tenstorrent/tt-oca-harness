@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import cocotb
+
 from .smc_addr_map import smc_addr
 from .smc_csr_field_catalog import catalog_entry
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -58,4 +60,18 @@ class smc_register_boundary_depth_test_seq(SmcCsrSeq):
             await self.csr_restore(name, addr, value)
 
         expected_accesses = len(BOUNDARY_READS) + (len(BOUNDARY_WRITES) * 5)
-        assert self.accesses == expected_accesses, "register boundary sweep mismatch"
+        self.assert_all_reachable(expected_accesses, "REGISTER_BOUNDARY")
+        cocotb.log.info(
+            "CHK-CSR-BOUNDARY-SWEEP: %d first/last-of-window read(s) over SEP_IN AXI "
+            "each compared against its expected value (%s); %d last-of-window "
+            "write(s) read back the pattern and then the saved value (%s); all %d "
+            "access(es) checked by the scoreboard",
+            len(BOUNDARY_READS),
+            "; ".join(f"{name}@0x{addr:08x}==0x{exp:x}" for name, addr, exp in BOUNDARY_READS),
+            len(BOUNDARY_WRITES),
+            "; ".join(
+                f"{name}@0x{addr:08x} pattern 0x{pattern:08x} restored 0x{old:08x}"
+                for (name, addr, pattern), (_, _, old) in zip(BOUNDARY_WRITES, original)
+            ),
+            expected_accesses,
+        )

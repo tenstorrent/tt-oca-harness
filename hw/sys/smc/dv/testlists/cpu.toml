@@ -218,7 +218,7 @@ args = [
 ]
 
 [[groups]]
-name = "cpu_depth"
+name = "cpu"
 tests = [
     "smc_cpu_ctrl_map_depth_test",
     "smc_cpu_ctrl_scratch_window_test",

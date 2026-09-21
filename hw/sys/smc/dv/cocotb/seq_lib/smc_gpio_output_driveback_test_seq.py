@@ -93,24 +93,28 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         )
         pad_bit = newly_en
         pad_idx = newly_en.bit_length() - 1
-        assert (self._val_vec(dut) & pad_bit) != 0, (
+        val_high = self._val_vec(dut)
+        assert (val_high & pad_bit) != 0, (
             f"GPIO wrap0 pad[{pad_idx}] value did not follow register (high)"
         )
 
         # 2) Keep TX enabled, drive value low -> value clears, enable stays.
         await self.csr_write("GPIO0_TX_LOW", GPIO0_DATA_CTRL, OUT_DRIVE_LOW)
         await ClockCycles(dut.clk_smc_i, 8)
-        assert (self._en_vec(dut) & pad_bit) != 0, (
+        en_low = self._en_vec(dut)
+        val_low = self._val_vec(dut)
+        assert (en_low & pad_bit) != 0, (
             f"GPIO wrap0 pad[{pad_idx}] output-enable dropped while TX still enabled"
         )
-        assert (self._val_vec(dut) & pad_bit) == 0, (
+        assert (val_low & pad_bit) == 0, (
             f"GPIO wrap0 pad[{pad_idx}] value did not follow register (low)"
         )
 
         # 3) Disable the register interface -> pad output released.
         await self.csr_write("GPIO0_DISABLE", GPIO0_DATA_CTRL, OUT_DISABLE)
         await ClockCycles(dut.clk_smc_i, 8)
-        assert (self._en_vec(dut) & pad_bit) == 0, (
+        en_off = self._en_vec(dut)
+        assert (en_off & pad_bit) == 0, (
             f"GPIO wrap0 pad[{pad_idx}] output-enable did not release after disable"
         )
 
@@ -122,6 +126,19 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         # or a dead port fails.
         self.assert_all_reachable(3, "GPIO_OUTPUT_DRIVEBACK")
         cocotb.log.info(
-            "GPIO wrap0 output driveback verified on pad[%d] (core2pad + core2pad_en)",
+            "CHK-GPIO-OUTPUT-DRIVEBACK: GPIO wrap0 TX enable raised exactly one "
+            "core2pad_en_o bit, pad[%d] (delta 0x%x over base 0x%x); core2pad_o[%d] "
+            "read %d with DATA_CTRL.core2pad=1 and %d with core2pad=0 while "
+            "core2pad_en_o[%d] stayed %d, and core2pad_en_o[%d] read %d after "
+            "interface disable; 3 CSR writes reached the scoreboard",
             pad_idx,
+            newly_en,
+            base_en,
+            pad_idx,
+            (val_high >> pad_idx) & 1,
+            (val_low >> pad_idx) & 1,
+            pad_idx,
+            (en_low >> pad_idx) & 1,
+            pad_idx,
+            (en_off >> pad_idx) & 1,
         )
