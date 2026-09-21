@@ -7,7 +7,7 @@ from __future__ import annotations
 import cocotb
 
 from .smc_addr_map import smc_addr
-from .smc_csr_field_catalog import catalog_entry
+from .smc_csr_field_catalog import catalog_entry, misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 
 SCRATCH_COLD_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
@@ -31,7 +31,12 @@ BOUNDARY_READS = [
     ("SCRATCH_COLD_7", SCRATCH_COLD_7, 0),
     ("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, 0),
     ("SCRATCH_COLD_WARM_7", SCRATCH_COLD_WARM_7, 0),
-    ("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_BASE, 0x0001_00A0),
+    (
+        "CHIP_CONFIG_VERSION_LO",
+        CHIP_CONFIG_BASE,
+        misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset"),
+    ),
+    ("CHIP_CONFIG_VERSION_HI", CHIP_CONFIG_BASE + 0x4, 0),
 ]
 # CHIP_CONFIG.LC_STATE is `sw = r; hw = w`, the lifecycle value the SEP drives,
 # so the last register of that window is read for an OKAY response and its
