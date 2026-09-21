@@ -1606,9 +1606,23 @@ reports the absence of traffic the stimulus policy forbids.
 
 Measured on the `sep-code-cov-v2a` database, assertion coverage was 52.64%
 (10403 assertions, 4927 uncovered, 79 without attempts). Removing the metric
-moves the headline from 59.23 to 60.33 and leaves every code metric unchanged
-(LINE 58.05, COND 61.81, TOGGLE 59.95, FSM 25.98, BRANCH 57.60, GROUP 98.57).
-The 1.10 is a consequence of the decision, not its purpose.
+moves the headline to 60.38 and leaves every code metric unchanged. The gain of
+about one point is a consequence of the decision, not its purpose.
+
+== Where the metric is dropped, and why it is not the `-cm` list
+
+The drop is a `-metric` argument on the report command, set by
+`[coverage.vcs].report_cmd` in `sep_sim_cfg.toml`.
+
+Removing `assert` from the compile-time `-cm` list does NOT work, and must not
+be attempted: in this VCS version `-cm assert` does not gate assertion-coverage
+collection. The report still carries an ASSERT column without it.
+
+Worse, the `-lca -cm_common_hier` pair is what confines assertion coverage to
+the `-cm_hier` scope. Dropping that pair alongside `assert` admits assertions
+from the excluded library hierarchy, which pass trivially: ASSERT rose from
+52.67 to 88.89 and the headline to a meaningless 64.46. Both flags stay in
+`compile_args` for that reason, even though the metric is not reported.
 
 == What this does NOT do
 

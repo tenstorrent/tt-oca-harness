@@ -192,27 +192,46 @@ extra_args = ["-fno-dfg"]
 # so the post-compile check looks in a directory the compile does not write.
 # Point the check at the database the compile actually writes.
 design_artifact = "{build_dir}/../cov_build.vdb"
-# `assert` is deliberately absent from the `-cm` list. SEP assertions are
-# predominantly negative controls: the antecedent of the implication is an
-# illegal condition. This DV env drives legal stimulus only, so those
-# assertions can never record a successful attempt and are uncoverable by
-# construction rather than by a stimulus gap -- grading them reports the
-# absence of traffic the stimulus policy forbids.
+
+# Assertion coverage is collected and scored whatever the `-cm` list says: in
+# this VCS version `-cm assert` does not gate it, and the compile-time
+# `-cm_common_hier` below is what keeps it inside the graded hierarchy. So the
+# metric is dropped HERE, at report time, which is the only place that works.
 #
-# This removes assertion COVERAGE ACCOUNTING only. Every assertion stays
-# compiled, evaluating, and able to fail a test; `-cm assert` never governed
-# checking. Restore `+assert` here if SEP ever adds an illegal-stimulus env.
+# Why it is dropped: SEP assertions are predominantly negative controls, where
+# the implication antecedent is an illegal condition. This environment drives
+# legal stimulus only, so those assertions can never record a successful
+# attempt. They are uncoverable by construction rather than by a stimulus gap,
+# and grading them reports the absence of traffic the stimulus policy forbids.
 #
-# `-cm_common_hier` (and the `-lca` that opts into it) existed solely to extend
-# `-cm_hier` from the code metrics to assertion coverage. With no assertion
-# metric there is nothing left for it to scope, so both are dropped.
+# This changes the SCORE only. Every assertion stays compiled, evaluating and
+# able to fail a test; nothing here touches checking. Restore `+assert` to the
+# metric list if SEP ever gains an illegal-stimulus environment.
+#
+# Overrides the shared [vcs] report_cmd in hw/common/dv/configs/simulators.toml
+# by adding `-metric`; the rest of the command is copied from it verbatim.
+report_cmd = [
+  "urg", "-full64",
+  "-dir", "{merged}",
+  "-report", "{report}",
+  "-format", "both",
+  "-metric", "line+cond+tgl+fsm+branch+group",
+]
 compile_args = [
   "-cm",
-  "line+cond+tgl+fsm+branch",
+  "line+cond+tgl+fsm+branch+assert",
   "-cm_dir",
   "{build_cov_dir}",
   "-cm_hier",
   "{repo_root}/hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier",
+  # Extends the SAME scope file from code coverage to assertion coverage.
+  # `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without this the
+  # excluded hierarchy leaves the code metrics but remains graded for
+  # assertions. `-cm_common_hier` is a Limited Customer Availability feature;
+  # VCS refuses the compile without `-lca` ("The '-cm_common_hier' flow requires
+  # a special option"), which is the opt-in switch.
+  "-lca",
+  "-cm_common_hier",
 ]
 
 [coverage.verilator]
