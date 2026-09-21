@@ -2621,6 +2621,33 @@ table, when present, under `overlay_env` in both the run-level `result.json`
 and `regression.json`. When a site layer was active, its path is recorded
 under `site` in the same two files (<<runner-site-layer>>).
 
+[[runner-log-provenance]]
+=== Provenance lines in the per-test log
+
+A cocotb or VCS sim leaf ends its per-test log with one `PROVENANCE` line
+naming the commit, branch, dirty flag, build fingerprint and, where the flow
+has one, the filelist and its digest. The same facts are recorded under
+`provenance` in the leaf's stage record, so a log and its `result.json` name
+the same build.
+
+Every `+key=value` simulator argument whose value is an existing regular file
+(firmware, ROM, eFuse and shadow-register images such as `+rom_hex`,
+`+sep_itcm_hex`, `+smc_efuse_hex` or `+smc_shadow_reg_preload`) is digested
+as well. Each one adds a line directly after `PROVENANCE`:
+
+----
+PROVENANCE commit=<sha> branch=<name> dirty=false build_fingerprint=<fp> filelist=<path> filelist_sha256=<digest>
+FW-PROVENANCE rom_hex=hw/sys/smc/dv/assets/smc_rom_default.hex sha256=<64 hex>
+FW-PROVENANCE smc_efuse_hex=hw/sys/smc/dv/assets/smc_efuse_default.hex sha256=<64 hex>
+----
+
+The path is repo-relative when the image sits inside the checkout and absolute
+otherwise, and the digest is the full SHA-256 of the file's bytes. The stage
+record carries the same map under `provenance.images`, keyed by the plusarg
+name. Bare flags, numeric values and values that do not name a regular file are
+not recorded. An image a testbench opens by a fixed name rather than a plusarg
+is outside this binding; pass it through a plusarg to bring it in.
+
 [[runner-interrupted-checkpoints]]
 === Interrupted-run checkpoints
 
