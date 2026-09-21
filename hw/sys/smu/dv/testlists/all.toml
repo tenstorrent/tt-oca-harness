@@ -1335,6 +1335,7 @@ tests = [
   "smu_system_timer_octs_test",
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
+  "smu_smc_ss_reset_ctrl_sweep_test",
   "smu_smc_boundary_lane_sweep_test",
   "smu_smc_efuse_shadow_sense_reset_test",
   "smu_smc_cool_reset_pin_test",
@@ -2246,6 +2247,7 @@ tests = [
   "smu_axi_in_burst_outstanding_test",
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
+  "smu_smc_ss_reset_ctrl_sweep_test",
   "smu_smc_boundary_lane_sweep_test",
   "smu_smc_efuse_shadow_sense_reset_test",
   "smu_smc_cool_reset_pin_test",
@@ -2257,7 +2259,7 @@ tests = [
   "smu_smc_peripheral_irq_test",
   "smu_sep_secure_tm_test",
 ]
-expected_count = 67
+expected_count = 68
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -2356,6 +2358,7 @@ tests = [
   "smu_axi_in_burst_outstanding_test",
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
+  "smu_smc_ss_reset_ctrl_sweep_test",
   "smu_smc_boundary_lane_sweep_test",
   "smu_smc_efuse_shadow_sense_reset_test",
   "smu_smc_cool_reset_pin_test",
@@ -2367,7 +2370,7 @@ tests = [
   "smu_smc_peripheral_irq_test",
   "smu_sep_secure_tm_test",
 ]
-expected_count = 99
+expected_count = 100
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -2499,6 +2502,32 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
+# The subsystem reset-control registers of the SMC reset unit against the
+# `ss_reset_ctrl_o` lanes they own, swept so every field bit of all 32
+# elements is driven both ways.
+[[tests]]
+name = "smu_smc_ss_reset_ctrl_sweep_test"
+module = "smu_smc_ss_reset_ctrl_sweep_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["smc", "sep", "p0", "real_rtl"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a register-to-boundary path, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
 # Every lane of the multi-lane SMC-facing wrapper buses, so each bit of each
 # is driven both ways against the SMC register that owns it.
 [[tests]]
@@ -2523,6 +2552,7 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
+
 
 # The cool reset pin against the SMC primary reset it asserts, and the DFT
 # done/pass straps read through that reset, where DFX_CTRL.STATUS_SMU is at
