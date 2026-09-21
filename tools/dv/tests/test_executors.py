@@ -10,6 +10,7 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 import tempfile
@@ -23,7 +24,11 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib import cli, site  # noqa: E402
+from runlib import (  # noqa: E402
+    cli,
+    site,
+    stages,  # noqa: E402
+)
 from runlib import executors as executors_pkg  # noqa: E402
 from runlib.config import (  # noqa: E402
     CLUSTER_DRIVERS,
@@ -370,6 +375,29 @@ class LocalExecutorTest(unittest.TestCase):
         self.assertEqual(executor.poll([queued])[queued.task_id].state, JobState.CANCELLED)
         self.assertEqual(executor.collect(queued).state, JobState.CANCELLED)
         executor.close(wait=False)
+
+
+class StageCancellationTest(unittest.TestCase):
+    def test_a_group_this_process_cannot_signal_does_not_raise(self) -> None:
+        class LiveGroup:
+            pid = os.getpid()
+
+            @staticmethod
+            def poll() -> None:
+                return None
+
+        proc = LiveGroup()
+        with stages._ACTIVE_SUBPROCESS_LOCK:
+            stages._ACTIVE_SUBPROCESSES.add(proc)
+        self.addCleanup(stages._ACTIVE_SUBPROCESSES.discard, proc)
+        self.addCleanup(stages.reset_stage_cancellation)
+        denied = PermissionError(1, "Operation not permitted")
+        with (
+            mock.patch("runlib.stages.os.killpg", side_effect=denied) as killpg,
+            mock.patch("runlib.stages.time.sleep"),
+        ):
+            stages.request_stage_cancellation()
+        self.assertEqual(killpg.call_count, 2)
 
 
 class RegistrySchemaTest(unittest.TestCase):
