@@ -540,6 +540,52 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
     ],
+    "smu_smc_boundary_lane_sweep_test": [
+        (
+            "CHK-SMU-LANE-EXT-IRQ",
+            "CHK-SMU-LANE-EXT-IRQ",
+            "all 256 smc_ext_interrupts_i lanes appear bit for bit on the "
+            "external-interrupt slice of cpu_interrupts_o for all-ones, all-zeros "
+            "and both alternating patterns, and every lane is observed both high "
+            "and low",
+        ),
+        (
+            "CHK-SMU-LANE-ISOLATE-REQ",
+            "CHK-SMU-LANE-ISOLATE-REQ",
+            "isolate_req_o carries the RESET_UNIT.ISOLATE_REQ_REG software term on "
+            "all 32 lanes, each lane observed set and cleared against the CSR "
+            "read-back",
+        ),
+        (
+            "CHK-SMU-LANE-SS-CONFIG",
+            "CHK-SMU-LANE-SS-CONFIG",
+            "with SS_CONFIG_LOCK read open, ss_config_o carries RESET_UNIT.SS_CONFIG "
+            "on all 32 lanes for all-ones, both alternating patterns and the RDL "
+            "reset value it is restored to",
+        ),
+        (
+            "CHK-SMU-LANE-MBX-IRQ",
+            "CHK-SMU-LANE-MBX-IRQ",
+            "each of the 32 outbound mailboxes raises its own "
+            "smc_ext_mailbox_interrupts_o bit through IRQEN.WTIRQ and an outbound "
+            "push, and clearing IRQEN retires that bit alone",
+        ),
+        (
+            "CHK-SMU-LANE-GPIO",
+            "CHK-SMU-LANE-GPIO",
+            "with all 65 pads taken from their LSIO owners and armed as active-high "
+            "levels, driving every pad raises every gpio_interrupt_o lane and sets "
+            "DATA_CTRL.PAD2CORE on every interface, and both follow the pads back "
+            "down",
+        ),
+        (
+            "CHK-SMU-LANE-UART-IRQ",
+            "CHK-SMU-LANE-UART-IRQ",
+            "each of the four UART instances raises uart_interrupt_o on its own lane "
+            "from IER.ETBEI, reports the transmitter-holding-register-empty code in "
+            "IIR, and retires that lane on the IIR read",
+        ),
+    ],
     "smu_smc_peripheral_irq_test": [
         (
             "CHK-SMU-GPIO-IRQ",
@@ -782,6 +828,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-FUSE-SENSE-S2",
             "CHK-SMU-FUSE-SENSE-S2",
             "sep_fuse_sense_done_o rises once, after reset release and after SEP eFuse traffic",
+        ),
+    ],
+    "smu_smc_efuse_shadow_sense_reset_test": [
+        (
+            "CHK-SMU-EFUSE-SHADOW-SENSE",
+            "CHK-SMU-EFUSE-SHADOW-SENSE",
+            "with +skip_fuse_sense unset, smc_shadow_regs carries the whole "
+            "SMC_TOP_SMC_EFUSE_MAP_SIZE-wide sensed image, register slice by register "
+            "slice at the byte offsets smc_addr.h gives them, and holds it after the sense",
+        ),
+        (
+            "CHK-SMU-EFUSE-SHADOW-RESET",
+            "CHK-SMU-EFUSE-SHADOW-RESET",
+            "smc_shadow_regs reads the zero every smc_efuse_map.rdl field resets to, both "
+            "before the sense completes and for the whole time rst_cold_ni is held after it",
+        ),
+        (
+            "CHK-SMU-EFUSE-SHADOW-TOGGLE",
+            "CHK-SMU-EFUSE-SHADOW-TOGGLE",
+            "the image programs every bit of the map, and every one of them is observed "
+            "going 0 -> 1 on the sense and 1 -> 0 on the cold reset",
         ),
     ],
     "smu_smc_fuse_sense_sequence_test": [

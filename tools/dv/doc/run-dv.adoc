@@ -1390,15 +1390,19 @@ scheduler reports finished counts as confirmed, and the ids it does not know
 or does not confirm are written to
 `<run>/stages/regress/jobs/cancel-unconfirmed.json` for the operator.
 
-Hosted CI has no scheduler, so `tools/dv/tests/test_cluster_executor.py`
-drives both drivers through `tools/dv/tests/fake_scheduler.py`, which answers
+`tools/dv/tests/test_cluster_executor.py` drives both drivers through
+`tools/dv/tests/fake_scheduler.py`, which answers
 with the output shapes the production schedulers print, including a
 submission filter's stderr banner in both its shapes, with and without a
 memory request, the `ERROR` record `bjobs -json` returns
 for an unknown id, `bkill`'s status 255 for a finished job, `squeue`'s
 failure for an id the controller dropped, and `scancel`'s success for any id.
-The state maps and parsers live in `runlib/executors/lsf.py` and
-`runlib/executors/slurm.py`.
+The `slurm-qualify` workflow, run by hand, then puts the Slurm driver against
+a live scheduler: a single-node Slurm with accounting that the job installs on
+the hosted runner, submitting the selected tests as jobs of the runner itself
+(<<runner-ci>>). The LSF driver's live qualification runs on the maintainer
+farm outside hosted CI. The state maps and parsers live in
+`runlib/executors/lsf.py` and `runlib/executors/slurm.py`.
 
 ==== Leaf manifests and the worker
 
@@ -2621,6 +2625,33 @@ table, when present, under `overlay_env` in both the run-level `result.json`
 and `regression.json`. When a site layer was active, its path is recorded
 under `site` in the same two files (<<runner-site-layer>>).
 
+[[runner-log-provenance]]
+=== Provenance lines in the per-test log
+
+A cocotb or VCS sim leaf ends its per-test log with one `PROVENANCE` line
+naming the commit, branch, dirty flag, build fingerprint and, where the flow
+has one, the filelist and its digest. The same facts are recorded under
+`provenance` in the leaf's stage record, so a log and its `result.json` name
+the same build.
+
+Every `+key=value` simulator argument whose value is an existing regular file
+(firmware, ROM, eFuse and shadow-register images such as `+rom_hex`,
+`+sep_itcm_hex`, `+smc_efuse_hex` or `+smc_shadow_reg_preload`) is digested
+as well. Each one adds a line directly after `PROVENANCE`:
+
+----
+PROVENANCE commit=<sha> branch=<name> dirty=false build_fingerprint=<fp> filelist=<path> filelist_sha256=<digest>
+FW-PROVENANCE rom_hex=hw/sys/smc/dv/assets/smc_rom_default.hex sha256=<64 hex>
+FW-PROVENANCE smc_efuse_hex=hw/sys/smc/dv/assets/smc_efuse_default.hex sha256=<64 hex>
+----
+
+The path is repo-relative when the image sits inside the checkout and absolute
+otherwise, and the digest is the full SHA-256 of the file's bytes. The stage
+record carries the same map under `provenance.images`, keyed by the plusarg
+name. Bare flags, numeric values and values that do not name a regular file are
+not recorded. An image a testbench opens by a fixed name rather than a plusarg
+is outside this binding; pass it through a plusarg to bring it in.
+
 [[runner-interrupted-checkpoints]]
 === Interrupted-run checkpoints
 
@@ -2908,6 +2939,16 @@ names `verilator-smoke (<dut>)` are the stable check contexts. Every job
 runs for a documentation-only change too, so the contexts report; each job
 then prints one line and skips the simulation.
 
+|`qualify`
+|`slurm-qualify.yml`: `workflow_dispatch` only, with `dut`, `items` and
+`sim-jobs` inputs
+|Installs a single-node Slurm with accounting on the runner and runs the
+selected tests through `--executor slurm --mem-mb 2000 --walltime 30`; the
+result gate also requires every leaf to carry a Slurm job in a terminal
+state. A live check of the Slurm driver for a change to the driver, the
+registry's Slurm table or the worker; one node adds latency and no capacity,
+so it is not a tier and no pull request runs it.
+
 |`nightly`
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
@@ -3021,14 +3062,15 @@ tools. A pair joins the workflow matrix only with a qualifying run at head.
 
 |Unsupported in hosted CI
 |VCS/Xcelium anywhere; formal mode; the `smu_wrapper` SEP firmware set
-(the part of its `all` outside `hosted`); non-local executors
+(the part of its `all` outside `hosted`); the `lsf` executor
 |VCS and Xcelium need licensed self-hosted runners. Formal mode is a
 developer-host flow: hosted CI runs no formal job and no formal result
 reaches the dashboard (<<runner-formal>>). The `smu_wrapper` SEP firmware
 items are in its `all` but need the RISC-V toolchain container, which hosted
-runners lack, so the workflows select `hosted`. Hosted runners have no
-scheduler; the cluster executors are checked there against fake scheduler
-commands (<<runner-cluster-dispatch>>).
+runners lack, so the workflows select `hosted`. The `lsf` executor needs the
+maintainer farm; hosted CI checks both cluster drivers against fake scheduler
+commands, and the on-demand `slurm-qualify` workflow runs the `slurm` executor
+on a single-node Slurm it installs (<<runner-cluster-dispatch>>).
 |===
 
 === Framework-aware CI matrices

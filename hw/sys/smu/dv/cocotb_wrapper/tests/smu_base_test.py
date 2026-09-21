@@ -282,6 +282,8 @@ class smu_base_test(uvm_test):
         "tb_secure_tm_req",
         "tb_gpio0_drive_en",
         "tb_gpio0_drive_val",
+        "tb_gpio_drive_en",
+        "tb_gpio_drive_val",
         "tb_xtrig_ctp_req_out_din",
         "tb_xtrig_ctp_req_in_din",
         "tb_xtrig_ctp_ack_in_din",

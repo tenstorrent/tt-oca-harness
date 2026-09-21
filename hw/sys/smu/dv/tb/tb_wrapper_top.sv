@@ -344,7 +344,7 @@ module smu_wrapper_uvm_top (
   output logic             tb_telemetry_atready,
   output logic             tb_telemetry_afvalid,
   // SMC boundary inputs, and the outputs they and the SMC CSRs drive.
-  input  wire  logic [31:0] tb_smc_ext_interrupts,
+  input  wire  logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] tb_smc_ext_interrupts,
   input  wire  logic [3:0]  tb_smc_ndmreset_request,
   input  wire  logic        tb_cfg_flr_pf_active,
   input  wire  logic        tb_mem_repair_abort,
@@ -371,6 +371,9 @@ module smu_wrapper_uvm_top (
   // boot-stall strap drive on pin 57 below.
   input  wire  logic tb_gpio0_drive_en,
   input  wire  logic tb_gpio0_drive_val,
+  // Per-pad drive for the whole GPIO bus, on the same weak terms as pin 0.
+  input  wire  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_gpio_drive_en,
+  input  wire  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_gpio_drive_val,
   // SEP secure test-mode request strap. The SEP eFuse wrapper samples it on
   // the rising edge of its fuse-sense-done, so a leaf drives it across a cold
   // reset rather than at an arbitrary time.
@@ -678,8 +681,8 @@ module smu_wrapper_uvm_top (
   logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_w;
 
   always_comb begin
-    smc_ext_interrupts_w         = '0;
-    smc_ext_interrupts_w[31:0]   = tb_smc_ext_interrupts;
+    smc_ext_interrupts_w = '0;
+    smc_ext_interrupts_w[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] = tb_smc_ext_interrupts;
   end
 
   assign tb_smc_ndmreset_process   = ndmreset_process_w;
@@ -1238,11 +1241,29 @@ module smu_wrapper_uvm_top (
   // see the same idle bus. A pull-up would stall boot: pad 57 is the
   // active-high boot-stall input (smc_padring: boot_stall_o =
   // lsio_pad2core_data[57]).
-  for (genvar gi = 0; gi < smc_pkg::NUM_GPIO_WRAPS; gi++) begin : gen_gpio_pad_pull
-    pulldown u_pad_pulldown (gpio_pad_io[gi]);
+  for (
+      genvar gpio_idx = 0; gpio_idx < smc_pkg::NUM_GPIO_WRAPS; gpio_idx++
+  ) begin : gen_gpio_pad_pull
+    pulldown u_pad_pulldown (gpio_pad_io[gpio_idx]);
   end
-  assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
-  assign gpio_pad_io[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : 1'bz;
+
+  // One testbench driver per pad: the pin-0 and boot-stall straps merge into
+  // the per-pad vectors so no pad carries two continuous assignments.
+  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_drive_en;
+  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_drive_val;
+
+  always_comb begin
+    gpio_pad_drive_en      = tb_gpio_drive_en;
+    gpio_pad_drive_val     = tb_gpio_drive_val;
+    gpio_pad_drive_en[0]   = tb_gpio_drive_en[0] | tb_gpio0_drive_en;
+    gpio_pad_drive_val[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : tb_gpio_drive_val[0];
+    gpio_pad_drive_en[57]  = tb_gpio_drive_en[57] | gpio_boot_stall_drive_i;
+    gpio_pad_drive_val[57] = gpio_boot_stall_drive_i ? 1'b1 : tb_gpio_drive_val[57];
+  end
+
+  for (genvar gpio_i = 0; gpio_i < int'(smc_pkg::NUM_GPIO_WRAPS); gpio_i++) begin : gen_gpio_drive
+    assign gpio_pad_io[gpio_i] = gpio_pad_drive_en[gpio_i] ? gpio_pad_drive_val[gpio_i] : 1'bz;
+  end
 
   // smu.sv does not forward the peripheral-domain primary reset to its own
   // boundary, so read it off the SMC the way tb_top.sv does.
