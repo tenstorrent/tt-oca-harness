@@ -8,16 +8,20 @@ module's instance as its hierarchy. An integration level is graded on its
 interfaces, so this keeps the points whose hierarchy is the DUT instance,
 drops the names that are not in the module's port list, and folds what is
 left back to the port it belongs to: a port has toggled when any one of its
-bit-edge points was hit. That is the same view `tgl(portsonly)` gives urg
-on VCS, where no script is needed.
+bit-edge points was hit.
 
-    python3 hw/sys/smu/dv/cov/interface_toggle.py <run dir | merged.dat>
+    python3 hw/sys/smu/dv/cov/interface_toggle.py <run dir | merged.dat | modinfo.txt>
         [--scope smu_wrapper_uvm_top.u_dut] [--module hw/top/smu_wrapper.sv]
         [--list]
 
-The database is `cov/merged.dat` under a `run_dv.py --cov` run directory,
-the same file `verilator_coverage` reads. The port list is read from the
-DUT's own source, found from the repository root above the run directory.
+A run directory or `merged.dat` is a Verilator database, the file
+`verilator_coverage` reads. A `modinfo.txt` is the text report urg writes for
+a VCS database (`urg -dir merged.vdb -report <dir> -format text -metric tgl
+-show tests`); its "Port Details" table for the module names every port field
+and bit slice with its own two edges, and is folded the same way. urg's own
+"Ports" row in that report counts a field covered only when every bit toggled
+in both directions, which is a different question. The port list is read from
+the DUT's own source, found from the repository root above the database.
 """
 
 from __future__ import annotations
@@ -85,6 +89,37 @@ def port_toggles(dat: Path, scope: str, ports: set[str]) -> dict[str, bool]:
     return hits
 
 
+_URG_MODULE = re.compile(r"^Toggle Coverage for Module : (\S+)")
+_URG_DIRS = {"INPUT", "OUTPUT", "INOUT"}
+
+
+def urg_port_toggles(modinfo: Path, module: str, ports: set[str]) -> dict[str, bool]:
+    """Fold urg's per-field, per-slice "Port Details" rows onto the module's ports."""
+    lines = modinfo.read_text(encoding="utf-8", errors="replace").splitlines()
+    hits: dict[str, bool] = {}
+    i = 0
+    while i < len(lines):
+        m = _URG_MODULE.match(lines[i])
+        i += 1
+        if m is None or m.group(1) != module:
+            continue
+        while i < len(lines) and not lines[i].startswith("Port Details"):
+            i += 1
+        i += 2
+        while i < len(lines) and lines[i].strip():
+            cols = lines[i].split()
+            i += 1
+            if len(cols) < 5 or cols[-1] not in _URG_DIRS:
+                continue
+            name = _NAME.match(cols[0])
+            if name is None or name.group(0) not in ports:
+                continue
+            port = name.group(0)
+            hits[port] = hits.get(port, False) or cols[2] == "Yes" or cols[3] == "Yes"
+        break
+    return hits
+
+
 def _repo_root(start: Path) -> Path | None:
     for parent in [start.resolve(), *start.resolve().parents]:
         if (parent / DEFAULT_MODULE).is_file():
@@ -110,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
     if not dat.is_file():
         print(f"no coverage database at {dat}", file=sys.stderr)
         return 2
+    urg = dat.name == "modinfo.txt"
 
     source = args.module
     if source is None:
@@ -123,7 +159,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"no port declarations found in {source}", file=sys.stderr)
         return 2
 
-    hits = port_toggles(dat, args.scope, ports)
+    if urg:
+        hits = urg_port_toggles(dat, source.stem, ports)
+    else:
+        hits = port_toggles(dat, args.scope, ports)
     if not hits:
         print(f"no toggle points on the ports of {args.scope} in {dat}", file=sys.stderr)
         return 2

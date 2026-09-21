@@ -207,7 +207,9 @@ policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.to
 # because a DUT table replaces the list, then the scope file is added.
 # `-cm_hier` limits what is instrumented at compile time; `-cm_common_hier`
 # extends the same file to assertion coverage, which carries the cov/sv
-# `cover property` points, and needs `-lca`. The coverage database lands
+# `cover property` points, and needs `-lca`. `-cm_tgl portsonly` keeps toggle
+# on module ports; with the subtrees below dropped that is the ports of
+# smu_wrapper. The coverage database lands
 # next to simv under the wrapper's one compile profile, compile_smu_chiplet;
 # the runner's default looks under a `default` build directory this DUT never
 # compiles into, so design_db names the database the profile writes.
@@ -221,6 +223,8 @@ compile_args = [
   "{build_cov_dir}",
   "-cm_hier",
   "{repo_root}/hw/sys/smu/dv/cov/config/vcs/smu_wrapper_cov_scope.hier",
+  "-cm_tgl",
+  "portsonly",
   "-lca",
   "-cm_common_hier",
 ]

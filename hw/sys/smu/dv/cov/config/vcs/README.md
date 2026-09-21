@@ -26,17 +26,27 @@ magnitude larger. What remains is `hw/top/smu_wrapper.sv` itself and the
 
 ## Toggle on the ports only
 
-    begin tgl(portsonly)
-      +tree smu_wrapper_uvm_top.u_dut 0
-    end
+`-cm_tgl portsonly` in `[coverage.vcs]` keeps toggle on module ports, and with
+the subtrees above dropped the ports that remain are `smu_wrapper`'s. urg then
+reports two toggle figures for the module, and they answer different
+questions:
 
-Toggle is collected on the ports of `smu_wrapper` and nothing else: `portsonly`
-is urg's per-port view, in which a port has toggled when any of its bits has.
-It is the same figure `../../interface_toggle.py` derives from a Verilator
-database, where the per-bit points have to be folded back to the port by
-hand. `-cm_common_hier` extends the scope to assertion coverage, which is what
-carries the `cover property` points of the functional-coverage modules, so
-`assert` stays in the `-cm` list.
+* `Port Bits`: every bit of every port, each in both directions. This is the
+  number urg puts in its `TOGGLE` column and in the dashboard score.
+* `Ports`: urg's per-field view. A struct port is split into its fields and
+  bit slices, and a row counts covered only when every bit of it toggled in
+  both directions.
 
-No public CI job runs the VCS flow for this DUT; the scope is written to
-mirror the Verilator one and has not been measured.
+The interface figure in `SMU_COVERAGE_POLICY.adoc` is a third one: a port of
+`smu_wrapper` has toggled when any bit of it moved in either direction, so a
+256-bit struct port is one interface. `../../interface_toggle.py` derives it
+from the urg text report (`urg -dir merged.vdb -report <dir> -format text
+-metric tgl -show tests`, then pass its `modinfo.txt`) exactly as it does from
+a Verilator database, so the two simulators are compared on one definition.
+
+A `begin tgl(portsonly) ... end` block in the hierarchy file does not do this:
+VCS keeps the excluded subtrees' toggle points when the metric block is
+present, so the option is given on the command line instead.
+
+No public CI job runs the VCS flow for this DUT; `run_dv.py --dut smu --tool
+vcs --items hosted --cov` measures it by hand.

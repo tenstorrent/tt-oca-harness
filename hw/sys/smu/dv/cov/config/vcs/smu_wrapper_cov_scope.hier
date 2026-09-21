@@ -9,7 +9,3 @@
 -tree smu_wrapper_uvm_top.u_dut.u_smu
 -tree smu_wrapper_uvm_top.u_dut.u_smc_ip_integration
 -tree smu_wrapper_uvm_top.u_dut.u_sep_ip_integration
-
-begin tgl(portsonly)
-  +tree smu_wrapper_uvm_top.u_dut 0
-end

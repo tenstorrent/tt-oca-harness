@@ -76,10 +76,12 @@ elaborates SEP. `--list` names the ports that never toggled. It is run by
 hand on a finished database; no CI job invokes it |on any finished `--cov`
 run of `--dut smu`, without a simulator
 |Commercial |toggle / code / assertion databases under the licensed flow;
-`smu_wrapper_cov_scope.hier` drops the same trees and collects toggle as
-`tgl(portsonly)` on `u_dut`, which is urg's own per-port view (see
-`cov/config/vcs/README.md`) |not a public CI job and not yet measured; not a
-substitute for the public weekly
+`smu_wrapper_cov_scope.hier` drops the same trees and `-cm_tgl portsonly`
+keeps toggle on the wrapper's ports. urg's own `Port Bits` and `Ports` rows
+count bits and struct fields, both in both directions; the interface figure
+comes from the same `cov/interface_toggle.py` fed urg's text report, so both
+simulators are read on one definition (see `cov/config/vcs/README.md`) |not
+a public CI job; not a substitute for the public weekly
 |===
 
 The DUT is an integration shell, and an integration level is graded on its
