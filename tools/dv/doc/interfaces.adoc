@@ -144,7 +144,8 @@ checkout, and execs `worker_argv`. The executor log holds every scheduler
 command with its status and output. The unconfirmed-cancel record lists the
 job ids an interrupted run could not confirm stopped. Checked by
 `tools/dv/tests/test_cluster_executor.py`, which drives both drivers through
-fake scheduler commands.
+fake scheduler commands, and on demand by the `slurm-qualify` workflow, which
+runs the Slurm driver on a single-node Slurm installed on the hosted runner.
 
 |Runner command line and run tree: `run_dv.py` options; the
 `<dut-dv-root>/build/runs/<stamp>__<tool>__<label>/` layout with `stages/`,
