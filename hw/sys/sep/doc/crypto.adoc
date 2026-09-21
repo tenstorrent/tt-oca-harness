@@ -400,9 +400,10 @@ port `SepCryptoAxiAbr` of the crypto demux.
 Inside that aperture there is no further decode. The vendored register block
 consumes all sixteen address bits and applies no address-validity or permission
 check, so the window is fully consumed but not fully populated: 24,160 of its
-65,536 bytes are defined, each object is page-aligned with the tail of its 4 kB
-page unused, and the map ends at `0xC018`, leaving the last 16,360 bytes
-undefined.
+65,536 bytes are defined. Objects sit at coarse offsets with the space between
+them unused -- most on a 4 kB boundary, the interrupt block at `0x8100`,
+`MLKEM_MSG` at `0x9080` and `MLKEM_CIPHERTEXT` at `0xB800` -- and the map ends
+at `0xC018`, leaving the last 16,360 bytes undefined.
 
 An access to any unpopulated offset completes with `OKAY`. A write is discarded;
 a read returns `0x0000_0000`. ABR never drives `hresp` to error, so the AHB error
