@@ -277,7 +277,8 @@ module sep_entropy_fifo
   assign fill_stall_o = fill_stall_q & ~entropy_clear_i;
 
   `OCAH_OT_ASSERT(ClearDropsRequest_A, entropy_clear_i |=> !req_pending_q, clk_i, !rst_ni)
-  `OCAH_OT_ASSERT(ClearScrubsPacker_A, entropy_clear_i |=> (packer_depth == '0), clk_i, !rst_ni)
+  // prim_packer_fifo registers clr_i before depth_o falls.
+  `OCAH_OT_ASSERT(ClearScrubsPacker_A, entropy_clear_i |-> ##2 (packer_depth == '0), clk_i, !rst_ni)
   `OCAH_OT_ASSERT(ClearScrubsPool_A, entropy_clear_i |=> (pool_depth == '0), clk_i, !rst_ni)
   `OCAH_OT_ASSERT(ClearResetsStall_A, entropy_clear_i |=> (!edn_armed_q && !fill_stall_q), clk_i,
                   !rst_ni)
