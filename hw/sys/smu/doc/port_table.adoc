@@ -9,7 +9,7 @@
 
 |`clk_smu_i` |`logic` |Input |1 |Primary SMU clock domain. Shared by SMC and DTP system logic. |PLL output |N/A
 |`clk_ref_i` |`logic` |Input |1 |Reference clock domain for timing-sensitive operations. |PLL reference clock |N/A
-|`rst_cold_ni` |`logic` |Input |1 |Cold reset (active low). Assertion is de-glitched for 32 `clk_ref_i` cycles and does not propagate while that clock is stopped. A falling `powergood_i` asserts the downstream cold reset without that wait. Deassertion is synchronous to `clk_ref_i` and held for 255 cycles. |System cold reset |N/A
+|`rst_cold_ni` |`logic` |Input |1 |Cold reset (active low). Assertion and deassertion are synchronous to `clk_ref_i` and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling `powergood_i` asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles. |System cold reset |N/A
 |`rst_cold_stable_ref_clk_no` |`logic` |Output |1 |Stable cold reset synchronized to reference clock domain (active low). |Downstream subsystems |N/A
 |`powergood_i` |`logic` |Input |1 |Power-good indication from supply supervisor. |Power supply supervisor |N/A
 

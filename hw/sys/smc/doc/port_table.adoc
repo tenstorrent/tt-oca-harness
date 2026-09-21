@@ -23,7 +23,7 @@ endif::backend-html5[]
 |`clk_periph_i` |`logic` |Input |1 |Peripheral clock domain. |PLL peripheral clock |N/A
 |`powergood_i` |`logic` |Input |1 |Power-good indication. Assert after supply voltages stabilize. |Power management controller |N/A
 |`powergood_stable_o` |`logic` |Output |1 |Stabilized power-good output. Debounced version of `powergood_i`. |Reset unit → External systems |N/A
-|`rst_cold_ni` |`logic` |Input |1 |Cold reset input (active low). Assertion is de-glitched for 32 `clk_ref_i` cycles and does not propagate while that clock is stopped. A falling `powergood_i` asserts the downstream cold reset without that wait. Deassertion is synchronous to `clk_ref_i` and held for 255 cycles. |System cold reset |N/A
+|`rst_cold_ni` |`logic` |Input |1 |Cold reset input (active low). Assertion and deassertion are synchronous to `clk_ref_i` and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling `powergood_i` asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles. |System cold reset |N/A
 |`rst_primary_ref_clk_no` |`logic` |Output |1 |Primary reset synchronized to reference clock domain (active low). |To subsystems using ref clock |N/A
 |`rst_primary_smc_clk_no` |`logic` |Output |1 |Primary reset synchronized to SMC clock domain (active low). |To subsystems using SMC clock |N/A
 |`sys_axi_in_req_i` |`smc_sys_in_56_64_6_12_axi_req_t` |Input |- |System AXI input request (56-bit addr, 64-bit data, 6-bit ID, 12-bit user). |External system masters → Input Fabric |N/A, tie to '0 if unused
