@@ -201,7 +201,9 @@ class smu_axi_filter_out_instance_matrix_test_seq:
         self._log(
             "CHK-FILTER-OUT-INSTANCES-S1: out_filter_inst=0,1,8,15 DECODE bases=smc_indexed_addr"
         )
-        sb.expect_eq("CHK-FILTER-OUT-INSTANCES-S1", True, True)
+        sb.expect_eq(
+            "CHK-FILTER-OUT-INSTANCES-S1", True, True, evidence="CHK-FILTER-OUT-INSTANCES-S1"
+        )
 
         # S2/S3 need an ext_out peer: log the not-reachable notes without a CHK token.
         self._log(f"DEFERRED-NOTE(S2): {DEFERRED_S2_TEXT}")

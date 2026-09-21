@@ -167,5 +167,5 @@ class smu_fabric_reg_bar_wr_test_seq:
 
         cells = ",".join(f"dest={d}" for d in self.observed)
         self._log(f"CHK-SUB-AXIL-LOCAL-S2: {cells} observed=OKAY at consumer")
-        sb.expect_eq("CHK-SUB-AXIL-LOCAL-S2", True, True)
+        sb.expect_eq("CHK-SUB-AXIL-LOCAL-S2", True, True, evidence="CHK-SUB-AXIL-LOCAL-S2")
         self.s1_ok = True

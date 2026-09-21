@@ -165,7 +165,9 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
             raise AssertionError(f"SCRATCH_15 want 0x{SCRATCH_PAT:08x} got 0x{got_s:08x}")
         self.s2_ok = True
         self._log(f"CHK-JTAG2AXI-SMOKE-SCRATCH @0x{SCRATCH_15:08x} data=0x{got_s:08x}")
-        sb.expect_eq("CHK-JTAG2AXI-SMOKE-SCRATCH", got_s, SCRATCH_PAT)
+        sb.expect_eq(
+            "CHK-JTAG2AXI-SMOKE-SCRATCH", got_s, SCRATCH_PAT, evidence="CHK-JTAG2AXI-SMOKE-SCRATCH"
+        )
 
         await self._wr64(jtag, SPM, SPM_PAT, "SPM")
         got_m = await self._rd64(jtag, SPM, "SPM")

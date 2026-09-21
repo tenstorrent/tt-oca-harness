@@ -102,6 +102,11 @@ class smu_i3c_mem_port_connectivity_test_seq:
 
         cells = ",".join(f"dest={d}" for d in self.observed)
         self._log(f"CHK-SUB-AXIL-LOCAL-S1: {cells} observed=OKAY at consumer")
-        sb.expect_eq("CHK-SUB-AXIL-LOCAL-S1", len(self.observed), len(PERIPH_DESTS))
+        sb.expect_eq(
+            "CHK-SUB-AXIL-LOCAL-S1",
+            len(self.observed),
+            len(PERIPH_DESTS),
+            evidence="CHK-SUB-AXIL-LOCAL-S1",
+        )
         self.s1_ok = True
         self._log(f"PASS FAB_SMC_031 smu_i3c_mem_port_connectivity_test observed={self.observed}")
