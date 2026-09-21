@@ -123,7 +123,7 @@ module drbg_axis_edn_adapter
   ) u_arbiter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .req_chk_i (1'b1),
+    .req_chk_i (!clear_i),
     .req_i     (arb_req),
     .data_i    (arb_data_i),
     .gnt_o     (arb_gnt),
