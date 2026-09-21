@@ -39,9 +39,9 @@ async def _host_write_byte(dut, value: int) -> None:
     for bit in range(7, -1, -1):
         dut.tb_spi_txd.value = (value >> bit) & 0x1
         dut.tb_spi_clk.value = 0
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
         dut.tb_spi_clk.value = 1
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
 
 
 async def _host_read_byte(dut) -> int:
@@ -50,9 +50,9 @@ async def _host_read_byte(dut) -> int:
     dut.tb_spi_txd.value = 0
     for _ in range(8):
         dut.tb_spi_clk.value = 0
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
         dut.tb_spi_clk.value = 1
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
         bit = int(dut.tb_spi_rxd.value) & 0x1
         value = (value << 1) | bit
     return value
@@ -102,22 +102,22 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
         dut.tb_spi_dq_ie_n.value = 0xFE  # input-enable DQ0 for MISO path
         dut.tb_spi_cs_ie_n.value = 1
         dut.tb_spi_clk_ie_n.value = 1
-        await Timer(100, units="ns")
+        await Timer(100, unit="ns")
 
         dut.tb_spi_cs_n.value = 0
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
         await _host_write_byte(dut, 0x9F)
 
         # Bus turnaround: release DQ0 OE before the flash response clocks.
         dut.tb_spi_dq_oe_n.value = 0xFF
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
 
         b0 = await _host_read_byte(dut)
         b1 = await _host_read_byte(dut)
         b2 = await _host_read_byte(dut)
         dut.tb_spi_cs_n.value = 1
         dut.tb_spi_clk.value = 0
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
 
         jedec = (b0 << 16) | (b1 << 8) | b2
         assert jedec == SPI_JEDEC_ID, (
@@ -132,13 +132,13 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
         # U2-4: READ 0x03 @0 proves preload path (same as +spi_flash_preload).
         dut.tb_spi_dq_oe_n.value = 0xFE
         dut.tb_spi_cs_n.value = 0
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
         await _host_write_byte(dut, 0x03)
         await _host_write_byte(dut, 0x00)  # addr[23:16]
         await _host_write_byte(dut, 0x00)  # addr[15:8]
         await _host_write_byte(dut, 0x00)  # addr[7:0]
         dut.tb_spi_dq_oe_n.value = 0xFF
-        await Timer(SPI_HALF_PERIOD_NS, units="ns")
+        await Timer(SPI_HALF_PERIOD_NS, unit="ns")
         rd = bytearray()
         for _ in range(len(_PRELOAD)):
             rd.append(await _host_read_byte(dut))

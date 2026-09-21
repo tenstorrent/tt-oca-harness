@@ -67,7 +67,7 @@ def sample_bit(dut, name: str) -> int:
 
 
 def mark_fence(fence: list[tuple[str, int]], term: str) -> None:
-    t = int(get_sim_time(units="ns"))
+    t = int(get_sim_time(unit="ns"))
     fence.append((term, t))
     cocotb.log.info("FENCE %s @ %dns", term, t)
 

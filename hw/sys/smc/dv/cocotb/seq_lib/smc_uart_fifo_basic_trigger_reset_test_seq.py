@@ -168,7 +168,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if _iir_pending(iir) and _iir_id(iir) == expect_id:
                 return iir
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"{label}: IIR id=0x{expect_id:x} not seen last=0x{iir:08x} "
             f"pending={_iir_pending(iir)} id=0x{_iir_id(iir):x}"
@@ -180,7 +180,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             lsr = await self.csr_read(f"{label}_LSR", UART_LSR)
             if bool(lsr & mask) == want_set:
                 return lsr
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"{label}: LSR bit 0x{mask:02x} never reached {int(want_set)} (last LSR=0x{lsr:08x})"
         )
@@ -191,7 +191,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if not (_iir_pending(iir) and _iir_id(iir) == forbidden_id):
                 return iir
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"{label}: IIR id=0x{forbidden_id:x} still pending after "
             f"{iters} samples (last=0x{iir:08x})"
@@ -237,7 +237,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
                     f"FCR.RCVR_TRIGGER programmed to {depth} "
                     f"(sample {sample}, IIR=0x{held:08x})"
                 )
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
 
         # Threshold character.
         await self.csr_write(f"{label}_THR_TRIG", UART_RBR, 0x30 + depth)
@@ -278,7 +278,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             lsr = await self.csr_read("RST_TEMT_WAIT", UART_LSR)
             if lsr & LSR_TEMT:
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         else:
             raise AssertionError(f"TEMT not set before RX reset LSR=0x{lsr:08x}")
 
@@ -287,7 +287,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             lsr = await self.csr_read("RST_DR_WAIT", UART_LSR)
             if lsr & LSR_DR:
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         else:
             raise AssertionError(f"LSR.DR=0 before RX reset LSR=0x{lsr:08x}")
         lsr = await self.csr_read("RST_DR_PRE", UART_LSR)
@@ -338,7 +338,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             lsr = await self.csr_read("TX_TEMT_POST", UART_LSR)
             if lsr & LSR_TEMT:
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         else:
             raise AssertionError(f"TEMT not set after TX reset LSR=0x{lsr:08x}")
         cocotb.log.info("CHK-UART-FIFO-RST-TX: THRE+TEMT after XMIT_FIFO_RESET")

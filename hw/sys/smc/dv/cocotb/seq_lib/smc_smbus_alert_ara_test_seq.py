@@ -109,7 +109,7 @@ class smc_smbus_alert_ara_test_seq(SmcCsrSeq):
             val = int(dut.tb_i2c0_smbalert.value)
             if val == want:
                 return True
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         return False
 
     async def body(self) -> None:

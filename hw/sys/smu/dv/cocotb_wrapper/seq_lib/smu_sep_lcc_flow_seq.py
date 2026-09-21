@@ -105,7 +105,7 @@ def lc_raw_from_efuse_image(path: str) -> int:
 
 
 def _now_ns() -> float:
-    return float(get_sim_time(units="ns"))
+    return float(get_sim_time(unit="ns"))
 
 
 class SepSenseMonitor:

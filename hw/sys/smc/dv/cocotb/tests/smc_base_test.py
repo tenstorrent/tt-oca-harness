@@ -1465,11 +1465,9 @@ class smc_base_test(uvm_test):
             size=SYS_OUT_MEM_SIZE,
             name="smc_sys_out",
         ).sequence
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
-        cocotb.start_soon(
-            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns").start())
 
         await ClockCycles(dut.clk_ref_i, 10)
         self.logger.info("Asserting powergood")
