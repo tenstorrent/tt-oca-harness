@@ -5,7 +5,7 @@
 	# resolves the submodule against this ref when it evaluates the flake, so a
 	# pin outside it fails the image build with "Cannot find Git revision ... in
 	# ref 'main'". Restore `main` once the model work lands there.
-	branch = inmcm/fix-double-boot-reset-hold
+	branch = inmcm/ocah_vp_integration_fixups
 [submodule "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"]
 	path = hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 	url = git@github.com:tenstorrent/tt-oca-manifest.git
