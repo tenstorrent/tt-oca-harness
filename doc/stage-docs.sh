@@ -150,8 +150,12 @@ mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
 case "$(basename "$PRODUCT")" in
 trm)
   aou_pages="overview architecture interrupts-errors ppa-appendices"
+  mkdir -p "$MOD/aou/partials/pdf"
   for page in $aou_pages; do
     cp -f "$AOU_DOC/$page.adoc" "$MOD/aou/partials/"
+    # The PDF inherits book numbering instead of the standalone specification's numbers.
+    sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /' "$AOU_DOC/$page.adoc" \
+      >"$MOD/aou/partials/pdf/$page.adoc"
     # Published fragments land beside the link to their owning topic page.
     {
       echo '++++'
@@ -159,7 +163,7 @@ trm)
       echo '++++'
     } >"$MOD/aou/partials/$page-anchors.adoc"
   done
-  # Antora topics need page-qualified links; the PDF uses the upstream include tree.
+  # Antora topics need page-qualified links; PDF partials retain same-book links.
   sed -i -f <(
     for page in $aou_pages; do
       sed -nE "s/^\[\[([^],]+)\]\]$/s@xref:\1\\\\[@xref:ROOT:aou-$page.adoc#\1[@g/p" \
@@ -195,7 +199,7 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/; do
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
 
-# --- ip: every IP in IP_PAGE_OWNERS publishes exactly one page (doc/index.adoc);
+# --- ip: index pages include their topic fragments. For IP_PAGE_OWNERS,
 #     the topic fragments listed in IP_FRAGMENTS move out of pages/ and into
 #     partials/ so they are private (no standalone URL). The owning index page
 #     includes them via the partial$ prefix for HTML or a relative path for PDF.
@@ -216,6 +220,12 @@ for ip in $IP_PAGE_OWNERS; do
     fi
   done
 done
+
+# The TRM's combined TRNG/DRBG page alias and a standalone DRBG page cannot
+# own the same URL. The DRBG architecture remains a reusable partial.
+if [ "$(basename "$PRODUCT")" = "trm" ]; then
+  rm -f "$MOD/ip/pages/drbg/doc/index.adoc"
+fi
 
 # --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
 #     collateral is generated into the lowRISC overlay rather than hw/ip, because

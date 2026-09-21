@@ -10,6 +10,7 @@ The subsystem chapters describe how these blocks are integrated into OCAH.
 
 == Management and I/O
 
+ifdef::backend-html5[]
 * xref:ip:avsbus_controller/doc/index.adoc[AVSBus Controller]
 * xref:ip:axi_lite_mailbox_unit/doc/index.adoc[AXI-Lite Mailbox Unit]
 * xref:ip:gpio/doc/index.adoc[GPIO]
@@ -18,24 +19,59 @@ The subsystem chapters describe how these blocks are integrated into OCAH.
 * xref:ip:system_timer_octs/doc/index.adoc[System Timer OCTS]
 * xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
 * xref:ip:uart_16550/doc/index.adoc[UART 16550]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* <<avsbus-controller,AVSBus Controller>>
+* <<mailbox-unit,AXI-Lite Mailbox Unit>>
+* <<gpio-peripheral,GPIO>>
+* <<i2c-controller,I2C>>
+* <<log-engine,Log Engine>>
+* <<system-timer-octs,System Timer OCTS>>
+* <<telemetry-receiver,Telemetry Receiver>>
+* <<uart-16550,UART 16550>>
+endif::backend-pdf[]
 
 == Security
 
-* xref:ip:drbg/doc/index.adoc[Deterministic Random Bit Generator (DRBG)]
+ifdef::backend-html5[]
+* xref:sep:trng.adoc#drbg-deterministic-random-bit-generator[Deterministic Random Bit Generator (DRBG)]
 * xref:ip:efuse/doc/index.adoc[eFuse]
 * xref:ip:entropy_source/doc/index.adoc[Entropy Source]
 * xref:ip:key_manager/doc/index.adoc[Key Manager]
 * xref:ip:scrambler/doc/index.adoc[Scrambler]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* <<drbg-deterministic-random-bit-generator,Deterministic Random Bit Generator (DRBG)>>
+* <<efuse-peripheral-module,eFuse>>
+* <<entropy-source,Entropy Source>>
+* <<key-manager-km-key-manager-km,Key Manager>>
+* <<sram-scrambling,Scrambler>>
+endif::backend-pdf[]
 
 == Debug and cross-trigger
 
+ifdef::backend-html5[]
 * xref:ip:jtag_intf_unit/doc/index.adoc[JTAG Interface Unit]
 * xref:ip:jtag_ptap/doc/index.adoc[JTAG PTAP]
 * xref:ip:jtag_stap/doc/index.adoc[JTAG STAP]
 * xref:ip:cross_trigger_network/doc/index.adoc[Cross-Trigger Network]
 * xref:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port]
 * xref:ip:cross_trigger_matrix/doc/index.adoc[Cross-Trigger Matrix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* <<jtag-interface-unit,JTAG Interface Unit>>
+* <<jtag-ptap,JTAG PTAP>>
+* <<jtag-stap,JTAG STAP>>
+* <<cross-trigger-network,Cross-Trigger Network>>
+* <<cross-trigger-port,Cross-Trigger Port>>
+* <<cross-trigger-matrix,Cross-Trigger Matrix>>
+endif::backend-pdf[]
 
 == Interconnect infrastructure
 
+ifdef::backend-html5[]
 * xref:ip:axi_filter/doc/index.adoc[AXI Filter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* <<axi-traffic-filter,AXI Filter>>
+endif::backend-pdf[]

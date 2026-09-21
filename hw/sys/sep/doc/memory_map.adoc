@@ -5,7 +5,7 @@
 :description: SEP address regions and generated register tables.
 ifdef::backend-html5[]
 :sep-crypto-access-ref: xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]
-:sep-drbg-architecture-ref: xref:ip:drbg/doc/index.adoc[Architecture]
+:sep-drbg-architecture-ref: xref:sep:trng.adoc#drbg-deterministic-random-bit-generator[Architecture]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :sep-crypto-access-ref: <<crypto-single-beat-only,Single-Beat Access Only>>
