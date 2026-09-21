@@ -848,6 +848,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "sep_fuse_sense_done_o rises once, after reset release and after SEP eFuse traffic",
         ),
     ],
+    "smu_smc_efuse_shadow_sense_reset_test": [
+        (
+            "CHK-SMU-EFUSE-SHADOW-SENSE",
+            "CHK-SMU-EFUSE-SHADOW-SENSE",
+            "with +skip_fuse_sense unset, smc_shadow_regs carries the whole "
+            "SMC_TOP_SMC_EFUSE_MAP_SIZE-wide sensed image, register slice by register "
+            "slice at the byte offsets smc_addr.h gives them, and holds it after the sense",
+        ),
+        (
+            "CHK-SMU-EFUSE-SHADOW-RESET",
+            "CHK-SMU-EFUSE-SHADOW-RESET",
+            "smc_shadow_regs reads the zero every smc_efuse_map.rdl field resets to, both "
+            "before the sense completes and for the whole time rst_cold_ni is held after it",
+        ),
+        (
+            "CHK-SMU-EFUSE-SHADOW-TOGGLE",
+            "CHK-SMU-EFUSE-SHADOW-TOGGLE",
+            "the image programs every bit of the map, and every one of them is observed "
+            "going 0 -> 1 on the sense and 1 -> 0 on the cold reset",
+        ),
+    ],
     "smu_smc_fuse_sense_sequence_test": [
         (
             "CHK-SMU-FUSE-SENSE-S1",
