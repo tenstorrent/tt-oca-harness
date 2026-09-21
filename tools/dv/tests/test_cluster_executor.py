@@ -228,6 +228,9 @@ class ClusterExecutorTests(FakeSchedulerCase):
         self.assertEqual({obs.state for obs in first.values()}, {JobState.RUNNING})
         final, _ = self.settle(executor, handles)
         self.assertEqual({obs.state for obs in final.values()}, {JobState.SUCCEEDED})
+        log = executor.executor_log.read_text(encoding="utf-8")
+        self.assertIn(fake_scheduler.ESUB_NOISE, log)
+        self.assertIn(fake_scheduler.ESUB_NOISE_UNSIZED, log)
         for task, handle in zip(tasks, handles):
             outcome = executor.collect(handle)
             assert outcome.result is not None
@@ -919,14 +922,10 @@ class CoordinatorTest(unittest.TestCase):
             parsed._cocotb_prebuilt_targets = {"default"}
             return parsed
 
-        def any_executor(flow: Any, args: Any) -> str:
-            return args.executor or "local"
-
         console = io.StringIO()
         with (
             mock.patch.dict(os.environ, env),
             mock.patch.object(cli, "parse_args", prebuilt),
-            mock.patch.object(cli, "flow_executor_name", any_executor),
             redirect_stdout(console),
             redirect_stderr(console),
         ):

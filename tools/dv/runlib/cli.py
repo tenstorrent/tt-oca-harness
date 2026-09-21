@@ -390,7 +390,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--build-jobs",
         type=int,
         metavar="N",
-        help="Backend compile/build job count; uses --sim-jobs when omitted",
+        help=(
+            "Backend compile/build job count; uses --sim-jobs when omitted, capped at this "
+            "host's CPU count on a cluster executor"
+        ),
     )
     parallel.add_argument(
         "--executor",
@@ -3061,6 +3064,7 @@ def run_flow(
     tool = selected_tool(flow, args, simulators)
     executor = selected_executor(flow, args, registries.executors)
     executor_cfg = registries.executors[executor]
+    setattr(args, "_cluster_executor", executor_cfg.get("kind") == "cluster")
     if getattr(args, "walltime", None):
         parse_walltime_sec(str(args.walltime))
     validate_selected_tool_available(tool, simulators, args, flow)
