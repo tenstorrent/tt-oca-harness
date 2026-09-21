@@ -244,6 +244,7 @@ For detailed architectural documentation about the SMC internal design, refer to
 `hw/sys/smc/doc/`. The public integration examples are
 `hw/top/smc_wrapper.sv` and `hw/top/smc_ip_integration.sv`.
 
+[[smc-integration-clk-rst]]
 === Clock and Reset
 
 The SMC requires three external clock inputs: `clk_smc_i` (primary system clock
@@ -357,6 +358,7 @@ The `jtag_axi_in` interface provides debug access through JTAG mechanisms. This
 interface uses reduced 2-bit transaction IDs and connects to your JTAG debug
 infrastructure.
 
+[[gpio-pad-integration]]
 === GPIO Pad Integration
 
 GPIO pad integration requires careful attention to function assignment and pull
@@ -1613,6 +1615,7 @@ with DECERR to all transactions.
 |`axil_xtrig_resp_o` |output |`xtrig_axil_resp_t` |SMC `axil_dtp_csr_resp_i`
 |===
 
+[[xtrig-matrix-interface]]
 ==== Cross Trigger Matrix Interface
 
 [cols="<30%,<10%,<20%,<40%",options="header"]
@@ -1881,6 +1884,7 @@ the SEP-to-SMC dedicated AXI connection.
 |`ext_boot_seq_done_i` |input |1 |SMU external port
 |===
 
+[[smu-lc-state]]
 ==== Lifecycle State
 
 [cols="<30%,<10%,<20%,<40%",options="header"]
