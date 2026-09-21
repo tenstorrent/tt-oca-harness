@@ -232,48 +232,60 @@ No checked-in config sets these. An adopter overlay
 == Synthesis filelist defines
 
 The Bender `synth` view is the authoritative source for the defines a
-synthesis compile needs. `bender script flist-plus <block targets> -t synth`
-— and a release package's filelist, which is generated from that view —
-carries them as `+define+` lines paired with the sources they select:
-`SYNTHESIS=1`, and the blocks' package switches (for SEP:
-`TECH_SPECIFIC_EC_RV_ICG`, `CALIPTRA`, `SEP_ABR_EN`, `TECH_SPECIFIC_ICG`).
-Consume the `+define+` lines from the filelist rather than restating them on
-the tool command line; the set changes as the tree does, and the filelist
-pairs each switch with the overlay sources it selects.
+synthesis compile needs. Generate the filelist from that view — or use the
+filelist shipped in a release package, which is generated the same way:
+
+[source,shell]
+----
+bender script flist-plus <block targets> -t synth > <block>.f
+----
+
+The filelist carries the defines as `+define+` lines paired with the sources
+they select:
+`SYNTHESIS=1`, and the package switches that choose between behavioural
+models and technology-cell overlays in vendored RTL. Consume the `+define+`
+lines from the filelist rather than restating them on the tool command line:
+the set changes as the tree does, and the filelist pairs each switch with the
+overlay sources it selects.
 
 [WARNING]
 ====
 A compile that drops the `+define+` lines analyzes and elaborates without
-error. The failure is silent mis-selection: VeeR EL2 clock gates elaborate as
-the behavioural latch model (`clockhdr`) instead of the `prim_clkgater`
-overlay, and Adams Bridge falls out of the SEP hierarchy. After elaboration,
-confirm the netlist instantiates the primitive clock gates and the block
-structure you expect.
+error. The failure is silent mis-selection: vendored RTL builds its
+behavioural models instead of the technology-cell overlays, and optional
+blocks compile out of the hierarchy. After elaboration, confirm the netlist
+instantiates the primitive cells and the block structure you expect.
 ====
 
-Synopsys Design Compiler and Fusion Compiler reject a filelist as a native
-`analyze` argument (VER-294), and `analyze -define` covers only names given
-on that command. Hand the filelist to the VCS-compatible reader, which parses
-its `+define+` and `+incdir+` lines:
+The filelist also lists `ocah_vendor_defines.svh`, but vendored packages
+precede it in compile order, so it does not replace the force-include
+described at the top of this chapter.
+
+[[synthesis-defines-synopsys]]
+=== Synopsys Design Compiler and Fusion Compiler
+
+`analyze` rejects a filelist as a native argument (VER-294), and
+`analyze -define` covers only names given on that command. Hand the filelist
+to the VCS-compatible reader, which parses its `+define+` and `+incdir+`
+lines:
 
 [source,tcl]
 ----
-analyze -format sverilog -vcs "-f ocah_synth.f"
+analyze -format sverilog -vcs "-f <block>.f"
 ----
 
-Cadence Genus parses the same lines through its optionfile reader. `read_hdl
--f` treats sources as Verilog-2001 regardless of the `hdl_language`
-attribute, so pass `-sv`, and put every source in the filelist — `read_hdl`
-rejects a design file on the same command line as `-f`:
-
-[source,tcl]
-----
-read_hdl -sv -f ocah_synth.f
-----
-
-Synopsys tools predefine `SYNTHESIS`; when the filelist restates it, Design
+These tools predefine `SYNTHESIS`; when the filelist restates it, Design
 Compiler keeps its own value and warns (VER-1051). The value is 1 either way,
-so the warning is harmless. The filelist also lists
-`ocah_vendor_defines.svh`, but vendored packages precede it in compile order,
-so it does not replace the force-include described at the top of this
-chapter.
+so the warning is harmless.
+
+[[synthesis-defines-genus]]
+=== Cadence Genus
+
+Genus parses the same lines through its optionfile reader. Select
+SystemVerilog explicitly: `read_hdl -f` treats sources as Verilog-2001
+regardless of the `hdl_language` attribute.
+
+[source,tcl]
+----
+read_hdl -language sv -f <block>.f
+----
