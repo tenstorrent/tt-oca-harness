@@ -97,7 +97,7 @@ required by the TRNG reset coordinator.
 The Key Manager stream is not behind a post-mux adapter and is not scrubbed.
 The SEP host must keep the Key Manager idle before asserting the TRNG reset;
 ifdef::backend-html5[]
-see xref:sep:periphs.adoc#sep-trng-reset[Resetting the TRNG]. After release, firmware fully reinitializes ESRC, CSRNG,
+see xref:sep:reset_controller.adoc#sep-trng-reset[Resetting the TRNG]. After release, firmware fully reinitializes ESRC, CSRNG,
 endif::backend-html5[]
 ifdef::backend-pdf[]
 see <<sep-trng-reset>>. After release, firmware fully reinitializes ESRC, CSRNG,

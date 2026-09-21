@@ -99,7 +99,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# eFuse shadow write-policy sweep: every periphs.adoc fuse-field row
+# eFuse shadow write-policy sweep: every otp_fuse_controller.adoc fuse-field row
 # except LC_STATE. RANDCFG: set-only rows OR-merge; SW-writable rows
 # overwrite. LOCK is both RDL windows after the other rows. Word index
 # and bit patterns come from the run seed.

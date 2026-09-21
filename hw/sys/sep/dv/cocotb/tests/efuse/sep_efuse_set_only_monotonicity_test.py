@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse shadow write-policy sweep (anti-rollback monotonicity).
 
-RANDCFG. Every seed walks every ``periphs.adoc`` fuse-field row except
+RANDCFG. Every seed walks every ``otp_fuse_controller.adoc`` fuse-field row except
 ``LC_STATE``. Set-only rows OR-merge; SW-writable rows overwrite.
 ``SIP_DIS`` and ``SYS_DIS`` stay on their function-group word. ``LOCK``
 is both RDL windows (``LOCKS`` word 0, ``LOCKS`` word 1, ``LOCKS_SPARE``)

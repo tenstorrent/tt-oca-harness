@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= SEP Reset Controller
+:description: SEP software reset requests, AXI isolation, and TRNG reset sequencing.
+
+[[sep-reset-controller,SEP Reset Controller]]
+
+The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
+
+The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
+
+[cols="<10%,<20%,<10%,<10%,<50%",options="header",]
+|=======================================================================
+|Bit |Field |Access |Default |Description
+|0 |km_sw_rst_n |RW |0 |KM reset (0=assert, 1=release)
+|1 |otbn_sw_rst_n |RW |1 |OTBN reset (0=assert, 1=release)
+|2 |aes_sw_rst_n |RW |1 |AES reset (0=assert, 1=release)
+|3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
+|4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
+|5 |trng_sw_rst_n |RW |1 |Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)
+|6 |abr_sw_rst_n |RW |1 |Adams Bridge reset (0=assert, 1=release)
+|=======================================================================
+
+On power-up, `SW_RESET_N` resets to `0x7E`: KM is held in reset, while OTBN,
+AES, HMAC, KMAC, the TRNG, and Adams Bridge are released. The SEP host firmware
+writes `1` to release an IP from reset and writes `0` to request its software
+reset.
+
+Each `SW_RESET_N` bit is a request to a per-domain sequencer. The sequencer
+isolates the domain's AXI paths, waits for outstanding transactions to drain,
+and then asserts reset. New transactions presented while isolated terminate
+with SLVERR. Isolation remains asserted for the duration of reset and is
+released with reset when software removes the request.
+
+An accelerator reset waits for both its host CSR path and Key Manager key path
+to isolate. A Key Manager reset waits for all of its outgoing accelerator and
+eFuse key paths. This prevents either endpoint of a key path from entering
+reset with a transaction in flight.
+
+The sequenced resets are ANDed with `sep_reset_n`, which holds every IP in reset
+until eFuse sensing completes during boot. The per-IP JTAG override muxes are
+applied last, allowing debug to force reset without waiting for isolation.
+
+[[sep-trng-reset]]
+== Resetting the TRNG
+
+The TRNG reset bit controls one reset domain containing the entropy source,
+CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three
+independent demux ports, a shared coordinator requests isolation on all three
+converted AXI4-Lite paths and does not assert the TRNG reset until all three
+report isolated. Reset and isolation are released together.
+
+The fabric entropy-pool AXI responder is not reset, so accesses remain
+responsive. While the TRNG reset is active, both post-mux EDN adapters and the
+pool synchronously clear their pending and buffered state, including the pool's
+half-packed word, FIFO contents, and fill-stall state.
+
+Consumers are not part of the reset coordinator. Native EDN requests from AES,
+KMAC, and OTBN receive no acknowledgement while the post-mux adapter is
+clearing, remain asserted, and are serviced with fresh entropy after the chain
+restarts. Software may wait for those consumers to become idle and hold them in
+reset when policy requires aborting in-flight operations, but that is not
+required to assert the TRNG reset.
+
+The Key Manager stream has no post-mux adapter, so TRNG reset does not scrub
+it. If the DRBG sampler is requesting or assembling a word when the reset
+asserts, the next DATA read can mix leftover bytes with new beats, or the
+sampler can flag a stream error. The SEP host must keep the Key Manager idle
+before asserting the TRNG reset. Holding KM in software reset is sufficient;
+hardware does not enforce the ordering.
+
+Following reset release, software reprograms ESRC, waits for startup health
+testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
+Consumers are released only after fresh endpoint/pool progress is observed.

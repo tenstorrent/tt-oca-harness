@@ -5,8 +5,8 @@
 :description: SEP cryptographic accelerators, entropy sources, and key management.
 ifdef::backend-html5[]
 :sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
-:sep-reset-controller-ref: xref:sep:periphs.adoc#sep-reset-controller[SEP Reset Controller]
-:sep-trng-reset-ref: xref:sep:periphs.adoc#sep-trng-reset[Resetting the TRNG]
+:sep-reset-controller-ref: xref:sep:reset_controller.adoc#sep-reset-controller[SEP Reset Controller]
+:sep-trng-reset-ref: xref:sep:reset_controller.adoc#sep-trng-reset[Resetting the TRNG]
 :sep-interrupt-map-ref: xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
 endif::backend-html5[]
 ifdef::backend-pdf[]
