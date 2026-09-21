@@ -164,7 +164,9 @@ PYTHON        ?= $(OCAH_ROOT)/.venv/bin/python
 # or a bare checkout without assuming where the interpreter lives -- PYTHON
 # above stays a plain path because FW_ENV puts its directory on PATH for the
 # bootrom's OTBN codegen, which calls a bare python3.
-VP_PYTHON     ?= $(UV) --directory "$(OCAH_ROOT)" run --group vp --locked python3
+# --project, not --directory: --directory would chdir to the repo root, and the
+# harness targets below run from virtual_platform/ so pytest finds tests/.
+VP_PYTHON     ?= $(UV) --project "$(OCAH_ROOT)" run --group vp --locked python3
 BOOTCODE_DIR  := $(OCAH_ROOT)/hw/sys/sep/bootrom/prod
 # SEP_MSG_* status-name table baked into sep-vp's sep_scratch_cold decoder;
 # tt-oca-harness-model takes it as a CMake cache variable (TSV rows or a C
