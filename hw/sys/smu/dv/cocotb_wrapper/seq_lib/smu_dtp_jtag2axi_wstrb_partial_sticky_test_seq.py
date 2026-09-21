@@ -148,7 +148,9 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
             )
         self.s3_ok = True
         self._log(f"CHK-J2A-WSTRB-NBR A=0x{got_a:016x} B=0x{got_b:016x} wstrb=0x{WSTRB:02x}")
-        sb.expect_eq("CHK-J2A-WSTRB-NBR", (got_a, got_b), (want_a, SEED_B))
+        sb.expect_eq(
+            "CHK-J2A-WSTRB-NBR", (got_a, got_b), (want_a, SEED_B), evidence="J2A_WSTRB_NEIGHBOR"
+        )
 
         capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
         require_jtag_tdo_resolved("SMC SINGLE_OP sticky")

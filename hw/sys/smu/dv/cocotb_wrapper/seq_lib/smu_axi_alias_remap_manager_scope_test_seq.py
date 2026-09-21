@@ -183,7 +183,12 @@ class smu_axi_alias_remap_manager_scope_test_seq:
             f"issue=0x{JTAG_ISSUE:x} remapped=0x{EXPECTED_REMAPPED:x} "
             "proof=SPM_consumer"
         )
-        sb.expect_eq("CHK-ALIAS-REMAP-SCOPE-S3", got & 0xFFFF_FFFF, JTAG_WDATA)
+        sb.expect_eq(
+            "CHK-ALIAS-REMAP-SCOPE-S3",
+            got & 0xFFFF_FFFF,
+            JTAG_WDATA,
+            evidence="CHK-ALIAS-REMAP-SCOPE-S3",
+        )
 
         self._log(f"DEFERRED-NOTE(S1): {DEFERRED_S1_TEXT}")
         self.s1_deferred = True

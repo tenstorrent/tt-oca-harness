@@ -172,7 +172,9 @@ class smu_axi_prot_encoding_decode_test_seq:
         if set(range(8)) != (SECURE_ALLOWED | NONSECURE_BLOCKED):
             raise AssertionError("S9 prot partition incomplete")
         self.matrix_ok = True
-        sb.expect_eq("CHK-SMU-PROT-S9-MATRIX", self.matrix_ok, True)
+        sb.expect_eq(
+            "CHK-SMU-PROT-S9-MATRIX", self.matrix_ok, True, evidence="CHK-SMU-PROT-S9-MATRIX"
+        )
         self._log(
             "CHK-SMU-PROT-S9-BASIC: allow_ns=0 eight-way AxPROT matrix on VERSION_LO "
             "(S1-S8 GPIO PoC deferred — needs sep_in)"
