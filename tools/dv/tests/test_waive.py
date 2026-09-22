@@ -345,7 +345,8 @@ class WaiveRegrade(FixtureCase):
             self.assertEqual(record[key], old_record[key])
         regression = read_json(run_dir / REGRESSION_REL)
         self.assertEqual((regression["status"], regression["exit_code"]), ("PASS", 0))
-        self.assertTrue(regression["coverage"]["threshold_met"])
+        self.assertNotIn("coverage", regression)
+        self.assertTrue(regression["artifacts"]["coverage_summary"])
         self.assertEqual(graded_key_sets(self.root), old_keys)
         self.assertEqual(
             (run_dir / "stages" / "cov_report" / "logs" / "cov_report.log").read_bytes(), old_log

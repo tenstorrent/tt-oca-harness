@@ -605,6 +605,12 @@ class ReportStage(FixtureCase):
         self.assertEqual(manifest["status"], "FAIL")
         self.assertEqual(manifest["generated_at"], MANIFEST_GENERATED_AT)
         self.assertEqual(manifest["artifacts"]["summary"], "run/cov/report/summary.json")
+        summary_holes = read_json(report / "summary.json")["holes_summary"]
+        self.assertIn("samples", summary_holes)
+        self.assertEqual(
+            manifest["holes_summary"],
+            {k: v for k, v in summary_holes.items() if k not in ("samples", "sample_truncated")},
+        )
 
     def test_report_phase_reads_the_merged_database_from_the_run_dir(self):
         run_dir = stage_fixture(self.root, "elsewhere/run")
@@ -710,6 +716,8 @@ class FinishedRun(FixtureCase):
             "cov_report record",
         )
         self.assertFalse(result["coverage"]["threshold_met"])
+        self.assertEqual(result["coverage"]["holes_summary"]["open"], EXPECTED_HOLES["open"])
+        self.assertNotIn("samples", result["coverage"]["holes_summary"])
         self.assertEqual(result["tests"]["total"], 1)
         regression = read_json(run_dir / REGRESSION_REL)
         self.assertEqual((regression["status"], regression["exit_code"]), ("FAIL", 1))

@@ -187,12 +187,12 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # ss_warm[0..31]. The external slice type is adopter-defined; the SMU bench
 # elaborates one port.
 SMU_IC_RESET_NUM_SMC_PORTS = 68
-# doc/integrator/src/smu.adoc "SEP slice (TDI to TDO)": the ports the SEP
-# slice carries at SEP=1, in scan order from TDI (abr_jtag_rst_n) to the
-# external slice (km_jtag_rst_n). The same document's "IC_RESET TDR
-# Structure" table gives the slice 8 ports at SEP=1 and 0 otherwise, so the
-# count is this tuple's length. A port added to the SEP slice moves every
-# SMC port index up by one.
+# doc/integrator/src/smu.adoc "IC_RESET TDR Structure": the SEP slice is
+# 8 ports at SEP=1 and 0 otherwise. The named tuple is the stimulus list
+# (scan order from TDI), not the source of that width: a port added only
+# to the tuple must fail this check rather than silently move every SMC
+# index and the golden length together.
+SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1 = 8
 SMU_IC_RESET_SEP_PORTS = (
     "abr_jtag_rst_n",
     "trng_jtag_rst_n",
@@ -203,7 +203,12 @@ SMU_IC_RESET_SEP_PORTS = (
     "otbn_jtag_rst_n",
     "km_jtag_rst_n",
 )
-SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = len(SMU_IC_RESET_SEP_PORTS)
+if len(SMU_IC_RESET_SEP_PORTS) != SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1:
+    raise RuntimeError(
+        "SMU_IC_RESET_SEP_PORTS must list the Integrator Guide SEP slice "
+        f"({SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1} ports at SEP=1)"
+    )
+SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1
 
 
 def _smu_ic_reset_sep_ports() -> int:
