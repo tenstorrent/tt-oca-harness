@@ -29,9 +29,10 @@
  *          it from the producer's own FIPS policy (commonly tied low when
  *          the source is not NIST SP 800-90A approved).
  *
- *          `clear_i` synchronously flushes staged entropy and returns each
- *          endpoint handshake FSM to its disabled/startup sequence. While
- *          asserted, the adapter accepts no AXI-Stream or native-EDN transfer.
+ *          `clear_i` synchronously flushes staged entropy and every endpoint.
+ *          `endpoint_rst_ni` cancels only the corresponding endpoint and
+ *          does not disturb another client's in-flight response.
+ *          Each endpoint reset must assert whenever `rst_ni` asserts.
  *
  * @param NUM_ENDPOINTS Number of native EDN clients (e.g. AES, KMAC, OTBN RND/URND).
  */
@@ -42,6 +43,7 @@ module drbg_axis_edn_adapter
 ) (
   input  wire logic clk_i,
   input  wire logic rst_ni,
+  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_rst_ni,
   input  wire logic clear_i,
 
   // 32b AXI-Stream sink (producer drives valid/data/strb; adapter drives tready)
@@ -123,7 +125,7 @@ module drbg_axis_edn_adapter
   ) u_arbiter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .req_chk_i (!clear_i),
+    .req_chk_i (!clear_i && (&endpoint_rst_ni)),
     .req_i     (arb_req),
     .data_i    (arb_data_i),
     .gnt_o     (arb_gnt),
@@ -149,13 +151,25 @@ module drbg_axis_edn_adapter
   logic [NUM_ENDPOINTS-1:0] ep_ack;
   logic [NUM_ENDPOINTS-1:0] ep_err;
   logic [NUM_ENDPOINTS-1:0] ack_sm_err;
+  logic [NUM_ENDPOINTS-1:0] endpoint_active;
 
   for (genvar i = 0; i < NUM_ENDPOINTS; i++) begin : gen_ep
+    // Hold arbitration off while edn_ack_sm performs its post-reset FIFO clear.
+    always_ff @(posedge clk_i or negedge endpoint_rst_ni[i]) begin
+      if (!endpoint_rst_ni[i]) begin
+        endpoint_active[i] <= 1'b0;
+      end else if (clear_i) begin
+        endpoint_active[i] <= 1'b0;
+      end else begin
+        endpoint_active[i] <= 1'b1;
+      end
+    end
+
     // Only request when the client asks and we don't already hold a word.
-    assign arb_req[i] = !clear_i && edn_req_i[i].edn_req && !ep_rvalid[i];
+    assign arb_req[i] = endpoint_active[i] && edn_req_i[i].edn_req && !ep_rvalid[i];
 
     // Push the staged word into the winning endpoint's holding FIFO.
-    assign ep_push[i] = !clear_i && stage_rready && arb_gnt[i];
+    assign ep_push[i] = endpoint_active[i] && stage_rready && arb_gnt[i];
 
     prim_fifo_sync #(
       .Width             (StageWidth),
@@ -164,7 +178,7 @@ module drbg_axis_edn_adapter
       .OutputZeroIfEmpty (1'b1)
     ) u_ep_fifo (
       .clk_i    (clk_i),
-      .rst_ni   (rst_ni),
+      .rst_ni   (endpoint_rst_ni[i]),
       .clr_i    (ep_clr[i] | clear_i),
       .wvalid_i (ep_push[i]),
       .wready_o (ep_wready[i]),
@@ -179,8 +193,8 @@ module drbg_axis_edn_adapter
 
     edn_ack_sm u_edn_ack_sm (
       .clk_i            (clk_i),
-      .rst_ni           (rst_ni),
-      .enable_i         (!clear_i),
+      .rst_ni           (endpoint_rst_ni[i]),
+      .enable_i         (!clear_i && endpoint_rst_ni[i]),
       .req_i            (edn_req_i[i].edn_req),
       .ack_o            (ep_ack[i]),
       .fifo_not_empty_i (ep_rvalid[i]),
@@ -190,12 +204,17 @@ module drbg_axis_edn_adapter
       .ack_sm_err_o     (ack_sm_err[i])
     );
 
-    assign edn_rsp_o[i].edn_ack  = ep_ack[i] & ~clear_i;
-    assign edn_rsp_o[i].edn_bus  = clear_i ? '0 : ep_rdata_raw[i][DataWidth-1:0];
+    assign edn_rsp_o[i].edn_ack = ep_ack[i] & ~clear_i & endpoint_rst_ni[i];
+    assign edn_rsp_o[i].edn_bus =
+        (clear_i || !endpoint_rst_ni[i]) ? '0 : ep_rdata_raw[i][DataWidth-1:0];
     // FIPS forwarded per-beat from the AXI-Stream tuser sideband.
-    assign edn_rsp_o[i].edn_fips = clear_i ? 1'b0 : ep_rdata_raw[i][DataWidth];
+    assign edn_rsp_o[i].edn_fips =
+        (clear_i || !endpoint_rst_ni[i]) ? 1'b0 : ep_rdata_raw[i][DataWidth];
 
     `OCAH_OT_ASSERT(AxisEdnNoAckDuringClear_A, clear_i |-> !edn_rsp_o[i].edn_ack)
+    `OCAH_OT_ASSERT(AxisEdnReqStableUnlessEndpointReset_A,
+                    arb_req[i] && !arb_gnt[i] && endpoint_rst_ni[i] |=>
+                    arb_req[i] || !endpoint_rst_ni[i] || clear_i)
   end
 
   logic unused_ep_wready;
