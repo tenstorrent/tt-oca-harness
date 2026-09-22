@@ -1186,7 +1186,7 @@ ran.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+skip_fuse_sense</code> with the shadow preload</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">per-test <code>args</code> of 82 of the 97 <code>testlists/all.toml</code> entries and every <code>[run_modes.*]</code> of <code>smu_block_sim_cfg.toml</code>; live only under the <code>SIMULATION</code> define</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">per-test <code>args</code> of 85 of the 101 <code>testlists/all.toml</code> entries and every <code>[run_modes.*]</code> of <code>smu_block_sim_cfg.toml</code>; live only under the <code>SIMULATION</code> define</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">every <code>--dut smu</code> leaf except the fifteen that sense: the five boot-stall leaves, <code>smu_sep_lcc_flow_test</code>, the two <code>sep_rtl_fuse_sense</code> leaves (<code>smu_sep_fuse_sense_done_test</code>, <code>smu_smc_fuse_sense_sequence_test</code>), and the seven composition leaves that carry no eFuse plusarg (<code>smu_boundary_port_composition_test</code>, <code>smu_clock_domain_composition_test</code>, <code>smu_composition_parameter_test</code>, <code>smu_reset_release_sync_test</code>, <code>smu_sram_auto_init_done_test</code>, <code>smu_xbar_connectivity_matrix_test</code>, <code>smu_xtrig_mode_composition_test</code>); load-bearing for the reset, boot-gate and OTP leaves named below</p></td>
 </tr>
 <tr>
@@ -1247,7 +1247,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+skip_fuse_sense</code> with the shadow preload</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml</code>, <code>grep -c '^\[\[tests\]\]' hw/sys/smu/dv/testlists/all.toml</code> and <code>grep -c '+smc_shadow_reg_preload=' hw/sys/smu/dv/smu_block_sim_cfg.toml</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>82</code> and <code>97</code>, leaving the fifteen the <strong>Scope</strong> field names; <code>4</code>, one per block run mode.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>85</code> and <code>101</code>, leaving the fifteen the <strong>Scope</strong> field names; <code>4</code>, one per block run mode.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>abr_reg.sv</code> external-ack waiver</p></td>
@@ -1303,7 +1303,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-17, on the tree that carries this record (<code>main</code> at <code>9282d8c14</code> with the sign-off changes applied). Re-confirmed: <code>grep -c '\"+esrc_noise_force\",' hw/sys/smu/dv/testlists/all.toml</code> printed <code>3</code>, matching the <strong>Scope</strong> field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-22, on the tree that carries this record (<code>main</code> at <code>9282d8c14</code> with the sign-off changes applied). Re-confirmed: <code>grep -c '\"+esrc_noise_force\",' hw/sys/smu/dv/testlists/all.toml</code> printed <code>3</code>, matching the <strong>Scope</strong> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
@@ -1330,7 +1330,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>testlists/all.toml</code>: 82 of 97 entries carry <code>+skip_fuse_sense</code> and <code>+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload</code> in their own <code>args</code>, each above a one-line reason; the <code>sep_rtl</code> entries that carry the skip, other than <code>smu_sep_lcc_flow_test</code>, add <code>+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload</code>, and the lifecycle leaves name their own image. The <code>[run_modes.*]</code> tables of <code>smu_sim_cfg.toml</code> carry no eFuse plusarg. <code>smu_block_sim_cfg.toml</code> <code>[run_modes.smoke]</code>, <code>[smc]</code>, <code>[dtp]</code>, <code>[fabric]</code> pass <code>+skip_fuse_sense</code> and the same <code>+smc_shadow_reg_preload</code> image, for the block-bench reason above; the block bench is SEP=0, so it has no SEP shadow registers to preload. The SMC shadow registers read the preload plusarg only under the skip and print <code>Loading SMC shadow reg preload data from</code> the image path at time zero; a log that prints <code>was NOT found</code> instead ran with the all-zero default array and is outside this scope. The plusarg is live only when the <code>SIMULATION</code> define is set (<code>hw/common/dv/configs/profiles/native.toml</code> sets it on every target); a build without it senses. <code>tb/tb_wrapper_top.sv</code> exports the SEP shadow registers' <code>sim_skip_fuse_sense</code> flag as <code>sep_fuse_sense_skipped_o</code>, and the SMC shadow registers print <code>Skipping fuse sense</code> or <code>Not skipping fuse sense</code> at time zero, so a log tells which path ran.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>testlists/all.toml</code>: 85 of 101 entries carry <code>+skip_fuse_sense</code> and <code>+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload</code> in their own <code>args</code>, each above a one-line reason; the <code>sep_rtl</code> entries that carry the skip, other than <code>smu_sep_lcc_flow_test</code>, add <code>+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload</code>, and the lifecycle leaves name their own image. The <code>[run_modes.*]</code> tables of <code>smu_sim_cfg.toml</code> carry no eFuse plusarg. <code>smu_block_sim_cfg.toml</code> <code>[run_modes.smoke]</code>, <code>[smc]</code>, <code>[dtp]</code>, <code>[fabric]</code> pass <code>+skip_fuse_sense</code> and the same <code>+smc_shadow_reg_preload</code> image, for the block-bench reason above; the block bench is SEP=0, so it has no SEP shadow registers to preload. The SMC shadow registers read the preload plusarg only under the skip and print <code>Loading SMC shadow reg preload data from</code> the image path at time zero; a log that prints <code>was NOT found</code> instead ran with the all-zero default array and is outside this scope. The plusarg is live only when the <code>SIMULATION</code> define is set (<code>hw/common/dv/configs/profiles/native.toml</code> sets it on every target); a build without it senses. <code>tb/tb_wrapper_top.sv</code> exports the SEP shadow registers' <code>sim_skip_fuse_sense</code> flag as <code>sep_fuse_sense_skipped_o</code>, and the SMC shadow registers print <code>Skipping fuse sense</code> or <code>Not skipping fuse sense</code> at time zero, so a log tells which path ran.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
@@ -1338,7 +1338,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-21, on the tree that carries this record. Re-confirmed: <code>grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml</code> printed <code>82</code> against <code>97</code> <code><a id="tests"></a></code> entries, and <code>grep -c '+smc_shadow_reg_preload=' hw/sys/smu/dv/smu_block_sim_cfg.toml</code> printed <code>4</code>, matching the <strong>Scope</strong> field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-21, on the tree that carries this record. Re-confirmed: <code>grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml</code> printed <code>85</code> against <code>101</code> <code><a id="tests"></a></code> entries, and <code>grep -c '+smc_shadow_reg_preload=' hw/sys/smu/dv/smu_block_sim_cfg.toml</code> printed <code>4</code>, matching the <strong>Scope</strong> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
