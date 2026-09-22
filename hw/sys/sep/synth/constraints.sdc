@@ -91,6 +91,9 @@ create_clock -add -name JTAG_TCK          -period $clock_periods(JTAG_TCK_PERIOD
 create_generated_clock [get_ports sep_crypto_pka_imem_sram_req*clk] -name SEPCLK_PKA_IMEM -master_clock SEPCLK -divide_by 1 -source [get_ports "clk_i"] -combinational
 create_generated_clock [get_ports sep_crypto_pka_dmem_sram_req*clk] -name SEPCLK_PKA_DMEM -master_clock SEPCLK -divide_by 1 -source [get_ports "clk_i"] -combinational
 
+# CPU TCM (ICCM/DCCM) memories (have clock output in request struct)
+create_generated_clock [get_ports sep_cpu_tcm_req_o*clk] -name SEPCLK_CPU_TCM -master_clock SEPCLK -divide_by 1 -source [get_ports "clk_i"] -combinational
+
 # feedthrough clock for any async input/outputs
 create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
 
@@ -105,7 +108,7 @@ create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
 # acts as a clock and is declared from both sources. Divide ratio is immaterial for
 # CDC; only the source-clock relationship matters.
 # shared ring oscillator output buffer pin
-set entropy_shared_ro_pin [get_pins "sep_crypto/u_entropy_source/egen/sclk/shared_ro/u_fbf/y_o"]
+set entropy_shared_ro_pin [get_pins "sep_crypto/u_sep_trng/u_entropy_source_s3c_scan/egen/sclk/shared_ro/u_fbf/y_o"]
 
 # entropy_source ring-oscillator sample clock
 create_clock -add -name ENTROPY_ROSC_CLK  -period $clock_periods(ENTROPY_ROSC_PERIOD) [get_ports "entropy_rosc_sample_clk_i"]
@@ -155,7 +158,7 @@ set_clock_groups -logically_exclusive \
 source [file join $ocah_flow_constraints_dir async_clock_groups.tcl]
 
 set_async_clock_groups {
-    {SEPCLK SEPCLK_PKA_IMEM SEPCLK_PKA_DMEM}
+    {SEPCLK SEPCLK_PKA_IMEM SEPCLK_PKA_DMEM SEPCLK_CPU_TCM}
     {REFCLK}
     {WDTCLK}
     {JTAG_TCK}
@@ -174,7 +177,7 @@ set_async_clock_groups {
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports rst_ni] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports dbg_rstb_i] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports wdt_rst_ni] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports wdt_timer_rst_req_o] -add_delay
+set_output_delay [expr $clock_periods(WDTCLK_PERIOD)*0.5]       -clock [get_clock WDTCLK] [get_ports wdt_timer_rst_req_o] -add_delay
 
 # JTAG
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tms_i] -add_delay
@@ -222,7 +225,6 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {sep_cpu_trace*}] -add_delay
 
 # CPU configuration inputs
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {rst_vec*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {jtag_id*}] -add_delay
 
 # Interrupts
@@ -234,7 +236,7 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 # set the outputs to lower delay, they should go direct to the memory macro
 # set the inputs to higher delay to emulate the access time of the memory
 # - ROMs will have a large access time (70%), SRAMs will have a smaller access time (50%)
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SEPCLK] [get_ports {sep_cpu_tcm_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SEPCLK] [remove_from_collection [get_ports {sep_cpu_tcm_req_o*}] [get_ports {sep_cpu_tcm_req_o*clk}]] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {sep_cpu_tcm_rsp_i*}] -add_delay
 
 # Scratchpad SRAM interface
@@ -311,13 +313,14 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 # Straps
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {secure_tm_req_i}] -add_delay
 
-# AXI extension interface
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {axi_extension_axi_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {axi_extension_axi_resp_i*}] -add_delay
+# SEP external interface
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {sep_external_axi_req_o*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {sep_external_axi_resp_i*}] -add_delay
 
 # SMC address configuration
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {smc_global_base_addr_i*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {smc_region_size_i*}] -add_delay
+# - don't need much delay as it is just a register directly from SMC
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.2]       -clock [get_clock SEPCLK] [get_ports {smc_global_base_addr_i*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.2]       -clock [get_clock SEPCLK] [get_ports {smc_region_size_i*}] -add_delay
 
 # SEP aperture configuration
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {sep_global_base_addr_o*}] -add_delay
