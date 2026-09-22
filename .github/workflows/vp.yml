@@ -457,8 +457,37 @@ jobs:
       - name: Run the pytest suites
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
+          # A runner that fills its disk dies without finalising its log, so the
+          # evidence goes with it -- twice now, both times unreadable afterwards.
+          # Sample free space alongside the suites and stop while there is still
+          # room to record what grew.
+          report() {
+            df -h /
+            echo "--- workspace ---"
+            du -xh --max-depth=3 "$GITHUB_WORKSPACE" 2>/dev/null | sort -rh | head -25
+            echo "--- nix, temp ---"
+            du -xh --max-depth=1 /nix "$RUNNER_TEMP" 2>/dev/null | sort -rh | head -10
+          }
+          df -h / | tail -1
           make -C virtual_platform vp-test VP_CONTAINER=${{ matrix.vp_container }} \
-            PYTEST_ARGS="--junitxml=$PWD/virtual_platform/pytest-results.xml"
+            PYTEST_ARGS="--junitxml=$PWD/virtual_platform/pytest-results.xml" &
+          mk=$!
+          while kill -0 "$mk" 2>/dev/null; do
+            avail=$(df --output=avail -k / | tail -1)
+            echo "[disk] $(date -u +%H:%M:%S) $((avail / 1048576))G free"
+            if [ "$avail" -lt 6291456 ]; then
+              echo "::error::free space fell below 6G during the suites; aborting to keep the log"
+              report
+              kill -TERM "$mk" 2>/dev/null || true
+              wait "$mk" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 30
+          done
+          rc=0
+          wait "$mk" || rc=$?
+          report
+          exit $rc
 
       # Firmware-dependent tests skip cleanly when no toolchain is available, so an
       # all-skipped run would otherwise pass. Gate on tests having actually
