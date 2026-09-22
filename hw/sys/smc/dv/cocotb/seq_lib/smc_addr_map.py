@@ -224,6 +224,25 @@ def reg_reset_word(header: Path, block: str, reg: str) -> int:
 
 # SMC_BASE_CONFIG reset words used as goldens by the fabric/decode testcases.
 GLOBAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "GLOBAL_BASE")
+LOCAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "LOCAL_BASE")
+
+# The window table the register generator writes from the RDL address map and
+# `doc/memmap.adoc` includes: one row per unit, `|BASE + <lo> - BASE + <hi> |...|<unit>|`.
+_MEMORY_MAP_ADOC = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "adoc" / "memory_map.adoc"
+_WINDOW_ROW = re.compile(
+    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|[^|]*\|([^|]+)\|"
+)
+
+
+def generated_window(unit: str) -> tuple[int, int]:
+    """Return ``(first, last)`` offsets of the window the generated memory map gives ``unit``."""
+    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
+        m = _WINDOW_ROW.match(line)
+        if m and m.group(3).strip() == unit:
+            return int(m.group(1), 16), int(m.group(2), 16)
+    raise KeyError(f"{unit} has no window row in {_MEMORY_MAP_ADOC}")
+
+
 REGION_SIZE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "REGION_SIZE")
 CLOCK_GATE_CONTROL_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "CLOCK_GATE_CONTROL")
 

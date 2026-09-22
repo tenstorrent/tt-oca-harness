@@ -6,10 +6,10 @@
 // scenarios of the feature list: the three DTP bridges SMU wires into the
 // chiplet, and the lifecycle debug-disable slice that gates them apart.
 //
-// One passive, signal-driven module shared by tb_top and tb_wrapper_top. The
-// three bridge buses are smu-internal nets between u_dtp and its targets, so
-// each bench flattens them at its own top level and passes the handshake and
-// response pins in; no hierarchy is referenced here.
+// One passive, signal-driven module. The three bridge buses are smu-internal
+// nets between u_dtp and its targets, so the bench flattens them at its top
+// level and passes the handshake and response pins in; no hierarchy is
+// referenced here.
 //
 // A bridge point fires on the response handshake, which only a completed
 // transaction produces. The gating points fire on the debug-disable slice

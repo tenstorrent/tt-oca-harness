@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Leaves reach into the design hierarchically, and this scope decides how
-// far. The module list matches smu_public_scope.vlt plus smu_wrapper itself:
-// the same design, one level deeper here because u_dut is the wrapper rather
-// than smu.
+// far: the bench top, smu_wrapper, smu and the SMC and DTP modules the
+// leaves observe.
 
 `verilator_config
 public_flat_rw -module "smu_wrapper_uvm_top" -var "*"

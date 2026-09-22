@@ -75,7 +75,6 @@ OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
 	hw/sys/dtp/dv/tb/tb_top.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/smc/dv/tb/tb_top.sv \
-	hw/sys/smu/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv \
 	hw/top/smc_ip_integration.sv
 

@@ -19,9 +19,12 @@ import io
 import json
 import os
 import shutil
+import signal
 import sys
 import tempfile
 import textwrap
+import threading
+import time
 import unittest
 from collections.abc import Sequence
 from contextlib import redirect_stderr, redirect_stdout
@@ -52,12 +55,14 @@ from runlib.executors.base import (  # noqa: E402
     task_identifier,
 )
 from runlib.executors.cluster import (  # noqa: E402
+    CANCEL_POLL_SEC,
     QUERY_FAILURE_LIMIT,
     SUBMIT_FAILURE_LIMIT,
     CancelReply,
     ClusterError,
     ClusterExecutor,
     CommandResult,
+    array_tasks_path,
     job_log_path,
     script_path,
 )
@@ -405,8 +410,8 @@ class ClusterExecutorTests(FakeSchedulerCase):
         self.assertTrue(confirmed[handle.task_id])
 
     def test_hung_query_counts_as_a_failure(self) -> None:
-        self.scenario(query={"hang_calls": [1], "hang_sec": 2.0})
-        executor = self.executor(command_timeout_sec=0.3)
+        self.scenario(query={"hang_calls": [1], "hang_sec": 4.0})
+        executor = self.executor(command_timeout_sec=1.0)
         handle = executor.submit(self.task(12))
         self.assertEqual(executor.poll([handle])[handle.task_id].state, JobState.QUEUED)
         self.assertIn(" query timeout ", executor.executor_log.read_text(encoding="utf-8"))
@@ -481,6 +486,116 @@ class ClusterExecutorTests(FakeSchedulerCase):
         self.assertEqual(confirmed, {handle.task_id: False})
         self.assertTrue(executor.unconfirmed_cancels.is_file())
 
+    def test_cancel_stops_waiting_when_asked(self) -> None:
+        self.scenario(
+            jobs={"default": {"states": ["PEND", "RUN", "RUN", "RUN"], "ignore_kill": True}}
+        )
+        executor = self.executor()
+        handle = executor.submit(self.task(46))
+        executor.poll([handle])
+        stop = threading.Event()
+        stop.set()
+        started = self.clock.now
+        confirmed = executor.cancel([handle], grace_sec=100.0, stop=stop)
+        self.assertEqual(confirmed, {handle.task_id: False})
+        # One confirmation query, then the stop ends the wait before any grace sleep.
+        self.assertLess(self.clock.now - started, CANCEL_POLL_SEC)
+        self.assertEqual(len(self.calls("cancel")), 1)
+        record = json.loads(executor.unconfirmed_cancels.read_text(encoding="utf-8"))
+        self.assertEqual([job["task_id"] for job in record["jobs"]], [handle.task_id])
+
+    def test_submit_many_makes_one_array_per_chunk(self) -> None:
+        self.scenario()
+        executor = self.executor(array_chunk_size=2)
+        tasks = [self.task(70), self.task(71, item="t_beta"), self.task(72, item="t_gamma")]
+        handles = executor.submit_many(tasks)
+        self.assertEqual([handle.task_id for handle in handles], [task.task_id for task in tasks])
+        # Two elements in the first array, the leftover as a plain job.
+        self.assertEqual(len(self.calls("submit")), 2)
+        first, second, third = handles
+        self.assertEqual(first.array_job_id, second.array_job_id)
+        self.assertEqual((first.array_task_id, second.array_task_id), (1, 2))
+        self.assertIsNone(third.array_job_id)
+        self.assertEqual(first.native_job_id, executor._dialect.element_id(first.array_job_id, 1))
+        self.assertNotEqual(first.executor_log, second.executor_log)
+        submit_argv = self.calls("submit")[0]["argv"]
+        if self.driver == "lsf":
+            self.assertRegex(" ".join(submit_argv), r"-J \S+\[1-2\]")
+            self.assertIn("%I", " ".join(submit_argv))
+        else:
+            self.assertIn("--array=1-2", submit_argv)
+            self.assertIn("%a", " ".join(submit_argv))
+        label = "sim-arr0001"
+        script = script_path(self.run_dir, label).read_text(encoding="utf-8")
+        self.assertIn(executor._dialect.array_index_env, script)
+        self.assertIn('"$OCAH_MANIFEST"', script)
+        lines = array_tasks_path(self.run_dir, label).read_text(encoding="utf-8").splitlines()
+        self.assertEqual([line.split("\t")[0] for line in lines], [t.task_id for t in tasks[:2]])
+        final, _ = self.settle(executor, handles)
+        self.assertEqual({obs.state for obs in final.values()}, {JobState.SUCCEEDED})
+        for task, handle in zip(tasks, handles, strict=True):
+            outcome = executor.collect(handle)
+            self.assertIsNotNone(outcome.result)
+            scheduler = outcome.result.metadata["scheduler"]
+            self.assertEqual(scheduler["job_id"], handle.native_job_id)
+            # The element id is the whole record of the array; no further key names it.
+            self.assertNotIn("array_job_id", scheduler)
+            # Each element ran the script with its own index and wrote its own leaf.
+            self.assertTrue(task.result_json.is_file())
+        self.assertTrue(any("submitted as array" in event for event in self.events))
+
+    def test_arrays_off_submit_plain_jobs(self) -> None:
+        self.scenario()
+        executor = self.executor(self.cfg(arrays=False))
+        handles = executor.submit_many([self.task(73), self.task(74, item="t_beta")])
+        self.assertEqual(len(self.calls("submit")), 2)
+        self.assertTrue(all(handle.array_job_id is None for handle in handles))
+        self.assertTrue(any("arrays are off" in event for event in self.events))
+        if self.driver == "slurm":
+            table = self.cfg()
+            table["submit_argv"] = [
+                part for part in table["submit_argv"] if part != ["--array={array_range}"]
+            ]
+            self.events.clear()
+            executor = self.executor(table)
+            executor.submit_many([self.task(75), self.task(76, item="t_beta")])
+            self.assertEqual(len(self.calls("submit")), 4)
+            self.assertTrue(any("array_range" in event for event in self.events))
+        if self.driver == "lsf":
+            table = self.cfg(
+                query_argv=["bjobs", "-json", "-o", "jobid stat exit_code", "{job_ids_argv}"]
+            )
+            self.events.clear()
+            executor = self.executor(table)
+            executor.submit_many([self.task(77), self.task(78, item="t_beta")])
+            self.assertEqual(len(self.calls("submit")), 4)
+            self.assertTrue(any("jobindex" in event for event in self.events))
+
+    def test_array_refusal_grades_every_element(self) -> None:
+        self.scenario(submit={"fail_calls": [1]})
+        executor = self.executor()
+        handles = executor.submit_many([self.task(80), self.task(81, item="t_beta")])
+        seen = executor.poll(handles)
+        self.assertEqual({obs.state for obs in seen.values()}, {JobState.FAILED})
+        self.assertTrue(all("array submission failed" in obs.reason for obs in seen.values()))
+        for handle in handles:
+            self.assertEqual(handle.native_job_id, "")
+            self.assertIsNone(executor.collect(handle).result)
+
+    def test_array_elements_cancel_by_element_id(self) -> None:
+        self.scenario(jobs={"default": {"states": ["PEND", "RUN", "RUN", "RUN", "RUN"]}})
+        executor = self.executor()
+        handles = executor.submit_many([self.task(82), self.task(83, item="t_beta")])
+        executor.poll(handles)
+        executor.poll(handles)
+        confirmed = executor.cancel(handles, grace_sec=2.0)
+        self.assertEqual(confirmed, {handle.task_id: True for handle in handles})
+        cancel_argv = self.calls("cancel")[0]["argv"]
+        self.assertEqual(set(cancel_argv[1:]), {handle.native_job_id for handle in handles})
+        self.assertEqual(
+            {obs.state for obs in executor.poll(handles).values()}, {JobState.CANCELLED}
+        )
+
     def test_debug_and_retry_attempts_get_their_own_jobs(self) -> None:
         self.scenario()
         executor = self.executor()
@@ -526,7 +641,17 @@ class ClusterExecutorTests(FakeSchedulerCase):
                 run_dir=self.run_dir,
             )
             self.assertIsInstance(built, ClusterExecutor)
-            self.assertEqual(built.submit_batch_size, CLUSTER_DEFAULT_LIMITS["submit_batch_size"])
+            self.assertTrue(built.arrays_enabled)
+            self.assertEqual(built.submit_batch_size, CLUSTER_DEFAULT_LIMITS["array_chunk_size"])
+            plain = build_executor(
+                self.driver,
+                self.cfg(setup_hook=str(hook), arrays=False),
+                runner=lambda task: None,
+                max_workers=4,
+                root=self.tmp,
+                run_dir=self.run_dir,
+            )
+            self.assertEqual(plain.submit_batch_size, CLUSTER_DEFAULT_LIMITS["submit_batch_size"])
             with self.assertRaises(ConfigError) as ctx:
                 build_executor(
                     self.driver,
@@ -742,6 +867,55 @@ class LsfParserTest(unittest.TestCase):
         )
 
 
+class LsfArrayParserTest(unittest.TestCase):
+    """Array elements in ``bjobs -json``, ``bhist -l`` and ``bkill`` output."""
+
+    dialect = LsfDialect()
+
+    def test_bjobs_element_records_compose_the_element_id(self) -> None:
+        records = [
+            {"JOBID": "500", "JOBINDEX": "1", "STAT": "RUN", "EXIT_CODE": "", "EXIT_REASON": ""},
+            {"JOBID": "500", "JOBINDEX": "2", "STAT": "DONE", "EXIT_CODE": "", "EXIT_REASON": ""},
+            {
+                "JOBID": "500[3]",
+                "JOBINDEX": "3",
+                "STAT": "PEND",
+                "EXIT_CODE": "",
+                "EXIT_REASON": "",
+            },
+            {"JOBID": "501", "JOBINDEX": "0", "STAT": "RUN", "EXIT_CODE": "", "EXIT_REASON": ""},
+            {"JOBID": "502", "ERROR": "Job <502> is not found"},
+        ]
+        text = json.dumps({"COMMAND": "bjobs", "JOBS": 5, "RECORDS": records})
+        asked = ["500[1]", "500[2]", "500[3]", "501", "502"]
+        outcome = self.dialect.parse_query(command(text), asked)
+        self.assertEqual(
+            {job_id: obs.state for job_id, obs in outcome.observations.items()},
+            {
+                "500[1]": JobState.RUNNING,
+                "500[2]": JobState.SUCCEEDED,
+                "500[3]": JobState.QUEUED,
+                "501": JobState.RUNNING,
+            },
+        )
+        self.assertEqual(outcome.missing, {"502"})
+
+    def test_bhist_and_bkill_name_elements(self) -> None:
+        block = (
+            "Job <500[2]>, Job Name <ocah.run.sim-arr0001[2]>, User <u>, Project <default>, "
+            "Command </run/scripts/sim-arr0001.sh>\n"
+            "Sat Sep 20 12:00:00: Submitted from host <login1>, to Queue <regress>;\n"
+            "Sat Sep 20 12:00:05: Done successfully. The CPU time used is 1.1 seconds;\n"
+        )
+        seen = self.dialect.parse_bhist_long(command(block), ["500[2]"])
+        self.assertEqual(seen.observations["500[2]"].state, JobState.SUCCEEDED)
+        replies = self.dialect.parse_cancel(
+            command("Job <500[1]> is being terminated\nJob <500[2]>: Job has already finished\n"),
+            ["500[1]", "500[2]"],
+        )
+        self.assertEqual(replies, {"500[1]": CancelReply.REQUESTED, "500[2]": CancelReply.FINISHED})
+
+
 class SlurmParserTest(unittest.TestCase):
     """The observed Slurm output shapes."""
 
@@ -819,6 +993,66 @@ class SlurmParserTest(unittest.TestCase):
         )
 
 
+class SlurmArrayParserTest(unittest.TestCase):
+    """Array elements as a live controller prints them: ``8_1`` lines, folded pending ranges,
+    ``scontrol`` blocks whose own JobId differs from the array's, and ``sacct`` JobID."""
+
+    dialect = SlurmDialect()
+
+    def test_squeue_element_lines_and_folded_ranges(self) -> None:
+        text = (
+            "8_3|CANCELLED|None\n8_1|COMPLETED|None\n8_2|FAILED|NonZeroExitCode\n"
+            "11_[2-4%1]|PENDING|JobArrayTaskLimit\n11_1|RUNNING|None\n"
+        )
+        asked = ["8_1", "8_2", "8_3", "11_1", "11_2", "11_3", "11_4", "11_5"]
+        outcome = self.dialect.parse_query(command(text), asked)
+        self.assertEqual(
+            {job_id: obs.state for job_id, obs in outcome.observations.items()},
+            {
+                "8_1": JobState.SUCCEEDED,
+                "8_2": JobState.FAILED,
+                "8_3": JobState.CANCELLED,
+                "11_1": JobState.RUNNING,
+                "11_2": JobState.QUEUED,
+                "11_3": JobState.QUEUED,
+                "11_4": JobState.QUEUED,
+            },
+        )
+        self.assertEqual(outcome.observations["11_2"].reason, "JobArrayTaskLimit")
+        self.assertEqual(outcome.missing, {"11_5"})
+
+    def test_scontrol_element_block(self) -> None:
+        block = (
+            "JobId=10 ArrayJobId=8 ArrayTaskId=2 JobName=ocah.arr\n"
+            "   UserId=user(1000) GroupId=user(1000) MCS_label=N/A\n"
+            "   JobState=FAILED Reason=NonZeroExitCode Dependency=(null)\n"
+            "   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=3:0\n"
+        )
+        seen = self.dialect.parse_scontrol(command(block), ["8_2"]).observations["8_2"]
+        self.assertEqual((seen.state, seen.exit_code), (JobState.FAILED, 3))
+        last = "JobId=8 ArrayJobId=8 ArrayTaskId=3 JobName=ocah.arr\n   JobState=CANCELLED Reason=None\n   ExitCode=0:15\n"
+        self.assertEqual(
+            self.dialect.parse_scontrol(command(last), ["8_3"]).observations["8_3"].state,
+            JobState.CANCELLED,
+        )
+
+    def test_sacct_element_ids(self) -> None:
+        text = "8_1|COMPLETED|0:0\n8_1.batch|COMPLETED|0:0\n8_2|FAILED|3:0\n"
+        outcome = self.dialect.parse_sacct(command(text), ["8_1", "8_2", "8_3"])
+        self.assertEqual(
+            {job_id: (obs.state, obs.exit_code) for job_id, obs in outcome.observations.items()},
+            {"8_1": (JobState.SUCCEEDED, 0), "8_2": (JobState.FAILED, 3)},
+        )
+        self.assertEqual(outcome.missing, {"8_3"})
+
+    def test_scancel_element_error(self) -> None:
+        result = command(
+            "", "scancel: error: Kill job error on job id 8_3: Invalid job id specified\n"
+        )
+        replies = self.dialect.parse_cancel(result, ["8_2", "8_3"])
+        self.assertEqual(replies, {"8_2": CancelReply.REQUESTED, "8_3": CancelReply.UNKNOWN})
+
+
 class DriverTableTest(unittest.TestCase):
     def test_both_checked_in_drivers_dispatch(self) -> None:
         self.assertEqual(set(IMPLEMENTED_DRIVERS), {"local", "lsf", "slurm"})
@@ -830,11 +1064,85 @@ class DriverTableTest(unittest.TestCase):
             self.assertIn(executors[name]["history_parser"], dialect.history_parsers)
 
 
+def submitted_attempts(argv: Sequence[str]) -> int:
+    """Attempts one submit command carries: the array size, or one for a plain job."""
+    spec = fake_scheduler.parse_options(list(argv)).get("array")
+    if not spec:
+        return 1
+    first, last = (int(part) for part in spec.split("-"))
+    return last - first + 1
+
+
+class Signaller:
+    """Sends a signal to this process from a thread once the run has all its jobs submitted.
+
+    The coordinator installs its handler before the first submission and restores the default
+    one when it returns, so a signal is sent only between ``count`` logged submissions followed
+    by a query (every submission complete, the coordinator polling) and ``stop()``. A signal
+    that lands while a scheduler command runs kills that command, which is why the fake
+    scheduler saves its state atomically.
+    """
+
+    def __init__(
+        self, calls_log: Path, count: int, *, signum: int, repeat: int, gap_sec: float
+    ) -> None:
+        self._log = calls_log
+        self._count = count
+        self._signum = signum
+        self._repeat = repeat
+        self._gap_sec = gap_sec
+        self._done = threading.Event()
+        self.sent = 0
+        self._thread = threading.Thread(target=self._fire, daemon=True)
+        self._thread.start()
+
+    def _dispatched(self) -> bool:
+        if not self._log.is_file():
+            return False
+        rows = []
+        for line in self._log.read_text(encoding="utf-8").splitlines():
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                continue
+        submits = sum(
+            submitted_attempts(row["argv"])
+            for row in rows
+            if row.get("command") in {"bsub", "sbatch"}
+        )
+        polling = bool(rows) and rows[-1].get("command") in {"bjobs", "squeue"}
+        return submits >= self._count and polling
+
+    def _fire(self) -> None:
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline and not self._done.is_set():
+            if self._dispatched():
+                break
+            time.sleep(0.05)
+        for index in range(self._repeat):
+            if index:
+                time.sleep(self._gap_sec)
+            if self._done.is_set():
+                return
+            os.kill(os.getpid(), self._signum)
+            self.sent += 1
+
+    def stop(self) -> None:
+        """No signal after this point; the run is over and its handler is gone."""
+        self._done.set()
+        self._thread.join(timeout=5)
+
+
 class CoordinatorTest(unittest.TestCase):
     """`run_dv.py` driving a real DUT's leaves through the fake scheduler and the real worker."""
 
     driver = "lsf"
     dut = "dtp"
+    arrays = True
+    # True marks the cocotb model as already built, so no build stage runs anywhere; False
+    # lets the coordinator build it through the executor as a scheduler job.
+    prebuilt = True
+    stages = ("sim",)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -864,29 +1172,64 @@ class CoordinatorTest(unittest.TestCase):
             f"export PATH={self.bin}:$PATH\nexport OCAH_FAKE_SCHEDULER={self.state}\n",
             encoding="utf-8",
         )
-        site = self.tmp / "site.local.toml"
-        site.write_text(
+        self.site = self.tmp / "site.local.toml"
+        self.write_site()
+
+    def write_site(self, extra: str = "", **limits: float) -> None:
+        merged = {
+            "poll_interval_sec": 0.1,
+            "artifact_grace_sec": 5,
+            "cancel_grace_sec": 2,
+            "submit_batch_size": 1,
+            **limits,
+        }
+        limit_lines = "\n".join(f"{name} = {value}" for name, value in merged.items())
+        self.site.write_text(
             textwrap.dedent(
                 f"""
                 schema_version = 1
                 [executors.{self.driver}]
                 worker_argv = ["{sys.executable}", "{FAKE_WORKER}", "{{manifest}}"]
                 setup_hook = "sched.env"
+                arrays = {"true" if self.arrays else "false"}
                 defaults = {{ queue = "regress", cores = 1, mem_mb = 2048, walltime = "30" }}
-                [executors.{self.driver}.limits]
-                poll_interval_sec = 0.1
-                artifact_grace_sec = 5
-                cancel_grace_sec = 2
-                submit_batch_size = 1
                 """
-            ),
+            )
+            + textwrap.dedent(extra)
+            + f"\n[executors.{self.driver}.limits]\n"
+            + limit_lines
+            + "\n",
             encoding="utf-8",
         )
-        self.site = site
+
+    def job_name_of(self, leaf: int) -> str:
+        """The scenario key that selects leaf ``leaf``'s first attempt: its array element name
+        when the stage goes out as one array, its task id otherwise."""
+        return f"sim-arr0001[{leaf + 1}]" if self.arrays else f"sim-{leaf:06d}"
+
+    def submit_commands(self) -> list[dict[str, Any]]:
+        return [row for row in self.calls() if row["command"] in {"bsub", "sbatch"}]
+
+    def expected_submits(self, first_attempts: int, later: int = 0) -> int:
+        """Submit commands for ``first_attempts`` leaves plus ``later`` retries or reruns."""
+        return (1 if self.arrays else first_attempts) + later
 
     def scenario(self, **tables: Any) -> None:
         self.state.mkdir(parents=True, exist_ok=True)
         (self.state / "scenario.json").write_text(json.dumps(tables), encoding="utf-8")
+
+    def calls(self) -> list[dict[str, Any]]:
+        log = self.state / "calls.log"
+        if not log.is_file():
+            return []
+        return [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+
+    def signaller(
+        self, count: int, *, signum: int = signal.SIGINT, repeat: int = 1, gap_sec: float = 1.0
+    ) -> Signaller:
+        return Signaller(
+            self.state / "calls.log", count, signum=signum, repeat=repeat, gap_sec=gap_sec
+        )
 
     def run_dv(
         self, *extra: str, statuses: dict[str, Any] | None = None
@@ -896,8 +1239,7 @@ class CoordinatorTest(unittest.TestCase):
             self.dut,
             "--items",
             *self.items,
-            "--stage",
-            "sim",
+            *(part for stage in self.stages for part in ("--stage", stage)),
             "--executor",
             self.driver,
             "--sim-jobs",
@@ -919,7 +1261,8 @@ class CoordinatorTest(unittest.TestCase):
         def prebuilt(argv: list[str] | None = None) -> Any:
             parsed = original(argv)
             # The verilator model a parallel cocotb run builds first is not part of dispatch.
-            parsed._cocotb_prebuilt_targets = {"default"}
+            if self.prebuilt:
+                parsed._cocotb_prebuilt_targets = {"default"}
             return parsed
 
         console = io.StringIO()
@@ -955,14 +1298,25 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual(len([p for p in jobs if not p.name.endswith(".done.json")]), 2)
         self.assertEqual(len([p for p in jobs if p.name.endswith(".done.json")]), 2)
         scripts = list((self.run_dir / "stages" / "regress" / "scripts").glob("*.sh"))
-        self.assertEqual(len(scripts), 2)
+        self.assertEqual(len(scripts), self.expected_submits(2))
         log = (self.run_dir / "stages" / "regress" / "logs" / "executor.log").read_text(
             encoding="utf-8"
         )
-        self.assertEqual(log.count(" submit rc=0 "), 2)
-        calls = [json.loads(line) for line in (self.state / "calls.log").read_text().splitlines()]
-        submits = [row for row in calls if row["command"] in {"bsub", "sbatch"}]
+        self.assertEqual(log.count(" submit rc=0 "), self.expected_submits(2))
+        calls = self.calls()
+        submits = self.submit_commands()
         self.assertIn("regress", " ".join(submits[0]["argv"]))
+        job_ids = {leaf["metadata"]["scheduler"]["job_id"] for leaf in self.leaves(summary)}
+        self.assertEqual(len(job_ids), 2)
+        if self.arrays:
+            # Both leaves are elements of one array: the same base id, indices 1 and 2.
+            element_ids = sorted(job_ids)
+            bases = {fake_scheduler.base_of(job_id) for job_id in element_ids}
+            self.assertEqual(len(bases), 1)
+            self.assertEqual(
+                sorted(fake_scheduler.index_of(job_id) for job_id in element_ids), [1, 2]
+            )
+            self.assertTrue(array_tasks_path(self.run_dir, "sim-arr0001").is_file())
         self.assertTrue(any(row["command"] in {"bjobs", "squeue"} for row in calls))
         self.assertFalse(any(row["command"] in {"bkill", "scancel"} for row in calls))
 
@@ -978,14 +1332,15 @@ class CoordinatorTest(unittest.TestCase):
             if ".done" not in p.name
         )
         self.assertEqual(len(manifests), 3, manifests)
-        calls = [json.loads(line) for line in (self.state / "calls.log").read_text().splitlines()]
-        self.assertEqual(len([row for row in calls if row["command"] in {"bsub", "sbatch"}]), 3)
+        self.assertEqual(len(self.submit_commands()), self.expected_submits(2, later=1))
+        retry = self.submit_commands()[-1]["argv"]
+        self.assertIsNone(fake_scheduler.parse_options(list(retry)).get("array"))
 
     def test_a_lost_job_grades_environment_error(self) -> None:
         self.scenario(
             jobs={
                 "default": {"states": ["PEND", "RUN", "AUTO"]},
-                "sim-000001": {
+                self.job_name_of(1): {
                     "states": ["PEND", "RUN", "VANISH"],
                     "run_script": False,
                     "history": "none",
@@ -1000,8 +1355,274 @@ class CoordinatorTest(unittest.TestCase):
         self.assertIn("environment_error", lost["reason"])
         self.assertIn("lost", lost["reason"])
 
+    def test_a_wave_debug_rerun_is_its_own_job(self) -> None:
+        self.scenario()
+        failing = self.items[0]
+        code, summary = self.run_dv("--waves-on-fail", "fst", statuses={failing: ["FAIL", "PASS"]})
+        self.assertEqual(code, 1, summary.get("status"))
+        self.assertEqual(summary["status"], "FAIL")
+        leaf = next(leaf for leaf in self.leaves(summary) if leaf["item"] == failing)
+        self.assertEqual(leaf["status"], "FAIL")
+        debug = leaf["metadata"]["wave_debug"]
+        self.assertTrue(debug["debug_only"])
+        self.assertFalse(debug["status_affects_final_result"])
+        graded_job = leaf["metadata"]["scheduler"]["job_id"]
+        debug_job = debug["metadata"]["scheduler"]["job_id"]
+        self.assertTrue(graded_job)
+        self.assertTrue(debug_job)
+        self.assertNotEqual(graded_job, debug_job)
+        self.assertEqual(debug["metadata"]["scheduler"]["driver"], self.driver)
+        manifests = sorted(
+            p.name
+            for p in (self.run_dir / "stages" / "regress" / "jobs").glob("sim-*.json")
+            if ".done" not in p.name
+        )
+        self.assertEqual(
+            [m for m in manifests if m.endswith("-debug.json")], ["sim-000000-a1-debug.json"]
+        )
+        self.assertEqual(len(self.submit_commands()), self.expected_submits(2, later=1))
+
+    # Jobs that stay RUN long past every grace in these tests, then finish on their own so a
+    # broken interruption path fails the test instead of hanging it.
+    LONG_RUNNING = {"states": ["PEND", *(["RUN"] * 600), "DONE"], "run_script": False}
+
+    def test_interruption_cancels_the_jobs_and_records_them(self) -> None:
+        self.scenario(
+            jobs={
+                "default": self.LONG_RUNNING,
+                self.job_name_of(1): {**self.LONG_RUNNING, "ignore_kill": True},
+            }
+        )
+        signaller = self.signaller(2)
+        code, summary = self.run_dv()
+        signaller.stop()
+        self.assertEqual(signaller.sent, 1)
+        self.assertEqual(code, 128 + signal.SIGINT)
+        self.assertEqual(summary["status"], "ERROR")
+        interruption = summary["interruption"]
+        self.assertEqual(interruption["kind"], "signal")
+        self.assertEqual(interruption["signals"], ["SIGINT"])
+        cancellation = interruption["cancellation"]
+        self.assertEqual(cancellation["driver"], self.driver)
+        self.assertEqual((cancellation["requested"], cancellation["confirmed"]), (2, 1))
+        self.assertFalse(cancellation["wait_cut_short"])
+        (unconfirmed,) = cancellation["unconfirmed"]
+        self.assertEqual(unconfirmed["task_id"], "sim-000001-a0")
+        self.assertEqual(unconfirmed["item"], self.items[1])
+        self.assertTrue(unconfirmed["job_id"])
+        record = self.run_dir / "stages" / "regress" / "jobs" / "cancel-unconfirmed.json"
+        self.assertTrue(record.is_file())
+        self.assertTrue(cancellation["record"].endswith("jobs/cancel-unconfirmed.json"))
+        progress = summary["progress"]
+        self.assertEqual(progress["state"], "interrupted")
+        self.assertEqual((progress["completed_count"], progress["interrupted_count"]), (0, 2))
+        jobs = {}
+        for leaf in progress["interrupted"]:
+            (job,) = leaf["jobs"]
+            self.assertEqual(job["driver"], self.driver)
+            self.assertTrue(job["job_id"])
+            self.assertFalse(job["debug_only"])
+            jobs[job["task_id"]] = job
+        self.assertEqual(
+            {task_id: job["cancel_confirmed"] for task_id, job in jobs.items()},
+            {"sim-000000-a0": True, "sim-000001-a0": False},
+        )
+        self.assertEqual(jobs["sim-000001-a0"]["job_id"], unconfirmed["job_id"])
+        regression = json.loads(
+            (self.run_dir / "stages" / "regress" / "regression.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(regression["interruption"]["cancellation"], cancellation)
+        self.assertTrue((self.run_dir / "results" / "results.xml").is_file())
+        cancels = [row for row in self.calls() if row["command"] in {"bkill", "scancel"}]
+        self.assertEqual(len(cancels), 1)
+        self.assertEqual(set(cancels[0]["argv"][1:]), {job["job_id"] for job in jobs.values()})
+
+    def test_a_second_signal_ends_the_confirmation_wait(self) -> None:
+        self.write_site(cancel_grace_sec=90)
+        self.scenario(jobs={"default": {**self.LONG_RUNNING, "ignore_kill": True}})
+        signaller = self.signaller(2, repeat=2, gap_sec=3.0)
+        started = time.monotonic()
+        code, summary = self.run_dv()
+        signaller.stop()
+        self.assertEqual(signaller.sent, 2)
+        self.assertLess(time.monotonic() - started, 60)
+        self.assertEqual(code, 128 + signal.SIGINT)
+        interruption = summary["interruption"]
+        self.assertEqual(interruption["signals"], ["SIGINT", "SIGINT"])
+        cancellation = interruption["cancellation"]
+        self.assertTrue(cancellation["wait_cut_short"])
+        self.assertEqual((cancellation["requested"], cancellation["confirmed"]), (2, 0))
+        self.assertEqual(
+            sorted(job["task_id"] for job in cancellation["unconfirmed"]),
+            ["sim-000000-a0", "sim-000001-a0"],
+        )
+        self.assertEqual(summary["progress"]["interrupted_count"], 2)
+        self.assertTrue(
+            (self.run_dir / "stages" / "regress" / "jobs" / "cancel-unconfirmed.json").is_file()
+        )
+
 
 class SlurmCoordinatorTest(CoordinatorTest):
+    driver = "slurm"
+
+
+class PlainJobsCoordinatorTest(CoordinatorTest):
+    """The same runs with `arrays = false` in the site table: one job per attempt."""
+
+    arrays = False
+
+
+class SchedulerBuildTest(CoordinatorTest):
+    """The target build as a scheduler job the leaves wait for, and what a failed one blocks."""
+
+    prebuilt = False
+    stages = ("hdl_compile", "sim")
+
+    def build_submits(self) -> list[dict[str, Any]]:
+        return [
+            row
+            for row in self.submit_commands()
+            if "build-hdl_compile-default" in " ".join(row["argv"])
+        ]
+
+    def test_leaves_run_as_jobs_and_grade_from_their_results(self) -> None:
+        """Skipped here: the build-first ordering test below covers this run shape."""
+
+    def test_retry_resubmits_a_failed_leaf_as_a_new_job(self) -> None:
+        """Skipped here: retries do not depend on where the build ran."""
+
+    def test_a_wave_debug_rerun_is_its_own_job(self) -> None:
+        """Skipped here: reruns do not depend on where the build ran."""
+
+    def test_a_lost_job_grades_environment_error(self) -> None:
+        """Skipped here: a lost leaf does not depend on where the build ran."""
+
+    def test_interruption_cancels_the_jobs_and_records_them(self) -> None:
+        """Skipped here: the interruption tests assume no build job precedes the leaves."""
+
+    def test_a_second_signal_ends_the_confirmation_wait(self) -> None:
+        """Skipped here: the interruption tests assume no build job precedes the leaves."""
+
+    def test_the_build_runs_as_a_job_before_the_leaves(self) -> None:
+        self.scenario()
+        code, summary = self.run_dv()
+        self.assertEqual(code, 0, summary.get("status"))
+        self.assertEqual(summary["status"], "PASS")
+        build = next(stage for stage in summary["stages"] if stage["name"] == "hdl_compile")
+        self.assertEqual(build["status"], "PASS")
+        self.assertIsNone(build.get("item"))
+        self.assertEqual(build["metadata"]["target"], "default")
+        self.assertEqual(build["metadata"]["scheduler"]["driver"], self.driver)
+        self.assertTrue(build["metadata"]["scheduler"]["job_id"])
+        self.assertEqual(build["metadata"]["target_build"]["target"], "default")
+        submits = self.submit_commands()
+        self.assertEqual(len(submits), self.expected_submits(2) + 1)
+        self.assertEqual(len(self.build_submits()), 1)
+        self.assertEqual(self.build_submits()[0]["n"], 1, "the build is submitted first")
+        manifest = json.loads(
+            (
+                self.run_dir / "stages" / "regress" / "jobs" / "build-hdl_compile-default.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            (manifest["role"], manifest["item"], manifest["stage"]), ("build", "", "hdl_compile")
+        )
+        leaf_manifest = json.loads(
+            (self.run_dir / "stages" / "regress" / "jobs" / "sim-000000-a0.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(leaf_manifest["target_build"]["target"], "default")
+        self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+
+    def test_a_failed_build_blocks_its_leaves(self) -> None:
+        self.scenario()
+        code, summary = self.run_dv(statuses={"build": "FAIL"})
+        self.assertEqual(code, 2, summary.get("status"))
+        self.assertEqual(summary["status"], "ERROR")
+        build = next(stage for stage in summary["stages"] if stage["name"] == "hdl_compile")
+        self.assertEqual(build["status"], "FAIL")
+        leaves = self.leaves(summary)
+        self.assertEqual(len(leaves), 2)
+        for leaf in leaves:
+            self.assertEqual(leaf["status"], "ERROR")
+            self.assertTrue(
+                leaf["reason"].startswith("dependency_blocked: hdl_compile of target default FAIL")
+            )
+            self.assertEqual(leaf["failure_buckets"][0]["kind"], "dependency_blocked")
+            self.assertIn(f"(job {build['metadata']['scheduler']['job_id']})", leaf["reason"])
+            self.assertNotIn("dependency", leaf["metadata"])
+        # The build was the only submission: no leaf reached the scheduler.
+        self.assertEqual(len(self.submit_commands()), 1)
+        self.assertFalse(list((self.run_dir / "stages" / "regress" / "jobs").glob("sim-*.json")))
+        regression = json.loads(
+            (self.run_dir / "stages" / "regress" / "regression.json").read_text(encoding="utf-8")
+        )
+        bucket = next(
+            bucket
+            for bucket in regression["failure_buckets"]
+            if bucket["kind"] == "dependency_blocked"
+        )
+        self.assertEqual(bucket["count"], 2)
+        self.assertEqual(summary["tests"]["completed"], True)
+
+    def test_build_defaults_and_build_submit_argv_shape_the_build_job(self) -> None:
+        marker = "-app" if self.driver == "lsf" else "--comment=compile"
+        if self.driver == "lsf":
+            template = (
+                '["bsub", ["-q", "{queue}"], ["-n", "{cores}"], "-app", "compile", '
+                '"-J", "{jobname}", "-o", "{joblog}", "{script}"]'
+            )
+        else:
+            template = (
+                '["sbatch", "--parsable", ["--partition={queue}"], ["--cpus-per-task={cores}"], '
+                '"--comment=compile", "--job-name={jobname}", "--output={joblog}", "{script}"]'
+            )
+        self.write_site(
+            extra=f"""
+            build_defaults = {{ cores = 4 }}
+            build_submit_argv = {template}
+            """
+        )
+        self.scenario()
+        code, summary = self.run_dv()
+        self.assertEqual(code, 0, summary.get("status"))
+        (build_submit,) = self.build_submits()
+        argv = " ".join(build_submit["argv"])
+        self.assertIn(marker, argv)
+        self.assertIn("4" if self.driver == "lsf" else "--cpus-per-task=4", argv)
+        for row in self.submit_commands():
+            if row["n"] != build_submit["n"]:
+                self.assertNotIn(marker, " ".join(row["argv"]))
+        build = next(stage for stage in summary["stages"] if stage["name"] == "hdl_compile")
+        self.assertEqual(build["metadata"]["build_jobs"], 4)
+
+    def test_scheduler_builds_need_a_cluster_executor(self) -> None:
+        console = io.StringIO()
+        with redirect_stdout(console), redirect_stderr(console):
+            code = cli.main(
+                [
+                    "--dut",
+                    self.dut,
+                    "--items",
+                    self.items[0],
+                    "--stage",
+                    "sim",
+                    "--executor",
+                    "local",
+                    "--builds",
+                    "scheduler",
+                    "--run-dir",
+                    str(self.run_dir),
+                    "--ui",
+                    "plain",
+                ]
+            )
+        self.assertEqual(code, 2)
+        self.assertIn("--builds scheduler needs a cluster executor", console.getvalue())
+
+
+class SlurmSchedulerBuildTest(SchedulerBuildTest):
     driver = "slurm"
 
 

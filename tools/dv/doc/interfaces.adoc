@@ -131,20 +131,31 @@ registries, and by the site-layer tests.
 worker refuses a mismatch; the overrides a manifest may carry are limited to
 wave and console options; the worker writes only its own leaf directory and
 the completion record, and a manifest it cannot trust or run leaves an
-`ERROR` result whose reason starts with `environment_error`. Checked by the
+`ERROR` result whose reason starts with `environment_error`. A manifest with
+`role = "build"` names a target and no item, and the worker runs its build
+stage with the job's core request as the build concurrency. Checked by the
 worker tests in `tools/dv/tests`.
 
-|Cluster job files: `<run>/stages/regress/scripts/<task>.sh`,
-`logs/<task>.log`, `logs/executor.log`, and `jobs/cancel-unconfirmed.json`
+|Cluster job files: `<run>/stages/regress/scripts/<task>.sh` (or
+`<stage>-arr<N>.sh` with its `.tasks` list for a job array),
+`logs/<task>.log` (or `<stage>-arr<N>.<index>.log`), `logs/executor.log`,
+`jobs/cancel-unconfirmed.json`, and a scheduler-managed build's
+`jobs/build-<stage>-<target>.json` manifest with its result under
+`builds/build-<stage>-<target>/`
 |`tools/dv/runlib/executors/cluster.py`
 |The scheduler, which receives the script as `{script}` and the log as
 `{joblog}` in `submit_argv`; operators reading a run
 |The script exports the executor's `env_passthrough` values, changes to the
-checkout, and execs `worker_argv`. The executor log holds every scheduler
-command with its status and output. The unconfirmed-cancel record lists the
-job ids an interrupted run could not confirm stopped. Checked by
+checkout, and execs `worker_argv`; an array's script first picks its element's
+task from the list by the scheduler's index variable. The executor log holds
+every scheduler command with its status and output. The unconfirmed-cancel
+record lists the
+job ids an interrupted run could not confirm stopped; the run-level summary
+repeats them under `interruption.cancellation`. Checked by
 `tools/dv/tests/test_cluster_executor.py`, which drives both drivers through
-fake scheduler commands.
+fake scheduler commands, interrupts a coordinator mid-run, and on demand by
+the `slurm-qualify` workflow, which runs the Slurm driver on a single-node
+Slurm installed on the hosted runner.
 
 |Runner command line and run tree: `run_dv.py` options; the
 `<dut-dv-root>/build/runs/<stamp>__<tool>__<label>/` layout with `stages/`,
@@ -166,7 +177,10 @@ per-leaf `result.json`, and `results/results.xml`
 an `UNKNOWN` checkpoint before the first leaf, so an incomplete run is never
 read as a pass. A run that did not finish carries `tests.completed = false`
 and `tests.pass_rate = null`, and a handled interruption adds an
-`interruption` object and a run-level errored JUnit testcase. The gate in
+`interruption` object (the signals received and, under `cancellation`, the
+attempts asked to stop, confirmed, and unconfirmed with their job ids) and a
+run-level errored JUnit testcase; on a cluster executor the checkpoint's
+active and interrupted leaves list their scheduler jobs. The gate in
 `.github/actions/dv-run` requires `schema_version == 1`, a `flow` and `tool`
 matching the invocation, `status == "PASS"`, and coverage evidence when the
 row collects coverage. The completion and expected-failure tests cover the
@@ -217,8 +231,11 @@ not enforce the schema version; the workflow gates each record on it, on its
 DUT count, and publishes
 nothing when a weekly DUT left no run tree
 (xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
-The artifact and the branch carry identical content. Checked by the
-dashboard schema, link, and completion tests and by the Operational checks
+The artifact and the branch carry identical content. The fields the
+documentation site renders are the ones `tools/doc/trim_dashboard_data.py`
+names, and every one of them is present in each record, `dut_status` row,
+test row, and history point the tools write. Checked by the dashboard
+schema, link, completion, and site-data tests and by the Operational checks
 section of xref:run-dashboard.adoc[DV and FV Dashboard].
 
 |Hosted workflows and the composite action: `sim.yml`, `regress.yml`,

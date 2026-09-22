@@ -270,10 +270,10 @@ never when it was written.
 |no_cpu
 |ocah_axi_vip
 |Proves that interrupts owned by the entropy blocks, HMAC error, and DMA done/chunk/error reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit from both a read and a write, and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 40 and 42, and clears each.
-|`sep_periph_bus_err_misaligned_reveal_test`
+|`sep_periph_bus_err_misaligned_test`
 |no_cpu
 |ocah_axi_vip
-|EXPECTED FAIL. Asserts the misaligned-offset latch condition `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` state for the bus-error status registers. The fabric refuses a misaligned in-extent beat with DECERR, so no TL-UL error reaches the block and no bit latches.
+|A misaligned in-extent access. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's `PERIPH_BUS_ERR_STATUS` bit. The fabric returns DECERR and the bit stays 0.
 |`sep_drbg_real_sink_multi_km_aes_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, entropy golden
@@ -286,6 +286,10 @@ never when it was written.
 |cpu, real fuse sense
 |ocah_axi_vip, CPU FW
 |The debug-port counterpart to the two-processor coexistence test. A real-sensed PROD image makes the JTAG path LC-restricted, so one image proves allowed-MMR coexistence and the LC-gated shadow deny while the CPU reads the same eFuse port.
+|`sep_efuse_jtag_window_allow_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip
+|TEST_DEV JTAG reads of the shadow map and `EFUSE_PROGRAM_CTRL` return OKAY. Together with the PROD deny in `sep_efuse_jtag_axil_el2_cpu_mux_test`, the two windows are gated rather than hard-denied.
 |`sep_nmi_sanity_test`
 |cpu
 |ocah_axi_vip, CPU FW
@@ -350,7 +354,7 @@ never when it was written.
 |`sep_abr_mldsa_sign_verify_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|ML-DSA-87 signing and verification through the same aperture: a deterministic external-mu signature compared word-for-word against the ACVP sigGen vector, and the sigVer pair that must verify and must not, whose results must differ.
+|ML-DSA-87 signing and verification through the same aperture: a deterministic external-mu signature compared word-for-word against the ACVP sigGen vector, and the sigVer pair that must verify and must not, with `MLDSA_VERIFY_RES` compared against each signature's c~.
 |`sep_abr_mlkem_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -770,7 +774,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset is claimed for the HMAC, KMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. A reset of OTBN, AES, or KMAC also flushes the shared crypto EDN adapter: an outstanding `edn_req` drops with no `edn_ack`, and a sibling client is still granted afterwards. Once URND is being granted, a KMAC reset stepped across one acknowledge period leaves URND `edn_ack` low on every gated-reset edge, from `SW_RESET_N` and from the JTAG override while `SW_RESET_N` still shows KMAC released. Drain-before-reset is claimed for the HMAC, KMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
@@ -827,7 +831,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_abr_mldsa_keygen_kat_test`. The key-vault seed path is not claimed. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`.
 
 |Adams Bridge ML-DSA-87 sigGen / sigVer
-|`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
+|`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair with `MLDSA_VERIFY_RES` compared against each signature's c~. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
 
 |Adams Bridge ML-KEM-1024
 |`sep_abr_mlkem_kat_test`. keyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. The same leaf grades the Adams Bridge `SW_RESET_N` domain on a live result — see `Per-IP SW_RESET_N isolation`. `KEYGEN+DECAPS` and the key-vault seed path are not claimed.
@@ -2226,22 +2230,22 @@ recovery. Those are listed in <<phase-3>>.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of both status registers are not claimed here. The misaligned term is revealed as unimplemented by <<sep_periph_bus_err_misaligned_reveal_test>>, which fails by design against the documented contract.
+*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of both status registers are not claimed here. The misaligned-offset term is <<sep_periph_bus_err_misaligned_test>>.
 
 '''''
 
-[[sep_periph_bus_err_misaligned_reveal_test]]
-===== `sep_periph_bus_err_misaligned_reveal_test`
+[[sep_periph_bus_err_misaligned_test]]
+===== `sep_periph_bus_err_misaligned_test`
 
 *Phase*: 1
 
 *Run mode*: `no_cpu`
 
-*Source Module*: `sep_periph_bus_err_misaligned_reveal_test`
+*Source Module*: `sep_periph_bus_err_misaligned_test`
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Reveals that the misaligned-offset latch condition stated for `PERIPH_BUS_ERR_STATUS` does not exist. `sep_cpu_ctrl.rdl:383` and `doc/interrupts.adoc:241` require a misaligned CPU access to a block's registers to receive SLVERR and latch that block's status bit; the fabric refuses the beat with DECERR instead, so no TL-UL error reaches the block and nothing latches.
+*Objective*: A misaligned CPU access inside a mapped register extent. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit. The fabric returns DECERR, so no TL-UL error reaches the block and the bit stays 0.
 
 *Test Coverage*: The misaligned-offset term of the bus-error status contract.
 
@@ -2258,12 +2262,12 @@ recovery. Those are listed in <<phase-3>>.
 |===
 |Checker |Contract
 |CHK-MISALIGN-BASE
-|`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. Guards the reveal against a bit left set by an earlier step.
+|`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. A bit left set by an earlier step fails here.
 |CHK-MISALIGN-LATCH
-|A misaligned in-extent access receives SLVERR and latches the owning block's bit. **Fails**: the access returns DECERR and the register stays 0.
+|A misaligned in-extent access receives SLVERR and latches the owning block's bit. The fabric returns DECERR and the register stays 0.
 |===
 
-*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The leaf is left unmarked so a run of `all` stays a visible fail; a spec-vs-RTL gap is not masked as `expect_fail`. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction.
+*Pass Criteria*: CHK-MISALIGN-BASE reads 0. CHK-MISALIGN-LATCH requires SLVERR and the owning block's bit. The fabric returns DECERR and the register stays 0.
 
 *Not claimed*: the same term on the DMA register path (`reg_path_err`), and the access-control (RACL) term of either register — RACL is disabled in this design with its error output unconnected, so that term is unreachable for a separate reason.
 
@@ -2401,7 +2405,7 @@ remapped routes to the error slave and never executes.
 |CHK-JTAG-DENY
 |The protected shadow window is denied with a specific decode error and marker value, not a timeout.
 |CHK-JTAG-ALLOW
-|The register window still works after the denial — the port is gated per window, not disabled wholesale.
+|The MMR window still works after the denial. The shadow map and `EFUSE_PROGRAM_CTRL` answer OKAY under TEST_DEV in `sep_efuse_jtag_window_allow_test`, so those two windows are gated per lifecycle state rather than denied on every image.
 |CHK-CPU-MMR
 |The CPU's readback of an untouched token register stays at its reset value throughout, with zero errors — so no non-zero debug-port data leaks into the CPU's read stream. The expected value is zero, which is also what two of the three debug-port read types return, so this catches a leak of the distinctive payload but not a zeroed CPU read path.
 |CHK-COEXIST
@@ -2410,6 +2414,36 @@ remapped routes to the error slave and never executes.
 |In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the `hw/sys/sep/doc/periphs.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`.
 |CHK-JTAG-IFACE-DENY
 |In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes DECERR with the DV-owned deny-path sentinel `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_efuse_jtag_window_allow_test]]
+===== `sep_efuse_jtag_window_allow_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, real fuse sense
+
+*Bucket*: eFuse
+
+*Test Coverage*: JTAG reaches the shadow map and `EFUSE_PROGRAM_CTRL` when `LC_STATE` is TEST_DEV.
+
+*Test Procedure*:
+
+[arabic]
+. Real-sense a TEST_DEV image. TEST_DEV is not PROD and not RMA_SIP, so the JTAG lifecycle gate does not steer those addresses at the error slave.
+. Read the shadow map base and `EFUSE_PROGRAM_CTRL` on the JTAG AXI-Lite port. Both complete OKAY.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-JTAG-WINDOW-ALLOW
+|In TEST_DEV, a JTAG read of the shadow map and a JTAG read of `EFUSE_PROGRAM_CTRL` both complete OKAY. The PROD DECERR for the same two windows is `sep_efuse_jtag_axil_el2_cpu_mux_test`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -2962,9 +2996,9 @@ one word and parks, which is enough for the legality check to execute.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact. The HMAC, KMAC and Adams Bridge domains also grade drain-before-reset. ABR grades the JTAG `IC_RESET` override on this leaf; its live-result isolation is on <<sep_abr_mlkem_kat_test>>.
+*Objective*: Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact. A reset of OTBN, AES, or KMAC flushes the shared crypto EDN adapter for one cycle, so an outstanding `edn_req` is cancelled instead of acknowledged. The HMAC, KMAC and Adams Bridge domains also grade drain-before-reset. ABR grades the JTAG `IC_RESET` override on this leaf; its live-result isolation is on <<sep_abr_mlkem_kat_test>>.
 
-*Test Coverage*: Per-IP software reset; neighbour crypto result survives bit-exact; HMAC, KMAC and ABR drain-before-reset; ABR JTAG override.
+*Test Coverage*: Per-IP software reset; neighbour crypto result survives bit-exact; crypto EDN request cancelled on OTBN, AES, and KMAC reset; live URND acknowledge stays low across a KMAC reset edge from software and from the JTAG override; HMAC, KMAC and ABR drain-before-reset; ABR JTAG override.
 
 *Test Procedure*:
 
@@ -2974,6 +3008,9 @@ one word and parks, which is enough for the legality check to execute.
 . Hold HMAC in software reset and prove the same `DIGEST_0` read and a `CFG` write complete SLVERR, while the sibling AES port stays OKAY.
 . Hold the KMAC reset and prove the gated reset waits for both its host and Key Manager paths to isolate, that in-flight host reads resolve, and that a read arriving inside the window resolves.
 . Hold the Adams Bridge reset and prove the gated reset waits for both the full-AXI host path and the shared Key Manager path to isolate, that in-flight host reads resolve, and that the JTAG override holds the domain while `SW_RESET_N` still shows it released.
+. Before EDN is enabled, hold an OTBN URND request and an AES request. Resetting the requester drops that request with `edn_ack` low. A KMAC reset in the same window leaves the AES request high. With OTBN then held in reset, enabling EDN still grants AES, and releasing OTBN lets URND be granted.
+. Once URND is being granted, re-arm that stream and step a KMAC reset across one measured acknowledge period. URND `edn_ack` is low on every KMAC gated-reset edge. The clear covers every endpoint, so the graded beat is URND's, not KMAC's.
+. Repeat that walk with the JTAG KMAC override held across each edge. `SW_RESET_N` still shows KMAC released, and URND `edn_ack` is low on every gated-reset edge. The override is a level that is still low at a `clk_i` edge. A pulse that has returned high before that edge is not graded; the detector samples with `EnSync=0`.
 
 *Checkers*:
 
@@ -3044,8 +3081,28 @@ releases. Both mux directions are graded.
 |A read issued on the first cycle a probe shows the KMAC drain window open also resolves OKAY or SLVERR. Fails explicitly if no window was ever observed, so the property cannot be satisfied by re-scoring the pre-request batch.
 |CHK-TRNG-NEIGHBORS
 |Parking the shared TRNG reset holds the TRNG `SW_RESET_N` bit and leaves the five accelerator bits released (OTBN, AES, HMAC, KMAC, ABR). HMAC DIGEST and AES DATA_OUT stay unchanged in that window. KMAC STATE, OTBN `LOAD_CHECKSUM` and the ABR datapath are not sampled here.
+|CHK-EDN-PEND
+|Before EDN is enabled, OTBN URND `edn_req` is high and `edn_ack` is low. `CHK-EDN-PEND-AES` is the same contract for the AES client, armed by a PRNG reseed that cannot yet be granted.
+|CHK-EDN-FLUSH
+|Resetting OTBN drops URND `edn_req` and URND `edn_ack` stays low. `CHK-EDN-FLUSH-AES` is the same contract for AES. `CHK-EDN-FLUSH-KMAC` resets KMAC while AES is still requesting: AES `edn_req` stays high and AES `edn_ack` stays low, so the shared adapter flush does not cancel or acknowledge a sibling.
+|CHK-EDN-SIBLING
+|With OTBN held in reset after that flush, and EDN enabled, AES receives `edn_ack`. URND `edn_req` and `edn_ack` stay low for the whole wait, so the cancelled request is not acknowledged once entropy is flowing.
+|CHK-EDN-REARM
+|Releasing OTBN lets URND assert `edn_req` again and receive `edn_ack`.
+|CHK-EDN-EDGE
+|After that grant stream is up, OTBN is re-armed and a KMAC software reset is stepped one cycle at a time across one measured URND acknowledge period. URND `edn_ack` is low on each falling edge of the KMAC gated reset. The clear is the shared adapter clear, so this row grades a sibling beat. A KMAC-only endpoint flush would not satisfy it.
+|CHK-EDN-JTAG
+|The same step, driven by the JTAG KMAC override. On each edge `SW_RESET_N` still shows KMAC released, and URND `edn_ack` is low. The hold stays low through a `clk_i` edge, which is the sample `EnSync=0` takes. A TCK pulse that is gone before that edge is not this row.
+|CHK-EDN-HOLD
+|A reset of KMAC must not rewrite a sibling's in-flight EDN data. Armed only on a cycle where URND holds `edn_req` with a word presented on `edn_bus` and no acknowledge yet; the check fails explicitly if no attempt arms, so it cannot pass on an idle bus. `edn_bus` and `edn_fips` must be unchanged across the KMAC gated-reset edge. `prim_edn_req` feeds `{edn_fips, edn_bus}` into `prim_sync_reqack_data` with `DataSrc2Dst=0`, whose `SyncReqAckDataHoldDst2Src` contract requires that data to hold across the handshake window.
+|CHK-EDN-HOLD-KEEP
+|The word URND had staged when the unrelated engine was reset must be the word URND is finally acknowledged with, within a bounded recovery window.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Known RTL defect revealed by this leaf*: `CHK-EDN-HOLD` and `CHK-EDN-HOLD-KEEP` FAIL against the current RTL, by design. The `clear_i` built in `sep_crypto.sv` is adapter-wide, so a reset of any one of AES, KMAC or OTBN flushes the staging FIFO and every endpoint of `u_axis_edn_crypto_s3c_scan`, not only the endpoint of the engine being reset. Measured: URND held `0x46882490` with `edn_fips` 1 and no acknowledge, the KMAC reset drove `edn_bus` to `0x00000000` and `edn_fips` to 0 on the reset edge, and URND was then acknowledged with a different word, `0xa1c1bf09`. Under VCS the same stimulus fires `SyncReqAckDataHoldDst2SrcA` and `SyncReqAckDataHoldDst2SrcB` in the sibling's `prim_edn_req`. A per-endpoint clear confines the flush to the engine being reset and closes both. These two rows are deliberately NOT `expect_fail`: they name a contract the DUT can and does fail, and they are to be closed by fixing the RTL, not by weakening the check.
+
+*Not claimed*: the `EnSync(1'b0)` exposure on the new `prim_edge_detector` in `sep_crypto.sv`. The JTAG override reaches `gated_rst_ni` from the TCK domain with no synchroniser, so a reset pulse narrower than one `clk_i` period can be missed and the flush never fires. The `EDN-GLITCH-OBS` observation records the measurable half -- seven of seven sub-cycle JTAG pulses drove `kmac_gated_rst_n` low while the sibling's staged word survived intact, so no flush occurred -- but a zero-delay simulation models neither metastability nor whether the client's own flops reset from a pulse that narrow. It is a static CDC review item, and it is deliberately outside the `CHK-` namespace because it is not a graded contract. Also not claimed: the `req_chk_i (!clear_i)` change, which disables the arbiter hold-until-grant assume for the whole `trng_reset_active` window rather than only the new one-cycle pulse; demonstrating that would mean showing a violation goes uncaught, which is not expressible as a checker. Every assertion-based contract here needs VCS -- `prim_assert.sv` withholds `OCAH_OT_INC_ASSERT` when `VERILATOR` is defined, so the arbiter and adapter assertions do not exist in the default Verilator build: `./sim/run.sh sep_crypto_per_ip_reset_isolation_test --tool vcs`.
 
 *Scope limit*: live-result isolation walks AES, HMAC, KMAC and OTBN. Drain-before-reset and the JTAG override walk Adams Bridge on this leaf; ABR live-result isolation is on <<sep_abr_mlkem_kat_test>>. The Key Manager bit stays at its reset default (a different mechanism) and is not claimed.
 
@@ -3283,13 +3340,9 @@ window compare below would be against a silent bus.
 |The 1157-word `MLDSA_SIGNATURE` window matches the vendored ACVP sigGen vector
 word-for-word, with STATUS VALID and ERROR=0, and PIC `[34]` low.
 |CHK-VERIFY-ACCEPT
-|The ACVP case that must verify completes VALID and returns a non-zero
-`MLDSA_VERIFY_RES` — zero is what an engine that never ran would report.
+|The ACVP case that must verify completes VALID and `MLDSA_VERIFY_RES` (the RDL array) equals the first part of the submitted signature, i.e. c~. That equality is the RDL pass condition.
 |CHK-VERIFY-REJECT
-|The ACVP case that must not verify returns a `MLDSA_VERIFY_RES` different from
-the accepting case. The claim is that the two are distinguished, not an absolute
-encoding: the register description does not state one, and transcribing a value
-would be checking the document rather than the engine.
+|The ACVP case that must not verify completes VALID and `MLDSA_VERIFY_RES` is not equal to that signature's c~. An engine that copies the submitted c~ into the result register -- unconditional success -- fails this checker.
 |CHK-ZEROIZE
 |`ZEROIZE` between commands drops VALID and the signature window then reads
 zero. Same scope limit as the keyGen leaf: the read port is gated on the valid
@@ -3299,15 +3352,14 @@ that the RAM was wiped.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Anti-vacuity*: the rejecting sigVer case is the load-bearing half. An engine
-that reported success unconditionally, or a result register that was never
-updated per command, passes the accepting case alone and fails
+that copies each submitted signature's c~ into `MLDSA_VERIFY_RES` (success
+unconditionally, in the RDL's terms) passes the accepting compare and fails
 `CHK-VERIFY-REJECT`. On the signing side, deterministic external-mu signing
 makes the signature a fixed function of inputs written over the bus, so a
 cached, constant or non-running engine cannot match 1157 words.
 
 *Not claimed*: `KEYGEN_SIGN` (0x4), the key-vault seed path, and
-`CMD_ABR_SK_TRANSFER` consume after a live ABR capture. The absolute encoding of
-`MLDSA_VERIFY_RES` is not pinned, only that accept and reject differ. ML-KEM is a
+`CMD_ABR_SK_TRANSFER` consume after a live ABR capture. ML-KEM is a
 separate vehicle, <<sep_abr_mlkem_kat_test>>.
 
 '''''
@@ -3577,7 +3629,7 @@ recovery attempt.
 |CHK-PAGE-BOUND
 |The 4 KB grant stops at both page edges. Under a scratch-page grant an access one page below is refused; with that page granted instead it answers OKAY while the scratch address turns DECERR. Both probes are proven reachable first, so neither refusal can be a decode hole rather than a filter decision. This is the security contract: 4 KB is the block pitch for the DMA CSR, watchdog and scratch-bank blocks, so a page-crossing grant would reach a neighbouring block.
 |CHK-CONFIG-LOCK
-|`FILTER_CONFIG.locked` freezes `allow_burst`. Once locked, clearing `allow_burst` and clearing `locked` both answer SLVERR, the field keeps its value, and the frozen granule still grants the widened page. The freeze is not in the register block -- `locked` is a W1S bit with no write-enable over other fields -- but in `sep_system_csr.sv`, where a per-entry demux routes a locked entry's writes to an error slave while reads pass through. Asserting the response alone would not prove the field held, so the readback and the still-granted access are checked with it.
+|`FILTER_CONFIG.locked` freezes `allow_burst`. `hw/sys/sep/doc/fabric.adoc` specifies the lock bit as write-once, so the field must not change once set; it does not state how a write to a locked entry completes. SEP refuses that write with SLVERR, so that is what is asserted: once locked, clearing `allow_burst` and clearing `locked` both answer SLVERR, the field keeps its value, and the frozen granule still grants the widened page. The held field is the specified contract; the SLVERR is SEP's unspecified completion code. The freeze is not in the register block -- `locked` is a W1S bit with no write-enable over other fields -- but a per-entry demux routes a locked entry's writes to an error slave while reads pass through. Asserting the response alone would not prove the field held, so the readback and the still-granted access are checked with it.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -4972,7 +5024,7 @@ behaviour and the JTAG read are graded on
 |CHK-REMAP-TRANSLATE
 |The programmed window completes OKAY at the remapped target. Identity would miss the allow window.
 |CHK-FILTER-DROP
-|A beat outside the remapped allow set is DECERR.
+|A beat outside the remapped allow set is DECERR. One probe is the other region left at offset 0. A second probe is the next beat of the allowed region, which translates to a non-zero address outside the one-beat allow entry.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -6781,17 +6833,8 @@ the wipe security contract.
 
 === Regression Groups
 
-[cols=",",options="header"]
-|===
-|Group |Meaning
-|`smoke` |Short no-CPU bring-up subset (CI)
-|`cpu_stub` |CPU not alive (`sep_cpu` stub); AXI-driver tests
-|`cpu` |Firmware-boot tests
-|`rom_fw` |Boot-ROM image class (separate owner); not a member of `all`
-|`all` |Every test this VPLAN grades, and the coverage set: `cpu_stub` + `cpu` plus `sep_periph_bus_err_misaligned_reveal_test`, which is in neither class because it fails by design
-|===
-
-`README.md` owns how to run these groups, including which one to use when closing a change.
+`README.md` owns the group table and the commands, including which group to
+run when closing a change. This file owns each leaf's checker contract.
 
 [[known-limitations]]
 [[phase-3]]

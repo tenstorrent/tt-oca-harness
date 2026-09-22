@@ -66,6 +66,8 @@ PK_WORDS = 648
 SK_WORDS = 1224
 MU_WORDS = 16
 SIG_WORDS = 1157
+# MLDSA_VERIFY_RES[N] in abr_reg.rdl; c~ is those leading signature words.
+VERIFY_RES_WORDS = (abr_off("MLDSA_EXTERNAL_MU") - abr_off("MLDSA_VERIFY_RES")) // 4
 
 # Sign / verify register windows, by symbol from the vendor RDL like the
 # keygen ones above.
@@ -166,6 +168,8 @@ def _selftest() -> None:
     assert ABR_MSG - ABR_BASE == 0x98
     assert ABR_VERIFY_RES - ABR_BASE == 0xD8
     assert ABR_EXTERNAL_MU - ABR_BASE == 0x118
+    assert VERIFY_RES_WORDS == 16
+    assert ABR_VERIFY_RES + 4 * VERIFY_RES_WORDS == ABR_EXTERNAL_MU
     assert ABR_SIGNATURE - ABR_BASE == 0x2000
     assert ABR_PRIVKEY_IN - ABR_BASE == 0x6000
     # The four windows a sign or verify touches must not overlap each other.

@@ -67,10 +67,14 @@ SETTLE_CYCLES = 4000
 class SmuSepDbgGatingSeq:
     """Prove dbg_disable stops JTAG2AXI traffic, and its absence allows it."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_DBG_DISABLE_ENFORCED_OK", "SEP_LCC_TO_DTP_GATING_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -230,7 +234,7 @@ class SmuSepDbgGatingSeq:
                 before_ar,
                 after_ar,
             )
-        for token in ("SEP_DBG_DISABLE_ENFORCED_OK", "SEP_LCC_TO_DTP_GATING_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

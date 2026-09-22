@@ -9,14 +9,14 @@ bus-error units at ``BASE + 0x801_0000 + N * 0x1000``, and ``fabric.adoc``
 (Local and Remote Resource Access) sizes both the local and the global
 aperture with the ``REGION_SIZE`` CSR, whose reset is 16 MiB.
 
-``smc_local_fabric`` replaces every address bit above ``REGION_SIZE`` with
-``LOCAL_BASE`` (``smc_local_fabric.sv``: ``local_addr_base | (addr &
-local_addr_mask)``), so at the 16 MiB reset the PLIC offset folds onto the
-bottom of the local window. This sequence measures that fold first -- the PLIC
-priority word at window offset 0x20 returns the watchdog ``CMP`` reset -- then
-programs ``REGION_SIZE`` to 256 MiB, the smallest power of two that contains
-the whole documented map up to ``BASE + 0x801_3FFF``, shows the same address no
-longer returns the watchdog value, and drives the three windows:
+At the 16 MiB reset the PLIC, CLINT and BEU addresses lie outside the local
+aperture, and neither ``fabric.adoc`` nor ``memmap.adoc`` says what an inbound
+access above the aperture returns; this sequence reads the PLIC priority word
+at the reset size with the response tolerated and reports what came back,
+without comparing it. It then programs ``REGION_SIZE`` to 256 MiB, the
+smallest power of two that contains the whole documented map up to
+``BASE + 0x801_3FFF``, and drives the three windows -- their co-resident
+patterns and generated resets are what prove the aperture widened:
 
 * PLIC: priority and per-core enable words hold distinct co-resident patterns,
   are then written to the priority-0 / disabled state ``interrupts.adoc``
@@ -39,7 +39,14 @@ from pathlib import Path
 
 import cocotb
 
-from .smc_addr_map import _REPO, REGION_SIZE_RESET, reg_reset_word, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _REPO,
+    LOCAL_BASE_RESET,
+    REGION_SIZE_RESET,
+    reg_reset_word,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
@@ -56,7 +63,7 @@ REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 # the smallest one whose aperture reaches the last address memmap.adoc lists
 # (the top of the timer / bus-error region at BASE + 0x801_3FFF).
 REGION_SIZE_256M = 0x1000_0000
-LOCAL_BASE = 0xC000_0000
+LOCAL_BASE = LOCAL_BASE_RESET
 SPEC_MAP_TOP_OFFSET = 0x0801_3FFF
 assert REGION_SIZE_256M > SPEC_MAP_TOP_OFFSET
 assert REGION_SIZE_RESET <= SPEC_MAP_TOP_OFFSET
@@ -71,8 +78,10 @@ PLIC_CORE0_ENABLE_0 = smc_indexed_addr("SMC_TOP_SMC_CLUSTER_PLIC_CORE0_MEIP_ENAB
 # memmap.adoc / interrupts.adoc: PLIC = BASE + 0x400_0000 - BASE + 0x43F_FFFF.
 PLIC_SPEC_TOP = LOCAL_BASE + 0x043F_FFF8
 PLIC_SPEC_ABOVE = LOCAL_BASE + 0x0440_0000
-# The address the fold maps onto the watchdog CMP while REGION_SIZE is 16 MiB.
-PLIC_ALIASED_TO_WDT_CMP = LOCAL_BASE + 0x0400_0000 + WDT_CMP_WINDOW_OFFSET
+# The PLIC word at the watchdog CMP's window offset: read at the reset aperture
+# with the response tolerated (the specification does not define it) and again
+# once the aperture covers the PLIC.
+PLIC_WORD_AT_WDT_CMP_OFFSET = PLIC_BASE + WDT_CMP_WINDOW_OFFSET
 # plic.h: PRIORITY.VALUE is 3 bits, so the pattern has to fit in it.
 _PRIORITY_PATTERN = 0x5
 _ENABLE_PATTERN = 0xA5A5_5A5A
@@ -101,44 +110,45 @@ _BEU_PATTERNS = (0x02, 0x04, 0x20, 0x40)
 TIMER_BUSERROR_SPEC_TOP = LOCAL_BASE + 0x0801_3FF8
 
 EXPECTED_ACCESSES = 53
-EXPECTED_VALUE_CHECKS = 28
+EXPECTED_VALUE_CHECKS = 27
 
 
 class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
-    """Fold at the reset REGION_SIZE, then PLIC / CLINT / BEU decode at 256 MiB."""
+    """REGION_SIZE at reset, then PLIC / CLINT / BEU decode at 256 MiB."""
 
     def __init__(self, name: str = "smc_region_size_plic_clint_beu_decode_test_seq") -> None:
         super().__init__(name)
         self.value_checks_measured = 0
-        self.aliased_word: int | None = None
-        self.unaliased_word: int | None = None
+        # What the PLIC word answered at the reset aperture: (resp, rdata),
+        # reported and not compared -- the specification leaves it undefined.
+        self.above_aperture_at_reset: tuple[int, int] | None = None
+        self.plic_word_at_256m: int | None = None
 
-    async def _fold_at_reset_region_size(self) -> None:
-        """The reset 16 MiB aperture folds the PLIC offset onto the watchdog."""
+    async def _reset_region_size(self) -> None:
+        """REGION_SIZE reads its generated reset; the local window answers below it."""
         await self.read_reset("REGION_SIZE_AT_RESET", REGION_SIZE, REGION_SIZE_RESET)
         await self.read_reset("WDT0_CMP_LOCAL", WDT0_CMP, WDT_CMP_REG_DEFAULT)
-        self.aliased_word = await self.read_reset(
-            "PLIC_OFFSET_FOLDED_TO_WDT_CMP", PLIC_ALIASED_TO_WDT_CMP, WDT_CMP_REG_DEFAULT
+        self.above_aperture_at_reset = await self.read_any(
+            "PLIC_WORD_ABOVE_RESET_APERTURE", PLIC_WORD_AT_WDT_CMP_OFFSET
         )
+        resp, rdata = self.above_aperture_at_reset
         self.close_cell(
             "region-size-reset-16mib",
-            f"REGION_SIZE read its generated reset {REGION_SIZE_RESET:#x}, and with that aperture "
-            f"0x{PLIC_ALIASED_TO_WDT_CMP:08x} (PLIC window offset 0x{WDT_CMP_WINDOW_OFFSET:x}) "
-            f"returned 0x{self.aliased_word:x}, the watchdog CMP reset, so the address folded onto "
-            f"the bottom of the local window",
+            f"REGION_SIZE read its generated reset {REGION_SIZE_RESET:#x} and WDT0 CMP inside "
+            f"that aperture read its generated reset 0x{WDT_CMP_REG_DEFAULT:x}; "
+            f"0x{PLIC_WORD_AT_WDT_CMP_OFFSET:08x}, above the aperture, answered resp={resp} "
+            f"rdata=0x{rdata:x}, which fabric.adoc leaves undefined and this leg reports "
+            f"without comparing",
         )
 
     async def _widen_region_size(self) -> None:
         await self.csr_write("REGION_SIZE_256M", REGION_SIZE, REGION_SIZE_256M)
         await self.csr_read("REGION_SIZE_256M_RB", REGION_SIZE, expected=REGION_SIZE_256M)
-        # Same address as the fold probe above: it must no longer answer with
-        # the watchdog value, which is what makes every access below evidence
-        # of reaching the far window rather than of the fold.
-        self.unaliased_word = await self.csr_read("PLIC_OFFSET_UNFOLDED", PLIC_ALIASED_TO_WDT_CMP)
-        assert self.unaliased_word & 0xFFFF_FFFF != WDT_CMP_REG_DEFAULT, (
-            f"0x{PLIC_ALIASED_TO_WDT_CMP:08x} still returns the watchdog CMP reset "
-            f"0x{WDT_CMP_REG_DEFAULT:x} with REGION_SIZE = 0x{REGION_SIZE_256M:x}: the aperture did "
-            f"not widen, so nothing below reaches the PLIC"
+        # The same PLIC word, now inside the aperture, answers OKAY (the
+        # scoreboard requires it); its value is reported here and the PLIC
+        # co-resident patterns below are the proof that the aperture widened.
+        self.plic_word_at_256m = await self.csr_read(
+            "PLIC_WORD_INSIDE_256M", PLIC_WORD_AT_WDT_CMP_OFFSET
         )
 
     async def _plic(self) -> None:
@@ -207,13 +217,17 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
         )
 
     async def _clint(self) -> None:
-        await self.rw_coresident(
-            [("CLINT_MSIP_0", CLINT_MSIP_0, _MSIP_PATTERN, 0)],
-        )
+        # Both patterns are resident before either is read back, so a decode
+        # that folds MTIMECMP_0 onto MSIP_0 (or the reverse) fails the first
+        # readback; the two registers differ in width, so the legs are spelt out.
+        await self.csr_write("CLINT_MSIP_0_PATTERN", CLINT_MSIP_0, _MSIP_PATTERN)
         await self.csr_write("CLINT_MTIMECMP_0", CLINT_MTIMECMP_0, _MTIMECMP_PATTERN, length=8)
+        await self.csr_read("CLINT_MSIP_0_PATTERN_RB", CLINT_MSIP_0, expected=_MSIP_PATTERN)
         await self.csr_read(
             "CLINT_MTIMECMP_0_RB", CLINT_MTIMECMP_0, expected=_MTIMECMP_PATTERN, length=8
         )
+        await self.csr_write("CLINT_MSIP_0_RESTORE", CLINT_MSIP_0, 0)
+        await self.csr_read("CLINT_MSIP_0_RESTORE_RB", CLINT_MSIP_0, expected=0)
         top = await self.csr_read("CLINT_SPEC_TOP", CLINT_SPEC_TOP, length=8)
         assert top != _MTIMECMP_PATTERN, (
             f"0x{CLINT_SPEC_TOP:08x}, the top word of the 64 KiB CLINT window, returned the "
@@ -226,7 +240,8 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
         self.close_cell(
             "clint-base-access",
             f"MSIP_0 @0x{CLINT_MSIP_0:08x} (first word of the CLINT window) held and returned "
-            f"{_MSIP_PATTERN:#x} and was restored to 0",
+            f"{_MSIP_PATTERN:#x} while MTIMECMP_0 held {_MTIMECMP_PATTERN:#x}, and was restored "
+            f"to 0",
         )
         self.close_cell(
             "clint-top-access",
@@ -281,7 +296,7 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
 
-        await self._fold_at_reset_region_size()
+        await self._reset_region_size()
         await self._widen_region_size()
         await self._plic()
         await self._plic_edges()
@@ -296,14 +311,16 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.report_cells("CHK-REGION-SIZE-PLIC-CLINT-BEU")
         cocotb.log.info(
-            "CHK-REGION-SIZE-PLIC-CLINT-BEU-DECODE: REGION_SIZE 0x%x folded the PLIC offset onto "
-            "the watchdog CMP (0x%x); at 0x%x the same address returned 0x%x and the PLIC, CLINT "
-            "and four BEU windows answered; %d cells closed over %d accesses with %d scoreboard "
+            "CHK-REGION-SIZE-PLIC-CLINT-BEU-DECODE: at REGION_SIZE 0x%x the PLIC word above the "
+            "aperture answered resp=%d rdata=0x%x (reported, not compared); at 0x%x the same "
+            "address answered OKAY with 0x%x and the PLIC, CLINT and four BEU windows held their "
+            "co-resident patterns; %d cells closed over %d accesses with %d scoreboard "
             "exact-value compares (floor %d)",
             REGION_SIZE_RESET,
-            self.aliased_word,
+            self.above_aperture_at_reset[0],
+            self.above_aperture_at_reset[1],
             REGION_SIZE_256M,
-            self.unaliased_word,
+            self.plic_word_at_256m,
             len(self.cells),
             self.accesses,
             self.value_checks_measured,

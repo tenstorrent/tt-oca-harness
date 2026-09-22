@@ -4,11 +4,18 @@
 """The cluster executor: leaf attempts run as scheduler jobs.
 
 Every scheduler interaction is one of the registry's argv templates rendered and run as a
-subprocess: ``submit_argv`` once per attempt, ``query_argv`` for a batch of job ids on every
-poll, ``history_argv`` for ids absent from the live query, and ``cancel_argv`` on
-interruption. The executor reads no scheduler output itself; the driver's
+subprocess: ``submit_argv`` once per attempt or once per job array, ``query_argv`` for a batch
+of job ids on every poll, ``history_argv`` for ids absent from the live query, and
+``cancel_argv`` on interruption. The executor reads no scheduler output itself; the driver's
 :class:`SchedulerDialect` turns each command's output into normalized observations, so a site
 changes flags in the registry while a driver changes parsing in code.
+
+With ``arrays`` on, the first attempts of a stage go out as job arrays of at most
+``array_chunk_size`` elements, one array per coordinator turn. Every element is its own
+handle under the scheduler's element id (``1001[3]`` on LSF, ``1001_3`` on Slurm), so
+polling, history, cancellation and collection never distinguish an element from a plain job;
+retries and wave-debug reruns are plain jobs. The array's one script reads its element index
+from the scheduler's environment and picks the matching manifest from the array's task list.
 
 A job that leaves the live query without a terminal state is ``RECONCILING``: the completion
 record and ``result.json`` the worker wrote settle it first, then the scheduler's history, and
@@ -28,6 +35,7 @@ import json
 import shlex
 import subprocess
 import sys
+import threading
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -61,6 +69,13 @@ DEFAULT_WORKER_ARGV = [
 ]
 EXECUTOR_LOG_NAME = "executor.log"
 UNCONFIRMED_CANCELS_NAME = "cancel-unconfirmed.json"
+ARRAY_TASKS_SUFFIX = ".tasks"
+# Sentinels the array script replaces with the element's own values after quoting.
+_ARRAY_TOKENS = {
+    "manifest": ("@@OCAH_MANIFEST@@", "OCAH_MANIFEST"),
+    "leaf_dir": ("@@OCAH_LEAF_DIR@@", "OCAH_LEAF_DIR"),
+    "task_id": ("@@OCAH_TASK_ID@@", "OCAH_TASK_ID"),
+}
 # Consecutive failures that abort the run rather than grading one more attempt.
 SUBMIT_FAILURE_LIMIT = 3
 QUERY_FAILURE_LIMIT = 5
@@ -89,6 +104,11 @@ def script_path(run_dir: Path, task_id: str) -> Path:
 
 def job_log_path(run_dir: Path, task_id: str) -> Path:
     return logs_dir(run_dir) / f"{task_id}.log"
+
+
+def array_tasks_path(run_dir: Path, label: str) -> Path:
+    """The array's task list: one ``task_id<TAB>manifest<TAB>leaf_dir`` line per element."""
+    return scripts_dir(run_dir) / f"{label}{ARRAY_TASKS_SUFFIX}"
 
 
 @dataclass
@@ -165,6 +185,26 @@ class SchedulerDialect(ABC):
     history_parsers: Mapping[str, str] = {}
     # A scheduler that refuses a whole id list when one id is unknown answers per id instead.
     retry_failed_query_per_id: bool = False
+    # The variable a job array element reads its index from, and the token the scheduler
+    # expands to that index in an output path.
+    array_index_env: str = ""
+    array_log_token: str = ""
+    # The submit placeholder that carries the array range, or None when the job name does.
+    array_range_placeholder: str | None = None
+    # Text the query template must contain for element records to be told apart, if any.
+    array_query_marker: str = ""
+
+    @property
+    def supports_arrays(self) -> bool:
+        return bool(self.array_index_env and self.array_log_token)
+
+    def array_jobname(self, name: str, count: int) -> str:
+        """The job name that submits ``count`` elements under ``name``."""
+        return name
+
+    def element_id(self, array_id: str, index: int) -> str:
+        """The scheduler's id for element ``index`` (1-based) of array ``array_id``."""
+        raise NotImplementedError
 
     @abstractmethod
     def parse_submit(self, result: CommandResult) -> SubmitOutcome: ...
@@ -207,6 +247,7 @@ class _Tracked:
     last: JobObservation
     script: Path | None
     joblog: Path
+    array_label: str | None = None
     missing_since: float | None = None
     terminal_since: float | None = None
     history: JobObservation | None = None
@@ -249,7 +290,27 @@ class ClusterExecutor(Executor):
         self._passthrough = [str(name) for name in cfg.get("env_passthrough") or []]
         self._history_template = cfg.get("history_argv") or None
         self._history_parser = str(cfg.get("history_parser") or "")
-        self.submit_batch_size = int(self._limits["submit_batch_size"])
+        self._array_sequence = 0
+        self._arrays_off_reason = self._arrays_blocker()
+        self.submit_batch_size = (
+            self.array_chunk_size
+            if self._arrays_off_reason is None
+            else int(self._limits["submit_batch_size"])
+        )
+
+    def _arrays_blocker(self) -> str | None:
+        """Why this executor submits plain jobs only, or None when it may submit arrays."""
+        if not self._cfg.get("arrays"):
+            return "arrays are off in the registry"
+        if not self._dialect.supports_arrays:
+            return f"driver `{self.driver}` has no job-array support"
+        placeholder = self._dialect.array_range_placeholder
+        if placeholder and placeholder not in _template_placeholders(self._cfg["submit_argv"]):
+            return f"submit_argv has no {{{placeholder}}} placeholder"
+        marker = self._dialect.array_query_marker
+        if marker and marker not in " ".join(str(part) for part in self._cfg["query_argv"]):
+            return f"query_argv does not request `{marker}`"
+        return None
 
     # -- configuration -------------------------------------------------------------------
 
@@ -269,6 +330,14 @@ class ClusterExecutor(Executor):
     @property
     def command_timeout_sec(self) -> float:
         return float(self._limits["command_timeout_sec"])
+
+    @property
+    def array_chunk_size(self) -> int:
+        return max(1, int(self._limits.get("array_chunk_size") or 1))
+
+    @property
+    def arrays_enabled(self) -> bool:
+        return self._arrays_off_reason is None
 
     @property
     def executor_log(self) -> Path:
@@ -299,7 +368,10 @@ class ClusterExecutor(Executor):
             "task_id": task.task_id,
             "executor": self.name,
         }
-        result = self._run(render_argv(self._cfg["submit_argv"], values), "submit")
+        template = self._cfg["submit_argv"]
+        if task.is_build and self._cfg.get("build_submit_argv"):
+            template = self._cfg["build_submit_argv"]
+        result = self._run(render_argv(template, values), "submit")
         outcome = self._dialect.parse_submit(result)
         stamp = now_iso()
         handle = JobHandle(
@@ -335,6 +407,158 @@ class ClusterExecutor(Executor):
         )
         self._tracked[task.task_id] = _Tracked(task, handle, queued, script, joblog)
         return handle
+
+    def submit_many(
+        self,
+        tasks: Sequence[LeafTask],
+        on_submitted: Callable[[Sequence[JobHandle]], None] | None = None,
+    ) -> list[JobHandle]:
+        if not tasks:
+            return []
+        if not self.arrays_enabled or len(tasks) == 1:
+            if self._arrays_off_reason and len(tasks) > 1 and self._array_sequence == 0:
+                self._array_sequence += 1
+                self._event(f"submitting plain jobs: {self._arrays_off_reason}")
+            return super().submit_many(tasks, on_submitted)
+        handles: list[JobHandle] = []
+        for group in _homogeneous_groups(tasks):
+            for start in range(0, len(group), self.array_chunk_size):
+                chunk = group[start : start + self.array_chunk_size]
+                submitted = (
+                    [self.submit(chunk[0])] if len(chunk) == 1 else self._submit_array(chunk)
+                )
+                handles.extend(submitted)
+                if on_submitted is not None:
+                    on_submitted(submitted)
+        by_task = {handle.task_id: handle for handle in handles}
+        return [by_task[task.task_id] for task in tasks]
+
+    def _submit_array(self, tasks: Sequence[LeafTask]) -> list[JobHandle]:
+        for task in tasks:
+            if task.manifest_path is None:
+                raise ClusterError(f"{task.task_id}: no manifest was written for this attempt")
+        self._array_sequence += 1
+        label = f"{tasks[0].stage}-arr{self._array_sequence:04d}"
+        script = self._write_array_script(tasks, label)
+        tasks_file = array_tasks_path(self._run_dir, label)
+        token = self._dialect.array_log_token
+        joblog_pattern = logs_dir(self._run_dir) / f"{label}.{token}.log"
+        joblog_pattern.parent.mkdir(parents=True, exist_ok=True)
+        values = {
+            **tasks[0].resources.placeholders(),
+            "jobname": self._dialect.array_jobname(
+                f"ocah.{self._run_dir.name}.{label}", len(tasks)
+            ),
+            "joblog": str(joblog_pattern),
+            "script": str(script),
+            "manifest": str(tasks_file),
+            "python": sys.executable,
+            "run_dir": str(self._run_dir),
+            "repo_root": str(self._root),
+            "leaf_dir": str(tasks_file.parent),
+            "task_id": label,
+            "executor": self.name,
+            "array_range": f"1-{len(tasks)}",
+        }
+        result = self._run(render_argv(self._cfg["submit_argv"], values), "submit")
+        outcome = self._dialect.parse_submit(result)
+        stamp = now_iso()
+        handles: list[JobHandle] = []
+        if outcome.job_id is None:
+            self._submit_failures += 1
+            reason = f"array submission failed: {outcome.error or result.failure_text}"
+            failed = JobObservation(state=JobState.FAILED, reason=reason, observed_at=stamp)
+            for task in tasks:
+                handle = JobHandle(
+                    executor=self.name,
+                    driver=self.driver,
+                    native_job_id="",
+                    task_id=task.task_id,
+                    leaf_id=task.leaf_id,
+                    attempt=task.attempt,
+                    submitted_at=stamp,
+                )
+                self._tracked[task.task_id] = _Tracked(
+                    task, handle, failed, script, joblog_pattern, array_label=label, settled=failed
+                )
+                handles.append(handle)
+            self._event(f"{label} ({len(tasks)} attempts): {reason}")
+            if self._submit_failures >= SUBMIT_FAILURE_LIMIT:
+                raise ClusterError(
+                    f"{self._submit_failures} consecutive submissions to `{self.name}` "
+                    f"failed; last: {outcome.error or result.failure_text}"
+                )
+            return handles
+        self._submit_failures = 0
+        queued = JobObservation(
+            state=JobState.QUEUED,
+            reason=f"submitted to queue {outcome.queue}" if outcome.queue else "submitted",
+            observed_at=stamp,
+        )
+        for index, task in enumerate(tasks, start=1):
+            joblog = logs_dir(self._run_dir) / f"{label}.{index}.log"
+            handle = JobHandle(
+                executor=self.name,
+                driver=self.driver,
+                native_job_id=self._dialect.element_id(outcome.job_id, index),
+                task_id=task.task_id,
+                leaf_id=task.leaf_id,
+                attempt=task.attempt,
+                cluster=outcome.cluster,
+                array_job_id=outcome.job_id,
+                array_task_id=index,
+                submitted_at=stamp,
+                executor_log=repo_rel(self._root, joblog),
+            )
+            self._tracked[task.task_id] = _Tracked(
+                task, handle, queued, script, joblog, array_label=label
+            )
+            handles.append(handle)
+        self._event(
+            f"{label}: {len(tasks)} attempts submitted as array {outcome.job_id} "
+            f"({tasks[0].task_id} .. {tasks[-1].task_id})"
+        )
+        return handles
+
+    def _write_array_script(self, tasks: Sequence[LeafTask], label: str) -> Path:
+        tasks_file = array_tasks_path(self._run_dir, label)
+        tasks_file.parent.mkdir(parents=True, exist_ok=True)
+        tasks_file.write_text(
+            "".join(f"{task.task_id}\t{task.manifest_path}\t{task.leaf_dir}\n" for task in tasks),
+            encoding="utf-8",
+        )
+        values = {
+            "python": sys.executable,
+            "repo_root": str(self._root),
+            "run_dir": str(self._run_dir),
+            **{name: sentinel for name, (sentinel, _var) in _ARRAY_TOKENS.items()},
+        }
+        worker = render_argv(self._cfg.get("worker_argv") or DEFAULT_WORKER_ARGV, values)
+        exec_line = " ".join(shlex.quote(part) for part in worker)
+        for sentinel, variable in _ARRAY_TOKENS.values():
+            exec_line = exec_line.replace(sentinel, f'"${variable}"')
+        index_env = self._dialect.array_index_env
+        lines = [
+            "#!/bin/sh",
+            f"# run_dv.py leaf attempts {label}: element ${index_env} of {len(tasks)}",
+        ]
+        for name in self._passthrough:
+            if name in self._env:
+                lines.append(f"export {name}={shlex.quote(self._env[name])}")
+        lines += [
+            f"cd {shlex.quote(str(self._root))} || exit 2",
+            f'OCAH_TASK_LINE=$(sed -n "${{{index_env}}}p" {shlex.quote(str(tasks_file))}) || exit 2',
+            '[ -n "$OCAH_TASK_LINE" ] || exit 2',
+            "OCAH_TASK_ID=$(printf '%s\\n' \"$OCAH_TASK_LINE\" | cut -f1)",
+            "OCAH_MANIFEST=$(printf '%s\\n' \"$OCAH_TASK_LINE\" | cut -f2)",
+            "OCAH_LEAF_DIR=$(printf '%s\\n' \"$OCAH_TASK_LINE\" | cut -f3)",
+            "export OCAH_TASK_ID OCAH_MANIFEST OCAH_LEAF_DIR",
+            "exec " + exec_line,
+        ]
+        path = script_path(self._run_dir, label)
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        path.chmod(0o755)
+        return path
 
     def _job_name(self, task: LeafTask) -> str:
         return f"ocah.{self._run_dir.name}.{task.task_id}"
@@ -615,12 +839,19 @@ class ClusterExecutor(Executor):
 
     # -- cancel ----------------------------------------------------------------------------
 
-    def cancel(self, handles: Sequence[JobHandle], *, grace_sec: float) -> dict[str, bool]:
+    def cancel(
+        self,
+        handles: Sequence[JobHandle],
+        *,
+        grace_sec: float,
+        stop: threading.Event | None = None,
+    ) -> dict[str, bool]:
         """Cancel the run's own jobs and confirm each by query within the grace.
 
-        A job the scheduler reports finished counts as confirmed; one it does not know stays
-        unconfirmed and is recorded beside the manifests for the operator. Nothing here raises:
-        an interrupted run must reach its summary whatever the scheduler does.
+        A job the scheduler reports finished counts as confirmed; one it does not know, or
+        one live when the grace ends or ``stop`` is set, stays unconfirmed and is recorded
+        beside the manifests for the operator. Nothing here raises: an interrupted
+        run must reach its summary whatever the scheduler does.
         """
         confirmed: dict[str, bool] = {}
         targets: list[_Tracked] = []
@@ -675,7 +906,7 @@ class ClusterExecutor(Executor):
                     confirmed[tracked.task.task_id] = True
                     outstanding.remove(tracked)
             remaining = deadline - self._clock()
-            if not outstanding or remaining <= 0:
+            if not outstanding or remaining <= 0 or (stop is not None and stop.is_set()):
                 break
             self._sleep(min(CANCEL_POLL_SEC, remaining))
         for tracked in outstanding:
@@ -856,6 +1087,29 @@ class ClusterExecutor(Executor):
             self._log_handle = None
 
 
+def _template_placeholders(template: Sequence[Any]) -> set[str]:
+    found: set[str] = set()
+    for element in template:
+        if isinstance(element, list):
+            found |= _template_placeholders(element)
+        else:
+            found |= set(PLACEHOLDER_RE.findall(str(element)))
+    return found
+
+
+def _homogeneous_groups(tasks: Sequence[LeafTask]) -> list[list[LeafTask]]:
+    """Consecutive tasks that share a stage and a resource request, in submission order."""
+    groups: list[list[LeafTask]] = []
+    for task in tasks:
+        if groups and (
+            groups[-1][0].stage == task.stage and groups[-1][0].resources == task.resources
+        ):
+            groups[-1].append(task)
+        else:
+            groups.append([task])
+    return groups
+
+
 def _text(data: Any) -> str:
     if data is None:
         return ""
@@ -865,6 +1119,7 @@ def _text(data: Any) -> str:
 
 
 __all__ = [
+    "ARRAY_TASKS_SUFFIX",
     "CANCEL_POLL_SEC",
     "DEFAULT_WORKER_ARGV",
     "EXECUTOR_LOG_NAME",
@@ -879,6 +1134,7 @@ __all__ = [
     "QueryOutcome",
     "SchedulerDialect",
     "SubmitOutcome",
+    "array_tasks_path",
     "base_job_id",
     "job_log_path",
     "logs_dir",

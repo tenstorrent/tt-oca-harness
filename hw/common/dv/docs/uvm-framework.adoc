@@ -211,10 +211,8 @@ Declare every TB signal exactly once. In the interface-based core each TB
 net is one local declaration wired to an interface member (DTP's
 `tb_top.sv`). A bench whose cocotb realization binds a pin-level port list
 keeps that list in a single include file expanded into both shapes
-through direction macros, the pattern of
-`hw/sys/smu/dv/tb/smu_tb_signal_list.svh` and its expansion in SMU's
-`tb_top.sv`. Hand-maintaining two declaration blocks in lockstep is the
-failure mode both patterns exist to remove.
+through direction macros. Hand-maintaining two declaration blocks in
+lockstep is the failure mode both patterns exist to remove.
 
 ==== Step 3: Carry DUT-local controls in a TB interface
 

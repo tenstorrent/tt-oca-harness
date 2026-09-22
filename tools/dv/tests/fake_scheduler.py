@@ -17,11 +17,16 @@ record ``bjobs -json`` returns for an unknown id, ``bkill``'s status 255 for a j
 already finished, ``squeue``'s failure for an id the controller dropped, ``scancel``'s
 success for anything at all.
 
+A job array (``-J name[1-N]`` or ``--array=1-N``) becomes one element job per index, keyed
+``<id>[<index>]`` for LSF and ``<id>_<index>`` for Slurm, each running the submitted script
+with ``LSB_JOBINDEX`` or ``SLURM_ARRAY_TASK_ID`` set and the output path's ``%I``/``%a``
+expanded; a bare array id in a query or kill names every element.
+
 Scenario keys (all optional)::
 
     submit:  fail_calls [n...]  reject_queue "name"  stderr_noise bool  verbose_id bool
     query:   fail_calls [n...]  hang_calls [n...]  hang_sec float  strict_multi_id bool
-             min_job_age_queries int
+             min_job_age_queries int  jobid_with_index bool
     history: fail_calls [n...]  unavailable bool
     cancel:  fail_calls [n...]
     jobs:    {"default": profile, "<job-name-substring>": profile}
@@ -30,20 +35,26 @@ A profile holds ``states`` (a list of ``PEND``, ``RUN``, ``SUSP``, ``DONE``, ``A
 ``EXIT:<code>``, ``TIMEOUT``, ``KILLED``, ``PREEMPTED``, ``MEMLIMIT``, ``UNKWN``, ``VANISH``),
 ``run_script`` (default true), ``history`` (``auto``, ``none`` or one of the terminal tokens),
 ``ignore_kill`` and ``unknown_to_kill``. ``AUTO`` is ``DONE`` when the script exited 0 and
-``EXIT:<code>`` otherwise. Call indexes in ``fail_calls`` and ``hang_calls`` count from 1 per
-command family.
+``EXIT:<code>`` otherwise. A profile key matches a job name by substring; an array element's
+name is ``<name>[<index>]``. Call indexes in ``fail_calls`` and ``hang_calls`` count from 1
+per command family.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Any
+
+ARRAY_NAME_RE = re.compile(r"^(.*)\[(\d+)-(\d+)(?:%\d+)?\]$")
+ARRAY_RANGE_RE = re.compile(r"^(\d+)-(\d+)(?:%\d+)?$")
+JOB_ID_RE = re.compile(r"^\d+(?:\[\d+\]|_\d+)?$")
 
 COMMANDS = {
     "bsub": ("lsf", "submit"),
@@ -97,7 +108,10 @@ class Fake:
             }
 
     def save(self) -> None:
-        self.path.write_text(json.dumps(self.state, indent=1, sort_keys=True), encoding="utf-8")
+        # A command the executor kills mid-write must leave the previous state readable.
+        temporary = self.path.with_name(self.path.name + ".tmp")
+        temporary.write_text(json.dumps(self.state, indent=1, sort_keys=True), encoding="utf-8")
+        os.replace(temporary, self.path)
 
     def record_call(self, command: str, argv: list[str], family: str) -> int:
         calls = self.state["calls"]
@@ -141,21 +155,35 @@ class Fake:
         job_id = str(self.state["next_id"])
         self.state["next_id"] += 1
         name = options.get("name") or f"job{job_id}"
-        profile = self.profile(name)
-        self.state["jobs"][job_id] = {
-            "id": job_id,
-            "name": name,
-            "queue": queue,
-            "script": options.get("script"),
-            "out": options.get("out"),
-            "argv": argv,
-            "profile": profile,
-            "step": 0,
-            "killed": False,
-            "ran": False,
-            "script_rc": None,
-            "terminal_queries": 0,
-        }
+        array = options.get("array")
+        if array is None:
+            elements = [(job_id, name, None)]
+        else:
+            first, last = (int(part) for part in array.split("-"))
+            elements = [
+                (
+                    f"{job_id}[{index}]" if driver == "lsf" else f"{job_id}_{index}",
+                    f"{name}[{index}]",
+                    index,
+                )
+                for index in range(first, last + 1)
+            ]
+        for key, element_name, index in elements:
+            self.state["jobs"][key] = {
+                "id": key,
+                "name": element_name,
+                "queue": queue,
+                "script": options.get("script"),
+                "out": options.get("out"),
+                "argv": argv,
+                "profile": self.profile(element_name),
+                "step": 0,
+                "killed": False,
+                "ran": False,
+                "script_rc": None,
+                "terminal_queries": 0,
+                "array": None if index is None else {"id": job_id, "index": index},
+            }
         stderr = ""
         if self.knob("submit", "stderr_noise"):
             sized = any("rusage[mem=" in token or token.startswith("--mem") for token in argv)
@@ -188,10 +216,25 @@ class Fake:
         script = job.get("script")
         if not script:
             return None
-        out = Path(job["out"]) if job.get("out") else self.dir / f"{job['id']}.out"
+        out_text = str(job.get("out") or self.dir / f"{job['id']}.out")
+        array = job.get("array")
+        if array:
+            index = str(array["index"])
+            for token, value in (
+                ("%I", index),
+                ("%a", index),
+                ("%J", array["id"]),
+                ("%A", array["id"]),
+                ("%j", array["id"]),
+            ):
+                out_text = out_text.replace(token, value)
+        out = Path(out_text.replace("%J", job["id"]).replace("%j", job["id"]))
         out.parent.mkdir(parents=True, exist_ok=True)
         env = dict(os.environ)
         env["FAKE_JOB_ID"] = job["id"]
+        if array:
+            env["LSB_JOBID"] = env["SLURM_ARRAY_JOB_ID"] = array["id"]
+            env["LSB_JOBINDEX"] = env["SLURM_ARRAY_TASK_ID"] = str(array["index"])
         with out.open("a", encoding="utf-8") as log:
             proc = subprocess.run(
                 ["/bin/sh", script],
@@ -257,7 +300,7 @@ class Fake:
             )
         if self.knob("query", "advance", True):
             self.advance_all()
-        ids = parse_ids(argv, driver)
+        ids = expand_ids(self.state["jobs"], parse_ids(argv, driver))
         return (
             self.render_query_lsf(argv, ids) if driver == "lsf" else self.render_squeue(argv, ids)
         )
@@ -275,8 +318,13 @@ class Fake:
                 continue
             stat, reason = lsf_state(token)
             code = self.exit_code(job, token)
+            array = job.get("array")
+            shown_id = job_id
+            if array and not self.knob("query", "jobid_with_index"):
+                shown_id = array["id"]
             values = {
-                "JOBID": job_id,
+                "JOBID": shown_id,
+                "JOBINDEX": str(array["index"]) if array else "0",
                 "STAT": stat,
                 "EXIT_CODE": "" if code in (None, 0) else str(code),
                 "EXIT_REASON": reason,
@@ -332,7 +380,7 @@ class Fake:
 
     def render_bhist(self, argv: list[str]) -> tuple[int, str, str]:
         blocks = []
-        for job_id in parse_ids(argv, "lsf"):
+        for job_id in expand_ids(self.state["jobs"], parse_ids(argv, "lsf")):
             job = self.state["jobs"].get(job_id)
             token = self.history_token(job) if job else None
             if job is None or token is None:
@@ -346,7 +394,7 @@ class Fake:
         if self.knob("history", "unavailable"):
             return 1, "", "sacct: error: Slurm accounting storage is disabled\n"
         lines = []
-        for job_id in parse_ids(argv, "slurm"):
+        for job_id in expand_ids(self.state["jobs"], parse_ids(argv, "slurm")):
             job = self.state["jobs"].get(job_id)
             token = self.history_token(job) if job else None
             if job is None or token is None or token in {"PEND"}:
@@ -368,8 +416,16 @@ class Fake:
         state, reason = slurm_state(token)
         code = self.exit_code(job, token) or 0
         signal = 15 if token == "KILLED" else 0
+        array = job.get("array")
+        # An element's own id differs from its array's, as on a live controller.
+        head = (
+            f"JobId={9000 + int(array['index'])} ArrayJobId={array['id']} "
+            f"ArrayTaskId={array['index']} JobName={job['name']}"
+            if array
+            else f"JobId={job_id} JobName={job['name']}"
+        )
         text = (
-            f"JobId={job_id} JobName={job['name']}\n"
+            f"{head}\n"
             f"   UserId=user(1000) GroupId=user(1000) MCS_label=N/A\n"
             f"   JobState={state} Reason={reason or 'None'} Dependency=(null)\n"
             f"   ExitCode={code}:{signal}\n"
@@ -388,7 +444,7 @@ class Fake:
         lines: list[str] = []
         errors: list[str] = []
         any_live = False
-        for job_id in parse_ids(argv, driver):
+        for job_id in expand_ids(self.state["jobs"], parse_ids(argv, driver)):
             job = self.state["jobs"].get(job_id)
             token = self.token_of(job) if job else "VANISH"
             unknown = job is None or token == "VANISH" or job["profile"].get("unknown_to_kill")
@@ -416,13 +472,32 @@ class Fake:
         return 0, stdout, stderr
 
 
+def base_of(job_id: str) -> str:
+    """The array id of an element id, or the id itself."""
+    return re.split(r"[\[_]", job_id, maxsplit=1)[0]
+
+
+def index_of(job_id: str) -> int | None:
+    """The element index of an element id, or None for a plain job."""
+    found = re.search(r"(?:\[(\d+)\]|_(\d+))$", job_id)
+    if not found:
+        return None
+    return int(found.group(1) or found.group(2))
+
+
 def is_terminal(token: str) -> bool:
     return token in TERMINAL or token.startswith("EXIT:")
 
 
 def parse_options(argv: list[str]) -> dict[str, str | None]:
     """Queue, name, output and script from a bsub or sbatch command line."""
-    out: dict[str, str | None] = {"queue": None, "name": None, "out": None, "script": None}
+    out: dict[str, str | None] = {
+        "queue": None,
+        "name": None,
+        "out": None,
+        "script": None,
+        "array": None,
+    }
     index = 1
     while index < len(argv):
         part = argv[index]
@@ -435,6 +510,7 @@ def parse_options(argv: list[str]) -> dict[str, str | None]:
             ("--partition=", "queue"),
             ("--job-name=", "name"),
             ("--output=", "out"),
+            ("--array=", "array"),
         ):
             if part.startswith(prefix):
                 out[key] = part[len(prefix) :]
@@ -443,6 +519,15 @@ def parse_options(argv: list[str]) -> dict[str, str | None]:
             continue
         index += 1
     out["script"] = argv[-1] if argv[-1] and not argv[-1].startswith("-") else None
+    name_spec = ARRAY_NAME_RE.match(out["name"] or "")
+    if name_spec:
+        out["name"] = name_spec.group(1)
+        out["array"] = f"{name_spec.group(2)}-{name_spec.group(3)}"
+    if out["array"] is not None:
+        spec = ARRAY_RANGE_RE.match(out["array"])
+        if spec is None:
+            raise SystemExit(f"fake scheduler: unsupported array range {out['array']!r}")
+        out["array"] = f"{spec.group(1)}-{spec.group(2)}"
     return out
 
 
@@ -461,9 +546,23 @@ def parse_ids(argv: list[str], driver: str) -> list[str]:
             continue
         elif part in {"show", "job", "jobs"}:
             continue
-        elif part.strip().isdigit():
+        elif JOB_ID_RE.match(part.strip()):
             ids.append(part.strip())
     return ids
+
+
+def expand_ids(jobs: dict[str, Any], ids: list[str]) -> list[str]:
+    """Job keys for the asked ids: a bare array id names every element."""
+    out: list[str] = []
+    for job_id in ids:
+        if job_id in jobs or not job_id.isdigit():
+            out.append(job_id)
+            continue
+        elements = [
+            key for key, job in jobs.items() if (job.get("array") or {}).get("id") == job_id
+        ]
+        out.extend(elements or [job_id])
+    return out
 
 
 def lsf_state(token: str) -> tuple[str, str]:
