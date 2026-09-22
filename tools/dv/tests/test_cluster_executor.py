@@ -19,9 +19,12 @@ import io
 import json
 import os
 import shutil
+import signal
 import sys
 import tempfile
 import textwrap
+import threading
+import time
 import unittest
 from collections.abc import Sequence
 from contextlib import redirect_stderr, redirect_stdout
@@ -52,6 +55,7 @@ from runlib.executors.base import (  # noqa: E402
     task_identifier,
 )
 from runlib.executors.cluster import (  # noqa: E402
+    CANCEL_POLL_SEC,
     QUERY_FAILURE_LIMIT,
     SUBMIT_FAILURE_LIMIT,
     CancelReply,
@@ -481,6 +485,24 @@ class ClusterExecutorTests(FakeSchedulerCase):
         self.assertEqual(confirmed, {handle.task_id: False})
         self.assertTrue(executor.unconfirmed_cancels.is_file())
 
+    def test_cancel_stops_waiting_when_asked(self) -> None:
+        self.scenario(
+            jobs={"default": {"states": ["PEND", "RUN", "RUN", "RUN"], "ignore_kill": True}}
+        )
+        executor = self.executor()
+        handle = executor.submit(self.task(46))
+        executor.poll([handle])
+        stop = threading.Event()
+        stop.set()
+        started = self.clock.now
+        confirmed = executor.cancel([handle], grace_sec=100.0, stop=stop)
+        self.assertEqual(confirmed, {handle.task_id: False})
+        # One confirmation query, then the stop ends the wait before any grace sleep.
+        self.assertLess(self.clock.now - started, CANCEL_POLL_SEC)
+        self.assertEqual(len(self.calls("cancel")), 1)
+        record = json.loads(executor.unconfirmed_cancels.read_text(encoding="utf-8"))
+        self.assertEqual([job["task_id"] for job in record["jobs"]], [handle.task_id])
+
     def test_debug_and_retry_attempts_get_their_own_jobs(self) -> None:
         self.scenario()
         executor = self.executor()
@@ -830,6 +852,62 @@ class DriverTableTest(unittest.TestCase):
             self.assertIn(executors[name]["history_parser"], dialect.history_parsers)
 
 
+class Signaller:
+    """Sends a signal to this process from a thread once the run has all its jobs submitted.
+
+    The coordinator installs its handler before the first submission and restores the default
+    one when it returns, so a signal is sent only between ``count`` logged submissions followed
+    by a query (every submission complete, the coordinator polling) and ``stop()``. A signal
+    that lands while a scheduler command runs kills that command, which is why the fake
+    scheduler saves its state atomically.
+    """
+
+    def __init__(
+        self, calls_log: Path, count: int, *, signum: int, repeat: int, gap_sec: float
+    ) -> None:
+        self._log = calls_log
+        self._count = count
+        self._signum = signum
+        self._repeat = repeat
+        self._gap_sec = gap_sec
+        self._done = threading.Event()
+        self.sent = 0
+        self._thread = threading.Thread(target=self._fire, daemon=True)
+        self._thread.start()
+
+    def _dispatched(self) -> bool:
+        if not self._log.is_file():
+            return False
+        rows = []
+        for line in self._log.read_text(encoding="utf-8").splitlines():
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                continue
+        submits = sum(1 for row in rows if row.get("command") in {"bsub", "sbatch"})
+        polling = bool(rows) and rows[-1].get("command") in {"bjobs", "squeue"}
+        return submits >= self._count and polling
+
+    def _fire(self) -> None:
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline and not self._done.is_set():
+            if self._dispatched():
+                break
+            time.sleep(0.05)
+        for index in range(self._repeat):
+            if index:
+                time.sleep(self._gap_sec)
+            if self._done.is_set():
+                return
+            os.kill(os.getpid(), self._signum)
+            self.sent += 1
+
+    def stop(self) -> None:
+        """No signal after this point; the run is over and its handler is gone."""
+        self._done.set()
+        self._thread.join(timeout=5)
+
+
 class CoordinatorTest(unittest.TestCase):
     """`run_dv.py` driving a real DUT's leaves through the fake scheduler and the real worker."""
 
@@ -864,8 +942,19 @@ class CoordinatorTest(unittest.TestCase):
             f"export PATH={self.bin}:$PATH\nexport OCAH_FAKE_SCHEDULER={self.state}\n",
             encoding="utf-8",
         )
-        site = self.tmp / "site.local.toml"
-        site.write_text(
+        self.site = self.tmp / "site.local.toml"
+        self.write_site()
+
+    def write_site(self, **limits: float) -> None:
+        merged = {
+            "poll_interval_sec": 0.1,
+            "artifact_grace_sec": 5,
+            "cancel_grace_sec": 2,
+            "submit_batch_size": 1,
+            **limits,
+        }
+        limit_lines = "\n".join(f"{name} = {value}" for name, value in merged.items())
+        self.site.write_text(
             textwrap.dedent(
                 f"""
                 schema_version = 1
@@ -874,19 +963,29 @@ class CoordinatorTest(unittest.TestCase):
                 setup_hook = "sched.env"
                 defaults = {{ queue = "regress", cores = 1, mem_mb = 2048, walltime = "30" }}
                 [executors.{self.driver}.limits]
-                poll_interval_sec = 0.1
-                artifact_grace_sec = 5
-                cancel_grace_sec = 2
-                submit_batch_size = 1
                 """
-            ),
+            )
+            + limit_lines
+            + "\n",
             encoding="utf-8",
         )
-        self.site = site
 
     def scenario(self, **tables: Any) -> None:
         self.state.mkdir(parents=True, exist_ok=True)
         (self.state / "scenario.json").write_text(json.dumps(tables), encoding="utf-8")
+
+    def calls(self) -> list[dict[str, Any]]:
+        log = self.state / "calls.log"
+        if not log.is_file():
+            return []
+        return [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+
+    def signaller(
+        self, count: int, *, signum: int = signal.SIGINT, repeat: int = 1, gap_sec: float = 1.0
+    ) -> Signaller:
+        return Signaller(
+            self.state / "calls.log", count, signum=signum, repeat=repeat, gap_sec=gap_sec
+        )
 
     def run_dv(
         self, *extra: str, statuses: dict[str, Any] | None = None
@@ -999,6 +1098,114 @@ class CoordinatorTest(unittest.TestCase):
         lost = next(leaf for leaf in self.leaves(summary) if leaf["status"] == "ERROR")
         self.assertIn("environment_error", lost["reason"])
         self.assertIn("lost", lost["reason"])
+
+    def test_a_wave_debug_rerun_is_its_own_job(self) -> None:
+        self.scenario()
+        failing = self.items[0]
+        code, summary = self.run_dv("--waves-on-fail", "fst", statuses={failing: ["FAIL", "PASS"]})
+        self.assertEqual(code, 1, summary.get("status"))
+        self.assertEqual(summary["status"], "FAIL")
+        leaf = next(leaf for leaf in self.leaves(summary) if leaf["item"] == failing)
+        self.assertEqual(leaf["status"], "FAIL")
+        debug = leaf["metadata"]["wave_debug"]
+        self.assertTrue(debug["debug_only"])
+        self.assertFalse(debug["status_affects_final_result"])
+        graded_job = leaf["metadata"]["scheduler"]["job_id"]
+        debug_job = debug["metadata"]["scheduler"]["job_id"]
+        self.assertTrue(graded_job)
+        self.assertTrue(debug_job)
+        self.assertNotEqual(graded_job, debug_job)
+        self.assertEqual(debug["metadata"]["scheduler"]["driver"], self.driver)
+        manifests = sorted(
+            p.name
+            for p in (self.run_dir / "stages" / "regress" / "jobs").glob("sim-*.json")
+            if ".done" not in p.name
+        )
+        self.assertEqual(
+            [m for m in manifests if m.endswith("-debug.json")], ["sim-000000-a1-debug.json"]
+        )
+        self.assertEqual(
+            len([row for row in self.calls() if row["command"] in {"bsub", "sbatch"}]), 3
+        )
+
+    # Jobs that stay RUN long past every grace in these tests, then finish on their own so a
+    # broken interruption path fails the test instead of hanging it.
+    LONG_RUNNING = {"states": ["PEND", *(["RUN"] * 600), "DONE"], "run_script": False}
+
+    def test_interruption_cancels_the_jobs_and_records_them(self) -> None:
+        self.scenario(
+            jobs={
+                "default": self.LONG_RUNNING,
+                "sim-000001": {**self.LONG_RUNNING, "ignore_kill": True},
+            }
+        )
+        signaller = self.signaller(2)
+        code, summary = self.run_dv()
+        signaller.stop()
+        self.assertEqual(signaller.sent, 1)
+        self.assertEqual(code, 128 + signal.SIGINT)
+        self.assertEqual(summary["status"], "ERROR")
+        interruption = summary["interruption"]
+        self.assertEqual(interruption["kind"], "signal")
+        self.assertEqual(interruption["signals"], ["SIGINT"])
+        cancellation = interruption["cancellation"]
+        self.assertEqual(cancellation["driver"], self.driver)
+        self.assertEqual((cancellation["requested"], cancellation["confirmed"]), (2, 1))
+        self.assertFalse(cancellation["wait_cut_short"])
+        (unconfirmed,) = cancellation["unconfirmed"]
+        self.assertEqual(unconfirmed["task_id"], "sim-000001-a0")
+        self.assertEqual(unconfirmed["item"], self.items[1])
+        self.assertTrue(unconfirmed["job_id"])
+        record = self.run_dir / "stages" / "regress" / "jobs" / "cancel-unconfirmed.json"
+        self.assertTrue(record.is_file())
+        self.assertTrue(cancellation["record"].endswith("jobs/cancel-unconfirmed.json"))
+        progress = summary["progress"]
+        self.assertEqual(progress["state"], "interrupted")
+        self.assertEqual((progress["completed_count"], progress["interrupted_count"]), (0, 2))
+        jobs = {}
+        for leaf in progress["interrupted"]:
+            (job,) = leaf["jobs"]
+            self.assertEqual(job["driver"], self.driver)
+            self.assertTrue(job["job_id"])
+            self.assertFalse(job["debug_only"])
+            jobs[job["task_id"]] = job
+        self.assertEqual(
+            {task_id: job["cancel_confirmed"] for task_id, job in jobs.items()},
+            {"sim-000000-a0": True, "sim-000001-a0": False},
+        )
+        self.assertEqual(jobs["sim-000001-a0"]["job_id"], unconfirmed["job_id"])
+        regression = json.loads(
+            (self.run_dir / "stages" / "regress" / "regression.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(regression["interruption"]["cancellation"], cancellation)
+        self.assertTrue((self.run_dir / "results" / "results.xml").is_file())
+        cancels = [row for row in self.calls() if row["command"] in {"bkill", "scancel"}]
+        self.assertEqual(len(cancels), 1)
+        self.assertEqual(set(cancels[0]["argv"][1:]), {job["job_id"] for job in jobs.values()})
+
+    def test_a_second_signal_ends_the_confirmation_wait(self) -> None:
+        self.write_site(cancel_grace_sec=90)
+        self.scenario(jobs={"default": {**self.LONG_RUNNING, "ignore_kill": True}})
+        signaller = self.signaller(2, repeat=2, gap_sec=3.0)
+        started = time.monotonic()
+        code, summary = self.run_dv()
+        signaller.stop()
+        self.assertEqual(signaller.sent, 2)
+        self.assertLess(time.monotonic() - started, 60)
+        self.assertEqual(code, 128 + signal.SIGINT)
+        interruption = summary["interruption"]
+        self.assertEqual(interruption["signals"], ["SIGINT", "SIGINT"])
+        cancellation = interruption["cancellation"]
+        self.assertTrue(cancellation["wait_cut_short"])
+        self.assertEqual((cancellation["requested"], cancellation["confirmed"]), (2, 0))
+        self.assertEqual(
+            sorted(job["task_id"] for job in cancellation["unconfirmed"]),
+            ["sim-000000-a0", "sim-000001-a0"],
+        )
+        self.assertEqual(summary["progress"]["interrupted_count"], 2)
+        self.assertTrue(
+            (self.run_dir / "stages" / "regress" / "jobs" / "cancel-unconfirmed.json").is_file()
+        )
 
 
 class SlurmCoordinatorTest(CoordinatorTest):

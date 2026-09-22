@@ -138,6 +138,7 @@ ifdef::backend-pdf[]
 <<peripherals>>.
 endif::backend-pdf[]
 
+[[smc-ndm-reset-block]]
 === Chip Config, Scratch, NDM Reset, and Misc Wrap
 
 ifdef::backend-html5[]

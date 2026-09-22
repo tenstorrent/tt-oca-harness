@@ -20,18 +20,22 @@
     then vp_version
     else "1.84.0";
 
-  boost = boost182.overrideAttrs (old: {
-    inherit version;
-    src = fetchurl {
-      urls = [
-        "mirror://sourceforge/boost/boost_${builtins.replaceStrings ["."] ["_"] version}.tar.bz2"
-        "https://boostorg.jfrog.io/artifactory/main/release/${version}/source/boost_${
-          builtins.replaceStrings ["."] ["_"] version
-        }.tar.bz2"
-      ];
-      hash = "sha256-zEuJOs9kXJ1LaY6aDwjKiEaqXWxoJ1wUw+eUnCQQlFQ=";
-    };
-  });
+  boost =
+    (boost182.override {
+      enableStatic = true;
+      enableShared = false;
+    }).overrideAttrs (old: {
+      inherit version;
+      src = fetchurl {
+        urls = [
+          "mirror://sourceforge/boost/boost_${builtins.replaceStrings ["."] ["_"] version}.tar.bz2"
+          "https://boostorg.jfrog.io/artifactory/main/release/${version}/source/boost_${
+            builtins.replaceStrings ["."] ["_"] version
+          }.tar.bz2"
+        ];
+        hash = "sha256-zEuJOs9kXJ1LaY6aDwjKiEaqXWxoJ1wUw+eUnCQQlFQ=";
+      };
+    });
 in
   symlinkJoin {
     name = "boost-merged";

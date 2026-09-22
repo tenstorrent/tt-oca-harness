@@ -8,6 +8,7 @@
     {{#each site.components}}
     {{#if ./latest.navigation}}
     <li class="component{{#if (eq this @root.page.component)}} is-current{{/if}}">
+      <span class="title">{{./title}}</span>
       {{#if (or ./versions.[1] ./versions.[0].version (ne ./versions.[0].displayVersion 'default'))}}
       <ul class="versions">
         {{#each ./versions}}

@@ -1398,7 +1398,7 @@ cannot be written to again</ipxact:description>
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>ndm_reset</ipxact:name>
-            <ipxact:description>NDM Reset Control Register for communicating with debug module in each Ascalon cluster</ipxact:description>
+            <ipxact:description>Per-cluster NDM reset handshake with an external CPU cluster debug module</ipxact:description>
             <ipxact:addressOffset>'h200</ipxact:addressOffset>
             <ipxact:range>'hc</ipxact:range>
             <ipxact:register>
@@ -1407,8 +1407,9 @@ cannot be written to again</ipxact:description>
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>ndmreset_request</ipxact:name>
-                <ipxact:description>NDM Request from Cluster [0:NDMRESET_CLUSTER_COUNT]. Read-only field that reflects incoming NDM reset requests.
-Connected from ndmreset_request_i input port. Also connected to SMC interrupts. Supports up to 32 CPU Clusters</ipxact:description>
+                <ipxact:description>Bit i is the NDM reset request from external CPU cluster i.
+Bits below ndmreset_cluster_count follow the request input.
+Bits at and above that count read as 0. The field holds up to 32 clusters.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -1426,8 +1427,9 @@ Connected from ndmreset_request_i input port. Also connected to SMC interrupts. 
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>ndmreset_process</ipxact:name>
-                <ipxact:description>NDM Response Firmware writes to this field to respond to NDM reset requests.
-Connected to ndmreset_process_o output port. Supports up to 32 CPU Clusters</ipxact:description>
+                <ipxact:description>Bit i is the firmware response to the NDM reset request from external CPU cluster i.
+Bits below ndmreset_cluster_count are driven on the process output.
+Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -1444,7 +1446,8 @@ Connected to ndmreset_process_o output port. Supports up to 32 CPU Clusters</ipx
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>ndmreset_cluster_count</ipxact:name>
-                <ipxact:description>Number of NDM Clusters supported. Can be read to mask the ndmreset_request register</ipxact:description>
+                <ipxact:description>Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.
+Software masks those registers with this value. The maximum is 32.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -31570,7 +31573,7 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>STATUS</ipxact:name>
-              <ipxact:description>Returns status of whether zeroer has completed.</ipxact:description>
+              <ipxact:description>Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

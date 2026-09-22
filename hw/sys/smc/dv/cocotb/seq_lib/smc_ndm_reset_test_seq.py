@@ -13,24 +13,22 @@ from .smc_csr_seq_utils import SmcCsrSeq
 NDM_REQUEST = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR")
 NDM_PROCESS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR")
 NDM_CLUSTERS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR")
-# NDMRESET_CLUSTER_COUNT golden: `ndm_reset.rdl:33-39` declares the field
-# `sw = r; hw = w` with reset 0x0, so the RDL supplies no value; the SMU port
-# table (`hw/sys/smu/doc/port_table.adoc`, `smc_ndmreset_request_i
-# [CPU_CLUSTER_COUNT-1:0]`) sizes the request port by CPU_CLUSTER_COUNT without
-# pinning the number. The expected count is therefore the DV-owned value below,
-# which the bench's own request-port declaration follows
-# (`tb/smc_tb_signal_list.svh`, `tb_ndmreset_request [NDM_CLUSTER_COUNT-1:0]`);
-# the specification gap is recorded on the VPLAN card. The port width is derived
+# NDMRESET_CLUSTER_COUNT is `sw = r; hw = w` with reset 0x0, so the RDL
+# supplies no reset value. The programmer's guide states that this harness
+# reports 4. The expected count is the DV-owned table value below, which
+# matches that documented figure and which the bench's request-port
+# declaration follows (`tb/smc_tb_signal_list.svh`,
+# `tb_ndmreset_request [NDM_CLUSTER_COUNT-1:0]`). The port width is derived
 # from this table value, not the other way round, so the compare below is
 # DV-owned golden against DUT register, never RTL against RTL.
 NDM_CLUSTER_COUNT = 4
 #
 # What the RDL DOES state is the register's contract, and that is checked too:
-#   * the field is `ndmreset_cluster_count[7:0]`, and REQUEST/PROCESS
-#     "Supports up to 32 CPU Clusters" -- so 1 <= count <= 32;
-#   * "Number of NDM Clusters supported. Can be read to mask the
-#     ndmreset_request register" -- so driving every request line high must
-#     make NDMRESET_REQUEST read exactly the count's mask, no more and no less.
+#   * the field is `ndmreset_cluster_count[7:0]`, and the request and process
+#     fields hold up to 32 clusters -- so 1 <= count <= 32;
+#   * software masks NDMRESET_REQUEST with the count -- so driving every
+#     request line high must make NDMRESET_REQUEST read exactly the count's
+#     mask, no more and no less.
 # The scope of the second property is bounded by the bench: the TB can only
 # drive the request lines it declares, so the leg proves that every request
 # line the bench can drive reaches NDMRESET_REQUEST and that the bits above the
@@ -38,7 +36,7 @@ NDM_CLUSTER_COUNT = 4
 # bits the DUT actually implements; it cannot detect a DUT that implements more
 # request bits than the bench drives.
 _NDM_CLUSTER_COUNT_MASK = 0xFF  # ndm_reset.rdl ndmreset_cluster_count[7:0]
-_NDM_MAX_CLUSTERS = 32  # ndm_reset.rdl "Supports up to 32 CPU Clusters"
+_NDM_MAX_CLUSTERS = 32  # ndm_reset.rdl: the request field holds up to 32 clusters
 _PIN_BOUND = 64
 
 
@@ -125,13 +123,12 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
         await self.csr_read("NDM_REQUEST_ALL_DROP", NDM_REQUEST, expected=0)
         cocotb.log.info(
             "CHK-NDM-COUNT: NDMRESET_CLUSTER_COUNT read %d == the DV table value "
-            "NDM_CLUSTER_COUNT %d (ndm_reset.rdl field [7:0] is hw-driven with reset "
-            "0x0 and port_table.adoc sizes the request port by CPU_CLUSTER_COUNT "
-            "without a number, so the table is the golden and the gap is recorded on "
-            "the card); the bench request port declared from that table is %d bits "
-            "wide. With ALL %d lines high, NDMRESET_REQUEST read exactly 0x%x == "
-            "(1<<%d)-1, so every request line reaches the register and no bit above "
-            "the count reads 1",
+            "NDM_CLUSTER_COUNT %d (programmer's guide: this harness reports 4; "
+            "ndm_reset.rdl field [7:0] is hw-driven with reset 0x0, so the table "
+            "is the golden); the bench request port declared from that table is "
+            "%d bits wide. With ALL %d lines high, NDMRESET_REQUEST read exactly "
+            "0x%x == (1<<%d)-1, so every request line reaches the register and no "
+            "bit above the count reads 1",
             count,
             NDM_CLUSTER_COUNT,
             port_width,
