@@ -63,13 +63,26 @@ jobs:
     env:
       HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
+      - name: Skip when the submodule token is unavailable
+        if: env.HAVE_SUBMODULE_TOKEN != 'true'
+        run: |
+          {
+            echo "### vp host tests: skipped"
+            echo
+            echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this'
+            echo 'run (fork PR, or the secret is not configured yet). The uv workspace'
+            echo 'names `tt-oca-manifest` as a member, so `uv sync` cannot parse the'
+            echo 'project until that private submodule is populated.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Checkout
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/checkout@v4
 
-      # Only the model: test_efuse_map_drift compares its eFuse header against
-      # the generated one. Without the token those three tests skip and the rest
-      # still run, so a fork PR keeps the remaining coverage rather than nothing.
-      - name: Check out the model submodule
+      # Both, for different reasons: the uv workspace names tt-oca-manifest as a
+      # member, so `uv sync` cannot parse the project without it, and
+      # test_efuse_map_drift reads the model's eFuse header.
+      - name: Check out the private submodules
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         env:
           OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
@@ -79,14 +92,18 @@ jobs:
           cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
           trap cleanup EXIT
           git config --global "${rewrite}.insteadOf" 'git@github.com:'
-          git submodule update --init virtual_platform/tt-oca-harness-model
+          git submodule update --init \
+            virtual_platform/tt-oca-harness-model \
+            hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 
       - name: Install uv
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: astral-sh/setup-uv@v6
 
       # pytest exits 5 when the marker selects nothing, so a mis-marked suite
       # fails here rather than passing silently on an empty run.
       - name: Run the host-only tests
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: make -C virtual_platform vp-test-host
 
   sep-vp:
