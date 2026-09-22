@@ -29,5 +29,9 @@ source [file join $ocah_sdc_dir sep_cdc_max_delay_generated.tcl]
 # is the one the tool keeps for identical object specifications. Empty is the
 # expected steady state; each entry needs a reason.
 
+# TCK to SEPCLK. The generated enumeration does not list these instances.
+set_cdc_max_delay_prim_sync2 u_sep_reset_ctrl/u_jtag_ip_ovrd_sync SEPCLK
+set_cdc_max_delay_prim_sync2 u_sep_reset_ctrl/u_jtag_ip_val_sync SEPCLK
+
 ################################################################################
 cdc_max_delay_summary
