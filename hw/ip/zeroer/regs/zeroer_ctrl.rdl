@@ -48,7 +48,7 @@ addrmap zeroer_ctrl {
             sw = r;
             hw = w;
             rd_swacc = true;
-            desc = "Returns status of whether zeroer has completed.";
+            desc = "Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.";
         } STATUS[32:32] = 0x0;
     };
 
