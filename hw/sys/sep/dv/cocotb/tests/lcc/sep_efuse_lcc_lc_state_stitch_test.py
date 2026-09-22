@@ -60,7 +60,12 @@ from env.sep_lcc_golden import (
     lc_state_name,
 )
 from sep_base_test import sep_base_test
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, EFUSE_MMR, sym
+from seq_lib.sep_efuse_rma_token_seq import (
+    EOP_RMA_CHIPLET,
+    EOP_RMA_SIP,
+    TOKEN_MATCH,
+)
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
@@ -80,6 +85,7 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
 # Block bases from the generated map.
 _EFUSE_PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
+_PG_ADDR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
 _PG_DATA = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _PG_GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
 _PG_READ_BACK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
@@ -91,7 +97,10 @@ _RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
 _TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
 _RMA_SIP_TOKEN_MATCH = sym("EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR")
 _RMA_CHIPLET_TOKEN_MATCH = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR")
-_TOKEN_MATCH = 0x15
+# Match-status encoding is a periphs.adoc value the RDL does not express; take the
+# shared DV-owned constant rather than a second copy of it. The field it lands in
+# is generated, so the mask comes from the export.
+_TOKEN_MATCH_STATUS = EFUSE_MMR.field_mask("TOKEN_MATCH", "token_match_status")
 
 _RMA_SIP_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR")
 _RMA_CHIPLET_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR")
@@ -172,13 +181,13 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         if self.token_kind == _TOKEN_RMA_SIP:
             digest_base = _RMA_SIP_TOKEN_DIGEST
             token_base = _RMA_SIP_TOKEN_I
-            eop_value = 0x0000_0001
+            eop_value = EOP_RMA_SIP
             match_addr = _RMA_SIP_TOKEN_MATCH
             token_name = "RMA_SIP"
         else:
             digest_base = _RMA_CHIPLET_TOKEN_DIGEST
             token_base = _RMA_CHIPLET_TOKEN_I
-            eop_value = 0x0000_0100
+            eop_value = EOP_RMA_CHIPLET
             match_addr = _RMA_CHIPLET_TOKEN_MATCH
             token_name = "RMA_CHIPLET"
 
@@ -188,8 +197,8 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 
         for _ in range(200):
             await ClockCycles(cocotb.top.clk_i, 1)
-            result = await self._read(match_addr, "token_match") & 0x3F
-            if result == _TOKEN_MATCH:
+            result = await self._read(match_addr, "token_match") & _TOKEN_MATCH_STATUS
+            if result == TOKEN_MATCH:
                 cocotb.log.info("[lcc] %s token matched", token_name)
                 return
         raise AssertionError(f"{token_name} token did not match")
@@ -200,7 +209,7 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 
         # Field masks from the generated export, like the register address above,
         # so a field move in the RDL moves the programming word with it.
-        wdata = (self.bit_addr & 0xFFFF) | _PG_DATA | _PG_GO | _PG_READ_BACK | _PG_ENABLE
+        wdata = (self.bit_addr & _PG_ADDR) | _PG_DATA | _PG_GO | _PG_READ_BACK | _PG_ENABLE
         saw_retry = False
         for attempt in range(1, self.max_attempts + 1):
             await self._write(_EFUSE_PROGRAM_CTRL, wdata, "program_ctrl")
