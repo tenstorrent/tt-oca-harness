@@ -154,6 +154,9 @@ def _make(config, *make_args, cwd, container_ok=True):
     container_ok=False keeps the make native — needed for the uv-based pack
     targets, which the container does not carry uv for."""
     env = _fw_env(config)
+    # regs.mk hangs a group-less `uv sync` off every register recipe, which would strip the
+    # vp group from the venv pytest is running out of. That venv is already provisioned.
+    make_args = (*make_args, "OCAH_REG_SKIP_UV_SYNC=1")
     argv = ["make", *make_args]
     if container_ok and not _native_fw_toolchain(env):
         argv = [str(paths.OCAH_ROOT / "scripts" / "docker-run.sh"), "run-here", "make", *make_args]
