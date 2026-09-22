@@ -123,7 +123,7 @@ DECERR on every beat, whatever its address; no beat reaches an accelerator.
 Software must access the whole crypto region with single-beat transactions.
 
 [[km-key-delivery]]
-==== Key Manager Key Delivery
+=== Key Manager Key Delivery
 
 The Key Manager delivers keys and seeds to the crypto accelerators over a
 private key interface that software cannot read. Every delivery uses the same
