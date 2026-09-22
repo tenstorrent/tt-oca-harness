@@ -12,12 +12,11 @@
 
 #include "sep.h"
 
-// CFG_REGWEN / RANGE_REGWEN multi-bit-bool encodings. Unlocked is the reset
-// value and comes from the generated header rather than being copied. Locked
-// has no generated symbol: it is the multi-bit-bool complement the DMA writes
-// when it auto-locks, and stays a DV-owned constant.
-#define SEP_DMA_REGWEN_UNLOCKED SECURE_DMA__CFG_REGWEN__REGWEN_reset
-#define SEP_DMA_REGWEN_LOCKED 0x9u
+// CFG_REGWEN / RANGE_REGWEN multi-bit-bool encodings from the generated
+// MULTIBITBOOL4 pair. Unlocked is TRUE (the REGWEN reset); locked is FALSE
+// (the value the engine writes when it auto-locks).
+#define SEP_DMA_REGWEN_UNLOCKED MULTIBITBOOL4__TRUE
+#define SEP_DMA_REGWEN_LOCKED MULTIBITBOOL4__FALSE
 
 // CONTROL.OPCODE encodings. PeakRDL carries only the field, so the legal set
 // is transcribed here from the IP register specification:

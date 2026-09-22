@@ -46,17 +46,11 @@ not the wrapper's decode expression, is what the SIGINT row below asserts.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, with_timeout
+import pyuvm
+from cocotb.triggers import ClockCycles, SimTimeoutError, with_timeout
+from env.smc_protocol_vip_item import SmcProtocolVipKind
 from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
-
-try:
-    from cocotb.result import SimTimeoutError
-except ImportError:  # pragma: no cover - cocotb version shim
-    from cocotb.triggers import SimTimeoutError
-
-import pyuvm
-from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_addr_map import smc_addr
 from seq_lib.smc_base_test_seq import wait_fuse_sense_done
 from smc_base_test import smc_base_test

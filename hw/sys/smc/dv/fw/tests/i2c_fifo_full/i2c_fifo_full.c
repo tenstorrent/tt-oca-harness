@@ -60,8 +60,9 @@
 #define TARGET_IDX 1     // I2C_1 for Target mode (TX, ACQ FIFO)
 #define TARGET_ADDR 0x10 // 7-bit target address programmed into I2C_1
 
-/* Depths come from the shared header, which transcribes smc_config_pkg.sv:23-26
- * in one place, instead of being re-copied per test. */
+/* Depths come from the shared header, which transcribes the I2C interface
+ * specification and the SMC override table in one place, instead of being
+ * re-copied per test. */
 #define FMT_FIFO_DEPTH I2C_CONTROLLER_TX_FIFO_DEPTH
 #define TX_FIFO_DEPTH I2C_TARGET_TX_FIFO_DEPTH
 

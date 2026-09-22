@@ -112,14 +112,14 @@ class smc_i2c_p0_conti_test_seq(SmcCsrSeq):
             if not (status & I2C_STATUS_HOSTIDLE):
                 left_idle = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not left_idle:
             raise AssertionError(f"{label}: host never left idle STATUS=0x{status:08x}")
         for _ in range(400):
             status = await self.csr_read(f"{label}_IDLE", status_addr)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         raise AssertionError(f"{label}: host idle timeout STATUS=0x{status:08x}")
 
     async def _drain_acq_until_stop(self) -> list[int]:
@@ -129,7 +129,7 @@ class smc_i2c_p0_conti_test_seq(SmcCsrSeq):
         for _ in range(32):
             st = await self.csr_read("ACQ_STATUS", status_addr)
             if st & I2C_STATUS_ACQEMPTY:
-                await Timer(5, units="us")
+                await Timer(5, unit="us")
                 st = await self.csr_read("ACQ_STATUS2", status_addr)
                 if st & I2C_STATUS_ACQEMPTY:
                     break
@@ -147,7 +147,7 @@ class smc_i2c_p0_conti_test_seq(SmcCsrSeq):
             status = await self.csr_read(f"{label}_RX", status_addr)
             if not (status & I2C_STATUS_RXEMPTY):
                 return int(await self.csr_read(f"{label}_RD", rdata_addr)) & 0xFF
-            await Timer(5, units="us")
+            await Timer(5, unit="us")
         raise AssertionError(f"{label}: RX timeout STATUS=0x{status:08x}")
 
     async def body(self) -> None:

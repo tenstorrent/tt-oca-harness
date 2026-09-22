@@ -241,6 +241,20 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Misaligned in-extent register access. sep_cpu_ctrl.rdl and
+# doc/interrupts.adoc require SLVERR and the owning block's
+# PERIPH_BUS_ERR_STATUS bit. The fabric returns DECERR and the bit stays 0.
+# The VPLAN card owns the checker contract.
+name = "sep_periph_bus_err_misaligned_test"
+module = "system.sep_periph_bus_err_misaligned_test"
+seed = 1
+timeout_sec = 600
+tags = ["interrupt", "aggregator", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # LCC sep_debug -> inbound-filter gating (security boundary, the reference suite
 # sep_lcc_uvm_inbound_filter_gating_test). A custom OTP image with
 # LC_STATE=PROD is REAL-sensed (so NO +skip_fuse_sense -- the LCC feat_ctrl decode
@@ -362,6 +376,20 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI transaction IDs on the response path. Eight scratch words are primed
+# with eight distinct values, then read with eight reads outstanding at once,
+# one per ID; each must return its own word. Directed, not randomized: the
+# proof is a value compare, and a random ID on either side would remove it.
+name = "sep_axi_id_routing_test"
+module = "system.sep_axi_id_routing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "axi", "id", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

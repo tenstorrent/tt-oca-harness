@@ -17,8 +17,13 @@ class smc_env_cfg extends ocah_env_cfg;
   int unsigned periph_clk_period_ns = 10;
   // SEP_IN master handshake watchdog (smc-clock cycles per wait).
   int unsigned axi_timeout_cycles = 10_000;
-  // Scoreboard negative hook: corrupt the predicted scratch readback.
+  // Scoreboard negative hooks, one per feature predictor: corrupt the
+  // predicted scratch readback / the predicted catalogued default.
   bit csr_scoreboard_negative;
+  bit default_reg_scoreboard_negative;
+  bit lock_scoreboard_negative;
+  bit mutex_scoreboard_negative;
+  bit spm_mem_scoreboard_negative;
   // Backing memory of the SYS_OUT responder, in bytes (addresses wrap).
   int unsigned sys_out_mem_bytes = 32'h8000_0000;
 
@@ -33,6 +38,10 @@ class smc_env_cfg extends ocah_env_cfg;
     c.periph_clk_period_ns    = t.periph_clk_period_ns;
     c.axi_timeout_cycles      = t.axi_timeout_cycles;
     c.csr_scoreboard_negative = t.csr_scoreboard_negative;
+    c.default_reg_scoreboard_negative = t.default_reg_scoreboard_negative;
+    c.lock_scoreboard_negative = t.lock_scoreboard_negative;
+    c.mutex_scoreboard_negative = t.mutex_scoreboard_negative;
+    c.spm_mem_scoreboard_negative = t.spm_mem_scoreboard_negative;
     c.required_features       = t.required_features;
     return c;
   endfunction

@@ -20,10 +20,10 @@ grading rules and the waiver fields are in
 |Reference architecture |`SMU_TB_ARCH.adoc`
 |Framework |PyUVM on cocotb
 |Simulator that collects |Verilator (`--cov`) in public CI; a `[coverage.vcs]` table and `cov/config/vcs/smu_wrapper_cov_scope.hier` mirror the wrapper's scope for the licensed flow, which no public job runs
-|What each DUT collects |`--dut smu_block`: toggle plus `user` over its scope file. `--dut smu` (the release group, weekly `--cov` in `regress.yml`): line, expression, toggle and `user` over a scope that drops everything the wrapper instantiates, so the toggle points that remain are `smu_wrapper`'s own; `cov/interface_toggle.py` folds the ones on its ports into a per-port figure
-|Scope files |`cov/config/verilator/smu_cov_scope.vlt` (`--dut smu_block`); `cov/config/verilator/smu_wrapper_cov_scope.vlt` (`--dut smu`)
-|Policy file |`cov/config/verilator/smu_block_coverage_policy.toml` (`--dut smu_block`); `cov/config/verilator/smu_wrapper_coverage_policy.toml` (`--dut smu`)
-|Cover-property modules |11 under `cov/sv/`, 115 points in all; see <<smu-fcov-points>>
+|What `--dut smu` collects |the release group, weekly `--cov` in `regress.yml`: line, expression and `user` over a scope that drops everything the wrapper instantiates; toggle on the VCS flow only, over the wrapper's ports after `cov/config/vcs/smu_wrapper_toggle_exclusions.el`
+|Scope file |`cov/config/verilator/smu_wrapper_cov_scope.vlt`
+|Policy file |`cov/config/verilator/smu_wrapper_coverage_policy.toml` (Verilator `user`); `cov/config/vcs/smu_wrapper_coverage_policy.toml` (VCS `toggle` / `assertion`)
+|Cover-property modules |10 under `cov/sv/`, 111 points in all; see <<smu-fcov-points>>
 |===
 
 === Metric Choice
@@ -42,34 +42,31 @@ up was exercised -- so the metric this package intends is *toggle*, with the
 `cov/sv` cover properties as *functional (`user`)* coverage beside it. Each
 subsystem grades its own internals in its own DV package.
 
-Toggle is measured on both DUTs. `--dut smu_block` collects it over the SMU
-block, the logic that bench owns. `--dut smu` collects it over `smu_wrapper`
-alone -- its scope drops the SMU block, SEP, SMC and DTP at compile time --
-and the release figure is the share of the wrapper's ports on which any bit
-toggled, which `cov/interface_toggle.py` reads out of the run's
-`cov/merged.dat`; `SMU_COVERAGE_POLICY.adoc` states the target and the last
-measured value.
+Toggle is measured over `smu_wrapper` alone on the VCS flow, where `-cm_hier`
+drops the SMU block, SEP, SMC and DTP at compile time and `-cm_tgl portsonly`
+keeps the wrapper's ports; the release figure is the runner's `toggle` family,
+every port bit in both directions after the exclusion file, and
+`SMU_COVERAGE_POLICY.adoc` states the target and the last measured value. The
+Verilator set for `--dut smu` leaves toggle out, as the DTP set does.
 
 Toggle over the whole elaborated model, SMC cluster and vendored fabric
 included, produces a database of about 0.5 GB per leaf.
-`smu_cov_scope.vlt` drops all of it at compile time so the toggle denominator
-is SMU's own RTL; enabling toggle without the scope reproduces that database.
+`smu_wrapper_cov_scope.vlt` drops all of it at compile time so the toggle
+denominator is the wrapper's own nets; enabling toggle without the scope
+reproduces that database.
 
 === What the Toggle Number Measures
 
-The SMU integration RTL *plus two vendored trees the tool cannot exclude*, not
-"SMU coverage" alone. `vendor/pulp-platform/axi` (`axi_lite_demux.sv`) and
-`vendor/tenstorrent/tt-hw-debug` (`generic_dff*`) hold the large majority of
-the scoped toggle sites; `hw/sys/smu/rtl/smu.sv` and `cov/sv` hold the rest.
-
-Every vendored site sits under `.u_smc` or `.u_dtp` -- none is under SMU's
-own crossbar -- so the intent is unambiguous and only the mechanism falls
-short. `smu_block_coverage_policy.toml` records the two hierarchy selectors
-that close it and why their counts can only come from a coverage database.
-
-The `cov/sv` modules' own registers are toggle sites too. `coverage_off` is
-whole-file, so excluding them would delete the `user` points; they stay in
-the denominator, named here.
+The wrapper's ports and the nets `hw/top/smu_wrapper.sv` declares between
+them, plus the `cov/sv` modules' own registers: `coverage_off` is whole-file,
+so excluding those registers would delete the `user` points, and they stay in
+the denominator, named here. Two vendored trees the file patterns cannot
+name, `vendor/pulp-platform/axi` (`axi_lite_demux.sv`) and
+`vendor/tenstorrent/tt-hw-debug` (`generic_dff*`), sit under `.u_smc` and
+`.u_dtp`; a site of theirs that reaches the database is a hole with a
+hierarchy selector in `smu_wrapper_coverage_policy.toml`, written only from
+a real database because its count is a hard match
+(`SMU_COVERAGE_POLICY.adoc`, <<smu-cov-out>>).
 
 ==== Verilator glob matching
 
@@ -90,19 +87,16 @@ changes nothing and warns about nothing.
 [[smu-fcov-points]]
 === Functional Coverage Points
 
-`cov/sv/` carries 11 modules of labelled cover-property points, 115 in all,
+`cov/sv/` carries 10 modules of labelled cover-property points, 111 in all,
 each declared through the `OCAH_FCOV_COVER` macro. Under `--cov` they land in
 the `user` metric family of the native coverage database, so they reach
 `cov_merge`, `cov_report` and the coverage policy.
 
-The block bench `tb/tb_top.sv` instantiates nine of them and the wrapper bench
-`tb/tb_wrapper_top.sv` ten. `smu_clk_fcov.sv` and `smu_alias_fcov.sv` are
-wrapper-bench only: one reads clock mirrors, the other boundary probes, that
-only that bench publishes. `smu_nosep_fcov.sv` is block-bench only: its points
-exist without SEP, and the wrapper elaborates SEP. Point counts below are the
-declarations in each file, counted from
-the source; how many of them *elaborate* on a given target is lower wherever a
-`g_sep` guard removes one, and that number needs a run rather than a count.
+`tb/tb_wrapper_top.sv` instantiates all ten. Point counts below are the
+declarations in each file, counted from the source; the four inside `g_nosep`
+generate blocks (`smu_lc_fcov.sv`, `smu_ext_fcov.sv`) exist only on a SEP=0
+elaboration, which this package does not build, so 107 elaborate on the
+wrapper's single target.
 
 [cols="2,1,4",options="header",]
 |===
@@ -112,11 +106,10 @@ the source; how many of them *elaborate* on a given target is lower wherever a
 |`smu_rst_fcov.sv` |17 |Cold-reset assertion and release, per-domain reset order, power-good
 |`smu_dbg_fcov.sv` |13 |JTAG2AXI debug paths, security-disable, TAP state
 |`smu_ext_fcov.sv` |10 |External boot-sequence gate and the external AXI boundary
-|`smu_nosep_fcov.sv` |4 |The SEP=0 composition: the direct converter path that replaces the crossbar, in each direction
 |`smu_dtp_fcov.sv` |7 |Cross-trigger ports and XTRIG mode
 |`smu_lc_fcov.sv` |6 |Lifecycle state broadcast and demotion
 |`smu_alias_fcov.sv` |6 |Alias and remap manager scope at the SMU boundary
-|`smu_clk_fcov.sv` |3 |Clock mirrors only the wrapper bench exposes
+|`smu_clk_fcov.sv` |3 |Clock mirrors `tb/tb_wrapper_top.sv` exposes
 |`smu_clkstop_fcov.sv` |3 |Clock-stop request and grant
 |===
 
@@ -125,9 +118,9 @@ the source; how many of them *elaborate* on a given target is lower wherever a
 Two mechanisms keep a point out of a graded number, and `SepPresent` is a
 third that is easy to confuse with them.
 
-* The scope files `smu_cov_scope.vlt` and `smu_wrapper_cov_scope.vlt` apply
-  `coverage_off` by source file at compile time, so the point never enters the
-  database. Structural OUT, by file.
+* The scope file `smu_wrapper_cov_scope.vlt` applies `coverage_off` by
+  source file at compile time, so the point never enters the database.
+  Structural OUT, by file.
 * `SepPresent` gates the `g_sep` generate blocks in `cov/sv/*_fcov.sv`. A
   point whose observable exists only with SEP elaborated is not elaborated at
   all on a SEP=0 build, so it never reaches the database and no waiver has to
@@ -137,13 +130,10 @@ third that is easy to confuse with them.
 
 `tb_wrapper_top.sv` passes `SepPresent = 1'b1` unconditionally: the wrapper
 has one compile profile, `compile_smu_chiplet`, and it elaborates SEP, so every
-`g_sep` point exists there. The block bench passes `1'b0` unconditionally,
-because it hardcodes SEP=0, and it is where the SEP=0 composition proofs
-(`testlists/nosep.toml`) run.
-
-The `g_sep` guards still matter on the block bench: an accepted waiver whose
-selector matches a covered point is a hard `ConfigError`, so a point which can
-only fire with SEP present must not exist on the SEP=0 elaboration.
+`g_sep` point exists there and no `g_nosep` point does. The guards are kept in
+the modules because an accepted waiver whose selector matches a covered point
+is a hard `ConfigError`, so a point which can only fire on one SEP setting
+must not exist on the other elaboration.
 
 ==== Fuse-sense run modes
 
@@ -161,7 +151,7 @@ lifted" rather than "no stall was ever applied".
 
 === Scenario Intent Is Not Coverage
 
-`common/smu_dv_env/smu_fcov.py` is a static `TEST_FCOV_HITS` table mapping a
+`cocotb/env/smu_fcov.py` is a static `TEST_FCOV_HITS` table mapping a
 test class name to the bins its scenario is *claimed* to reach. Running the
 test marks the bins; no signal is observed, and nothing under `tools/` or
 `.github/` reads its output. It records scenario intent and is neither the
@@ -179,19 +169,16 @@ Three limits decide what `SMU_VPLAN.adoc` is allowed to say about coverage:
 . *`smu_fcov.py` sources no coverage claim.* It is scenario intent, as stated
   above.
 . *No CI gate is set on these numbers.* `SMU_COVERAGE_POLICY.adoc` states the
-  targets (85 percent of the wrapper's ports toggled, 95 percent of the `user`
-  points effective) and the last measured values, says how a floor would be
+  targets (VCS `toggle` / `assertion` 80 percent effective, Verilator `user`
+  95 percent effective) and the last measured values, says how a floor would be
   set from a measured weekly database, and lists the fields a waiver must
   carry.
 
-=== Two DUTs, One Policy File Name
+=== The Policy File
 
-`smu` and `smu_block` share one `hw/sys/smu/dv` tree, so the canonical
-`cov/config/<tool>/coverage_policy.toml` discovery would resolve identically
-for both DUTs, and whichever DUT the file did not name would fail
-`--validate-configs`. `[coverage.verilator].policy_file` in
-each config names a DUT-qualified file instead: `smu_block_coverage_policy.toml`
-for the block bench and `smu_wrapper_coverage_policy.toml` for `--dut smu`.
-Each carries one `[[holes]]` entry per unhit point, with
-`disposition = "waive"`, `status = "accepted"` and an `expires` date after
-which it grades as open again. Neither sets a threshold.
+`[coverage.verilator].policy_file` in `smu_sim_cfg.toml` names
+`cov/config/verilator/smu_wrapper_coverage_policy.toml` outright rather than
+relying on the canonical `cov/config/<tool>/coverage_policy.toml` discovery,
+so the file says which DUT it grades. It carries one `[[holes]]` entry per
+unhit point, with `disposition = "waive"`, `status = "accepted"` and an
+`expires` date after which it grades as open again. It sets no threshold.

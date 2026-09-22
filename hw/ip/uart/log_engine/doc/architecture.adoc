@@ -2,18 +2,18 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[log-engine-architecture]]
-===== Architecture
+== Architecture
 
-====== Overview
+=== Overview
 
 The OCA Log Engine is a DMA-powered logging system that transfers log
 messages from memory to a UART interface. It supports up to 16 log
 entries with fair round-robin arbitration for efficient multi-source
 logging.
 
-====== Functional Blocks
+=== Functional Blocks
 
-====== Control and Status Registers (CSRs)
+=== Control and Status Registers (CSRs)
 
 CSRs, accessed via AXI4-Lite, configure the engine and report status.
 Key registers control global enable/disable (CTRL), region
@@ -22,7 +22,7 @@ UART target (LOG_WRITE_ADDR), and per-log-entry control and length
 (LOG_CTRL[0:15]). Interrupt registers (INTR_STATUS/ENABLE/TEST) enable
 robust error detection and error recovery.
 
-====== Round Robin Arbiter
+=== Round Robin Arbiter
 
 A `prim_arbiter_tree`-based round robin arbiter ensures fair,
 starvation-free access to DMA for all 16 log entries. It systematically
@@ -30,7 +30,7 @@ selects among entries with non-zero lengths, preventing monopolization
 and balancing throughput regardless of data rates across logs. Tight
 integration with the fetch FSM ensures smooth flow.
 
-====== Log Fetch FSM
+=== Log Fetch FSM
 
 The fetch FSM coordinates DMA reads based on arbitration results and
 FIFO space. It cycles through idle, request, and wait states: checking
@@ -40,14 +40,14 @@ handling responses with word counters. Addresses are computed as
 supporting efficient, aligned memory access. Progress tracking and FIFO
 handoff ensure reliable completion and seamless operation.
 
-====== RDATA FIFO
+=== RDATA FIFO
 
 A configurable-depth (default 4), synchronous 64-bit FIFO decouples
 memory reads from UART writes, smoothing timing mismatches. All-zero
 outputs when empty help security. Ready/valid handshakes on both sides
 ensure safe, lossless transfer through variable system conditions.
 
-====== Log Write FSM
+=== Log Write FSM
 
 This FSM manages conversion from 64-bit log words to 8-bit UART writes.
 It only advances when UART is ready and FIFO data is available,
@@ -55,9 +55,9 @@ sequencing through idle, request, and wait states. Byte pointers extract
 one byte at a time; FIFO is accessed every eight bytes. A completion
 signal updates registers, enabling accurate monitoring and coordination.
 
-====== Data Flow and Control Path
+=== Data Flow and Control Path
 
-====== Data Flow
+=== Data Flow
 
 1.  Software configures memory region, UART address, and enables engine.
 2.  Non-zero LOG_CTRL[i] length triggers log transfer.
@@ -67,14 +67,14 @@ signal updates registers, enabling accurate monitoring and coordination.
 6.  Write FSM sends bytes to UART.
 7.  Transfer completion clears the length register.
 
-====== Control Path
+=== Control Path
 
 * Global enable gates operation.
 * Fetch/write FSMs are coordinated via FIFO ready/valid signals.
 * AXI4-Lite errors trigger interrupts.
 * Completion updates registers and advances arbitration.
 
-====== Clocking and Reset Methodology
+=== Clocking and Reset Methodology
 
 The engine runs in one clock domain (`clk_i`) shared by all logic and
 AXI4-Lite interfaces.
@@ -85,7 +85,7 @@ AXI4-Lite interfaces.
 * On reset: FSMs idle, counters zeroed, FIFO flushed, registers
 preserved (except control fields).
 
-====== Memory Interface Protocol
+=== Memory Interface Protocol
 
 *Log Fetch*: 64-bit AXI4-Lite read, single-beat transfers, errors
 signaled via LOG_FETCH_ERR.
@@ -93,14 +93,14 @@ signaled via LOG_FETCH_ERR.
 *Log Write*: 32-bit AXI4-Lite write, single byte accesses using strobes,
 errors signaled via LOG_WRITE_ERR.
 
-====== Performance Characteristics
+=== Performance Characteristics
 
 * *Fetch Bandwidth*: Limited by AXI4-Lite single transfers.
 * *Write Throughput*: Determined by UART ready signal.
 * *Latency*: Minimal, due to light buffering.
 * *Fairness*: Maintained by round-robin selection.
 
-====== Design Trade-offs
+=== Design Trade-offs
 
 * _Memory Simplicity vs. Efficiency_: Fixed equal partitioning eases
 logic at expense of flexibility.

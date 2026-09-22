@@ -113,10 +113,10 @@ condition under which a shared package is introduced.
 
 | Capability | Boundary |
 |------------|----------|
-| APB | No shared package: no DUT exposes an APB surface to a testbench. The APB master under `hw/ip/entropy_source/dv/tb_vcs/apb_vip/` belongs to that IP's standalone VCS bench, outside the native runner, and is not a shared package. A shared APB VIP is introduced only when a DUT regression gates real APB traffic. |
+| APB | No shared package: no DUT exposes an APB surface to a testbench. A shared APB VIP is introduced only when a DUT regression gates real APB traffic. |
 | I2C | No shared package: the SMC-local clock-sampled model (`hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py`) owns I2C/SMBus/PMBus traffic because `cocotbext-i2c` edge waits miss open-drain transitions under Verilator. A shared I2C VIP is introduced only when a second subsystem needs one and the open-drain timing fix is protocol-neutral. |
 | I3C SDR | No shared package: SMC gates on CSR decode plus a line-level pull-low check; the vendored I3C core is an RTL dependency only. A shared I3C VIP is introduced only with a reproducibly provisioned backend and a gating DUT smoke test. |
-| Entropy source/monitor | No shared package: SEP-local models drive `esrc_noise_ext_i` and check the ESRC-to-DRBG-to-EDN chain. A shared entropy VIP is introduced only when a second subsystem needs one and gates it with a real regression. |
+| Entropy source/monitor | No shared VIP package: entropy-source DV owns the noise, decorrelator, BIW, and SHA models under `hw/ip/entropy_source/dv/cocotb/models/`; SEP imports those models and keeps its ESRC-to-DRBG-to-EDN integration checks local. A shared entropy VIP is introduced only when a protocol-neutral driver or monitor has a second consumer and a gating regression. |
 | OCTS dual-chiplet sync | DUT-local: `hw/sys/smc/dv/cocotb/seq_lib/smc_octs_sync_bfm.py` drives and observes the PRIMARY/SECONDARY sync-load and credit pads for the SMC bench. A shared package is introduced only when a second subsystem drives OCTS pads. |
 | Memory-image helper | No shared package and no frozen image/preload format contract. |
 | True QSPI/OSPI multi-lane data | Out of scope for `ocah_spi_vip`: quad/octal personalities use single-bit data timing. |

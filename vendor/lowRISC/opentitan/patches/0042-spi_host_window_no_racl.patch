@@ -1,0 +1,83 @@
+--- a/hw/ip/spi_host/rtl/spi_host_window.sv
++++ b/hw/ip/spi_host/rtl/spi_host_window.sv
+@@ -34,14 +34,16 @@ module spi_host_window
+   localparam int AW = spi_host_reg_pkg::BlockAw;
+   localparam int DW = 32;
+   localparam int ByteMaskW = DW / 8;
+-  localparam top_racl_pkg::racl_range_t [0:0] RaclPolicySelRangesTXDATA = '{
+-    '{
+-      base:  {top_pkg::TL_AW{1'b0}},
+-      limit: {top_pkg::TL_AW{1'b1}},
+-      policy_sel: top_racl_pkg::racl_policy_sel_t'(RaclPolicySelWinTXDATA),
+-      enable: 1'b1
+-    }
+-  };
++
++  // OCAH: the harness TL-UL library predates RACL, so the window uses the plain
++  // register/SRAM adapters. The RACL parameters and ports are kept so the
++  // upstream `spi_host` instantiation is unchanged; policies are unused and the
++  // error logs are driven inactive.
++  logic unused_racl;
++  assign unused_racl = ^{EnableRacl, RaclErrorRsp, RaclPolicySelWinRXDATA,
++                         RaclPolicySelWinTXDATA, racl_policies_i};
++  assign racl_error_rx_o = '0;
++  assign racl_error_tx_o = '0;
+ 
+   logic         rx_we;
+ 
+@@ -49,13 +51,10 @@ module spi_host_window
+   logic  rx_access_error;
+   assign rx_access_error = rx_we;
+ 
+-  tlul_adapter_reg_racl #(
++  tlul_adapter_reg #(
+     .RegAw             ( AW                       ),
+     .RegDw             ( DW                       ),
+-    .EnableDataIntgGen ( 0                        ),
+-    .EnableRacl        ( EnableRacl               ),
+-    .RaclErrorRsp      ( RaclErrorRsp             ),
+-    .RaclPolicySelVec  ( RaclPolicySelWinRXDATA   )
++    .EnableDataIntgGen ( 0                        )
+   ) u_adapter_rx (
+     .clk_i,
+     .rst_ni,
+@@ -63,8 +62,6 @@ module spi_host_window
+     .tl_o             ( rx_win_o                  ),
+     .en_ifetch_i      ( prim_mubi_pkg::MuBi4False ),
+     .intg_error_o     (                           ),
+-    .racl_policies_i  ( racl_policies_i           ),
+-    .racl_error_o     ( racl_error_rx_o           ),
+     .we_o             ( rx_we                     ),
+     .re_o             ( rx_ready_o                ),
+     .addr_o           (                           ),
+@@ -86,16 +83,13 @@ module spi_host_window
+   end
+ 
+   // Only support writes to the data TX fifo window
+-  tlul_adapter_sram_racl #(
++  tlul_adapter_sram #(
+     .SramAw(AW),
+     .SramDw(DW),
+     .Outstanding(1),
+     .ByteAccess(1),
+     .ErrOnWrite(0),
+-    .ErrOnRead(1),
+-    .EnableRacl(EnableRacl),
+-    .RaclErrorRsp(RaclErrorRsp),
+-    .RaclPolicySelNumRanges(1)
++    .ErrOnRead(1)
+   ) u_adapter_tx (
+     .clk_i,
+     .rst_ni,
+@@ -118,10 +112,7 @@ module spi_host_window
+     .readback_en_i(prim_mubi_pkg::MuBi4False),
+     .readback_error_o (),
+     .wr_collision_i(1'b0),
+-    .write_pending_i(1'b0),
+-    .racl_policies_i  (racl_policies_i),
+-    .racl_error_o     (racl_error_tx_o),
+-    .racl_policy_sel_ranges_i(RaclPolicySelRangesTXDATA)
++    .write_pending_i(1'b0)
+   );
+ 
+ endmodule : spi_host_window

@@ -34,16 +34,11 @@ landing on an edge.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge, Timer, with_timeout
+from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge, SimTimeoutError, Timer, with_timeout
 from cocotb.utils import get_sim_time
 from env.smc_reset_item import SmcResetOp
 
 from .smc_reset_seq_base import SmcResetSeqBase
-
-try:
-    from cocotb.result import SimTimeoutError
-except ImportError:  # cocotb 2.x
-    from cocotb.triggers import SimTimeoutError
 
 # The cool de-glitcher needs the pin held asserted for 32 clk_ref_i samples
 # before rst_primary_no follows; 200 is the same ceiling smc_cold_reset_test

@@ -4,8 +4,10 @@
 
 Every invocation walks unlocked-program then write-lock-reject on **each** of
 SPARE0..SPARE7, in order. Never LC_STATE. Lock slot n owns write-lock at bit 2n
-of the 96-bit LOCKS+LOCKS_SPARE vector (``hw/sys/sep/doc/periphs.adoc``,
-``sep_efuse_pkg``). Spare k is slot 32+k, so its write-lock is OTP bit (32+k)*2.
+of the 96-bit LOCKS+LOCKS_SPARE vector (``hw/sys/sep/doc/periphs.adoc``:
+``LOCKS`` slots 0–31, ``LOCKS_SPARE`` slots 32–40). Spare k is slot 32+k, so
+its write-lock is OTP bit (32+k)*2. The same slot map lives in
+``env/sep_locked_field_irq.py``.
 
 Walking all eight is what makes the slot numbering falsifiable. Selecting one
 spare per seed samples the lane instead: a lock bit wired to the wrong slot is
@@ -20,22 +22,13 @@ visited does not depend on the seed.
 
 from __future__ import annotations
 
-from env.sep_efuse_image import LOCK_BITS_PER_SLOT, SepEfuseImage
+from env.sep_efuse_image import SepEfuseImage
+from env.sep_locked_field_irq import SPARE_COUNT, spare_write_lock_bit
 from env.sep_seeded_rng import SepSeededRng
-
-SPARE_COUNT = 8
-SPARE0_SLOT = 32
 
 
 def spare_field_name(spare_idx: int) -> str:
     return f"SPARE{spare_idx}"
-
-
-def spare_write_lock_bit(spare_idx: int) -> int:
-    """Global OTP bit index of spare ``k``'s write-lock (LOCKS_SPARE)."""
-    if not 0 <= spare_idx < SPARE_COUNT:
-        raise ValueError(f"spare_idx {spare_idx} not in 0..{SPARE_COUNT - 1}")
-    return (SPARE0_SLOT + spare_idx) * LOCK_BITS_PER_SLOT
 
 
 def field_bit_addr(field_name: str, bit_offset: int) -> int:

@@ -135,6 +135,34 @@ flags = [
 # several hundred MB that a hosted runner cannot compile.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
+[coverage.vcs]
+# Restates the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
+# the inherited list, then scopes and tunes the compile; the per-leaf dump stays
+# the inherited `[vcs.coverage_defaults].sim_args`. `cov/config/vcs/dtp_cov_scope.hier`
+# states what each number covers; `cov/config/vcs/coverage_policy.toml` carries
+# the thresholds the report is graded against.
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  # Continuous assignments count as lines.
+  "-cm_line",
+  "contassign",
+  # Nets a constant drives, directly or through sequential logic, leave the
+  # toggle denominator: capability, IDCODE and parameter-derived fields never
+  # toggle.
+  "-cm_noconst",
+  "-cm_seqnoconst",
+  # `-cm_hier` governs line/cond/fsm/tgl/branch; `-cm_common_hier` extends the
+  # same file to assertion coverage, whose `begin assert` section admits the
+  # coverage modules and the protocol checkers, and needs `-lca`.
+  "-cm_hier",
+  "{repo_root}/hw/sys/dtp/dv/cov/config/vcs/dtp_cov_scope.hier",
+  "-lca",
+  "-cm_common_hier",
+]
+
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
 # for both frameworks: +define+UVM (below) adds the harness block of tb/tb_top.sv (clock

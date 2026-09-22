@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+schema_version = 1
+
+# Zeroer and DMA: the two bus-master engines behind the SMC local fabric.
+
+[[tests]]
+name = "smc_zeroer_sanity_test"
+module = "smc_zeroer_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_sanity_test"
+module = "smc_dma_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_reserved_stream_banks_test"
+module = "smc_dma_reserved_stream_banks_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "decode"]
+run_modes = ["smoke"]

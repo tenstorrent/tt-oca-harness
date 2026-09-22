@@ -16,13 +16,15 @@ __pycache__/
 /hw/common/dv/configs/site.local.toml
 
 # Transient per-block build outputs. The build_ot* variants come from the SEP
-# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images); build_dual is
-# the dual-SMC DV tree, kept separate from build/ so concurrent --rebuild runs do
-# not race on bender filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
+# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images); build_release
+# is the same ROM's BUILD_TYPE=release tree; build_dual is the dual-SMC DV tree,
+# kept separate from build/ so concurrent --rebuild runs do not race on bender
+# filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
 **/build/
 **/build_dual/
 **/build_ot/
 **/build_ot_pio/
+**/build_release/
 
 # Legacy generated register markdown is not part of the current doc flow.
 **/regs/gen/adoc/**/*.md
@@ -67,6 +69,7 @@ doc/*/modules/smc/
 doc/*/modules/sep/
 doc/*/modules/dtp/
 doc/*/modules/aou/
+doc/*/modules/smu/
 doc/*/modules/ip/
 
 
@@ -117,3 +120,7 @@ tools/a11y/report/
 
 # Rendered doc output (sep_book.html / sep_book.pdf)
 doc_render/
+
+# Nix Builds and Direnv Cache
+local/
+.direnv/

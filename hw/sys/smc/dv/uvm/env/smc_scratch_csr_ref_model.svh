@@ -25,7 +25,7 @@ class smc_scratch_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi
 
   // CSR shadow keyed by 4-byte word address.
   protected bit [31:0] m_scratch_shadow[bit [63:0]];
-  protected bit [31:0] m_cold_rst_seen;
+  protected bit [63:0] m_rst_epoch_seen;
 
   function new(string name = "smc_scratch_csr_ref_model", uvm_component parent = null);
     super.new(name, parent);
@@ -51,7 +51,12 @@ class smc_scratch_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi
     sync_cold_reset();
     if (!smc_is_scratch_csr_access(t, warm)) return;
     word_addr = smc_csr_word_addr(t.address);
-    shadow    = m_scratch_shadow.exists(word_addr) ? m_scratch_shadow[word_addr] : '0;
+    // The un-written baseline is the register's GENERATED reset value, not a
+    // literal zero: with a literal here this model would assume the same
+    // constant the sequence expects, and the scratch_csr feature would stop
+    // being an independent source for the idle and cleared claims.
+    shadow    = m_scratch_shadow.exists(word_addr) ? m_scratch_shadow[word_addr] :
+        32'(SCRATCH_SCRATCH_REG_DEFAULT);
     if (t.direction == OCAH_AXI_DIR_WRITE) begin
       m_scratch_shadow[word_addr] = apply_write(word_addr, shadow, t);
       return;
@@ -88,11 +93,16 @@ class smc_scratch_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi
     return next;
   endfunction
 
-  // A cold reset clears every scratch register, so the shadow follows the
-  // tb_if counter.
+  // A cold reset clears every scratch register, and so does a de-glitched
+  // cool reset: both drop rst_primary_smc_clk_n, which is smc_misc_wrap's
+  // rst_ni and therefore the reset of BOTH scratch windows
+  // (smc_misc_wrap.sv:106-108, :133). The shadow follows the tb_if epoch.
   protected function void sync_cold_reset();
-    if (tb_vif.cold_rst_assert_count !== m_cold_rst_seen) begin
-      m_cold_rst_seen = tb_vif.cold_rst_assert_count;
+    bit [63:0] epoch = smc_csr_reset_epoch(
+        tb_vif.cold_rst_assert_count, tb_vif.cool_rst_assert_count
+    );
+    if (epoch !== m_rst_epoch_seen) begin
+      m_rst_epoch_seen = epoch;
       m_scratch_shadow.delete();
     end
   endfunction

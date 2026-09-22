@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut uart_16550` (registered in
+# hw/common/dv/configs/duts.toml — the DV root is nested one level below the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the UART 16550: the
+# DUT's AXI4-Lite CSR port is driven by the shared AXI VIP's AXI4-Lite master;
+# the serial line is driven and sampled by the shared UART VIP's line engines
+# on the pin-exposed rx/tx of tb/tb_top.sv.
+name = "uart_16550"
+profile = "native"
+default_framework = "cocotb"
+description = "UART 16550 IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/uart/uart_16550/dv/build"]
+
+[build]
+top_module = "uart_16550_tb_top"
+top_file = "hw/ip/uart/uart_16550/dv/tb/tb_top.sv"
+filelist = "hw/ip/uart/uart_16550/dv/build/uart_16550_dut_compile.f"
+bender_filelist = "hw/ip/uart/uart_16550/dv/build/uart_16550_bender.f"
+work_dir = "hw/ip/uart/uart_16550/dv/build"
+# Shared dependency targets: the pulp AXI package/typedefs plus the
+# common-cells closure the axi_rtl group parses against.
+common_bender_targets = [
+  "axi_rtl",
+  "common_cells_rtl",
+]
+# The uart family target (Bender.yml): the four UART-family IPs' packages
+# and RTL plus the vendored OpenTitan prim closure.
+bender_targets = ["uart"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/uart/uart_16550/dv/cocotb"
+test_dir = "hw/ip/uart/uart_16550/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+  "hw/ip/uart/uart_16550/regs/gen/py",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "UART 16550 register sanity, line bring-up and interrupt test register"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "UART 16550 FIFO, DMA, modem, loopback and interrupt scenarios"
+timeout_sec = 900
+args = []
+
+[targets.default]
+description = "UART 16550 IP-level cocotb target"
+build_dir = "hw/ip/uart/uart_16550/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+]

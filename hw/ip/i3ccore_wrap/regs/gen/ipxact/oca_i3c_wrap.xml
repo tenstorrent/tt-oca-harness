@@ -485,7 +485,7 @@ all other reserved.</ipxact:description>
               <ipxact:field>
                 <ipxact:name>SOFT_RST</ipxact:name>
                 <ipxact:displayName>SOFT_RST</ipxact:displayName>
-                <ipxact:description>Reset controller from software.</ipxact:description>
+                <ipxact:description>Reset controller from software. Not supported currently</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -3685,7 +3685,7 @@ STBY_CR_CONTROL is not zero.</ipxact:description>
                 <ipxact:field>
                   <ipxact:name>PID_HI</ipxact:name>
                   <ipxact:displayName>PID_HI</ipxact:displayName>
-                  <ipxact:description>High part of the 48-bit Target Device Provisioned ID. 
+                  <ipxact:description>High part of the 48-bit Target Device Provisioned ID.
 
 This field is Read-Only while the STBY_CR_ENABLE_INIT field in register
 STBY_CR_CONTROL is not zero.</ipxact:description>

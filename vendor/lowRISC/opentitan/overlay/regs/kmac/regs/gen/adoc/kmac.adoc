@@ -173,8 +173,7 @@ engine. If mode field is set to SHAKE or cSHAKE, only 128 and
 when hashing starts.
 | 0 | `kmac_en` | RW | 0x0 a| KMAC datapath enable.
 
-If this bit is 1, the incoming message is processed in KMAC
-with the secret key.
+If this bit is 1, the KMAC mode is active and the secret key is prepended to the incoming message.
 |===
 
 [cols="1,3,1,1,6", options="header"]

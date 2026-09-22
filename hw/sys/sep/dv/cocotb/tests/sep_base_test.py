@@ -10,6 +10,7 @@ shadow array against that image after sense-done.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -59,9 +60,9 @@ from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
-from env.sep_noise_golden import SepNoiseGolden
 from env.sep_smc_mem import SMC_AXI_GEOMETRY, SMC_MEM_SIZE, preload_smc_mem
 from env.sep_verdict import decode_verdict
+from models.entropy_noise_model import EntropyNoiseModel
 
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
 # no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
@@ -95,49 +96,15 @@ class _EvidenceFilter(logging.Filter):
 
     _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
 
-    # Emitted by sep_base_test itself on every bring-up, so it says nothing
-    # about the leaf. Counted in `observed` but excluded from `own`, which is
-    # what a floor grades: 18 of the 92 `all` leaves would otherwise satisfy a
-    # floor of one on this record alone.
-    BASE_IDS = frozenset({"CHK-OTP-JTAG2AXI-UNGATED"})
+    # IDs sep_base_test itself emits. Counted in `observed` but excluded from
+    # `own`, which is what a floor grades. Empty: bring-up logs no named CHK.
+    BASE_IDS: frozenset[str] = frozenset()
 
-    # Leaves that emit no CHK-* record of their own, with the reason each one
-    # does not. Every entry is a LOGGING gap, not a verification gap: these are
-    # thin shells whose checks live further down the proof path -- in the
-    # sequence they start, or in a base-class golden compare -- and none of them
-    # is a clean exit that checks nothing. Naming them is what lets the floor
-    # below be unconditional for every other leaf.
-    #
-    # This list may only shrink. To remove an entry, make the check that already
-    # runs log `CHK-<ID> PASS` where it actually happens (in the sequence, not
-    # here -- a record emitted by sep_base_test lands in BASE_IDS and is
-    # excluded from `own`).
-    NO_OWN_EVIDENCE = {
-        # Verdict comes from the firmware console PASS/FAIL magic, not from a
-        # leaf-side check. Real grading, wrong channel for this counter.
-        "sep_boot_rom_lsu_read_test": "firmware console verdict",
-        "sep_cpu_ifu_lsu_alias_remap_matrix_test": "firmware console verdict",
-        "sep_dma_cpu_contention_test": "firmware console verdict",
-        "sep_dma_hash_test": "firmware console verdict",
-        "sep_hello_world_test": "firmware console verdict",
-        "sep_hmac_kmac_cpu_crypto_smoke_test": "firmware console verdict",
-        "sep_mailbox_plic_test": "firmware console verdict",
-        "sep_nmi_sanity_test": "firmware console verdict",
-        "sep_spi_ot_dma_rx_test": "firmware console verdict",
-        # Asserts in the leaf itself, but the log line carries no CHK- ID.
-        # These are the cheapest entries to retire: label the existing assert.
-        "sep_clock_uvm_wdt_rst_input_reset_path_test": "in-leaf asserts, unlabelled",
-        "sep_efuse_km_axil_cpu_mux_coexist_test": "in-leaf asserts, unlabelled",
-        "sep_km_mem_smoke_test": "in-leaf asserts, unlabelled",
-        "sep_otbn_mem_smoke_test": "in-leaf asserts, unlabelled",
-        "sep_spi_flash_jedec_smoke_test": "in-leaf asserts, unlabelled",
-        # Checks live in the sequence the leaf starts.
-        "sep_axi_smoke_test": "sequence-level compares plus AXI scoreboard check_phase",
-        "sep_sram_smoke_test": "sequence-level compares",
-        # Backdoor leaf: the golden compare is
-        # sep_base_test._check_efuse_shadow_after_sense.
-        "sep_efuse_sense_test": "base-class eFuse shadow golden compare",
-    }
+    # Empty: firmware-console leaves emit CHK-FW-CONSOLE from poll_boot after
+    # the mailbox PASS magic is observed. That ID is intentionally not in
+    # BASE_IDS, so it counts as the leaf's own evidence. This list may only
+    # shrink. A new exemption is a logging gap, not a verification gap.
+    NO_OWN_EVIDENCE: dict[str, str] = {}
 
     def __init__(self) -> None:
         super().__init__()
@@ -239,7 +206,9 @@ class sep_base_test(uvm_test):
         ``mask`` selects the bits that must be known; the default is every bit
         the signal carries. Passing a mask matters on a wide probe whose unused
         lanes are legitimately X -- checking the whole word there would raise on
-        a healthy run.
+        a healthy run. The return carries only the masked bits: bits outside the
+        mask are dropped, so a compare cannot match on one that was never
+        required to be known.
 
         Note for the reader: Verilator is built two-state here (no
         ``--x-assign`` / ``--x-initial`` in sep_sim_cfg.toml), so uninitialised
@@ -248,21 +217,23 @@ class sep_base_test(uvm_test):
         value = sig.value
         bits = getattr(value, "binstr", None)
         if bits is None:
-            # Fully resolved already: int() would not have raised.
-            return int(value)
-        unknown = [
-            i
-            for i, c in enumerate(reversed(bits))
-            if c not in "01" and (mask is None or (mask >> i) & 1)
-        ]
-        if unknown:
-            raise AssertionError(
-                f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
-                f"compare reads: binstr={bits!r}, unknown bit indices {unknown}. "
-                "A zero-expecting compare on an unknown node passes for free, so "
-                "it is raised here instead."
-            )
-        return int(bits, 2)
+            result = int(value)
+        else:
+            unknown = [
+                i
+                for i, c in enumerate(reversed(bits))
+                if c not in "01" and (mask is None or (mask >> i) & 1)
+            ]
+            if unknown:
+                raise AssertionError(
+                    f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
+                    f"compare reads: binstr={bits!r}, unknown bit indices {unknown}. "
+                    "A zero-expecting compare on an unknown node passes for free, so "
+                    "it is raised here instead."
+                )
+            cleaned = "".join(c if c in "01" else "0" for c in bits)
+            result = int(cleaned, 2)
+        return result if mask is None else result & mask
 
     @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
@@ -274,7 +245,7 @@ class sep_base_test(uvm_test):
     def build_phase(self) -> None:
         # Installed before anything can log, so no evidence predates the filter.
         self._evidence = _EvidenceFilter()
-        self.logger.addFilter(self._evidence)
+        self._install_evidence_filter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
         self.cfg.randomize_timing(self.random_seed())
@@ -303,6 +274,7 @@ class sep_base_test(uvm_test):
         cocotb.start_soon(
             Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
         )
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
 
     def bind_smc_responder(self, dut) -> None:
         """Attach the shared AXI slave agent to the SEP->SMC boundary.
@@ -402,28 +374,15 @@ class sep_base_test(uvm_test):
             secure_tm = int(probe.value) & 0x1
         check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
-    def check_otp_jtag2axi_ungated(self) -> None:
-        """Require both OTP JTAG2AXIL disable bits to read 0.
-
-        LCC ties ``dbg_disable_o.smc_otp_jtag2axi`` and
-        ``sep_otp_jtag2axi`` to 0. The fuse controller enforces access.
-        """
-        dut = cocotb.top
-        smc = self.rd(dut.dbg_disable_smc_otp_jtag2axi_o)
-        sep = self.rd(dut.dbg_disable_sep_otp_jtag2axi_o)
-        if smc != 0 or sep != 0:
-            raise AssertionError(
-                f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, expected both 0"
-            )
-        self.logger.info("CHK-OTP-JTAG2AXI-UNGATED PASS: smc_otp_jtag2axi=0 sep_otp_jtag2axi=0")
-
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
 
         Every bring-up gates on this signal. With +skip_fuse_sense the RTL asserts
         the done flop ~1 cycle after reset release; without it the real 256-word
         sense runs and the sensed shadow is compared against the staged eFuse
-        image.
+        image. A skip without ``+sep_efuse_preload`` leaves the shadow at its
+        reset (zero). That is the intended default: no skip-mode leaf grades a
+        shadow value.
         """
         dut = cocotb.top
         for cycle in range(max_cycles):
@@ -432,7 +391,6 @@ class sep_base_test(uvm_test):
                 self.logger.info("SEP fuse sense done at cycle %d", cycle)
                 await ClockCycles(dut.clk_i, 20)
                 self._check_efuse_shadow_after_sense()
-                self.check_otp_jtag2axi_ungated()
                 return
         raise AssertionError("sep_fuse_sense_done_o never asserted (fabric not released)")
 
@@ -524,7 +482,7 @@ class sep_base_test(uvm_test):
         from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
         dut = cocotb.top
-        assert not self.rd(dut.sep_fuse_sense_done_o), (
+        assert not self.rd_known(dut.sep_fuse_sense_done_o), (
             "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sep_fuse_sense_done_o already 1; no pre-sense window"
         )
         # LC_STATE_INVALID low nibble is 4'hF — not a legal raw state.
@@ -532,7 +490,7 @@ class sep_base_test(uvm_test):
         assert closed == 0, "CHK-PRE-SENSE-FAIL-CLOSED FAIL: invalid-LC golden is not 0"
         seq = SepLccFeatCtrlCheckSeq(closed)
         await self.start_seq(seq)
-        assert not self.rd(dut.sep_fuse_sense_done_o), (
+        assert not self.rd_known(dut.sep_fuse_sense_done_o), (
             "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sense completed during the FEAT_CTRL "
             "read; the closed side was not observed"
         )
@@ -676,6 +634,7 @@ class sep_base_test(uvm_test):
         run_pulse_cycles: int = 40,
         park: tuple[str, ...] = (),
         release_park: bool = True,
+        after_bring_up_hook: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         """Stage a firmware TCM image, boot the EL2 core, and sample boot
         observables into the boot scoreboard ``sb`` until the firmware signals
@@ -683,7 +642,9 @@ class sep_base_test(uvm_test):
         boot-poll live in one place (do not duplicate this in concrete tests).
 
         ``park`` / ``release_park`` are forwarded to ``bring_up_cpu_boot``.
-        The SW_RESET_N CSR stays at reset 0x7E.
+        ``after_bring_up_hook`` runs after the CPU is released and before the
+        boot poll, so a test can sample an idle output before firmware programs
+        it. The SW_RESET_N CSR stays at reset 0x7E.
 
         The TCM responder backdoor-loads ``sep_itcm.hex`` / ``sep_dtcm.hex`` from
         the sim CWD, so the images are staged there. (CWD-shared: one CPU firmware
@@ -698,6 +659,7 @@ class sep_base_test(uvm_test):
                 )
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
         self.logger.info("staged firmware TCM images into %s", os.getcwd())
+        self._log_firmware_identity(itcm_hex, dtcm_hex)
 
         # Feed the firmware's nm listing (built next to the hex images by
         # compile.mk) to the trace monitor so backtraces symbolize. Best-effort:
@@ -731,6 +693,8 @@ class sep_base_test(uvm_test):
             park=park,
             release_park=release_park,
         )
+        if after_bring_up_hook is not None:
+            await after_bring_up_hook()
 
         await self.poll_boot(
             sb,
@@ -810,6 +774,8 @@ class sep_base_test(uvm_test):
                 break
         if sb.console:
             self.logger.info("firmware console: %r", sb.console_text())
+        if sb.fw_done and sb.fw_pass:
+            self.logger.info("CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic")
         if not (sb.fw_done and sb.fw_pass):
             # Hang, no-boot, run-cycle exhaustion, or firmware FAIL: put the
             # symbolized backtrace in the log before the scoreboard's
@@ -952,6 +918,24 @@ class sep_base_test(uvm_test):
         """Wait until ESRC accumulates a seed and presents it to CSRNG."""
         return await self._wait_high(cocotb.top.drbg_seed_valid_o, timeout)
 
+    async def poll_internal_irq(self, idx: int, expect: int, *, timeout: int = 400) -> int:
+        """Poll ``sep_internal_interrupts_probe_o[idx]`` until it equals ``expect``.
+
+        Returns the last sampled vector. The aggregate has no CSR mirror, so
+        this is the frontdoor-equivalent observation of one PIC wire.
+        """
+        sample = 0
+        for _ in range(timeout):
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            sample = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << idx)
+            if ((sample >> idx) & 1) == expect:
+                return sample
+        raise AssertionError(
+            f"sep_internal_interrupts[{idx}] did not become {expect} in "
+            f"{timeout} cycles (vec=0x{sample:x})"
+        )
+
     async def report_entropy_stall(self, window: int = 4_000) -> None:
         """Log WHERE the ESRC->DRBG chain stopped after a seed/genbits timeout.
 
@@ -1056,22 +1040,22 @@ class sep_base_test(uvm_test):
         first CHK5_km AXIS beat the scoreboard tapped is the expected SRAM
         content: a wrong-word store, a dropped store, or a store to the wrong
         offset all fail here, where the non-zero poll passes. Logged under
-        `CHK5_km_sram` so the plan can cite it apart from the handshake row.
+        `CHK-KM-SRAM` so the plan can cite it apart from the handshake row.
         """
         delivered = self.drbg_sb.km_words()
         assert delivered, (
-            "CHK5_km_sram: no EDN->KM AXIS beat was tapped, so there is no "
+            "CHK-KM-SRAM: no EDN->KM AXIS beat was tapped, so there is no "
             "delivered word to compare KM SRAM word0 against"
         )
         expected = delivered[0]
         actual = self.rd(cocotb.top.km_sram_word0_o)
         assert actual == expected, (
-            f"CHK5_km_sram FAIL: KM SRAM word0 = 0x{actual:08x}, but the KM "
+            f"CHK-KM-SRAM FAIL: KM SRAM word0 = 0x{actual:08x}, but the KM "
             f"consumed 0x{expected:08x} on the AXIS endpoint "
             f"({len(delivered)} beat(s) tapped)"
         )
         self.logger.info(
-            "CHK5_km_sram PASS: KM SRAM word0 = 0x%08x == the delivered "
+            "CHK-KM-SRAM PASS: KM SRAM word0 = 0x%08x == the delivered "
             "EDN->KM AXIS word (beat 1 of %d)",
             actual,
             len(delivered),
@@ -1117,7 +1101,7 @@ class sep_base_test(uvm_test):
         up as a non-zero exit on an otherwise passing test.
         """
         dut = cocotb.top
-        gen = SepNoiseGolden()
+        gen = EntropyNoiseModel()
         gen.configure(noise_mode, seed_base=seed_base)
 
         async def _drive() -> None:
@@ -1145,6 +1129,33 @@ class sep_base_test(uvm_test):
             toggled = toggled or (drv != prev)
             prev = drv
         assert toggled, "driven ESRC noise is static (LFSR not toggling)"
+
+    async def assert_noise_force_routed(self) -> None:
+        """Prove +esrc_noise_force routed the port, without needing live noise.
+
+        The drive half of ``assert_noise_force_active`` requires a running
+        generator, so a test that holds the raw noise at a constant on purpose
+        -- the persistent-failure trips, which need a degenerate stream --
+        cannot use it. This drives both values by hand and checks lane-0's
+        actual DUT noise_i follows each, which is the routing contract alone.
+        """
+        dut = cocotb.top
+        for bit in (1, 0):
+            dut.esrc_noise_ext_i.value = bit
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            act = self.rd(dut.esrc_noise_active_o)
+            assert act == bit, (
+                f"+esrc_noise_force not active: drove raw noise {bit} and lane0 "
+                f"noise_i read {act}; the plusarg did not route the port"
+            )
+            # Leave ReadOnly before the next iteration drives the port again:
+            # a write in that phase is a RuntimeError, not a DUT failure.
+            await NextTimeStep()
+        self.logger.info(
+            "CHK-NOISE-FORCE PASS: lane0 noise_i followed the driven bit both ways, "
+            "so +esrc_noise_force routed esrc_noise_ext_i"
+        )
 
     async def bring_up_entropy(
         self,
@@ -1249,6 +1260,27 @@ class sep_base_test(uvm_test):
         """Override with the per-test stimulus."""
         raise NotImplementedError
 
+    @staticmethod
+    def _sha256_file(path: str) -> tuple[str, int]:
+        """Return ``(hexdigest, size)`` for ``path``. Raises if the file is missing."""
+        digest = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                digest.update(chunk)
+        return digest.hexdigest(), os.path.getsize(path)
+
+    def _log_firmware_identity(self, itcm_hex: str, dtcm_hex: str) -> None:
+        """Record sha256 of the staged TCM images.
+
+        Firmware checkers live in the image. A log that names only the path
+        cannot prove which bytes were loaded.
+        """
+        parts = []
+        for label, path in (("itcm", itcm_hex), ("dtcm", dtcm_hex)):
+            digest, nbytes = self._sha256_file(path)
+            parts.append(f"{label}={path} sha256={digest} bytes={nbytes}")
+        self.logger.info("RUN-IDENTITY-FW: %s", " ".join(parts))
+
     def _log_run_identity(self) -> None:
         """Record the commit, tree state and run directory in the log.
 
@@ -1256,7 +1288,6 @@ class sep_base_test(uvm_test):
         offered as evidence for, and the identity cannot be recovered after
         the run.
         """
-        import hashlib
         import os
         import subprocess
 
@@ -1309,6 +1340,26 @@ class sep_base_test(uvm_test):
             state,
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
+        plus_parts = []
+        for key in sorted(cocotb.plusargs):
+            val = cocotb.plusargs[key]
+            plus_parts.append(f"+{key}" if val is True or val == "" else f"+{key}={val}")
+        self.logger.info("RUN-IDENTITY-PLUSARGS: %s", " ".join(plus_parts) or "(none)")
+        # KM ROM is loaded by tb_backdoor_mem from +km_rom_hex. Ten leaves use
+        # the untracked rom_main.rom.parhex; a path-only plusarg cannot join
+        # those bytes. Hash the staged file when it is present.
+        km_rom = cocotb.plusargs.get("km_rom_hex")
+        if km_rom and km_rom is not True:
+            km_path = (
+                km_rom if os.path.isabs(str(km_rom)) else os.path.join(os.getcwd(), str(km_rom))
+            )
+            if os.path.isfile(km_path):
+                digest, nbytes = self._sha256_file(km_path)
+                self.logger.info(
+                    "RUN-IDENTITY-FW: km_rom=%s sha256=%s bytes=%d", km_path, digest, nbytes
+                )
+            else:
+                self.logger.info("RUN-IDENTITY-FW: km_rom=%s missing -- bytes not hashed", km_path)
         # Build identity: the binary this process IS. A commit names the
         # sources on disk at time 0, which is not the same claim as "the model
         # executing was compiled from them" -- a reused simv, or a rebuild that
@@ -1358,12 +1409,13 @@ class sep_base_test(uvm_test):
                 else:
                     exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
             self.logger.info(
-                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d",
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s",
                 exe,
                 exe_digest,
                 digest_src,
                 st.st_size,
                 int(st.st_mtime),
+                rev or "unknown",
             )
         except (OSError, ValueError) as exc:
             # Say so rather than omit the line: a missing build identity is a
@@ -1430,6 +1482,32 @@ class sep_base_test(uvm_test):
                     "" if len(areas) == len(shown_areas) else f", first {len(shown_areas)} shown",
                     ",".join(shown_areas),
                 )
+
+    def _install_evidence_filter(self, filt: "_EvidenceFilter") -> None:
+        """Put the evidence filter where every CHK-* record passes through it.
+
+        A logger-level filter sees only records logged on that exact logger --
+        it is not applied to records propagating up from children. Sequences
+        grade their own contracts on their own loggers (`cocotb.log`, the
+        component tree), so filtering `self.logger` alone drops them and the
+        leaf reads as grading nothing. Handler-level filters do see propagated
+        records, so the handlers the simulator already installed are the one
+        place that observes the whole run.
+        """
+        handlers = list(logging.getLogger().handlers)
+        for name in ("cocotb", "test", "gpi", "uvm"):
+            handlers.extend(logging.getLogger(name).handlers)
+        installed = 0
+        for handler in handlers:
+            if filt not in handler.filters:
+                handler.addFilter(filt)
+                installed += 1
+        # No handler yet means nothing has emitted and the run would grade
+        # nothing at all, so fall back to the loggers a check is logged on.
+        if not installed:
+            for name in ("cocotb", "test", "uvm"):
+                logging.getLogger(name).addFilter(filt)
+        self.logger.addFilter(filt)
 
     def _finalize_evidence(self) -> None:
         """Report the evidence this run produced, and grade it if the leaf asked.

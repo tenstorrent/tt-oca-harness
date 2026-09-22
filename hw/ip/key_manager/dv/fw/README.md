@@ -208,13 +208,12 @@ make build_all_fw
 riscv64-unknown-elf-size build/tests/test_rom_crc/test_rom_crc.vrom.elf
 ```
 
-Toolchain resolution follows the same `RISCV_TOOLCHAIN` contract as the
-SMC/SEP cgen stages (see `hw/common/dv/fw/compile.mk`): point `RISCV_TOOLCHAIN`
-at a directory of `riscv64-unknown-elf-*` tools to use one that need not be on
-`PATH`; leave it unset to use whatever is on `PATH`. Either way, the resolved
-compiler must have `picolibc.specs` (compile.mk always builds with
-`--specs=picolibc.specs`) — when it does not, the dispatcher falls back to the
-toolchain container automatically.
+Firmware compiles in the OCAH toolchain container (`scripts/docker-run.sh
+run-here`) unless `RISCV_TOOLCHAIN` points at a directory of
+`riscv64-unknown-elf-*` tools whose compiler has `picolibc.specs` (compile.mk
+always builds with `--specs=picolibc.specs`). That variable is the only host
+override, the same contract as the SMC/SEP cgen stages (see
+`hw/common/dv/fw/compile.mk`). A toolchain on `PATH` is not used.
 
 ## Code size optimization
 

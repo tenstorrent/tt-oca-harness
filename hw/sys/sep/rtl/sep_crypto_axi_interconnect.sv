@@ -952,10 +952,13 @@ module sep_crypto_axi_interconnect (
   //=========================================================================
   // TRNG AXI-Lite passthrough — demux port [sep_crypto_pkg::SepCryptoAxiTrng]
   //=========================================================================
-  // 64b AXI → 32b AXI → 32b AXI-Lite → ext_trng_axil_*
+  // 64b AXI → 32b AXI → 32b AXI-Lite → cut → ext_trng_axil_*
 
   sep_pkg::sep_32_32_6_12_axi_req_t  trng_axi32_req;
   sep_pkg::sep_32_32_6_12_axi_resp_t trng_axi32_resp;
+
+  sep_pkg::sep_32_32_axil_req_t  trng_axil_req;
+  sep_pkg::sep_32_32_axil_resp_t trng_axil_resp;
 
   axi_dw_converter #(
     .AxiMaxReads         (8),
@@ -1000,8 +1003,26 @@ module sep_crypto_axi_interconnect (
     .test_i      (test_en_i),
     .slv_req_i   (trng_axi32_req),
     .slv_resp_o  (trng_axi32_resp),
-    .mst_req_o   (ext_trng_axil_req_o),
-    .mst_resp_i  (ext_trng_axil_resp_i)
+    .mst_req_o   (trng_axil_req),
+    .mst_resp_i  (trng_axil_resp)
+  );
+
+  axi_cut #(
+    .Bypass     (1'b0),
+    .aw_chan_t  (sep_pkg::sep_32_32_axil_aw_chan_t),
+    .w_chan_t   (sep_pkg::sep_32_32_axil_w_chan_t),
+    .b_chan_t   (sep_pkg::sep_32_32_axil_b_chan_t),
+    .ar_chan_t  (sep_pkg::sep_32_32_axil_ar_chan_t),
+    .r_chan_t   (sep_pkg::sep_32_32_axil_r_chan_t),
+    .axi_req_t  (sep_pkg::sep_32_32_axil_req_t),
+    .axi_resp_t (sep_pkg::sep_32_32_axil_resp_t)
+  ) u_trng_axil_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (trng_axil_req),
+    .slv_resp_o (trng_axil_resp),
+    .mst_req_o  (ext_trng_axil_req_o),
+    .mst_resp_i (ext_trng_axil_resp_i)
   );
 
   //////////////////////////
@@ -1032,6 +1053,7 @@ module sep_crypto_axi_interconnect (
     .mst_req_o  (abr_axi_isolated_req),
     .mst_resp_i (abr_axi_isolated_resp),
     .isolate_i  (isolate_req_i.host_abr),
+    .flush_i    (1'b0),
     .isolated_o (isolated_o.host_abr)
   );
 

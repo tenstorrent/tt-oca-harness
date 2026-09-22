@@ -42,8 +42,8 @@ tools/dv/run_dv.py
   uploads artifact dv-run-<dut>-<tool>-<tier>[-<label>]
   |
   v
-tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.1")
-tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.1")
+tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.2")
+tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.2")
                                          history.json        (string "0.2")
 .github/workflows/dashboard.yml       -> classification.json
 tools/dv/run_dashboard.py publish     -> manifest.json       (string "0.1")
@@ -81,10 +81,13 @@ it.
 `parsers.toml`, `profiles/*.toml` under `hw/common/dv/configs/`
 |The shared configuration directory
 |Runner config loading; `--list --json` for CI matrices
-|Every registry carries `schema_version = 1`. An unknown key is a validation
-error. A checked-in registry that carries `launcher`, `extra_env`, or
-`setup_hook` fails validation, so site-specific launch detail stays in the
-site layer (xref:run-dv.adoc#runner-site-layer[Site-local override layer]).
+|Every registry carries an integer `schema_version`: `1`, and `2` for
+`executors.toml`, whose cluster entries name a driver
+(xref:run-dv.adoc#runner-executor-registry[Executor registry]). An unknown
+key is a validation error. A checked-in registry that carries `launcher`,
+`extra_env`, or `setup_hook` fails validation, so site-specific launch detail
+stays in the site layer (xref:run-dv.adoc#runner-site-layer[Site-local
+override layer]).
 Checked by `--validate-configs`, which every hosted job runs before its
 simulation, and by the configuration and registry tests in `tools/dv/tests`.
 
@@ -120,6 +123,40 @@ formal-config entry. The active file is recorded as `site` in
 `result.json`. Checked by `--validate-configs`, which reports the merged
 registries, and by the site-layer tests.
 
+|Leaf manifest: `<run>/stages/regress/jobs/<task>.json` and its
+`<task>.done.json` completion record
+|`tools/dv/runlib` (the coordinator)
+|`run_dv.py --worker-manifest` (a farm worker)
+|Integer `schema_version` `1`. `plan_digest` covers every other key and a
+worker refuses a mismatch; the overrides a manifest may carry are limited to
+wave and console options; the worker writes only its own leaf directory and
+the completion record, and a manifest it cannot trust or run leaves an
+`ERROR` result whose reason starts with `environment_error`. A manifest with
+`role = "build"` names a target and no item, and the worker runs its build
+stage with the job's core request as the build concurrency. Checked by the
+worker tests in `tools/dv/tests`.
+
+|Cluster job files: `<run>/stages/regress/scripts/<task>.sh` (or
+`<stage>-arr<N>.sh` with its `.tasks` list for a job array),
+`logs/<task>.log` (or `<stage>-arr<N>.<index>.log`), `logs/executor.log`,
+`jobs/cancel-unconfirmed.json`, and a scheduler-managed build's
+`jobs/build-<stage>-<target>.json` manifest with its result under
+`builds/build-<stage>-<target>/`
+|`tools/dv/runlib/executors/cluster.py`
+|The scheduler, which receives the script as `{script}` and the log as
+`{joblog}` in `submit_argv`; operators reading a run
+|The script exports the executor's `env_passthrough` values, changes to the
+checkout, and execs `worker_argv`; an array's script first picks its element's
+task from the list by the scheduler's index variable. The executor log holds
+every scheduler command with its status and output. The unconfirmed-cancel
+record names the jobs an interrupted run could not confirm stopped; the
+run-level summary lists the same ids under
+`interruption.cancellation.unconfirmed`. Checked by
+`tools/dv/tests/test_cluster_executor.py`, which drives both drivers through
+fake scheduler commands, interrupts a coordinator mid-run, and on demand by
+the `slurm-qualify` workflow, which runs the Slurm driver on a single-node
+Slurm installed on the hosted runner.
+
 |Runner command line and run tree: `run_dv.py` options; the
 `<dut-dv-root>/build/runs/<stamp>__<tool>__<label>/` layout with `stages/`,
 per-leaf directories, and `cov/`
@@ -140,7 +177,13 @@ per-leaf `result.json`, and `results/results.xml`
 an `UNKNOWN` checkpoint before the first leaf, so an incomplete run is never
 read as a pass. A run that did not finish carries `tests.completed = false`
 and `tests.pass_rate = null`, and a handled interruption adds an
-`interruption` object and a run-level errored JUnit testcase. The gate in
+`interruption` object (the signal received and, when a stop went
+unconfirmed, a `cancellation` with the attempts asked to stop, the number
+confirmed, and the unconfirmed job ids) and a run-level errored JUnit
+testcase; on a cluster executor the checkpoint's active and interrupted
+leaves list their scheduler job ids. A leaf's `stages` entry repeats only its
+identity, status, timing, log, and failure buckets, and points at its leaf
+`result.json` through `result_json`. The gate in
 `.github/actions/dv-run` requires `schema_version == 1`, a `flow` and `tool`
 matching the invocation, `status == "PASS"`, and coverage evidence when the
 row collects coverage. The completion and expected-failure tests cover the
@@ -150,17 +193,28 @@ Runner]).
 |Coverage grade: `--cov`, the `cov_merge` and `cov_report` stages,
 `cov/coverage.json`, `cov/report/*.json`, and `--waive`
 |Runner coverage stages; policy files in the DUT tree
-|`collect`, the dashboard coverage view, the publication workflow's re-grade
-|The compatibility threshold is `--fail-under`, then
+|`collect` and the dashboard coverage view
+|The merge takes the final attempt of every leaf that wrote a database,
+whatever its status, and refuses inputs of mixed target or build
+provenance (xref:run-dv.adoc#runner-coverage-inputs[Which databases merge]).
+The compatibility threshold is `--fail-under`, then
 `[coverage.<tool>].fail_under`, then `0.0`, graded on the tool's raw overall
-figure; waiver-aware grading is a `pass:[[[thresholds]]]` rule in the policy.
-Coverage is graded over a complete regression only: an interrupted or
-truncated run is refused. A changed policy changes `comparison_key`, so trend
-points before and after are separate series. A lapsed waiver grades as open.
-Checked by `--validate-configs` (expiry warnings), the coverage-closure,
-policy-expiry, and waive tests, and the coverage evidence clause of the
-action's gate. Hosted CI publishes the score but enforces no threshold
-(xref:run-dv.adoc#runner-waive[Waive coverage bins after a regression]).
+figure; waiver-aware grading is a `pass:[[[thresholds]]]` rule in the policy,
+and both kinds must be met. The grade is fail-closed on the policy: a
+grammar error is refused when `cov_merge` loads the policy and writes no
+coverage file; a selector that matches the wrong number of points or an
+accepted waiver on a covered point is refused by `cov_report` and writes no
+summary; either grades the run `ERROR`
+(xref:run-dv.adoc#runner-coverage-grading[How the grade forms]). Coverage is
+graded over a complete regression only: an interrupted or truncated run is
+refused. A changed policy changes `comparison_key`, so trend points before
+and after are separate series. A lapsed waiver grades as open. Checked by
+`--validate-configs` (expiry warnings), the coverage-inputs,
+coverage-thresholds, coverage-closure, policy-expiry, and waive tests, and
+the coverage evidence clause of the action's gate. Hosted CI publishes the
+score but does not collect it; the coverage regression runs on the licensed
+simulator flow outside hosted CI
+(xref:run-dv.adoc#runner-coverage-record[The coverage record]).
 
 |Normalized dashboard data: `<dut>.result.json`, `summary.json`,
 `history.json`, `manifest.json`, `classification.json`
@@ -168,8 +222,8 @@ action's gate. Hosted CI publishes the score but enforces no threshold
 |The documentation site's dashboard pages through `tools/doc`; external
 consumers; `dashboard` itself for history
 |One record per weekly DUT, one `dut_status` row and one `per_dut` history
-entry each. String `schema_version` values: `"0.1"` for the per-DUT record,
-the summary, and the manifest, `"0.2"` for the history;
+entry each. String `schema_version` values: `"0.2"` for the per-DUT record,
+the summary, and the history, `"0.1"` for the manifest;
 `classification.json` carries none. The conversion from the native result is
 lossy: native `ERROR` and `TIMEOUT` collapse into `FAIL`.
 `classification.json` is computed from the native leaf records, which keep
@@ -180,8 +234,11 @@ not enforce the schema version; the workflow gates each record on it, on its
 DUT count, and publishes
 nothing when a weekly DUT left no run tree
 (xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
-The artifact and the branch carry identical content. Checked by the
-dashboard schema, link, and completion tests and by the Operational checks
+The artifact and the branch carry identical content. The fields the
+documentation site renders are the ones `tools/doc/trim_dashboard_data.py`
+names, and every one of them is present in each record, `dut_status` row,
+test row, and history point the tools write. Checked by the dashboard
+schema, link, completion, and site-data tests and by the Operational checks
 section of xref:run-dashboard.adoc[DV and FV Dashboard].
 
 |Hosted workflows and the composite action: `sim.yml`, `regress.yml`,
@@ -205,22 +262,30 @@ archives to 90 runs per DUT. Checked by the required `verilator-smoke (dtp)` and
 `lint.yml`, which runs `tools/dv/tests` on DV-scoped changes
 (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
 
-|Contributor environment: `pyproject.toml` and `uv.lock` (the `dv` dependency
-group resolves to the `ocah-dv` workspace package under `hw/common/dv`),
-`Bender.yml`, Verilator, the `ocah-toolchain` image from
-`tools/docker/Dockerfile`, and `scripts/docker-run.sh`
+|Contributor environment: `pyproject.toml`, `uv.lock` (the `dv` dependency
+group resolves to the `ocah-dv` workspace package under `hw/common/dv`), and
+`.python-version`; `Bender.yml`; Verilator; the `ocah-toolchain` image from
+`tools/docker/Dockerfile` and `scripts/docker-run.sh`
 |The root project file and lockfile; the DV package manifest; the Dockerfile
-and its wrapper
+and its wrapper; the composite action for the hosted pins
 |Runner bootstrap, the composite action, the firmware build engine
 `hw/common/dv/fw/compile.mk`
 |The lockfile is the environment: the runner re-executes through
 `uv run --project <root> --locked --group dv`, and a hosted job reaches the
-runner through the same bootstrap. Python 3.11 through 3.13. `OCAH_DV_SKIP_UV=1` opts a
-pre-provisioned environment out of the re-execution and nothing else. Pulled
-container images are pinned by digest where their tags float. A host RISC-V
-toolchain with picolibc may replace the container through `RISCV_TOOLCHAIN`.
-Checked by `--doctor` (a targeted availability probe, not a license test),
-`docker-run.sh verify`, `uv sync --locked`, and the doctor-probe tests.
+runner through the same bootstrap. Python 3.11 through 3.13, with 3.11
+pinned for the hosted jobs. Verilator at or above cocotb's documented floor,
+5.036, the `min_version` the tool registry sets; hosted CI builds the
+composite action's pinned tag from source. Bender is
+unpinned, and the release a run used is recorded in its `result.json`.
+`OCAH_DV_SKIP_UV=1` opts a pre-provisioned environment out of the
+re-execution and nothing else. Pulled container images are pinned by digest
+where their tags float. A host RISC-V toolchain with picolibc may replace the
+container through `RISCV_TOOLCHAIN`. Checked by `--doctor` (a targeted
+availability probe, not a license test, which also fails a required tool
+below its registry `min_version` and scopes its module probe to `--items`
+and `--tag`), `docker-run.sh verify`, `uv sync --locked`, the doctor tests, and
+the environment-matrix tests
+(xref:run-dv.adoc#runner-environment-matrix[Supported environments]).
 |===
 
 == Public and licensed boundary
@@ -237,7 +302,8 @@ the run result so a result is attributable to its layers.
 |Tool registry
 |`simulators.toml` lists `verilator`, `vcs`, `xcelium`, and `sby` by their
 default executable names; a licensed tool's table names its `license_env`
-variables. The `native`
+variables, and `verilator` carries `min_version`, cocotb's documented floor,
+which the doctor enforces. The `native`
 profile declares `visibility = "public"`, `license = "none"`, and
 `default_tool = "verilator"`.
 |Binaries under other names, `launcher` prefixes for containers,
@@ -255,6 +321,17 @@ nightly and weekly regression tiers.
 |VCS and Xcelium need licensed self-hosted runners. Formal mode is a
 developer-host flow: no formal job runs in hosted CI and no formal result
 reaches the dashboard.
+
+|Contributor host
+|The GitHub-hosted `ubuntu-latest` image, on which every smoke and
+regression job runs unless the `DV_LARGE_RUNNER` repository variable
+promotes its row to a larger GitHub-hosted label, and a Linux or macOS
+developer host that meets the same pins
+(xref:run-dv.adoc#runner-environment-matrix[Supported environments]).
+|Licensed simulators run on self-hosted runners. The `sep` tree's private
+submodule is checked out in hosted CI with a repository secret; a public
+clone runs without it, and `--doctor --items <group>` reports the modules of
+that selection only.
 
 |Formal collateral
 |Property and bind files, `sby` task files, the formal config with the `sby`
@@ -292,6 +369,12 @@ engine. Both are unset in a bare clone.
 
 == Operations
 
+Each row names the mechanism behind a routine task. The procedures for a
+red gate, a cancelled or missed tier, a failed publication, and the other
+failure modes of the hosted service are on
+xref:runbook.adoc[DV Infrastructure Runbook], together with the service
+targets, retention, ownership by component, and escalation.
+
 [cols="<2,<3,<3",options="header"]
 |===
 |Task |Mechanism |Detail
@@ -302,9 +385,11 @@ engine. Both are unset in a bare clone.
 merged registries. Runs in every hosted job.
 
 |Probe a host for a DUT and tool
-|`python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>`
+|`python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool> [--items <group>]`
 |Reports the active site file and the source of each tool entry; sources the
-tool's `setup_hook`.
+tool's `setup_hook`; prints the release of each registry tool found on `PATH`
+and fails a required tool below its table's `min_version`. With `--items` or
+`--tag` the module probe covers that selection only.
 
 |Run the tooling tests
 |`uv run --locked --group dv python -m unittest discover tools/dv/tests`
@@ -315,7 +400,7 @@ tool's `setup_hook`.
 |Scheduled tiers are never cancelled; a dispatch of the same tier queues
 behind the one in flight.
 
-|Move coverage rows to a larger runner
+|Move the regression rows to a larger runner
 |`gh variable set DV_LARGE_RUNNER --body <runner-label>`
 |A repository variable, not a workflow edit. A label with no matching runner
 queues until the job times out.
@@ -325,19 +410,14 @@ queues until the job times out.
 |Add `-f dry_run=true` to collect and aggregate without pushing the branch,
 uploading the bundle, or sending the digest.
 
-|Apply a merged waiver to a published weekly
-|Merge the policy change, then dispatch the publication for the weekly's
-run id
-|The job re-grades the downloaded tree with `--waive` against the checkout's
-policy (xref:run-dashboard.adoc#dashboard-waive[Waive coverage bins on a published weekly]).
-
 |Re-grade a downloaded run tree locally
 |`OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut <dut> --run-dir <tree> --waive`
 |No simulator or report tool runs; the tree is the only input.
 
 |Inspect the published data
 |Branch `dv-dashboard-data`: `latest/` (one record per weekly DUT, the
-summary, staged coverage files), `data/history.json`, `data/runs/<dut>/`,
+summary, and any staged coverage files), `data/history.json`,
+`data/runs/<dut>/`,
 `data/classification/`
 |The artifact of the same name carries the per-run bundle with identical
 content.
@@ -354,6 +434,21 @@ workflow; `make ocah-lint-vale VALE_PATH=tools/dv/doc` lints its prose.
 
 == Changing an interface
 
+* The key set of every JSON file is pinned: the native run, regression, leaf
+  and per-test records and the coverage files in
+  `tools/dv/tests/test_json_contract.py`; the published record, summary,
+  history and manifest in `test_dashboard_schema.py` and
+  `test_dashboard_links.py`; the checkpoint, interruption and scheduler
+  records in `test_cluster_executor.py`; and the fields the documentation
+  site reads in `test_dashboard_site_data.py`. A key enters or leaves a file
+  only together with its pinned set and its readers. Each fact is written
+  once: the leaf record holds an attempt's detail, the run-level files hold
+  identities, verdicts and pointers, `cov/report/summary.json` holds the
+  coverage detail, and the published record holds what the dashboard and the
+  site read.
+* `tools/doc/trim_dashboard_data.py` is the reference for what the site
+  renders. A producer change that its output does not survive is a defect in
+  the producer; the script is not edited to absorb one.
 * A registry, result file, or normalized file carries `schema_version`. A
   change that a current reader cannot consume increments it; an additive
   field does not.

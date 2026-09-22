@@ -961,6 +961,26 @@ localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_RDATA_REG_ADDR                 
 
 
 //==============================================================================
+// Addresses for Address Map: trng
+//==============================================================================
+
+
+localparam int unsigned TRNG_REG_MAP_BASE_ADDR                                                                    = 32'h10917000;
+localparam int unsigned TRNG_REG_MAP_SIZE                                                                         = 32'h00001000;
+
+
+
+
+//==============================================================================
+// Memory: aperture
+//==============================================================================
+
+localparam int unsigned TRNG_APERTURE_MEM_BASE_ADDR                                                               = 32'h10917000;
+localparam int unsigned TRNG_APERTURE_MEM_SIZE                                                                    = 32'h00001000;
+
+
+
+//==============================================================================
 // Addresses for Address Map: sep_lifecycle_ctrl
 //==============================================================================
 
@@ -1191,6 +1211,521 @@ localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET            
 localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR                                                = 32'h1093056C;
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_OFFSET                                                    = 32'h00000070;
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR                                                      = 32'h10930570;
+
+
+//==============================================================================
+// Addresses for Address Map: abr
+//==============================================================================
+
+
+localparam int unsigned ABR_REG_MAP_BASE_ADDR                                                                     = 32'h10940000;
+localparam int unsigned ABR_REG_MAP_SIZE                                                                          = 32'h0000C018;
+
+
+localparam int unsigned ABR_MLDSA_NAME_0__REG_OFFSET                                                              = 32'h00000000;
+localparam int unsigned ABR_MLDSA_NAME_0__REG_ADDR                                                                = 32'h10940000;
+localparam int unsigned ABR_MLDSA_NAME_1__REG_OFFSET                                                              = 32'h00000004;
+localparam int unsigned ABR_MLDSA_NAME_1__REG_ADDR                                                                = 32'h10940004;
+localparam int unsigned ABR_MLDSA_VERSION_0__REG_OFFSET                                                           = 32'h00000008;
+localparam int unsigned ABR_MLDSA_VERSION_0__REG_ADDR                                                             = 32'h10940008;
+localparam int unsigned ABR_MLDSA_VERSION_1__REG_OFFSET                                                           = 32'h0000000C;
+localparam int unsigned ABR_MLDSA_VERSION_1__REG_ADDR                                                             = 32'h1094000C;
+localparam int unsigned ABR_MLDSA_CTRL_REG_OFFSET                                                                 = 32'h00000010;
+localparam int unsigned ABR_MLDSA_CTRL_REG_ADDR                                                                   = 32'h10940010;
+localparam int unsigned ABR_MLDSA_STATUS_REG_OFFSET                                                               = 32'h00000014;
+localparam int unsigned ABR_MLDSA_STATUS_REG_ADDR                                                                 = 32'h10940014;
+localparam int unsigned ABR_ABR_ENTROPY_0__REG_OFFSET                                                             = 32'h00000018;
+localparam int unsigned ABR_ABR_ENTROPY_0__REG_ADDR                                                               = 32'h10940018;
+localparam int unsigned ABR_ABR_ENTROPY_1__REG_OFFSET                                                             = 32'h0000001C;
+localparam int unsigned ABR_ABR_ENTROPY_1__REG_ADDR                                                               = 32'h1094001C;
+localparam int unsigned ABR_ABR_ENTROPY_2__REG_OFFSET                                                             = 32'h00000020;
+localparam int unsigned ABR_ABR_ENTROPY_2__REG_ADDR                                                               = 32'h10940020;
+localparam int unsigned ABR_ABR_ENTROPY_3__REG_OFFSET                                                             = 32'h00000024;
+localparam int unsigned ABR_ABR_ENTROPY_3__REG_ADDR                                                               = 32'h10940024;
+localparam int unsigned ABR_ABR_ENTROPY_4__REG_OFFSET                                                             = 32'h00000028;
+localparam int unsigned ABR_ABR_ENTROPY_4__REG_ADDR                                                               = 32'h10940028;
+localparam int unsigned ABR_ABR_ENTROPY_5__REG_OFFSET                                                             = 32'h0000002C;
+localparam int unsigned ABR_ABR_ENTROPY_5__REG_ADDR                                                               = 32'h1094002C;
+localparam int unsigned ABR_ABR_ENTROPY_6__REG_OFFSET                                                             = 32'h00000030;
+localparam int unsigned ABR_ABR_ENTROPY_6__REG_ADDR                                                               = 32'h10940030;
+localparam int unsigned ABR_ABR_ENTROPY_7__REG_OFFSET                                                             = 32'h00000034;
+localparam int unsigned ABR_ABR_ENTROPY_7__REG_ADDR                                                               = 32'h10940034;
+localparam int unsigned ABR_ABR_ENTROPY_8__REG_OFFSET                                                             = 32'h00000038;
+localparam int unsigned ABR_ABR_ENTROPY_8__REG_ADDR                                                               = 32'h10940038;
+localparam int unsigned ABR_ABR_ENTROPY_9__REG_OFFSET                                                             = 32'h0000003C;
+localparam int unsigned ABR_ABR_ENTROPY_9__REG_ADDR                                                               = 32'h1094003C;
+localparam int unsigned ABR_ABR_ENTROPY_10__REG_OFFSET                                                            = 32'h00000040;
+localparam int unsigned ABR_ABR_ENTROPY_10__REG_ADDR                                                              = 32'h10940040;
+localparam int unsigned ABR_ABR_ENTROPY_11__REG_OFFSET                                                            = 32'h00000044;
+localparam int unsigned ABR_ABR_ENTROPY_11__REG_ADDR                                                              = 32'h10940044;
+localparam int unsigned ABR_ABR_ENTROPY_12__REG_OFFSET                                                            = 32'h00000048;
+localparam int unsigned ABR_ABR_ENTROPY_12__REG_ADDR                                                              = 32'h10940048;
+localparam int unsigned ABR_ABR_ENTROPY_13__REG_OFFSET                                                            = 32'h0000004C;
+localparam int unsigned ABR_ABR_ENTROPY_13__REG_ADDR                                                              = 32'h1094004C;
+localparam int unsigned ABR_ABR_ENTROPY_14__REG_OFFSET                                                            = 32'h00000050;
+localparam int unsigned ABR_ABR_ENTROPY_14__REG_ADDR                                                              = 32'h10940050;
+localparam int unsigned ABR_ABR_ENTROPY_15__REG_OFFSET                                                            = 32'h00000054;
+localparam int unsigned ABR_ABR_ENTROPY_15__REG_ADDR                                                              = 32'h10940054;
+localparam int unsigned ABR_MLDSA_SEED_0__REG_OFFSET                                                              = 32'h00000058;
+localparam int unsigned ABR_MLDSA_SEED_0__REG_ADDR                                                                = 32'h10940058;
+localparam int unsigned ABR_MLDSA_SEED_1__REG_OFFSET                                                              = 32'h0000005C;
+localparam int unsigned ABR_MLDSA_SEED_1__REG_ADDR                                                                = 32'h1094005C;
+localparam int unsigned ABR_MLDSA_SEED_2__REG_OFFSET                                                              = 32'h00000060;
+localparam int unsigned ABR_MLDSA_SEED_2__REG_ADDR                                                                = 32'h10940060;
+localparam int unsigned ABR_MLDSA_SEED_3__REG_OFFSET                                                              = 32'h00000064;
+localparam int unsigned ABR_MLDSA_SEED_3__REG_ADDR                                                                = 32'h10940064;
+localparam int unsigned ABR_MLDSA_SEED_4__REG_OFFSET                                                              = 32'h00000068;
+localparam int unsigned ABR_MLDSA_SEED_4__REG_ADDR                                                                = 32'h10940068;
+localparam int unsigned ABR_MLDSA_SEED_5__REG_OFFSET                                                              = 32'h0000006C;
+localparam int unsigned ABR_MLDSA_SEED_5__REG_ADDR                                                                = 32'h1094006C;
+localparam int unsigned ABR_MLDSA_SEED_6__REG_OFFSET                                                              = 32'h00000070;
+localparam int unsigned ABR_MLDSA_SEED_6__REG_ADDR                                                                = 32'h10940070;
+localparam int unsigned ABR_MLDSA_SEED_7__REG_OFFSET                                                              = 32'h00000074;
+localparam int unsigned ABR_MLDSA_SEED_7__REG_ADDR                                                                = 32'h10940074;
+localparam int unsigned ABR_MLDSA_SIGN_RND_0__REG_OFFSET                                                          = 32'h00000078;
+localparam int unsigned ABR_MLDSA_SIGN_RND_0__REG_ADDR                                                            = 32'h10940078;
+localparam int unsigned ABR_MLDSA_SIGN_RND_1__REG_OFFSET                                                          = 32'h0000007C;
+localparam int unsigned ABR_MLDSA_SIGN_RND_1__REG_ADDR                                                            = 32'h1094007C;
+localparam int unsigned ABR_MLDSA_SIGN_RND_2__REG_OFFSET                                                          = 32'h00000080;
+localparam int unsigned ABR_MLDSA_SIGN_RND_2__REG_ADDR                                                            = 32'h10940080;
+localparam int unsigned ABR_MLDSA_SIGN_RND_3__REG_OFFSET                                                          = 32'h00000084;
+localparam int unsigned ABR_MLDSA_SIGN_RND_3__REG_ADDR                                                            = 32'h10940084;
+localparam int unsigned ABR_MLDSA_SIGN_RND_4__REG_OFFSET                                                          = 32'h00000088;
+localparam int unsigned ABR_MLDSA_SIGN_RND_4__REG_ADDR                                                            = 32'h10940088;
+localparam int unsigned ABR_MLDSA_SIGN_RND_5__REG_OFFSET                                                          = 32'h0000008C;
+localparam int unsigned ABR_MLDSA_SIGN_RND_5__REG_ADDR                                                            = 32'h1094008C;
+localparam int unsigned ABR_MLDSA_SIGN_RND_6__REG_OFFSET                                                          = 32'h00000090;
+localparam int unsigned ABR_MLDSA_SIGN_RND_6__REG_ADDR                                                            = 32'h10940090;
+localparam int unsigned ABR_MLDSA_SIGN_RND_7__REG_OFFSET                                                          = 32'h00000094;
+localparam int unsigned ABR_MLDSA_SIGN_RND_7__REG_ADDR                                                            = 32'h10940094;
+localparam int unsigned ABR_MLDSA_MSG_0__REG_OFFSET                                                               = 32'h00000098;
+localparam int unsigned ABR_MLDSA_MSG_0__REG_ADDR                                                                 = 32'h10940098;
+localparam int unsigned ABR_MLDSA_MSG_1__REG_OFFSET                                                               = 32'h0000009C;
+localparam int unsigned ABR_MLDSA_MSG_1__REG_ADDR                                                                 = 32'h1094009C;
+localparam int unsigned ABR_MLDSA_MSG_2__REG_OFFSET                                                               = 32'h000000A0;
+localparam int unsigned ABR_MLDSA_MSG_2__REG_ADDR                                                                 = 32'h109400A0;
+localparam int unsigned ABR_MLDSA_MSG_3__REG_OFFSET                                                               = 32'h000000A4;
+localparam int unsigned ABR_MLDSA_MSG_3__REG_ADDR                                                                 = 32'h109400A4;
+localparam int unsigned ABR_MLDSA_MSG_4__REG_OFFSET                                                               = 32'h000000A8;
+localparam int unsigned ABR_MLDSA_MSG_4__REG_ADDR                                                                 = 32'h109400A8;
+localparam int unsigned ABR_MLDSA_MSG_5__REG_OFFSET                                                               = 32'h000000AC;
+localparam int unsigned ABR_MLDSA_MSG_5__REG_ADDR                                                                 = 32'h109400AC;
+localparam int unsigned ABR_MLDSA_MSG_6__REG_OFFSET                                                               = 32'h000000B0;
+localparam int unsigned ABR_MLDSA_MSG_6__REG_ADDR                                                                 = 32'h109400B0;
+localparam int unsigned ABR_MLDSA_MSG_7__REG_OFFSET                                                               = 32'h000000B4;
+localparam int unsigned ABR_MLDSA_MSG_7__REG_ADDR                                                                 = 32'h109400B4;
+localparam int unsigned ABR_MLDSA_MSG_8__REG_OFFSET                                                               = 32'h000000B8;
+localparam int unsigned ABR_MLDSA_MSG_8__REG_ADDR                                                                 = 32'h109400B8;
+localparam int unsigned ABR_MLDSA_MSG_9__REG_OFFSET                                                               = 32'h000000BC;
+localparam int unsigned ABR_MLDSA_MSG_9__REG_ADDR                                                                 = 32'h109400BC;
+localparam int unsigned ABR_MLDSA_MSG_10__REG_OFFSET                                                              = 32'h000000C0;
+localparam int unsigned ABR_MLDSA_MSG_10__REG_ADDR                                                                = 32'h109400C0;
+localparam int unsigned ABR_MLDSA_MSG_11__REG_OFFSET                                                              = 32'h000000C4;
+localparam int unsigned ABR_MLDSA_MSG_11__REG_ADDR                                                                = 32'h109400C4;
+localparam int unsigned ABR_MLDSA_MSG_12__REG_OFFSET                                                              = 32'h000000C8;
+localparam int unsigned ABR_MLDSA_MSG_12__REG_ADDR                                                                = 32'h109400C8;
+localparam int unsigned ABR_MLDSA_MSG_13__REG_OFFSET                                                              = 32'h000000CC;
+localparam int unsigned ABR_MLDSA_MSG_13__REG_ADDR                                                                = 32'h109400CC;
+localparam int unsigned ABR_MLDSA_MSG_14__REG_OFFSET                                                              = 32'h000000D0;
+localparam int unsigned ABR_MLDSA_MSG_14__REG_ADDR                                                                = 32'h109400D0;
+localparam int unsigned ABR_MLDSA_MSG_15__REG_OFFSET                                                              = 32'h000000D4;
+localparam int unsigned ABR_MLDSA_MSG_15__REG_ADDR                                                                = 32'h109400D4;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_0__REG_OFFSET                                                        = 32'h000000D8;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_0__REG_ADDR                                                          = 32'h109400D8;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_1__REG_OFFSET                                                        = 32'h000000DC;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_1__REG_ADDR                                                          = 32'h109400DC;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_2__REG_OFFSET                                                        = 32'h000000E0;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_2__REG_ADDR                                                          = 32'h109400E0;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_3__REG_OFFSET                                                        = 32'h000000E4;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_3__REG_ADDR                                                          = 32'h109400E4;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_4__REG_OFFSET                                                        = 32'h000000E8;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_4__REG_ADDR                                                          = 32'h109400E8;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_5__REG_OFFSET                                                        = 32'h000000EC;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_5__REG_ADDR                                                          = 32'h109400EC;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_6__REG_OFFSET                                                        = 32'h000000F0;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_6__REG_ADDR                                                          = 32'h109400F0;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_7__REG_OFFSET                                                        = 32'h000000F4;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_7__REG_ADDR                                                          = 32'h109400F4;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_8__REG_OFFSET                                                        = 32'h000000F8;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_8__REG_ADDR                                                          = 32'h109400F8;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_9__REG_OFFSET                                                        = 32'h000000FC;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_9__REG_ADDR                                                          = 32'h109400FC;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_10__REG_OFFSET                                                       = 32'h00000100;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_10__REG_ADDR                                                         = 32'h10940100;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_11__REG_OFFSET                                                       = 32'h00000104;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_11__REG_ADDR                                                         = 32'h10940104;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_12__REG_OFFSET                                                       = 32'h00000108;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_12__REG_ADDR                                                         = 32'h10940108;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_13__REG_OFFSET                                                       = 32'h0000010C;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_13__REG_ADDR                                                         = 32'h1094010C;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_14__REG_OFFSET                                                       = 32'h00000110;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_14__REG_ADDR                                                         = 32'h10940110;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_15__REG_OFFSET                                                       = 32'h00000114;
+localparam int unsigned ABR_MLDSA_VERIFY_RES_15__REG_ADDR                                                         = 32'h10940114;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_0__REG_OFFSET                                                       = 32'h00000118;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_0__REG_ADDR                                                         = 32'h10940118;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_1__REG_OFFSET                                                       = 32'h0000011C;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_1__REG_ADDR                                                         = 32'h1094011C;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_2__REG_OFFSET                                                       = 32'h00000120;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_2__REG_ADDR                                                         = 32'h10940120;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_3__REG_OFFSET                                                       = 32'h00000124;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_3__REG_ADDR                                                         = 32'h10940124;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_4__REG_OFFSET                                                       = 32'h00000128;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_4__REG_ADDR                                                         = 32'h10940128;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_5__REG_OFFSET                                                       = 32'h0000012C;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_5__REG_ADDR                                                         = 32'h1094012C;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_6__REG_OFFSET                                                       = 32'h00000130;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_6__REG_ADDR                                                         = 32'h10940130;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_7__REG_OFFSET                                                       = 32'h00000134;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_7__REG_ADDR                                                         = 32'h10940134;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_8__REG_OFFSET                                                       = 32'h00000138;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_8__REG_ADDR                                                         = 32'h10940138;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_9__REG_OFFSET                                                       = 32'h0000013C;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_9__REG_ADDR                                                         = 32'h1094013C;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_10__REG_OFFSET                                                      = 32'h00000140;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_10__REG_ADDR                                                        = 32'h10940140;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_11__REG_OFFSET                                                      = 32'h00000144;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_11__REG_ADDR                                                        = 32'h10940144;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_12__REG_OFFSET                                                      = 32'h00000148;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_12__REG_ADDR                                                        = 32'h10940148;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_13__REG_OFFSET                                                      = 32'h0000014C;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_13__REG_ADDR                                                        = 32'h1094014C;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_14__REG_OFFSET                                                      = 32'h00000150;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_14__REG_ADDR                                                        = 32'h10940150;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_15__REG_OFFSET                                                      = 32'h00000154;
+localparam int unsigned ABR_MLDSA_EXTERNAL_MU_15__REG_ADDR                                                        = 32'h10940154;
+localparam int unsigned ABR_MLDSA_MSG_STROBE_REG_OFFSET                                                           = 32'h00000158;
+localparam int unsigned ABR_MLDSA_MSG_STROBE_REG_ADDR                                                             = 32'h10940158;
+localparam int unsigned ABR_MLDSA_CTX_CONFIG_REG_OFFSET                                                           = 32'h0000015C;
+localparam int unsigned ABR_MLDSA_CTX_CONFIG_REG_ADDR                                                             = 32'h1094015C;
+localparam int unsigned ABR_MLDSA_CTX_0__REG_OFFSET                                                               = 32'h00000160;
+localparam int unsigned ABR_MLDSA_CTX_0__REG_ADDR                                                                 = 32'h10940160;
+localparam int unsigned ABR_MLDSA_CTX_1__REG_OFFSET                                                               = 32'h00000164;
+localparam int unsigned ABR_MLDSA_CTX_1__REG_ADDR                                                                 = 32'h10940164;
+localparam int unsigned ABR_MLDSA_CTX_2__REG_OFFSET                                                               = 32'h00000168;
+localparam int unsigned ABR_MLDSA_CTX_2__REG_ADDR                                                                 = 32'h10940168;
+localparam int unsigned ABR_MLDSA_CTX_3__REG_OFFSET                                                               = 32'h0000016C;
+localparam int unsigned ABR_MLDSA_CTX_3__REG_ADDR                                                                 = 32'h1094016C;
+localparam int unsigned ABR_MLDSA_CTX_4__REG_OFFSET                                                               = 32'h00000170;
+localparam int unsigned ABR_MLDSA_CTX_4__REG_ADDR                                                                 = 32'h10940170;
+localparam int unsigned ABR_MLDSA_CTX_5__REG_OFFSET                                                               = 32'h00000174;
+localparam int unsigned ABR_MLDSA_CTX_5__REG_ADDR                                                                 = 32'h10940174;
+localparam int unsigned ABR_MLDSA_CTX_6__REG_OFFSET                                                               = 32'h00000178;
+localparam int unsigned ABR_MLDSA_CTX_6__REG_ADDR                                                                 = 32'h10940178;
+localparam int unsigned ABR_MLDSA_CTX_7__REG_OFFSET                                                               = 32'h0000017C;
+localparam int unsigned ABR_MLDSA_CTX_7__REG_ADDR                                                                 = 32'h1094017C;
+localparam int unsigned ABR_MLDSA_CTX_8__REG_OFFSET                                                               = 32'h00000180;
+localparam int unsigned ABR_MLDSA_CTX_8__REG_ADDR                                                                 = 32'h10940180;
+localparam int unsigned ABR_MLDSA_CTX_9__REG_OFFSET                                                               = 32'h00000184;
+localparam int unsigned ABR_MLDSA_CTX_9__REG_ADDR                                                                 = 32'h10940184;
+localparam int unsigned ABR_MLDSA_CTX_10__REG_OFFSET                                                              = 32'h00000188;
+localparam int unsigned ABR_MLDSA_CTX_10__REG_ADDR                                                                = 32'h10940188;
+localparam int unsigned ABR_MLDSA_CTX_11__REG_OFFSET                                                              = 32'h0000018C;
+localparam int unsigned ABR_MLDSA_CTX_11__REG_ADDR                                                                = 32'h1094018C;
+localparam int unsigned ABR_MLDSA_CTX_12__REG_OFFSET                                                              = 32'h00000190;
+localparam int unsigned ABR_MLDSA_CTX_12__REG_ADDR                                                                = 32'h10940190;
+localparam int unsigned ABR_MLDSA_CTX_13__REG_OFFSET                                                              = 32'h00000194;
+localparam int unsigned ABR_MLDSA_CTX_13__REG_ADDR                                                                = 32'h10940194;
+localparam int unsigned ABR_MLDSA_CTX_14__REG_OFFSET                                                              = 32'h00000198;
+localparam int unsigned ABR_MLDSA_CTX_14__REG_ADDR                                                                = 32'h10940198;
+localparam int unsigned ABR_MLDSA_CTX_15__REG_OFFSET                                                              = 32'h0000019C;
+localparam int unsigned ABR_MLDSA_CTX_15__REG_ADDR                                                                = 32'h1094019C;
+localparam int unsigned ABR_MLDSA_CTX_16__REG_OFFSET                                                              = 32'h000001A0;
+localparam int unsigned ABR_MLDSA_CTX_16__REG_ADDR                                                                = 32'h109401A0;
+localparam int unsigned ABR_MLDSA_CTX_17__REG_OFFSET                                                              = 32'h000001A4;
+localparam int unsigned ABR_MLDSA_CTX_17__REG_ADDR                                                                = 32'h109401A4;
+localparam int unsigned ABR_MLDSA_CTX_18__REG_OFFSET                                                              = 32'h000001A8;
+localparam int unsigned ABR_MLDSA_CTX_18__REG_ADDR                                                                = 32'h109401A8;
+localparam int unsigned ABR_MLDSA_CTX_19__REG_OFFSET                                                              = 32'h000001AC;
+localparam int unsigned ABR_MLDSA_CTX_19__REG_ADDR                                                                = 32'h109401AC;
+localparam int unsigned ABR_MLDSA_CTX_20__REG_OFFSET                                                              = 32'h000001B0;
+localparam int unsigned ABR_MLDSA_CTX_20__REG_ADDR                                                                = 32'h109401B0;
+localparam int unsigned ABR_MLDSA_CTX_21__REG_OFFSET                                                              = 32'h000001B4;
+localparam int unsigned ABR_MLDSA_CTX_21__REG_ADDR                                                                = 32'h109401B4;
+localparam int unsigned ABR_MLDSA_CTX_22__REG_OFFSET                                                              = 32'h000001B8;
+localparam int unsigned ABR_MLDSA_CTX_22__REG_ADDR                                                                = 32'h109401B8;
+localparam int unsigned ABR_MLDSA_CTX_23__REG_OFFSET                                                              = 32'h000001BC;
+localparam int unsigned ABR_MLDSA_CTX_23__REG_ADDR                                                                = 32'h109401BC;
+localparam int unsigned ABR_MLDSA_CTX_24__REG_OFFSET                                                              = 32'h000001C0;
+localparam int unsigned ABR_MLDSA_CTX_24__REG_ADDR                                                                = 32'h109401C0;
+localparam int unsigned ABR_MLDSA_CTX_25__REG_OFFSET                                                              = 32'h000001C4;
+localparam int unsigned ABR_MLDSA_CTX_25__REG_ADDR                                                                = 32'h109401C4;
+localparam int unsigned ABR_MLDSA_CTX_26__REG_OFFSET                                                              = 32'h000001C8;
+localparam int unsigned ABR_MLDSA_CTX_26__REG_ADDR                                                                = 32'h109401C8;
+localparam int unsigned ABR_MLDSA_CTX_27__REG_OFFSET                                                              = 32'h000001CC;
+localparam int unsigned ABR_MLDSA_CTX_27__REG_ADDR                                                                = 32'h109401CC;
+localparam int unsigned ABR_MLDSA_CTX_28__REG_OFFSET                                                              = 32'h000001D0;
+localparam int unsigned ABR_MLDSA_CTX_28__REG_ADDR                                                                = 32'h109401D0;
+localparam int unsigned ABR_MLDSA_CTX_29__REG_OFFSET                                                              = 32'h000001D4;
+localparam int unsigned ABR_MLDSA_CTX_29__REG_ADDR                                                                = 32'h109401D4;
+localparam int unsigned ABR_MLDSA_CTX_30__REG_OFFSET                                                              = 32'h000001D8;
+localparam int unsigned ABR_MLDSA_CTX_30__REG_ADDR                                                                = 32'h109401D8;
+localparam int unsigned ABR_MLDSA_CTX_31__REG_OFFSET                                                              = 32'h000001DC;
+localparam int unsigned ABR_MLDSA_CTX_31__REG_ADDR                                                                = 32'h109401DC;
+localparam int unsigned ABR_MLDSA_CTX_32__REG_OFFSET                                                              = 32'h000001E0;
+localparam int unsigned ABR_MLDSA_CTX_32__REG_ADDR                                                                = 32'h109401E0;
+localparam int unsigned ABR_MLDSA_CTX_33__REG_OFFSET                                                              = 32'h000001E4;
+localparam int unsigned ABR_MLDSA_CTX_33__REG_ADDR                                                                = 32'h109401E4;
+localparam int unsigned ABR_MLDSA_CTX_34__REG_OFFSET                                                              = 32'h000001E8;
+localparam int unsigned ABR_MLDSA_CTX_34__REG_ADDR                                                                = 32'h109401E8;
+localparam int unsigned ABR_MLDSA_CTX_35__REG_OFFSET                                                              = 32'h000001EC;
+localparam int unsigned ABR_MLDSA_CTX_35__REG_ADDR                                                                = 32'h109401EC;
+localparam int unsigned ABR_MLDSA_CTX_36__REG_OFFSET                                                              = 32'h000001F0;
+localparam int unsigned ABR_MLDSA_CTX_36__REG_ADDR                                                                = 32'h109401F0;
+localparam int unsigned ABR_MLDSA_CTX_37__REG_OFFSET                                                              = 32'h000001F4;
+localparam int unsigned ABR_MLDSA_CTX_37__REG_ADDR                                                                = 32'h109401F4;
+localparam int unsigned ABR_MLDSA_CTX_38__REG_OFFSET                                                              = 32'h000001F8;
+localparam int unsigned ABR_MLDSA_CTX_38__REG_ADDR                                                                = 32'h109401F8;
+localparam int unsigned ABR_MLDSA_CTX_39__REG_OFFSET                                                              = 32'h000001FC;
+localparam int unsigned ABR_MLDSA_CTX_39__REG_ADDR                                                                = 32'h109401FC;
+localparam int unsigned ABR_MLDSA_CTX_40__REG_OFFSET                                                              = 32'h00000200;
+localparam int unsigned ABR_MLDSA_CTX_40__REG_ADDR                                                                = 32'h10940200;
+localparam int unsigned ABR_MLDSA_CTX_41__REG_OFFSET                                                              = 32'h00000204;
+localparam int unsigned ABR_MLDSA_CTX_41__REG_ADDR                                                                = 32'h10940204;
+localparam int unsigned ABR_MLDSA_CTX_42__REG_OFFSET                                                              = 32'h00000208;
+localparam int unsigned ABR_MLDSA_CTX_42__REG_ADDR                                                                = 32'h10940208;
+localparam int unsigned ABR_MLDSA_CTX_43__REG_OFFSET                                                              = 32'h0000020C;
+localparam int unsigned ABR_MLDSA_CTX_43__REG_ADDR                                                                = 32'h1094020C;
+localparam int unsigned ABR_MLDSA_CTX_44__REG_OFFSET                                                              = 32'h00000210;
+localparam int unsigned ABR_MLDSA_CTX_44__REG_ADDR                                                                = 32'h10940210;
+localparam int unsigned ABR_MLDSA_CTX_45__REG_OFFSET                                                              = 32'h00000214;
+localparam int unsigned ABR_MLDSA_CTX_45__REG_ADDR                                                                = 32'h10940214;
+localparam int unsigned ABR_MLDSA_CTX_46__REG_OFFSET                                                              = 32'h00000218;
+localparam int unsigned ABR_MLDSA_CTX_46__REG_ADDR                                                                = 32'h10940218;
+localparam int unsigned ABR_MLDSA_CTX_47__REG_OFFSET                                                              = 32'h0000021C;
+localparam int unsigned ABR_MLDSA_CTX_47__REG_ADDR                                                                = 32'h1094021C;
+localparam int unsigned ABR_MLDSA_CTX_48__REG_OFFSET                                                              = 32'h00000220;
+localparam int unsigned ABR_MLDSA_CTX_48__REG_ADDR                                                                = 32'h10940220;
+localparam int unsigned ABR_MLDSA_CTX_49__REG_OFFSET                                                              = 32'h00000224;
+localparam int unsigned ABR_MLDSA_CTX_49__REG_ADDR                                                                = 32'h10940224;
+localparam int unsigned ABR_MLDSA_CTX_50__REG_OFFSET                                                              = 32'h00000228;
+localparam int unsigned ABR_MLDSA_CTX_50__REG_ADDR                                                                = 32'h10940228;
+localparam int unsigned ABR_MLDSA_CTX_51__REG_OFFSET                                                              = 32'h0000022C;
+localparam int unsigned ABR_MLDSA_CTX_51__REG_ADDR                                                                = 32'h1094022C;
+localparam int unsigned ABR_MLDSA_CTX_52__REG_OFFSET                                                              = 32'h00000230;
+localparam int unsigned ABR_MLDSA_CTX_52__REG_ADDR                                                                = 32'h10940230;
+localparam int unsigned ABR_MLDSA_CTX_53__REG_OFFSET                                                              = 32'h00000234;
+localparam int unsigned ABR_MLDSA_CTX_53__REG_ADDR                                                                = 32'h10940234;
+localparam int unsigned ABR_MLDSA_CTX_54__REG_OFFSET                                                              = 32'h00000238;
+localparam int unsigned ABR_MLDSA_CTX_54__REG_ADDR                                                                = 32'h10940238;
+localparam int unsigned ABR_MLDSA_CTX_55__REG_OFFSET                                                              = 32'h0000023C;
+localparam int unsigned ABR_MLDSA_CTX_55__REG_ADDR                                                                = 32'h1094023C;
+localparam int unsigned ABR_MLDSA_CTX_56__REG_OFFSET                                                              = 32'h00000240;
+localparam int unsigned ABR_MLDSA_CTX_56__REG_ADDR                                                                = 32'h10940240;
+localparam int unsigned ABR_MLDSA_CTX_57__REG_OFFSET                                                              = 32'h00000244;
+localparam int unsigned ABR_MLDSA_CTX_57__REG_ADDR                                                                = 32'h10940244;
+localparam int unsigned ABR_MLDSA_CTX_58__REG_OFFSET                                                              = 32'h00000248;
+localparam int unsigned ABR_MLDSA_CTX_58__REG_ADDR                                                                = 32'h10940248;
+localparam int unsigned ABR_MLDSA_CTX_59__REG_OFFSET                                                              = 32'h0000024C;
+localparam int unsigned ABR_MLDSA_CTX_59__REG_ADDR                                                                = 32'h1094024C;
+localparam int unsigned ABR_MLDSA_CTX_60__REG_OFFSET                                                              = 32'h00000250;
+localparam int unsigned ABR_MLDSA_CTX_60__REG_ADDR                                                                = 32'h10940250;
+localparam int unsigned ABR_MLDSA_CTX_61__REG_OFFSET                                                              = 32'h00000254;
+localparam int unsigned ABR_MLDSA_CTX_61__REG_ADDR                                                                = 32'h10940254;
+localparam int unsigned ABR_MLDSA_CTX_62__REG_OFFSET                                                              = 32'h00000258;
+localparam int unsigned ABR_MLDSA_CTX_62__REG_ADDR                                                                = 32'h10940258;
+localparam int unsigned ABR_MLDSA_CTX_63__REG_OFFSET                                                              = 32'h0000025C;
+localparam int unsigned ABR_MLDSA_CTX_63__REG_ADDR                                                                = 32'h1094025C;
+
+
+//==============================================================================
+// Memory: MLDSA_PUBKEY
+//==============================================================================
+
+localparam int unsigned ABR_MLDSA_PUBKEY_MEM_BASE_ADDR                                                            = 32'h10941000;
+localparam int unsigned ABR_MLDSA_PUBKEY_MEM_SIZE                                                                 = 32'h00000A20;
+
+
+
+//==============================================================================
+// Memory: MLDSA_SIGNATURE
+//==============================================================================
+
+localparam int unsigned ABR_MLDSA_SIGNATURE_MEM_BASE_ADDR                                                         = 32'h10942000;
+localparam int unsigned ABR_MLDSA_SIGNATURE_MEM_SIZE                                                              = 32'h00001214;
+
+
+
+//==============================================================================
+// Memory: MLDSA_PRIVKEY_OUT
+//==============================================================================
+
+localparam int unsigned ABR_MLDSA_PRIVKEY_OUT_MEM_BASE_ADDR                                                       = 32'h10944000;
+localparam int unsigned ABR_MLDSA_PRIVKEY_OUT_MEM_SIZE                                                            = 32'h00001320;
+
+
+
+//==============================================================================
+// Memory: MLDSA_PRIVKEY_IN
+//==============================================================================
+
+localparam int unsigned ABR_MLDSA_PRIVKEY_IN_MEM_BASE_ADDR                                                        = 32'h10946000;
+localparam int unsigned ABR_MLDSA_PRIVKEY_IN_MEM_SIZE                                                             = 32'h00001320;
+
+localparam int unsigned ABR_KV_MLDSA_SEED_RD_CTRL_REG_OFFSET                                                      = 32'h00008000;
+localparam int unsigned ABR_KV_MLDSA_SEED_RD_CTRL_REG_ADDR                                                        = 32'h10948000;
+localparam int unsigned ABR_KV_MLDSA_SEED_RD_STATUS_REG_OFFSET                                                    = 32'h00008004;
+localparam int unsigned ABR_KV_MLDSA_SEED_RD_STATUS_REG_ADDR                                                      = 32'h10948004;
+
+
+//==============================================================================
+// Register File: intr_block_rf
+//==============================================================================
+
+localparam int unsigned ABR_INTR_BLOCK_RF_REG_FILE_BASE_ADDR                                                      = 32'h10948100;
+localparam int unsigned ABR_INTR_BLOCK_RF_REG_FILE_SIZE                                                           = 32'h00000208;
+
+localparam int unsigned ABR_INTR_BLOCK_RF_GLOBAL_INTR_EN_R_REG_OFFSET                                             = 32'h00000000;
+localparam int unsigned ABR_INTR_BLOCK_RF_GLOBAL_INTR_EN_R_REG_ADDR                                               = 32'h10948100;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTR_EN_R_REG_OFFSET                                              = 32'h00000004;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTR_EN_R_REG_ADDR                                                = 32'h10948104;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_INTR_EN_R_REG_OFFSET                                              = 32'h00000008;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_INTR_EN_R_REG_ADDR                                                = 32'h10948108;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_GLOBAL_INTR_R_REG_OFFSET                                          = 32'h0000000C;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_GLOBAL_INTR_R_REG_ADDR                                            = 32'h1094810C;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_GLOBAL_INTR_R_REG_OFFSET                                          = 32'h00000010;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_GLOBAL_INTR_R_REG_ADDR                                            = 32'h10948110;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_R_REG_OFFSET                                        = 32'h00000014;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_R_REG_ADDR                                          = 32'h10948114;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_INTERNAL_INTR_R_REG_OFFSET                                        = 32'h00000018;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_INTERNAL_INTR_R_REG_ADDR                                          = 32'h10948118;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTR_TRIG_R_REG_OFFSET                                            = 32'h0000001C;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTR_TRIG_R_REG_ADDR                                              = 32'h1094811C;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_INTR_TRIG_R_REG_OFFSET                                            = 32'h00000020;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_INTR_TRIG_R_REG_ADDR                                              = 32'h10948120;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_COUNT_R_REG_OFFSET                                  = 32'h00000100;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_COUNT_R_REG_ADDR                                    = 32'h10948200;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_CMD_DONE_INTR_COUNT_R_REG_OFFSET                                  = 32'h00000180;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_CMD_DONE_INTR_COUNT_R_REG_ADDR                                    = 32'h10948280;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_COUNT_INCR_R_REG_OFFSET                             = 32'h00000200;
+localparam int unsigned ABR_INTR_BLOCK_RF_ERROR_INTERNAL_INTR_COUNT_INCR_R_REG_ADDR                               = 32'h10948300;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_CMD_DONE_INTR_COUNT_INCR_R_REG_OFFSET                             = 32'h00000204;
+localparam int unsigned ABR_INTR_BLOCK_RF_NOTIF_CMD_DONE_INTR_COUNT_INCR_R_REG_ADDR                               = 32'h10948304;
+localparam int unsigned ABR_MLKEM_NAME_0__REG_OFFSET                                                              = 32'h00009000;
+localparam int unsigned ABR_MLKEM_NAME_0__REG_ADDR                                                                = 32'h10949000;
+localparam int unsigned ABR_MLKEM_NAME_1__REG_OFFSET                                                              = 32'h00009004;
+localparam int unsigned ABR_MLKEM_NAME_1__REG_ADDR                                                                = 32'h10949004;
+localparam int unsigned ABR_MLKEM_VERSION_0__REG_OFFSET                                                           = 32'h00009008;
+localparam int unsigned ABR_MLKEM_VERSION_0__REG_ADDR                                                             = 32'h10949008;
+localparam int unsigned ABR_MLKEM_VERSION_1__REG_OFFSET                                                           = 32'h0000900C;
+localparam int unsigned ABR_MLKEM_VERSION_1__REG_ADDR                                                             = 32'h1094900C;
+localparam int unsigned ABR_MLKEM_CTRL_REG_OFFSET                                                                 = 32'h00009010;
+localparam int unsigned ABR_MLKEM_CTRL_REG_ADDR                                                                   = 32'h10949010;
+localparam int unsigned ABR_MLKEM_STATUS_REG_OFFSET                                                               = 32'h00009014;
+localparam int unsigned ABR_MLKEM_STATUS_REG_ADDR                                                                 = 32'h10949014;
+localparam int unsigned ABR_MLKEM_SEED_D_0__REG_OFFSET                                                            = 32'h00009018;
+localparam int unsigned ABR_MLKEM_SEED_D_0__REG_ADDR                                                              = 32'h10949018;
+localparam int unsigned ABR_MLKEM_SEED_D_1__REG_OFFSET                                                            = 32'h0000901C;
+localparam int unsigned ABR_MLKEM_SEED_D_1__REG_ADDR                                                              = 32'h1094901C;
+localparam int unsigned ABR_MLKEM_SEED_D_2__REG_OFFSET                                                            = 32'h00009020;
+localparam int unsigned ABR_MLKEM_SEED_D_2__REG_ADDR                                                              = 32'h10949020;
+localparam int unsigned ABR_MLKEM_SEED_D_3__REG_OFFSET                                                            = 32'h00009024;
+localparam int unsigned ABR_MLKEM_SEED_D_3__REG_ADDR                                                              = 32'h10949024;
+localparam int unsigned ABR_MLKEM_SEED_D_4__REG_OFFSET                                                            = 32'h00009028;
+localparam int unsigned ABR_MLKEM_SEED_D_4__REG_ADDR                                                              = 32'h10949028;
+localparam int unsigned ABR_MLKEM_SEED_D_5__REG_OFFSET                                                            = 32'h0000902C;
+localparam int unsigned ABR_MLKEM_SEED_D_5__REG_ADDR                                                              = 32'h1094902C;
+localparam int unsigned ABR_MLKEM_SEED_D_6__REG_OFFSET                                                            = 32'h00009030;
+localparam int unsigned ABR_MLKEM_SEED_D_6__REG_ADDR                                                              = 32'h10949030;
+localparam int unsigned ABR_MLKEM_SEED_D_7__REG_OFFSET                                                            = 32'h00009034;
+localparam int unsigned ABR_MLKEM_SEED_D_7__REG_ADDR                                                              = 32'h10949034;
+localparam int unsigned ABR_MLKEM_SEED_Z_0__REG_OFFSET                                                            = 32'h00009038;
+localparam int unsigned ABR_MLKEM_SEED_Z_0__REG_ADDR                                                              = 32'h10949038;
+localparam int unsigned ABR_MLKEM_SEED_Z_1__REG_OFFSET                                                            = 32'h0000903C;
+localparam int unsigned ABR_MLKEM_SEED_Z_1__REG_ADDR                                                              = 32'h1094903C;
+localparam int unsigned ABR_MLKEM_SEED_Z_2__REG_OFFSET                                                            = 32'h00009040;
+localparam int unsigned ABR_MLKEM_SEED_Z_2__REG_ADDR                                                              = 32'h10949040;
+localparam int unsigned ABR_MLKEM_SEED_Z_3__REG_OFFSET                                                            = 32'h00009044;
+localparam int unsigned ABR_MLKEM_SEED_Z_3__REG_ADDR                                                              = 32'h10949044;
+localparam int unsigned ABR_MLKEM_SEED_Z_4__REG_OFFSET                                                            = 32'h00009048;
+localparam int unsigned ABR_MLKEM_SEED_Z_4__REG_ADDR                                                              = 32'h10949048;
+localparam int unsigned ABR_MLKEM_SEED_Z_5__REG_OFFSET                                                            = 32'h0000904C;
+localparam int unsigned ABR_MLKEM_SEED_Z_5__REG_ADDR                                                              = 32'h1094904C;
+localparam int unsigned ABR_MLKEM_SEED_Z_6__REG_OFFSET                                                            = 32'h00009050;
+localparam int unsigned ABR_MLKEM_SEED_Z_6__REG_ADDR                                                              = 32'h10949050;
+localparam int unsigned ABR_MLKEM_SEED_Z_7__REG_OFFSET                                                            = 32'h00009054;
+localparam int unsigned ABR_MLKEM_SEED_Z_7__REG_ADDR                                                              = 32'h10949054;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_0__REG_OFFSET                                                        = 32'h00009058;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_0__REG_ADDR                                                          = 32'h10949058;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_1__REG_OFFSET                                                        = 32'h0000905C;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_1__REG_ADDR                                                          = 32'h1094905C;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_2__REG_OFFSET                                                        = 32'h00009060;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_2__REG_ADDR                                                          = 32'h10949060;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_3__REG_OFFSET                                                        = 32'h00009064;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_3__REG_ADDR                                                          = 32'h10949064;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_4__REG_OFFSET                                                        = 32'h00009068;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_4__REG_ADDR                                                          = 32'h10949068;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_5__REG_OFFSET                                                        = 32'h0000906C;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_5__REG_ADDR                                                          = 32'h1094906C;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_6__REG_OFFSET                                                        = 32'h00009070;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_6__REG_ADDR                                                          = 32'h10949070;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_7__REG_OFFSET                                                        = 32'h00009074;
+localparam int unsigned ABR_MLKEM_SHARED_KEY_7__REG_ADDR                                                          = 32'h10949074;
+
+
+//==============================================================================
+// Memory: MLKEM_MSG
+//==============================================================================
+
+localparam int unsigned ABR_MLKEM_MSG_MEM_BASE_ADDR                                                               = 32'h10949080;
+localparam int unsigned ABR_MLKEM_MSG_MEM_SIZE                                                                    = 32'h00000020;
+
+
+
+//==============================================================================
+// Memory: MLKEM_DECAPS_KEY
+//==============================================================================
+
+localparam int unsigned ABR_MLKEM_DECAPS_KEY_MEM_BASE_ADDR                                                        = 32'h1094A000;
+localparam int unsigned ABR_MLKEM_DECAPS_KEY_MEM_SIZE                                                             = 32'h00000C60;
+
+
+
+//==============================================================================
+// Memory: MLKEM_ENCAPS_KEY
+//==============================================================================
+
+localparam int unsigned ABR_MLKEM_ENCAPS_KEY_MEM_BASE_ADDR                                                        = 32'h1094B000;
+localparam int unsigned ABR_MLKEM_ENCAPS_KEY_MEM_SIZE                                                             = 32'h00000620;
+
+
+
+//==============================================================================
+// Memory: MLKEM_CIPHERTEXT
+//==============================================================================
+
+localparam int unsigned ABR_MLKEM_CIPHERTEXT_MEM_BASE_ADDR                                                        = 32'h1094B800;
+localparam int unsigned ABR_MLKEM_CIPHERTEXT_MEM_SIZE                                                             = 32'h00000620;
+
+localparam int unsigned ABR_KV_MLKEM_SEED_RD_CTRL_REG_OFFSET                                                      = 32'h0000C000;
+localparam int unsigned ABR_KV_MLKEM_SEED_RD_CTRL_REG_ADDR                                                        = 32'h1094C000;
+localparam int unsigned ABR_KV_MLKEM_SEED_RD_STATUS_REG_OFFSET                                                    = 32'h0000C004;
+localparam int unsigned ABR_KV_MLKEM_SEED_RD_STATUS_REG_ADDR                                                      = 32'h1094C004;
+localparam int unsigned ABR_KV_MLKEM_MSG_RD_CTRL_REG_OFFSET                                                       = 32'h0000C008;
+localparam int unsigned ABR_KV_MLKEM_MSG_RD_CTRL_REG_ADDR                                                         = 32'h1094C008;
+localparam int unsigned ABR_KV_MLKEM_MSG_RD_STATUS_REG_OFFSET                                                     = 32'h0000C00C;
+localparam int unsigned ABR_KV_MLKEM_MSG_RD_STATUS_REG_ADDR                                                       = 32'h1094C00C;
+localparam int unsigned ABR_KV_MLKEM_SHAREDKEY_WR_CTRL_REG_OFFSET                                                 = 32'h0000C010;
+localparam int unsigned ABR_KV_MLKEM_SHAREDKEY_WR_CTRL_REG_ADDR                                                   = 32'h1094C010;
+localparam int unsigned ABR_KV_MLKEM_SHAREDKEY_WR_STATUS_REG_OFFSET                                               = 32'h0000C014;
+localparam int unsigned ABR_KV_MLKEM_SHAREDKEY_WR_STATUS_REG_ADDR                                                 = 32'h1094C014;
+
+
+//==============================================================================
+// Addresses for Address Map: entropy_pool
+//==============================================================================
+
+
+localparam int unsigned ENTROPY_POOL_REG_MAP_BASE_ADDR                                                            = 32'h10950000;
+localparam int unsigned ENTROPY_POOL_REG_MAP_SIZE                                                                 = 32'h00000018;
+
+
+localparam int unsigned ENTROPY_POOL_STATUS_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned ENTROPY_POOL_STATUS_REG_ADDR                                                              = 32'h10950000;
+localparam int unsigned ENTROPY_POOL_IRQ_CAUSE_REG_OFFSET                                                         = 32'h00000008;
+localparam int unsigned ENTROPY_POOL_IRQ_CAUSE_REG_ADDR                                                           = 32'h10950008;
+localparam int unsigned ENTROPY_POOL_DATA_REG_OFFSET                                                              = 32'h00000010;
+localparam int unsigned ENTROPY_POOL_DATA_REG_ADDR                                                                = 32'h10950010;
 
 
 //==============================================================================
@@ -3724,26 +4259,42 @@ localparam int unsigned SPI_CONTROLLER_REG_MAP_BASE_ADDR                        
 localparam int unsigned SPI_CONTROLLER_REG_MAP_SIZE                                                               = 32'h00000038;
 
 
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_REG_OFFSET                                                     = 32'h00000000;
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_REG_ADDR                                                       = 32'h10B00000;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_REG_ADDR                                                        = 32'h10B00000;
 localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_REG_OFFSET                                                     = 32'h00000004;
 localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_REG_ADDR                                                       = 32'h10B00004;
 localparam int unsigned SPI_CONTROLLER_INTR_TEST_REG_OFFSET                                                       = 32'h00000008;
 localparam int unsigned SPI_CONTROLLER_INTR_TEST_REG_ADDR                                                         = 32'h10B00008;
-localparam int unsigned SPI_CONTROLLER_CTRL_REG_OFFSET                                                            = 32'h00000010;
-localparam int unsigned SPI_CONTROLLER_CTRL_REG_ADDR                                                              = 32'h10B00010;
+localparam int unsigned SPI_CONTROLLER_ALERT_TEST_REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned SPI_CONTROLLER_ALERT_TEST_REG_ADDR                                                        = 32'h10B0000C;
+localparam int unsigned SPI_CONTROLLER_CONTROL_REG_OFFSET                                                         = 32'h00000010;
+localparam int unsigned SPI_CONTROLLER_CONTROL_REG_ADDR                                                           = 32'h10B00010;
 localparam int unsigned SPI_CONTROLLER_STATUS_REG_OFFSET                                                          = 32'h00000014;
 localparam int unsigned SPI_CONTROLLER_STATUS_REG_ADDR                                                            = 32'h10B00014;
-localparam int unsigned SPI_CONTROLLER_CFG_REG_OFFSET                                                             = 32'h00000018;
-localparam int unsigned SPI_CONTROLLER_CFG_REG_ADDR                                                               = 32'h10B00018;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_REG_ADDR                                                        = 32'h10B00018;
 localparam int unsigned SPI_CONTROLLER_CSID_REG_OFFSET                                                            = 32'h0000001C;
 localparam int unsigned SPI_CONTROLLER_CSID_REG_ADDR                                                              = 32'h10B0001C;
-localparam int unsigned SPI_CONTROLLER_CMD_REG_OFFSET                                                             = 32'h00000020;
-localparam int unsigned SPI_CONTROLLER_CMD_REG_ADDR                                                               = 32'h10B00020;
-localparam int unsigned SPI_CONTROLLER_RXDATA_REG_OFFSET                                                          = 32'h00000024;
-localparam int unsigned SPI_CONTROLLER_RXDATA_REG_ADDR                                                            = 32'h10B00024;
-localparam int unsigned SPI_CONTROLLER_TXDATA_REG_OFFSET                                                          = 32'h00000028;
-localparam int unsigned SPI_CONTROLLER_TXDATA_REG_ADDR                                                            = 32'h10B00028;
+localparam int unsigned SPI_CONTROLLER_COMMAND_REG_OFFSET                                                         = 32'h00000020;
+localparam int unsigned SPI_CONTROLLER_COMMAND_REG_ADDR                                                           = 32'h10B00020;
+
+
+//==============================================================================
+// Memory: RXDATA[0]
+//==============================================================================
+
+localparam int unsigned SPI_CONTROLLER_RXDATA_0__MEM_BASE_ADDR                                                    = 32'h10B00024;
+localparam int unsigned SPI_CONTROLLER_RXDATA_0__MEM_SIZE                                                         = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: TXDATA[0]
+//==============================================================================
+
+localparam int unsigned SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR                                                    = 32'h10B00028;
+localparam int unsigned SPI_CONTROLLER_TXDATA_0__MEM_SIZE                                                         = 32'h00000004;
+
 localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_OFFSET                                                    = 32'h0000002C;
 localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_ADDR                                                      = 32'h10B0002C;
 localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_REG_OFFSET                                                    = 32'h00000030;
@@ -6145,9 +6696,45 @@ localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT           
 localparam longint unsigned EFUSE_MMR_TOKEN_EOP_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_DEFAULT                                               = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_NAME_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_VERSION_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_CTRL_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_STATUS_REG_DEFAULT                                                      = 32'h00000000;
+localparam longint unsigned ABR_REG_ABR_ENTROPY_REG_DEFAULT                                                       = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_SEED_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_SIGN_RND_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_MSG_REG_DEFAULT                                                         = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_VERIFY_RES_REG_DEFAULT                                                  = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_EXTERNAL_MU_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_MSG_STROBE_REG_DEFAULT                                                  = 32'h0000000F;
+localparam longint unsigned ABR_REG_MLDSA_CTX_CONFIG_REG_DEFAULT                                                  = 32'h00000000;
+localparam longint unsigned ABR_REG_MLDSA_CTX_REG_DEFAULT                                                         = 32'h00000000;
+localparam longint unsigned ABR_REG_KV_READ_CTRL_REG_REG_DEFAULT                                                  = 32'h00000000;
+localparam longint unsigned ABR_REG_KV_STATUS_REG_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_GLOBAL_INTR_EN_T_REG_DEFAULT                                             = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_ERROR_INTR_EN_T_REG_DEFAULT                                              = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_NOTIF_INTR_EN_T_REG_DEFAULT                                              = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_GLOBAL_INTR_T_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_ERROR_INTR_T_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_NOTIF_INTR_T_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_ERROR_INTR_TRIG_T_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_NOTIF_INTR_TRIG_T_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_INTR_COUNT_T_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned INTR_BLOCK_T_INTR_COUNT_INCR_T_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned ABR_REG_MLKEM_NAME_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned ABR_REG_MLKEM_VERSION_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned ABR_REG_MLKEM_CTRL_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned ABR_REG_MLKEM_STATUS_REG_DEFAULT                                                      = 32'h00000000;
+localparam longint unsigned ABR_REG_MLKEM_SEED_D_REG_DEFAULT                                                      = 32'h00000000;
+localparam longint unsigned ABR_REG_MLKEM_SEED_Z_REG_DEFAULT                                                      = 32'h00000000;
+localparam longint unsigned ABR_REG_MLKEM_SHARED_KEY_REG_DEFAULT                                                  = 32'h00000000;
+localparam longint unsigned ABR_REG_KV_WRITE_CTRL_REG_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned SEP_ENTROPY_POOL_STATUS_REG_DEFAULT                                                   = 64'h0000000000000000;
+localparam longint unsigned SEP_ENTROPY_POOL_IRQ_CAUSE_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned SEP_ENTROPY_POOL_DATA_REG_DEFAULT                                                     = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_READ_DATA_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned AXIL_MAILBOX_STATUS_REG_DEFAULT                                                       = 64'h0000000000000000;
+localparam longint unsigned AXIL_MAILBOX_STATUS_REG_DEFAULT                                                       = 64'h0000000000000001;
 localparam longint unsigned AXIL_MAILBOX_ERROR_REG_DEFAULT                                                        = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_WIRQT_REG_DEFAULT                                                        = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_RIRQT_REG_DEFAULT                                                        = 64'h0000000000000000;
@@ -6189,17 +6776,16 @@ localparam longint unsigned SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_DEFAULT          
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_DEFAULT                                        = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT                                         = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_REG_DEFAULT                                               = 64'h00000000DEADBEEF;
-localparam longint unsigned SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned SPI_CONTROLLER_INTR_STATE_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_INTR_ENABLE_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_INTR_TEST_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_CTRL_REG_DEFAULT                                                       = 32'h0000007F;
+localparam longint unsigned SPI_CONTROLLER_ALERT_TEST_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned SPI_CONTROLLER_CONTROL_REG_DEFAULT                                                    = 32'h0000007F;
 localparam longint unsigned SPI_CONTROLLER_STATUS_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_CFG_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned SPI_CONTROLLER_CONFIGOPTS_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_CSID_REG_DEFAULT                                                       = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_CMD_REG_DEFAULT                                                        = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_RXDATA_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_TXDATA_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT                                               = 32'h00011111;
+localparam longint unsigned SPI_CONTROLLER_COMMAND_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT                                               = 32'h0000001F;
 localparam longint unsigned SPI_CONTROLLER_ERROR_STATUS_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_EVENT_ENABLE_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_REG_DEFAULT                                                  = 64'h0000000000000000;
@@ -6512,6 +7098,9 @@ localparam int unsigned OTBN_ERR_BITS_RND_REP_CHK_FAIL_SHIFT                    
 
 localparam int unsigned OTBN_ERR_BITS_RND_FIPS_CHK_FAIL_MASK                                                      = 32'h80;
 localparam int unsigned OTBN_ERR_BITS_RND_FIPS_CHK_FAIL_SHIFT                                                     = 7;
+
+localparam int unsigned OTBN_ERR_BITS_MAI_SOFTWARE_ERROR_MASK                                                     = 32'h100;
+localparam int unsigned OTBN_ERR_BITS_MAI_SOFTWARE_ERROR_SHIFT                                                    = 8;
 
 localparam int unsigned OTBN_ERR_BITS_IMEM_INTG_VIOLATION_MASK                                                    = 32'h10000;
 localparam int unsigned OTBN_ERR_BITS_IMEM_INTG_VIOLATION_SHIFT                                                   = 16;
@@ -6939,17 +7528,8 @@ localparam int unsigned CSRNG_CTRL_READ_INT_STATE_SHIFT                         
 localparam int unsigned CSRNG_CTRL_FIPS_FORCE_ENABLE_MASK                                                         = 32'hF000;
 localparam int unsigned CSRNG_CTRL_FIPS_FORCE_ENABLE_SHIFT                                                        = 12;
 
-localparam int unsigned CSRNG_CMD_REQ_ACMD_MASK                                                                   = 32'hF;
-localparam int unsigned CSRNG_CMD_REQ_ACMD_SHIFT                                                                  = 0;
-
-localparam int unsigned CSRNG_CMD_REQ_CLEN_MASK                                                                   = 32'hF0;
-localparam int unsigned CSRNG_CMD_REQ_CLEN_SHIFT                                                                  = 4;
-
-localparam int unsigned CSRNG_CMD_REQ_FLAG0_MASK                                                                  = 32'hF00;
-localparam int unsigned CSRNG_CMD_REQ_FLAG0_SHIFT                                                                 = 8;
-
-localparam int unsigned CSRNG_CMD_REQ_GLEN_MASK                                                                   = 32'h1FFF000;
-localparam int unsigned CSRNG_CMD_REQ_GLEN_SHIFT                                                                  = 12;
+localparam int unsigned CSRNG_CMD_REQ_CMD_REQ_MASK                                                                = 32'hFFFFFFFF;
+localparam int unsigned CSRNG_CMD_REQ_CMD_REQ_SHIFT                                                               = 0;
 
 localparam int unsigned CSRNG_RESEED_INTERVAL_RESEED_INTERVAL_MASK                                                = 32'hFFFFFFFF;
 localparam int unsigned CSRNG_RESEED_INTERVAL_RESEED_INTERVAL_SHIFT                                               = 0;
@@ -8169,6 +8749,210 @@ localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_SHIF
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_MASK                               = 32'h10000;
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_SHIFT                              = 16;
 
+localparam int unsigned ABR_REG_MLDSA_NAME_NAME_MASK                                                              = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLDSA_NAME_NAME_SHIFT                                                             = 0;
+
+localparam int unsigned ABR_REG_MLDSA_VERSION_VERSION_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLDSA_VERSION_VERSION_SHIFT                                                       = 0;
+
+localparam int unsigned ABR_REG_MLDSA_CTRL_CTRL_MASK                                                              = 32'h7;
+localparam int unsigned ABR_REG_MLDSA_CTRL_CTRL_SHIFT                                                             = 0;
+
+localparam int unsigned ABR_REG_MLDSA_CTRL_ZEROIZE_MASK                                                           = 32'h8;
+localparam int unsigned ABR_REG_MLDSA_CTRL_ZEROIZE_SHIFT                                                          = 3;
+
+localparam int unsigned ABR_REG_MLDSA_CTRL_PCR_SIGN_MASK                                                          = 32'h10;
+localparam int unsigned ABR_REG_MLDSA_CTRL_PCR_SIGN_SHIFT                                                         = 4;
+
+localparam int unsigned ABR_REG_MLDSA_CTRL_EXTERNAL_MU_MASK                                                       = 32'h20;
+localparam int unsigned ABR_REG_MLDSA_CTRL_EXTERNAL_MU_SHIFT                                                      = 5;
+
+localparam int unsigned ABR_REG_MLDSA_CTRL_STREAM_MSG_MASK                                                        = 32'h40;
+localparam int unsigned ABR_REG_MLDSA_CTRL_STREAM_MSG_SHIFT                                                       = 6;
+
+localparam int unsigned ABR_REG_MLDSA_STATUS_READY_MASK                                                           = 32'h1;
+localparam int unsigned ABR_REG_MLDSA_STATUS_READY_SHIFT                                                          = 0;
+
+localparam int unsigned ABR_REG_MLDSA_STATUS_VALID_MASK                                                           = 32'h2;
+localparam int unsigned ABR_REG_MLDSA_STATUS_VALID_SHIFT                                                          = 1;
+
+localparam int unsigned ABR_REG_MLDSA_STATUS_MSG_STREAM_READY_MASK                                                = 32'h4;
+localparam int unsigned ABR_REG_MLDSA_STATUS_MSG_STREAM_READY_SHIFT                                               = 2;
+
+localparam int unsigned ABR_REG_MLDSA_STATUS_ERROR_MASK                                                           = 32'h8;
+localparam int unsigned ABR_REG_MLDSA_STATUS_ERROR_SHIFT                                                          = 3;
+
+localparam int unsigned ABR_REG_ABR_ENTROPY_ENTROPY_MASK                                                          = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_ABR_ENTROPY_ENTROPY_SHIFT                                                         = 0;
+
+localparam int unsigned ABR_REG_MLDSA_SEED_SEED_MASK                                                              = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLDSA_SEED_SEED_SHIFT                                                             = 0;
+
+localparam int unsigned ABR_REG_MLDSA_SIGN_RND_SIGN_RND_MASK                                                      = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLDSA_SIGN_RND_SIGN_RND_SHIFT                                                     = 0;
+
+localparam int unsigned ABR_REG_MLDSA_MSG_MSG_MASK                                                                = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLDSA_MSG_MSG_SHIFT                                                               = 0;
+
+localparam int unsigned ABR_REG_MLDSA_VERIFY_RES_VERIFY_RES_MASK                                                  = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLDSA_VERIFY_RES_VERIFY_RES_SHIFT                                                 = 0;
+
+localparam int unsigned ABR_REG_MLDSA_EXTERNAL_MU_EXTERNAL_MU_MASK                                                = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLDSA_EXTERNAL_MU_EXTERNAL_MU_SHIFT                                               = 0;
+
+localparam int unsigned ABR_REG_MLDSA_MSG_STROBE_STROBE_MASK                                                      = 32'hF;
+localparam int unsigned ABR_REG_MLDSA_MSG_STROBE_STROBE_SHIFT                                                     = 0;
+
+localparam int unsigned ABR_REG_MLDSA_CTX_CONFIG_CTX_SIZE_MASK                                                    = 32'hFF;
+localparam int unsigned ABR_REG_MLDSA_CTX_CONFIG_CTX_SIZE_SHIFT                                                   = 0;
+
+localparam int unsigned ABR_REG_MLDSA_CTX_CTX_MASK                                                                = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLDSA_CTX_CTX_SHIFT                                                               = 0;
+
+localparam int unsigned ABR_REG_KV_READ_CTRL_REG_READ_EN_MASK                                                     = 32'h1;
+localparam int unsigned ABR_REG_KV_READ_CTRL_REG_READ_EN_SHIFT                                                    = 0;
+
+localparam int unsigned ABR_REG_KV_READ_CTRL_REG_READ_ENTRY_MASK                                                  = 32'h3E;
+localparam int unsigned ABR_REG_KV_READ_CTRL_REG_READ_ENTRY_SHIFT                                                 = 1;
+
+localparam int unsigned ABR_REG_KV_READ_CTRL_REG_PCR_HASH_EXTEND_MASK                                             = 32'h40;
+localparam int unsigned ABR_REG_KV_READ_CTRL_REG_PCR_HASH_EXTEND_SHIFT                                            = 6;
+
+localparam int unsigned ABR_REG_KV_READ_CTRL_REG_RSVD_MASK                                                        = 32'hFFFFFF80;
+localparam int unsigned ABR_REG_KV_READ_CTRL_REG_RSVD_SHIFT                                                       = 7;
+
+localparam int unsigned ABR_REG_KV_STATUS_REG_READY_MASK                                                          = 32'h1;
+localparam int unsigned ABR_REG_KV_STATUS_REG_READY_SHIFT                                                         = 0;
+
+localparam int unsigned ABR_REG_KV_STATUS_REG_VALID_MASK                                                          = 32'h2;
+localparam int unsigned ABR_REG_KV_STATUS_REG_VALID_SHIFT                                                         = 1;
+
+localparam int unsigned ABR_REG_KV_STATUS_REG_ERROR_MASK                                                          = 32'h3FC;
+localparam int unsigned ABR_REG_KV_STATUS_REG_ERROR_SHIFT                                                         = 2;
+
+localparam int unsigned INTR_BLOCK_T_GLOBAL_INTR_EN_T_ERROR_EN_MASK                                               = 32'h1;
+localparam int unsigned INTR_BLOCK_T_GLOBAL_INTR_EN_T_ERROR_EN_SHIFT                                              = 0;
+
+localparam int unsigned INTR_BLOCK_T_GLOBAL_INTR_EN_T_NOTIF_EN_MASK                                               = 32'h2;
+localparam int unsigned INTR_BLOCK_T_GLOBAL_INTR_EN_T_NOTIF_EN_SHIFT                                              = 1;
+
+localparam int unsigned INTR_BLOCK_T_ERROR_INTR_EN_T_ERROR_INTERNAL_EN_MASK                                       = 32'h1;
+localparam int unsigned INTR_BLOCK_T_ERROR_INTR_EN_T_ERROR_INTERNAL_EN_SHIFT                                      = 0;
+
+localparam int unsigned INTR_BLOCK_T_NOTIF_INTR_EN_T_NOTIF_CMD_DONE_EN_MASK                                       = 32'h1;
+localparam int unsigned INTR_BLOCK_T_NOTIF_INTR_EN_T_NOTIF_CMD_DONE_EN_SHIFT                                      = 0;
+
+localparam int unsigned INTR_BLOCK_T_GLOBAL_INTR_T_AGG_STS_MASK                                                   = 32'h1;
+localparam int unsigned INTR_BLOCK_T_GLOBAL_INTR_T_AGG_STS_SHIFT                                                  = 0;
+
+localparam int unsigned INTR_BLOCK_T_ERROR_INTR_T_ERROR_INTERNAL_STS_MASK                                         = 32'h1;
+localparam int unsigned INTR_BLOCK_T_ERROR_INTR_T_ERROR_INTERNAL_STS_SHIFT                                        = 0;
+
+localparam int unsigned INTR_BLOCK_T_NOTIF_INTR_T_NOTIF_CMD_DONE_STS_MASK                                         = 32'h1;
+localparam int unsigned INTR_BLOCK_T_NOTIF_INTR_T_NOTIF_CMD_DONE_STS_SHIFT                                        = 0;
+
+localparam int unsigned INTR_BLOCK_T_ERROR_INTR_TRIG_T_ERROR_INTERNAL_TRIG_MASK                                   = 32'h1;
+localparam int unsigned INTR_BLOCK_T_ERROR_INTR_TRIG_T_ERROR_INTERNAL_TRIG_SHIFT                                  = 0;
+
+localparam int unsigned INTR_BLOCK_T_NOTIF_INTR_TRIG_T_NOTIF_CMD_DONE_TRIG_MASK                                   = 32'h1;
+localparam int unsigned INTR_BLOCK_T_NOTIF_INTR_TRIG_T_NOTIF_CMD_DONE_TRIG_SHIFT                                  = 0;
+
+localparam int unsigned INTR_BLOCK_T_INTR_COUNT_T_CNT_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned INTR_BLOCK_T_INTR_COUNT_T_CNT_SHIFT                                                       = 0;
+
+localparam int unsigned INTR_BLOCK_T_INTR_COUNT_INCR_T_PULSE_MASK                                                 = 32'h1;
+localparam int unsigned INTR_BLOCK_T_INTR_COUNT_INCR_T_PULSE_SHIFT                                                = 0;
+
+localparam int unsigned ABR_REG_MLKEM_NAME_NAME_MASK                                                              = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLKEM_NAME_NAME_SHIFT                                                             = 0;
+
+localparam int unsigned ABR_REG_MLKEM_VERSION_VERSION_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLKEM_VERSION_VERSION_SHIFT                                                       = 0;
+
+localparam int unsigned ABR_REG_MLKEM_CTRL_CTRL_MASK                                                              = 32'h7;
+localparam int unsigned ABR_REG_MLKEM_CTRL_CTRL_SHIFT                                                             = 0;
+
+localparam int unsigned ABR_REG_MLKEM_CTRL_ZEROIZE_MASK                                                           = 32'h8;
+localparam int unsigned ABR_REG_MLKEM_CTRL_ZEROIZE_SHIFT                                                          = 3;
+
+localparam int unsigned ABR_REG_MLKEM_STATUS_READY_MASK                                                           = 32'h1;
+localparam int unsigned ABR_REG_MLKEM_STATUS_READY_SHIFT                                                          = 0;
+
+localparam int unsigned ABR_REG_MLKEM_STATUS_VALID_MASK                                                           = 32'h2;
+localparam int unsigned ABR_REG_MLKEM_STATUS_VALID_SHIFT                                                          = 1;
+
+localparam int unsigned ABR_REG_MLKEM_STATUS_ERROR_MASK                                                           = 32'h4;
+localparam int unsigned ABR_REG_MLKEM_STATUS_ERROR_SHIFT                                                          = 2;
+
+localparam int unsigned ABR_REG_MLKEM_SEED_D_SEED_MASK                                                            = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLKEM_SEED_D_SEED_SHIFT                                                           = 0;
+
+localparam int unsigned ABR_REG_MLKEM_SEED_Z_SEED_MASK                                                            = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLKEM_SEED_Z_SEED_SHIFT                                                           = 0;
+
+localparam int unsigned ABR_REG_MLKEM_SHARED_KEY_KEY_MASK                                                         = 32'hFFFFFFFF;
+localparam int unsigned ABR_REG_MLKEM_SHARED_KEY_KEY_SHIFT                                                        = 0;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_WRITE_EN_MASK                                                   = 32'h1;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_WRITE_EN_SHIFT                                                  = 0;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_WRITE_ENTRY_MASK                                                = 32'h3E;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_WRITE_ENTRY_SHIFT                                               = 1;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_HMAC_KEY_DEST_VALID_MASK                                        = 32'h40;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_HMAC_KEY_DEST_VALID_SHIFT                                       = 6;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_HMAC_BLOCK_DEST_VALID_MASK                                      = 32'h80;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_HMAC_BLOCK_DEST_VALID_SHIFT                                     = 7;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_MLDSA_SEED_DEST_VALID_MASK                                      = 32'h100;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_MLDSA_SEED_DEST_VALID_SHIFT                                     = 8;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_ECC_PKEY_DEST_VALID_MASK                                        = 32'h200;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_ECC_PKEY_DEST_VALID_SHIFT                                       = 9;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_ECC_SEED_DEST_VALID_MASK                                        = 32'h400;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_ECC_SEED_DEST_VALID_SHIFT                                       = 10;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_AES_KEY_DEST_VALID_MASK                                         = 32'h800;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_AES_KEY_DEST_VALID_SHIFT                                        = 11;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_MLKEM_SEED_DEST_VALID_MASK                                      = 32'h1000;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_MLKEM_SEED_DEST_VALID_SHIFT                                     = 12;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_MLKEM_MSG_DEST_VALID_MASK                                       = 32'h2000;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_MLKEM_MSG_DEST_VALID_SHIFT                                      = 13;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_DMA_DATA_DEST_VALID_MASK                                        = 32'h4000;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_DMA_DATA_DEST_VALID_SHIFT                                       = 14;
+
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_RSVD_MASK                                                       = 32'hFFFF8000;
+localparam int unsigned ABR_REG_KV_WRITE_CTRL_REG_RSVD_SHIFT                                                      = 15;
+
+localparam longint unsigned SEP_ENTROPY_POOL_STATUS_FIFO_LEVEL_MASK                                               = 64'h3F;
+localparam     int unsigned SEP_ENTROPY_POOL_STATUS_FIFO_LEVEL_SHIFT                                              = 0;
+
+localparam longint unsigned SEP_ENTROPY_POOL_STATUS_POOL_LOW_MASK                                                 = 64'h40;
+localparam     int unsigned SEP_ENTROPY_POOL_STATUS_POOL_LOW_SHIFT                                                = 6;
+
+localparam longint unsigned SEP_ENTROPY_POOL_STATUS_FILL_STALL_MASK                                               = 64'h80;
+localparam     int unsigned SEP_ENTROPY_POOL_STATUS_FILL_STALL_SHIFT                                              = 7;
+
+localparam longint unsigned SEP_ENTROPY_POOL_STATUS_POOL_ERROR_MASK                                               = 64'h100;
+localparam     int unsigned SEP_ENTROPY_POOL_STATUS_POOL_ERROR_SHIFT                                              = 8;
+
+localparam longint unsigned SEP_ENTROPY_POOL_IRQ_CAUSE_POOL_LOW_MASK                                              = 64'h1;
+localparam     int unsigned SEP_ENTROPY_POOL_IRQ_CAUSE_POOL_LOW_SHIFT                                             = 0;
+
+localparam longint unsigned SEP_ENTROPY_POOL_IRQ_CAUSE_FILL_STALL_MASK                                            = 64'h2;
+localparam     int unsigned SEP_ENTROPY_POOL_IRQ_CAUSE_FILL_STALL_SHIFT                                           = 1;
+
+localparam longint unsigned SEP_ENTROPY_POOL_IRQ_CAUSE_POOL_ERROR_MASK                                            = 64'h4;
+localparam     int unsigned SEP_ENTROPY_POOL_IRQ_CAUSE_POOL_ERROR_SHIFT                                           = 2;
+
+localparam longint unsigned SEP_ENTROPY_POOL_DATA_ENTROPY_MASK                                                    = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned SEP_ENTROPY_POOL_DATA_ENTROPY_SHIFT                                                   = 0;
+
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_SHIFT                                              = 0;
 
@@ -8427,38 +9211,41 @@ localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_SHIFT         
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK                                           = 64'hFFFFFFFF;
 localparam     int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_SHIFT                                          = 0;
 
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_ERROR_MASK                                                     = 32'h1;
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_ERROR_SHIFT                                                    = 0;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_ERROR_MASK                                                      = 32'h1;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_ERROR_SHIFT                                                     = 0;
 
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_SPI_EVENT_MASK                                                 = 32'h10;
-localparam int unsigned SPI_CONTROLLER_INTR_STATUS_SPI_EVENT_SHIFT                                                = 4;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_SPI_EVENT_MASK                                                  = 32'h2;
+localparam int unsigned SPI_CONTROLLER_INTR_STATE_SPI_EVENT_SHIFT                                                 = 1;
 
 localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_ERROR_MASK                                                     = 32'h1;
 localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_ERROR_SHIFT                                                    = 0;
 
-localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_MASK                                                 = 32'h10;
-localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_SHIFT                                                = 4;
+localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_MASK                                                 = 32'h2;
+localparam int unsigned SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_SHIFT                                                = 1;
 
 localparam int unsigned SPI_CONTROLLER_INTR_TEST_ERROR_MASK                                                       = 32'h1;
 localparam int unsigned SPI_CONTROLLER_INTR_TEST_ERROR_SHIFT                                                      = 0;
 
-localparam int unsigned SPI_CONTROLLER_INTR_TEST_SPI_EVENT_MASK                                                   = 32'h10;
-localparam int unsigned SPI_CONTROLLER_INTR_TEST_SPI_EVENT_SHIFT                                                  = 4;
+localparam int unsigned SPI_CONTROLLER_INTR_TEST_SPI_EVENT_MASK                                                   = 32'h2;
+localparam int unsigned SPI_CONTROLLER_INTR_TEST_SPI_EVENT_SHIFT                                                  = 1;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_RX_WATERMARK_MASK                                                     = 32'hFF;
-localparam int unsigned SPI_CONTROLLER_CTRL_RX_WATERMARK_SHIFT                                                    = 0;
+localparam int unsigned SPI_CONTROLLER_ALERT_TEST_FATAL_FAULT_MASK                                                = 32'h1;
+localparam int unsigned SPI_CONTROLLER_ALERT_TEST_FATAL_FAULT_SHIFT                                               = 0;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_TX_WATERMARK_MASK                                                     = 32'hFF00;
-localparam int unsigned SPI_CONTROLLER_CTRL_TX_WATERMARK_SHIFT                                                    = 8;
+localparam int unsigned SPI_CONTROLLER_CONTROL_RX_WATERMARK_MASK                                                  = 32'hFF;
+localparam int unsigned SPI_CONTROLLER_CONTROL_RX_WATERMARK_SHIFT                                                 = 0;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_OUTPUT_EN_MASK                                                        = 32'h20000000;
-localparam int unsigned SPI_CONTROLLER_CTRL_OUTPUT_EN_SHIFT                                                       = 29;
+localparam int unsigned SPI_CONTROLLER_CONTROL_TX_WATERMARK_MASK                                                  = 32'hFF00;
+localparam int unsigned SPI_CONTROLLER_CONTROL_TX_WATERMARK_SHIFT                                                 = 8;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_SW_RST_MASK                                                           = 32'h40000000;
-localparam int unsigned SPI_CONTROLLER_CTRL_SW_RST_SHIFT                                                          = 30;
+localparam int unsigned SPI_CONTROLLER_CONTROL_OUTPUT_EN_MASK                                                     = 32'h20000000;
+localparam int unsigned SPI_CONTROLLER_CONTROL_OUTPUT_EN_SHIFT                                                    = 29;
 
-localparam int unsigned SPI_CONTROLLER_CTRL_SPIEN_MASK                                                            = 32'h80000000;
-localparam int unsigned SPI_CONTROLLER_CTRL_SPIEN_SHIFT                                                           = 31;
+localparam int unsigned SPI_CONTROLLER_CONTROL_SW_RST_MASK                                                        = 32'h40000000;
+localparam int unsigned SPI_CONTROLLER_CONTROL_SW_RST_SHIFT                                                       = 30;
+
+localparam int unsigned SPI_CONTROLLER_CONTROL_SPIEN_MASK                                                         = 32'h80000000;
+localparam int unsigned SPI_CONTROLLER_CONTROL_SPIEN_SHIFT                                                        = 31;
 
 localparam int unsigned SPI_CONTROLLER_STATUS_TXQD_MASK                                                           = 32'hFF;
 localparam int unsigned SPI_CONTROLLER_STATUS_TXQD_SHIFT                                                          = 0;
@@ -8502,98 +9289,92 @@ localparam int unsigned SPI_CONTROLLER_STATUS_ACTIVE_SHIFT                      
 localparam int unsigned SPI_CONTROLLER_STATUS_READY_MASK                                                          = 32'h80000000;
 localparam int unsigned SPI_CONTROLLER_STATUS_READY_SHIFT                                                         = 31;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CLKDIV_MASK                                                            = 32'hFFFF;
-localparam int unsigned SPI_CONTROLLER_CFG_CLKDIV_SHIFT                                                           = 0;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CLKDIV_MASK                                                     = 32'hFFFF;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CLKDIV_SHIFT                                                    = 0;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CSNIDLE_MASK                                                           = 32'hF0000;
-localparam int unsigned SPI_CONTROLLER_CFG_CSNIDLE_SHIFT                                                          = 16;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNIDLE_MASK                                                    = 32'hF0000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNIDLE_SHIFT                                                   = 16;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CSNTRAIL_MASK                                                          = 32'hF00000;
-localparam int unsigned SPI_CONTROLLER_CFG_CSNTRAIL_SHIFT                                                         = 20;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNTRAIL_MASK                                                   = 32'hF00000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNTRAIL_SHIFT                                                  = 20;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CSNLEAD_MASK                                                           = 32'hF000000;
-localparam int unsigned SPI_CONTROLLER_CFG_CSNLEAD_SHIFT                                                          = 24;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNLEAD_MASK                                                    = 32'hF000000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CSNLEAD_SHIFT                                                   = 24;
 
-localparam int unsigned SPI_CONTROLLER_CFG_FULLCYC_MASK                                                           = 32'h20000000;
-localparam int unsigned SPI_CONTROLLER_CFG_FULLCYC_SHIFT                                                          = 29;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_FULLCYC_MASK                                                    = 32'h20000000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_FULLCYC_SHIFT                                                   = 29;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CPHA_MASK                                                              = 32'h40000000;
-localparam int unsigned SPI_CONTROLLER_CFG_CPHA_SHIFT                                                             = 30;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CPHA_MASK                                                       = 32'h40000000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CPHA_SHIFT                                                      = 30;
 
-localparam int unsigned SPI_CONTROLLER_CFG_CPOL_MASK                                                              = 32'h80000000;
-localparam int unsigned SPI_CONTROLLER_CFG_CPOL_SHIFT                                                             = 31;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CPOL_MASK                                                       = 32'h80000000;
+localparam int unsigned SPI_CONTROLLER_CONFIGOPTS_CPOL_SHIFT                                                      = 31;
 
 localparam int unsigned SPI_CONTROLLER_CSID_CSID_MASK                                                             = 32'hFFFFFFFF;
 localparam int unsigned SPI_CONTROLLER_CSID_CSID_SHIFT                                                            = 0;
 
-localparam int unsigned SPI_CONTROLLER_CMD_LEN_MASK                                                               = 32'h1FF;
-localparam int unsigned SPI_CONTROLLER_CMD_LEN_SHIFT                                                              = 0;
+localparam int unsigned SPI_CONTROLLER_COMMAND_CSAAT_MASK                                                         = 32'h1;
+localparam int unsigned SPI_CONTROLLER_COMMAND_CSAAT_SHIFT                                                        = 0;
 
-localparam int unsigned SPI_CONTROLLER_CMD_CSAAT_MASK                                                             = 32'h200;
-localparam int unsigned SPI_CONTROLLER_CMD_CSAAT_SHIFT                                                            = 9;
+localparam int unsigned SPI_CONTROLLER_COMMAND_SPEED_MASK                                                         = 32'h6;
+localparam int unsigned SPI_CONTROLLER_COMMAND_SPEED_SHIFT                                                        = 1;
 
-localparam int unsigned SPI_CONTROLLER_CMD_SPEED_MASK                                                             = 32'hC00;
-localparam int unsigned SPI_CONTROLLER_CMD_SPEED_SHIFT                                                            = 10;
+localparam int unsigned SPI_CONTROLLER_COMMAND_DIRECTION_MASK                                                     = 32'h18;
+localparam int unsigned SPI_CONTROLLER_COMMAND_DIRECTION_SHIFT                                                    = 3;
 
-localparam int unsigned SPI_CONTROLLER_CMD_DIRECTION_MASK                                                         = 32'h3000;
-localparam int unsigned SPI_CONTROLLER_CMD_DIRECTION_SHIFT                                                        = 12;
-
-localparam int unsigned SPI_CONTROLLER_RXDATA_RXDATA_MASK                                                         = 32'hFFFFFFFF;
-localparam int unsigned SPI_CONTROLLER_RXDATA_RXDATA_SHIFT                                                        = 0;
-
-localparam int unsigned SPI_CONTROLLER_TXDATA_TXDATA_MASK                                                         = 32'hFFFFFFFF;
-localparam int unsigned SPI_CONTROLLER_TXDATA_TXDATA_SHIFT                                                        = 0;
+localparam int unsigned SPI_CONTROLLER_COMMAND_LEN_MASK                                                           = 32'h1FFFFE0;
+localparam int unsigned SPI_CONTROLLER_COMMAND_LEN_SHIFT                                                          = 5;
 
 localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDBUSY_MASK                                                  = 32'h1;
 localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDBUSY_SHIFT                                                 = 0;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_MASK                                                 = 32'h10;
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_SHIFT                                                = 4;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_MASK                                                 = 32'h2;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_SHIFT                                                = 1;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_MASK                                                = 32'h100;
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_SHIFT                                               = 8;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_MASK                                                = 32'h4;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_SHIFT                                               = 2;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_MASK                                                 = 32'h1000;
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_SHIFT                                                = 12;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_MASK                                                 = 32'h8;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_SHIFT                                                = 3;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_MASK                                                = 32'h10000;
-localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_SHIFT                                               = 16;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_MASK                                                = 32'h10;
+localparam int unsigned SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_SHIFT                                               = 4;
 
 localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDBUSY_MASK                                                  = 32'h1;
 localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDBUSY_SHIFT                                                 = 0;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_MASK                                                 = 32'h10;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_SHIFT                                                = 4;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_MASK                                                 = 32'h2;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_SHIFT                                                = 1;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_MASK                                                = 32'h100;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_SHIFT                                               = 8;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_MASK                                                = 32'h4;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_SHIFT                                               = 2;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_MASK                                                 = 32'h1000;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_SHIFT                                                = 12;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_MASK                                                 = 32'h8;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_SHIFT                                                = 3;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_MASK                                                = 32'h10000;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_SHIFT                                               = 16;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_MASK                                                = 32'h10;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_SHIFT                                               = 4;
 
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_MASK                                              = 32'h100000;
-localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_SHIFT                                             = 20;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_MASK                                              = 32'h20;
+localparam int unsigned SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_SHIFT                                             = 5;
 
 localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXFULL_MASK                                                   = 32'h1;
 localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXFULL_SHIFT                                                  = 0;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_MASK                                                  = 32'h10;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_SHIFT                                                 = 4;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_MASK                                                  = 32'h2;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_SHIFT                                                 = 1;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXWM_MASK                                                     = 32'h100;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXWM_SHIFT                                                    = 8;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXWM_MASK                                                     = 32'h4;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_RXWM_SHIFT                                                    = 2;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXWM_MASK                                                     = 32'h1000;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXWM_SHIFT                                                    = 12;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXWM_MASK                                                     = 32'h8;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_TXWM_SHIFT                                                    = 3;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_READY_MASK                                                    = 32'h10000;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_READY_SHIFT                                                   = 16;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_READY_MASK                                                    = 32'h10;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_READY_SHIFT                                                   = 4;
 
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_MASK                                                     = 32'h100000;
-localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_SHIFT                                                    = 20;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_MASK                                                     = 32'h20;
+localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_SHIFT                                                    = 5;
 
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_DATA_MASK                                                    = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned REMAPPED_REGION_MEM_WORD_DATA_SHIFT                                                   = 0;
@@ -8627,6 +9408,15 @@ localparam int unsigned EL2_PIC_MEIGWCTRL_IRQ_TYPE_SHIFT                        
 
 localparam int unsigned EL2_PIC_MEIGWCLR_CLEAR_MASK                                                               = 32'h1;
 localparam int unsigned EL2_PIC_MEIGWCLR_CLEAR_SHIFT                                                              = 0;
+
+
+
+
+
+
+
+
+
 
 
 
@@ -9404,7 +10194,8 @@ typedef struct packed {
     logic [0:0]   reg_intg_violation ;
     logic [0:0]   dmem_intg_violation ;
     logic [0:0]   imem_intg_violation ;
-    logic [7:0]   rsvd_0 ;
+    logic [6:0]   rsvd_0 ;
+    logic [0:0]   mai_software_error ;
     logic [0:0]   rnd_fips_chk_fail ;
     logic [0:0]   rnd_rep_chk_fail ;
     logic [0:0]   key_invalid ;
@@ -9818,10 +10609,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [12:0]   glen ;
-    logic [3:0]   flag0 ;
-    logic [3:0]   clen ;
-    logic [3:0]   acmd ;
+    logic [31:0]   cmd_req ;
 } csrng_cmd_req_reg_t;
 
 
@@ -11051,6 +11839,254 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [31:0]   name ;
+} abr_reg_mldsa_name_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   version ;
+} abr_reg_mldsa_version_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   stream_msg ;
+    logic [0:0]   external_mu ;
+    logic [0:0]   pcr_sign ;
+    logic [0:0]   zeroize ;
+    logic [2:0]   ctrl ;
+} abr_reg_mldsa_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   error ;
+    logic [0:0]   msg_stream_ready ;
+    logic [0:0]   valid ;
+    logic [0:0]   ready ;
+} abr_reg_mldsa_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   entropy ;
+} abr_reg_abr_entropy_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   seed ;
+} abr_reg_mldsa_seed_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   sign_rnd ;
+} abr_reg_mldsa_sign_rnd_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   msg ;
+} abr_reg_mldsa_msg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   verify_res ;
+} abr_reg_mldsa_verify_res_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   external_mu ;
+} abr_reg_mldsa_external_mu_reg_t;
+
+
+
+typedef struct packed {
+    logic [3:0]   strobe ;
+} abr_reg_mldsa_msg_strobe_reg_t;
+
+
+
+typedef struct packed {
+    logic [7:0]   ctx_size ;
+} abr_reg_mldsa_ctx_config_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   ctx ;
+} abr_reg_mldsa_ctx_reg_t;
+
+
+
+typedef struct packed {
+    logic [24:0]   rsvd ;
+    logic [0:0]   pcr_hash_extend ;
+    logic [4:0]   read_entry ;
+    logic [0:0]   read_en ;
+} abr_reg_kv_read_ctrl_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [7:0]   error ;
+    logic [0:0]   valid ;
+    logic [0:0]   ready ;
+} abr_reg_kv_status_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   notif_en ;
+    logic [0:0]   error_en ;
+} intr_block_t_global_intr_en_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   error_internal_en ;
+} intr_block_t_error_intr_en_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   notif_cmd_done_en ;
+} intr_block_t_notif_intr_en_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   agg_sts ;
+} intr_block_t_global_intr_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   error_internal_sts ;
+} intr_block_t_error_intr_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   notif_cmd_done_sts ;
+} intr_block_t_notif_intr_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   error_internal_trig ;
+} intr_block_t_error_intr_trig_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   notif_cmd_done_trig ;
+} intr_block_t_notif_intr_trig_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   cnt ;
+} intr_block_t_intr_count_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   pulse ;
+} intr_block_t_intr_count_incr_t_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   name ;
+} abr_reg_mlkem_name_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   version ;
+} abr_reg_mlkem_version_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   zeroize ;
+    logic [2:0]   ctrl ;
+} abr_reg_mlkem_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   error ;
+    logic [0:0]   valid ;
+    logic [0:0]   ready ;
+} abr_reg_mlkem_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   seed ;
+} abr_reg_mlkem_seed_d_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   seed ;
+} abr_reg_mlkem_seed_z_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   key ;
+} abr_reg_mlkem_shared_key_reg_t;
+
+
+
+typedef struct packed {
+    logic [16:0]   rsvd ;
+    logic [0:0]   dma_data_dest_valid ;
+    logic [0:0]   mlkem_msg_dest_valid ;
+    logic [0:0]   mlkem_seed_dest_valid ;
+    logic [0:0]   aes_key_dest_valid ;
+    logic [0:0]   ecc_seed_dest_valid ;
+    logic [0:0]   ecc_pkey_dest_valid ;
+    logic [0:0]   mldsa_seed_dest_valid ;
+    logic [0:0]   hmac_block_dest_valid ;
+    logic [0:0]   hmac_key_dest_valid ;
+    logic [4:0]   write_entry ;
+    logic [0:0]   write_en ;
+} abr_reg_kv_write_ctrl_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   pool_error ;
+    logic [0:0]   fill_stall ;
+    logic [0:0]   pool_low ;
+    logic [5:0]   fifo_level ;
+} sep_entropy_pool_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   pool_error ;
+    logic [0:0]   fill_stall ;
+    logic [0:0]   pool_low ;
+} sep_entropy_pool_irq_cause_reg_t;
+
+
+
+typedef struct packed {
+    logic [63:0]   entropy ;
+} sep_entropy_pool_data_reg_t;
+
+
+
+typedef struct packed {
     logic [63:0]   write_data ;
 } axil_mailbox_write_data_reg_t;
 
@@ -11368,15 +12404,13 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   spi_event ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   error ;
-} spi_controller_intr_status_reg_t;
+} spi_controller_intr_state_reg_t;
 
 
 
 typedef struct packed {
     logic [0:0]   spi_event ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   error ;
 } spi_controller_intr_enable_reg_t;
 
@@ -11384,9 +12418,14 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   spi_event ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   error ;
 } spi_controller_intr_test_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   fatal_fault ;
+} spi_controller_alert_test_reg_t;
 
 
 
@@ -11397,7 +12436,7 @@ typedef struct packed {
     logic [12:0]   rsvd_0 ;
     logic [7:0]   tx_watermark ;
     logic [7:0]   rx_watermark ;
-} spi_controller_ctrl_reg_t;
+} spi_controller_control_reg_t;
 
 
 
@@ -11430,7 +12469,7 @@ typedef struct packed {
     logic [3:0]   csntrail ;
     logic [3:0]   csnidle ;
     logic [15:0]   clkdiv ;
-} spi_controller_cfg_reg_t;
+} spi_controller_configopts_reg_t;
 
 
 
@@ -11441,35 +12480,19 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [19:0]   len ;
     logic [1:0]   direction ;
     logic [1:0]   speed ;
     logic [0:0]   csaat ;
-    logic [8:0]   len ;
-} spi_controller_cmd_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   rxdata ;
-} spi_controller_rxdata_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   txdata ;
-} spi_controller_txdata_reg_t;
+} spi_controller_command_reg_t;
 
 
 
 typedef struct packed {
     logic [0:0]   csidinval ;
-    logic [2:0]   rsvd_3 ;
     logic [0:0]   cmdinval ;
-    logic [2:0]   rsvd_2 ;
     logic [0:0]   underflow ;
-    logic [2:0]   rsvd_1 ;
     logic [0:0]   overflow ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   cmdbusy ;
 } spi_controller_error_enable_reg_t;
 
@@ -11477,15 +12500,10 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   accessinval ;
-    logic [2:0]   rsvd_4 ;
     logic [0:0]   csidinval ;
-    logic [2:0]   rsvd_3 ;
     logic [0:0]   cmdinval ;
-    logic [2:0]   rsvd_2 ;
     logic [0:0]   underflow ;
-    logic [2:0]   rsvd_1 ;
     logic [0:0]   overflow ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   cmdbusy ;
 } spi_controller_error_status_reg_t;
 
@@ -11493,15 +12511,10 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   idle ;
-    logic [2:0]   rsvd_4 ;
     logic [0:0]   ready ;
-    logic [2:0]   rsvd_3 ;
     logic [0:0]   txwm ;
-    logic [2:0]   rsvd_2 ;
     logic [0:0]   rxwm ;
-    logic [2:0]   rsvd_1 ;
     logic [0:0]   txempty ;
-    logic [2:0]   rsvd_0 ;
     logic [0:0]   rxfull ;
 } spi_controller_event_enable_reg_t;
 

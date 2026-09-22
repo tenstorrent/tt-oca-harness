@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Memory Map
+:description: SMC address-space organization, access control, and register reference.
+
 [[smc-memory-map]]
-=== Memory Map
 
 This section provides a comprehensive overview of the SMC memory map.
 The SMC address space is organized to provide access to various
@@ -17,6 +19,7 @@ resources identically regardless of which base is used, as long as the
 access falls inside the relevant local or global aperture. Both
 apertures are sized by the SMC `REGION_SIZE` CSR, which resets to
 16 MiB and may be reprogrammed by firmware.
+Address ranges include both endpoints.
 Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
 conventions. For details on how `LOCAL_BASE` and `GLOBAL_BASE` relate
 and how an adopter maps this aperture into the system address space,
@@ -29,175 +32,25 @@ SMC Address Map Integration
 endif::backend-pdf[]
 section of the Integration Guide.
 
-==== Address Space Organization
+== Address Space Organization
 
-The SMC address space is divided into several major functional regions:
+The generated component map reports each allocated aperture separately from
+the extent occupied by registers.
 
-.SMC Address Space Layout
-[width="100%",cols="20%,20%,15%,45%",options="header",]
-|=======================================================================
-|Address Range |Size |Function |Description
-|BASE + 0x000_0000 - BASE + 0x000_0FFF |4KB |Watchdog Timers |Per-core watchdog
-timer interfaces (4 cores, 1KB each)
+ifdef::backend-html5[]
+include::partial$smc/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
 
-|BASE + 0x000_1000 - BASE + 0x000_1FFF |4KB |Debug Unit |RISC-V Debug Module
-interface
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
 
-|BASE + 0x000_2000 - BASE + 0x000_2FFF |4KB |System Control |Reset unit and
-miscellaneous system control registers
+== Detailed Address Map
 
-|BASE + 0x000_3000 - BASE + 0x000_3FFF |4KB |GPIO Interface |General Purpose I/O
-control and configuration (65 GPIO instances)
+The component-level assignments are generated in the preceding table. This
+avoids a second list of addresses drifting from the implemented decode.
 
-|BASE + 0x000_4000 - BASE + 0x000_5FFF |8KB |I3C Controllers |OCA I3C controller
-instances (6 instances)
-
-|BASE + 0x000_6000 - BASE + 0x000_8FFF |12KB |Peripheral Controllers |AVSBus,
-I2C, and UART interfaces
-
-|BASE + 0x000_9000 - BASE + 0x000_DFFF |20KB |Security, Timing & DFT |eFuse,
-telemetry, system timer, DTP control, and DFT status
-
-|BASE + 0x001_0000 - BASE + 0x001_7FFF |32KB |Fabric Control |CPU control, address
-remapping, and filtering
-
-|BASE + 0x001_8000 - BASE + 0x003_7FFF |128KB |Mailbox |Inter-processor
-communication mailbox (32 bidirectional pairs: 32 inbound + 32 outbound
-mailboxes)
-
-|BASE + 0x003_8000 - BASE + 0x003_83FF |1KB |Data Processing |DMA controller and
-memory zeroer
-
-|BASE + 0x004_0000 - BASE + 0x007_FFFF |256KB |Memory Regions |ROM and scratchpad
-memory spaces
-
-|BASE + 0x016_0000 - BASE + 0x016_8FFF |36KB |CLA |Debug and trace (CLA) module
-
-|BASE + 0x040_0000 - BASE + 0x040_57FF |22KB |AXI-Lite External |Adopter
-extension window: mandatory technology-specific blocks (GPIO pads, PLL, PVT,
-eFuse SHIM) plus optional supplementary devices
-
-|BASE + 0x080_0000 - BASE + 0x1FF_FFFF |24MB |Address Remapping |M-mode and Xvisor
-remapped address regions
-
-|BASE + 0x400_0000 - BASE + 0x43F_FFFF |4MB |Interrupt Controller |RISC-V PLIC
-(Platform-Level Interrupt Controller)
-
-|BASE + 0x800_0000 - BASE + 0x801_3FFF |80KB |Timer & Bus Error |CLINT and per-core
-Bus Error Units
-|=======================================================================
-
-==== Detailed Address Map
-
-The following table provides specific address assignments for all SMC
-components:
-
-.SMC Component Address Map
-[width="100%",cols="25%,25%,20%,30%",options="header",]
-|=======================================================================
-|Component |Address Range |Instance |Description
-|WDT Core 0-3 |BASE + 0x000_0000 + (N×0x400) |4 instances |Watchdog timers for
-each CPU core
-
-|Debug Module |BASE + 0x000_1000 - BASE + 0x000_1FFF |1 instance |RISC-V debug
-interface
-
-|Reset Unit |BASE + 0x000_2000 - BASE + 0x000_27FF |1 instance |System reset control
-
-|Miscellaneous Wrapper |BASE + 0x000_2800 - BASE + 0x000_2FFF |1 instance |System
-configuration registers
-
-|GPIO Interface |BASE + 0x000_3000 + (N×0x10) |65 instances |GPIO interface
-control
-
-|GPIO Control |BASE + 0x000_3440 + (N×0x20) |65 instances |GPIO pad
-configuration
-
-|OCA I3C Controllers |BASE + 0x000_4000 + (N×0x500) |6 instances |OCA I3C
-controller instances
-
-|AVSBus Controller |BASE + 0x000_6000 - BASE + 0x000_6FFF |1 instance |Adaptive
-voltage scaling control
-
-|I2C Wrapper |BASE + 0x000_7000 - BASE + 0x000_7FFF |1 instance |I2C/SMBus
-communication interface
-
-|UART Wrapper |BASE + 0x000_8000 - BASE + 0x000_8FFF |1 instance |UART communication
-interface
-
-|eFuse Map |BASE + 0x000_9000 - BASE + 0x000_9FFF |1 instance |eFuse memory mapping
-interface
-
-|eFuse Interface |BASE + 0x000_A000 - BASE + 0x000_AFFF |1 instance |eFuse interface
-controller
-
-|Telemetry Receiver |BASE + 0x000_B000 - BASE + 0x000_BFFF |1 instance |Telemetry
-data processing
-
-|System Timer OCTS |BASE + 0x000_C000 - BASE + 0x000_CFFF |1 instance |Multi-chiplet
-time synchronization
-
-|DTP Control Registers |BASE + 0x000_D000 - BASE + 0x000_D7FF |512 entries |DTP
-control register block
-
-|DFT Control/Status |BASE + 0x000_D800 - BASE + 0x000_DFFF |1 instance |DFT control
-and status for ROM
-
-|CPU Control |BASE + 0x001_0000 - BASE + 0x001_1FFF |1 instance |CPU cluster
-management
-
-|Alias Remap |BASE + 0x001_2000 + (N×0x20) |8 instances |Address alias
-remapping
-
-|M-mode Remap |BASE + 0x001_3000 + (N×0x8) |8 instances |Machine mode
-address remapping
-
-|Xvisor Remap |BASE + 0x001_4000 + (N×0x8) |8 instances |Hypervisor address
-remapping
-
-|Inbound Filters |BASE + 0x001_5000 + (N×0x20) |16 instances |Inbound traffic
-filtering
-
-|Outbound Filters |BASE + 0x001_6000 + (N×0x20) |16 instances |Outbound traffic
-filtering
-
-|Mailbox |BASE + 0x001_8000 - BASE + 0x003_7FFF |32 pairs |Inter-processor
-communication (32 inbound + 32 outbound)
-
-|DMA Controller |BASE + 0x003_8000 - BASE + 0x003_81FF |1 instance |Direct memory
-access controller
-
-|Memory Zeroer |BASE + 0x003_8200 - BASE + 0x003_83FF |1 instance |Memory
-initialization unit
-
-|SPM ROM Memory |BASE + 0x004_0000 - BASE + 0x005_FFFF |128KB |Scratchpad ROM memory
-space
-
-|SPM Memory |BASE + 0x006_0000 - BASE + 0x007_FFFF |128KB |Scratchpad memory space
-
-|SMC CLA |BASE + 0x016_0000 - BASE + 0x016_8FFF |1 instance |Debug and trace (CLA)
-module
-
-|AXI-Lite External |BASE + 0x040_0000 - BASE + 0x040_57FF |1 window |Adopter
-extension window, split into a mandatory and a supplementary region (see the
-AXI-Lite External Window section below)
-
-|M-mode Region |BASE + 0x100_0000 - BASE + 0x17F_FFFF |8MB |Machine mode remapped
-space
-
-|Xvisor Region |BASE + 0x180_0000 - BASE + 0x1FF_FFFF |8MB |Hypervisor remapped
-space
-
-|PLIC |BASE + 0x400_0000 - BASE + 0x43F_FFFF |4MB |Platform-Level Interrupt
-Controller
-
-|CLINT |BASE + 0x800_0000 - BASE + 0x800_FFFF |64KB |Core Local Interruptor
-
-|Bus Error Units |BASE + 0x801_0000 + (N×0x1000) |4 instances |Per-core bus
-error handling
-|=======================================================================
-
-==== AXI-Lite External Window
+== AXI-Lite External Window
 
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
 window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
@@ -213,58 +66,30 @@ both identically — the split is purely organizational:
   memory-mapped devices the adopter wants to expose. The reference
   integration places its vendor I3C controllers (nonfree overlay) here.
 
-Addresses below are expressed as `BASE + offset` (`BASE` = `0xC000_0000`).
-
-.SMC AXI-Lite External Window — Mandatory Region
-[width="100%",cols="25%,25%,20%,30%",options="header",]
-|=======================================================================
-|Component |Address Range |Instance |Description
-|PLL Clock-Obs GPIO |BASE + 0x040_0000 (intf), BASE + 0x040_000C (ctrl) |1 instance
-|PLL clock observation GPIO
-
-|PVT Clock-Obs GPIO |BASE + 0x040_0010 (intf), BASE + 0x040_001C (ctrl) |1 instance
-|PVT clock observation GPIO
-
-|GPIO PoC/PBias Control |BASE + 0x040_0020 |1 instance |Power-on and pad bias
-control
-
-|GPIO Refclk Control |BASE + 0x040_002C |1 instance |Reference clock GPIO control
-
-|Per-Pad GPIO Control |BASE + 0x040_0100 + (N×0x20) |65 instances |Per-pad
-control registers for the pad ring
-
-|PLL Wrapper |BASE + 0x040_1000 |1 instance |Clock generation and management
-
-|PVT Wrapper |BASE + 0x040_2000 |1 instance |Process, Voltage, Temperature
-monitoring
-
-|eFuse SHIM |BASE + 0x040_3000 |1 instance |Adopter eFuse hardware abstraction
-layer
-|=======================================================================
-
-.SMC AXI-Lite External Window — Supplementary Region (optional)
-[width="100%",cols="25%,25%,20%,30%",options="header",]
-|=======================================================================
-|Component |Address Range |Instance |Description
-|Vendor I3C Controllers |BASE + 0x040_4000 + (N×0x400) |6 instances |Vendor
-I3C controller wrappers (nonfree overlay)
-
-|Captured GPIO Straps |BASE + 0x040_5800 (`STRAPS_LO`), BASE + 0x040_5804
-(`STRAPS_HI`) |1 instance |Values latched from the bonded GPIO pads at cold
-reset, read-only to software. Strap capture is adopter-owned, so these live in
-the external window rather than the SMC core; the boot ROM reads them from here.
-|=======================================================================
+The generated SMC map reports this as one opaque adopter-owned aperture.
+Concrete placements inside it are integration-specific and are documented by
+the adopter. The mandatory functions are the PLL and PVT wrappers, clock
+observation and pad controls, and the eFuse SHIM. Supplementary functions may
+include vendor I3C controllers and captured GPIO straps. Captured straps are
+read-only values latched from bonded pads at cold reset and consumed by boot
+firmware.
 
 The unallocated remainder of the window is passed through to the chip-level
 adopter external port.
 
-==== Register Interface Standards
+== Register Interface Standards
 
 All SMC components use standard AMBA interfaces. We summarize the
 interfaces in the following table:
 
+ifdef::backend-html5[]
+++++
+<div class="smc-memory-table-scroll" role="region" aria-label="Register Interface Standards" tabindex="0">
+++++
+endif::backend-html5[]
+
 .Register Interface Standards
-[width="100%",cols="25%,25%,20%,30%",options="header",]
+[width="100%",cols="20%,18%,18%,44%",options="header",role="smc-memory-table"]
 |=======================================================================
 |Interface |Address Width |Data Width |Description
 |AXI4-Lite |32-bit |64-bit |High-performance components
@@ -274,12 +99,18 @@ interfaces in the following table:
 4+|*Protection:* AXI protection bits used for secure/non-secure access control
 |=======================================================================
 
-==== Access Control and Security
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+== Access Control and Security
 
 The SMC implements the following access control mechanisms:
 
 .Access Control Mechanisms
-[width="100%",cols="25%,75%",options="header",]
+[width="100%",cols="30%,70%",options="header"]
 |=======================================================================
 |Mechanism |Description
 |Address Filtering |Configurable inbound and outbound address filters
@@ -293,16 +124,22 @@ privileges
 reporting
 |=======================================================================
 
-==== Spare SMC Register Blocks
+== Spare SMC Register Blocks
 
 The following shows the detailed register map of a set of
 programmer-visible spare SMC blocks. They are spare but essential: for
 example, the scratch block provides general-purpose registers, and the
 chip-config and NDM-reset blocks hold system-level configuration and
-reset control. `oca_i3c_wrap` is omitted; I3C remains deferred with the
-wording in <<peripherals>>.
+reset control. `oca_i3c_wrap` is omitted; I3C remains deferred as described in
+ifdef::backend-html5[]
+xref:smc:periphs.adoc#peripherals[Peripherals].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<peripherals>>.
+endif::backend-pdf[]
 
-===== Chip Config, Scratch, NDM Reset, and Misc Wrap
+[[smc-ndm-reset-block]]
+=== Chip Config, Scratch, NDM Reset, and Misc Wrap
 
 ifdef::backend-html5[]
 ++++
@@ -320,7 +157,7 @@ include::../regs/gen/adoc/blocks/ndm_reset.adoc[]
 include::../regs/gen/adoc/blocks/misc_wrap.adoc[]
 endif::backend-pdf[]
 
-===== Base Config, DFX Status, and GPIO POC/PBias
+=== Base Config, DFX Status, and GPIO POC/PBias
 
 ifdef::backend-html5[]
 ++++
@@ -336,7 +173,7 @@ include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[]
 include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[]
 endif::backend-pdf[]
 
-==== Component-Specific Register Documentation
+== Component-Specific Register Documentation
 
 For detailed register-level documentation of each SMC component, refer
 to the individual component documentation:

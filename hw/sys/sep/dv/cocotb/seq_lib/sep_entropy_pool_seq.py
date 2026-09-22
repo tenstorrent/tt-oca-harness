@@ -13,7 +13,7 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic, window
-from sep_reg_meta import ENTROPY_SOURCE
+from sep_reg_meta import ENTROPY_SOURCE, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -22,10 +22,20 @@ from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 # Aperture from memory_map.adoc EPOOL. Occupancy and pool_low are graded
 # from the live status / aggregator flags, not from a FIFO watermark.
 POOL_BASE = window("EPOOL").base
-POOL_STATUS = POOL_BASE + 0x00
-POOL_IRQ_CAUSE = POOL_BASE + 0x08
-POOL_POP = POOL_BASE + 0x10
+POOL_STATUS = sym("ENTROPY_POOL_STATUS_REG_ADDR")
+POOL_IRQ_CAUSE = sym("ENTROPY_POOL_IRQ_CAUSE_REG_ADDR")
+POOL_POP = sym("ENTROPY_POOL_DATA_REG_ADDR")
+if (POOL_STATUS, POOL_IRQ_CAUSE, POOL_POP) != (
+    POOL_BASE,
+    POOL_BASE + sym("ENTROPY_POOL_IRQ_CAUSE_REG_OFFSET"),
+    POOL_BASE + sym("ENTROPY_POOL_DATA_REG_OFFSET"),
+):
+    raise RuntimeError("entropy-pool RDL addresses do not match the EPOOL window")
+# Occupancy ceiling used only as the CHK-WRITE-SLVERR room bound. The live
+# STATUS.level / pool_edn_req_o compare grades fullness, not this constant.
 FIFO_DEPTH = 32
+# DV-owned fill-stall poll ceiling in core cycles. Not a specification value;
+# the stall flag is the verdict, and this bound only names the wait.
 STALL_THRESH = 4096
 
 RESP_OKAY = 0

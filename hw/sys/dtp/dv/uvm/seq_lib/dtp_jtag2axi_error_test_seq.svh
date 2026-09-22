@@ -133,7 +133,8 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       unconsumed = axi_cfg.pending_expected_resp()
                        + axi_cfg.pending_expected_writes()
                        + axi_cfg.pending_expected_reads();
-    emit_nonvacuity_evidence((operation_count >= minimum_ops) && (unconsumed == 0), $sformatf(
+    emit_nonvacuity_evidence(target(), (operation_count >= minimum_ops) && (unconsumed == 0),
+                             $sformatf(
                              "scenario=%s target=%s operations=%0d credits_unconsumed=%0d",
                              label,
                              target_name,

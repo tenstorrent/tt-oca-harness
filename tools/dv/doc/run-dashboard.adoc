@@ -79,7 +79,7 @@ The `result.json` written by `run_dv.py` at the root of a run directory
 (integer `schema_version` `1`). It is the pipeline's only input.
 
 Normalized result::
-The per-DUT record produced by `collect` (string `schema_version` `"0.1"`,
+The per-DUT record produced by `collect` (string `schema_version` `"0.2"`,
 conventionally named `<dut>.result.json`). Every downstream command consumes
 only this format.
 
@@ -230,9 +230,10 @@ coverage threshold, or infrastructure stage failed.
 === How Coverage Forms the Dashboard
 
 Coverage starts in the native runner's top-level `coverage` object. Collection
-preserves that object, copies available report/manifest files into the static
-bundle, and rewrites their artifact paths. Report and dashboard rendering then
-read these fields:
+keeps the fields below, copies the report's summary, policy application, and
+manifest into the static bundle, and rewrites their paths. Native inputs, hole
+samples, and the merged database stay in the run tree. Report and dashboard
+rendering then read these fields:
 
 [cols="<3,<5",options="header"]
 |===
@@ -244,9 +245,9 @@ read these fields:
 |`coverage.total_percent`
 |Tool-specific compatibility score displayed as total coverage.
 
-|`coverage.metrics`
-|Available metric values such as line, condition, toggle, branch, FSM,
-assertion, and functional coverage.
+|`coverage.raw_metrics`, `coverage.effective_metrics`
+|Metric-family percentages before and after accepted waivers, such as line,
+condition, toggle, branch, FSM, assertion, expression, and user coverage.
 
 |`coverage.threshold`, `coverage.threshold_met`
 |Required compatibility threshold and whether the score met it. The score is
@@ -259,7 +260,8 @@ the tool's raw overall figure; accepted waivers act on `policy_thresholds`.
 |Whether detailed native coverage observations were normalized.
 
 |`coverage.holes_summary`
-|Counts and bounded samples of open, accepted, and unclassified holes.
+|Counts of open, accepted, and unclassified holes, and the same counts by
+metric, category, disposition, and status.
 
 |`coverage.comparison_key`
 |Identity used to decide whether trend points have comparable tool, target,
@@ -325,7 +327,7 @@ An abbreviated normalized `dtp.result.json` has this form:
 [source,json]
 ----
 {
-  "schema_version": "0.1",
+  "schema_version": "0.2",
   "flow": "dtp",
   "framework": "cocotb",
   "status": "PASS",
@@ -343,7 +345,11 @@ An abbreviated normalized `dtp.result.json` has this form:
   "coverage": {
     "status": "PASS",
     "total_percent": 84.2,
-    "metrics": {
+    "raw_metrics": {
+      "line": 86.5,
+      "toggle": 80.4
+    },
+    "effective_metrics": {
       "line": 88.0,
       "toggle": 80.4
     },
@@ -541,8 +547,8 @@ Collection performs these steps:
 . Load leaf fragments and test metadata to build `tests_detail`.
 . Prefer each leaf's `artifacts.results_xml`, then parser evidence, then
   log-layout inference when locating JUnit/xUnit files.
-. Record the resolved JUnit/xUnit paths and whether they exist.
-. Convert the native result to dashboard schema version `"0.1"`.
+. Count the resolved JUnit/xUnit files and how many are missing.
+. Convert the native result to dashboard schema version `"0.2"`.
 . Copy selected coverage output beside the normalized result.
 . Write the normalized result.
 
@@ -589,7 +595,7 @@ The formats and their owners are:
 |`run_dv.py`
 |Authoritative native run, stage, regression, and leaf result contract.
 
-|String `"0.1"`
+|String `"0.2"`
 |`collect`, `dashboard`
 |Normalized per-DUT records and aggregate `summary.json`.
 
@@ -599,7 +605,7 @@ The formats and their owners are:
 
 |String `"0.1"`
 |`publish`
-|Publication manifest, matching the dashboard schema constant.
+|Publication manifest.
 |===
 
 Important transformations are not lossless:
@@ -630,25 +636,27 @@ schema. The initial failing count is calculated as `total - passing`.
 produce several attempt records for one final test.
 
 |Coverage
-|The native coverage object is retained with every path rebased onto the
-selected run root; the manifest and the report's summary and
-policy-application files are rewritten to their staged locations.
+|The dashboard keeps the coverage fields it reads: status, total and
+thresholds, raw and effective metric percentages, hole counts, and the report,
+summary, manifest, and policy-application paths rebased onto the selected run
+root; the last four are rewritten to their staged locations. Native inputs,
+hole samples, and the merged database remain only in the run tree.
 
 |Run metadata
-|Native tool, versions, executor, generated time, overrides, and Git
-information are nested under `run_metadata`. `run_metadata.selection` comes
-only from `regression.json`; selected native artifacts are instead copied into
-the dashboard record's top-level `artifacts`. `run_metadata.run_dir` preserves
-the original run identity even when artifact paths are rebased to an explicit
-download root; top-level `artifacts.run_dir` preserves the same value for
-dashboard/trend consumers.
+|The native run identity is nested under `run_metadata`: run directory,
+result path, label, tool and tool version, executor, run time, and Git
+information. Selected native artifacts are copied into the dashboard record's
+top-level `artifacts`. `run_metadata.run_dir` preserves the original run
+identity even when artifact paths are rebased to an explicit download root;
+top-level `artifacts.run_dir` preserves the same value for dashboard/trend
+consumers.
 |===
 
 The collector performs only shallow native validation: the input must be a JSON
 object with a `status` field. It does not enforce native schema version,
 required fields, or agreement between the native `flow` and `--dut`.
 
-`report` and `dashboard` likewise do not enforce schema version `"0.1"` or
+`report` and `dashboard` likewise do not enforce schema version `"0.2"` or
 required field types. The version is the intended contract, but a wrong-schema
 dictionary can still produce misleading successful output.
 
@@ -843,13 +851,13 @@ Two parsing rules apply everywhere:
   only `PASS`, `FAIL`, and `UNKNOWN`; per-test detail records additionally use
   `SKIP`. The unreduced native status survives in `source.native_status`.
 
-=== Normalized result: `<dut>.result.json` (schema `"0.1"`)
+=== Normalized result: `<dut>.result.json` (schema `"0.2"`)
 
 [cols="<2,<1,<6",options="header"]
 |===
 |Field |Type |Meaning
 
-|`schema_version` |string |Always `"0.1"`.
+|`schema_version` |string |Always `"0.2"`.
 
 |`generated_at` |string |Collection time, UTC ISO-8601.
 
@@ -876,7 +884,7 @@ plus `duration_sec`: the sum of native stage durations, not wall-clock time.
 the producer did not record it), `pass_rate` (`null` when `completed` is
 `false`).
 
-|`coverage` |object |The native coverage object (see
+|`coverage` |object |The coverage fields the dashboard reads (see
 <<dashboard-coverage-formation,coverage fields>>) with staged-path rewrites
 described below.
 
@@ -894,12 +902,12 @@ native result was collected.
 |`tests_detail` |array |Per-test records, described below. Present when
 collection found per-test material.
 
-|`junit_xml` |array |One entry per recorded JUnit file: `item`, `seed`,
-`attempt`, `path`, `exists`.
+|`junit_xml` |object |`total` recorded JUnit files and how many are `missing`.
 
-|`regression` |object |The native `regression.json` passed through:
-`executor`, `selection`, `jobs`, `failed_tests`, `flaky_tests`,
-`failure_buckets`, `artifacts`. Present for scheduler runs.
+|`regression` |object |`failed_tests` and `flaky_tests` from the native
+`regression.json`: one entry per final failure (`item`, `seed`, `status`,
+`reason`, `rerun`) and one per leaf that passed after a retry (`item`, `seed`,
+`final_status`, `attempt_count`, `rerun`). Present for scheduler runs.
 
 |`warnings` |array |Collector warning strings, for example missing JUnit
 files. Absence of optional `run.json` is not a warning.
@@ -909,11 +917,9 @@ Coverage staging rewrites: when `collect` copies coverage output into the
 bundle, `coverage.report`, `coverage.manifest`, `coverage.summary`, and
 `coverage.policy_application` become bundle-relative staged paths, and each
 original value is preserved under the same name with a `source_` prefix
-(`coverage.source_report`, ...). `coverage.coverage_details`,
-`coverage.coverage_details_raw`, and `coverage.merged` stay run-tree paths,
-rebased like every other native path. `coverage.metrics` maps metric names to
-percentages, and each metric is duplicated as a top-level
-`coverage.<name>_percent` convenience field.
+(`coverage.source_report`, ...). `coverage.raw_metrics` and
+`coverage.effective_metrics` map metric families to percentages before and
+after accepted waivers.
 
 `artifacts` keys: `result_json` (always present), `run_dir`, `run_json`,
 `regression_json`, `log` (a failing test's log when one exists, else the
@@ -923,26 +929,21 @@ paths in an explicit out-of-tree download root are absolute.
 `artifacts.run_dir` is the exception: it remains the native
 recorded identity rather than the selected download path.
 
-`run_metadata` keys: `run_dir`, `result_json`, `run_json`, `label`, `items`,
-`stages` (stage-name list), `tool`, `tool_version`, `tool_versions`,
-`executor`, `generated_at` (native run time), `dry_run`, `overrides`, `git`
-(the native run's Git metadata), `selection` (from `regression.json`), and
-`invocation` (the optional `run.json` content, else an empty object).
+`run_metadata` keys: `run_dir`, `result_json`, `label`, `tool`,
+`tool_version`, `executor`, `generated_at` (native run time), and `git` (the
+native run's Git metadata).
 
-Each `tests_detail` entry carries: `name`, `module`, `category`, `tags`,
-`groups`, `target`, `seed`, `attempt`, `stage`, `status` (may be `SKIP`),
-`duration_sec`, `reason`, `log`, `result_json`, `junit_xml`, `artifacts`,
-`failure_buckets`, and `parser` (`policy`, `status_source`, and up to five
-`evidence` entries). Retried leaves appear once per
-`(name, seed, attempt)` combination.
+Each `tests_detail` entry carries: `name`, `category`, `seed`, `attempt`,
+`stage`, `status` (may be `SKIP`), `duration_sec`, and `reason`. Retried
+leaves appear once per `(name, seed, attempt)` combination.
 
-=== Aggregate summary: `summary.json` (schema `"0.1"`)
+=== Aggregate summary: `summary.json` (schema `"0.2"`)
 
 [cols="<2,<1,<6",options="header"]
 |===
 |Field |Type |Meaning
 
-|`schema_version` |string |Always `"0.1"`.
+|`schema_version` |string |Always `"0.2"`.
 
 |`generated_at` |string |Aggregation time, UTC ISO-8601.
 
@@ -1088,7 +1089,7 @@ collected result records a different framework.
 
 |`--result PATH`
 |Required
-|Normalized schema-`"0.1"` result.
+|Normalized schema-`"0.2"` result.
 
 |`--html-out PATH`
 |Required
@@ -1116,7 +1117,7 @@ collected result records a different framework.
 
 |`--summary-out PATH`
 |Required
-|Aggregate schema-`"0.1"` JSON destination.
+|Aggregate schema-`"0.2"` JSON destination.
 
 |`--history-in PATH`
 |Optional
@@ -1179,6 +1180,7 @@ Recommended CI assertions include:
 The `dashboard` workflow enforces the schema and count assertions before it
 publishes (see <<Continuous integration>>).
 
+[[dashboard-ci]]
 == Continuous integration
 
 The `dashboard` GitHub workflow (`.github/workflows/dashboard.yml`) publishes
@@ -1203,13 +1205,10 @@ reads the same files.
   set from the run's `verilator-weekly (<dut>)` jobs, downloads every
   `dv-run-*-weekly` artifact under `weekly-runs/<artifact name>/`, runs
   `collect` once per DUT, and then a data-only `dashboard` aggregate (no
-  `--html-out`) over all the records with the trend history file. On a
-  `workflow_dispatch` the job first re-grades each downloaded run tree
-  against the checkout's coverage policy (`run_dv.py --waive`, see
-  <<dashboard-waive>>).
+  `--html-out`) over all the records with the trend history file.
 . Publication is all or nothing. The job fails, and publishes nothing, when
   an expected DUT has no run-tree artifact or its tree has no `result.json`,
-  when a collected record does not carry `schema_version` `"0.1"`, its
+  when a collected record does not carry `schema_version` `"0.2"`, its
   DUT's `flow`, and a `status` of `PASS`, `FAIL`, or `UNKNOWN`, when
   `summary.json` does not carry one flow per located
   tree, when the newest history point does not carry one `per_dut` entry
@@ -1219,8 +1218,8 @@ reads the same files.
 Consumption interfaces:
 
 * **Workflow artifact `dv-dashboard-data`** (90-day retention) — the per-run
-  consumable bundle: the per-DUT normalized results (schema `"0.1"`) with
-  their staged coverage files, `summary.json`, the current `history.json`
+  consumable bundle: the per-DUT normalized results (schema `"0.2"`) with
+  any staged coverage files, `summary.json`, the current `history.json`
   snapshot (schema `"0.2"`), and the week's `classification.json`.
 * **Branch `dv-dashboard-data`** — the canonical cross-run store. Trend
   history must chain across weeks indefinitely, and artifacts expire, so
@@ -1270,54 +1269,18 @@ Operational rules:
   those statuses into `FAIL`.
 * The workflow writes nothing to `gh-pages`; the documentation workflow
   copies the trimmed data into the built site.
-* An email digest is sent per weekly publication when the
-  `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
-  provisioned; the step self-disables while they are absent.
+* An email digest is sent per weekly publication through the
+  `OCAH_MAIL_USERNAME`, `OCAH_MAIL_PASSWORD`, and `OCAH_MAIL_TO` secrets; the
+  step is skipped while `OCAH_MAIL_TO` is empty and fails the run when it is
+  set and either of the other two is absent.
 * A `workflow_dispatch` accepts `dry_run=true`: the job collects,
   aggregates, and runs every gate but skips the data-branch push, the bundle
   upload, and the digest email, and the Actions list labels it
-  `dashboard dry run`. Use it to verify a workflow change or to preview a
-  re-grade against a published weekly.
+  `dashboard dry run`. Use it to verify a workflow change against a
+  published weekly.
 * Every dispatch adds a trend point: the point identity includes the
   dashboard checkout revision, so a re-dispatched weekly does not replace its
   earlier point.
-
-[[dashboard-waive]]
-=== Waive coverage bins on a published weekly
-
-A waiver merged after a weekly ran reaches that weekly's published numbers
-through a re-dispatch:
-
-. Review the holes in the published data (`coverage.holes_summary`, or the
-  staged `coverage-details.json`) and add the `pass:[[[holes]]]` entry to the DUT's
-  `coverage_policy.toml`; the waiver section of xref:run-dv.adoc[DV and FV
-  Runner] gives the fields and the guardrails.
-. Merge the policy change to `main`.
-. Dispatch the publication for the weekly's regress run id, as a dry run
-  first when the outcome is uncertain:
-+
-[source,bash]
-----
-gh workflow run dashboard.yml -f run_id=<regress run id> -f dry_run=true
-gh workflow run dashboard.yml -f run_id=<regress run id>
-----
-+
-The job downloads the weekly artifact, runs
-`OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut <dut> --run-dir weekly-run --waive`
-with the checkout's policy, and collects the re-graded tree. Exit 0 and 1
-are applied grades (1 surfaces as the collected `coverage.status` and as a
-step summary line); exit 2 leaves the tree as recorded, appends
-`coverage policy not applied` to the step summary, and publishes the recorded
-grade. Publication continues in every case. The scheduled `workflow_run`
-path does not run the step.
-
-The re-grade uses the policy of the commit the workflow ran from, not the
-regression commit's. A changed policy changes `comparison_key`, so the
-re-graded point starts a new comparable series in `history.json`; compare
-trend points only when their `comparison_key` values match. A weekly whose
-report command crashed is refused (exit 2) and publishes as recorded; a
-weekly whose grade failed on the policy publishes its repaired grade once the
-policy is corrected.
 
 == Troubleshooting
 

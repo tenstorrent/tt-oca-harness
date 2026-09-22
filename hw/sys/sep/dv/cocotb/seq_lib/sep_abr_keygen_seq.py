@@ -12,13 +12,23 @@ converter.
 from __future__ import annotations
 
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spec_tables import abr_off, agg_from_pic, mldsa_name_words, window
+from env.sep_spec_tables import (
+    abr_ctrl_cmd,
+    abr_field_mask,
+    abr_id_golden,
+    abr_off,
+    agg_from_pic,
+    mldsa_name_words,
+    window,
+)
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 ABR_BASE = window("ABR").base
 ABR_NAME0 = ABR_BASE + abr_off("MLDSA_NAME")
 ABR_NAME1 = ABR_NAME0 + 4
+ABR_VERSION0 = ABR_BASE + abr_off("MLDSA_VERSION")
+ABR_VERSION1 = ABR_VERSION0 + 4
 ABR_CTRL = ABR_BASE + abr_off("MLDSA_CTRL")
 ABR_STATUS = ABR_BASE + abr_off("MLDSA_STATUS")
 ABR_ENTROPY = ABR_BASE + abr_off("ABR_ENTROPY")
@@ -35,17 +45,20 @@ ABR_ERROR_TRIG = ABR_INTR + abr_off("error_intr_trig_r")
 ABR_NOTIF_INTR = ABR_INTR + abr_off("notif_internal_intr_r")
 
 NAME0_EXP, NAME1_EXP = mldsa_name_words()
+# NAME and VERSION are `sw = r` with no RDL reset. The expected words are the
+# DV-owned goldens in sep_spec_tables (crypto.adoc labels + Adams Bridge 2.0.1).
+VER0_EXP, VER1_EXP = abr_id_golden("MLDSA_CORE_VERSION")
 
-CMD_KEYGEN = 0x1
-CMD_SIGN = 0x2
-CMD_VERIFY = 0x3
-CTRL_ZEROIZE = 1 << 3
+CMD_KEYGEN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN")
+CMD_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "SIGN")
+CMD_VERIFY = abr_ctrl_cmd("MLDSA_CTRL", "VERIFY")
+CTRL_ZEROIZE = abr_field_mask("MLDSA_CTRL", "ZEROIZE")
 # MLDSA_CTRL.EXTERNAL_MU. The vendored sigGen/sigVer vectors are the ACVP
 # external-mu groups, so the engine is handed mu directly instead of a message.
-CTRL_EXTERNAL_MU = 1 << 5
-ST_READY = 1 << 0
-ST_VALID = 1 << 1
-ST_ERROR = 1 << 3
+CTRL_EXTERNAL_MU = abr_field_mask("MLDSA_CTRL", "EXTERNAL_MU")
+ST_READY = abr_field_mask("MLDSA_STATUS", "READY")
+ST_VALID = abr_field_mask("MLDSA_STATUS", "VALID")
+ST_ERROR = abr_field_mask("MLDSA_STATUS", "ERROR")
 
 SEED_WORDS = 8
 ENTROPY_WORDS = 16
@@ -53,6 +66,8 @@ PK_WORDS = 648
 SK_WORDS = 1224
 MU_WORDS = 16
 SIG_WORDS = 1157
+# MLDSA_VERIFY_RES[N] in abr_reg.rdl; c~ is those leading signature words.
+VERIFY_RES_WORDS = (abr_off("MLDSA_EXTERNAL_MU") - abr_off("MLDSA_VERIFY_RES")) // 4
 
 # Sign / verify register windows, by symbol from the vendor RDL like the
 # keygen ones above.
@@ -66,9 +81,10 @@ ABR_PRIVKEY_IN = ABR_BASE + abr_off("MLDSA_PRIVKEY_IN")
 IRQ_ABR_ERROR = agg_from_pic("Adams Bridge error")
 IRQ_ABR_NOTIF = agg_from_pic("Adams Bridge notification")
 
-# global_intr_en_r: error_en[0] + notif_en[1]; per-event enables at +4/+8 bit 0.
-INTR_GLOBAL_BOTH = 0x3
-INTR_EVENT_EN = 0x1
+INTR_ERROR_EN = abr_field_mask("global_intr_en_r", "error_en")
+INTR_NOTIF_EN = abr_field_mask("global_intr_en_r", "notif_en")
+INTR_GLOBAL_BOTH = INTR_ERROR_EN | INTR_NOTIF_EN
+INTR_EVENT_EN = abr_field_mask("error_intr_en_r", "error_internal_en")
 
 
 class SepAbrKeygenCfg:
@@ -152,6 +168,8 @@ def _selftest() -> None:
     assert ABR_MSG - ABR_BASE == 0x98
     assert ABR_VERIFY_RES - ABR_BASE == 0xD8
     assert ABR_EXTERNAL_MU - ABR_BASE == 0x118
+    assert VERIFY_RES_WORDS == 16
+    assert ABR_VERIFY_RES + 4 * VERIFY_RES_WORDS == ABR_EXTERNAL_MU
     assert ABR_SIGNATURE - ABR_BASE == 0x2000
     assert ABR_PRIVKEY_IN - ABR_BASE == 0x6000
     # The four windows a sign or verify touches must not overlap each other.
@@ -161,6 +179,10 @@ def _selftest() -> None:
     assert ABR_NOTIF_INTR - ABR_INTR == 0x18
     assert NAME0_EXP == 0x44534D4C
     assert NAME1_EXP == 0x3837412D
+    # The crypto.adoc label encoding and the DV golden table must agree.
+    assert (NAME0_EXP, NAME1_EXP) == abr_id_golden("MLDSA_CORE_NAME")
+    assert (VER0_EXP, VER1_EXP) == (0x302E322E, 0x00003100)  # "2.0.1"
+    assert ABR_VERSION0 - ABR_NAME0 == 0x8
     cfg = SepAbrKeygenCfg(1)
     assert len(cfg.entropy) == ENTROPY_WORDS
     flipped = cfg.flipped_seed([0] * SEED_WORDS)

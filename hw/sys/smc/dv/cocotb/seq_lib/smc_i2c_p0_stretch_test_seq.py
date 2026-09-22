@@ -114,7 +114,7 @@ class smc_i2c_p0_stretch_test_seq(SmcCsrSeq):
             if ev & I2C_TARGET_EVENTS_TX_PENDING:
                 cocotb.log.info("CHK-I2C-P0-STRETCH: TX_PENDING TARGET_EVENTS=0x%x", ev)
                 return
-            await Timer(5, units="us")
+            await Timer(5, unit="us")
         raise AssertionError(f"TX_PENDING not seen TARGET_EVENTS=0x{ev:08x}")
 
     async def _wait_rx_byte(self) -> int:
@@ -125,7 +125,7 @@ class smc_i2c_p0_stretch_test_seq(SmcCsrSeq):
             status = await self.csr_read("RX_STATUS", status_addr)
             if not (status & I2C_STATUS_RXEMPTY):
                 return int(await self.csr_read("RDATA", rdata_addr)) & 0xFF
-            await Timer(5, units="us")
+            await Timer(5, unit="us")
         raise AssertionError(f"RX empty after stretch release STATUS=0x{status:08x}")
 
     async def _wait_hostidle(self) -> None:

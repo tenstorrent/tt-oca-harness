@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import re
+import tomllib
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
@@ -31,12 +33,49 @@ class Reg:
     fields: list[Field]
 
 
-def compile_root(rdl: str, udp: str | None, incdirs: Iterable[str] | None, top: str | None = None):
+def parse_rdl_params(raw: Iterable[str] | None) -> dict[str, int]:
+    """Parse PeakRDL-style NAME=VALUE addrmap parameter overrides."""
+    params: dict[str, int] = {}
+    for item in raw or []:
+        name, sep, value = item.partition("=")
+        if not sep or not name:
+            raise ValueError(f"RDL parameter {item!r} is not NAME=VALUE")
+        params[name] = int(value, 0)
+    return params
+
+
+def load_doc_overrides(rdl: str) -> dict[str, str]:
+    path = Path(rdl).with_name("regdoc.toml")
+    if not path.exists():
+        return {}
+    with path.open("rb") as stream:
+        data = tomllib.load(stream)
+    if data.get("version") != 1:
+        raise ValueError(f"{path}: expected version = 1")
+    registers = data.get("registers", {})
+    if not isinstance(registers, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) for key, value in registers.items()
+    ):
+        raise ValueError(f"{path}: [registers] must map selectors to descriptions")
+    return registers
+
+
+def compile_root(
+    rdl: str,
+    udp: str | None,
+    incdirs: Iterable[str] | None,
+    top: str | None = None,
+    parameters: dict[str, int] | None = None,
+    defines: dict[str, str] | None = None,
+):
     c = RDLCompiler()
     if udp:
         c.compile_file(udp)
-    c.compile_file(rdl, incl_search_paths=list(incdirs or []))
-    return c.elaborate(top) if top else c.elaborate()
+    c.compile_file(rdl, incl_search_paths=list(incdirs or []), defines=defines or {})
+    kwargs: dict = {}
+    if parameters:
+        kwargs["parameters"] = parameters
+    return c.elaborate(top, **kwargs) if top else c.elaborate(**kwargs)
 
 
 def first_addrmap_name(root) -> str:
@@ -128,10 +167,12 @@ def array_ancestor(node: RegNode):
 
 
 class Collector(RDLListener):
-    def __init__(self):
+    def __init__(self, overrides: dict[str, str] | None = None):
         self.regs: list[Reg] = []
         self.arrays: dict[str, tuple[int, str, str | None]] = {}
         self.seen: set[str] = set()
+        self.overrides = overrides or {}
+        self.used_overrides: set[str] = set()
 
     def enter_Reg(self, node: RegNode):
         if node.is_array and any(i != 0 for i in (node.current_idx or [])):
@@ -166,26 +207,41 @@ class Collector(RDLListener):
         if key in self.seen:
             return
         self.seen.add(key)
+        path = node.get_path()
+        selector = ".".join(re.sub(r"\[\d+\]$", "", segment) for segment in path.split(".")[1:])
+        description = node.get_property("desc") or ""
+        if selector in self.overrides:
+            if description:
+                raise ValueError(
+                    f"{selector}: documentation override is redundant with an RDL description"
+                )
+            description = self.overrides[selector]
+            self.used_overrides.add(selector)
         self.regs.append(
             Reg(
                 name,
                 addr,
                 sw_access(node),
-                node.get_property("desc") or "",
-                node.get_path(),
+                description,
+                path,
                 bit_ranges(node),
             )
         )
 
 
-def collect(root) -> Collector:
-    c = Collector()
+def collect(root, overrides: dict[str, str] | None = None) -> Collector:
+    c = Collector(overrides)
     RDLWalker(unroll=True).walk(root, c)
+    unmatched = set(c.overrides) - c.used_overrides
+    if unmatched:
+        raise ValueError(
+            "documentation override selectors matched no register: " + ", ".join(sorted(unmatched))
+        )
     return c
 
 
-def write_adoc(root, out: str):
-    data = collect(root)
+def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
+    data = collect(root, overrides)
     lines: list[str] = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
@@ -228,8 +284,8 @@ def write_adoc(root, out: str):
     Path(out).write_text("\n".join(lines))
 
 
-def write_html(root, out: str, title: str | None = None):
-    data = collect(root)
+def write_html(root, out: str, title: str | None = None, overrides: dict[str, str] | None = None):
+    data = collect(root, overrides)
     title = title or first_addrmap_name(root)
     lines = [
         "<!-- SPDX-License-Identifier: Apache-2.0 -->",

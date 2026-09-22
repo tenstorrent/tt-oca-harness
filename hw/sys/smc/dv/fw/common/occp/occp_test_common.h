@@ -288,8 +288,6 @@ typedef struct {
 } __attribute__((packed)) occp_exec_header_t;
 
 static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
-    // CRC-8 per occp-protocol.adoc: initial value 0xFF, polynomial 0xD3, MSB first,
-    // no final XOR.
     uint8_t crc = 0xFF;
     const uint8_t poly = 0xD3u; /* x^8 + x^7 + x^6 + x^4 + x + 1 */
     for (int i = 0; i < length; i++) {
@@ -311,8 +309,6 @@ static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
 }
 
 static inline uint32_t calculate_crc32(uint8_t *data, size_t length) {
-    // CRC-32 per occp-protocol.adoc: initial value 0xFFFFFFFF, polynomial 0x992C1A4C,
-    // MSB first, final XOR 0xFFFFFFFF.
     uint32_t crc = 0xFFFFFFFF;
     const uint32_t poly = 0x992c1a4c; /* x^32 + x^26 + x^23 + x^22 + x^16 + x^12 + x^11 + x^10 + x^8
                                          + x^7 + x^5 + x^4 + x^2 + x + 1 */
@@ -473,14 +469,6 @@ typedef struct {
     int cmd_count;
     occp_error_code_t exp_response_code;
     int exp_occp_last_error;
-    /* Opt in to having GET_OCCP_ERROR_CODE compare against
-     * exp_occp_last_error. Off by default, and deliberately so: the ROM's
-     * error code is latched by occp_status_set_error_code() and nothing
-     * clears it on a later success, so a test that provokes any error and
-     * then reads the code back sees the sticky value, not zero. Thirty-two
-     * tests set exp_occp_last_error = 0 without modelling that, so the
-     * comparison is only sound for a test that tracks the latch. */
-    bool check_occp_last_error;
     int timeout;
     bool exp_timeout;
     I3C_DeviceInfo discovered_devices[I3C_MAX_DEVICES];

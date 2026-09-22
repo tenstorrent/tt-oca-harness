@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550-interface]]
-===== Interface
+== Interface
 
-====== Configuration Parameters
+=== Configuration Parameters
 
 The UART 16550 module provides configurable parameters to customize FIFO
 sizes according to system requirements.
@@ -22,9 +22,9 @@ power of 2 between 4 and 4096 (inclusive). Determines the number of
 characters that can be buffered for reception.
 |=======================================================================
 
-====== Signal Interface
+=== Signal Interface
 
-====== Global Interface
+=== Global Interface
 
 .Global Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
@@ -38,7 +38,7 @@ synchronous deassertion. When asserted, all registers are reset to their
 default values and FIFOs are cleared.
 |=======================================================================
 
-====== UART Serial Interface
+=== UART Serial Interface
 
 .UART Serial Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
@@ -51,7 +51,7 @@ input. Idle state is high (logic 1).
 state is high (logic 1).
 |=======================================================================
 
-====== Modem Control Interface
+=== Modem Control Interface
 
 The modem control interface provides full RS-232 modem signaling
 compatibility. All modem signals are active low at the pins, matching the
@@ -107,7 +107,7 @@ control output controlled by MCR register. Often used for interrupt
 enable in some systems.
 |=======================================================================
 
-====== DMA Interface
+=== DMA Interface
 
 The DMA interface provides signals for Direct Memory Access controllers
 to manage data transfers automatically.
@@ -125,7 +125,7 @@ ready to accept new data. Behavior depends on DMA mode (immediate or
 hysteresis).
 |=======================================================================
 
-====== Error Interface
+=== Error Interface
 
 .Error Interface Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
@@ -136,7 +136,7 @@ detected in FIFO data or pointer structures. This is separate from
 received character parity errors.
 |=======================================================================
 
-====== Interrupt Interface
+=== Interrupt Interface
 
 .Interrupt Interface Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
@@ -147,9 +147,9 @@ interrupt condition occurs. Six priority levels supported with automatic
 prioritization.
 |=======================================================================
 
-====== Interface Timing Considerations
+=== Interface Timing Considerations
 
-====== Clock Domain
+=== Clock Domain
 
 All interface signals operate in a single clock domain referenced to
 `clk_i`. The following timing considerations apply:
@@ -162,7 +162,7 @@ internally
 * *Reset Requirements*: `rst_ni` should be asserted asynchronously and
 deasserted synchronously relative to `clk_i`
 
-====== Serial Interface Timing
+=== Serial Interface Timing
 
 * *Baud Rate*: Serial data rate is determined by the divisor latch
 registers (DLL/DLM) and uses 16x oversampling
@@ -172,7 +172,7 @@ usable divisor is `1`
 * *Data Frame*: Configurable start bit (always 1), 5-8 data bits,
 optional parity bit, 1-2 stop bits
 
-====== Protocol Support
+=== Protocol Support
 
 The interface supports standard UART communication protocols:
 

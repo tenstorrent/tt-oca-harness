@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_octs_dual_sync_test(smc_base_test):
     """U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges."""
 
+    required_evidence = ("CHK-OCTS-DUAL-SYNC",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

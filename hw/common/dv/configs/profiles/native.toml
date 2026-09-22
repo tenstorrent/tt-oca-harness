@@ -18,9 +18,10 @@ license = "none"
 default_tool = "verilator"
 tools = ["verilator", "xcelium", "vcs"]
 
+# A cluster executor takes its queue, resource defaults and limits from the site layer.
 [scheduler]
 default_executor = "local"
-allowed = ["local"]
+allowed = ["local", "lsf", "slurm"]
 
 [defaults]
 seed = 1
@@ -44,7 +45,6 @@ cache_key_extra = []
 [target_defaults.default]
 defines = [
   "SIMULATION",
-  "COMMON_CELLS_ASSERTS_OFF",
   "RANDOM=0",
   "RANDOMIZE_MEM_INIT",
   "RANDOMIZE_REG_INIT",
@@ -60,6 +60,9 @@ flags = [
   "-Wno-UNSIGNED",
   "-Wno-REDEFMACRO",
   "-Wno-MODDUP",
+  # The inline assertion blocks of the vendored common_cells do not compile
+  # under Verilator; VCS and Xcelium compile and run them.
+  "+define+COMMON_CELLS_ASSERTS_OFF",
 ]
 
 [target_defaults.default.tools.xcelium]

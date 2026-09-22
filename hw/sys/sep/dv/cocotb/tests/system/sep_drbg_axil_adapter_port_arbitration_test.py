@@ -164,9 +164,21 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                 )
                 self.logger.error("CHK-PORT-PROGRESS FAIL: %s", fails[-1])
                 continue
+            if obs["b_resp"] != RESP_OKAY or obs["r_resp"] != RESP_OKAY:
+                fails.append(
+                    f"[{order}] both accesses retired but a response was not "
+                    f"OKAY (b_resp={obs['b_resp']} r_resp={obs['r_resp']}); "
+                    f"{summary}"
+                )
+                self.logger.error("CHK-PORT-PROGRESS FAIL: %s", fails[-1])
+                continue
 
             covered.append(order)
-            self.logger.info("CHK-PORT-PROGRESS OK: %s retired both accesses; %s", order, summary)
+            self.logger.info(
+                "CHK-PORT-PROGRESS OK: %s retired both accesses with OKAY; %s",
+                order,
+                summary,
+            )
 
         # A stimulus miss is reported before a DUT verdict: a cell that never
         # presented its ordering says nothing about the arbitration either way,
@@ -185,11 +197,15 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
         if fails:
             raise AssertionError(
                 f"CHK-PORT-PROGRESS FAIL: {len(fails)} of {len(ORDER_NAMES)} "
-                f"legal channel ordering(s) stalled the adapter with no channel "
-                f"able to retire: {'; '.join(fails)}"
+                f"legal channel ordering(s) stalled the adapter or answered "
+                f"non-OKAY: {'; '.join(fails)}"
             )
+        assert len(covered) == len(ORDER_NAMES), (
+            f"CHK-PORT-PROGRESS FAIL: covered {len(covered)} of "
+            f"{len(ORDER_NAMES)} ordering(s): {covered}"
+        )
         self.logger.info(
-            "CHK-PORT-PROGRESS PASS: %d/%d ordering(s) retired both accesses (%s)",
+            "CHK-PORT-PROGRESS PASS: %d/%d ordering(s) retired both accesses with OKAY (%s)",
             len(covered),
             len(ORDER_NAMES),
             ", ".join(covered),

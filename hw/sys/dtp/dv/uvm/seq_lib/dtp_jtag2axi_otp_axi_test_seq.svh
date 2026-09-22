@@ -99,8 +99,8 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
 
   // Capture shift for the read-series pipeline: returns the payload of the
   // PREVIOUS (priming) SERIES_DATA_INCR/NO_INCR shift.
-  protected task series_capture(dtp_j2a_target_t t, jtag_inst_reg_pkg::jtag_instruction_e instr,
-                                input int unsigned size, output bit [63:0] observed);
+  protected task series_capture(dtp_j2a_target_t t, dtp_jtag_instr_e instr, input int unsigned size,
+                                output bit [63:0] observed);
     bit [63:0] raw;
     series_data_shift(t, instr, '0, size, -1, raw);
     observed = raw & data_mask(size);
@@ -305,11 +305,18 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
       bit [63:0] addr = random_target_aligned_addr(t, size);
       bit [63:0] data = 64'($urandom) & data_mask(size);
-      `uvm_info(
-          get_type_name(), $sformatf(
-          "Iteration %0d/%0d: random write addr=0x%08h data=0x%0h", idx, random_count, addr, data),
-          UVM_LOW)
-      write_target_single_and_check(t, addr, data, status, size, full_wstrb(size), $sformatf(
+      // Any non-empty legal strobe pattern; the memory check judges the
+      // enabled lanes only.
+      bit [7:0] wstrb = 8'($urandom_range(int'(full_wstrb(size)), 1));
+      `uvm_info(get_type_name(), $sformatf(
+                "Iteration %0d/%0d: random write addr=0x%08h data=0x%0h wstrb=0x%01h",
+                idx,
+                random_count,
+                addr,
+                data,
+                wstrb
+                ), UVM_LOW)
+      write_target_single_and_check(t, addr, data, status, size, wstrb, $sformatf(
                                     "random_write#%0d", idx));
       operation_count++;
     end
@@ -400,7 +407,9 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
       operation_count++;
     end
 
-    read_series_ctrl(t, size, series_reset, addr_after, pl_depth, size_rd, status);
+    // The last primed incrementing read advanced the series address by one
+    // stride past the last beat.
+    check_series_addr(t, addr + stride, size, "series_wr_rd_incr.final", status);
     check_status("series_wr_rd_incr.final", status, DTP_J2A_SUCCESS);
   endtask
 
@@ -593,7 +602,7 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
     // CHK-AXI-NONVAC: the counters that stayed flat while gated
     // demonstrably move for real traffic (baseline + both restores).
     sample_activity(t, after_aw, after_w, after_ar);
-    emit_nonvacuity_evidence((operation_count >= 2) && (after_aw >= 3), $sformatf(
+    emit_nonvacuity_evidence(t, (operation_count >= 2) && (after_aw >= 3), $sformatf(
                              "gated_attempts=%0d aw_pulses=%0d expected_aw>=3 (baseline+2 restores)",
                              operation_count,
                              after_aw
@@ -689,7 +698,7 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
     // CHK-AXI-NONVAC: the counters that stayed flat while gated
     // demonstrably move for real traffic (baseline + both restores).
     sample_activity(t, now_aw, now_w, now_ar);
-    emit_nonvacuity_evidence(operation_count >= 2 && now_ar >= 3, $sformatf(
+    emit_nonvacuity_evidence(t, operation_count >= 2 && now_ar >= 3, $sformatf(
                              "gated_attempts=%0d ar_pulses=%0d expected_ar>=3 (baseline+2 restores)",
                              operation_count,
                              now_ar
@@ -726,7 +735,7 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
     enable_all_debug();
     // Scenario-level stream minimum (cocotb CHK-AXI-STREAM-MIN parity).
     emit_nonvacuity_evidence(
-        operation_count >= 2, $sformatf(
+        t, operation_count >= 2, $sformatf(
         "scenario=%s target=%s operations=%0d min_ops=2", scenario, t.name, operation_count));
     `uvm_info(get_type_name(),
               $sformatf(
