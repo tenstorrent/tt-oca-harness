@@ -44,6 +44,7 @@ from runlib.executors import (  # noqa: E402
     NOT_IMPLEMENTED,
     build_executor,
     dispatch_blocker,
+    executor_builds,
     executor_limits,
 )
 from runlib.executors.base import (  # noqa: E402
@@ -479,6 +480,9 @@ class RegistrySchemaTest(unittest.TestCase):
         for name in ("lsf", "slurm"):
             self.assertTrue(executors[name]["arrays"])
             self.assertEqual(executor_limits(executors[name])["array_chunk_size"], 100)
+            self.assertEqual(executor_builds(executors[name]), "scheduler")
+        self.assertEqual(executor_builds(executors["local"]), "local")
+        self.assertEqual(executor_builds({**executors["lsf"], "builds": "local"}), "local")
 
     def test_unknown_schema_version(self) -> None:
         self.write_registry(LOCAL_TABLE.replace("schema_version = 2", "schema_version = 3"))
@@ -515,6 +519,11 @@ class RegistrySchemaTest(unittest.TestCase):
         self.check_rejected(lambda t: t.update(driver="pbs"), "driver")
         self.check_rejected(lambda t: t.update(arrays="yes"), "arrays")
         self.check_rejected(lambda t: t.update(limits={"array_chunk_size": 0}), "array_chunk_size")
+        self.check_rejected(lambda t: t.update(builds="farm"), "builds")
+        self.check_rejected(lambda t: t.update(build_defaults={"cores": 0}), "build_defaults")
+        self.check_rejected(
+            lambda t: t.update(build_submit_argv=["bsub", "{nope}"]), "build_submit_argv"
+        )
         self.check_rejected(lambda t: t.update(binaries=[]), "binaries")
         self.check_rejected(lambda t: t.update(wait_mode="inline"), "wait_mode")
         self.check_rejected(lambda t: t.pop("submit_argv"), "submit_argv")

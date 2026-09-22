@@ -368,7 +368,10 @@ class ClusterExecutor(Executor):
             "task_id": task.task_id,
             "executor": self.name,
         }
-        result = self._run(render_argv(self._cfg["submit_argv"], values), "submit")
+        template = self._cfg["submit_argv"]
+        if task.is_build and self._cfg.get("build_submit_argv"):
+            template = self._cfg["build_submit_argv"]
+        result = self._run(render_argv(template, values), "submit")
         outcome = self._dialect.parse_submit(result)
         stamp = now_iso()
         handle = JobHandle(
@@ -957,9 +960,6 @@ class ClusterExecutor(Executor):
             "exit_code": seen.exit_code,
             "reason": seen.reason,
         }
-        if handle.array_job_id:
-            scheduler["array_job_id"] = handle.array_job_id
-            scheduler["array_task_id"] = handle.array_task_id
         joblog = repo_rel(self._root, tracked.joblog) if tracked.joblog.is_file() else None
         result = self._read_result(task)
         if result is not None:

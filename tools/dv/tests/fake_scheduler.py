@@ -472,6 +472,19 @@ class Fake:
         return 0, stdout, stderr
 
 
+def base_of(job_id: str) -> str:
+    """The array id of an element id, or the id itself."""
+    return re.split(r"[\[_]", job_id, maxsplit=1)[0]
+
+
+def index_of(job_id: str) -> int | None:
+    """The element index of an element id, or None for a plain job."""
+    found = re.search(r"(?:\[(\d+)\]|_(\d+))$", job_id)
+    if not found:
+        return None
+    return int(found.group(1) or found.group(2))
+
+
 def is_terminal(token: str) -> bool:
     return token in TERMINAL or token.startswith("EXIT:")
 

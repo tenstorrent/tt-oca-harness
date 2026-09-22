@@ -11,7 +11,9 @@
 # without `-q`. With `arrays = true` the first attempts of a stage go out as job arrays of at
 # most `limits.array_chunk_size` elements; each element is its own job id to every other
 # command, so the query, history and cancel templates need nothing array-specific beyond what
-# the comments below name.
+# the comments below name. With `builds = "scheduler"` a target build is a job of its own that
+# the leaves wait for; `build_defaults` is the build's resource request where it differs from
+# `defaults`, and `build_submit_argv` its submit line where a site's build needs other flags.
 
 schema_version = 2
 
@@ -31,6 +33,7 @@ driver = "lsf"
 binaries = ["bsub", "bjobs", "bhist", "bkill"]
 wait_mode = "poll"
 arrays = true
+builds = "scheduler"
 submit_argv = [
   "bsub",
   ["-q", "{queue}"],
@@ -60,6 +63,7 @@ driver = "slurm"
 binaries = ["sbatch", "squeue", "sacct", "scancel"]
 wait_mode = "poll"
 arrays = true
+builds = "scheduler"
 submit_argv = [
   "sbatch", "--parsable",
   ["--partition={queue}"],

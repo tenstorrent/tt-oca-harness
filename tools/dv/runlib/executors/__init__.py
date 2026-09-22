@@ -96,6 +96,14 @@ def dispatch_blocker(name: str, cfg: Mapping[str, Any]) -> str | None:
     return None
 
 
+def executor_builds(cfg: Mapping[str, Any]) -> str:
+    """Where this executor runs target builds: ``scheduler`` on a cluster unless it says
+    ``local``; the local executor builds in-process."""
+    if executor_driver(cfg) == LOCAL_DRIVER:
+        return "local"
+    return str(cfg.get("builds") or "scheduler")
+
+
 def executor_limits(cfg: Mapping[str, Any]) -> dict[str, Any]:
     """The `limits` table with the defaults filled in."""
     out = dict(DEFAULT_LIMITS if executor_driver(cfg) == LOCAL_DRIVER else CLUSTER_DEFAULT_LIMITS)
@@ -184,6 +192,7 @@ __all__ = [
     "build_executor",
     "dispatch_blocker",
     "error_result",
+    "executor_builds",
     "executor_driver",
     "executor_environment",
     "executor_limits",

@@ -103,7 +103,10 @@ def run_manifest(path: Path) -> int:
 
     data = load_manifest(path)
     task = task_from_manifest(data)
-    _say(f"manifest {path} task={task.task_id} item={task.item} seed={task.seed}")
+    _say(
+        f"manifest {path} task={task.task_id} "
+        + (f"build target={task.target}" if task.is_build else f"item={task.item} seed={task.seed}")
+    )
     root = verify_checkout(data)
     verify_run_tree(data)
 
@@ -126,7 +129,7 @@ def run_manifest(path: Path) -> int:
     activate_adopter_overlay_env(flow.raw)
     sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), registries.simulators, flow.tools)
     catalog = load_test_catalog(flow, root)
-    if task.item not in catalog.tests:
+    if not task.is_build and task.item not in catalog.tests:
         raise WorkerError(f"test `{task.item}` is not in the catalog of DUT `{flow.name}`")
     target = task.target or None
     multi_target = bool(data.get("multi_target", False))
@@ -138,7 +141,13 @@ def run_manifest(path: Path) -> int:
     args = attempt_args(args, task, ui_leaf_mode=str(cli.get("ui_leaf_mode") or "full"))
     args._multi_target_run = multi_target
     args._site_layer = registries.site.label if registries.site is not None else None
-    if target:
+    if task.is_build:
+        # The job's core request bounds the compile; without one the host's core count does.
+        if task.resources.cores:
+            args.build_jobs = int(task.resources.cores)
+        else:
+            args._cluster_executor = True
+    elif target:
         # The coordinator built the model before submitting; a worker never rebuilds it.
         args._cocotb_prebuilt_targets = {target}
 
