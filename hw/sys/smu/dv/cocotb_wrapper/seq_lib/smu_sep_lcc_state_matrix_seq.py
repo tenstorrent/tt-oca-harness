@@ -78,7 +78,12 @@ class SmuSepLccStateMatrixSeq:
         self.log = test.logger
 
     def _rd(self, handle, name):
+        """Trace-side sample; sep_pc_o is unqualified while sep_trace_valid_o is 0."""
         return self.test.read_int(handle, name, allow_xz=True)
+
+    def _rd_boundary(self, handle, name):
+        """Posture output: an X here fails, since 0 is a passing value for several states."""
+        return self.test.read_int(handle, name, allow_xz=False)
 
     async def run(self) -> None:
         max_cycles = int(os.environ.get("SMU_SEP_FW_MAX_CYCLES", "300000"), 0)
@@ -126,7 +131,7 @@ class SmuSepLccStateMatrixSeq:
 
         # Baseline before the firmware DEMOTE writes. A post-run open bit is
         # not a demote proof when this is already open (TEST_DEV / RMA).
-        feat_ctrl_before = self._rd(self.dut.lcc_feat_ctrl_o, "lcc_feat_ctrl_o")
+        feat_ctrl_before = self._rd_boundary(self.dut.lcc_feat_ctrl_o, "lcc_feat_ctrl_o")
         baseline_open = (feat_ctrl_before & 0xFFFF_FFFF) != 0
         self.log.info(
             "feat_ctrl at reset: 0x%016x (low32 %s)",
@@ -159,11 +164,11 @@ class SmuSepLccStateMatrixSeq:
         for _ in range(SETTLE_CYCLES):
             await RisingEdge(self.dut.clk_smu_i)
 
-        lc_state = self._rd(self.dut.smc_lc_state_in_o, "smc_lc_state_in_o")
-        feat_ctrl = self._rd(self.dut.lcc_feat_ctrl_o, "lcc_feat_ctrl_o")
-        dbg_disable = self._rd(self.dut.lcc_dbg_disable_o, "lcc_dbg_disable_o")
-        demote1 = self._rd(self.dut.lcc_demote_state_1_o, "lcc_demote_state_1_o")
-        demote2 = self._rd(self.dut.lcc_demote_state_2_o, "lcc_demote_state_2_o")
+        lc_state = self._rd_boundary(self.dut.smc_lc_state_in_o, "smc_lc_state_in_o")
+        feat_ctrl = self._rd_boundary(self.dut.lcc_feat_ctrl_o, "lcc_feat_ctrl_o")
+        dbg_disable = self._rd_boundary(self.dut.lcc_dbg_disable_o, "lcc_dbg_disable_o")
+        demote1 = self._rd_boundary(self.dut.lcc_demote_state_1_o, "lcc_demote_state_1_o")
+        demote2 = self._rd_boundary(self.dut.lcc_demote_state_2_o, "lcc_demote_state_2_o")
 
         low32_before = feat_ctrl_before & 0xFFFF_FFFF
         low32_after = feat_ctrl & 0xFFFF_FFFF

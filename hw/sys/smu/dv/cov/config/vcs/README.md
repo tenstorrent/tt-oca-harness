@@ -13,7 +13,7 @@ source path; the two are kept in step by hand.
 ## What it excludes
 
     -tree smu_wrapper_uvm_top 1                          TB top's own body, children kept
-    -tree smu_wrapper_uvm_top.u_dut.u_smu                the SMU block, graded on --dut smu_block
+    -tree smu_wrapper_uvm_top.u_dut.u_smu                the SMU block
     -tree smu_wrapper_uvm_top.u_dut.u_smc_ip_integration SMC and its adopter-side collateral
     -tree smu_wrapper_uvm_top.u_dut.u_sep_ip_integration SEP and its adopter-side collateral
     -tree smu_wrapper_uvm_top.u_axi_out_bridge           bench-side AXI egress glue: the struct
@@ -24,10 +24,10 @@ source path; the two are kept in step by hand.
                                                           AXI package
 
 The wrapper is graded on its interface. Everything it instantiates is internal
-logic with an owner of its own -- the SMU block on the block bench, SMC, DTP
-and SEP in their own DV packages -- and grading it again here would attribute
-their holes to SMU and bury the interface inside a denominator two orders of
-magnitude larger. What remains is `hw/top/smu_wrapper.sv` itself and the
+logic: SMC, DTP and SEP are graded in their own DV packages, and the SMU
+block's own nets are the wiring between them. Grading any of it here would
+attribute their holes to SMU and bury the interface inside a denominator two
+orders of magnitude larger. What remains is `hw/top/smu_wrapper.sv` itself and the
 `cov/sv` functional-coverage modules under the TB top. urg's `hierarchy.txt`
 for a finished run is the check: it lists `u_dut` and the ten `u_smu_*_fcov`
 instances and nothing under `u_dut`.

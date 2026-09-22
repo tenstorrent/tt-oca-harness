@@ -13,28 +13,27 @@ no code compares it against an observed value. It says what the bound compare
 proved, not what the test as a whole claims.
 
 Keys name the pyuvm type name of the test body. Every key names a test that
-is enrolled in a testlist or has a body under ``cocotb/tests`` or
+is enrolled in ``testlists/all.toml`` or has a body under
 ``cocotb_wrapper/tests``. This package is the ``env`` namespace package: the
-shared half lives here under ``cocotb/env`` and the wrapper-only half under
-``cocotb_wrapper/env``; both directories are on the wrapper flow's path. A testcase that builds an ``SmuScoreboard`` and
-carries no rows here must be listed in ``UNMAPPED_TESTS``;
-``prove_mapped_features`` raises otherwise. Both base tests call
-``prove_mapped_features`` after the scenario; the wrapper base test does so
-only for leaves with ``use_shared_env = True`` and logs one
-``EVIDENCE MAP GATE SKIPPED`` line for the others, whose verdict lives in
-their own sequence or scoreboard.
+scoreboard, this map and the FCOV ledger live here under ``cocotb/env`` and
+the wrapper's env config, boot scoreboard and trace monitor under
+``cocotb_wrapper/env``; both directories are on the flow's path. A testcase
+that builds an ``SmuScoreboard`` and carries no rows here must be listed in
+``UNMAPPED_TESTS``;
+``prove_mapped_features`` raises otherwise, and it also raises for a row whose
+token reached the log only through a check-name match with no ``evidence=``.
+The base test calls ``prove_mapped_features`` after the scenario for leaves
+that score through the shared ``SmuScoreboard``. The wrapper-native leaves
+(``use_shared_env = False``) are gated by the base test another way: every
+token their sequence declares in its ``EVIDENCE`` tuple, every
+``required_evidence`` token on the test, and every row here must have been
+logged as an ``EVIDENCE: <TOKEN>`` line before the leaf passes.
 """
 
 from __future__ import annotations
 
 # testcase -> recorded reason for running with no (CHK_ID, TOKEN, EXPECT) rows
-UNMAPPED_TESTS: dict[str, str] = {
-    "smu_ext_axi_global_addr_smoke_test": (
-        "present but not enrolled: the OSS s_axi is a LOCAL aperture, so "
-        "GLOBAL_BASE + offset DECERRs. Rows are withheld until enrollment; "
-        "disposition in hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc"
-    ),
-}
+UNMAPPED_TESTS: dict[str, str] = {}
 
 # testcase -> ordered checkbox contracts (FEATURE_LIST / VPLAN aligned)
 TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
@@ -55,28 +54,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "PTAP leave-TLR with power-good + TRST released",
         ),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<PASS after leave-TLR"),
-    ],
-    "smu_axi_external_port_connectivity_test": [
-        (
-            "CHK-SMU-PORT-SMN-AXI-S1",
-            "CHK-SMU-PORT-SMN-AXI-S1",
-            "SEP=0 inbound smu_axi_in reaches SMC via direct IW: BlockByDefault "
-            "DECERR with matching BID/RID, paired with the S1-CONTROL row",
-        ),
-        (
-            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL",
-            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL",
-            "same master, same probe: inbound0 window opened by JTAG2AXI, read "
-            "returns OKAY and the VERSION_LO RDL reset value; window cleared "
-            "afterwards and the DECERR returns",
-        ),
-        (
-            "CHK-SMU-SEP-PARAM-S2",
-            "CHK-SMU-SEP-PARAM-S2",
-            "SEP=0 direct SMC↔external ID converters elaborated",
-        ),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded AXI waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_axi_filter_allow_ns_test": [
         ("CHK-SMU-ALLOW-NS-S1", "CHK-SMU-ALLOW-NS-S1", "allow_ns=0 secure OKAY / NS DECERR"),
@@ -172,15 +149,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-PROT-S9-MATRIX",
             "CHK-SMU-PROT-S9-MATRIX",
             "eight-way AxPROT matrix on VERSION_LO",
-        ),
-    ],
-    "smu_axi_xbar_structure_test": [
-        ("CHK-XBAR-POS-NO-GEN-SEP", "CHK-XBAR-POS-NO-GEN-SEP", "gen_sep absent under SEP=0"),
-        ("CHK-XBAR-POS-IW", "CHK-XBAR-POS-IW", "gen_no_sep ID converters resolve"),
-        (
-            "CHK-XBAR-ABSENT-NO-SEP",
-            "CHK-XBAR-ABSENT-NO-SEP",
-            "smu_axi_xbar absent under gen_no_sep",
         ),
     ],
     "smu_boot_stall_jtag_cold_reset_matrix_test": [
@@ -284,9 +252,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_dtp_io_stap_smoke_test": [
         ("CHK-DTP-IO-STAP-SCAN", "CHK-DTP-IO-STAP-SCAN", "IO STAP host TCK observe"),
     ],
-    "smu_dtp_jtag2axi_abort_mid_op_test": [
-        ("CHK-J2A-ABORT", "J2A_ABORT_RECOVER", "abort mid-BUSY recovers"),
-    ],
     "smu_dtp_jtag2axi_back_to_back_error_ok_test": [
         ("CHK-J2A-B2B", "J2A_B2B_OK", "DECERR then immediate SUCCESS"),
     ],
@@ -332,15 +297,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "OTP decode hole returns SLVERR",
         ),
     ],
-    "smu_dtp_ptap_otp_instr_scan_test": [
-        ("CHK-PTAP-SEP-OTP-CAPS", "PTAP_SEP_OTP_CAPS_OK", "SEP OTP CAPS packing"),
-        ("CHK-PTAP-JTAG-CAPS-SEP-DBG", "PTAP_SEP_DBG_EN_0", "JTAG_CAPS sep_dbg_en=0"),
-        (
-            "CHK-PTAP-OTP-SINGLE-OP-IRDR",
-            "PTAP_OTP_SINGLE_OP_IRDR_OK",
-            "SMC SINGLE_OP TDR echo + SEP IR BYPASS",
-        ),
-    ],
     "smu_dtp_smc_stap_smoke_test": [
         (
             "CHK-DTP-SMC-STAP-IDCODE",
@@ -351,8 +307,16 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_ext_boot_seq_gate_test": [
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
         ("CHK-PRIMARY-NOT-GATED", "CHK-PRIMARY-NOT-GATED", "primary still releases while gated"),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded sample waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<S3<S4<PASS"),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "both bounded waits completed within RELEASE_BOUND, none expired",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "DUT-edge ordered fence: primary release < ungate drive < fuse release",
+        ),
     ],
     "smu_fabric_reg_bar_wr_test": [
         (
@@ -414,17 +378,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_jtag_reset_override_test": [
         ("CHK-IC-DEFAULT", "IC_RESET_DEFAULT", "IC_RESET default all-ones"),
         ("CHK-IC-DOMAIN", "IC_RESET_DOMAIN_EXCL", "single domain override exclusive"),
-    ],
-    "smu_no_sep_configuration_test": [
-        ("CHK-SEP0-LC", "CHK-SEP0-LC", "lc_state_o==0xf0 stable >=16 cycles"),
-        (
-            "CHK-SEP0-EGRESS",
-            "CHK-SEP0-EGRESS",
-            "a J2A write outside both SMC apertures advances the outbound write "
-            "counter and the read brings the pattern back",
-        ),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_otp_bridges_under_dbg_disable_test": [
         (
@@ -507,23 +460,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_sep_smoke_test": [
         (
-            "CHK-SMC-RST-PRIMARY-EXPORT-S1",
-            "CHK-SMC-RST-PRIMARY-EXPORT-S1",
-            "Functional cold reset asserts both exported primary reset outputs",
+            "CHK-SEP-BOOT-ROM",
+            "SEP_BOOT_ROM_OK",
+            "SEP reset observed asserted then released; first fetch in the boot-ROM window",
         ),
         (
-            "CHK-SMC-RST-PRIMARY-EXPORT-S2",
-            "CHK-SMC-RST-PRIMARY-EXPORT-S2",
-            "JTAG/TDR state is not cleared by rst_primary alone",
+            "CHK-SEP-ICCM",
+            "SEP_ICCM_OK",
+            "SEP executed in the ICCM range: >=256 retires over >=16 distinct PCs",
         ),
-        (
-            "CHK-DTP-XTRIG-CTM-S2",
-            "CHK-DTP-XTRIG-CTM-S2",
-            "Pulse-sync mode leaves ack ports unused as specified",
-        ),
-        ("CHK-DTP-XTRIG-CTM-S3", "CHK-DTP-XTRIG-CTM-S3", "Bits [1:0] remain reserved for SMC"),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
+        ("CHK-SEP-DCCM-WRITE", "SEP_DCCM_WRITE_OK", "SEP firmware stored results into DCCM"),
+        ("CHK-NONVAC", "CHK-NONVAC", "boot scoreboard verdict with the SMC arm TEST_PASS seen"),
     ],
     "smu_smc_boundary_io_test": [
         (
@@ -630,9 +577,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
     ],
-    "smu_smc_security_demote_pm_test": [
-        ("CHK-DEMOTE-TIEOFF", "DEMOTE_TIEOFF_OBS", "SEP=0 demote hardwire observe"),
-    ],
     "smu_smc_boundary_lane_sweep_test": [
         (
             "CHK-SMU-LANE-EXT-IRQ",
@@ -730,14 +674,18 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_smc_smoke_test": [
+        ("CHK-SMC-ROM-READ", "SMC_ROM_READ_OK", "SMC ROM read activity observed"),
         (
-            "CHK-SMC-FAB-DUAL-NET-S2",
-            "CHK-SMC-FAB-DUAL-NET-S2",
-            "AXI4-Lite LP to local_peripheral + config_register",
+            "CHK-SMC-SCRATCH-WRITE",
+            "SMC_SCRATCH_WRITE_OK",
+            "SMC scratch SRAM write activity observed",
         ),
-        ("CHK-SMC-FAB-DUAL-NET-S3", "CHK-SMC-FAB-DUAL-NET-S3", "AXI4 + AXI4-Lite both 64-bit data"),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
+        (
+            "CHK-SMC-TEST-PASS",
+            "SMC_TEST_PASS_OK",
+            "SMC firmware wrote TEST_PASS and never TEST_FAIL",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "boot scoreboard verdict on the SEP=1 wrapper"),
     ],
     "smu_smc_ss_reset_ctrl_sweep_test": [
         (
@@ -843,9 +791,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "samples taken either side of the read",
         ),
     ],
-    "smu_telemetry_atb_handshake_test": [
-        ("CHK-TEL-ATB", "TEL_ATREADY_HS", "ATB handshake"),
-    ],
     # --- P0 composition and bring-up leaves on the production wrapper ---
     # These set use_shared_env = True, so prove_mapped_features runs for them
     # and every row below has to be logged by a passing compare.
@@ -913,17 +858,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "telemetry stays released and clocked while primary/periph fall",
         ),
     ],
-    "smu_cold_reset_async_assert_test": [
-        (
-            "CHK-SMU-RST-COLD-S1",
-            "CHK-SMU-RST-COLD-S1",
-            "cold reset asserts with every clock static",
-        ),
-    ],
-    # Both testlist entries (SEP=1 and SEP=0) run this one body, and
-    # bind_testcase keys the map on the body name, so only the tokens both
-    # legs log can be rows here. CHK-SMU-SEC-TOKEN-S1 and CHK-SMU-LC-SECDIS-S1
-    # are emitted on the SEP=1 leg alone and are therefore not enforced.
+    # CHK-SMU-SEC-TOKEN-S1 and CHK-SMU-LC-SECDIS-S1 are logged by the body as
+    # observations the card does not claim, so they are not rows here.
     "smu_composition_parameter_test": [
         (
             "CHK-SMU-SEC-TOKEN-S2",

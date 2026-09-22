@@ -6,7 +6,7 @@
 // the telemetry and SEP-watchdog domains running apart from them.
 //
 // The block clocks arrive as the hierarchical clock mirrors tb_wrapper_top
-// exposes (obs_*_clk_o), so this module lives in the wrapper bench only.
+// exposes (obs_*_clk_o).
 //
 // A clock is measured by counting its rising edges and reading the counters
 // half a clk_smu period later, on the falling edge of clk_smu. A block on
@@ -129,7 +129,7 @@ module smu_clk_fcov #(
   // The SEP and crossbar blocks sharing the primary domain, and the
   // SEP watchdog domain running while SEP is out of reset. Only
   // elaborated with SEP present: both blocks and the watchdog clock come
-  // out of smu.sv's gen_sep branch, and every bench ties their clock and
+  // out of smu.sv's gen_sep branch, and the bench ties their clock and
   // reset mirrors off without it.
   // ------------------------------------------------------------------
   if (SepPresent) begin : g_sep

@@ -106,21 +106,10 @@ jobs:
             # uses `elaboration` firmware, whose only products are zero-filled
             # preload images written in Python, so there is no RISC-V toolchain
             # stage on hosted runners. `smu` is the wrapper DUT on its single
-            # compile profile (real SEP); the bare block bench is `smu_block`
-            # (hw/sys/smu/dv/testlists/block.toml). `smu`'s own `all` is not
-            # usable here -- it carries the SEP firmware set, which needs the
+            # compile profile (real SEP). `smu`'s own `all` is not usable
+            # here -- it carries the SEP firmware set, which needs the
             # toolchain container.
             items: hosted
-            reseed: 1
-            coverage: false
-            runner: ubuntu-latest
-          - dut: smu_block
-            # The bare `smu #(.SEP(0))` bench. `all` is its cocotb leaves --
-            # the SEP=0 composition proofs plus the two JTAG leaves that cannot
-            # run on the wrapper -- with no firmware stage, so it runs on the
-            # hosted runner; sim.yml gates only the `smoke` leaf, so the
-            # scheduled tiers are where the abort-mid-op leaf executes.
-            items: all
             reseed: 1
             coverage: false
             runner: ubuntu-latest
@@ -273,11 +262,6 @@ jobs:
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
           - dut: smu
             items: hosted
-            reseed: 1
-            coverage: false
-            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
-          - dut: smu_block
-            items: all
             reseed: 1
             coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}

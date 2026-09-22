@@ -38,10 +38,14 @@ SEP_ICCM_END = 0xC004_0000
 class SmuSepSmcNotifySeq:
     """Require the SEP mailbox write to traverse the whole egress chain."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_REAL_FW_NOTIFY_OK", "SEP_OUTBOUND_EGRESS_CHAIN_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -150,7 +154,7 @@ class SmuSepSmcNotifySeq:
             axi_out,
         )
         self.log.info("CHK-SEP-EGRESS-FRONTDOOR: PASS (boot_rom=1 iccm=1 traces=%d)", traces)
-        for token in ("SEP_REAL_FW_NOTIFY_OK", "SEP_OUTBOUND_EGRESS_CHAIN_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

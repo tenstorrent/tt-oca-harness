@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -28,17 +29,69 @@ for _path in (
 
 from env.smu_env import SmuEnv  # noqa: E402
 from env.smu_env_cfg import SmuEnvCfg  # noqa: E402
+from env.smu_evidence_map import TEST_EVIDENCE  # noqa: E402
 from env.smu_sep_cpu_trace_monitor import SmuSepCpuTraceMonitor  # noqa: E402
 from ocah_axi_vip import OcahAxiSlaveAgent  # noqa: E402
 from seq_lib.sep_fw_common import load_syms  # noqa: E402
 
 
+class _EvidenceRecorder:
+    """Collect every ``EVIDENCE: <TOKEN>`` line a run logs, whichever logger emits it.
+
+    The wrapper-native leaves stamp their verdict tokens from three places: a
+    sequence's own logger after its ``assert not errors``, a boot scoreboard
+    after its verdict, and the leaf itself. Those are pyuvm loggers, which do
+    not propagate to the root handler, so a filter on any one of them would
+    miss part of the run. The log-record factory sees every record regardless
+    of logger, and reading the token from the record keeps the log line the
+    single source of what was proved.
+
+    Only a token at the start of the message counts: prose that quotes a token
+    is not an emission. Both spellings ``EVIDENCE: T`` and ``EVIDENCE:T`` are
+    read, so the recorder matches what the evidence map and its consumers grep.
+    """
+
+    _TOKEN = re.compile(r"^\s*EVIDENCE:\s*(\S+)")
+
+    def __init__(self) -> None:
+        self.seen: set[str] = set()
+        self._previous_factory = logging.getLogRecordFactory()
+
+    def install(self) -> None:
+        logging.setLogRecordFactory(self._factory)
+
+    def _factory(self, *args, **kwargs) -> logging.LogRecord:
+        record = self._previous_factory(*args, **kwargs)
+        try:
+            message = record.getMessage()
+        except Exception:  # a broken format string is the caller's failure, not ours
+            return record
+        match = self._TOKEN.match(message)
+        if match:
+            self.seen.add(match.group(1))
+        return record
+
+
+#: Wrapper-native leaves allowed to finish with no declared evidence token,
+#: each with the reason. Mirrors ``UNMAPPED_TESTS`` for the shared-env leaves:
+#: a leaf that declares nothing and is not listed here fails its run. Empty
+#: means every wrapper-native leaf names at least one token it must log.
+NO_EVIDENCE_LEAVES: dict[str, str] = {}
+
+
 class smu_base_test(uvm_test):
     """Clock/reset bring-up and scenario hook shared by every SMU OSS test."""
 
-    #: Set True by a leaf that scores through self.env.scoreboard, the shared
-    #: SmuEnv the bare-smu catalog scores against.
+    #: Set True by a leaf that scores through self.env.scoreboard, the
+    #: SmuEnv under cocotb/env.
     use_shared_env = False
+
+    #: Evidence tokens a wrapper-native leaf (use_shared_env=False) must log
+    #: through an ``EVIDENCE: <TOKEN>`` line before it may pass, in addition to
+    #: the tokens its sequence declares through ``declare_evidence`` and the
+    #: leaf's ``TEST_EVIDENCE`` rows. Set by a leaf whose verdict lives outside
+    #: a sequence ``EVIDENCE`` tuple -- a boot scoreboard or the leaf itself.
+    required_evidence: tuple[str, ...] = ()
 
     #: Minimum jtag_period_ns / smu_clk_period_ns this leaf will run at, or
     #: None to take whatever randomize_timing drew.
@@ -73,7 +126,7 @@ class smu_base_test(uvm_test):
     async def arm_async_resets(self) -> None:
         """Create a falling TRST edge so IC_RESET TDR reset-values load.
 
-        Same contract as the bare tb_top.sv base test: Verilator two-state
+        Verilator two-state
         powers jtag_trst up at 0, which is not a falling edge, and the IC_RESET
         reset_hold flop resets only on TRST with RESET_VAL=1. Left at 0 it
         keeps the override asserted and SMC cold reset never releases.
@@ -103,6 +156,9 @@ class smu_base_test(uvm_test):
         raise AssertionError(f"{name} still low after {timeout_cycles} cycles")
 
     def build_phase(self) -> None:
+        self._evidence = _EvidenceRecorder()
+        self._evidence.install()
+        self._declared_evidence: list[str] = []
         self.cfg = SmuEnvCfg("cfg")
         self.cfg.randomize_timing(self.random_seed())
         if self.min_jtag_smu_ratio is not None:
@@ -138,7 +194,7 @@ class smu_base_test(uvm_test):
         self.sep_trace_mon = SmuSepCpuTraceMonitor("sep_trace_mon", self)
         ConfigDB().set(None, "*", "sep_trace_mon", self.sep_trace_mon)
         self._attach_sep_symbols()
-        # The PyUVM env the bare-smu catalog scores against. Opt-in: SmuScoreboard
+        # The PyUVM env under cocotb/env. Opt-in: SmuScoreboard
         # refuses a run that registered no checks ("zero checks executed -
         # refusing vacuous PASS"), and the wrapper-native leaves carry their own
         # scoreboard.
@@ -312,7 +368,7 @@ class smu_base_test(uvm_test):
         dut.rst_cold_ni.value = 1
         # A driven input, so smu_ext_boot_seq_gate_test can hold it low; every
         # other leaf needs the asserted default set here or it sees the boot
-        # sequence incomplete. The bare bring-up does the same.
+        # sequence incomplete.
         dut.ext_boot_seq_done_i.value = 1
         # TRST follows cold reset.
         dut.jtag_tck.value = 0
@@ -407,6 +463,65 @@ class smu_base_test(uvm_test):
         )
         self.cfg.reset_done.set()
 
+    def declare_evidence(self, *tokens: str) -> None:
+        """Register tokens this run must log before it may pass.
+
+        A sequence calls it from its constructor with its ``EVIDENCE`` tuple, so
+        the contract is declared before the scenario runs and the gate after
+        the scenario cannot be satisfied by a run that never reached the
+        sequence's verdict.
+        """
+        for token in tokens:
+            if token not in self._declared_evidence:
+                self._declared_evidence.append(token)
+
+    def _required_evidence(self, tc: str) -> list[str]:
+        required: list[str] = []
+        for token in (
+            *self.required_evidence,
+            *self._declared_evidence,
+            *(token for _, token, _ in TEST_EVIDENCE.get(tc, [])),
+        ):
+            if token not in required:
+                required.append(token)
+        return required
+
+    def _prove_declared_evidence(self, tc: str) -> None:
+        """Require every declared token to have been logged during this run.
+
+        Runs only after run_scenario() returned normally: a run that already
+        failed raised there, and this must not turn that into a different
+        complaint. A token reaches the recorder only through an ``EVIDENCE:``
+        line, and every wrapper-native emitter logs those after its verdict
+        asserts, so a missing token means the verdict was never reached.
+        """
+        required = self._required_evidence(tc)
+        if not required:
+            reason = NO_EVIDENCE_LEAVES.get(tc)
+            if reason is None:
+                raise AssertionError(
+                    f"EVIDENCE GATE {tc}: the leaf declares no evidence token -- give its "
+                    "sequence an EVIDENCE tuple, set required_evidence on the test, or add "
+                    "TEST_EVIDENCE rows; a clean exit that proves nothing is not a pass"
+                )
+            self.logger.info("EVIDENCE GATE EXEMPT %s: %s", tc, reason)
+            return
+        seen = [token for token in required if token in self._evidence.seen]
+        missing = [token for token in required if token not in self._evidence.seen]
+        self.logger.info(
+            "EVIDENCE GATE %s: required=%d seen=%d missing=%d ids=%s",
+            tc,
+            len(required),
+            len(seen),
+            len(missing),
+            ",".join(required),
+        )
+        if missing:
+            raise AssertionError(
+                f"EVIDENCE GATE {tc}: never logged {missing} -- the run exited cleanly "
+                "without reaching the verdict that stamps them"
+            )
+
     async def run_scenario(self) -> None:
         raise NotImplementedError
 
@@ -423,12 +538,7 @@ class smu_base_test(uvm_test):
             if self.use_shared_env:
                 self.env.scoreboard.prove_mapped_features()
             else:
-                self.logger.info(
-                    "EVIDENCE MAP GATE SKIPPED %s: no SmuScoreboard on this leaf "
-                    "(use_shared_env=False); the verdict is the sequence's own "
-                    "raise or the leaf's own scoreboard",
-                    tc,
-                )
+                self._prove_declared_evidence(tc)
         except Exception:  # noqa: BLE001 -- re-raised once the SEP state is in the log
             self.sep_trace_mon.dump_diagnostics(logging.ERROR)
             raise

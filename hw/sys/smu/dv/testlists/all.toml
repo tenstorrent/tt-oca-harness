@@ -13,11 +13,8 @@ schema_version = 1
 # (real SMC and SEP fuse sense).
 #
 # `all` is every test in this file. `smoke` is the toolchain-free PR gate,
-# `hosted` the toolchain-free nightly set, `fw_smoke` the firmware smokes.
-# testlists/block.toml is the second root of this DV package, for the bare
-# `--dut smu_block` bench (smu #(.SEP(0))); its leaves need SEP=0 or an eFuse
-# interface that hangs, which this wrapper does not provide, so neither root
-# includes the other.
+# `hosted` the toolchain-free nightly set, `fw_boot` the firmware boot smokes
+# and `elaboration` the elaboration leaf alone.
 #
 # The EL2 ICCM/DCCM macros come from the upstream VeeR mem_lib.sv already on
 # the Bender closure, and tb_wrapper_top.sv backdoor-loads +sep_itcm_hex /
@@ -762,19 +759,21 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
-# The firmware smoke: the elaboration leaf plus the SMC and SEP firmware smokes.
-# Needs the RISC-V toolchain (`scripts/docker-run.sh build` once), so it is not
-# the CI tier; `smoke` below is.
+# The firmware boot smoke: the elaboration leaf plus the SMC and SEP firmware
+# smokes. Needs the RISC-V toolchain (the container image or the toolchain
+# rootfs route in README.md), so it is not the CI tier; `smoke` below is.
 [[groups]]
-name = "fw_smoke"
+name = "fw_boot"
 tests = [
   "smu_smc_smoke_test",
   "smu_wrapper_elaboration_test",
   "smu_sep_smoke_test",
 ]
 
+# The elaboration leaf alone: the SEP=1 wrapper composes and resets, no
+# firmware executes.
 [[groups]]
-name = "build_smoke"
+name = "elaboration"
 tests = [
   "smu_wrapper_elaboration_test",
 ]
@@ -2196,7 +2195,7 @@ tests = [
 # PR-gate tier: .github/workflows/sim.yml runs `--items smoke` on every hardware
 # diff. .github/actions/dv-run installs Verilator and nothing else, so every
 # leaf here uses `elaboration` firmware (zero-filled preloads, no toolchain);
-# the firmware smokes are in `fw_smoke` for runs that have the toolchain.
+# the firmware smokes are in `fw_boot` for runs that have the toolchain.
 [[groups]]
 name = "smoke"
 tests = [

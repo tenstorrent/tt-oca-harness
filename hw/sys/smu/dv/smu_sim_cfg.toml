@@ -8,17 +8,12 @@ schema_version = 1
 # hw/common/dv/configs/duts.toml registers as an `alias_of = "smu"` and so
 # resolves to this same config and identity.
 #
-# This is the SMU regression. The bare `smu #(.SEP(0))` block bench is
-# smu_block_sim_cfg.toml.
+# This is the SMU regression.
 #
 # DUT is hw/top/smu_wrapper.sv (smu + smc_ip_integration + sep_ip_integration),
 # pulled through the `smu_wrapper` bender target — same OSS composition as
 # smc_wrapper / sep_wrapper. The CPU memory macros come with
 # smc_ip_integration; the TB keeps the cocotb observe surface.
-#
-# Independent of the SEP=0 block bench in
-# smu_block_sim_cfg.toml; both configs share this DV root and the build/runs
-# evidence directory.
 name = "smu"
 profile = "native"
 description = "Production-wrapper OSS regression on the single SEP=1 compile profile"
@@ -100,8 +95,7 @@ incdirs = [
 # in and that the smu_wrapper hierarchy never instantiates: a licensed SPI
 # controller wrapper and its DLL PHY, the pad and ESD libraries,
 # padring_dv_wrapper and the SPI flash models. Excluded so Verilator is not
-# made to parse their switch-level primitives; same denylist as
-# smu_block_sim_cfg.toml.
+# made to parse their switch-level primitives.
 exclude_files = [
   "sep_cdns_spi_wrap.sv",
   "cdn_ip6184_19e8_dll_phy",
@@ -154,10 +148,8 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   # Functional-coverage modules (cov/sv/), instantiated in tb/tb_wrapper_top.sv
-  # on this bench's signal names. smu_block_sim_cfg.toml carries the same set
-  # minus smu_clk_fcov, whose clock mirrors only this bench exposes, and plus
-  # smu_nosep_fcov, whose points only exist without SEP. Their cover
-  # properties are the `user` points --coverage-user records.
+  # on this bench's signal names. Their cover properties are the `user`
+  # points --coverage-user records.
   "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
@@ -194,8 +186,8 @@ build_args = [
   "0",
   "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
 ]
-# Two DUTs share this dv tree, so the policy is named per DUT rather than
-# discovered at cov/config/verilator/coverage_policy.toml.
+# The policy file is named explicitly rather than discovered at
+# cov/config/verilator/coverage_policy.toml.
 policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.toml"
 
 [coverage.vcs]
@@ -240,16 +232,18 @@ compile_args = [
 build_jobs = 4
 
 [frameworks.cocotb]
-# Wrapper flow keeps its own PyUVM tree so module names stay independent of
-# the bare-smu cocotb/ catalog sharing this DV root.
+# The PyUVM test tree: test bodies under cocotb_wrapper/tests, with the `env`
+# and `seq_lib` packages spanning cocotb_wrapper/ and cocotb/.
 python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
   # `env` and `seq_lib` are namespace packages (no __init__.py) spanning two
-  # directories: the wrapper-only half under this DUT's python_root above, and
-  # the half both DUTs share under cocotb/. No regular package of either name
-  # may appear anywhere on this path, or it would shadow both halves.
+  # directories: the half under this DUT's python_root above, and the half
+  # under cocotb/ (the PyUVM env, scoreboard, evidence map and FCOV ledger,
+  # and the pin, address-map, AXI, JTAG and lifecycle helpers). No regular
+  # package of either name may appear anywhere on this path, or it would
+  # shadow both halves.
   "hw/sys/smu/dv/cocotb",
   # The DTP bench's DV-owned JTAG tables (dtp_types: instruction opcodes, IR
   # width) as top-level modules. The DTP `env` package itself cannot go on

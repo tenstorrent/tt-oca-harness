@@ -6,9 +6,9 @@
 // public flow records them in the `user` metric family instead of a static
 // test-name-to-bin table.
 //
-// One passive, signal-driven module in the shared tb_top. Every port is a
-// smu_tb_signal_list.svh signal, so the module needs no hierarchical
-// reference and no public-scope change.
+// One passive, signal-driven module. Every port is a signal of the bench
+// top, so the module needs no hierarchical reference and no public-scope
+// change.
 //
 // DISABLE CONVENTION, unlike the other SMU cov/sv modules: the gate is
 // powergood, not reset. A reset-assertion point behind `disable iff (in
