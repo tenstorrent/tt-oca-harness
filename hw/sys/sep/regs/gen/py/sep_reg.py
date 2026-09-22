@@ -13037,7 +13037,7 @@ class AXIL_MAILBOX_READ_DATA_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000000
+AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000001
 class AXIL_MAILBOX_STATUS_reg_t(Structure):
     _fields_ = [
         ('empty', c_uint8, 1),
@@ -13046,7 +13046,7 @@ class AXIL_MAILBOX_STATUS_reg_t(Structure):
         ('read_level_above_thresh', c_uint8, 1),
     ]
 
-AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000000
+AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000001
 
 class AXIL_MAILBOX_STATUS_reg_u(Union):
     _fields_ = [

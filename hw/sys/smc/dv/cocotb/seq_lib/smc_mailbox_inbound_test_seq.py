@@ -35,11 +35,8 @@ class smc_mailbox_inbound_test_seq(SmcCsrSeq):
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         await self.csr_write("CLOCK_GATE_CONTROL_EN", CLOCK_GATE_CONTROL, cg | MAILBOX_CG_EN)
         # Inbound mailbox 0 surface — strict reads asserting reset content,
-        # identical on Verilator and VCS. ERROR_FLAGS and IRQEN clear are RDL
-        # reset constants (axil_mailbox.rdl) -> spec-anchored. STATUS=0x1 is a
-        # REGRESSION-LOCK: the RDL reset of `empty` is 0x0, but the field is a
-        # wire to the FIFO-empty flag, which reads 1 on an empty FIFO at reset --
-        # so this locks observed HW behaviour, not a spec reset constant.
+        # identical on Verilator and VCS. STATUS, ERROR_FLAGS and IRQEN are RDL
+        # reset constants (axil_mailbox.rdl) -> spec-anchored.
         for name, addr, expected in _INBOUND_EXPECTED:
             await self.csr_read(name, addr, expected=expected)
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)

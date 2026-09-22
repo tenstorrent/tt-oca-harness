@@ -6399,7 +6399,7 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 *Test Coverage*:
 
 * `OUTBOUND_MAILBOX_0.CTRL` @0x48, which no other testcase reaches. `smc_mailbox_field_sweep_test` covers every other readable register of the port, on both directions, but cannot cover this one: a sweep reads, and CTRL is write-only.
-* The register cannot be a readback test. `axil_mailbox.rdl:195-208` makes both fields `sw = w; hw = r`: they are flush strobes, not storage, so a write/read-back pair would compare against whatever the register file returns for a write-only address and prove nothing. What is testable is the effect, and `STATUS.write_level_above_thresh` @0x10 bit 2 reports it.
+* The register cannot be a readback test. `axil_mailbox.rdl` marks both fields as external, user-defined write effects: they are flush strobes, not storage, so a write/read-back pair would compare against whatever the register file returns for a write-only address and prove nothing. What is testable is the effect, and `STATUS.write_level_above_thresh` @0x10 bit 2 reports it.
 * Addresses from `smc_addr.h`, field masks from `axil_mailbox.h`, rather than offsets added to a base ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 
 *Test Procedure*:
