@@ -414,7 +414,7 @@ SMC_DEP_STAMP  := $(VP_DIR)/.vp-config-stamp-smc$(VP_TAG_SUFFIX)
 .PHONY: scratch-build scratch-build-smc download deps deps-info vp vp-clean clean env enable_vp \
         systemc boost openssl cci whisper submodule-init check-tt-oca-harness-model check-cxx smoke \
         smc-vp smu-vp smc-test smu-test smc-clean \
-        boot-build boot-run fw-run vp-test vp-py-deps FORCE
+        boot-build boot-run fw-run vp-test vp-test-host vp-py-deps FORCE
 
 # =============================================================================
 # Help
@@ -1046,6 +1046,13 @@ vp-test: $(SEP_VP_BIN)
 	$(FW_ENV)
 	export SEP_VP_BIN="$(SEP_VP_BIN)"
 	cd $(VP_DIR) && $(VP_PYTHON) -m pytest tests $(PYTEST_ARGS)
+
+# No $(SEP_VP_BIN) prerequisite and no firmware: the hostonly marker covers the
+# suites that only read checked-in data, so this runs on a bare checkout.
+## Run only the suites needing no sep-vp binary, firmware or RISC-V toolchain.
+vp-test-host:
+	@$(VP_PYTHON) -c "import pexpect, yaml, pytest, toml" 2>/dev/null || $(MAKE) vp-py-deps
+	cd $(VP_DIR) && $(VP_PYTHON) -m pytest tests -m hostonly $(PYTEST_ARGS)
 
 # =============================================================================
 # SMC / SMU firmware suites

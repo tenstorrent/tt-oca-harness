@@ -52,8 +52,48 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # The suites that read checked-in data only. This is the one VP job a pull
+  # request runs: everything below needs the nix closure, which rebuilds from
+  # source for ~2 h whenever its inputs change.
+  vp-host-tests:
+    name: vp host tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions: { contents: read }
+    env:
+      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Only the model: test_efuse_map_drift compares its eFuse header against
+      # the generated one. Without the token those three tests skip and the rest
+      # still run, so a fork PR keeps the remaining coverage rather than nothing.
+      - name: Check out the model submodule
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init virtual_platform/tt-oca-harness-model
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      # pytest exits 5 when the marker selects nothing, so a mis-marked suite
+      # fails here rather than passing silently on an empty run.
+      - name: Run the host-only tests
+        run: make -C virtual_platform vp-test-host
+
   sep-vp:
     name: sep-vp (${{ matrix.mode }})
+    # Post-merge, nightly and manual only. A pull request gets vp-host-tests;
+    # `gh workflow run vp.yml --ref <branch>` runs this set before merging.
+    if: github.event_name != 'pull_request'
     # A label with no matching runner does NOT fail fast -- the job queues until
     # it times out. So the default stays the always-present standard runner, and
     # the VP_CI_RUNNER repo variable promotes it, with no workflow edit either
@@ -427,6 +467,8 @@ jobs:
   # ---------------------------------------------------------------------------
   smc-smu-vp:
     name: smc-vp + smu-vp (${{ matrix.mode }})
+    # As sep-vp: not on pull requests.
+    if: github.event_name != 'pull_request'
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
     # Cold: the nix closure as above, then Whisper, then the tree twice over
     # (all three VPs link the SEP peripheral tree). See the sep-vp job for why
