@@ -485,13 +485,12 @@ tool over the same database with the same environment and writes the same
 URG exclusion format.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
-that names the list records the file's SHA-256, the commit the analysis ran
-at, the reviewer, the review date and an expiry. The runner refuses the policy
-when the file and the recorded digest differ, so a regenerated list takes a
-new review, and leaves a lapsed list out of the report, so the effective
-figures fall back to the raw ones. URG applies no entry whose module or
-instance checksum differs from the design it reports on, so an RTL change
-under an excluded scope drops that scope's exclusions on its own.
+that names the list pins the file's SHA-256, and a comment beside it records
+the commit the analysis ran at, the date and the reviewer. The runner refuses
+the policy when the file and the pinned digest differ, so a regenerated list
+takes a new review. URG applies no entry whose module or instance checksum
+differs from the design it reports on, so an RTL change under an excluded
+scope drops that scope's exclusions on its own.
 
 Regeneration rule: the list is regenerated from the candidate's qualification
 regression before every candidate, and re-checked after any change to the
