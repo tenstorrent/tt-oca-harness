@@ -231,8 +231,11 @@ not enforce the schema version; the workflow gates each record on it, on its
 DUT count, and publishes
 nothing when a weekly DUT left no run tree
 (xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
-The artifact and the branch carry identical content. Checked by the
-dashboard schema, link, and completion tests and by the Operational checks
+The artifact and the branch carry identical content. The fields the
+documentation site renders are the ones `tools/doc/trim_dashboard_data.py`
+names, and every one of them is present in each record, `dut_status` row,
+test row, and history point the tools write. Checked by the dashboard
+schema, link, completion, and site-data tests and by the Operational checks
 section of xref:run-dashboard.adoc[DV and FV Dashboard].
 
 |Hosted workflows and the composite action: `sim.yml`, `regress.yml`,
