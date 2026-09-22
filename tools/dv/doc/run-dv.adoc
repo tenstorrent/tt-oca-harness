@@ -2902,7 +2902,10 @@ test, absent from the flow status
 The failure-bucket `kind` is the shared enum: `sim_failure`, `tool_error`,
 `unknown`, `timeout`, `config_error`, `compile_error`, `elaboration_error`,
 `coverage_threshold`, `formal_fail`, `expected_fail_passed`,
-`expected_fail_mismatch`, and `interruption`. A stage that fails without a
+`expected_fail_mismatch`, `interruption`, and `dependency_blocked` (a leaf
+whose scheduler-managed target build failed, <<runner-cluster-dispatch>>);
+the first bucket's kind is the JUnit `type` of a failed or errored leaf. A
+stage that fails without a
 parser decision takes its stage's default kind (`flist` `config_error`,
 `hdl_compile` and `c_compile` `compile_error`, `elaborate`
 `elaboration_error`, `sim` and `regress` `sim_failure`, the coverage stages
