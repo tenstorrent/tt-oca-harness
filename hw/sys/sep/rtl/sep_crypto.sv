@@ -879,7 +879,9 @@ module sep_crypto #(
   // the POR reset domain. An internal-TRNG reset synchronously clears buffered
   // entropy and handshake state without exporting a generated reset domain.
   // Client resets cancel only their own endpoint. OTBN owns both RND and URND.
-  assign crypto_edn_endpoint_rst_n = {gated_rst_ni.otbn, gated_rst_ni.otbn, gated_rst_ni.kmac, gated_rst_ni.aes};
+  assign crypto_edn_endpoint_rst_n = {
+    gated_rst_ni.otbn, gated_rst_ni.otbn, gated_rst_ni.kmac, gated_rst_ni.aes
+  };
 
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT)
