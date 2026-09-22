@@ -79,7 +79,7 @@
     "total": 1,
     "unknown": 0
   },
-  "generated_at": "2026-09-22T05:14:16+00:00",
+  "generated_at": "2026-09-22T18:36:36+00:00",
   "junit_xml": {
     "missing": 0,
     "total": 0
@@ -139,11 +139,11 @@
       ],
       "flow": "sep",
       "framework": "cocotb",
-      "generated_at": "2026-09-22T05:14:10+00:00",
+      "generated_at": "2026-09-22T18:36:36+00:00",
       "git": {
         "branch": "HEAD",
-        "sha": "6143d3e93672ec0e1a66ce91fa8b42670a65c573",
-        "short_sha": "6143d3e93"
+        "sha": "3753f0ffbcceb3e69ffd550631e479513a55f9b4",
+        "short_sha": "3753f0ffb"
       },
       "junit_xml": [],
       "kind": "dv",
@@ -193,7 +193,7 @@
           "threshold_met": null,
           "total_percent": null
         },
-        "duration_sec": 56122.665,
+        "duration_sec": 47860.211,
         "executor": "local",
         "exit_code": 1,
         "failed_tests": [],
@@ -201,10 +201,10 @@
         "flaky_tests": [],
         "flow": "sep",
         "framework": "cocotb",
-        "generated_at": "2026-09-22T05:13:59.260065+00:00",
+        "generated_at": "2026-09-22T18:36:35.982912+00:00",
         "git": {
           "branch": "HEAD",
-          "commit": "6143d3e93672ec0e1a66ce91fa8b42670a65c573",
+          "commit": "3753f0ffbcceb3e69ffd550631e479513a55f9b4",
           "dirty": "false"
         },
         "jobs": [],
@@ -376,10 +376,10 @@
       "run_metadata": {
         "dry_run": false,
         "executor": "local",
-        "generated_at": "2026-09-22T05:13:59.301421+00:00",
+        "generated_at": "2026-09-22T18:36:36.002441+00:00",
         "git": {
           "branch": "HEAD",
-          "commit": "6143d3e93672ec0e1a66ce91fa8b42670a65c573",
+          "commit": "3753f0ffbcceb3e69ffd550631e479513a55f9b4",
           "dirty": "false"
         },
         "interruption": {},
@@ -763,9 +763,9 @@
       },
       "tests_detail": [],
       "timing": {
-        "duration_sec": 56106.958,
-        "end_time": "2026-09-22T05:13:59.249309+00:00",
-        "start_time": "2026-09-21T13:38:36.601388+00:00"
+        "duration_sec": 47857.294,
+        "end_time": "2026-09-22T18:36:35.977229+00:00",
+        "start_time": "2026-09-22T05:18:55.791796+00:00"
       },
       "tool": "vcs"
     }
