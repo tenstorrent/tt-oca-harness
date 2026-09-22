@@ -1252,7 +1252,21 @@ int occp_send_get_occp_command_count_command(test_context_t *ctx, uint64_t i3c_a
 
 int occp_send_get_occp_error_code_command(test_context_t *ctx, uint64_t i3c_addr,
                                           uint32_t *status) {
-    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_ERROR_CODE, status);
+    int retval = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_ERROR_CODE, status);
+
+    /* The latched code is one byte (occp-protocol.adoc). */
+    if (retval != OCCP_SUCCESS || !ctx->check_occp_last_error) {
+        return retval;
+    }
+    if ((*status & 0xFFu) != (uint32_t)ctx->exp_occp_last_error) {
+        simputs("GET_OCCP_ERROR_CODE: FAIL\n");
+        simputshex32("Expected: ", (uint32_t)ctx->exp_occp_last_error);
+        simputshex32("Actual: ", *status & 0xFFu);
+        ctx->overall_result = false;
+    } else {
+        simputs("GET_OCCP_ERROR_CODE: PASS\n");
+    }
+    return retval;
 }
 
 int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr) {
@@ -1957,7 +1971,9 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     simputs("GET_OCCP_ERROR_CODE command timed out as expected\n");
                     return;
                 }
-                simputs("GET_OCCP_ERROR_CODE: PASS\n");
+                if (!ctx->check_occp_last_error) {
+                    simputs("GET_OCCP_ERROR_CODE: PASS\n");
+                }
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
                     simputs("GET_OCCP_ERROR_CODE errored under length injection (expected)\n");
