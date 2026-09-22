@@ -324,7 +324,7 @@ make regen-regs
 ```
 
 After adding or moving integration collateral, regenerate the grouped symlink indexes with
-`python3 scripts/collect_integration.py`.
+`python3 scripts/update_integration_symlinks.py`.
 
 The RDL is the register specification: it describes the address map and the registers'
 behaviour, not the RTL that implements them. Naming a module, a package or an address slice in

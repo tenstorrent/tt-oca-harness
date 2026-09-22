@@ -149,9 +149,11 @@ class SmuScoreboard(uvm_component):
         """Require every evidence-map TOKEN for this testcase to have been logged.
 
         Called at the end of run_scenario. A token reaches the logged set only
-        through a passing ``expect_*`` compare, so a missing token raises. The
-        EXPECT column is free-text contract wording: it is reported alongside
-        the token and is not compared against anything.
+        through a passing ``expect_*`` compare, so a missing token raises. A
+        token that reached it only because a check name happened to contain it
+        also raises: the map row is proved only by a compare that names the
+        token in ``evidence=``. The EXPECT column is free-text contract wording:
+        it is reported alongside the token and is not compared against anything.
 
         A testcase with no map rows must be listed in ``UNMAPPED_TESTS``; any
         other unmapped testcase raises here.
@@ -193,13 +195,11 @@ class SmuScoreboard(uvm_component):
                 expect,
             )
         if name_bound:
-            self.logger.warning(
-                "EVIDENCE BINDING WEAK %s: %d of %d mapped row(s) attached by "
-                "check-name substring only, with no evidence= argument: %s",
-                testcase,
-                len(name_bound),
-                len(rows),
-                ",".join(name_bound),
+            raise AssertionError(
+                f"EVIDENCE BINDING WEAK {testcase}: {len(name_bound)} of {len(rows)} mapped "
+                f"row(s) attached by check-name substring only, with no evidence= argument: "
+                f'{",".join(name_bound)}. Pass evidence="<TOKEN>" on the compare that '
+                "proves each one."
             )
 
     def check_phase(self) -> None:

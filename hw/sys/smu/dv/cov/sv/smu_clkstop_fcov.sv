@@ -6,7 +6,7 @@
 // request arriving at the DTP cross-trigger network, a JTAG DEBUG_CONTROL
 // request raising dtp_stop_clks_o, and the output releasing again.
 //
-// One passive, signal-driven module shared by tb_top and tb_wrapper_top. The
+// One passive, signal-driven module. The
 // request vector is read where the cross-trigger network receives it (smu.sv
 // maps the eight SMU pins onto request bits [8:1] and the CLA status onto
 // bit 0), the DEBUG_CONTROL bit where the network receives it, and the halt

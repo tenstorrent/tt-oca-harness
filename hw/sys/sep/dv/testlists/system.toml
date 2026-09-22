@@ -241,16 +241,15 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# EXPECTED FAIL. Asserts the misaligned-offset latch condition that
-# sep_cpu_ctrl.rdl:383 and doc/interrupts.adoc:241 state for
-# PERIPH_BUS_ERR_STATUS; the DUT refuses the beat at the fabric instead, so
-# nothing latches. Left unmarked so `all` stays a visible fail; a spec-vs-RTL
-# gap is not masked as expect_fail.
-name = "sep_periph_bus_err_misaligned_reveal_test"
-module = "system.sep_periph_bus_err_misaligned_reveal_test"
+# Misaligned in-extent register access. sep_cpu_ctrl.rdl and
+# doc/interrupts.adoc require SLVERR and the owning block's
+# PERIPH_BUS_ERR_STATUS bit. The fabric returns DECERR and the bit stays 0.
+# The VPLAN card owns the checker contract.
+name = "sep_periph_bus_err_misaligned_test"
+module = "system.sep_periph_bus_err_misaligned_test"
 seed = 1
 timeout_sec = 600
-tags = ["interrupt", "aggregator", "system", "subsystem", "reveal"]
+tags = ["interrupt", "aggregator", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

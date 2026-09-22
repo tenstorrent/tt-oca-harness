@@ -469,14 +469,6 @@ typedef struct {
     int cmd_count;
     occp_error_code_t exp_response_code;
     int exp_occp_last_error;
-    /* Opt in to having GET_OCCP_ERROR_CODE compare against
-     * exp_occp_last_error. Off by default, and deliberately so: the ROM's
-     * error code is latched by occp_status_set_error_code() and nothing
-     * clears it on a later success, so a test that provokes any error and
-     * then reads the code back sees the sticky value, not zero. Thirty-two
-     * tests set exp_occp_last_error = 0 without modelling that, so the
-     * comparison is only sound for a test that tracks the latch. */
-    bool check_occp_last_error;
     int timeout;
     bool exp_timeout;
     I3C_DeviceInfo discovered_devices[I3C_MAX_DEVICES];

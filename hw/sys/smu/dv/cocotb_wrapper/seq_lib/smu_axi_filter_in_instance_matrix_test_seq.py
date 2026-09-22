@@ -202,7 +202,13 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         src_id: int,
         allow_ns: bool,
         tag: str,
-    ) -> None:
+    ) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        """Program one instance and return its (observed, wanted) readbacks.
+
+        Each is (CONFIG, START, END) under the compare masks. The mismatch
+        raise names the register; S1 also folds every instance's pair into one
+        scoreboard compare.
+        """
         cfg = _pack_cfg(allow_ns=allow_ns, src_id=src_id)
         await self._j2a_wr(jtag, smc_indexed_addr(_IN_START, inst), lo, f"{tag}_START")
         await self._j2a_wr(jtag, smc_indexed_addr(_IN_END, inst), hi, f"{tag}_END")
@@ -216,6 +222,9 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             raise AssertionError(f"{tag} START rb 0x{rb_lo:x} want 0x{lo:x}")
         if (rb_hi & 0xFFF_FFFF_FFFF_FFFF) != (hi & 0xFFF_FFFF_FFFF_FFFF):
             raise AssertionError(f"{tag} END rb 0x{rb_hi:x} want 0x{hi:x}")
+        observed = (rb & _CFG_CMP_MASK, rb_lo & 0xFFF_FFFF_FFFF_FFFF, rb_hi & 0xFFF_FFFF_FFFF_FFFF)
+        wanted = (cfg & _CFG_CMP_MASK, lo & 0xFFF_FFFF_FFFF_FFFF, hi & 0xFFF_FFFF_FFFF_FFFF)
+        return observed, wanted
 
     async def _disable_inst(self, jtag, inst: int, tag: str) -> None:
         await self._j2a_wr(jtag, smc_indexed_addr(_IN_CFG, inst), 0, f"{tag}_DIS_I{inst}")
@@ -272,8 +281,10 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         sb.expect_eq("CHK-FILTER-IN-DEFAULT-BLOCK-S1", True, True)
 
         # ---- S1 DECODE: independent instance CSR readback ----
+        s1_observed: dict[int, tuple[int, int, int]] = {}
+        s1_wanted: dict[int, tuple[int, int, int]] = {}
         for inst, (lo, hi, src_id, allow_ns) in S1_SIGNATURES.items():
-            await self._program_inst(
+            s1_observed[inst], s1_wanted[inst] = await self._program_inst(
                 jtag,
                 inst,
                 lo=lo,
@@ -289,7 +300,10 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         self.s1_ok = True
         self._log("CHK-FILTER-IN-INSTANCES-S1: inst=0,1,7,14,15 DECODE bases=smc_indexed_addr")
         sb.expect_eq(
-            "CHK-FILTER-IN-INSTANCES-S1", True, True, evidence="CHK-FILTER-IN-INSTANCES-S1"
+            "CHK-FILTER-IN-INSTANCES-S1",
+            s1_observed,
+            s1_wanted,
+            evidence="CHK-FILTER-IN-INSTANCES-S1",
         )
 
         # ---- S2 isolation pairwise ----

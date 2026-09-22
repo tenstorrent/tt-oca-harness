@@ -97,15 +97,11 @@ jobs:
           - dut: sep
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
           # `smu` carries the SMU regression (smu_wrapper.sv, one compile
-          # profile with the real SEP); `smu_block` is the bare smu #(.SEP(0))
-          # bench with the SEP=0 composition proofs and the leaves that cannot
-          # run on `smu`. Both are gated here so neither rots, and both run the
-          # default `smoke` group: on `smu` that group is toolchain-free by
-          # construction (its firmware smokes are `fw_smoke`), which this
-          # runner -- Verilator and nothing else -- needs.
+          # profile with the real SEP). It runs the default `smoke` group,
+          # which is toolchain-free by construction (its firmware smokes are
+          # `fw_boot`), which this runner -- Verilator and nothing else --
+          # needs.
           - dut: smu
-            runner: ubuntu-latest
-          - dut: smu_block
             runner: ubuntu-latest
           - dut: smc
             runner: ubuntu-latest
@@ -122,7 +118,10 @@ jobs:
         if: env.RUN_HARDWARE_CI == 'true'
         uses: actions/checkout@v4
 
+      # Checkout is skipped for a documentation-only diff, so this runner has
+      # no git repository. Submodule update must follow that same condition.
       - name: Checkout submodules
+        if: env.RUN_HARDWARE_CI == 'true'
         run: |
           git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init --recursive

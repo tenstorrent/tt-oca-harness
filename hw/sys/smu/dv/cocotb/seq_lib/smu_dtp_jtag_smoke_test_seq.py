@@ -169,8 +169,7 @@ class smu_dtp_jtag_smoke_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S1",
-            "SETUP: clocks stable; bare tb_top JTAG pins ready for PTAP; "
-            "baseline TAP reset then Run-Test/Idle",
+            "SETUP: clocks stable; JTAG pins ready for PTAP; baseline TAP reset then Run-Test/Idle",
         )
         await jtag.reset_tap()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)

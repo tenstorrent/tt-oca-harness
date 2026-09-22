@@ -153,42 +153,6 @@ def _coverage_threshold_rows(summary: dict) -> str:
     )
 
 
-def _coverage_hole_rows(summary: dict) -> str:
-    rows = []
-    for result in summary.get("results") or []:
-        coverage = result.get("coverage", {})
-        holes = coverage.get("holes_summary", {})
-        details_href = coverage.get("coverage_details") or ""
-        for hole in holes.get("samples") or []:
-            issue_cells = (
-                ", ".join(
-                    link(url, f"#{url.rsplit('/', 1)[-1]}") for url in hole.get("issues") or []
-                )
-                or "--"
-            )
-            location = hole.get("source") or hole.get("hierarchy") or ""
-            if location and hole.get("line"):
-                location = f"{location}:{hole.get('line')}"
-            hole_id = hole.get("policy_id") or hole.get("id")
-            hole_cell = link(details_href, str(hole_id)) if details_href else fmt(hole_id)
-            rows.append(
-                "<tr>"
-                f"<td>{fmt(result.get('flow'))}</td>"
-                f"<td>{hole_cell}</td>"
-                f"<td>{fmt(hole.get('category'))}</td>"
-                f"<td>{fmt(hole.get('metric_family'))}</td>"
-                f"<td>{fmt(location)}</td>"
-                f'<td class="{fmt(hole.get("disposition"))}">{fmt(hole.get("disposition"))}</td>'
-                f'<td class="{fmt(hole.get("status"))}">{fmt(hole.get("status"))}</td>'
-                f"<td>{fmt(hole.get('rationale'))}</td>"
-                f"<td>{issue_cells}</td>"
-                "</tr>"
-            )
-    return "\n".join(rows) or (
-        '<tr><td colspan="9">No detailed coverage holes collected.</td></tr>'
-    )
-
-
 def _failure_bucket_rows(summary: dict) -> str:
     rows = []
     for bucket in summary.get("failure_buckets") or []:
@@ -318,12 +282,6 @@ def render_dashboard(summary: dict, history: dict | None = None) -> str:
 <table>
   <tr><th>DUT</th><th>Rule</th><th>Metric</th><th>Population</th><th>Actual</th><th>Minimum</th><th>Unclassified</th><th>Met</th></tr>
   {_coverage_threshold_rows(summary)}
-</table>
-
-<h2>Coverage Holes And Waivers</h2>
-<table>
-  <tr><th>DUT</th><th>Hole ID</th><th>Category</th><th>Metric</th><th>Location</th><th>Disposition</th><th>Status</th><th>Rationale</th><th>Issues</th></tr>
-  {_coverage_hole_rows(summary)}
 </table>
 
 <h2>Failure Buckets</h2>

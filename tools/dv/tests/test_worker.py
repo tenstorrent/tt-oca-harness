@@ -254,6 +254,46 @@ class WorkerMainTest(ManifestCase):
         self.assertEqual((done["task_id"], done["status"]), (task.task_id, "PASS"))
         self.assertEqual(done["result_json"], str(task.result_json.relative_to(REPO_ROOT)))
 
+    def test_a_build_manifest_runs_the_stage_without_an_item(self) -> None:
+        task = LeafTask(
+            task_id="build-hdl_compile-default",
+            leaf_id=-1,
+            stage="hdl_compile",
+            item="",
+            seed=0,
+            attempt=0,
+            run_dir=self.run_dir,
+            leaf_dir=self.run_dir / "stages" / "regress" / "builds" / "build-hdl_compile-default",
+            target="default",
+            role="build",
+            resources=ResourceRequest(cores=3),
+        )
+        path = self.write(task)
+        built = StageResult(
+            stage="hdl_compile",
+            item=None,
+            status="PASS",
+            return_code=0,
+            duration_sec=1.0,
+            started_at="2026-09-01T00:00:00+00:00",
+            ended_at="2026-09-01T00:00:01+00:00",
+            metadata={"target": "default", "target_build": {"target": "default"}},
+        )
+        with mock.patch("runlib.executors.manifest.run_stage", return_value=built) as run:
+            code = run_worker(path)
+        self.assertEqual(code, 0)
+        called = run.call_args
+        self.assertEqual(called.args[4:6], ("hdl_compile", None))
+        args = called.args[6]
+        self.assertEqual(args.build_jobs, 3)
+        self.assertFalse(hasattr(args, "_cocotb_prebuilt_targets"))
+        fragment = json.loads(task.result_json.read_text(encoding="utf-8"))
+        self.assertEqual((fragment["item"], fragment["status"]), ("", "PASS"))
+        self.assertEqual(fragment["target_build"]["target"], "default")
+        self.assertNotIn("target_build", fragment["metadata"])
+        done = json.loads(completion_path(self.run_dir, task.task_id).read_text(encoding="utf-8"))
+        self.assertEqual(done["status"], "PASS")
+
     def test_exit_status_follows_the_leaf_status(self) -> None:
         task = self.task()
         path = self.write(task)

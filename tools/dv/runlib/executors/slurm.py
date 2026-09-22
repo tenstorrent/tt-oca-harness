@@ -11,6 +11,13 @@ ordinary way a job is missing rather than an error. A batched query that fails f
 is therefore retried one id at a time. ``sacct`` (with accounting) and ``scontrol show job``
 (inside ``MinJobAge``) are the two history sources, selected by ``history_parser``.
 ``scancel`` exits 0 whatever the ids were, and names an unknown id only on stderr.
+
+A job array is ``--array=1-N``; ``sbatch --parsable`` prints the array's id and every
+element is ``<id>_<index>`` to every command. ``squeue %i`` prints that form per element
+(``--array`` keeps pending elements from folding into ``<id>_[2-4]``), ``sacct``'s ``JobID``
+prints it too, and ``scontrol show job`` gives the element its own ``JobId`` beside
+``ArrayJobId`` and ``ArrayTaskId``. ``SLURM_ARRAY_TASK_ID`` is the element's index inside
+the job and ``%a`` in an output path.
 """
 
 from __future__ import annotations
@@ -33,8 +40,38 @@ SUBMIT_RE = re.compile(r"^(\d+)(?:;(\S+))?\s*$", re.MULTILINE)
 SUBMIT_VERBOSE_RE = re.compile(r"Submitted batch job (\d+)(?: on cluster (\S+))?")
 INVALID_JOB_RE = re.compile(r"Invalid job id specified", re.IGNORECASE)
 ACCOUNTING_OFF_RE = re.compile(r"accounting storage is disabled", re.IGNORECASE)
-SCONTROL_FIELD_RE = re.compile(r"\b(JobId|JobState|ExitCode|Reason)=(\S+)")
-SCANCEL_ERROR_RE = re.compile(r"job id (\d+):\s*(.+)$", re.MULTILINE)
+SCONTROL_FIELD_RE = re.compile(r"\b(JobId|JobState|ExitCode|Reason|ArrayJobId|ArrayTaskId)=(\S+)")
+SCANCEL_ERROR_RE = re.compile(r"job id (\d+(?:_\d+)?):\s*(.+)$", re.MULTILINE)
+FOLDED_ARRAY_RE = re.compile(r"^(\d+)_\[([^\]]+)\]$")
+
+
+def expand_job_id(text: str) -> list[str]:
+    """The ids one ``squeue`` id field names: itself, or every element of a folded range."""
+    token = text.strip().split(";")[0]
+    folded = FOLDED_ARRAY_RE.match(token)
+    if not folded:
+        return [token]
+    array_id, spec = folded.groups()
+    out: list[str] = []
+    for part in spec.split("%")[0].split(","):
+        low, _, high = part.partition("-")
+        if not low.strip().isdigit():
+            continue
+        start = int(low)
+        stop = int(high) if high.strip().isdigit() else start
+        out.extend(f"{array_id}_{index}" for index in range(start, stop + 1))
+    return out
+
+
+def scontrol_job_id(fields: dict[str, str]) -> str:
+    """The element id of one ``scontrol show job`` block, or its plain id."""
+    array_id = fields.get("ArrayJobId", "")
+    task_id = fields.get("ArrayTaskId", "")
+    if array_id.isdigit() and task_id.isdigit():
+        return f"{array_id}_{task_id}"
+    return base_job_id(fields.get("JobId", ""))
+
+
 STATE_MAP = {
     "PENDING": JobState.QUEUED,
     "CONFIGURING": JobState.QUEUED,
@@ -92,6 +129,12 @@ class SlurmDialect(SchedulerDialect):
     driver = "slurm"
     history_parsers = {"slurm_sacct": "parse_sacct", "slurm_scontrol": "parse_scontrol"}
     retry_failed_query_per_id = True
+    array_index_env = "SLURM_ARRAY_TASK_ID"
+    array_log_token = "%a"
+    array_range_placeholder = "array_range"
+
+    def element_id(self, array_id: str, index: int) -> str:
+        return f"{array_id}_{index}"
 
     def parse_submit(self, result: CommandResult) -> SubmitOutcome:
         if not result.ok:
@@ -113,13 +156,15 @@ class SlurmDialect(SchedulerDialect):
             fields = line.strip().split("|")
             if len(fields) < 2 or not fields[0]:
                 continue
-            job_id = base_job_id(fields[0])
-            if job_id not in asked:
-                continue
             reason = fields[2] if len(fields) > 2 and fields[2] not in {"None", "(null)"} else ""
-            outcome.observations[job_id] = state_observation(
-                fields[1], "", reason, stamp, {"line": line.strip()}
-            )
+            for job_id in expand_job_id(fields[0]):
+                if job_id not in asked:
+                    job_id = base_job_id(job_id)
+                    if job_id not in asked:
+                        continue
+                outcome.observations[job_id] = state_observation(
+                    fields[1], "", reason, stamp, {"line": line.strip()}
+                )
         outcome.missing |= asked - set(outcome.observations)
         return outcome
 
@@ -133,10 +178,14 @@ class SlurmDialect(SchedulerDialect):
             fields = line.strip().split("|")
             if len(fields) < 2 or not fields[0]:
                 continue
-            job_id = base_job_id(fields[0])
             # `--allocations` leaves one line per job; a step line names a sub-id and loses.
-            if job_id not in asked or "." in fields[0]:
+            if "." in fields[0]:
                 continue
+            job_id = fields[0].strip()
+            if job_id not in asked:
+                job_id = base_job_id(job_id)
+                if job_id not in asked:
+                    continue
             exit_text = fields[2] if len(fields) > 2 else ""
             outcome.observations[job_id] = state_observation(
                 fields[1], exit_text, "", stamp, {"line": line.strip()}
@@ -154,7 +203,7 @@ class SlurmDialect(SchedulerDialect):
         asked = set(job_ids)
         for block in re.split(r"\n\s*\n", result.stdout.strip()):
             fields = {key: value for key, value in SCONTROL_FIELD_RE.findall(block)}
-            job_id = base_job_id(fields.get("JobId", ""))
+            job_id = scontrol_job_id(fields)
             if job_id not in asked or "JobState" not in fields:
                 continue
             reason = fields.get("Reason", "")
@@ -188,5 +237,7 @@ __all__ = [
     "STATE_MAP",
     "SUBMIT_RE",
     "SlurmDialect",
+    "expand_job_id",
+    "scontrol_job_id",
     "state_observation",
 ]

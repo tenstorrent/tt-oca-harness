@@ -59,9 +59,11 @@ DEFAULT_LIMITS: dict[str, Any] = {
     "artifact_grace_sec": 60.0,
     "cancel_grace_sec": 3.0,
     "command_timeout_sec": 120.0,
+    "array_chunk_size": 100,
 }
 # A scheduler answers a cancel or a query in seconds, not milliseconds, and one query covers
-# every submission since the previous one.
+# every submission since the previous one. An array chunk stays well inside the array size
+# both schedulers allow by default (LSF MAX_JOB_ARRAY_SIZE 1000, Slurm MaxArraySize 1001).
 CLUSTER_DEFAULT_LIMITS: dict[str, Any] = {
     **DEFAULT_LIMITS,
     "submit_batch_size": 25,
@@ -92,6 +94,14 @@ def dispatch_blocker(name: str, cfg: Mapping[str, Any]) -> str | None:
             f"implements: {known}"
         )
     return None
+
+
+def executor_builds(cfg: Mapping[str, Any]) -> str:
+    """Where this executor runs target builds: ``scheduler`` on a cluster unless it says
+    ``local``; the local executor builds in-process."""
+    if executor_driver(cfg) == LOCAL_DRIVER:
+        return "local"
+    return str(cfg.get("builds") or "scheduler")
 
 
 def executor_limits(cfg: Mapping[str, Any]) -> dict[str, Any]:
@@ -182,6 +192,7 @@ __all__ = [
     "build_executor",
     "dispatch_blocker",
     "error_result",
+    "executor_builds",
     "executor_driver",
     "executor_environment",
     "executor_limits",

@@ -24,7 +24,7 @@ The shared `async_clock_groups.tcl` and `cdc_max_delay_procs.tcl` helpers are
 under `integration/constraint/shared/`. These are symlink indexes: the
 canonical per-system files remain under `hw/sys/<block>/synth/`, and the
 canonical shared helpers remain under `flows/synth/constraints/`. Regenerate
-the index with `python3 scripts/collect_integration.py` after changing the
+the index with `python3 scripts/update_integration_symlinks.py` after changing the
 collateral inventory.
 
 == Why crossings are bounded rather than timed

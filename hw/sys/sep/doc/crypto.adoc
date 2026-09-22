@@ -396,6 +396,30 @@ with the same `axi4_to_ahb` bridge that `sep_cpu` instantiates, and drives
 `abr_top`. The wrapper occupies a 64 kB aperture at `0x1094_0000`, decoded as
 port `SepCryptoAxiAbr` of the crypto demux.
 
+[[abr-aperture-decode]]
+Inside that aperture there is no further decode. The vendored register block
+consumes all sixteen address bits and applies no address-validity or permission
+check, so the window is fully consumed but not fully populated: 24,160 of its
+65,536 bytes are defined. Objects sit at coarse offsets with the space between
+them unused -- most on a 4 kB boundary, the interrupt block at `0x8100`,
+`MLKEM_MSG` at `0x9080` and `MLKEM_CIPHERTEXT` at `0xB800` -- and the map ends
+at `0xC018`, leaving the last 16,360 bytes undefined.
+
+An access to any unpopulated offset completes with `OKAY`. A write is discarded;
+a read returns `0x0000_0000`. ABR never drives `hresp` to error, so the AHB error
+response its slave interface implements is unreachable. This is narrower than
+every other answer in the subsystem: an address outside the aperture, or any
+burst, is answered with DECERR by the demux (<<crypto-single-beat-only>>), and
+the wrapper's own `abr_wrapper_key_reg` CSRs answer an unmapped access with
+SLVERR. Software shall not rely on a bus error to detect a malformed ABR
+register address.
+
+NOTE: This follows from the vendored collateral rather than a SEP decision.
+`abr_reg.sv` is generated in the Adams Bridge repository, not by the OCAH
+register flow, and address-validity decode is a PeakRDL-regblock exporter option
+rather than a SystemRDL property; the committed file predates that option.
+Changing it is an upstream change.
+
 Upstream, Adams Bridge draws its secrets from the Caliptra Key Vault. OCAH does
 not instantiate that vault. The Key Manager's private AXI4-Lite key bus
 terminates inside the wrapper at the `abr_wrapper_key_reg` CSR block -- the same

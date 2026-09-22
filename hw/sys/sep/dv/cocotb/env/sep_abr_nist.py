@@ -62,8 +62,8 @@ NIST_SG_MU = _load_u32_array("nist_sg_mu")
 NIST_SG_SIG = _load_u32_array("nist_sg_sig")
 
 # sigVer: one case the standard says must verify (tcId 154) and one that must
-# not (tcId 151). The rejecting case is what stops a VERIFY checker passing on
-# an engine that reports success unconditionally.
+# not (tcId 151). The rejecting case fails an engine that reports success
+# unconditionally (VERIFY_RES equals the submitted c~ for every input).
 NIST_SV_OK_PK = _load_u32_array("nist_sv_ok_pk")
 NIST_SV_OK_MU = _load_u32_array("nist_sv_ok_mu")
 NIST_SV_OK_SIG = _load_u32_array("nist_sv_ok_sig")

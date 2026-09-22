@@ -24,6 +24,14 @@ from dashboard.collect_results import (  # noqa: E402
     collect_flow_result,
     stage_coverage_artifacts,
 )
+from test_dashboard_schema import (  # noqa: E402
+    FAILED_TEST_FIELDS,
+    FLAKY_TEST_FIELDS,
+    HOLES_SUMMARY_FIELDS,
+    RECORD_COVERAGE_FIELDS,
+    REGRESSION_FIELDS,
+    RUN_METADATA_FIELDS,
+)
 from test_results_completion import make_flow  # noqa: E402
 
 RECORDED_RUN_DIR = "build/ci/runs/fixture/verilator/weekly/42"
@@ -118,8 +126,46 @@ class RelocatedRunTree(unittest.TestCase):
                 "coverage_merged": recorded("cov/merged.dat"),
             },
             "jobs": [],
-            "failed_tests": [],
-            "flaky_tests": [],
+            "failed_tests": [
+                {
+                    "item": "t_beta",
+                    "target": "default",
+                    "seed": 7,
+                    "status": "FAIL",
+                    "reason": "scoreboard mismatch",
+                    "duration_sec": 2.0,
+                    "attempt_count": 1,
+                    "attempts": [{"attempt": 0, "status": "FAIL"}],
+                    "log": recorded("t_beta/seed_7/attempt_0/logs/sim.log"),
+                    "artifacts": {},
+                    "failure_buckets": [],
+                    "parser": None,
+                    "result_json": recorded("t_beta/seed_7/attempt_0/result.json"),
+                    "rerun": "python3 tools/dv/run_dv.py --dut fixture --items t_beta --seed 7",
+                }
+            ],
+            "flaky_tests": [
+                {
+                    "item": "t_gamma",
+                    "target": "default",
+                    "seed": 9,
+                    "final_status": "PASS",
+                    "flaky": True,
+                    "flaky_reason": "passed_after_retry",
+                    "attempt_count": 2,
+                    "failing_attempts": 1,
+                    "first_fail_attempt": 0,
+                    "first_failure_reason": "timeout",
+                    "passed_on_attempt": 1,
+                    "attempts": [
+                        {"attempt": 0, "status": "FAIL"},
+                        {"attempt": 1, "status": "PASS"},
+                    ],
+                    "log": recorded("t_gamma/seed_9/attempt_1/logs/sim.log"),
+                    "result_json": recorded("t_gamma/seed_9/attempt_1/result.json"),
+                    "rerun": "python3 tools/dv/run_dv.py --dut fixture --items t_gamma --seed 9",
+                }
+            ],
             "failure_buckets": [],
         }
         (self.run_root / "stages" / "regress").mkdir(parents=True)
@@ -141,40 +187,57 @@ class RelocatedRunTree(unittest.TestCase):
             ("report", "cov/report"),
             ("manifest", "cov/coverage.json"),
             ("summary", "cov/report/summary.json"),
-            ("coverage_details", "cov/report/coverage-details.json"),
-            ("coverage_details_raw", "cov/report/coverage-details.raw.json"),
             ("policy_application", "cov/report/policy-application.json"),
-            ("merged", "cov/merged.dat"),
         ):
             with self.subTest(key=key):
                 self.assertEqual(coverage[key], self.relocated(relative))
                 self.assertTrue((self.root / coverage[key]).exists())
         self.assertEqual(coverage["status"], "PASS")
-        self.assertEqual(
-            coverage["inputs"], [self.relocated("t_alpha/seed_1/attempt_0/coverage/coverage.dat")]
+
+    def test_record_carries_only_the_site_fields(self):
+        record = self.collect()
+        self.assertLessEqual(set(record["coverage"]), RECORD_COVERAGE_FIELDS)
+        self.assertLessEqual(
+            set(record["coverage"].get("holes_summary") or {}), HOLES_SUMMARY_FIELDS
         )
+        for key in ("inputs", "metrics", "line_percent", "merged", "coverage_details"):
+            self.assertNotIn(key, record["coverage"])
+        self.assertEqual(set(record["run_metadata"]), RUN_METADATA_FIELDS)
+        self.assertEqual(record["junit_xml"], {"total": 0, "missing": 0})
 
     def test_artifacts_mirror_the_rebased_coverage_paths(self):
         artifacts = self.collect()["artifacts"]
         self.assertEqual(artifacts["coverage_report"], self.relocated("cov/report"))
         self.assertEqual(artifacts["coverage_manifest"], self.relocated("cov/coverage.json"))
-        self.assertEqual(artifacts["coverage_merged"], self.relocated("cov/merged.dat"))
+        self.assertNotIn("coverage_merged", artifacts)
         self.assertEqual(artifacts["run_dir"], RECORDED_RUN_DIR)
         self.assertEqual(artifacts["result_json"], self.relocated("result.json"))
 
-    def test_regression_artifacts_follow_the_downloaded_tree(self):
-        artifacts = self.collect()["regression"]["artifacts"]
-        for key, relative in (
-            ("result_json", "result.json"),
-            ("regression_json", "stages/regress/regression.json"),
-            ("coverage_report", "cov/report"),
-            ("coverage_coverage_details", "cov/report/coverage-details.json"),
-            ("coverage_coverage_details_raw", "cov/report/coverage-details.raw.json"),
-            ("coverage_merged", "cov/merged.dat"),
-        ):
-            with self.subTest(key=key):
-                self.assertEqual(artifacts[key], self.relocated(relative))
-                self.assertTrue((self.root / artifacts[key]).exists())
+    def test_regression_keeps_the_failed_and_flaky_leaves(self):
+        regression = self.collect()["regression"]
+        self.assertEqual(set(regression), REGRESSION_FIELDS)
+        self.assertEqual([set(entry) for entry in regression["failed_tests"]], [FAILED_TEST_FIELDS])
+        self.assertEqual([set(entry) for entry in regression["flaky_tests"]], [FLAKY_TEST_FIELDS])
+        self.assertEqual(
+            regression["failed_tests"][0],
+            {
+                "item": "t_beta",
+                "seed": 7,
+                "status": "FAIL",
+                "reason": "scoreboard mismatch",
+                "rerun": "python3 tools/dv/run_dv.py --dut fixture --items t_beta --seed 7",
+            },
+        )
+        self.assertEqual(
+            regression["flaky_tests"][0],
+            {
+                "item": "t_gamma",
+                "seed": 9,
+                "final_status": "PASS",
+                "attempt_count": 2,
+                "rerun": "python3 tools/dv/run_dv.py --dut fixture --items t_gamma --seed 9",
+            },
+        )
 
     def test_failure_bucket_examples_follow_the_downloaded_tree(self):
         buckets = self.collect()["failure_buckets"]
@@ -201,15 +264,10 @@ class RelocatedRunTree(unittest.TestCase):
             sorted(path.name for path in (output.parent / staged_report).iterdir()),
             ["policy-application.json", "summary.json"],
         )
-        for key, relative in (
-            ("coverage_details", "cov/report/coverage-details.json"),
-            ("coverage_details_raw", "cov/report/coverage-details.raw.json"),
-            ("merged", "cov/merged.dat"),
-        ):
+        for key in ("coverage_details", "coverage_details_raw", "merged"):
             with self.subTest(key=key):
-                self.assertEqual(coverage[key], self.relocated(relative))
-                self.assertEqual(artifacts[f"coverage_{key}"], coverage[key])
-                self.assertTrue((self.root / coverage[key]).is_file())
+                self.assertNotIn(key, coverage)
+                self.assertNotIn(f"coverage_{key}", artifacts)
         self.assertEqual(coverage["source_report"], self.relocated("cov/report"))
         self.assertEqual(coverage["source_summary"], self.relocated("cov/report/summary.json"))
         self.assertEqual(coverage["source_manifest"], self.relocated("cov/coverage.json"))

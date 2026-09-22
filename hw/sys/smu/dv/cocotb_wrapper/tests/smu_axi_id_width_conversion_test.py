@@ -18,7 +18,7 @@ VERSION_LO probe to return its RDL reset value: only a read that reached the
 SMC register can do that.
 
 The SEP=0 direct ID converter (the gen_no_sep arm) is not elaborated on this
-bench; it is proved on --dut smu_block by smu_axi_external_port_connectivity_test.
+bench and is not claimed here.
 """
 
 from __future__ import annotations

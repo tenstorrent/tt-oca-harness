@@ -120,6 +120,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         beat_audited: list[str] = []
         beat_discriminating: list[str] = []
         beat_skipped: list[str] = []
+        data_compared: list[str] = []
         for win in cfg.windows.values():
             # A window whose dead space starts on a 4KB boundary cannot be
             # entered by a legal burst, and one with no live words before it
@@ -217,13 +218,16 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                         )
                         break
                     continue
-                # Inside the extent, and only when the burst was accepted: an
-                # accepted burst must read what the single-beat path reads. A
-                # refused burst carries the error slave's poison on every beat,
-                # which is not data and is not compared.
-                if worst != RESP_OKAY:
+                # Inside the extent: compare a beat the burst actually served.
+                # The master's collapsed response is the worst beat of the
+                # burst, so a refused tail would skip an in-extent beat that
+                # answered OKAY. Poison on a refused beat is not data.
+                beat_r = beat_resps[i] if i < len(beat_resps) else None
+                if beat_r != RESP_OKAY or sresp != RESP_OKAY:
                     continue
-                if sresp == RESP_OKAY and words[i] != sdata:
+                if win.name not in data_compared:
+                    data_compared.append(win.name)
+                if words[i] != sdata:
                     burst_fails.append(
                         f"{win.name} 0x{addr:08x} reads 0x{sdata:08x} as a "
                         f"single beat but 0x{words[i]:08x} as beat{i} of the "
@@ -290,12 +294,20 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             "CHK-DEADSPACE-BURST FAIL: no window could carry the burst "
             "contract, so it has no evidence here (" + "; ".join(burst_skipped) + ")"
         )
+        missing_data = [name for name in beat_discriminating if name not in data_compared]
+        if missing_data:
+            raise AssertionError(
+                "CHK-DEADSPACE-BURST FAIL: in-extent OKAY beats were not "
+                "compared to the single-beat value: " + ", ".join(missing_data)
+            )
         self.logger.info(
             "CHK-DEADSPACE-BURST PASS: %d of %d window(s) refused a burst "
-            "that ends past its allocated extent (%s); %d not auditable (%s)",
+            "that ends past its allocated extent (%s); in-extent data "
+            "compared on %s; %d not auditable (%s)",
             len(burst_audited),
             len(cfg.windows),
             ", ".join(burst_audited),
+            ", ".join(data_compared) or "none",
             len(burst_skipped),
             "; ".join(burst_skipped) or "none",
         )

@@ -33,9 +33,9 @@ SMOKE_TESTS = {
     "smu_smc_smoke_test": TARGET_SEP_RTL,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
-# The firmware smoke group: the elaboration leaf and both firmware smokes. The
-# PR gate `smoke` is toolchain-free and does not include them.
-EXPECTED_FW_SMOKE_GROUP = {
+# The firmware boot smoke group: the elaboration leaf and both firmware smokes.
+# The PR gate `smoke` is toolchain-free and does not include them.
+EXPECTED_FW_BOOT_GROUP = {
     "smu_wrapper_elaboration_test",
     "smu_smc_smoke_test",
     "smu_sep_smoke_test",
@@ -167,10 +167,10 @@ def check_sources(result: Readiness) -> None:
             passed = test is not None and test.get("target") == target
             detail = f"target={test.get('target')}" if test is not None else "missing from catalog"
             result.record(f"catalog:{test_name}", passed, detail)
-        expected_group = EXPECTED_FW_SMOKE_GROUP
-        smoke_group = set(groups.get("fw_smoke", []))
+        expected_group = EXPECTED_FW_BOOT_GROUP
+        smoke_group = set(groups.get("fw_boot", []))
         result.record(
-            "catalog:fw_smoke_group",
+            "catalog:fw_boot_group",
             smoke_group == expected_group,
             f"tests={sorted(smoke_group)}",
         )

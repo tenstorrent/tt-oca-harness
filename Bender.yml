@@ -323,7 +323,7 @@ vendor_package:
   # this tree supplies its own through i3ccore_wrap.
   - name: i3c-core
     target_dir: "vendor/chipsalliance/i3c-core/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "a6361105cd3432699da636f1f5e6f1eb4df09ed2" }
+    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "288f00ea21caf929b17ec1234abc3317b7ec071f" }
     include_from_upstream:
       - "LICENSE"
       - "src"
@@ -468,9 +468,6 @@ sources:
       - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
       - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
       - hw/ip/axi_filter/rtl/axi_filter_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
   # The cross_trigger family compiles inside the DTP DUT and standalone in the
   # per-IP benches under hw/ip/cross_trigger/*/dv (target `cross_trigger`).
   - target: any(dtp, cross_trigger)
@@ -678,6 +675,15 @@ sources:
     files:
       - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
       - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
+  # Adopter synthesis flows read `+define+` lines from the generated filelist;
+  # SYNTHESIS selects the implementation view in every source it compiles.
+  # Bender drops a fileless group's defines, so the group carries the vendor
+  # alias header, which compiles as an empty unit.
+  - target: synth
+    defines:
+      SYNTHESIS: 1
+    files:
+      - hw/common/defs/ocah_vendor_defines.svh
   - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))
     files:
       - hw/common/och_prim_generic/rtl/prim_ao222.sv
@@ -736,9 +742,6 @@ sources:
       - hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
   # See the cross_trigger package group above: shared by the DTP DUT and the
   # per-IP benches (target `cross_trigger`).

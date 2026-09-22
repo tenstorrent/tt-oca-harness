@@ -4270,7 +4270,6 @@ def run_stage(
                 "tool": tool,
                 "target": target_name,
                 "build_fingerprint": fingerprint,
-                "supported_metrics": _coverage_supported_metrics(args, tool),
                 "debug_only": bool(getattr(args, "_wave_debug_rerun", False)),
             }
             if not args.dry_run and rc == 0 and not artifact_ready(native_coverage):

@@ -155,14 +155,14 @@ class smu_axi_prot_encoding_decode_test_seq:
         # Warm filter path with one known-good secure encoding.
         await self._await_resp(master, probe, 0x1, RESP_OKAY, "S9_warm_secure")
 
+        observed: list[tuple[int, str]] = []
+        wanted: list[tuple[int, str]] = []
         for prot in range(8):
             label = PROT_LABELS[prot]
             want = RESP_OKAY if prot in SECURE_ALLOWED else RESP_DECERR
             _val, resp = await self._axi_rd(master, probe, prot)
-            if resp != want:
-                raise AssertionError(
-                    f"S9 prot=0x{prot:x} ({label}) expected {resp_name(want)} got {resp_name(resp)}"
-                )
+            observed.append((prot, resp_name(resp)))
+            wanted.append((prot, resp_name(want)))
             self._log(
                 f"CHK-SMU-PROT-S9 cell prot=0x{prot:x} {label} "
                 f"resp={resp_name(resp)} expect={resp_name(want)}"
@@ -171,10 +171,13 @@ class smu_axi_prot_encoding_decode_test_seq:
         # Positive control: every SECURE_ALLOWED and NONSECURE_BLOCKED cell hit.
         if set(range(8)) != (SECURE_ALLOWED | NONSECURE_BLOCKED):
             raise AssertionError("S9 prot partition incomplete")
-        self.matrix_ok = True
         sb.expect_eq(
-            "CHK-SMU-PROT-S9-MATRIX", self.matrix_ok, True, evidence="CHK-SMU-PROT-S9-MATRIX"
+            "CHK-SMU-PROT-S9-MATRIX",
+            tuple(observed),
+            tuple(wanted),
+            evidence="CHK-SMU-PROT-S9-MATRIX",
         )
+        self.matrix_ok = True
         self._log(
             "CHK-SMU-PROT-S9-BASIC: allow_ns=0 eight-way AxPROT matrix on VERSION_LO "
             "(S1-S8 GPIO PoC deferred — needs sep_in)"

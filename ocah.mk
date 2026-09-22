@@ -101,7 +101,6 @@ include $(OCAH_ROOT)/flows/lint/markdownlint.mk
 include $(OCAH_ROOT)/flows/lint/vale.mk
 include $(OCAH_ROOT)/flows/lint/yamllint.mk
 include $(OCAH_ROOT)/flows/lint/tomllint.mk
-include $(OCAH_ROOT)/flows/lint/fw-symbol-pins.mk
 include $(OCAH_ROOT)/flows/lint/checkmake.mk
 include $(OCAH_ROOT)/flows/lint/shell.mk
 include $(OCAH_ROOT)/flows/lint/pre-commit.mk

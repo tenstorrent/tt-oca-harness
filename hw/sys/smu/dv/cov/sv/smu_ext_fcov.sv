@@ -7,8 +7,8 @@
 // interrupt vector, the eFuse bank-control AXI-Lite shims, and the outputs
 // the chiplet presents to external systems.
 //
-// One passive, signal-driven module shared by tb_top and tb_wrapper_top.
-// Every port is a signal both benches expose at their top level; the port
+// One passive, signal-driven module. Every port is a signal the bench
+// exposes at its top level; the port
 // widths come from the DUT packages, so a width point is unhittable when
 // the bench's signal does not match them.
 //
@@ -30,7 +30,7 @@
 module smu_ext_fcov #(
   // 0 on an elaboration without SEP. The SEP eFuse bank-control shim is
   // driven from the SEP subsystem, so smu.sv's gen_no_sep branch ties the
-  // request port to '0 and both benches tie the response pins off; the two
+  // request port to '0 and the bench ties the response pins off; the two
   // points on that shim are dropped rather than carried unhittable.
   parameter bit SepPresent = 1'b1
 ) (

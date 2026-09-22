@@ -61,9 +61,11 @@ scratch-page grant, then the WDT page becomes the granted one, which answers
 that WDT probe and turns the scratch register DECERR. Each probe is therefore
 proven reachable, so neither DECERR can be an address-decode hole.
 CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
-cannot move. A write to a locked entry completes SLVERR, the field reads
-back unchanged, and the frozen bit still grants the widened page. The lock
-is sticky until reset, so this cell runs last on entry 15.
+cannot move. fabric.adoc specifies the lock as write-once, so the field must
+not change once set; it does not say how the refused write completes. SEP
+answers SLVERR, so that is what this cell asserts alongside the field. The
+field reads back unchanged and the frozen bit still grants the widened page. The lock is sticky until reset,
+so this cell runs last on entry 15.
 
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
