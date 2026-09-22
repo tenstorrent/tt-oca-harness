@@ -303,21 +303,21 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: make -C virtual_platform vp VP_CONTAINER=${{ matrix.vp_container }} NPROC="$(nproc)"
 
-      # Boost and OpenSSL must come from the system: a fallback to the local
-      # Boost build takes 1-2 h, so it is a job timeout rather than a slow
-      # success. Fail loudly instead.
-      - name: Assert system Boost and OpenSSL were used
+      # Boost and OpenSSL must be provisioned: /usr natively, the Nix store in the
+      # container. A fallback to the local Boost build takes 1-2 h, so it is a job
+      # timeout rather than a slow success. Fail loudly instead.
+      - name: Assert Boost and OpenSSL came from a provisioned prefix
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
           make -C virtual_platform deps-info VP_CONTAINER=${{ matrix.vp_container }} \
             | tee "$RUNNER_TEMP/deps-info.txt"
           # Lines look like:
           #   [VP]   BOOST_ROOT   = /usr   [system install (BOOST_VERSION >= ...)]
-          # Requiring whitespace after /usr keeps a local prefix such as
+          # Requiring trailing whitespace keeps a local prefix such as
           # virtual_platform/local-ctr/... from matching.
           for dep in BOOST OPENSSL; do
-            if ! grep -qE "^\[VP\][[:space:]]+${dep}_ROOT[[:space:]]*=[[:space:]]*/usr([[:space:]]|$)" "$RUNNER_TEMP/deps-info.txt"; then
-              echo "::error::${dep}_ROOT did not resolve to the system install (/usr); see deps-info above"
+            if ! grep -qE "^\[VP\][[:space:]]+${dep}_ROOT[[:space:]]*=[[:space:]]*(/usr|/nix/store/[^[:space:]]+)([[:space:]]|$)" "$RUNNER_TEMP/deps-info.txt"; then
+              echo "::error::${dep}_ROOT is not a provisioned prefix (/usr or /nix/store); see deps-info above"
               exit 1
             fi
           done
@@ -605,26 +605,33 @@ jobs:
           make -C virtual_platform smc-vp smu-vp \
             VP_CONTAINER=${{ matrix.vp_container }} NPROC="$(nproc)"
 
-      # Boost and OpenSSL as in the sep-vp job. Whisper is asserted the other
-      # way round -- it MUST be our managed local build, so a stray
-      # WHISPER_HOME in the environment cannot point CI at another tree.
+      # Boost and OpenSSL as in the sep-vp job. Whisper is asserted the other way
+      # round -- it MUST be the pinned revision, so a stray WHISPER_HOME in the
+      # environment cannot point CI at another tree. The container takes it from
+      # the flake, which derives the revision from WHISPER_REV.
       - name: Assert the expected dependency resolution
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
           make -C virtual_platform deps-info VP_CONTAINER=${{ matrix.vp_container }} \
             | tee "$RUNNER_TEMP/deps-info.txt"
           for dep in BOOST OPENSSL; do
-            if ! grep -qE "^\[VP\][[:space:]]+${dep}_ROOT[[:space:]]*=[[:space:]]*/usr([[:space:]]|$)" "$RUNNER_TEMP/deps-info.txt"; then
-              echo "::error::${dep}_ROOT did not resolve to the system install (/usr); see deps-info above"
+            if ! grep -qE "^\[VP\][[:space:]]+${dep}_ROOT[[:space:]]*=[[:space:]]*(/usr|/nix/store/[^[:space:]]+)([[:space:]]|$)" "$RUNNER_TEMP/deps-info.txt"; then
+              echo "::error::${dep}_ROOT is not a provisioned prefix (/usr or /nix/store); see deps-info above"
               exit 1
             fi
           done
-          # The trailing space keeps local-ctr from matching the native leg's
-          # expected local/ prefix (and vice versa).
-          want="${{ matrix.local_dir }}/whisper-${{ steps.whisper.outputs.rev }}-pic "
-          want="${want#virtual_platform/}"
-          if ! grep -q "WHISPER_HOME = .*/virtual_platform/${want}.*local (default); .*built" "$RUNNER_TEMP/deps-info.txt"; then
-            echo "::error::WHISPER_HOME is not our built local prefix at the pinned revision, for this environment; see deps-info above"
+          rev="${{ steps.whisper.outputs.rev }}"
+          if [ "${{ matrix.vp_container }}" = "1" ]; then
+            want_re="WHISPER_HOME = /nix/store/[^[:space:]]*-whisper-${rev}([[:space:]]|$)"
+          else
+            # The trailing space keeps local-ctr from matching the native leg's
+            # expected local/ prefix (and vice versa).
+            want="${{ matrix.local_dir }}/whisper-${rev}-pic "
+            want="${want#virtual_platform/}"
+            want_re="WHISPER_HOME = .*/virtual_platform/${want}.*local \(default\); .*built"
+          fi
+          if ! grep -qE "$want_re" "$RUNNER_TEMP/deps-info.txt"; then
+            echo "::error::WHISPER_HOME is not the pinned whisper for this environment; see deps-info above"
             exit 1
           fi
 
