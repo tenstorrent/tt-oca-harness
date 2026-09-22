@@ -407,14 +407,24 @@ module sep_reset_ctrl (
     .rst_no  (jtag_ovrd_rst_n.trng)
   );
 
-  // sep_reset_n stays in the TCK domain. The override must assert while a
-  // debug clock stop has gated clk_i.
+  // Assert is asynchronous, so the override still forces reset while a debug
+  // clock stop has gated clk_i. Deassert is synchronous to clk_i.
   logic sep_reset_mux_n;
   prim_rst_mux2_hf_n u_sep_reset_ovrd_mux (
     .rst0_ni (sep_intermediate_reset_ni),
     .rst1_ni (jtag_sep_reset_ctrl_i.val.sep_reset_n_val),
     .sel_i   (jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd),
     .rst_no  (sep_reset_mux_n)
+  );
+
+  prim_sync_reset #(
+    .WIDTH(2)
+  ) u_sep_reset_sync (
+    .clk_i       (clk_i),
+    .rst_ni      (sep_reset_mux_n),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (sep_reset_n)
   );
 
   // Test mode substitutes scan_rst_ni after each override mux, so scan reset
@@ -466,13 +476,6 @@ module sep_reset_ctrl (
     .test_rst_ni(scan_rst_ni),
     .test_mode_i(test_en_i),
     .rst_no     (sep_crypto_gated_rst_no.trng)
-  );
-
-  prim_rstbypass_stdmux2 u_sep_reset_scan_bypass (
-    .rst_ni     (sep_reset_mux_n),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_reset_n)
   );
 
   assign sep_reset_no = sep_reset_n;
