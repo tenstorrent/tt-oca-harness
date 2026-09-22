@@ -4,24 +4,8 @@ schema_version = 1
 # Aggregate testlist: merges category/IP testlists. Leaf files define each test
 # once; tags provide custom subsets, and this file owns the regression groups.
 #
-# Pre-merge gate: run the two class regressions, not the mixed `all` group (the
-# mixed path uses conservative fan-out). `rom_fw` is a separate class and a
-# separate owner: its tests use the `rom_boot` RTL target and the Boot ROM
-# firmware profiles, and are not members of `all`.
-#
-# python3 tools/dv/run_dv.py --dut sep --items cpu_stub --regress \
-# --tool verilator --stage flist --stage hdl_compile --stage sim
-# python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
-# --tool verilator --stage flist --stage hdl_compile --stage sim
-#
-# The ROM-FW owner runs their own class separately:
-#
-# python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress \
-# --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim
-#
-# Add `--stage c_compile` when CPU firmware is stale, or run it alone for a
-# firmware-only rebuild. Verilator is the acceptance backend; VCS/Xcelium are
-# development accelerators only.
+# Pre-merge commands are in README.md. `rom_fw` is a separate owner and is
+# not a member of `all`.
 #
 # no_cpu tests use target="lsu_stub_all_live" for the CPU-stubbed model. CPU
 # firmware tests omit target and use the full-CPU default model.
@@ -44,19 +28,12 @@ name = "smoke"
 tests = ["sep_axi_smoke_test"]
 
 [[groups]]
-# Every test this VPLAN grades. The two class groups below cover it with one
-# deliberate exception: `cpu_stub` (CPU-stub target) plus `cpu` (full-CPU
-# target) are disjoint and together hold 104 of the 105, and the remaining
-# leaf is sep_periph_bus_err_misaligned_reveal_test. That one is an
-# EXPECTED-FAIL reveal of a spec-vs-RTL gap (see its [[tests]] entry in
-# system.toml), so it is held out of the two class groups to keep the
-# pre-merge gate a clean pass/fail, and it is not masked as an xfail. A run
-# of `all` therefore fails on that leaf by design; a run of either class
-# group does not. Boot ROM firmware (`rom_fw`) is NOT a
-# member -- a different owner, a third RTL target, and firmware rather than
-# hardware contracts -- so `all` stays the SEP hardware suite and is the set
-# a coverage run grades. expected_count fails the run when membership drifts
-# from the class groups instead of silently shrinking the suite.
+# Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
+# (full-CPU target) are disjoint and together hold 104 of the 105. The
+# remaining leaf, sep_periph_bus_err_misaligned_reveal_test, is in `all` and
+# in neither class group. Its checker contract is the VPLAN card. `rom_fw`
+# is not a member: a different owner, a third RTL target, and firmware rather
+# than hardware contracts. `all` is the coverage set. expected_count is 105.
 name = "all"
 expected_count = 105
 tests = [
@@ -435,4 +412,7 @@ tests = [
     # SLOW: two full RSA-3072 modexps on the real OTBN, one per manifest slot;
     # not a hang. See its [[tests]] entry in rom_fw.toml.
     "sep_otbn_rsa_verify_failure_test",
+    "sep_rom_oca_encrypted_boot_test",
+    "sep_rom_oca_otp_key_boot_test",
+    "sep_rom_oca_tamper_test",
 ]

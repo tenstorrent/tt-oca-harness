@@ -22,7 +22,7 @@ Everything the environment needs lives under this tree.
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x (CI pin `v5.050`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
+| Verilator 5.x (CI pin `v5.052`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
 | g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8 g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
 | Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python` |
 | uv (CI: `astral-sh/setup-uv@v6`) | every stage, including `--items smoke` | must be on `PATH`. `run_dv.py` re-executes itself inside the locked uv-managed DV env (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi). A missing binary exits 2 before any stage runs. No SEP-owned semver pin; the dependency pin is `uv.lock` |
@@ -73,9 +73,8 @@ filter over `all` and is not the CI command.
 
 ### Full regression, the `all` group
 
-The command for the `all` group (every test this VPLAN grades: `cpu_stub` +
-`cpu`), one fresh seed per leaf. It is a local command -- no CI tier runs it,
-see below:
+The command for the `all` group (every test this VPLAN grades), one fresh seed
+per leaf. It is a local command -- no CI tier runs it, see below:
 
 ```bash
 # No --stage: builds the filelist, the firmware and the model, then regresses.
@@ -91,17 +90,15 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress \
   --sim-jobs 8 --build-jobs 24
 ```
 
-`all` includes firmware-boot tests, so a picolibc-enabled RISC-V GCC (or
-`scripts/docker-run.sh`) must be available -- the `c_compile` stage above builds
-the images with it (see [Prerequisites](#prerequisites)).
+`all` includes the `cpu` firmware-boot tests, so a picolibc-enabled RISC-V GCC
+(or `scripts/docker-run.sh`) must be available -- the `c_compile` stage above
+builds the images with it (see [Prerequisites](#prerequisites)). `rom_fw` stays
+out of `all`; run it with `--items rom_fw`.
 
-`all` enrolls 104 leaves: `cpu_stub` (83) plus `cpu` (20), which are disjoint,
-plus `sep_periph_bus_err_misaligned_reveal_test`. That last leaf fails by
-design -- it reveals a spec-vs-RTL gap and is deliberately not masked as an
-xfail -- so the expected result of an `all` run is 103 passes and that one
-failure. It is held out of both class groups, so the two class commands below
-are a clean pass/fail gate. A run whose only failure is that leaf is green;
-any other failure is a real one.
+`all` enrolls 105 leaves. `cpu_stub` (84) and `cpu` (20) are disjoint. The
+remaining leaf, `sep_periph_bus_err_misaligned_reveal_test`, is in neither class
+group. Its checker contract is the VPLAN card. The class commands below are the
+pre-merge gate.
 
 ### Scheduled tiers
 
@@ -218,11 +215,11 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
   --target default --sim-jobs 32 --build-jobs 32
 ```
 
-`all` is the coverage set: every test the VPLAN grades, which is exactly `cpu_stub`
-+ `cpu`. Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third
-RTL target, firmware rather than hardware contracts -- so reaching those tests
-means naming `rom_fw`. `all`'s `expected_count` fails the run when membership
-drifts from the class groups.
+`all` is the coverage set: 105 leaves, `cpu_stub` (84) plus `cpu` (20) plus
+`sep_periph_bus_err_misaligned_reveal_test`, which is in neither class group.
+Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third RTL
+target, firmware rather than hardware contracts -- so reaching those tests
+means naming `rom_fw`. `expected_count` is 105.
 
 `--target default` compiles the full CPU once. no_cpu leaves force-splice the
 LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is

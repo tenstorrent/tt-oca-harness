@@ -6810,17 +6810,8 @@ the wipe security contract.
 
 === Regression Groups
 
-[cols=",",options="header"]
-|===
-|Group |Meaning
-|`smoke` |Short no-CPU bring-up subset (CI)
-|`cpu_stub` |CPU not alive (`sep_cpu` stub); AXI-driver tests
-|`cpu` |Firmware-boot tests
-|`rom_fw` |Boot-ROM image class (separate owner); not a member of `all`
-|`all` |Every test this VPLAN grades, and the coverage set: `cpu_stub` + `cpu` plus `sep_periph_bus_err_misaligned_reveal_test`, which is in neither class because it fails by design
-|===
-
-`README.md` owns how to run these groups, including which one to use when closing a change.
+`README.md` owns the group table and the commands, including which group to
+run when closing a change. This file owns each leaf's checker contract.
 
 [[known-limitations]]
 [[phase-3]]
