@@ -751,7 +751,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     await RisingEdge(clk)
                 else:
                     raise AssertionError(
-                        f"{tag} FAIL: URND was not acknowledged before attempt {attempt}"
+                        f"{tag} SETUP FAILED (not a contract result): URND "
+                        f"stopped being acknowledged before attempt {attempt}"
                     )
                 await ClockCycles(clk, attempt % _EDN_HOLD_STEP)
                 await self._drop_kmac(jtag)
@@ -951,6 +952,16 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await self._prove_kmac_edn_edge("CHK-EDN-EDGE", jtag=False)
         await self._prove_kmac_edn_edge("CHK-EDN-JTAG", jtag=True)
         await self._prove_edn_reset_glitch("EDN-GLITCH-OBS")
+        # Runs here because the URND grant stream is live only while entropy
+        # is flowing; by the end of the scenario the engines are parked and
+        # URND requests go unacknowledged. The failure is deferred so its
+        # raise cannot abort the legs below -- it is re-raised at the end.
+        edn_hold_failure: AssertionError | None = None
+        try:
+            await self._prove_edn_sibling_hold("CHK-EDN-HOLD", jtag=True)
+        except AssertionError as exc:
+            edn_hold_failure = exc
+            self.logger.error("%s", exc)
 
         self.hmac = SepHmac(self)
         self.kmac = SepKmac(self)
@@ -1487,8 +1498,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             sw_final,
         )
 
-        # LAST, deliberately. CHK-EDN-HOLD and CHK-EDN-HOLD-KEEP fail against
-        # the current RTL by design, and a raise here would abort every leg
-        # placed after it. Keeping them at the end means a run still produces
-        # evidence for every other checker this leaf claims.
-        await self._prove_edn_sibling_hold("CHK-EDN-HOLD", jtag=True)
+        # Re-raised LAST. CHK-EDN-HOLD and CHK-EDN-HOLD-KEEP fail against the
+        # current RTL by design; deferring the raise to here means every other
+        # checker this leaf claims still produces evidence in the same run.
+        if edn_hold_failure is not None:
+            raise edn_hold_failure
