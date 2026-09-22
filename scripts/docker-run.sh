@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH nix-built container.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|shell-here|nixos-shell|nix-fmt|nix-fmt-check|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage>
+#   Usage: docker-run.sh <build|ensure|image-hash|verify|run CMD...|run-here CMD...|shell|shell-here|nixos-shell|nix-fmt|nix-fmt-check|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage>
 #   'doc-html all'  builds the real combined multi-book site (antora-playbook.yml) -- this
 #                   is what gets deployed
 #   'doc-stage'     adds PDFs + .nojekyll on top of an already-built combined site -- pure
@@ -12,6 +12,7 @@
 #   build           (re)build nix container image + publish to shared tarball cache
 #   ensure          make nix container image available (cache -> build); auto-run
 #                   by run/run-here/shell/verify, so bare `run` works on a fresh host
+#   image-hash      print the nix-derived image tag; identifies the image exactly
 #   verify          gcc version + multilibs
 #   shell           interactive shell
 #   nixos-shell     Open an interactive shell in the NixOS build container - useful
@@ -702,6 +703,7 @@ nix-fmt-check)
   nixos_run "nix fmt -- -f check"
   ;;
 ensure) ensure_image ;;
+image-hash) image_hash ;;
 verify)
   run riscv64-unknown-elf-gcc --version
   echo ---

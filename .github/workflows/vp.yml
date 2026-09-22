@@ -298,15 +298,31 @@ jobs:
           fi
           echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
 
-      - name: Cache toolchain image
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
-        uses: actions/cache@v4
+      # Key on the nix hash, not a file list: whisper.nix and openssl-merged.nix
+      # read WHISPER_REV/OPENSSL3_VERSION out of the model submodule, so re-pinning
+      # the model changes the image without changing any hashed file. A stale key
+      # then restores a tarball whose name no longer matches, rebuilds, and has its
+      # save declined as a duplicate -- a miss that never clears.
+      - name: Identify the toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
+        id: image
+        run: |
+          hash="$(./scripts/docker-run.sh image-hash)"
+          # A malformed hash is worse than none: it still keys a cache, so every
+          # run would miss and rebuild while looking like it was caching.
+          case "$hash" in
+            [a-z0-9][a-z0-9]*) ;;
+            *) echo "::error::image-hash returned '$hash'"; exit 1 ;;
+          esac
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
+          echo "toolchain image: $hash" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
-          # The variant belongs in the key: the two images share every hashed input,
-          # so without it a restore hands back the wrong one and the save is declined
-          # as a duplicate, leaving the image rebuilt from source on every run.
-          key: ocah-image-uv-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
+          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
 
       # Only the native leg builds dependencies, so only it has anything to
       # cache. The container carries SystemC,
@@ -342,6 +358,16 @@ jobs:
       - name: Provision toolchain image
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         run: ./scripts/docker-run.sh ensure
+
+      # Save here, not at job end: actions/cache only writes when the whole job
+      # succeeds, so a failing suite discarded the image and the next run paid for
+      # it again.
+      - name: Save toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ocah-image-cache
+          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
 
       - name: Check toolchains
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
@@ -633,15 +659,31 @@ jobs:
           fi
           echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
 
-      - name: Cache toolchain image
+      # Key on the nix hash, not a file list: whisper.nix and openssl-merged.nix
+      # read WHISPER_REV/OPENSSL3_VERSION out of the model submodule, so re-pinning
+      # the model changes the image without changing any hashed file. A stale key
+      # then restores a tarball whose name no longer matches, rebuilds, and has its
+      # save declined as a duplicate -- a miss that never clears.
+      - name: Identify the toolchain image
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
-        uses: actions/cache@v4
+        id: image
+        run: |
+          hash="$(./scripts/docker-run.sh image-hash)"
+          # A malformed hash is worse than none: it still keys a cache, so every
+          # run would miss and rebuild while looking like it was caching.
+          case "$hash" in
+            [a-z0-9][a-z0-9]*) ;;
+            *) echo "::error::image-hash returned '$hash'"; exit 1 ;;
+          esac
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
+          echo "toolchain image: $hash" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
-          # The variant belongs in the key: the two images share every hashed input,
-          # so without it a restore hands back the wrong one and the save is declined
-          # as a duplicate, leaving the image rebuilt from source on every run.
-          key: ocah-image-uv-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
+          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
 
       # Its OWN key, not the sep-vp job's: local*/ here also holds the Whisper
       # tree, so a shared key would let whichever job saved first decide whether
@@ -690,6 +732,16 @@ jobs:
       - name: Provision toolchain image
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         run: ./scripts/docker-run.sh ensure
+
+      # Save here, not at job end: actions/cache only writes when the whole job
+      # succeeds, so a failing suite discarded the image and the next run paid for
+      # it again.
+      - name: Save toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ocah-image-cache
+          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
 
       - name: Check toolchains
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
