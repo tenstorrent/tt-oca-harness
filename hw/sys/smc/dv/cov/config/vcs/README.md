@@ -4,48 +4,60 @@
 # SMC coverage scope
 
 SMC scopes coverage in two files because the two simulators scope by different
-things, and neither can express the other's form:
+things, and the two flows answer different questions:
 
-| File | Flow | Mechanism |
-| --- | --- | --- |
-| `../verilator/smc_cov_scope.vlt` | public CI (graded) | `coverage_off -file`, globs |
-| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` |
+| File | Flow | Mechanism | Population |
+| --- | --- | --- | --- |
+| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` | the SEP rule: DUT minus the bench, the CPU subtree and the library cells; functional third-party IP stays graded |
+| `../verilator/smc_cov_scope.vlt` | public CI | `coverage_off -file`, globs | what SMC owns: `hw/sys/smc/rtl/**`, `hw/sys/smc/regs/**`, the `hw/top` shells and the `cov/sv` points |
 
 Both are applied at **compile** time, following what SEP measured
 (`hw/sys/sep/dv/cov/config/vcs/README.md`): a report-time filter prunes the
 report pages and still grades the whole database, so scope that has to hold
-must keep the code out of the database. Edit either file then `--rebuild` —
+must keep the code out of the database. Edit either file then `--rebuild` --
 neither is fingerprinted.
 
-**The two files express one set.** Verilator's `coverage_off` takes `-file`
-only, so the Verilator file drops trees by source path with globs. VCS scopes
-by design unit or instance, and the trees SMC does not own -- vendored RTL,
-`hw/ip`, `hw/common`, the chipyard-generated CPU cluster, the bench's own
-models -- are instantiated at hundreds of places inside SMC's own modules, so
-no `-tree` reaches them without dropping real SMC RTL. `gen_smc_cov_scope.py`
-therefore reads the build filelists, takes every module, interface and
-program compiled from those trees, and writes one `-module` line per unit;
-the file is regenerated (`--check` says when it is stale) rather than kept by
-hand.
+The VCS scope follows the rule `hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier`
+states, so the two subsystems' signoff figures are read on one definition:
+the bench, the CPU subtree and the library cells leave the database, and
+functional third-party IP stays graded regardless of authorship, because SMC
+tests target it by name (the I3C controller, the DMA, the debug and trace
+blocks, the AXI fabric). VCS scopes by design unit or instance, and those
+trees are instantiated at hundreds of places inside SMC's own modules where
+no `-tree` reaches them, so `gen_smc_cov_scope.py` reads the build filelists,
+takes every module, interface and program compiled from the dropped trees,
+and writes one `-module` line per unit under the reason it leaves; the file is
+regenerated (`--check` says when it is stale) rather than kept by hand.
+
+The Verilator scope keeps the narrower owned-files set. Verilator's
+`coverage_off` takes source-path globs only, it does not apply to a file whose
+last line has no newline (which is the state of several vendored files), and
+the public runner compiles the coverage-instrumented model within a fixed
+time budget, so widening its population to the vendored trees is a separate
+decision with a measurement of its own.
 
 ## What the numbers are
 
-Both grade what SMC owns: `hw/sys/smc/rtl/**` (less the chipyard-generated
-cluster), `hw/sys/smc/regs/**`, the two `hw/top` integration shells and the
-`cov/sv` points. They still differ in what a point is -- Verilator's
-expression family against VCS's condition, FSM and toggle -- and Verilator
-5.050 leaves some vendored files instrumented that VCS drops (the known gap
-below), so quote the simulator with the number.
+The VCS figure is the SMC DUT minus the CPU subtree and the library cells,
+functional third-party IP included. Not "SMC-owned RTL coverage": say which.
+The Verilator figure is SMC-owned RTL. They also differ in what a point is --
+Verilator's expression family against VCS's condition, FSM and toggle -- and
+Verilator 5.050 leaves some vendored files instrumented that its scope names
+(the known gap below), so quote the flow with the number.
 
 ## What each file excludes
 
 ### `smc_cov_scope.hier` (VCS)
 
     -tree smc_uvm_top 1        TB top's own body, children kept
-    -module <unit>             one line per design unit compiled from
-                               vendor/, hw/ip/, hw/common/, the chipyard-
-                               generated cluster, hw/sys/smc/dv/tb and
+    // bench                   units compiled from hw/sys/smc/dv/tb and
                                hw/sys/smc/dv/models
+    // cpu subtree             the chipyard-generated CPU cluster, the same
+                               argument SEP uses to drop sep_cpu
+    // library cells           vendor/pulp-platform/common_cells and the
+                               OpenTitan prim library, the cells SEP drops
+    // package                 axi_pkg, which would report an assertion row
+                               with no logic behind it
 
 The `-module` lines are generated:
 
@@ -73,17 +85,16 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
 ## Why these exclusions
 
-Third-party RTL and the chipyard-generated CPU cluster dominate the unscoped
-denominator and are barely exercised by SMC-level tests, so an unscoped
-headline is a statement about someone else's code — the same reason SEP drops
-`sep_cpu`. `hw/ip/**` and `hw/common/**` are dropped for the same reason the SMU
-and DTP scopes drop them: each block there carries its own DV package and its
-own coverage, and grading its internals again here attributes its holes to SMC
-and hides SMC's own integration inside a denominator an order of magnitude
-larger. What SMC grades is what it owns: `hw/sys/smc/rtl/**`, `hw/sys/smc/regs/**`
-and the `cov/sv` points. Whether an integrated block is *reached* from the SMC
-boundary is a functional-coverage question and is answered by the `user` points,
-not by that block's line count.
+The chipyard-generated CPU cluster dominates the unscoped denominator and is
+reached only by the CPU-boot tests, so an unscoped headline is a statement
+about a core nobody grades here -- the same reason SEP drops `sep_cpu`. The
+library cells (pulp `common_cells`, OpenTitan `prim*`) are leaf primitives
+whose branches depend on parameters no SMC test chooses. Everything else the
+build compiles stays graded: the vendored I3C controller, DMA, debug and trace
+blocks and AXI fabric, and the `hw/ip` and `hw/common` blocks SMC integrates,
+because SMC tests drive them by name and their reachability from the SMC
+boundary is part of what this bench claims. The Verilator public-CI scope
+keeps the narrower owned-files set for the reasons above.
 
 ## Known gap in the Verilator scope
 
