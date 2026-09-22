@@ -106,8 +106,7 @@ static int test_config_ap_output_remap(void) {
         ap_remap_ctrl.f.offset = generate_random_64bit();
 
         // Write the remap configuration
-        WRITE_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i),
-                    ap_remap_ctrl.w);
+        WRITE_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i), ap_remap_ctrl.w);
 
         // Read back to verify
         uint64_t readback =

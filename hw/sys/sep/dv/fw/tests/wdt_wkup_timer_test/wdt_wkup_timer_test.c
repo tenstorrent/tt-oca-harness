@@ -98,8 +98,8 @@ int main(void) {
     /* STEP 4: Clear INTR_STATE wkup (W1C) and WKUP_CAUSE (W0C) */
     printf("\n// STEP 4: Clear INTR_STATE wkup (W1C) and WKUP_CAUSE (W0C)\n");
     WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm);    /* W1C */
-    WRITE_REG(SEP_TOP_WDT_TIMER_WKUP_CAUSE_BASE_ADDR, 0x0); /* W0C */
+              AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm); /* W1C */
+    WRITE_REG(SEP_TOP_WDT_TIMER_WKUP_CAUSE_BASE_ADDR, 0x0);  /* W0C */
 
     /* Brief propagation delay */
     for (volatile int i = 0; i < 100; i++) {
@@ -151,8 +151,7 @@ int main(void) {
     printf("\n// STEP 6: INTR_TEST wkup injection (wkup_timer_expired)\n");
     WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
 
-    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR,
-              AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_bm);
     for (volatile int i = 0; i < 200; i++) {
         __asm__ volatile("nop");
     }
@@ -171,8 +170,7 @@ int main(void) {
 
     /* STEP 7: W1C clear after INTR_TEST injection */
     printf("\n// STEP 7: W1C clear INTR_STATE wkup after INTR_TEST\n");
-    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm);
     for (volatile int i = 0; i < 100; i++) {
         __asm__ volatile("nop");
     }

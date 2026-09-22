@@ -59,8 +59,8 @@ static void seed_sw_entropy(void) {
 
 static void test_intr_bit_event(const char *name, uint32_t bit) {
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, bit);
 
     uint32_t state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
@@ -93,8 +93,8 @@ static void test_fifo_empty_intr(void) {
     }
 
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0);
 
     kmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
@@ -117,8 +117,8 @@ static void test_fifo_empty_intr(void) {
     }
     WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0);
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 }
 
 static int test_real_kmac_done(void) {
@@ -127,11 +127,11 @@ static int test_real_kmac_done(void) {
     if (wait_for_idle() != 0) return -1;
 
     WRITE_REG(SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                          KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                          KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                      KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                      KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 
     seed_sw_entropy();
     printf("  SW entropy ready\n");
@@ -153,8 +153,8 @@ static int test_real_kmac_done(void) {
     }
 
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
     cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
@@ -173,8 +173,8 @@ static void test_intr_masking(void) {
     }
 
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__KMAC_ERR_bm);
 
     uint32_t state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
@@ -185,8 +185,8 @@ static void test_intr_masking(void) {
         test_errors++;
     }
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 }
 
 int main(void) {
@@ -197,8 +197,8 @@ int main(void) {
     printf("========================================\n");
 
     WRITE_REG(SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                          KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                          KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                      KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                      KMAC__INTR_STATE__KMAC_ERR_bm);
 
     printf("\n=== INTR_TEST Event Bits ===\n");
     test_intr_bit_event("kmac_done", KMAC__INTR_TEST__KMAC_DONE_bm);

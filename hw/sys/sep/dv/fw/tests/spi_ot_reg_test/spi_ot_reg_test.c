@@ -185,8 +185,7 @@ int main(void) {
     WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, 0);
     err_enable.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
     if (!check_reg("ERROR_ENABLE all disabled", err_enable.w, 0)) pass = 0;
-    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR,
-              SPI_CONTROLLER__ERROR_ENABLE_reset);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, SPI_CONTROLLER__ERROR_ENABLE_reset);
 
     /* EVENT_ENABLE write-readback */
     event_enable.w = 0;

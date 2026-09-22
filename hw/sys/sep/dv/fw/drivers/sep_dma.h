@@ -107,9 +107,9 @@ static inline void sep_dma_copy_start(uint32_t src, uint32_t dst, uint32_t len) 
     sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
     sep_dma_wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
 
-    sep_dma_wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
-               SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
-                   SEP_DMA_OPCODE_COPY);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm |
+                                                         SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
+                                                         SEP_DMA_OPCODE_COPY);
 }
 
 #endif // SEP_DMA_H

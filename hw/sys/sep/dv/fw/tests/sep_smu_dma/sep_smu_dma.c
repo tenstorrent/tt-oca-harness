@@ -26,8 +26,7 @@ static int run_dma_reg_sequence(void) {
         return -2;
     if (rw_check32(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u) != 0) return -3;
 
-    if (rw_check32(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR) !=
-        0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR) != 0)
         return -4;
     if (rw_check32(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
                    SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000u) != 0)

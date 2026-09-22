@@ -20,10 +20,11 @@
 #include "sep.h"            /* SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) */
 
 #define BH_COLD_SCRATCH7 \
-    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) /* 0x10802038 (SEP-local) */
-#define BH_ALIVE 0x001A11E0u                          /* first liveness marker */
-#define BH_PASS 0x001600D1u                           /* boot-health PASS marker */
-#define BH_FAIL 0x001FA11Eu                           /* read-back mismatch marker */
+    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) /* 0x10802038 (SEP-local) \
+                                                   */
+#define BH_ALIVE 0x001A11E0u                      /* first liveness marker */
+#define BH_PASS 0x001600D1u                       /* boot-health PASS marker */
+#define BH_FAIL 0x001FA11Eu                       /* read-back mismatch marker */
 
 /* Named terminal loops -- a cocotb PC watch classifies the run by which one the SEP parks in. */
 __attribute__((noinline, used)) void sep_smu_boot_health_pass_loop(void) {

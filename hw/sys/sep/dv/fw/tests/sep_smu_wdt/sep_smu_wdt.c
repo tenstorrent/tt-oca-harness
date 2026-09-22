@@ -84,12 +84,12 @@ static int run_wdt_programming_sequence(void) {
     fence_io();
 
     /* Thresholds first: the widest deltas. */
-    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR,
-                            WDT_WDOG_BARK_THOLD_MASK, WDT_WDOG_BARK_THOLD_PROG)) {
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT_WDOG_BARK_THOLD_MASK,
+                            WDT_WDOG_BARK_THOLD_PROG)) {
         return -1;
     }
-    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR,
-                            WDT_WDOG_BITE_THOLD_MASK, WDT_WDOG_BITE_THOLD_PROG)) {
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT_WDOG_BITE_THOLD_MASK,
+                            WDT_WDOG_BITE_THOLD_PROG)) {
         return -2;
     }
     if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WKUP_THOLD_LO_BASE_ADDR, WDT_WKUP_THOLD_LO_MASK,

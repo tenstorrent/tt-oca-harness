@@ -11,9 +11,9 @@
 // only inbound_interrupt_o reaches sep_internal_interrupts[7:0]; outbound
 // leaves the block on smc_mailbox_interrupt_o. A write to inbound WRITE_DATA
 // is therefore what notifies the SEP CPU. interrupts.adoc PIC sources 1-8 are
-// Mailbox interrupt 0-7, so channel ch drives PIC source (ch + 1). CLOCK_GATE_CTRL in this map implements only
-// pka_cg_enable (bit 0). Bit 2 is written for sequence parity; it is not a
-// defined mailbox-clock field and is not on the proof path.
+// Mailbox interrupt 0-7, so channel ch drives PIC source (ch + 1). CLOCK_GATE_CTRL in this map
+// implements only pka_cg_enable (bit 0). Bit 2 is written for sequence parity; it is not a defined
+// mailbox-clock field and is not on the proof path.
 //
 // IRQS is write-1-to-clear. Because the IRQ is level-based on FIFO occupancy
 // (usage > WIRQT), W1C alone re-asserts next cycle while the FIFO stays above
@@ -48,8 +48,8 @@
 // Eight channels, stride from generated mailbox 0 vs 1 WRITE_DATA.
 // Channel ch drives PIC source (ch + 1) (interrupts.adoc Mailbox interrupt ch).
 #define SEP_AXIL_MBOX_N 8u
-#define SEP_AXIL_MBOX_STRIDE                                                         \
-    (SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_1_WRITE_DATA_BASE_ADDR -              \
+#define SEP_AXIL_MBOX_STRIDE \
+    (SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_1_WRITE_DATA_BASE_ADDR - \
      SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR)
 
 // The paired outbound aperture. Its interrupt leaves the block on

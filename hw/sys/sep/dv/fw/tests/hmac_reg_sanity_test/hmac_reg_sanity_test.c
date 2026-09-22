@@ -71,8 +71,7 @@ int main(void) {
     /* DIGEST registers are HW-driven (hw2reg path always active). SW writes are
      * valid only for context restore before hash_continue, not for simple RW test.
      * Verify the reset default (0x0) is readable. */
-    if (!check_reg("DIGEST_0 default=0", READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(0)), 0x0))
-        pass = 0;
+    if (!check_reg("DIGEST_0 default=0", READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(0)), 0x0)) pass = 0;
 
     printf("\n========================================\n");
     if (pass) {

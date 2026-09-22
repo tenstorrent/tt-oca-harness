@@ -131,10 +131,10 @@ int main(void) {
     WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x12345678);
     WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     /* Verify all still correct */
-    errors += check_reg(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xABCD1234,
-                        "BARK_THOLD after seq");
-    errors += check_reg(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x12345678,
-                        "BITE_THOLD after seq");
+    errors +=
+        check_reg(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xABCD1234, "BARK_THOLD after seq");
+    errors +=
+        check_reg(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x12345678, "BITE_THOLD after seq");
 
     /* STEP 6: WKUP_CTRL non-zero pattern then clear (dead-bus 0 must fail) */
     printf("\n// STEP 6: WKUP_CTRL non-zero write/readback then clear\n");

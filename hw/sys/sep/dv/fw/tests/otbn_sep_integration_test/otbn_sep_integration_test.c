@@ -72,8 +72,7 @@ static int otbn_wait_for_idle(void) {
 }
 
 static int otbn_wait_for_done(void) {
-    printf("[DBG] wait_for_done: reading INTR_STATE @ 0x%08x\n",
-           SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
+    printf("[DBG] wait_for_done: reading INTR_STATE @ 0x%08x\n", SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
     for (int timeout = OTBN_DONE_TIMEOUT; timeout > 0; --timeout) {
         uint32_t intr_state = READ_REG(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
         if (timeout == OTBN_DONE_TIMEOUT) {
@@ -195,13 +194,11 @@ static int otbn_load_app(void) {
     WRITE_REG(SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
 
     for (size_t i = 0; i < otbn_otbn_sep_integration_imem_words; ++i) {
-        WRITE_MEM_WORD(SEP_TOP_OTBN_IMEM_BASE_ADDR, (uint32_t)i,
-                       otbn_otbn_sep_integration_imem[i]);
+        WRITE_MEM_WORD(SEP_TOP_OTBN_IMEM_BASE_ADDR, (uint32_t)i, otbn_otbn_sep_integration_imem[i]);
     }
 
     for (size_t i = 0; i < otbn_otbn_sep_integration_dmem_words; ++i) {
-        WRITE_MEM_WORD(SEP_TOP_OTBN_DMEM_BASE_ADDR, (uint32_t)i,
-                       otbn_otbn_sep_integration_dmem[i]);
+        WRITE_MEM_WORD(SEP_TOP_OTBN_DMEM_BASE_ADDR, (uint32_t)i, otbn_otbn_sep_integration_dmem[i]);
     }
 
     const uint32_t checksum = READ_REG(SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR);

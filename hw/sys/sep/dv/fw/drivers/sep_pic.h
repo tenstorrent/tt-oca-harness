@@ -97,8 +97,7 @@ static inline void pic_clear_gateway(uint32_t source_id) {
 
 static inline uint32_t pic_source_pending(uint32_t source_id) {
     /* meip bitmap is indexed by raw source_id (bit0 unused); neighbours use source_id-1. */
-    uint32_t word =
-        *(volatile uint32_t *)(SEP_TOP_PIC_MEIP_BASE_ADDR(0) + (source_id / 32u) * 4u);
+    uint32_t word = *(volatile uint32_t *)(SEP_TOP_PIC_MEIP_BASE_ADDR(0) + (source_id / 32u) * 4u);
     return (word >> (source_id % 32u)) & 1u;
 }
 

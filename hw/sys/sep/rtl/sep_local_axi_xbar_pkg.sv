@@ -134,17 +134,14 @@ package sep_local_axi_xbar_pkg;
   // Output: dma_csr
   localparam logic [31:0] DMA_CSR_MAIN_BASE =
       32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR);
-  localparam logic [31:0] DMA_CSR_MAIN_SIZE =
-      32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE);
+  localparam logic [31:0] DMA_CSR_MAIN_SIZE = 32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE);
   localparam logic [32:0] DMA_CSR_MAIN_END  =
       33'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR +
           sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE);
 
   // Output: sep_wdt
-  localparam logic [31:0] SEP_WDT_MAIN_BASE =
-      32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR);
-  localparam logic [31:0] SEP_WDT_MAIN_SIZE =
-      32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE);
+  localparam logic [31:0] SEP_WDT_MAIN_BASE = 32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR);
+  localparam logic [31:0] SEP_WDT_MAIN_SIZE = 32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE);
   localparam logic [32:0] SEP_WDT_MAIN_END  =
       33'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR +
           sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE);

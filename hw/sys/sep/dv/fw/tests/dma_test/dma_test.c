@@ -91,20 +91,16 @@ int main(void) {
     printf("\nTesting register writes:\n");
 
     // Test source address registers
-    errors +=
-        test_register_rw("SRC_ADDR_LO", SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0x11000000);
-    errors +=
-        test_register_rw("SRC_ADDR_HI", SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x00000000);
+    errors += test_register_rw("SRC_ADDR_LO", SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0x11000000);
+    errors += test_register_rw("SRC_ADDR_HI", SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x00000000);
 
     // Test destination address registers
-    errors +=
-        test_register_rw("DST_ADDR_LO", SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, 0x11001000);
-    errors +=
-        test_register_rw("DST_ADDR_HI", SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x00000000);
+    errors += test_register_rw("DST_ADDR_LO", SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, 0x11001000);
+    errors += test_register_rw("DST_ADDR_HI", SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x00000000);
 
     // Test size registers
-    errors += test_register_rw("TOTAL_DATA_SIZE", SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR,
-                               0x100);
+    errors +=
+        test_register_rw("TOTAL_DATA_SIZE", SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, 0x100);
 
     //============================================================================
     // Step 3: Test normal DMA operation - Simple Contiguous Transfer
@@ -128,8 +124,7 @@ int main(void) {
     WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR >> 32);
 
     // Set the destination address
-    WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
-              SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000);
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000);
     WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR,
               (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000) >> 32);
 

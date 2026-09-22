@@ -79,8 +79,8 @@ int main(void) {
     }
 
     write64_split(start_addr, SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
-    write64_split(end_addr, SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR +
-                                MAILBOX_0_APERTURE_SIZE - 1u);
+    write64_split(end_addr,
+                  SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR + MAILBOX_0_APERTURE_SIZE - 1u);
 
     cfg_src3 =
         FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |

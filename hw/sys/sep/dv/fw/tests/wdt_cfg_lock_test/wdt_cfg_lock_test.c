@@ -55,8 +55,7 @@ void wdt_nmi_handler(void) {
 
     printf("INTR_STATE register after interrupt: 0x%08x\n", intr_state);
 
-    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
 
     /* Read back INTR_STATE register and verify its cleared */
     intr_state = READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);

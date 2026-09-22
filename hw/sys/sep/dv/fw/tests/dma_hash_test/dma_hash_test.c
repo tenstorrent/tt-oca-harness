@@ -529,8 +529,8 @@ int main(void) {
         }
     }
     WRITE_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
-                                                           SECURE_DMA__STATUS__ERROR_bm |
-                                                           SECURE_DMA__STATUS__CHUNK_DONE_bm);
+                                                       SECURE_DMA__STATUS__ERROR_bm |
+                                                       SECURE_DMA__STATUS__CHUNK_DONE_bm);
 
     //==========================================================================
     // Step 8: DIGEST_SWAP is the only thing that changes between these two runs
@@ -571,8 +571,8 @@ int main(void) {
             }
         }
         WRITE_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
-                                                               SECURE_DMA__STATUS__ERROR_bm |
-                                                               SECURE_DMA__STATUS__CHUNK_DONE_bm);
+                                                           SECURE_DMA__STATUS__ERROR_bm |
+                                                           SECURE_DMA__STATUS__CHUNK_DONE_bm);
     }
 
     int swap_mismatches = 0;

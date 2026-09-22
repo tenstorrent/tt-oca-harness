@@ -132,8 +132,7 @@ static inline int sep_kmac128_sw_smoke(uint32_t digest_out[8]) {
     }
     sep_kmac_wr(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
     int rw1c_fail =
-        (sep_kmac_rd(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) ? 1
-                                                                                              : 0;
+        (sep_kmac_rd(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) ? 1 : 0;
 
     for (int i = 0; i < 8; i++) {
         uint32_t s0 = sep_kmac_rd(SEP_TOP_KMAC_STATE_BASE_ADDR + i * 4);

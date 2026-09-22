@@ -75,32 +75,28 @@ static int stage_fabric(void) {
                    0x00000003u) != 0) {
         return -1;
     }
-    if (rw_check32(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
-                   0x00000001u) != 0)
+    if (rw_check32(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000001u) != 0)
         return -1;
-    if (rw_check32(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
-                   0x00000001u) != 0)
+    if (rw_check32(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000001u) !=
+        0)
         return -1;
 
     if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
         return -1;
     if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
         return -1;
-    if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0)
-        return -1;
+    if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0) return -1;
 
     if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
         return -1;
     if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
         return -1;
-    if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0)
-        return -1;
+    if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0) return -1;
     return 0;
 }
 
 static int stage_sram_bootrom(void) {
-    volatile uint32_t *sram =
-        (volatile uint32_t *)(uintptr_t)(SEP_TOP_SEP_SRAM_BASE_ADDR + 0x200u);
+    volatile uint32_t *sram = (volatile uint32_t *)(uintptr_t)(SEP_TOP_SEP_SRAM_BASE_ADDR + 0x200u);
     uint32_t pat = 0x1234ABCDu;
     *sram = pat;
     __asm__ volatile("fence" ::: "memory");
@@ -115,8 +111,7 @@ static int stage_dma_regs(void) {
     if (rw_check32(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu) != 0)
         return -1;
     if (rw_check32(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u) != 0) return -1;
-    if (rw_check32(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR) !=
-        0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR) != 0)
         return -1;
     if (rw_check32(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
                    SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000u) != 0)
@@ -275,8 +270,7 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     {
-        volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
+        volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
         fifo8[0] = 'a';
         fifo8[0] = 'b';
         fifo8[0] = 'c';

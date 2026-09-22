@@ -70,8 +70,7 @@ int main(void) {
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
     spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     sep_mbx_puts("STEP SPI host configured: RX watermark, clock divider, enable\n");
-    spi_wr(SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
-           SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm);
     spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
            0xFFFFFFFFu); // clear any sticky error
     if (spi_wait_ready(SPI_POLL_TIMEOUT) != 0) {

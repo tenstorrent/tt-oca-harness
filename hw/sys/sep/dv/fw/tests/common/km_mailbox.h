@@ -113,8 +113,7 @@ static int km_send_frame(uint8_t id, const uint32_t *payload, uint8_t payload_le
 
     for (uint32_t i = 0; i < total; i++) {
         if (km_wait_inbound_space() != 0) return -1;
-        if (i == total - 1u)
-            WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
+        if (i == total - 1u) WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
         WRITE_REG(SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, words[i]);
     }
     km_cmd_seq++;

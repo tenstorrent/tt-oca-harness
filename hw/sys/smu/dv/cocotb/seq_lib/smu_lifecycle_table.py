@@ -124,9 +124,9 @@ def lc_raw_from_shadow_preload(path: str) -> int:
     valid differential encoding, otherwise the image is malformed and no
     posture can be attributed to it.
     """
-    lc_off = c_header_u32(
-        _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR"
-    ) - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
+    lc_off = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR") - c_header_u32(
+        _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR"
+    )
     words = [
         int(line.split("//", 1)[0], 16)
         for line in Path(path).read_text().splitlines()

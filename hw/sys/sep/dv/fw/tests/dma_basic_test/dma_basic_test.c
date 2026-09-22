@@ -106,8 +106,8 @@ static uint32_t dma_run_asid(uint32_t src, uint32_t dst, uint32_t total, uint32_
     wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
     wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
     wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm |
-                                                     SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
-                                                     (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
+                                                 SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
+                                                 (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
 
     uint32_t st = 0;
     int t = POLL_ITERS;

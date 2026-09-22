@@ -91,8 +91,7 @@ static int aes_ecb_via_sram(uint32_t op, uint32_t src_addr, uint32_t dst_addr, u
 
 // Compare one HMAC SHA-256 against an independent software SHA-256 golden.
 // ``chk`` is the VPLAN checker id printed on the [PASS] line.
-static int hmac_check(const char *chk, const char *name, const uint8_t *msg,
-                      uint32_t len) {
+static int hmac_check(const char *chk, const char *name, const uint8_t *msg, uint32_t len) {
     uint32_t hw[8];
     int rc = sep_hmac_sha256(msg, len, hw);
     if (rc != 0) {

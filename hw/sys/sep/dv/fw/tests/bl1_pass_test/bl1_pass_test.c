@@ -311,10 +311,9 @@ __attribute__((section(".text.init"))) void _start(void) {
         }
         // Both terms are 4-byte aligned: the TOC image offset is 0x1000 and the
         // linker aligns .data's load address.
-        const uint32_t *s =
-            (const uint32_t *)(uintptr_t)(s0->bl1_image_src_addr +
-                                          ((uint32_t)(uintptr_t)&__data_load_start -
-                                           (uint32_t)SEP_TOP_SEP_ICCM_BASE_ADDR));
+        const uint32_t *s = (const uint32_t *)(uintptr_t)(s0->bl1_image_src_addr +
+                                                          ((uint32_t)(uintptr_t)&__data_load_start -
+                                                           (uint32_t)SEP_TOP_SEP_ICCM_BASE_ADDR));
         for (uint32_t *d = &__data_start; d < &__data_end; ++d, ++s) *d = *s;
     }
 

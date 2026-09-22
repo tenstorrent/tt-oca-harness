@@ -20,12 +20,9 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-#define SYNC_CPU_READY_REG \
-    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0) /* EL2 -> UVM : ready  */
-#define SYNC_UVM_DONE_REG \
-    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1) /* UVM -> EL2 : done   */
-#define SYNC_CPU_COUNT_REG \
-    SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2) /* host loop count     */
+#define SYNC_CPU_READY_REG SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0) /* EL2 -> UVM : ready  */
+#define SYNC_UVM_DONE_REG SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)  /* UVM -> EL2 : done   */
+#define SYNC_CPU_COUNT_REG SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2) /* host loop count     */
 /* Measured-evidence summary (read + checked directly by the UVM): */
 #define SYNC_BAD_UID_REG \
     SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(3) /* CHIPLET_UID corrupt count */

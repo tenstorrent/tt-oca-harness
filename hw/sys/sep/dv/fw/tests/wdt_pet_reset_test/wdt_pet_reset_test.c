@@ -29,8 +29,7 @@ static volatile int unexpected_nmi = 0;
 
 void wdt_nmi_handler(void) {
     unexpected_nmi++;
-    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
 }
 
 /* Wait until WDOG_COUNT >= target_count. High thresholds so NMI won't fire. */

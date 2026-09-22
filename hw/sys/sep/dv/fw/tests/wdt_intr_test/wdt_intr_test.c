@@ -35,8 +35,7 @@ static volatile int intr_errors = 0;
 
 /* Minimal NMI handler: clear INTR_STATE W1C, record count */
 void wdt_nmi_handler(void) {
-    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
     intr_count++;
 }
 

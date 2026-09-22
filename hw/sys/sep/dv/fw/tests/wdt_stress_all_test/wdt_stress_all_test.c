@@ -31,8 +31,7 @@ static volatile int nmi_errors = 0;
 void wdt_nmi_handler(void) {
     nmi_count++;
     uint32_t state = READ_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
     if (!(state & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm)) {
         nmi_errors++;
         printf("  ERROR: NMI fired but INTR_STATE bark=0 (state=0x%08x)\n", state);
@@ -95,8 +94,7 @@ int main(void) {
     WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
     for (int i = 0; i < 3; i++) {
         int prev = nmi_count;
-        WRITE_REG(SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR,
-                  AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
+        WRITE_REG(SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
         int timeout = 2000000;
         while (nmi_count == prev && timeout-- > 0) {
             __asm__ volatile("nop");

@@ -69,8 +69,7 @@ static int test_state_read(void) {
 
     printf("=== Step 3: Write exact 3-byte 'abc' to MSG_FIFO ===\n");
     {
-        volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR;
+        volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR;
         *fifo8 = (uint8_t)'a';
         *fifo8 = (uint8_t)'b';
         *fifo8 = (uint8_t)'c';

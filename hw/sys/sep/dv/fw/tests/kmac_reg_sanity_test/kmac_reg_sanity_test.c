@@ -89,9 +89,9 @@ static int test_intr_test_w1s(void) {
     WRITE_REG(SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
 
     /* --- bit 0: kmac_done --- */
-    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-              KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                  KMAC__INTR_STATE__KMAC_ERR_bm); /* clear all */
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm); /* clear all */
     WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__KMAC_DONE_bm);
     uint32_t state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & KMAC__INTR_STATE__KMAC_DONE_bm) {
@@ -115,8 +115,8 @@ static int test_intr_test_w1s(void) {
      * proven in kmac_interrupt_test with a non-empty FIFO.
      */
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__FIFO_EMPTY_bm);
     state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & KMAC__INTR_STATE__FIFO_EMPTY_bm) {
@@ -128,13 +128,13 @@ static int test_intr_test_w1s(void) {
     /* Drop vacuous W1C clear claim at idle (level re-assert cannot fail). */
     WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0);
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 
     /* --- bit 2: kmac_err --- */
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__KMAC_ERR_bm);
     state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & KMAC__INTR_STATE__KMAC_ERR_bm) {
@@ -154,8 +154,8 @@ static int test_intr_test_w1s(void) {
 
     /* Clear all remaining */
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 
     return 0;
 }

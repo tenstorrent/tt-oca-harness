@@ -109,8 +109,7 @@ static int recover_hmac_state(void) {
     }
 
     printf("  Recovery: sticky ERR_CODE=0x%08x STATUS=0x%08x\n",
-           READ_REG(SEP_TOP_HMAC_ERR_CODE_BASE_ADDR),
-           READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR));
+           READ_REG(SEP_TOP_HMAC_ERR_CODE_BASE_ADDR), READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR));
 
     return wait_for_idle();
 }

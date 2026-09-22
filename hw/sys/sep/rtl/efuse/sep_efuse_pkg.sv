@@ -521,132 +521,64 @@ package sep_efuse_pkg;
       '{
           idx: 6'd40,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE8_BASE_ADDR
-          ),
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE8_BASE_ADDR),
           end_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIZE - 1
       },
       // idx 39: spare7 — lock slot 39 (LOCKS_SPARE[14:15])
       '{
           idx: 6'd39,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE8_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE8_BASE_ADDR) - 1
       },
       // idx 38: spare6 — lock slot 38 (LOCKS_SPARE[12:13])
       '{
           idx: 6'd38,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE6_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE6_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR) - 1
       },
       // idx 37: spare5 — lock slot 37 (LOCKS_SPARE[10:11])
       '{
           idx: 6'd37,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE5_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE6_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE5_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE6_BASE_ADDR) - 1
       },
       // idx 36: spare4 — lock slot 36 (LOCKS_SPARE[8:9])
       '{
           idx: 6'd36,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE4_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE5_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE4_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE5_BASE_ADDR) - 1
       },
       // idx 35: spare3 — lock slot 35 (LOCKS_SPARE[6:7])
       '{
           idx: 6'd35,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE3_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE4_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE3_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE4_BASE_ADDR) - 1
       },
       // idx 34: spare2 — lock slot 34 (LOCKS_SPARE[4:5])
       '{
           idx: 6'd34,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE2_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE3_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE2_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE3_BASE_ADDR) - 1
       },
       // idx 33: spare1 — lock slot 33 (LOCKS_SPARE[2:3])
       '{
           idx: 6'd33,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE1_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE2_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE1_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE2_BASE_ADDR) - 1
       },
       // idx 32: spare0 — lock slot 32 (LOCKS_SPARE[0:1])
       '{
           idx: 6'd32,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE1_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE1_BASE_ADDR) - 1
       },
       // idx 31: SEP_SYS_ID — lock slot 31 (LOCKS[62:63])
       '{
@@ -657,11 +589,7 @@ package sep_efuse_pkg;
           (
               sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SEP_SYS_ID_BASE_ADDR
           ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR
-          ) - 1
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR) - 1
       },
       // idx 30: SEP_SIP_ID — lock slot 30 (LOCKS[60:61])
       '{
@@ -850,11 +778,7 @@ package sep_efuse_pkg;
       '{  // ROM_CTL (idx 17)
           idx: 6'd17,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_ROM_CTL_BASE_ADDR
-          ),
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_ROM_CTL_BASE_ADDR),
           end_addr:
           efuse_offset
           (
@@ -869,20 +793,12 @@ package sep_efuse_pkg;
           (
               sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR
           ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_ROM_CTL_BASE_ADDR
-          ) - 1
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_ROM_CTL_BASE_ADDR) - 1
       },
       '{  // SYS_UID (idx 15)
           idx: 6'd15,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR
-          ),
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR),
           end_addr:
           efuse_offset
           (
@@ -897,20 +813,12 @@ package sep_efuse_pkg;
           (
               sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR
           ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR
-          ) - 1
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR) - 1
       },
       '{  // SIP_UID (idx 13)
           idx: 6'd13,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR
-          ),
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR),
           end_addr:
           efuse_offset
           (
@@ -925,11 +833,7 @@ package sep_efuse_pkg;
           (
               sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR
           ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR
-          ) - 1
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR) - 1
       },
       '{  // CHIPLET_UID (idx 11)
           idx: 6'd11,
@@ -990,11 +894,7 @@ package sep_efuse_pkg;
       '{  // CLASS_KEY (idx 7)
           idx: 6'd07,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
-          ),
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR),
           end_addr:
           efuse_offset
           (
@@ -1032,11 +932,7 @@ package sep_efuse_pkg;
       '{  // SYS_DIS (idx 4)
           idx: 6'd04,
           lock: {SECURE_TM_LOCK, WRITE_SET_ONLY, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR
-          ),
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR),
           end_addr:
           efuse_offset
           (
@@ -1046,16 +942,8 @@ package sep_efuse_pkg;
       '{  // SIP_DIS (idx 3)
           idx: 6'd03,
           lock: {SECURE_TM_LOCK, WRITE_SET_ONLY, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR) - 1
       },
       '{  // TRANSIENT_RMA_EN (idx 2)
           idx: 6'd02,
@@ -1065,20 +953,12 @@ package sep_efuse_pkg;
           (
               sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_TRANSIENT_RMA_EN_BASE_ADDR
           ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR
-          ) - 1
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR) - 1
       },
       '{  // SBOOT_DIS (idx 1)
           idx: 6'd01,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR
-          ),
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR),
           end_addr:
           efuse_offset
           (
@@ -1088,11 +968,7 @@ package sep_efuse_pkg;
       '{  // LC_STATE (idx 0)
           idx: 6'd00,
           lock: {SECURE_TM_LOCK, WRITE_SET_ONLY, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR
-          ),
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR),
           end_addr:
           efuse_offset
           (
@@ -1104,16 +980,8 @@ package sep_efuse_pkg;
           idx:
           LOCKS_META_IDX,
           lock: {SECURE_TM_LOCK, WRITE_SET_ONLY, READ_UNLOCK},
-          start_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR
-          ),
-          end_addr:
-          efuse_offset
-          (
-              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR
-          ) - 1
+          start_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR),
+          end_addr: efuse_offset(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR) - 1
       }
   };
 

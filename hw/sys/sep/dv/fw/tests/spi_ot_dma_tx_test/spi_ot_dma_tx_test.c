@@ -222,8 +222,7 @@ static int chk_trigger(void) {
            spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR) |
                SPI_CONTROLLER__CONTROL__SW_RST_bm); // drain FIFO
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
-           spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR) &
-               ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
+           spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR) & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
     st = spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     uint32_t txqd_drain = st & SPI_CONTROLLER__STATUS__TXQD_bm;
     int txwm_drain = !!(st & SPI_CONTROLLER__STATUS__TXWM_bm);
@@ -460,8 +459,8 @@ static int chk_err_overflow(void) {
     // No command is outstanding, so nothing drains the FIFO: keep writing until
     // the HOST reports TXFULL. The bound is a guard, not the contract.
     uint32_t writes = 0;
-    while (writes < TXFULL_WRITE_LIM && !(spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
-                                          SPI_CONTROLLER__STATUS__TXFULL_bm)) {
+    while (writes < TXFULL_WRITE_LIM &&
+           !(spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) & SPI_CONTROLLER__STATUS__TXFULL_bm)) {
         spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xE0000000u + writes);
         writes++;
     }
@@ -491,8 +490,7 @@ static int chk_err_overflow(void) {
     // Recovery: SW_RST drains the FIFOs and the command queue, then W1C the latch.
     uint32_t ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
-           ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
     spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
     uint32_t residual = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (residual != 0) {

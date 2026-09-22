@@ -271,8 +271,7 @@ int sep_entropy_init(void) {
     sel &= ~EXT_TRNG_SEL_CRYPTO_BLOCKS_bm;
     mmio_write32(SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_BASE_ADDR, sel);
 
-    mmio_write32(SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR,
-                 ESRC_RING_OSC_SAMPLECLK_ONLY);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR, ESRC_RING_OSC_SAMPLECLK_ONLY);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_DECORRELATOR_CTRL_BASE_ADDR, ESRC_DECOR_CTRL_DIV64);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR, 0x1u);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_HEALTH_TEST_CTRL_BASE_ADDR, ESRC_HEALTH_CTRL);
@@ -300,8 +299,8 @@ int sep_entropy_init(void) {
     // window the programmer guide specifies. Locking earlier would freeze a
     // configuration that had not yet proved itself; later would expose entropy
     // from a still-mutable source. DEBUG_CTRL stays outside this lock by design.
-    if (apply_lock(SEP_TOP_ENTROPY_SOURCE_FIPS_LOCK_BASE_ADDR,
-                   ENTROPY_SOURCE__FIPS_LOCK__LOCK_bm, "ESRC_FIPS") != 0) {
+    if (apply_lock(SEP_TOP_ENTROPY_SOURCE_FIPS_LOCK_BASE_ADDR, ENTROPY_SOURCE__FIPS_LOCK__LOCK_bm,
+                   "ESRC_FIPS") != 0) {
         entropy_fail();
     }
 #endif

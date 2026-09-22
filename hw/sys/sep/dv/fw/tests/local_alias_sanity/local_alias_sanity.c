@@ -151,8 +151,7 @@ static int test_scratch_alias(void) {
 
     // Step 1: Write via DIRECT path, read via ALIAS path
     printf("  Test 1: Write direct (0x%08X) -> Read alias (0x%08lX)\n",
-           SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0),
-           (unsigned long)SCRATCH_COLD_ALIAS_BASE);
+           SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), (unsigned long)SCRATCH_COLD_ALIAS_BASE);
 
     WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), test_pattern);
     read_alias = READ_REG(SCRATCH_COLD_ALIAS_BASE);
@@ -167,8 +166,7 @@ static int test_scratch_alias(void) {
     // Step 2: Write via ALIAS path, read via DIRECT path
     test_pattern = 0xCAFEBABE;
     printf("  Test 2: Write alias (0x%08lX) -> Read direct (0x%08X)\n",
-           (unsigned long)SCRATCH_COLD_ALIAS_BASE,
-           SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
+           (unsigned long)SCRATCH_COLD_ALIAS_BASE, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
 
     WRITE_REG(SCRATCH_COLD_ALIAS_BASE, test_pattern);
     read_direct = READ_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
@@ -342,7 +340,7 @@ static int test_dma_alias(void) {
     // Use different SRAM regions to avoid overlap
     uint32_t src_direct_addr = SEP_TOP_SEP_SRAM_BASE_ADDR + 0x2000; // 0x1000_2000
     uint32_t dst_direct_addr = SEP_TOP_SEP_SRAM_BASE_ADDR + 0x3000; // 0x1000_3000 (physical)
-    uint32_t transfer_size = 0x100;                                     // 256 bytes
+    uint32_t transfer_size = 0x100;                                 // 256 bytes
 
     volatile uint32_t *src_ptr = (volatile uint32_t *)src_direct_addr;
     volatile uint32_t *dst_ptr = (volatile uint32_t *)dst_direct_addr;

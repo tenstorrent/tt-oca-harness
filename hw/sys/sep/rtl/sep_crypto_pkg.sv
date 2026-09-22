@@ -91,10 +91,7 @@ package sep_crypto_pkg;
   parameter axi_pkg::xbar_rule_32_t edn_rule = '{
       idx: 8,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR,
-      end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR
-      +
-      sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
+      end_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t entropy_source_rule = '{

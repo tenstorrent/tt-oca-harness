@@ -21,7 +21,6 @@
 
 #include "oca_platform.h"
 
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -328,8 +327,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 
 // Low 32 flags of a 16-byte OCA flag field, for the console echoes below.
 static uint32_t oca_flags_low32(const uint8_t *f) {
-    return (uint32_t)f[0] | ((uint32_t)f[1] << 8) | ((uint32_t)f[2] << 16) |
-           ((uint32_t)f[3] << 24);
+    return (uint32_t)f[0] | ((uint32_t)f[1] << 8) | ((uint32_t)f[2] << 16) | ((uint32_t)f[3] << 24);
 }
 
 // Resolve a classical OTP key slot to its digest bank. Returns false for a slot

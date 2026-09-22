@@ -32,8 +32,8 @@ static void clear_error(void) {
     cmd.f.err_processed = 1;
     WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 }
 
 static void write_cfg_shadowed(kmac__CFG_SHADOWED_t cfg) {
@@ -84,8 +84,8 @@ static int run_legal_empty_sha3(void) {
         return -1;
     }
     WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
     cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     clear_error();

@@ -383,8 +383,9 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // Loads manifest via DMA from SPI/SMC SRAM, validates structure,
 // locks fuse secrets, and hands off to BL1.
 // spi_status: result of spi_init(); non-zero skips the primary manifest retry.
-__attribute__((noreturn)) static void rom_manifest_validate_handoff(
-    const struct boot_straps *straps, uint32_t spi_status, uint32_t lc_state) {
+__attribute__((noreturn)) static void
+rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
+                              uint32_t lc_state) {
     // ── [S23] manifest load ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_LOAD_START);
     uint32_t mfst_err = rom_manifest_boot(straps, spi_status);
@@ -521,8 +522,6 @@ __attribute__((noreturn)) static void rom_manifest_validate_handoff(
     } else {
         simputs("DEMOTE_NOT_LOCKED\n");
     }
-
-
 
     // ── [S28] Stack canary check ──
     // Verify the canary placed at __stack_bottom is still intact; if corrupted,

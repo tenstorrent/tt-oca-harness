@@ -96,8 +96,7 @@ static int sha3_256_abc_test(void) {
      * is irrelevant because prim_packer's pos_q supplies the byte position.
      */
     {
-        volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
+        volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
         fifo8[0] = 'a'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=0  → pos_q=8  */
         fifo8[0] = 'b'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=8  → pos_q=16 */
         fifo8[0] = 'c'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=16 → pos_q=24 */

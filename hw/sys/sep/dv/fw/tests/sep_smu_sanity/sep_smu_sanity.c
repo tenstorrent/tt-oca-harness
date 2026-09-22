@@ -245,8 +245,7 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
      * non-word-aligned byte stores get dropped by the 64→32 AXI DW converter,
      * so use fifo8[0] for all three bytes. */
     {
-        volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
+        volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
         fifo8[0] = 'a';
         fifo8[0] = 'b';
         fifo8[0] = 'c';

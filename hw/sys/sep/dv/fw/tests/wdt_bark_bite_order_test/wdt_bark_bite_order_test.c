@@ -27,8 +27,7 @@ static volatile int bark_count = 0;
 
 void wdt_nmi_handler(void) {
     bark_count++;
-    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
     printf("  BARK NMI #%d received\n", bark_count);
 }
 
@@ -101,8 +100,7 @@ int main(void) {
     /* STEP 3: Let BITE fire - cocotb verifies reset request */
     printf("\n// STEP 3: Trigger BITE (cocotb will verify reset request)\n");
     WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR,
-              0xFFFFFFFF); /* bark won't fire again */
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF); /* bark won't fire again */
     WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 200);
     WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 100);
     WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);

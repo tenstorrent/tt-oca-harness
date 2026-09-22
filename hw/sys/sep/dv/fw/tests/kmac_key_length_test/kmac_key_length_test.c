@@ -88,8 +88,7 @@ static int run_kmac128(const uint32_t *key, int key_words, uint32_t key_len_val,
 
     /* right_encode(256) is exactly 3 bytes: 0x01 0x00 0x02 */
     {
-        volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR;
+        volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR;
         *fifo8 = 0x01u;
         *fifo8 = 0x00u;
         *fifo8 = 0x02u;

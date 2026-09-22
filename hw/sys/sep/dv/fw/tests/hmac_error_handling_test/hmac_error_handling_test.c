@@ -84,8 +84,7 @@ static int hmac_reset_via_hash(void) {
     if (assert_hmac_err_clear("after recovery W1C") != 0) {
         return -1;
     }
-    printf("  Sticky ERR_CODE after recovery: 0x%08x\n",
-           READ_REG(SEP_TOP_HMAC_ERR_CODE_BASE_ADDR));
+    printf("  Sticky ERR_CODE after recovery: 0x%08x\n", READ_REG(SEP_TOP_HMAC_ERR_CODE_BASE_ADDR));
     return 0;
 }
 

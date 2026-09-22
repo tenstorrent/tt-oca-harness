@@ -53,8 +53,7 @@ static int wait_done(void) {
     while (t-- > 0) {
         uint32_t intr = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & KMAC__INTR_STATE__KMAC_DONE_bm) {
-            WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-                      KMAC__INTR_STATE__KMAC_DONE_bm); /* W1C */
+            WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm); /* W1C */
             return 0;
         }
     }
@@ -109,8 +108,7 @@ static int run_cshake_op(const uint32_t *msg_words, int msg_count, uint32_t out[
     cmd.f.cmd = SEP_KMAC_CMD_START; /* CmdStart */
     WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    for (int i = 0; i < msg_count; i++)
-        WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, msg_words[i]);
+    for (int i = 0; i < msg_count; i++) WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, msg_words[i]);
 
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS; /* CmdProcess */
     WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
@@ -118,9 +116,8 @@ static int run_cshake_op(const uint32_t *msg_words, int msg_count, uint32_t out[
     if (wait_done() != 0) return -1;
 
     for (int i = 0; i < 8; i++)
-        out[i] =
-            READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
-            READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        out[i] = READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
+                 READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
 
     cmd.f.cmd = SEP_KMAC_CMD_DONE; /* CmdDone */
     WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);

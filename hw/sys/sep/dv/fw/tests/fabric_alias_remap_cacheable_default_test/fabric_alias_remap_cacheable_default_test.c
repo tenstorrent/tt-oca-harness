@@ -69,8 +69,7 @@ int main(void) {
 
     saved_start =
         read64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_BASE_ADDR(15));
-    saved_end =
-        read64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(15));
+    saved_end = read64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(15));
     saved_attrs =
         read64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15));
 
@@ -84,31 +83,26 @@ int main(void) {
                   0x00000000C1F00FFFULL);
 
     attrs = (1ULL << 63);
-    write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15),
-                  attrs);
+    write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15), attrs);
     if (!check_eq32(
             "Alias cacheable=0 attrs hi",
-            READ_REG(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15) +
-                     4),
+            READ_REG(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15) + 4),
             (uint32_t)(attrs >> 32))) {
         pass = 0;
     }
 
     attrs = (1ULL << 63) | (1ULL << 62);
-    write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15),
-                  attrs);
+    write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15), attrs);
     if (!check_eq32(
             "Alias cacheable=1 attrs hi",
-            READ_REG(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15) +
-                     4),
+            READ_REG(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15) + 4),
             (uint32_t)(attrs >> 32))) {
         pass = 0;
     }
 
     write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15),
                   saved_attrs);
-    write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(15),
-                  saved_end);
+    write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(15), saved_end);
     write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_BASE_ADDR(15),
                   saved_start);
 
