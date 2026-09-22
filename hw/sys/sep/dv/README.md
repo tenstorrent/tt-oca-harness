@@ -257,7 +257,7 @@ entries below are entry points — use `--items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate: `sep_axi_smoke_test` only |
-| `all` | every test this VPLAN grades (`cpu_stub` ∪ `cpu`); `expected_count` is the membership gate |
+| `all` | 105 leaves: `cpu_stub` (84), `cpu` (20), and `sep_periph_bus_err_misaligned_reveal_test` in neither class group. `expected_count` is 105 |
 | `cpu_stub` | CPU not alive (`sep_cpu` stub, `target = lsu_stub_all_live`) |
 | `cpu` | full-CPU firmware daily class (fallback `target = default`) |
 | `rom_fw` | production Boot ROM firmware; `rom_boot` target; not a member of `all` |
