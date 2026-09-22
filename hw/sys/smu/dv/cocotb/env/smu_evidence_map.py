@@ -304,6 +304,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "selected SMC STAP sees the same TMS edge count as the PTAP during IDCODE",
         ),
     ],
+    "smu_dtp_sep_dm_dmi_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "DMI IR=5'h11 dmstatus version is nonzero through dmi_mux",
+        ),
+    ],
     "smu_ext_boot_seq_gate_test": [
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
         ("CHK-PRIMARY-NOT-GATED", "CHK-PRIMARY-NOT-GATED", "primary still releases while gated"),

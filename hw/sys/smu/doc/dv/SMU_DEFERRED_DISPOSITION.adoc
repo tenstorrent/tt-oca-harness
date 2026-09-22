@@ -360,8 +360,8 @@ Enrolled names outside this catalog:
 |OUT-until-SEP1
 |Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_dtp_dtm_local_axi_test
-|OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|superseded
+|Replaced by the enrolled wrapper leaf `smu_dtp_sep_dm_dmi_test` (DTP TAP → SEP DMI `IR=5'h11`). Do not re-enroll this name.
 |smu_dtp_feat_ctrl_gate_matrix_test
 |OUT-until-SEP1
 |Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
