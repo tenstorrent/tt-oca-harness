@@ -16,5 +16,7 @@ class smu_sep_lcc_state_matrix_test(smu_base_test):
     ends in that entry's name.
     """
 
+    required_evidence = ("SEP_LCC_STATE_DECODE_OK", "SEP_LCC_STATE_PROFILE_OK")
+
     async def run_scenario(self) -> None:
         await SmuSepLccStateMatrixSeq(self).run()

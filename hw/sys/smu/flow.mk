@@ -8,6 +8,7 @@ include $(FLOW_DIR)/../../../flows/preamble.mk
 
 FLOW_DESIGN := smu
 FLOW_BENDER_TARGETS := -t idma_rtl -t dtp -t sep -t smc -t sep_el2
+FLOW_INTEGRATION_SIM_FROM_DV := 1
 FLOW_VERILATOR_WAIVERS := \
 	hw/sys/sep/lint/sep.verilator.vlt \
 	hw/sys/smc/lint/smc.verilator.vlt

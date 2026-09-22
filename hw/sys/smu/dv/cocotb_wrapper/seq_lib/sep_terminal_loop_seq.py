@@ -46,16 +46,23 @@ class SepTerminalLoopSeq:
     #: Cycle budget; a healthy image parks in a few thousand cycles.
     MAX_CYCLES_ENV = "SMU_SEP_FW_MAX_CYCLES"
     MAX_CYCLES_DEFAULT = 300_000
-    #: Evidence tokens emitted on success.
+    #: Evidence tokens emitted on success; declared to the test up front so its
+    #: gate fails a run that never reached the verdict below.
     EVIDENCE = ()
 
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
+
+    def _log_evidence(self, token: str) -> None:
+        """Emit ``token`` in the spellings the log consumers grep for."""
+        for fmt in ("EVIDENCE: %s", "EVIDENCE:%s", "EVIDENCE:CHK-%s", "EVIDENCE: CHK-%s"):
+            self.log.info(fmt, token)
 
     async def run(self) -> None:
         max_cycles = int(os.environ.get(self.MAX_CYCLES_ENV, str(self.MAX_CYCLES_DEFAULT)), 0)
@@ -232,8 +239,5 @@ class SepTerminalLoopSeq:
             len(pc_hist),
         )
         for token in self.EVIDENCE:
-            self.log.info("EVIDENCE: %s", token)
-            self.log.info("EVIDENCE:%s", token)
-            self.log.info("EVIDENCE:CHK-%s", token)
-            self.log.info("EVIDENCE: CHK-%s", token)
+            self._log_evidence(token)
         self.log.info("CHK-NONVAC: boot_rom < iccm < pass_loop ordering holds")

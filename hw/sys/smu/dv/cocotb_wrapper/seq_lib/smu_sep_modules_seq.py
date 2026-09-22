@@ -51,10 +51,14 @@ FAIL_SYMS = {
 class SmuSepModulesSeq:
     """Classify the run by which terminal loop the SEP parks in."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_REAL_FW_MODULES_OK", "SEP_MODULE_MATRIX_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     async def run(self) -> None:
         # The HMAC and KMAC stages finish in a few thousand cycles, but the AES
@@ -225,7 +229,7 @@ class SmuSepModulesSeq:
             pass_pc,
             traces,
         )
-        for token in ("SEP_REAL_FW_MODULES_OK", "SEP_MODULE_MATRIX_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

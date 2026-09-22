@@ -56,6 +56,8 @@ SELECTOR_FIELDS = {
 GITHUB_ISSUE_RE = re.compile(
     r"^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*$"
 )
+NATIVE_FILE_KEYS = {"tool", "role", "path", "apply_phase", "args", "sha256"}
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -208,6 +210,9 @@ def _load_native_files(
     files: list[NativePolicyFile] = []
     for index, table in enumerate(_as_table_list(data.get("native_files"), "native_files")):
         where = f"{policy_path} [[native_files]] #{index + 1}"
+        unknown = sorted(set(table) - NATIVE_FILE_KEYS)
+        if unknown:
+            raise ConfigError(f"{where}: unsupported key(s): {', '.join(unknown)}")
         raw_path = Path(_required_string(table, "path", where)).expanduser()
         resolved = raw_path if raw_path.is_absolute() else policy_path.parent / raw_path
         if not resolved.is_file():
@@ -218,6 +223,16 @@ def _load_native_files(
         args = _string_list(table.get("args"), f"{where}.args")
         if args and not any("{path}" in value for value in args):
             raise ConfigError(f"{where}.args must reference `{{path}}`")
+        digest = _sha256(resolved)
+        # A recorded digest pins the reviewed file: a regenerated file takes a new review.
+        pinned = _optional_string(table, "sha256", where)
+        if pinned is not None:
+            if not SHA256_RE.fullmatch(pinned):
+                raise ConfigError(f"{where}.sha256 must be 64 lowercase hexadecimal digits")
+            if pinned != digest:
+                raise ConfigError(
+                    f"{where}.sha256 does not match {resolved}: recorded {pinned}, file {digest}"
+                )
         files.append(
             NativePolicyFile(
                 tool=_required_string(table, "tool", where),
@@ -225,7 +240,7 @@ def _load_native_files(
                 path=resolved.resolve(),
                 apply_phase=phase,
                 args=args,
-                sha256=_sha256(resolved),
+                sha256=digest,
             )
         )
     return files

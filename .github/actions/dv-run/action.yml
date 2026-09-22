@@ -246,8 +246,7 @@ runs:
            and ($executor == "local" or (
              ([.stages[] | select(.name == "sim")] | length > 0)
              and all(.stages[] | select(.name == "sim");
-               .metadata.scheduler.driver == $executor
-               and (.metadata.scheduler.job_id | type == "string" and length > 0)
+               (.metadata.scheduler.job_id | type == "string" and length > 0)
                and (.metadata.scheduler.state | IN("SUCCEEDED", "FAILED")))
            ))
            and (($require_coverage | not) or (

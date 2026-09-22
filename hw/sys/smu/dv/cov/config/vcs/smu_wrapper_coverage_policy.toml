@@ -11,11 +11,11 @@
 # the `assertion` family. Its report splits the two (`Summary for Cover
 # Properties`, `Summary for Assertions` in cov/report/asserts.txt).
 #
-# No rule is set on `toggle` yet: the wrapper's port toggle is graded on
-# urg's per-field `Ports` view after the exclusions below, and a floor is set
-# only from a measured hosted database once the reset-control, shadow and
-# lane leaves are enrolled. cov/interface_toggle.py reads the same report for
-# the per-port connectivity figure (see README.md beside this file).
+# `toggle` is the runner's native family, urg's TOGGLE column: every bit of
+# every port of smu_wrapper, both directions, after the exclusions named
+# below have left the population. The wrapper is wiring, so its ports are
+# what it owns, and this is the same family and the same reading every other
+# DUT is graded on. The floor is set from the measured hosted database.
 #
 # Two DUTs share this DV root, so the policy is named per DUT rather than
 # discovered at cov/config/vcs/coverage_policy.toml.
@@ -28,6 +28,13 @@ scope_epoch = "smu-vcs-cov-v1"
 id = "assertion"
 tool = "vcs"
 metric_family = "assertion"
+population = "effective"
+minimum_percent = 80.0
+
+[[thresholds]]
+id = "toggle"
+tool = "vcs"
+metric_family = "toggle"
 population = "effective"
 minimum_percent = 80.0
 

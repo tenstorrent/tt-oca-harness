@@ -27,7 +27,7 @@ from ..models import ConfigError, Flow, StageResult, TestCatalog
 from ..paths import repo_rel
 from ..results import fragment_payload, write_result
 from ..stages import run_stage
-from .base import LeafTask, ResourceRequest, now_iso
+from .base import LEAF_ROLE, LeafTask, ResourceRequest, now_iso
 
 MANIFEST_SCHEMA_VERSION = 1
 DIGEST_KEY = "plan_digest"
@@ -119,6 +119,7 @@ def manifest_payload(
         "leaf_id": task.leaf_id,
         "attempt": task.attempt,
         "debug_only": task.debug_only,
+        "role": task.role,
         "repo_root": str(root),
         "repo_commit": repo_commit,
         "repo_dirty": repo_dirty,
@@ -201,6 +202,7 @@ def task_from_manifest(data: Mapping[str, Any]) -> LeafTask:
         leaf_dir=Path(str(data["leaf_dir"])),
         target=data.get("target"),
         nest=bool(data.get("nest", False)),
+        role=str(data.get("role") or LEAF_ROLE),
         debug_only=bool(data.get("debug_only", False)),
         timeout_sec=data.get("timeout_sec"),
         resources=ResourceRequest.from_mapping(data.get("resources")),
@@ -245,7 +247,7 @@ def execute_attempt(
         sim_cfg,
         catalog,
         task.stage,
-        task.item,
+        task.item or None,
         args,
         tool,
         task.run_dir,

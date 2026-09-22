@@ -590,10 +590,10 @@ int main(void) {
                      "ERROR_STATUS.CMDINVAL and W1C released it\n");
     }
 
-    // CHK-ERR-CSIDINVAL: an otherwise legal segment issued with CSID beyond the
-    // one chip-select this instance has (sep_io.sv NUM_CS=1; spi_host.sv:
-    // test_csid_inval = CSID >= NUM_CS).
-    spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 1u);
+    // CHK-ERR-CSIDINVAL: an otherwise legal segment issued with CSID at the
+    // top of the 32-bit field. The host compares the whole field, so the
+    // stimulus does not assume how many chip-selects the instance decodes.
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0xFFFFFFFFu);
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
     uint32_t csid_es = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0u); // restore before recovery

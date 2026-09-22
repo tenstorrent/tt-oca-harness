@@ -176,8 +176,8 @@ args = [
     "+smc_efuse_prog_fail_count=1",
 ]
 
-# Timeout-reset recovery tests remain available by name for DV review, but
-# are intentionally excluded from every regression group.
+# Timeout-reset recovery: L2 leaves are in cpu, hosted and all; MMIO leaves
+# are in cpu and all only (they build mmio_wedge). None is in smoke.
 
 [[tests]]
 name = "smc_cpu_l2_read_wedge_test"
@@ -226,6 +226,10 @@ name = "cpu"
 tests = [
     "smc_cpu_ctrl_map_depth_test",
     "smc_cpu_ctrl_scratch_window_test",
+    "smc_cpu_l2_read_wedge_test",
+    "smc_cpu_l2_write_wedge_test",
+    "smc_cpu_mmio_read_wedge_test",
+    "smc_cpu_mmio_write_wedge_test",
     "smc_mutex_semaphore_test",
     "smc_spm_mem_boundary_test",
 ]

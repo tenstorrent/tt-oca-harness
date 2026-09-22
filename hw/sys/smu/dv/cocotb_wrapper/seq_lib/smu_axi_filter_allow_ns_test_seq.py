@@ -231,11 +231,7 @@ class smu_axi_filter_allow_ns_test_seq:
             wdata=0xA5A50001,
         )
         s_rd, s_rr = await self._axi_rw(master, probe, prot=SECURE_PROT, write=False)
-        if s_rr != RESP_OKAY:
-            raise AssertionError(
-                f"S1 secure read expected OKAY got {resp_name(s_rr)} data=0x{s_rd:08x}"
-            )
-        self.secure_ok = True
+        self._log(f"S1 secure read resp={resp_name(s_rr)} data=0x{s_rd:08x}")
 
         await self._await_axi_resp(
             master,
@@ -247,16 +243,21 @@ class smu_axi_filter_allow_ns_test_seq:
             wdata=0xB5B50002,
         )
         ns_rd, ns_rr = await self._axi_rw(master, probe, prot=NONSECURE_PROT, write=False)
-        if ns_rr != RESP_DECERR:
-            raise AssertionError(
-                f"S1 NS read expected DECERR got {resp_name(ns_rr)} data=0x{ns_rd:08x}"
-            )
+        self._log(f"S1 NS read resp={resp_name(ns_rr)} data=0x{ns_rd:08x}")
+        sb.expect_eq(
+            "CHK-SMU-ALLOW-NS-S1",
+            (resp_name(s_rr), resp_name(ns_rr)),
+            (resp_name(RESP_OKAY), resp_name(RESP_DECERR)),
+            evidence="CHK-SMU-ALLOW-NS-S1",
+        )
+        self.secure_ok = True
         self.ns_block_ok = True
         self._log("CHK-SMU-ALLOW-NS-S1: allow_ns=0 secure OKAY / NS DECERR on VERSION_LO")
 
         # ---- S2: dual-slot admit both ----
         await self._program_inst(jtag, 0, lo, hi, CFG_SECURE_ONLY, "S2_I0")
         await self._program_inst(jtag, 1, lo, hi, CFG_NS_ONLY, "S2_I1")
+        dual_resps: list[tuple[str, str]] = []
         for prot, label in (
             (SECURE_PROT, "secure"),
             (NONSECURE_PROT, "ns"),
@@ -271,16 +272,21 @@ class smu_axi_filter_allow_ns_test_seq:
                 wdata=0xC5C50003,
             )
             rd, rr = await self._axi_rw(master, probe, prot=prot, write=False)
-            if rr != RESP_OKAY:
-                raise AssertionError(
-                    f"S2 {label} read expected OKAY got {resp_name(rr)} data=0x{rd:08x}"
-                )
+            self._log(f"S2 {label} read resp={resp_name(rr)} data=0x{rd:08x}")
+            dual_resps.append((label, resp_name(rr)))
+        sb.expect_eq(
+            "CHK-SMU-ALLOW-NS-S2",
+            tuple(dual_resps),
+            (("secure", resp_name(RESP_OKAY)), ("ns", resp_name(RESP_OKAY))),
+            evidence="CHK-SMU-ALLOW-NS-S2",
+        )
         self.dual_ok = True
         self._log("CHK-SMU-ALLOW-NS-S2: dual-slot admits secure and NS prot on VERSION_LO")
 
         # ---- S3: clear → BlockByDefault ----
         await self._disable_inst(jtag, 1)
         await self._disable_inst(jtag, 0)
+        clear_resps: list[tuple[str, str]] = []
         for prot, label in (
             (SECURE_PROT, "secure"),
             (NONSECURE_PROT, "ns"),
@@ -293,17 +299,16 @@ class smu_axi_filter_allow_ns_test_seq:
                 label=f"S3_{label}_block",
                 write=False,
             )
-            self._log(f"S3 {label} DECERR data=0x{rd & 0xFFFF_FFFF:08x}")
+            self._log(f"S3 {label} resp={resp_name(rr)} data=0x{rd & 0xFFFF_FFFF:08x}")
+            clear_resps.append((label, resp_name(rr)))
+        sb.expect_eq(
+            "CHK-SMU-ALLOW-NS-S3",
+            tuple(clear_resps),
+            (("secure", resp_name(RESP_DECERR)), ("ns", resp_name(RESP_DECERR))),
+            evidence="CHK-SMU-ALLOW-NS-S3",
+        )
         self.clear_ok = True
         self._log("CHK-SMU-ALLOW-NS-S3: clear → DECERR for secure and NS")
-        sb.expect_eq(
-            "CHK-SMU-ALLOW-NS-S1",
-            self.secure_ok and self.ns_block_ok,
-            True,
-            evidence="CHK-SMU-ALLOW-NS-S1",
-        )
-        sb.expect_eq("CHK-SMU-ALLOW-NS-S2", self.dual_ok, True, evidence="CHK-SMU-ALLOW-NS-S2")
-        sb.expect_eq("CHK-SMU-ALLOW-NS-S3", self.clear_ok, True, evidence="CHK-SMU-ALLOW-NS-S3")
         sb.expect_eq(
             "CHK-SMU-ALLOW-NS-BASIC",
             self.secure_ok and self.ns_block_ok and self.dual_ok and self.clear_ok,
