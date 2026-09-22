@@ -1246,8 +1246,17 @@ queue is set. `{job_ids_argv}` splices one token per job id.
 |Coordinator knobs, with the value an unset key takes in parentheses:
 `max_in_flight` (unbounded), `submit_batch_size` (25), `query_batch_size`
 (100), `poll_interval_sec` (10), `artifact_grace_sec` (60), `cancel_grace_sec`
-(30), `command_timeout_sec` (120). <<runner-cluster-dispatch>> says what each
-one bounds.
+(30), `command_timeout_sec` (120), `array_chunk_size` (100).
+<<runner-cluster-dispatch>> says what each one bounds.
+
+|`arrays`
+|cluster
+|`true` submits the first attempts of a stage as job arrays of at most
+`array_chunk_size` elements; `false` submits one job per attempt. The
+checked-in `lsf` and `slurm` entries set it to `true`; a site turns it off in
+its own table. An executor whose templates cannot carry an array (a Slurm
+`submit_argv` without `{array_range}`, an LSF `query_argv` without `jobindex`)
+submits plain jobs and says so in the executor log.
 
 |`env_passthrough`, `history_parser`, `description`
 |cluster
@@ -1269,7 +1278,8 @@ file.
 |`{queue}` `{cores}` `{mem_mb}` `{mem_gb}` `{walltime}` `{walltime_sec}`
 `{walltime_min}` `{walltime_hms}` `{jobname}` `{joblog}` `{image}` `{script}`
 `{manifest}` `{python}` `{run_dir}` `{repo_root}` `{leaf_dir}` `{task_id}`
-`{executor}`
+`{executor}` `{array_range}` (set only on an array submission, as `1-N`; the
+LSF job name carries the range instead)
 
 |`query_argv`, `history_argv`, `cancel_argv`
 |`{job_id}` `{job_ids_csv}` `{job_ids_argv}`
@@ -1298,11 +1308,12 @@ submit_argv = [
   "bsub", ["-q", "{queue}"], ["-n", "{cores}"], ["-R", "rusage[mem={mem_gb}]"],
   ["-W", "{walltime_min}"], "-J", "{jobname}", "-o", "{joblog}", "{script}",
 ]
-query_argv = ["bjobs", "-json", "-o", "jobid stat exit_code exit_reason", "{job_ids_argv}"]
+query_argv = ["bjobs", "-json", "-o", "jobid jobindex stat exit_code exit_reason", "{job_ids_argv}"]
 history_argv = ["bhist", "-l", "{job_ids_argv}"]
 cancel_argv = ["bkill", "{job_ids_argv}"]
 history_parser = "lsf_bhist_long"
 env_passthrough = ["PATH", "LD_LIBRARY_PATH"]
+arrays = true
 defaults = { queue = "regress", cores = 1, mem_mb = 20480, walltime = "02:00" }
 setup_hook = "lsf.env"
 
@@ -1343,6 +1354,24 @@ with its status and output, is appended to
 `<run>/stages/regress/logs/executor.log`; a leaf graded from a job carries the
 job id and final scheduler state under `metadata.scheduler` and its job log
 under `artifacts.executor_log`.
+
+With `arrays = true` the first attempts the coordinator submits in one turn go
+out as one job array per chunk of at most `array_chunk_size` attempts, bounded
+by the in-flight cap. The chunk has one script,
+`<run>/stages/regress/scripts/<stage>-arr<N>.sh`, which reads its element
+index from the scheduler (`LSB_JOBINDEX`, `SLURM_ARRAY_TASK_ID`) and picks its
+task from the sibling `<stage>-arr<N>.tasks` list, one
+`task<TAB>manifest<TAB>leaf directory` line per element; its job name is
+`ocah.<run>.<stage>-arr<N>` (`[1-N]` appended on LSF), its `{array_range}` is
+`1-N`, and its `{joblog}` carries the scheduler's index token (`%I`, `%a`) so
+every element logs to `<run>/stages/regress/logs/<stage>-arr<N>.<index>.log`.
+From then on each element is its own job to every command, under the
+scheduler's element id (`1001[3]` on LSF, `1001_3` on Slurm): polling,
+history, cancellation and collection treat it exactly like a plain job, and a
+leaf graded from an element also carries `array_job_id` and `array_task_id`
+under `metadata.scheduler`. A `--retry` attempt and a `--waves-on-fail` rerun
+are plain jobs. An array the scheduler refuses grades every element `ERROR`
+(`environment_error`) and counts as one refused submission.
 
 The scheduler decides only whether an attempt is over. Each poll maps the
 driver's native states onto one lifecycle:
@@ -2036,6 +2065,15 @@ more uncovered points than that carry no `pass:[[[holes]]]` entry. A rule
 whose metric family has no points is not met.
 |===
 
+A `pass:[[[native_files]]]` entry hands the merge or report command an input in
+the tool's own format: `tool`, `role`, `path` (relative to the policy file),
+`apply_phase` (`merge` or `report`), and `args`, the arguments to add with
+`{path}` standing for the file (URG takes an exclusion list as
+`["-elfile", "{path}"]`). The entry may pin the file's `sha256`: a pinned
+digest that differs from the file refuses the policy, so a regenerated file
+takes a new review. `cov/coverage.json` records every entry with the digest of
+its file.
+
 A report tool that applies exclusion inputs while it reports (URG with
 `-elfile`) writes the effective figures only. When the report phase has such
 inputs, it runs the report command a second time without them into
@@ -2061,8 +2099,9 @@ bucket and the run status is `ERROR`. Grammar checks include a
 waiver with `confidence = "low"`, an open entry with an actionable
 disposition and no GitHub issue, a duplicate id, a `minimum_percent` outside
 0 to 100, an `expected_matches` below 1, an entry without a
-`pass:[[[holes.native]]]` selector, and a category, disposition, status,
-population, date, or selector key outside the grammar. A policy that
+`pass:[[[holes.native]]]` selector, a `pass:[[[native_files]]]` entry with a key
+outside its grammar or a `sha256` other than its file's, and a category,
+disposition, status, population, date, or selector key outside the grammar. A policy that
 contradicts the report is refused by `cov_report` after the report command
 ran: a `pass:[[[holes]]]` entry that matches a number of points other than
 `expected_matches`, an accepted waiver or exclusion that matches a covered
@@ -3248,12 +3287,14 @@ tool does not need to rerun. See <<runner-waive>>.
 
 The following behaviors are not part of the runner contract:
 
-* A cluster executor keeps the coordinator in the foreground and submits one
-  job per attempt: there is no detached mode, no job array, and no
-  scheduler-managed build. The target build runs on the submitting host, and
-  every worker verifies its ready marker before it simulates. Queue, core,
-  memory, and wall-time flags reach a cluster job's submit command; the local
-  executor records them and enforces nothing.
+* A cluster executor keeps the coordinator in the foreground: there is no
+  detached mode and no scheduler-managed build. First attempts go out as job
+  arrays where the executor's templates allow it and as one job per attempt
+  otherwise; retries and wave-debug reruns are always single jobs. The target
+  build runs on the submitting host, and every worker verifies its ready
+  marker before it simulates. Queue, core, memory, and wall-time flags reach
+  a cluster job's submit command; the local executor records them and
+  enforces nothing.
 * The runner writes no `run.json` and has no background execution or job
   lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may
