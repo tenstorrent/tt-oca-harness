@@ -90,15 +90,58 @@ Everything under `tests/bootcode/`, `tests/fw/` and `tests/sim/` boots real
 firmware. Those need the SEP boot ROM, which compiles against **picolibc**, so a
 bare `riscv64-unknown-elf-gcc` is not enough. Without one, `fw_make` falls back
 to the container; with no container either, those tests fail on the firmware
-build rather than on anything under test. Point `RISCV_TOOLCHAIN` at an install
-that carries picolibc if you have one:
+build rather than on anything under test.
+
+**The requirement is a `riscv64-unknown-elf` toolchain that can compile against
+picolibc**, i.e. one where this succeeds:
 
 ```bash
-make -C virtual_platform vp-test RISCV_TOOLCHAIN=/path/to/riscv-toolchain
+echo 'int main(void){return 0;}' |
+  riscv64-unknown-elf-gcc --specs=picolibc.specs -x c -c - -o /dev/null
 ```
+
+Debian and Ubuntu package both halves; other distributions vary, and a
+self-built toolchain needs picolibc added explicitly:
+
+```bash
+sudo apt install gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
+```
+
+Point `RISCV_TOOLCHAIN` at the directory holding those binaries -- a *bin
+directory*, not an install prefix. `RISCV_PREFIX` then resolves itself from what
+it finds there:
+
+```bash
+make -C virtual_platform vp-test RISCV_TOOLCHAIN=/path/to/toolchain/bin
+```
+
+`RISCV_TOOLCHAIN` is what the bootrom Makefile branches on. Leave it unset and
+`toolchain-images` dispatches to `docker-run.sh run-here` even when a usable
+toolchain is on `PATH`. Where no toolchain can be installed, `docker-run.sh`
+documents its own container and sandbox options in its header.
 
 A firmware-build failure names the bootrom Makefile rather than a test, which is
 how to tell it apart from a real defect.
+
+**A build directory older than the source layout fails confusingly.** The
+bootrom compiles with `-MMD -MP` and re-reads the generated `.d` files, so a
+build tree predating a file's move still lists the old path and make reports a
+missing prerequisite that was never yours:
+
+```
+No rule to make target 'src/key_digests.c', needed by 'build_ot/key_digests.o'
+```
+
+`key_digests.c` is generated into the build directory now, not tracked under
+`src/`. Delete the build directory and rebuild; nothing in it is authored.
+Suspect this whenever a prerequisite names a path that does not exist in the
+tree. The same reasoning covers a toolchain change -- see the stale-object note
+in `AGENTS.md`.
+
+**A boot ROM and a VP from different dates will fail in ways neither is
+responsible for.** The suites assert on status messages, so a ROM built before
+a model change can hang against a newer `sep-vp` and report a timeout rather
+than a mismatch. Rebuild the ROM before believing a boot failure.
 
 ### Driving a boot directly
 
