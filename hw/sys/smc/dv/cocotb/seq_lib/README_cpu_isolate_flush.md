@@ -125,12 +125,9 @@ therefore verifies late-W cleanup after a reset is already in flight, not the
 case where an earlier incomplete burst prevents the reset-control write from
 reaching `cpu_ctrl`.
 
-The leaves remain individually selectable from `cpu.toml`, but are not members
-of `all`, `hosted`, `smoke`, or any dedicated group. No scheduled regression
-runs them pending DV review and approval.
-
-The MMIO tests require the `mmio_wedge` firmware image and therefore require
-the SMC DV firmware toolchain setup described in `hw/sys/smc/dv/README.md`.
+The L2 leaves are in `cpu`, `hosted` and `all`. The MMIO leaves are in
+`cpu` and `all` only: they build `mmio_wedge` and need the SMC DV firmware
+toolchain in `hw/sys/smc/dv/README.md`. None is in `smoke`.
 
 The companion `tt-axi` block bench contains standalone `axi_isolate` recovery
 tests for late responses, late W data, deferred clears, and the dead-endpoint
