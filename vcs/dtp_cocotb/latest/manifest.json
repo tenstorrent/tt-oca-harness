@@ -7,9 +7,9 @@
       "total": 1,
       "unknown": 0
     },
-    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/jenkins-out/dashboard-data/history.json",
-    "history_points": 11,
-    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/jenkins-out/dashboard-data/summary.json",
+    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/dashboard-data/history.json",
+    "history_points": 12,
+    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/dashboard-data/summary.json",
     "tests": {
       "failing": 2,
       "incomplete_runs": 0,
@@ -25,14 +25,14 @@
     "dtp: native status=FAIL",
     "dtp: normalized status=FAIL"
   ],
-  "generated_at": "2026-09-21T22:09:26.645685+00:00",
+  "generated_at": "2026-09-22T16:58:18.822942+00:00",
   "git": {
-    "commit": "7f2ea3e59fc8e81e29b613492017703c825e16dd",
-    "requested_ref": "7f2ea3e59fc8e81e29b613492017703c825e16dd"
+    "commit": "7a3d0d14165c3bb8df44bfb76246e9a9798de751",
+    "requested_ref": "7a3d0d14165c3bb8df44bfb76246e9a9798de751"
   },
   "jenkins": {
-    "build_number": "61",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/cocotb/61/",
+    "build_number": "62",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/cocotb/62/",
     "job_name": "tt-oca-harness/dtp/cocotb",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/cocotb/"
   },
@@ -41,12 +41,13 @@
       "collector_rc": 0,
       "framework": "cocotb",
       "group": "all",
-      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/jenkins-out/runs/dtp/result.json",
+      "mode": "regression",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/runs/result.json",
       "native_status": "FAIL",
-      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/jenkins-out/dashboard-data/dtp.result.json",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/dashboard-data/result.json",
       "normalized_status": "FAIL",
       "profile": "dtp",
-      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/jenkins-out/runs/dtp",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/runs",
       "runner_rc": 1,
       "tool": "vcs"
     }
