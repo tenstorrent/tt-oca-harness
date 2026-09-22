@@ -12,6 +12,8 @@ import warnings
 import pytest
 from sepvp import fuses
 
+pytestmark = pytest.mark.hostonly
+
 EF = "och_sep_ss1.sep_efuse."
 LC = "och_sep_ss1.lc_ctrl.lc_state"
 

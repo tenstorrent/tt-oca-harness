@@ -39,6 +39,8 @@ import re
 import pytest
 from sepvp import paths
 
+pytestmark = pytest.mark.hostonly
+
 # Registers whose model spelling differs from the RDL's. Kept deliberately short:
 # every entry is a name the model has not caught up on, so the map shrinking is
 # progress and a new entry should be justified rather than added for convenience.

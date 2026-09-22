@@ -47,6 +47,7 @@ _MARKERS = [
     "slow: a slow simulation case.",
     "release: only meaningful on a release firmware build.",
     "skip_release: skip on a release firmware build.",
+    "hostonly: needs only the vp Python dependencies -- no sep-vp binary, firmware or toolchain.",
 ]
 
 
