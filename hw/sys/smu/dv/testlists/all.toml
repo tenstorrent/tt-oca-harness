@@ -78,7 +78,7 @@ target = "compile_smu_chiplet"
 firmware = { name = "smu_sep_smoke", mode = "sep_smoke" }
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "smoke", "smc", "sep", "real_rtl", "blocked_sep_exec"]
+tags = ["firmware", "smoke", "smc", "sep", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smu_sep_arm.rom.hex",
