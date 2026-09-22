@@ -417,11 +417,12 @@ credit set <code>hosted</code>; <a href="#smu-bench-standins">Bench stand-ins an
 stand-in, force, skip and waiver on a proof path of an enrolled test. The
 table first. Three kinds of name are in it. Fifteen have a test body and are
 enrolled in <code>testlists/all.toml</code>; their bucket says which group holds them
-and why that group is not credit. Seven have a test body under
-<code>hw/sys/smu/dv/cocotb_wrapper/tests/</code> or <code>cocotb/tests/</code> and are enrolled in
-no testlist, because they cannot run or cannot pass on either bench; their
-bucket says what each needs. The rest have no test body in this tree. None of
-the last two kinds is reportable as PASS. Enrolled names outside <code>hosted</code>
+and why that group is not credit. Fifteen are enrolled in no testlist,
+because this bench cannot run them or they cannot pass on it; their bucket
+says what each needs. A deferred body, and
+its sequence where it had one, is kept in git history rather than on disk and
+is restored when the blocker named in its row clears. The rest never had a
+test body here. None of the last two kinds is reportable as PASS. Enrolled names outside <code>hosted</code>
 that carry neither classification — the lifecycle, debug-gating, chain and
 elaboration leaves — are not in this table: each is carded in
 <code>SMU_VPLAN.adoc</code> and enrolled in a named group of <code>testlists/all.toml</code>.</p>
@@ -432,13 +433,13 @@ elaboration leaves — are not in this table: each is carded in
 <div class="ulist">
 <ul>
 <li>
-<p><code>SEP1-enrolled</code> — has a body and runs in the wrapper <code>all</code> group with real SEP instruction retirement (<code>sep_real_fw</code>, <code>sep_entropy</code>, or <code>fw_smoke</code> for the SEP smoke). Not <code>hosted</code> credit, and no CI workflow schedules those groups.</p>
+<p><code>SEP1-enrolled</code> — has a body and runs in the wrapper <code>all</code> group with real SEP instruction retirement (<code>sep_real_fw</code>, <code>sep_entropy</code>, or <code>fw_boot</code> for the SEP smoke). Not <code>hosted</code> credit, and no CI workflow schedules those groups.</p>
 </li>
 <li>
-<p><code>SEP1-blocked</code> — has a body under <code>cocotb_wrapper/tests/</code>, enrolled in no testlist: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction. Re-enrols in <code>all</code> the day the SMC SRAM path exists.</p>
+<p><code>SEP1-blocked</code> — written against the wrapper bench, enrolled in no testlist: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction. Re-enrols in <code>all</code> the day the SMC SRAM path exists.</p>
 </li>
 <li>
-<p><code>not-runnable</code> — has a body, enrolled in no testlist: the claim it checks is not met by the RTL as built, or the bench cannot produce the condition it needs. The row names the condition.</p>
+<p><code>not-runnable</code> — has a body in git history, enrolled in no testlist: the claim it checks is not met by the RTL as built, the bench cannot produce the condition it needs, or it needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build. The row names the condition.</p>
 </li>
 <li>
 <p><code>OUT-until-SEP1</code> — no body; needs real SEP instruction retirement under SMU and SEP=1 TB ports.</p>
@@ -457,13 +458,13 @@ elaboration leaves — are not in this table: each is carded in
 <div class="ulist">
 <ul>
 <li>
-<p>The JTAG2AXI / OTP / filter set in <code>hosted</code> is recorded in <code>SMU_HOSTED_COMPONENT_SIGNOFF.adoc</code>, which also records ATOP reject as OUT.</p>
+<p>The JTAG2AXI / OTP / filter set in <code>hosted</code> is recorded in the Component Signoff section of <code>hw/sys/smu/dv/docs/SMU_VPLAN.adoc</code>, which also records ATOP reject as OUT.</p>
 </li>
 <li>
 <p><code>smu_ext_boot_seq_gate_test</code> and <code>smu_smc_mailbox_int_test</code> are enrolled in <code>hosted</code> (<code>testlists/all.toml</code>).</p>
 </li>
 <li>
-<p>The one unenrolled body under <code>cocotb/tests/</code>, <code>smu_ext_axi_global_addr_smoke_test</code>, is in the table below under <code>not-runnable</code>.</p>
+<p><code>smu_ext_axi_global_addr_smoke_test</code> is in the table below under <code>not-runnable</code>.</p>
 </li>
 </ul>
 </div>
@@ -484,7 +485,7 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_smoke_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP1-enrolled</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in <code>all</code>, <code>fw_smoke</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in <code>all</code>, <code>fw_boot</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_sanity_test</p></td>
@@ -549,7 +550,7 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_wdt_reset_to_smc_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP1-blocked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Body kept under <code>cocotb_wrapper/tests/</code>; enrolled in no testlist. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_spi_bridge_test</p></td>
@@ -584,17 +585,17 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_debug_bus_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP1-blocked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Body kept under <code>cocotb_wrapper/tests/</code>; enrolled in no testlist. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_lc_handoff_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP1-blocked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Body kept under <code>cocotb_wrapper/tests/</code>; enrolled in no testlist. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_cla_sep_cpu_debug_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP1-blocked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Body kept under <code>cocotb_wrapper/tests/</code>; enrolled in no testlist. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_fuse_sense_handshake_test</p></td>
@@ -1114,32 +1115,62 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_smc_xbar_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP1-blocked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Body kept under <code>cocotb_wrapper/tests/</code>; enrolled in no testlist. The SEP brings the SMC up from an SMC SRAM image no sys-inbound master can load; <code>hw/sys/smc/dv/docs/SMC_VPLAN.adoc</code> ("SMC firmware image disposition") holds the SMC half.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. The SEP brings the SMC up from an SMC SRAM image no sys-inbound master can load; <code>hw/sys/smc/dv/docs/SMC_VPLAN.adoc</code> ("SMC firmware image disposition") holds the SMC half.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_ext_axi_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP1-blocked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Body kept under <code>cocotb_wrapper/tests/</code>; enrolled in no testlist. Same SRAM-private blockage as <code>smu_sep_smc_xbar_test</code>; the three-party protocol header stays with the firmwares.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Same SRAM-private blockage as <code>smu_sep_smc_xbar_test</code>; the three-party protocol header stays with the firmwares.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_cold_reset_async_assert_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Body kept under <code>cocotb_wrapper/tests/</code>; enrolled in no testlist. Holds every wrapper clock static and asserts <code>rst_cold_ni</code>, expecting the cold-stable and primary-reset outputs to fall without a clock edge (<code>port_table.adoc</code>: "Asynchronous assertion"); the SMC reset controller samples <code>rst_cold_ni</code> through a <code>clk_ref_i</code> deglitch shift register, so with the clocks stopped no output moves. Enrols when the specification or the RTL settles which is right; that decision needs a tracker issue naming <code>port_table.adoc</code> and <code>smc_reset_ctrl</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Holds every wrapper clock static and asserts <code>rst_cold_ni</code>, expecting the cold-stable and primary-reset outputs to fall without a clock edge (<code>port_table.adoc</code>: "Asynchronous assertion"); the SMC reset controller samples <code>rst_cold_ni</code> through a <code>clk_ref_i</code> deglitch shift register, so with the clocks stopped no output moves. Enrols when the specification or the RTL settles which is right; that decision needs a tracker issue naming <code>port_table.adoc</code> and <code>smc_reset_ctrl</code>.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_jtag2axi_abort_mid_op_test (wrapper)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_jtag2axi_abort_mid_op_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The scenario is enrolled on <code>--dut smu_block</code> (<code>testlists/block.toml</code>, <code>all</code>). On the wrapper the real SMC eFuse model answers a SINGLE_OP in tens of <code>clk_smu</code> against a 39-bit DR shift, so the BUSY window the abort needs never exists; a wrapper enrolment needs a stallable eFuse hook in <code>tb/tb_wrapper_top.sv</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs an OTP interface that holds SINGLE_OP in BUSY, which only the <code>smu #(.SEP(0))</code> elaboration with its eFuse shim responses tied off provides, and this package does not build it. On the wrapper the real SMC eFuse model answers a SINGLE_OP in tens of <code>clk_smu</code> against a 39-bit DR shift, so the BUSY window the abort needs never exists; a wrapper enrolment needs a stallable eFuse hook in <code>tb/tb_wrapper_top.sv</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smu_axi_external_port_connectivity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it proves the direct SMN-to-SMC ID-width converters that replace the crossbar, and the wrapper&#8217;s single profile elaborates SEP=1.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smu_axi_xbar_structure_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it proves <code>smu_axi_xbar</code> absent, and the wrapper&#8217;s single profile elaborates SEP=1.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_ptap_otp_instr_scan_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it scans the PTAP OTP CAPS and SINGLE_OP instructions against the SEP=0 OTP error slave.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smu_no_sep_configuration_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it proves <code>lc_state_o</code> carries the no-LCC word of <code>seq_lib/smu_lifecycle_table.py</code> and the SEP aperture is tied off.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smu_smc_security_demote_pm_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it observes the SEP=0 <code>lcc_demote_state_1/2_o</code> tie-offs and the default <code>lc_state</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_jtag_smoke_bare_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build; the same PTAP IDCODE / BYPASS / TRST scenario runs on the wrapper as <code>smu_dtp_jtag_smoke_test</code> (<code>smoke</code>, <code>hosted</code>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_ext_axi_global_addr_smoke_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Body under <code>cocotb/tests/</code>; enrolled in no testlist. The OSS <code>s_axi</code> is a LOCAL aperture, so <code>GLOBAL_BASE + offset</code> DECERRs; <code>cocotb/env/smu_evidence_map.py</code> <code>UNMAPPED_TESTS</code> records the same reason.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. The OSS <code>s_axi</code> is a LOCAL aperture, so <code>GLOBAL_BASE + offset</code> DECERRs.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_smc_gpio_strap_sanity_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No body. It read the retired <code>SMC_TOP_SMC_RESET_UNIT_STRAPS_LO</code> symbol, which the captured-straps move took out of the generated SMC header, and <code>smc_wrapper</code> declares no <code>captured_straps_i</code>, so the strap feature has no testcase on either bench (the SMC package records the same in its <code>depth.toml</code>). Do not re-enroll this name.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No body. It read the retired <code>SMC_TOP_SMC_RESET_UNIT_STRAPS_LO</code> symbol, which the captured-straps move took out of the generated SMC header, and <code>smc_wrapper</code> declares no <code>captured_straps_i</code>, so the strap feature has no testcase in this package (the SMC package records the same in its <code>depth.toml</code>). Do not re-enroll this name.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1186,7 +1217,7 @@ ran.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+skip_fuse_sense</code> with the shadow preload</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">per-test <code>args</code> of 85 of the 101 <code>testlists/all.toml</code> entries and every <code>[run_modes.*]</code> of <code>smu_block_sim_cfg.toml</code>; live only under the <code>SIMULATION</code> define</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">per-test <code>args</code> of 85 of the 101 <code>testlists/all.toml</code> entries; live only under the <code>SIMULATION</code> define</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">every <code>--dut smu</code> leaf except the fifteen that sense: the five boot-stall leaves, <code>smu_sep_lcc_flow_test</code>, the two <code>sep_rtl_fuse_sense</code> leaves (<code>smu_sep_fuse_sense_done_test</code>, <code>smu_smc_fuse_sense_sequence_test</code>), and the seven composition leaves that carry no eFuse plusarg (<code>smu_boundary_port_composition_test</code>, <code>smu_clock_domain_composition_test</code>, <code>smu_composition_parameter_test</code>, <code>smu_reset_release_sync_test</code>, <code>smu_sram_auto_init_done_test</code>, <code>smu_xbar_connectivity_matrix_test</code>, <code>smu_xtrig_mode_composition_test</code>); load-bearing for the reset, boot-gate and OTP leaves named below</p></td>
 </tr>
 <tr>
@@ -1196,17 +1227,17 @@ ran.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+define+ASSERTS_OFF</code> / <code>COMMON_CELLS_ASSERTS_OFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">every Verilator target of both sim configs (<code>smu_sim_cfg.toml</code>, <code>smu_block_sim_cfg.toml</code>) and <code>hw/common/dv/configs/profiles/native.toml</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">every leaf of both benches on Verilator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">every Verilator target of <code>smu_sim_cfg.toml</code> and <code>hw/common/dv/configs/profiles/native.toml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">every leaf on Verilator</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scan-chain loopbacks</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tb/tb_wrapper_top.sv</code> and <code>tb/tb_top.sv</code> (five host scan chains and the I/O and extra STAP TDO-to-TDI returns on each bench)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tb/tb_wrapper_top.sv</code> (five host scan chains and the I/O and extra STAP TDO-to-TDI returns)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_dtp_bsr_extest_loopback_test</code>, <code>smu_dtp_scan_chain_boundary_test</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[build].stubs</code> of both sim configs, from <code>hw/sys/smc/dv/tb/verilator_stubs/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[build].stubs</code> of <code>smu_sim_cfg.toml</code>, from <code>hw/sys/smc/dv/tb/verilator_stubs/</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">every leaf on Verilator; reset and boot-gate observes downstream</p></td>
 </tr>
 <tr>
@@ -1246,28 +1277,28 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+skip_fuse_sense</code> with the shadow preload</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml</code>, <code>grep -c '^\[\[tests\]\]' hw/sys/smu/dv/testlists/all.toml</code> and <code>grep -c '+smc_shadow_reg_preload=' hw/sys/smu/dv/smu_block_sim_cfg.toml</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>85</code> and <code>101</code>, leaving the fifteen the <strong>Scope</strong> field names; <code>4</code>, one per block run mode.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml</code>, <code>grep -c '^\[\[tests\]\]' hw/sys/smu/dv/testlists/all.toml</code> and <code>grep -c '\"+skip_fuse_sense\"' hw/sys/smu/dv/smu_sim_cfg.toml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>85</code> and <code>101</code>, leaving the fifteen the <strong>Scope</strong> field names; <code>0</code>, no run mode passes the plusarg (the file names it only in comments).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>abr_reg.sv</code> external-ack waiver</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml hw/sys/smu/dv/smu_block_sim_cfg.toml</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">One <code>extra_ignore_patterns</code> entry in the first file, <code>'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack'</code>, and no hit in the second.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One <code>extra_ignore_patterns</code> entry, <code>'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack'</code>; the only other hits are the comment lines above it that describe the waiver.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+define+ASSERTS_OFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'ASSERTS_OFF' hw/sys/smu/dv/smu_sim_cfg.toml hw/sys/smu/dv/smu_block_sim_cfg.toml hw/common/dv/configs/profiles/native.toml</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>+define+ASSERTS_OFF</code> on every Verilator target of both configs and <code>COMMON_CELLS_ASSERTS_OFF</code> in the shared profile; any run&#8217;s recorded <code>build_args</code> carries both.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'ASSERTS_OFF' hw/sys/smu/dv/smu_sim_cfg.toml hw/common/dv/configs/profiles/native.toml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>+define+ASSERTS_OFF</code> on every Verilator target of the config and <code>COMMON_CELLS_ASSERTS_OFF</code> in the shared profile; any run&#8217;s recorded <code>build_args</code> carries both.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scan-chain loopbacks</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'host_scan_in_i|host_tdi_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv hw/sys/smu/dv/tb/tb_top.sv</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Seven bindings per bench and no <code>1&#8217;b0</code> tie: the wrapper&#8217;s five <code>*_host_scan_in_i</code> on <code>bsr_scan_loop</code>, <code>stap_scan_loop</code>, <code>dfd_scan_loop</code>, <code>dft_sec_scan_loop</code> and <code>dft_scan_loop</code>, plus <code>jtag_stap_io_host_tdi_i</code> on <code>stap_io_tdo_w</code> and <code>jtag_stap_extra_host_tdi_i</code> on <code>stap_extra_tdi_w</code>; the block bench&#8217;s five on their own <code>*_out</code> net, plus its two on <code>stap_io_tdo</code> and <code>stap_extra_tdi</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'host_scan_in_i|host_tdi_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seven bindings and no <code>1&#8217;b0</code> tie: the five <code>*_host_scan_in_i</code> on <code>bsr_scan_loop</code>, <code>stap_scan_loop</code>, <code>dfd_scan_loop</code>, <code>dft_sec_scan_loop</code> and <code>dft_scan_loop</code>, plus <code>jtag_stap_io_host_tdi_i</code> on <code>stap_io_tdo_w</code> and <code>jtag_stap_extra_host_tdi_i</code> on <code>stap_extra_tdi_w</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml hw/sys/smu/dv/smu_block_sim_cfg.toml</code>, then any run&#8217;s <code>hdl_compile.log</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Both files list the two stubs, and the compile log names them ahead of the Bender filelist.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml</code>, then any run&#8217;s <code>hdl_compile.log</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The config lists the two stubs, and the compile log names them ahead of the Bender filelist.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse models in the product composition</p></td>
@@ -1326,11 +1357,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Why the real path cannot be used</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">On the block bench <code>tb/tb_top.sv</code> ties the eFuse shim command and bank-controller responses to zero, so no sense can complete and primary reset would never release. On the wrapper the real path is available&#8201;&#8212;&#8201;<code>hw/top/smc_ip_integration.sv</code> instantiates <code>efuse_interface_shim</code> and <code>efuse_bank_model</code>, and the boot-stall leaves use it&#8201;&#8212;&#8201;so for the remaining wrapper leaves the skip is a run-time and stimulus convenience: the SMC sense of the 768-word image takes 2280-2330 <code>clk_smu</code> after primary reset release on Verilator, and the preloaded shadow image, not a sensed one, is the value the OTP and lifecycle leaves declare as their input.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The real path is available&#8201;&#8212;&#8201;<code>hw/top/smc_ip_integration.sv</code> instantiates <code>efuse_interface_shim</code> and <code>efuse_bank_model</code>, and the boot-stall leaves use it&#8201;&#8212;&#8201;so for the remaining leaves the skip is a run-time and stimulus convenience: the SMC sense of the 768-word image takes 2280-2330 <code>clk_smu</code> after primary reset release on Verilator, and the preloaded shadow image, not a sensed one, is the value the OTP and lifecycle leaves declare as their input.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>testlists/all.toml</code>: 85 of 101 entries carry <code>+skip_fuse_sense</code> and <code>+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload</code> in their own <code>args</code>, each above a one-line reason; the <code>sep_rtl</code> entries that carry the skip, other than <code>smu_sep_lcc_flow_test</code>, add <code>+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload</code>, and the lifecycle leaves name their own image. The <code>[run_modes.*]</code> tables of <code>smu_sim_cfg.toml</code> carry no eFuse plusarg. <code>smu_block_sim_cfg.toml</code> <code>[run_modes.smoke]</code>, <code>[smc]</code>, <code>[dtp]</code>, <code>[fabric]</code> pass <code>+skip_fuse_sense</code> and the same <code>+smc_shadow_reg_preload</code> image, for the block-bench reason above; the block bench is SEP=0, so it has no SEP shadow registers to preload. The SMC shadow registers read the preload plusarg only under the skip and print <code>Loading SMC shadow reg preload data from</code> the image path at time zero; a log that prints <code>was NOT found</code> instead ran with the all-zero default array and is outside this scope. The plusarg is live only when the <code>SIMULATION</code> define is set (<code>hw/common/dv/configs/profiles/native.toml</code> sets it on every target); a build without it senses. <code>tb/tb_wrapper_top.sv</code> exports the SEP shadow registers' <code>sim_skip_fuse_sense</code> flag as <code>sep_fuse_sense_skipped_o</code>, and the SMC shadow registers print <code>Skipping fuse sense</code> or <code>Not skipping fuse sense</code> at time zero, so a log tells which path ran.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>testlists/all.toml</code>: 85 of 101 entries carry <code>+skip_fuse_sense</code> and <code>+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload</code> in their own <code>args</code>, each above a one-line reason; the <code>sep_rtl</code> entries that carry the skip, other than <code>smu_sep_lcc_flow_test</code>, add <code>+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload</code>, and the lifecycle leaves name their own image. The <code>[run_modes.*]</code> tables of <code>smu_sim_cfg.toml</code> carry no eFuse plusarg. The SMC shadow registers read the preload plusarg only under the skip and print <code>Loading SMC shadow reg preload data from</code> the image path at time zero; a log that prints <code>was NOT found</code> instead ran with the all-zero default array and is outside this scope. The plusarg is live only when the <code>SIMULATION</code> define is set (<code>hw/common/dv/configs/profiles/native.toml</code> sets it on every target); a build without it senses. <code>tb/tb_wrapper_top.sv</code> exports the SEP shadow registers' <code>sim_skip_fuse_sense</code> flag as <code>sep_fuse_sense_skipped_o</code>, and the SMC shadow registers print <code>Skipping fuse sense</code> or <code>Not skipping fuse sense</code> at time zero, so a log tells which path ran.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
@@ -1338,11 +1369,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-21, on the tree that carries this record. Re-confirmed: <code>grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml</code> printed <code>85</code> against <code>101</code> <code><a id="tests"></a></code> entries, and <code>grep -c '+smc_shadow_reg_preload=' hw/sys/smu/dv/smu_block_sim_cfg.toml</code> printed <code>4</code>, matching the <strong>Scope</strong> field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-22, on the tree that carries this record. Re-confirmed: <code>grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml</code> printed <code>85</code> against <code>101</code> <code><a id="tests"></a></code> entries, and <code>grep -c '\"+skip_fuse_sense\"' hw/sys/smu/dv/smu_sim_cfg.toml</code> printed <code>0</code>, matching the <strong>Scope</strong> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-18, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1365,7 +1396,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_sim_cfg.toml</code> <code>[pass_fail] extra_ignore_patterns</code> entry <code>'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack'</code>: every <code>--dut smu</code> run, at any simulation time, but only a line that names both the file and the external write/read acknowledge assertion; any other <code>$error</code> naming <code>abr_reg.sv</code> still fails the run. The block config carries no such waiver. The immediate <code>$error</code> this pattern silences is the one assertion class that survives <code>+define+ASSERTS_OFF</code> (its own entry below). In the logs of the CI nightly <code>hosted</code> run the pattern matches nothing, so there the waiver is inert; it is measured on an <code>all</code> run, where the <code>sep_rtl</code> leaves it was written for execute.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_sim_cfg.toml</code> <code>[pass_fail] extra_ignore_patterns</code> entry <code>'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack'</code>: every <code>--dut smu</code> run, at any simulation time, but only a line that names both the file and the external write/read acknowledge assertion; any other <code>$error</code> naming <code>abr_reg.sv</code> still fails the run. The immediate <code>$error</code> this pattern silences is the one assertion class that survives <code>+define+ASSERTS_OFF</code> (its own entry below). In the logs of the CI nightly <code>hosted</code> run the pattern matches nothing, so there the waiver is inert; it is measured on an <code>all</code> run, where the <code>sep_rtl</code> leaves it was written for execute.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
@@ -1373,11 +1404,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-17, on the tree that carries this record (<code>main</code> at <code>9282d8c14</code> with the sign-off changes applied). Re-confirmed: <code>grep -n 'abr_reg' …</code> printed the single <code>extra_ignore_patterns</code> entry in <code>smu_sim_cfg.toml</code> and no hit in the block config, matching the <strong>Scope</strong> field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-21, on the tree that carries this record (<code>main</code> at <code>bc4a6834a</code> with the sign-off changes applied). Re-confirmed: <code>grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml</code> printed the single <code>extra_ignore_patterns</code> entry and the two comment lines that describe it, matching the <strong>Scope</strong> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-17, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1396,11 +1427,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Why the real path cannot be used</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The vendored <code>pulp-platform/common_cells</code> assertions are guarded by <code>COMMON_CELLS_ASSERTS_OFF</code>, which <code>hw/common/dv/configs/profiles/native.toml</code> sets for every DUT, and the OCAH <code>ASSERTS_OFF</code> guard is set on every Verilator target of both SMU sim configs so that the immediate assertions in the PeakRDL register blocks and the SEP blocks do not fire on the two-state, X-free elaboration for reasons unrelated to any enrolled claim. Turning them on needs a per-assertion review of which fire legitimately on Verilator, which is the shared shim and assertion-gating work of issue #1164.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The vendored <code>pulp-platform/common_cells</code> assertions are guarded by <code>COMMON_CELLS_ASSERTS_OFF</code>, which <code>hw/common/dv/configs/profiles/native.toml</code> sets for every DUT, and the OCAH <code>ASSERTS_OFF</code> guard is set on every Verilator target of <code>smu_sim_cfg.toml</code> so that the immediate assertions in the PeakRDL register blocks and the SEP blocks do not fire on the two-state, X-free elaboration for reasons unrelated to any enrolled claim. Turning them on needs a per-assertion review of which fire legitimately on Verilator, which is the shared shim and assertion-gating work of issue #1164.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_sim_cfg.toml</code> and <code>smu_block_sim_cfg.toml</code>: <code>+define+ASSERTS_OFF</code> on every Verilator target; <code>hw/common/dv/configs/profiles/native.toml</code>: <code>COMMON_CELLS_ASSERTS_OFF</code>. One compile serves every leaf of a bench, so the scope is every leaf of both benches on Verilator; the recorded <code>build_args</code> of any run carry both defines. The VCS view of <code>--dut smu_block --framework uvm</code> compiles with the same defines.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_sim_cfg.toml</code>: <code>+define+ASSERTS_OFF</code> on every Verilator target; <code>hw/common/dv/configs/profiles/native.toml</code>: <code>COMMON_CELLS_ASSERTS_OFF</code>. One compile serves every leaf, so the scope is every leaf on Verilator; the recorded <code>build_args</code> of any run carry both defines.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
@@ -1408,11 +1439,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-17, on the tree that carries this record (<code>main</code> at <code>9282d8c14</code> with the sign-off changes applied). Re-confirmed: <code>grep -n 'ASSERTS_OFF' …</code> printed <code>+define+ASSERTS_OFF</code> on both Verilator targets of <code>smu_sim_cfg.toml</code>, on <code>smu_block_sim_cfg.toml</code>, and <code>COMMON_CELLS_ASSERTS_OFF</code> in <code>native.toml</code>, matching the <strong>Scope</strong> field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-21, on the tree that carries this record (<code>main</code> at <code>bc4a6834a</code> with the sign-off changes applied). Re-confirmed: <code>grep -n 'ASSERTS_OFF' hw/sys/smu/dv/smu_sim_cfg.toml hw/common/dv/configs/profiles/native.toml</code> printed <code>+define+ASSERTS_OFF</code> on both Verilator targets of <code>smu_sim_cfg.toml</code> and <code>COMMON_CELLS_ASSERTS_OFF</code> in <code>native.toml</code>, matching the <strong>Scope</strong> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-17, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1435,7 +1466,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tb/tb_wrapper_top.sv</code> loops all five host scan chains on their own nets, each <code>*_host_scan_out_o</code> driving its <code>*_host_scan_in_i</code> (<code>bsr_scan_loop</code>, <code>stap_scan_loop</code>, <code>dfd_scan_loop</code>, <code>dft_sec_scan_loop</code>, <code>dft_scan_loop</code>), and returns the I/O and extra STAP host TDO to the host TDI (<code>stap_io_tdo_w</code>; <code>stap_extra_tdi_w[0] = stap_extra_tdo_w[0]</code>), which is the tie the DTP port table prescribes for an unused chain. <code>tb/tb_top.sv</code> loops the same five chains (<code>bsr_out</code>, <code>stap_scan_out</code>, <code>dfd_out</code>, <code>dft_sec_out</code>, <code>dft_out</code>) and the same two STAP pairs (<code>stap_io_tdo</code>, <code>stap_extra_tdi</code>). Two enrolled tests read the loops: <code>smu_dtp_bsr_extest_loopback_test</code> (<code>BSR_EXTEST_TDO_MATCH</code>, the BSR loop; its plan entry declares <code>STUB:DECLARED BSR_TB_SCAN_LOOPBACK</code> with the same limits) and <code>smu_dtp_scan_chain_boundary_test</code> (the three iJTAG host loops behind its chain-length and SIB-readback compares, and the I/O STAP TDO-to-TDI return under its select checks); <code>smu_dtp_bsr_ijtag_scan_test</code> reads the <code>.select</code> gate only and compares no TDO bit.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tb/tb_wrapper_top.sv</code> loops all five host scan chains on their own nets, each <code>*_host_scan_out_o</code> driving its <code>*_host_scan_in_i</code> (<code>bsr_scan_loop</code>, <code>stap_scan_loop</code>, <code>dfd_scan_loop</code>, <code>dft_sec_scan_loop</code>, <code>dft_scan_loop</code>), and returns the I/O and extra STAP host TDO to the host TDI (<code>stap_io_tdo_w</code>; <code>stap_extra_tdi_w[0] = stap_extra_tdo_w[0]</code>), which is the tie the DTP port table prescribes for an unused chain. Two enrolled tests read the loops: <code>smu_dtp_bsr_extest_loopback_test</code> (<code>BSR_EXTEST_TDO_MATCH</code>, the BSR loop; its plan entry declares <code>STUB:DECLARED BSR_TB_SCAN_LOOPBACK</code> with the same limits) and <code>smu_dtp_scan_chain_boundary_test</code> (the three iJTAG host loops behind its chain-length and SIB-readback compares, and the I/O STAP TDO-to-TDI return under its select checks); <code>smu_dtp_bsr_ijtag_scan_test</code> reads the <code>.select</code> gate only and compares no TDO bit.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
@@ -1443,11 +1474,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-18, on the tree that carries this record (<code>main</code> at <code>be6230cf</code> with the sign-off changes applied). Re-confirmed: <code>grep -n 'host_scan_in_i|host_tdi_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv hw/sys/smu/dv/tb/tb_top.sv</code> printed seven bindings per bench, every one a loop from the matching <code><strong>_out</code>/<code>*_tdo</code> net and none a <code>1&#8217;b0</code> tie, matching the *Scope</strong> field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-21, on the tree that carries this record (<code>main</code> at <code>bc4a6834a</code> with the sign-off changes applied). Re-confirmed: <code>grep -n 'host_scan_in_i|host_tdi_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv</code> printed seven bindings, every one a loop from the matching <code><strong>_loop</code>/<code>*_w</code> net and none a <code>1&#8217;b0</code> tie, matching the *Scope</strong> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-18, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1470,7 +1501,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_sim_cfg.toml</code> and <code>smu_block_sim_cfg.toml</code> <code>[build].stubs</code> list <code>hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv</code> and <code>prim_sync3.sv</code>; the runner emits them ahead of the Bender filelist so Verilator&#8217;s first-definition-wins picks them, and drops them on VCS. Every leaf of both benches compiles them in. Downstream observes on this bench: <code>obs_powergood_stable_o</code>, <code>obs_powergood_stable_low_seen_o</code>, the reset-release observes of <code>smu_smc_reset_ctrl_test</code> and <code>smu_ext_boot_seq_gate_test</code>, and the boot-stall gate of the five boot-stall leaves. No control run with the product cells has been made on this composition; issues #1164 and #1165 hold the shared shim inventory and the removal plan the closing of this entry depends on.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_sim_cfg.toml</code> <code>[build].stubs</code> lists <code>hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv</code> and <code>prim_sync3.sv</code>; the runner emits them ahead of the Bender filelist so Verilator&#8217;s first-definition-wins picks them, and drops them on VCS. Every leaf compiles them in. Downstream observes on this bench: <code>obs_powergood_stable_o</code>, <code>obs_powergood_stable_low_seen_o</code>, the reset-release observes of <code>smu_smc_reset_ctrl_test</code> and <code>smu_ext_boot_seq_gate_test</code>, and the boot-stall gate of the five boot-stall leaves. No control run with the product cells has been made on this composition; issues #1164 and #1165 hold the shared shim inventory and the removal plan the closing of this entry depends on.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
@@ -1478,11 +1509,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-17, on the tree that carries this record (<code>main</code> at <code>9282d8c14</code> with the sign-off changes applied). Re-confirmed: <code>grep -n 'verilator_stubs' …</code> printed both stubs in both configs, matching the <strong>Scope</strong> field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-09-21, on the tree that carries this record (<code>main</code> at <code>bc4a6834a</code> with the sign-off changes applied). Re-confirmed: <code>grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml</code> printed both stubs, matching the <strong>Scope</strong> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-17, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1505,7 +1536,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/top/smc_ip_integration.sv</code> instantiates <code>u_efuse_interface_shim</code> (<code>efuse_interface_shim</code>) and <code>u_efuse_bank_model</code> (<code>efuse_bank_model</code>); <code>hw/top/sep_ip_integration.sv</code> instantiates the same pair for the SEP. Both are part of the DUT compile on every profile, so every wrapper leaf elaborates them; they are load-bearing for <code>smu_dtp_otp_smc_map_rw_test</code>, <code>smu_dtp_otp_smc_complete_rw_test</code>, <code>smu_dtp_otp_smc_series_error_test</code>, <code>smu_dtp_ptap_otp_instr_scan_test</code>, <code>smu_otp_vs_fabric_map_race_test</code>, <code>smu_sep_efuse_test</code>, and the <code>sep_lifecycle</code> and <code>sep_chain</code> leaves, and they answer the real sense on the eight wrapper leaves that carry no <code>+skip_fuse_sense</code>: the five boot-stall leaves (<code>smu_boot_stall_jtag_cold_reset_matrix_test</code>, <code>smu_boot_stall_vs_ic_reset_priority_test</code>, <code>smu_clock_stop_coordination_test</code>, <code>smu_dft_dtp_boot_stall_test</code>, <code>smu_dft_gpio_boot_stall_test</code>) and <code>smu_sep_lcc_flow_test</code> on <code>sep_rtl</code>, each above a <code>Real fuse sense (no +skip_fuse_sense)</code> reason line, and <code>smu_sep_fuse_sense_done_test</code> and <code>smu_smc_fuse_sense_sequence_test</code> on <code>sep_rtl_fuse_sense</code>. On those eight the <code>smc_fuse_reset_n_delayed_o</code> release, the SEP <code>lc_state</code> and <code>dbg_disable</code> posture and the sense-completion ordering they observe are the controllers' own sense of the model-held image. On the block bench <code>tb/tb_top.sv</code> ties the shim responses to zero instead, which is what makes <code>smu_dtp_jtag2axi_abort_mid_op_test&#8217;s hung SINGLE_OP observable there. The BFM table in `hw/sys/smu/dv/docs/SMU_TB_ARCH.adoc</code> names both models.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/top/smc_ip_integration.sv</code> instantiates <code>u_efuse_interface_shim</code> (<code>efuse_interface_shim</code>) and <code>u_efuse_bank_model</code> (<code>efuse_bank_model</code>); <code>hw/top/sep_ip_integration.sv</code> instantiates the same pair for the SEP. Both are part of the DUT compile on every profile, so every wrapper leaf elaborates them; they are load-bearing for <code>smu_dtp_otp_smc_map_rw_test</code>, <code>smu_dtp_otp_smc_complete_rw_test</code>, <code>smu_dtp_otp_smc_series_error_test</code>, <code>smu_otp_vs_fabric_map_race_test</code>, <code>smu_sep_efuse_test</code>, and the <code>sep_lifecycle</code> and <code>sep_chain</code> leaves, and they answer the real sense on the eight wrapper leaves that carry no <code>+skip_fuse_sense</code>: the five boot-stall leaves (<code>smu_boot_stall_jtag_cold_reset_matrix_test</code>, <code>smu_boot_stall_vs_ic_reset_priority_test</code>, <code>smu_clock_stop_coordination_test</code>, <code>smu_dft_dtp_boot_stall_test</code>, <code>smu_dft_gpio_boot_stall_test</code>) and <code>smu_sep_lcc_flow_test</code> on <code>sep_rtl</code>, each above a <code>Real fuse sense (no +skip_fuse_sense)</code> reason line, and <code>smu_sep_fuse_sense_done_test</code> and <code>smu_smc_fuse_sense_sequence_test</code> on <code>sep_rtl_fuse_sense</code>. On those eight the <code>smc_fuse_reset_n_delayed_o</code> release, the SEP <code>lc_state</code> and <code>dbg_disable</code> posture and the sense-completion ordering they observe are the controllers' own sense of the model-held image. The BFM table in <code>hw/sys/smu/dv/docs/SMU_TB_ARCH.adoc</code> names both models.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
