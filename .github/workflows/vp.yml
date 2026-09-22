@@ -106,11 +106,150 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: make -C virtual_platform vp-test-host
 
+  # Both container legs build the identical image -- same variant, same flake
+  # inputs, so the same derivation hash -- and on a cold cache each spent ~2 h
+  # producing it, then raced for the one cache slot the other's copy would have
+  # filled. Build it once here and let the legs restore it.
+  #
+  # The cost is that the native legs, which need no image, wait on this too:
+  # `needs` is per job and cannot address one matrix leg. That is a few minutes
+  # on a warm cache and the length of a closure build on a cold one, against a
+  # whole duplicate build saved every time the nix inputs change.
+  toolchain-image:
+    name: toolchain image
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 180
+    permissions: { contents: read }
+    outputs:
+      hash: ${{ steps.image.outputs.hash }}
+    env:
+      OCAH_ENGINE: docker
+      OCAH_IMAGE_WITH_UV: "true"
+      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
+    steps:
+      - name: Point the image cache at the runner temp dir
+        run: |
+          # Created here, not by actions/cache: a cache miss restores nothing and
+          # leaves no directory, and docker-run.sh copies the built image into
+          # this path without creating it.
+          mkdir -p "$RUNNER_TEMP/ocah-image-cache"
+          echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        uses: actions/checkout@v4
+
+      # Both, for different reasons: the uv workspace names tt-oca-manifest as a
+      # member, so `uv sync` cannot parse the project without it, and
+      # test_efuse_map_drift reads the model's eFuse header.
+      - name: Check out the private submodules
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init \
+            virtual_platform/tt-oca-harness-model \
+            hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+
+      - name: Free disk space for the nix build
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        run: |
+          echo "before:"; df -h / | tail -1
+          # Everything here is preinstalled runner content these jobs never use.
+          # hostedtoolcache goes entirely: the steps that want it run later and
+          # re-fetch, and the container carries its own python and node.
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/.ghcup /usr/local/share/boost \
+                      /usr/local/lib/node_modules /opt/hostedtoolcache \
+                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          echo "after:"; df -h / | tail -1
+
+      # The image closure builds gcc, boost and openssl from source, and the store
+      # outgrows the root volume. Hosted runners carry a second, larger volume;
+      # put the store there when one is actually bigger.
+      - name: Put the nix store on the largest volume
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        run: |
+          df -h
+          root_free=$(df --output=avail -k / | tail -1)
+          for cand in /mnt /datadisk; do
+            [ -d "$cand" ] || continue
+            cand_free=$(df --output=avail -k "$cand" | tail -1)
+            [ "$cand_free" -gt "$root_free" ] || continue
+            echo "nix store -> $cand (${cand_free}K free, / has ${root_free}K)"
+            sudo mkdir -p "$cand/nix" /nix
+            sudo mount --bind "$cand/nix" /nix
+            break
+          done
+          df -h /nix 2>/dev/null || true
+
+      # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
+      # back to pulling docker.io/nixos/nix and building inside it otherwise.
+      # The fallback builds the whole closure from scratch on every job and does
+      # not finish inside the budget, so install nix on the runner -- the same
+      # step and action lint.yml uses. access-tokens lets nix reach the private
+      # submodule repositories when it resolves the flake's inputs.
+      - name: Install Nix
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
+      - name: Identify the toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        id: image
+        run: |
+          hash="$(./scripts/docker-run.sh image-hash)"
+          # A malformed hash is worse than none: it still keys a cache, so every
+          # run would miss and rebuild while looking like it was caching.
+          case "$hash" in
+            [a-z0-9][a-z0-9]*) ;;
+            *) echo "::error::image-hash returned '$hash'"; exit 1 ;;
+          esac
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
+          echo "toolchain image: $hash" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ocah-image-cache
+          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
+
+      # Only the native leg builds dependencies, so only it has anything to
+      # cache. The container carries SystemC,
+      # CCI, Boost, OpenSSL and Whisper from ocah_deps.nix and exports their
+      # prefixes, so the container leg resolves every one as explicit and builds
+      # none of them.
+      - name: Provision toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        run: ./scripts/docker-run.sh ensure
+
+      # Save here, not at job end: actions/cache only writes when the whole job
+      # succeeds, so a failing suite discarded the image and the next run paid for
+      # it again.
+      - name: Save toolchain image
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ocah-image-cache
+          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
+
+
   sep-vp:
     name: sep-vp (${{ matrix.mode }})
     # Post-merge, nightly and manual only. A pull request gets vp-host-tests;
     # `gh workflow run vp.yml --ref <branch>` runs this set before merging.
     if: github.event_name != 'pull_request'
+    needs: toolchain-image
     # A label with no matching runner does NOT fail fast -- the job queues until
     # it times out. So the default stays the always-present standard runner, and
     # the VP_CI_RUNNER repo variable promotes it, with no workflow edit either
@@ -315,31 +454,12 @@ jobs:
           fi
           echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
 
-      # Key on the nix hash, not a file list: whisper.nix and openssl-merged.nix
-      # read WHISPER_REV/OPENSSL3_VERSION out of the model submodule, so re-pinning
-      # the model changes the image without changing any hashed file. A stale key
-      # then restores a tarball whose name no longer matches, rebuilds, and has its
-      # save declined as a duplicate -- a miss that never clears.
-      - name: Identify the toolchain image
-        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
-        id: image
-        run: |
-          hash="$(./scripts/docker-run.sh image-hash)"
-          # A malformed hash is worse than none: it still keys a cache, so every
-          # run would miss and rebuild while looking like it was caching.
-          case "$hash" in
-            [a-z0-9][a-z0-9]*) ;;
-            *) echo "::error::image-hash returned '$hash'"; exit 1 ;;
-          esac
-          echo "hash=$hash" >> "$GITHUB_OUTPUT"
-          echo "toolchain image: $hash" >> "$GITHUB_STEP_SUMMARY"
-
       - name: Restore toolchain image
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
-          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
+          key: ocah-image-${{ runner.os }}-${{ needs['toolchain-image'].outputs.hash }}
 
       # Only the native leg builds dependencies, so only it has anything to
       # cache. The container carries SystemC,
@@ -375,16 +495,6 @@ jobs:
       - name: Provision toolchain image
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         run: ./scripts/docker-run.sh ensure
-
-      # Save here, not at job end: actions/cache only writes when the whole job
-      # succeeds, so a failing suite discarded the image and the next run paid for
-      # it again.
-      - name: Save toolchain image
-        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ runner.temp }}/ocah-image-cache
-          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
 
       - name: Check toolchains
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
@@ -541,6 +651,7 @@ jobs:
     name: smc-vp + smu-vp (${{ matrix.mode }})
     # As sep-vp: not on pull requests.
     if: github.event_name != 'pull_request'
+    needs: toolchain-image
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
     # Cold: the nix closure as above, then Whisper, then the tree twice over
     # (all three VPs link the SEP peripheral tree). See the sep-vp job for why
@@ -705,31 +816,12 @@ jobs:
           fi
           echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
 
-      # Key on the nix hash, not a file list: whisper.nix and openssl-merged.nix
-      # read WHISPER_REV/OPENSSL3_VERSION out of the model submodule, so re-pinning
-      # the model changes the image without changing any hashed file. A stale key
-      # then restores a tarball whose name no longer matches, rebuilds, and has its
-      # save declined as a duplicate -- a miss that never clears.
-      - name: Identify the toolchain image
-        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
-        id: image
-        run: |
-          hash="$(./scripts/docker-run.sh image-hash)"
-          # A malformed hash is worse than none: it still keys a cache, so every
-          # run would miss and rebuild while looking like it was caching.
-          case "$hash" in
-            [a-z0-9][a-z0-9]*) ;;
-            *) echo "::error::image-hash returned '$hash'"; exit 1 ;;
-          esac
-          echo "hash=$hash" >> "$GITHUB_OUTPUT"
-          echo "toolchain image: $hash" >> "$GITHUB_STEP_SUMMARY"
-
       - name: Restore toolchain image
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
-          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
+          key: ocah-image-${{ runner.os }}-${{ needs['toolchain-image'].outputs.hash }}
 
       # Its OWN key, not the sep-vp job's: local*/ here also holds the Whisper
       # tree, so a shared key would let whichever job saved first decide whether
@@ -778,16 +870,6 @@ jobs:
       - name: Provision toolchain image
         if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         run: ./scripts/docker-run.sh ensure
-
-      # Save here, not at job end: actions/cache only writes when the whole job
-      # succeeds, so a failing suite discarded the image and the next run paid for
-      # it again.
-      - name: Save toolchain image
-        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ runner.temp }}/ocah-image-cache
-          key: ocah-image-${{ runner.os }}-${{ steps.image.outputs.hash }}
 
       - name: Check toolchains
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
