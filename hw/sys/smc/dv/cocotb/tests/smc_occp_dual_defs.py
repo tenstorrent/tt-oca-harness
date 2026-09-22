@@ -230,6 +230,7 @@ def occp_i2c_address(chip_id: int, chip_config_id: int = 0) -> int:
         return I2C_ADDR_FALLBACK
     return addr
 
+
 # Captured straps as firmware reads them: STRAPS_LO/HI in the external
 # supplementary region (straps.rdl, reached at ExtStrapsBase in
 # smc_ip_integration). Bit N of STRAPS_LO is GPIO N; STRAPS_HI continues at 32.

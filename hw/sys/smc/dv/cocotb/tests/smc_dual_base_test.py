@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import functools
 import logging
-import random
 import os
+import random
 import re
 import subprocess
 import sys
@@ -493,7 +493,7 @@ class SmcDualHarness:
         # issued at time 0 is accepted and then does nothing, so it has to wait
         # until simulation has advanced. Still ahead of cold reset release and of
         # the capture point _await_strap_capture() waits for.
-        self._apply_boot_interface_strap()
+        self._apply_straps()
 
         self.log.info("asserting powergood on both instances")
         dut.powergood_i.value = 1
@@ -595,17 +595,19 @@ class SmcDualHarness:
     def set_strap_bit(self, instance: str, bit: int) -> None:
         self.set_straps(instance, self.straps[instance] | (1 << bit))
 
-    def _apply_boot_interface_strap(self) -> None:
-        """Choose the controller's OCCP boot interface for this run, via its strap.
+    def _apply_straps(self) -> None:
+        """Draw this run's straps, the way the reference environment draws them.
 
-        The strap belongs to the CONTROLLER -- it is what initialize_interface()
-        in fw/common/occp/occp_interfaces.c reads to pick its driver. The target
-        brings up every channel regardless, so it needs no strap.
+        The two instances do not get the same set. The controller gets only the
+        straps its own firmware reads -- BOOT_I2C, which picks its OCCP driver,
+        and STATUS_RPT_DISABLE -- while the target, whose production ROM is what
+        the run exercises, gets the randomised set. PRIMARY_CHIPLET is on both to
+        match chiplet_is_primary_i, which stays the RTL's own source: the port
+        feeds the design and the strap feeds firmware, so they have to agree or
+        the two disagree about which instance is the boot master.
 
-        PRIMARY_CHIPLET is set on both instances to match chiplet_is_primary_i,
-        which stays the RTL's own source: the port feeds the design and the strap
-        feeds firmware, so they have to agree or the two disagree about which
-        instance is the boot master.
+        BL0_PLLCLK stays clear on both. The reference randomises it to cover the
+        ROM's PLL programming path, and this tree instantiates no PLL.
         """
         from smc_occp_dual_defs import (
             STRAP_BITS,
@@ -619,40 +621,67 @@ class SmcDualHarness:
         if force_i3c and force_i2c:
             raise AssertionError("+BOOT_I3C and +BOOT_I2C both given; they select opposite paths")
 
+        # Straps a test asks for by name. This runs first so the randomisation
+        # below can see what the test already pinned.
+        named = {name for name in STRAP_BITS if cocotb.plusargs.get(name) is not None}
+        target = sum(1 << STRAP_BITS[name] for name in named)
+        if named:
+            self.log.info("straps set by plusarg: %s", ", ".join(sorted(named)))
+
+        # Status reporting is the one randomised strap the controller shares,
+        # because both firmwares gate their own reporting on it.
+        if cocotb.plusargs.get("FORCE_STATUS_REPORTING") is not None:
+            status_rpt_disable = 0
+        elif "STATUS_RPT_DISABLE" in named:
+            status_rpt_disable = 1
+        else:
+            status_rpt_disable = random.choice([0, 1])
+        target |= status_rpt_disable << STRAP_BITS["STATUS_RPT_DISABLE"]
+        controller = status_rpt_disable << STRAP_BITS["STATUS_RPT_DISABLE"]
+        self.log.info("STATUS_RPT_DISABLE strap: %d", status_rpt_disable)
+
+        # Bit 26 set means auto-zero is disabled and the ROM zeroes the SRAM
+        # itself, which costs sim time; the reference only ever clears it, so a
+        # test that wants the slow path has to ask for it by plusarg.
+        if cocotb.plusargs.get("FORCE_HW_AUTO_ZERO") is not None or random.choice([True, False]):
+            target &= ~(1 << STRAP_BITS["SRAM_AUTO_ZERO_DISABLE"])
+        self.log.info(
+            "SRAM_AUTO_ZERO_DISABLE strap: %d",
+            (target >> STRAP_BITS["SRAM_AUTO_ZERO_DISABLE"]) & 1,
+        )
+
+        # The reference calls these out as having no effect on the ROM; they are
+        # randomised for coverage, not to steer a path.
+        for name in ("TEST_EN", "SPI_USE_FUSED_CONFIG", "BOOT_RECOVERY", "ROTATE_UPDATE"):
+            if name not in named:
+                target |= random.choice([0, 1]) << STRAP_BITS[name]
+
         # CHIP_ID decides the address the target's ROM answers on when its eFuse
-        # slot is unprogrammed (smc_occp_determine_i3c_address in occp.c), so both
-        # instances carry the same nibble and the controller derives the same
-        # address from it in _publish_i2c_target_ids.
+        # slot is unprogrammed (smc_occp_determine_i3c_address in occp.c). The
+        # controller learns the same address through scratch 4 rather than a
+        # strap, as it does in the reference.
         self.chip_id = random.randint(0, 0xF)
-        for instance in ("dut", "bfm"):
-            self.set_straps(
-                instance,
-                self.straps[instance] | (1 << STRAP_PRIMARY_CHIPLET) | chip_id_straps(self.chip_id),
-            )
-        self.log.info("CHIP_ID straps: %#x on both instances", self.chip_id)
+        target |= chip_id_straps(self.chip_id)
+        self.log.info("CHIP_ID straps: %#x", self.chip_id)
 
-        # Straps a test asks for by name, applied to both instances. The
-        # reference selects them the same way, one plusarg per strap.
-        for name, bit in STRAP_BITS.items():
-            if cocotb.plusargs.get(name) is None:
-                continue
-            for instance in ("dut", "bfm"):
-                self.set_strap_bit(instance, bit)
-            self.log.info("strap %s set on both instances (GPIO %d)", name, bit)
+        # The interface is a per-run draw unless the test names one, which is how
+        # the reference spreads I2C and I3C coverage over a regression.
+        if force_i2c:
+            self.boot_i2c = True
+        elif force_i3c:
+            self.boot_i2c = False
+        else:
+            self.boot_i2c = bool(random.choice([0, 1]))
+        controller |= int(self.boot_i2c) << STRAP_BOOT_I2C
+        self.log.info(
+            "controller OCCP boot interface: %s (%s)",
+            "I2C" if self.boot_i2c else "I3C",
+            "+BOOT_I2C" if force_i2c else "+BOOT_I3C" if force_i3c else "randomised",
+        )
 
-        # I3C is the firmware's choice when the strap does not read as set, so
-        # asking for it needs no strap driven and nothing read back.
-        self.boot_i2c = force_i2c
-        if not force_i2c:
-            self.log.info(
-                "controller OCCP boot interface: I3C (%s)",
-                "+BOOT_I3C" if force_i3c else "default",
-            )
-            return
-
-        self.set_strap_bit("bfm", STRAP_BOOT_I2C)
-        self.log.info("controller OCCP boot interface: I2C (+BOOT_I2C, STRAPS_LO bit %d)",
-                      STRAP_BOOT_I2C)
+        for instance, value in (("dut", target), ("bfm", controller)):
+            self.set_straps(instance, value | (1 << STRAP_PRIMARY_CHIPLET))
+        self.log.info("straps forced: dut=%#x bfm=%#x", self.straps["dut"], self.straps["bfm"])
 
     async def _check_boot_interface_strap(self, csr: DualCsr, instance: str) -> None:
         """Prove the BOOT_I2C strap the testbench forced is what the firmware will read.
