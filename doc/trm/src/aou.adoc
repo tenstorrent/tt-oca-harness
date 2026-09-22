@@ -25,6 +25,9 @@ include::../modules/aou/partials/pdf/interrupts-errors.adoc[leveloffset=+1]
 
 include::../modules/aou/partials/pdf/ppa-appendices.adoc[leveloffset=+1]
 
+For references from all TRM chapters, see
+<<trm-referenced-documents,Referenced Documents>>.
+
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
