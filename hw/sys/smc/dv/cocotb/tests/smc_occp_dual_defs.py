@@ -181,28 +181,68 @@ OCCP_SRAM_BASE = 0xC006_6400
 # would in silicon.
 CTRL_TARGET_READY_PAD = 58
 
-# BOOT_I2C, SmcStrapBit in fw/include/smc_strap.h. The strap index IS the GPIO
-# index: smc_strap_is_set() reads GPIO_CTRL_<n>.CONTROL and checks STRAP_VALID
-# and STRAP_VALUE.
-#
-# Both fields come from gpio_shim, which this tree never instantiates, so the
-# register does not answer: an AXI read of it returns DECERR. Where it is
-# implemented, STRAP_VALUE is held by a prim_latch_n that is transparent while
-# rst_cold_ni is low, so the pad must carry the wanted level before bring_up()
-# releases cold reset and may be released after.
-STRAP_BOOT_I2C_PAD = 18
+# Strap GPIO indices, from fw/include/smc_strap.h's SmcStrapBit.
+STRAP_BOOT_I2C = 18
+STRAP_PRIMARY_CHIPLET = 25
+# Straps a test may ask for by plusarg, named the way the reference testlist
+# names them; the indices are fw/include/smc_strap.h's SmcStrapBit. BOOT_I2C is
+# not here because it belongs to the controller alone and has its own handling.
+STRAP_BITS = {
+    "MEM_REPAIR_BYPASS": 13,
+    "TEST_EN": 14,
+    "BOOT_RECOVERY": 19,
+    "BL0_PLLCLK": 20,
+    "STATUS_RPT_DISABLE": 21,
+    "SPI_USE_FUSED_CONFIG": 22,
+    "SRAM_AUTO_ZERO_DISABLE": 26,
+    "MEM_BIST_BYPASS": 54,
+    "ROTATE_UPDATE": 58,
+}
 
-# GPIO_CTRL_<n>.CONTROL, the register smc_strap_is_set() reads. Base and stride
-# from the comment in fw/include/smc_strap.h; the two field masks from
-# hw/ip/gpio/regs/gen/c/gpio_ctrl.h.
-GPIO_CTRL_CONTROL_BASE = 0xC040_1100
-GPIO_CTRL_STRIDE = 0x20
-GPIO_CTRL_STRAP_VALID_BM = 0x10_0000
-GPIO_CTRL_STRAP_VALUE_BM = 0x20_0000
+# CHIP_ID bit n -> GPIO, least significant first. make_chip_id() in
+# bootrom/prod/drivers/src/smc_strap.c reassembles the nibble from these.
+STRAP_CHIP_ID_BITS = (23, 15, 12, 11)
+
+# The window the ROM accepts for an I2C target address before falling back to
+# 0x55, from smc_occp_init_i2c_channel() in bootrom/prod/lib/src/occp.c.
+I2C_ADDR_MIN = 0x08
+I2C_ADDR_MAX = 0x77
+I2C_ADDR_FALLBACK = 0x55
 
 
-def gpio_ctrl_control_addr(gpio: int) -> int:
-    return GPIO_CTRL_CONTROL_BASE + gpio * GPIO_CTRL_STRIDE
+def chip_id_straps(chip_id: int) -> int:
+    """The strap bits that make the ROM read back this CHIP_ID nibble."""
+    value = 0
+    for bit, gpio in enumerate(STRAP_CHIP_ID_BITS):
+        if (chip_id >> bit) & 1:
+            value |= 1 << gpio
+    return value
+
+
+def occp_i2c_address(chip_id: int, chip_config_id: int = 0) -> int:
+    """The I2C address the target answers on when its eFuse slot is unprogrammed.
+
+    smc_occp_determine_i3c_address() ORs CHIP_CONFIG.CHIP_ID in at bit 5;
+    chip_config_id defaults to the value this bench leaves that register at.
+    """
+    addr = (chip_id & 0xF) | ((chip_config_id & 0x3) << 5)
+    if addr < I2C_ADDR_MIN or addr > I2C_ADDR_MAX:
+        return I2C_ADDR_FALLBACK
+    return addr
+
+# Captured straps as firmware reads them: STRAPS_LO/HI in the external
+# supplementary region (straps.rdl, reached at ExtStrapsBase in
+# smc_ip_integration). Bit N of STRAPS_LO is GPIO N; STRAPS_HI continues at 32.
+STRAPS_LO_ADDR = 0xC040_5800
+STRAPS_HI_ADDR = 0xC040_5804
+STRAPS_LO_BIT_COUNT = 32
+
+
+def strap_reg_addr(bit: int) -> tuple[int, int]:
+    """The register holding one strap, and the bit position inside it."""
+    if bit < STRAPS_LO_BIT_COUNT:
+        return STRAPS_LO_ADDR, bit
+    return STRAPS_HI_ADDR, bit - STRAPS_LO_BIT_COUNT
 
 
 # Upper bound of the standardised OCCP test window, from the firmware's own

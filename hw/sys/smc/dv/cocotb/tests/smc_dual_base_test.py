@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import random
 import os
 import re
 import subprocess
@@ -22,6 +23,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
+from cocotb.handle import Force
 from cocotb.regression import Test
 from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
@@ -323,6 +325,10 @@ class SmcDualHarness:
         self.fuse_i2c_ids: dict[int, int] = {}
         # Which transport the controller was strapped to this run.
         self.boot_i2c = False
+        # Captured straps per instance, as firmware reads them in STRAPS_LO/HI.
+        self.straps: dict[str, int] = {"dut": 0, "bfm": 0}
+        # CHIP_ID nibble strapped this run; the OCCP address falls back to it.
+        self.chip_id = 0
         # One SYS_OUT responder per instance, bound in bring_up before the
         # clocks start; the slave sequences give backdoor access and faults.
         self.sys_out_mem: dict[str, OcahAxiSlaveSequence] = {}
@@ -445,8 +451,6 @@ class SmcDualHarness:
         if bfm_lc_state is not None:
             self.set_lc_state("bfm", bfm_lc_state)
 
-        self._apply_boot_interface_strap()
-
         # Before any reset is released -- the eFuse bank reads its image on
         # rst_ni, so this is the last point at which the contents can still be
         # chosen for this run.
@@ -484,6 +488,13 @@ class SmcDualHarness:
             )
 
         await ClockCycles(dut.clk_ref_i, 10)
+
+        # Straps are applied here rather than before the clocks start: a force
+        # issued at time 0 is accepted and then does nothing, so it has to wait
+        # until simulation has advanced. Still ahead of cold reset release and of
+        # the capture point _await_strap_capture() waits for.
+        self._apply_boot_interface_strap()
+
         self.log.info("asserting powergood on both instances")
         dut.powergood_i.value = 1
         await ClockCycles(dut.clk_ref_i, 10)
@@ -570,6 +581,20 @@ class SmcDualHarness:
         await ClockCycles(dut.clk_ref_i, STRAP_CAPTURE_SETTLE_CYCLES)
         self.log.info("strap capture window closed on both instances")
 
+    def set_straps(self, instance: str, value: int) -> None:
+        """Drive one instance's captured straps, which firmware reads as STRAPS_LO/HI.
+
+        A force, not a deposit: rom_straps carries a continuous tie-off. It needs
+        both public_flat_rw and forceable in smc_public_scope.vlt -- without the
+        second the force is a silent no-op.
+        """
+        inst = getattr(self.dut, f"u_{instance}")
+        inst.u_smc_wrapper.u_smc_ip_integration.rom_straps.value = Force(value)
+        self.straps[instance] = value
+
+    def set_strap_bit(self, instance: str, bit: int) -> None:
+        self.set_straps(instance, self.straps[instance] | (1 << bit))
+
     def _apply_boot_interface_strap(self) -> None:
         """Choose the controller's OCCP boot interface for this run, via its strap.
 
@@ -577,68 +602,86 @@ class SmcDualHarness:
         in fw/common/occp/occp_interfaces.c reads to pick its driver. The target
         brings up every channel regardless, so it needs no strap.
 
-        Driven here rather than in idle_pins because the pad level only has to be
-        right when bring_up() releases cold reset, which is where the latch that
-        captures it closes.
+        PRIMARY_CHIPLET is set on both instances to match chiplet_is_primary_i,
+        which stays the RTL's own source: the port feeds the design and the strap
+        feeds firmware, so they have to agree or the two disagree about which
+        instance is the boot master.
         """
-        from smc_occp_dual_defs import STRAP_BOOT_I2C_PAD
+        from smc_occp_dual_defs import (
+            STRAP_BITS,
+            STRAP_BOOT_I2C,
+            STRAP_PRIMARY_CHIPLET,
+            chip_id_straps,
+        )
 
         force_i3c = cocotb.plusargs.get("BOOT_I3C") is not None
         force_i2c = cocotb.plusargs.get("BOOT_I2C") is not None
         if force_i3c and force_i2c:
             raise AssertionError("+BOOT_I3C and +BOOT_I2C both given; they select opposite paths")
 
-        # I3C is what the firmware takes when the strap does not read as set, so
-        # asking for it needs no pad driven and nothing read back. The BOOT_I2C
-        # strap is not readable in this tree, so driving the pad for I3C would
-        # claim a choice the firmware cannot see.
+        # CHIP_ID decides the address the target's ROM answers on when its eFuse
+        # slot is unprogrammed (smc_occp_determine_i3c_address in occp.c), so both
+        # instances carry the same nibble and the controller derives the same
+        # address from it in _publish_i2c_target_ids.
+        self.chip_id = random.randint(0, 0xF)
+        for instance in ("dut", "bfm"):
+            self.set_straps(
+                instance,
+                self.straps[instance] | (1 << STRAP_PRIMARY_CHIPLET) | chip_id_straps(self.chip_id),
+            )
+        self.log.info("CHIP_ID straps: %#x on both instances", self.chip_id)
+
+        # Straps a test asks for by name, applied to both instances. The
+        # reference selects them the same way, one plusarg per strap.
+        for name, bit in STRAP_BITS.items():
+            if cocotb.plusargs.get(name) is None:
+                continue
+            for instance in ("dut", "bfm"):
+                self.set_strap_bit(instance, bit)
+            self.log.info("strap %s set on both instances (GPIO %d)", name, bit)
+
+        # I3C is the firmware's choice when the strap does not read as set, so
+        # asking for it needs no strap driven and nothing read back.
+        self.boot_i2c = force_i2c
         if not force_i2c:
-            self.boot_i2c = False
             self.log.info(
-                "controller OCCP boot interface: I3C (%s); the BOOT_I2C strap is not "
-                "readable in this tree, so I3C is the only reachable choice",
+                "controller OCCP boot interface: I3C (%s)",
                 "+BOOT_I3C" if force_i3c else "default",
             )
             return
 
-        self.set_gpio_override("bfm", STRAP_BOOT_I2C_PAD, 1)
-        self.boot_i2c = True
-        self.log.info("controller OCCP boot interface: I2C (+BOOT_I2C)")
+        self.set_strap_bit("bfm", STRAP_BOOT_I2C)
+        self.log.info("controller OCCP boot interface: I2C (+BOOT_I2C, STRAPS_LO bit %d)",
+                      STRAP_BOOT_I2C)
 
     async def _check_boot_interface_strap(self, csr: DualCsr, instance: str) -> None:
-        """Prove the BOOT_I2C strap the testbench drove is what the firmware will read.
+        """Prove the BOOT_I2C strap the testbench forced is what the firmware will read.
 
-        smc_strap_is_set() reads GPIO_CTRL_<n>.CONTROL and requires STRAP_VALID and
-        STRAP_VALUE together, so reading the same register here is the firmware's own
-        view. Only +BOOT_I2C reaches this, because that is the only case where a pad
-        was driven; without the check the log could claim I2C while the firmware took
-        the I3C fallback.
+        Read back through STRAPS_LO, which is the register smc_strap_is_set() reads,
+        so this is the firmware's own view rather than a peek at the forced signal.
+        Only +BOOT_I2C reaches this: it is the only case where a strap was driven,
+        and without the check the log could claim I2C while the firmware took the
+        I3C fallback.
         """
-        from smc_occp_dual_defs import (
-            GPIO_CTRL_STRAP_VALID_BM,
-            GPIO_CTRL_STRAP_VALUE_BM,
-            STRAP_BOOT_I2C_PAD,
-            gpio_ctrl_control_addr,
-        )
+        from smc_occp_dual_defs import STRAP_BOOT_I2C, strap_reg_addr
 
         if instance != "bfm" or not self.boot_i2c:
             return
-        addr = gpio_ctrl_control_addr(STRAP_BOOT_I2C_PAD)
-        value = await csr.read("GPIO_CTRL_BOOT_I2C", addr)
-        valid = bool(value & GPIO_CTRL_STRAP_VALID_BM)
-        strapped = bool(value & GPIO_CTRL_STRAP_VALUE_BM)
+        addr, bit = strap_reg_addr(STRAP_BOOT_I2C)
+        value = await csr.read("STRAPS_BOOT_I2C", addr)
+        strapped = bool(value & (1 << bit))
         self.log.info(
-            "controller BOOT_I2C strap readback: GPIO_CTRL_%d.CONTROL=%#010x (valid=%d value=%d)",
-            STRAP_BOOT_I2C_PAD,
+            "controller BOOT_I2C strap readback: %#010x=%#010x (bit %d = %d)",
+            addr,
             value,
-            valid,
+            bit,
             strapped,
         )
-        assert valid and strapped, (
-            f"BOOT_I2C strap did not take: GPIO_CTRL_{STRAP_BOOT_I2C_PAD}.CONTROL="
-            f"{value:#010x} gives valid={valid} value={strapped}, but the testbench "
-            f"drove pad {STRAP_BOOT_I2C_PAD} high. The firmware reads this register, "
-            "so it would fall back to I3C."
+        assert strapped, (
+            f"BOOT_I2C strap did not take: {addr:#010x}={value:#010x} has bit {bit} clear "
+            "after the testbench forced it. The firmware reads this register, so it would "
+            "fall back to I3C. A read of 0 also means rom_straps is not forceable in "
+            "smc_public_scope.vlt"
         )
 
     async def _seed_firmware_rng(self, csr: DualCsr, instance: str, addr: int) -> None:
@@ -678,19 +721,30 @@ class SmcDualHarness:
         writing addresses into it would collide. The reference writes the master
         BFM's scratch 4 for the same reason.
         """
-        from smc_occp_dual_defs import SCRATCH_I2C_TARGET_IDS
+        from smc_occp_dual_defs import SCRATCH_I2C_TARGET_IDS, occp_i2c_address
 
-        if instance != "bfm" or not self.fuse_i2c_ids:
+        if instance != "bfm":
             return
         packed = 0
-        for byte, slot in enumerate(sorted(self.fuse_i2c_ids)):
-            packed |= (self.fuse_i2c_ids[slot] & 0x7F) << (8 * byte)
+        if self.fuse_i2c_ids:
+            for byte, slot in enumerate(sorted(self.fuse_i2c_ids)):
+                packed |= (self.fuse_i2c_ids[slot] & 0x7F) << (8 * byte)
+        else:
+            # Unprogrammed slots: the ROM derives both channels from the CHIP_ID
+            # straps instead, so the controller has to be told the same address
+            # rather than left with zero.
+            derived = occp_i2c_address(self.chip_id)
+            packed = derived | (derived << 8)
         await csr.write("I2C_TARGET_IDS", SCRATCH_I2C_TARGET_IDS, packed, length=8)
         self.log.info(
             "%s: OCCP I2C target addresses published %#06x (%s)",
             instance,
             packed,
-            ", ".join(f"slot{s}={self.fuse_i2c_ids[s]:#04x}" for s in sorted(self.fuse_i2c_ids)),
+            (
+                ", ".join(f"slot{s}={self.fuse_i2c_ids[s]:#04x}" for s in sorted(self.fuse_i2c_ids))
+                if self.fuse_i2c_ids
+                else f"from CHIP_ID straps {self.chip_id:#x}, slots unprogrammed"
+            ),
         )
 
     def assert_no_fault_latched(self, label: str) -> None:

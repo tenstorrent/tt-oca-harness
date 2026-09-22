@@ -26,24 +26,23 @@ typedef enum {
     SMC_STRAP_ROTATE_UPDATE = 58
 } SmcStrapBit;
 
-// Read strap value from GPIO_CTRL register's CONTROL field.
-// Note: `strap_bit` selects which GPIO_CTRL register (GPIO index), not a bit position within the
-// register.
+// Captured straps, presented to firmware as two read-only words: bit N of STRAPS_LO is
+// GPIO N, and STRAPS_HI continues at GPIO 32.
+//
+// Not smc_top_regs.h's SMC_RESET_UNIT_STRAPS_LO (0xC0002090). That register moved out of
+// the reset unit into the external supplementary region and no longer exists; the generated
+// header still carries the old macro.
+#define SMC_STRAPS_LO_REG_ADDR 0xC0405800u
+#define SMC_STRAPS_HI_REG_ADDR 0xC0405804u
+#define SMC_STRAPS_LO_BIT_COUNT 32
+
+// Reads the strap latched on one GPIO. `strap_bit` is the GPIO index.
 static inline bool smc_strap_is_set(SmcStrapBit strap_bit) {
-    uint32_t reg_value;
+    bool in_lo = strap_bit < SMC_STRAPS_LO_BIT_COUNT;
+    uint32_t addr = in_lo ? SMC_STRAPS_LO_REG_ADDR : SMC_STRAPS_HI_REG_ADDR;
+    uint32_t bit = in_lo ? (uint32_t)strap_bit : (uint32_t)strap_bit - SMC_STRAPS_LO_BIT_COUNT;
 
-    // Each GPIO_CTRL register is spaced 0x20 apart (GPIO_CTRL_1 - GPIO_CTRL_0 = 0xC0401120 -
-    // 0xC0401100)
-    uint32_t gpio_ctrl_addr =
-        SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) +
-        (strap_bit * (SMC_TOP_GPIO_CTRL_BASE_ADDR(1) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0)));
-
-    reg_value = read_reg(gpio_ctrl_addr);
-
-    // strap_valid/strap_value are hardware-written fields in GPIO_CTRL_x.CONTROL.
-    // Use the generated mask definitions (do NOT use `strap_bit` as a bit index).
-    return ((reg_value & GPIO_CTRL__CONTROL__STRAP_VALID_bm) != 0) &&
-           ((reg_value & GPIO_CTRL__CONTROL__STRAP_VALUE_bm) != 0);
+    return (read_reg(addr) & (1u << bit)) != 0;
 }
 
 #endif /* SMC_STRAP_H */
