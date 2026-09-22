@@ -149,9 +149,9 @@ worker tests in `tools/dv/tests`.
 checkout, and execs `worker_argv`; an array's script first picks its element's
 task from the list by the scheduler's index variable. The executor log holds
 every scheduler command with its status and output. The unconfirmed-cancel
-record lists the
-job ids an interrupted run could not confirm stopped; the run-level summary
-repeats them under `interruption.cancellation`. Checked by
+record names the jobs an interrupted run could not confirm stopped; the
+run-level summary lists the same ids under
+`interruption.cancellation.unconfirmed`. Checked by
 `tools/dv/tests/test_cluster_executor.py`, which drives both drivers through
 fake scheduler commands, interrupts a coordinator mid-run, and on demand by
 the `slurm-qualify` workflow, which runs the Slurm driver on a single-node
@@ -177,10 +177,13 @@ per-leaf `result.json`, and `results/results.xml`
 an `UNKNOWN` checkpoint before the first leaf, so an incomplete run is never
 read as a pass. A run that did not finish carries `tests.completed = false`
 and `tests.pass_rate = null`, and a handled interruption adds an
-`interruption` object (the signals received and, under `cancellation`, the
-attempts asked to stop, confirmed, and unconfirmed with their job ids) and a
-run-level errored JUnit testcase; on a cluster executor the checkpoint's
-active and interrupted leaves list their scheduler jobs. The gate in
+`interruption` object (the signal received and, when a stop went
+unconfirmed, a `cancellation` with the attempts asked to stop, the number
+confirmed, and the unconfirmed job ids) and a run-level errored JUnit
+testcase; on a cluster executor the checkpoint's active and interrupted
+leaves list their scheduler job ids. A leaf's `stages` entry repeats only its
+identity, status, timing, log, and failure buckets, and points at its leaf
+`result.json` through `result_json`. The gate in
 `.github/actions/dv-run` requires `schema_version == 1`, a `flow` and `tool`
 matching the invocation, `status == "PASS"`, and coverage evidence when the
 row collects coverage. The completion and expected-failure tests cover the

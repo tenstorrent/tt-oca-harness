@@ -952,14 +952,7 @@ class ClusterExecutor(Executor):
             )
         seen = tracked.settled or tracked.last
         task = tracked.task
-        scheduler = {
-            "executor": self.name,
-            "driver": self.driver,
-            "job_id": handle.native_job_id,
-            "state": seen.state.value,
-            "exit_code": seen.exit_code,
-            "reason": seen.reason,
-        }
+        scheduler = {"job_id": handle.native_job_id, "state": seen.state.value}
         joblog = repo_rel(self._root, tracked.joblog) if tracked.joblog.is_file() else None
         result = self._read_result(task)
         if result is not None:
