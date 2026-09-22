@@ -346,7 +346,7 @@ never when it was written.
 |`sep_trng_reset_recovery_test`
 |no_cpu, +skip_fuse_sense, +esrc_noise_force
 |ocah_axi_vip, entropy golden
-|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated paths answer SLVERR while the external source-select register stays outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
+|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the downstream clear crosses into `clk_i` through two synchronizer stages, the pool scrubs its stale and half-packed data, the isolated paths answer SLVERR while the external source-select register stays outside the domain, and recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
 |`sep_abr_mldsa_keygen_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -780,7 +780,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
 
 |Coordinated TRNG reset and ordered recovery
-|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. Intra-window decode of the adopter TRNG passthrough is not graded.
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the two-stage synchronization of the reset-derived downstream clear, pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. Intra-window decode of the adopter TRNG passthrough is not graded.
 
 |Clock-gate CSR
 |`sep_clock_gate_control_test` (storage / reachability). Live per-IP gate is not in this RTL.
@@ -3121,8 +3121,9 @@ out of this subsystem.
 
 *Objective*: Proves the one `SW_RESET_N` bit that resets ESRC, CSRNG and EDN
 together behaves as a single coordinated domain: the reset waits for all three
-AXI ports to isolate, the entropy pool scrubs whatever it held, the external
-source path stays outside the domain, and recovery admits only fresh entropy.
+AXI ports to isolate, its downstream clear changes only after two `clk_i`
+synchronizer edges, the entropy pool scrubs whatever it held, the external source
+path stays outside the domain, and recovery admits only fresh entropy.
 
 *Test Coverage*: Shared TRNG `SW_RESET_N` drain-before-reset and ordered recovery.
 
@@ -3137,7 +3138,7 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 . Hold every entropy consumer (KM, OTBN, AES, KMAC), then request the TRNG reset
   while concurrent reads are in flight on all three internal CSR ports.
 . Through the reset, observe the isolate probe, the fate of the in-flight
-  accesses, and the pool's packer depth.
+  accesses, the two-stage clear synchronizer, and the pool's packer depth.
 . With the domain in reset, read the three internal ports and the
   source-select register; then exercise the JTAG reset pair to hold and
   release the same coordinated reset.
@@ -3155,6 +3156,8 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |While the reset is requested the isolate probe reads all three ports isolated. This is the drain-before-reset evidence: the reset does not assert until ESRC, CSRNG and EDN have all reported isolated.
 |CHK-TRNG-DRAIN
 |Every in-flight pre-reset access completes either OKAY or SLVERR — never DECERR and never a hang — and at least one completes OKAY, so accepted traffic provably drained rather than being dropped.
+|CHK-TRNG-CLEAR-SYNC
+|The reset-derived clear remains inactive when the asynchronous TRNG reset is first observed and asserts within the following two observed `clk_i` edges.
 |CHK-TRNG-PACKER
 |The entropy pool's packer depth is zero, so a half-packed word does not survive the reset.
 |CHK-TRNG-SLVERR
@@ -3162,7 +3165,7 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |CHK-TRNG-EXTERNAL
 |After the packer is parked the test writes a source-select value that is not the RDL reset of `sel[2:0]` (`0x7` in `sep_cpu_ctrl.rdl`), confirms the write took, then asserts the same value after the internal reset. A match on the reset value would be vacuous. The `0x1091_7000` passthrough is an adopter aperture; intra-window decode is not graded.
 |CHK-TRNG-JTAG
-|The JTAG override holds the coordinated reset asserted and releases it again, the same pair used for the other domains.
+|The JTAG override holds the coordinated reset asserted and releases it again; the downstream clear remains asserted through the first `clk_i` edge and releases after the second.
 |CHK-TRNG-CONSUMERS-HELD
 |The `SW_RESET_N` readback shows the four consumers still held and the TRNG bit released, so the recovery ordering is observed rather than assumed.
 |CHK-TRNG-CSR-RESET
@@ -3172,7 +3175,7 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |CHK-TRNG-FRESH
 |ESRC produces a fresh seed, `FIPS_LOCK` sets again, and a pool read succeeds, all before the consumer resets are restored to their saved value.
 |CHK-TRNG-RECOVERY
-|Closing summary line over the eleven rows above: the pool went full, emptied and refilled, the stale read was rejected, fresh data was delivered, and the consumer resets were restored to their saved value. It carries no contract of its own.
+|Closing summary line over the twelve rows above: the pool went full, emptied and refilled, the stale read was rejected, fresh data was delivered, and the consumer resets were restored to their saved value. It carries no contract of its own.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

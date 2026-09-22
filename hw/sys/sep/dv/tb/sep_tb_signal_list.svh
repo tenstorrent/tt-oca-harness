@@ -411,6 +411,7 @@
 // Coordinated-reset observation: shared reset plus ESRC/CSRNG/EDN isolate
 // completion bits, used to prove reset cannot precede the slowest drain.
 `SEP_TB_OUT(logic, trng_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, trng_reset_active_probe_o)
 `SEP_TB_OUT(logic [2:0], trng_axi_isolated_probe_o)
 // Same observation for the HMAC accelerator domain. An accelerator reset
 // depends on BOTH its host path and its Key Manager path, so both isolate

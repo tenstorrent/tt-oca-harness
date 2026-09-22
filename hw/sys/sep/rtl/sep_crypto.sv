@@ -362,6 +362,7 @@ module sep_crypto #(
     .NUM_AXIS(EXT_TRNG_NUM_AXIS)
   ) u_sep_trng (
     .clk_i                     (clk_i),
+    .por_rst_ni                (rst_ni),
     .rst_ni                    (gated_rst_ni.trng),
     .entropy_rosc_sample_clk_i (entropy_rosc_sample_clk_i),
     .esrc_axil_req_i           (esrc_axil_isolated_req),
