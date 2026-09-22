@@ -111,9 +111,9 @@ module entropy_sampler_clocks #(
     end
 
     prim_clkmux4 u_sample_clk_div_lo (
-      .i_clk   (sample_clk_divided[i][3:0]),
-      .i_clksel(div_lo_sel),
-      .o_clk   (div_lo_clk[i])
+      .clk_i   (sample_clk_divided[i][3:0]),
+      .clksel_i(div_lo_sel),
+      .clk_o   (div_lo_clk[i])
     );
 
     prim_clock_mux2 u_sample_clk_div_hi (
