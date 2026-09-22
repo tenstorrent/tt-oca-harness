@@ -222,8 +222,7 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
             res = await abr.read_words(ABR_VERIFY_RES, VERIFY_RES_WORDS)
             # Length before value: zip() stops at the shorter list.
             assert len(res) == VERIFY_RES_WORDS, (
-                f"verify-{tag}: read {len(res)} VERIFY_RES words, "
-                f"RDL array is {VERIFY_RES_WORDS}"
+                f"verify-{tag}: read {len(res)} VERIFY_RES words, RDL array is {VERIFY_RES_WORDS}"
             )
             c_tilde = list(vsig[:VERIFY_RES_WORDS])
             assert len(c_tilde) == VERIFY_RES_WORDS, (

@@ -123,8 +123,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
                 return
             await ClockCycles(cocotb.top.clk_i, 1)
         raise AssertionError(
-            f"entropy pool packer did not reach depth {expected} "
-            f"(observed {self._packer_depth()})"
+            f"entropy pool packer did not reach depth {expected} (observed {self._packer_depth()})"
         )
 
     async def _unstick_packer(self) -> None:
@@ -285,9 +284,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         )
 
         await ClockCycles(cocotb.top.clk_i, 20)
-        assert self._packer_depth() == 0, (
-            "TRNG reset did not scrub the half-packed entropy word"
-        )
+        assert self._packer_depth() == 0, "TRNG reset did not scrub the half-packed entropy word"
         self.logger.info(
             "CHK-TRNG-PACKER PASS: the parked half-packed entropy word was scrubbed "
             "by the coordinated reset"

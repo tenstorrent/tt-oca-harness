@@ -252,9 +252,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         assert irq == 1, "irq39 dropped on a valid-token retry"
         await self._wr_fault(0)
         still = await self._rd_fault()
-        assert still & FAULT_RMA_SIP, (
-            f"TOKEN_MATCH_FAULT is sw=r; write-0 left 0x{still:x}"
-        )
+        assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write-0 left 0x{still:x}"
         self.logger.info(
             "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, "
             "write-0 left the fault and irq set",

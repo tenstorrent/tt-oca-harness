@@ -151,6 +151,7 @@ KM_DEST_ABR_MLKEM_SEED_D = 0x20
 KM_DEST_ABR_MLKEM_SEED_Z = 0x40
 KM_DEST_ABR_MLKEM_MSG = 0x80
 
+
 # Packed versions: patch[7:0], minor[15:8], major[23:16] (rom_km_version_ret_t).
 def _hw_root() -> Path:
     return Path(__file__).resolve().parents[5]

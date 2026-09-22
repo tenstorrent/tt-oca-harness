@@ -30,6 +30,7 @@ SCRATCH_WARM_0 = sym(
 )  # warm domain: .arst_n(rst_ni && rst_warm_ni)
 SCRATCH_RESET_DEFAULT = 0x0000_0000
 
+
 def _bank_addrs(bank: str) -> tuple[int, ...]:
     """Every SCRATCH register of one bank, in index order, from the register export.
 

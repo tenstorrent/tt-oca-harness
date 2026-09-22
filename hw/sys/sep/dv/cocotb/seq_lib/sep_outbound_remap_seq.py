@@ -112,7 +112,10 @@ class SepOutboundRemapCfg:
             raise RuntimeError("remap target equals identity -- vacuous")
         if self.expect_addr == self.forbidden_expect:
             raise RuntimeError("allowed and forbidden remaps collide")
-        if self.neighbor_expect == self.expect_addr or self.neighbor_expect == self.forbidden_expect:
+        if (
+            self.neighbor_expect == self.expect_addr
+            or self.neighbor_expect == self.forbidden_expect
+        ):
             raise RuntimeError("neighbor remap does not leave the allow window")
         if self.neighbor_expect < REMAP_TARGET_BASE:
             raise RuntimeError("neighbor remap collapsed to a low address")
