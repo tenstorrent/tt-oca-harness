@@ -619,7 +619,7 @@ unaligned addresses</p></td>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>32</td><td>STATUS</td><td>R</td><td>0x0</td><td>Returns status of whether zeroer has completed.</td></tr>
+<tr><td>32</td><td>STATUS</td><td>R</td><td>0x0</td><td>Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.</td></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>INT_EN</td><td>RW</td><td>0x0</td><td>If enabled, an interrupt will be outputted once zeroer completes.</td></tr>
 </table>

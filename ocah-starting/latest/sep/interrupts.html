@@ -232,6 +232,14 @@ and <code>meigwclr</code> at <code>+0x5000</code>. Pending status is the excepti
 <code>N % 32</code> of <code>meip[N / 32]</code>.</p>
 </div>
 <div class="paragraph">
+<p>The vector driven to the core, <code>sep_internal_interrupts</code>, is indexed from 0.
+Bit <code>i</code> of that vector is PIC source <code>i + 1</code>. The core&#8217;s <code>extintsrc_req</code> port
+is numbered from 1, and the core ties source 0 to zero, so the low bit of the
+driven vector is the first programmable source. The comment directly above
+<code>NUM_INTERNAL_IRQS</code> in <code>sep_pkg.sv</code> numbers sources by that vector index, one
+less than the PIC source in the table below.</p>
+</div>
+<div class="paragraph">
 <p>Each per-source array carries an entry 0, so that the array index is the source
 ID and no off-by-one applies: <code>meipl[7]</code> is source 7. That entry is reserved and
 has no hardware behind it&#8201;&#8212;&#8201;the PIC decodes the address but ties the register
