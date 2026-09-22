@@ -108,12 +108,12 @@ python3 tools/dv/run_dv.py --dut smu --list
 python3 tools/dv/run_dv.py --dut smu --items smoke
 
 # 2. Nightly and weekly. `.github/workflows/regress.yml` runs this as the
-#    release qualification set: 65 toolchain-free leaves, one seed nightly,
+#    release qualification set: 68 toolchain-free leaves, one seed nightly,
 #    three weekly with --cov on the large runner. Their `elaboration` firmware
 #    stage only writes zero-filled preload images (Python, no toolchain).
 python3 tools/dv/run_dv.py --dut smu --items hosted
 
-# 3. The whole package: `all` adds the SEP firmware set (97 leaves). The
+# 3. The whole package: `all` adds the SEP firmware set (100 leaves). The
 #    firmware c_build stages build every image in the toolchain container
 #    (unless RISCV_TOOLCHAIN names a picolibc gcc), so make that toolchain
 #    available once first -- the container image, as below, or the rootfs
@@ -267,8 +267,8 @@ python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
 ## Enrollment
 
 `--dut smu` carries the regression: `all` is every entry of
-`testlists/all.toml` (97), `hosted` is the toolchain-free subset the workflows
-run (65), and the rest of `all` is the SEP firmware set.
+`testlists/all.toml` (100), `hosted` is the toolchain-free subset the workflows
+run (68), and the rest of `all` is the SEP firmware set.
 
 Every test entry of the testlist is in `all`, and every test module under
 `cocotb_wrapper/tests/` is enrolled. Names that cannot run or cannot pass on

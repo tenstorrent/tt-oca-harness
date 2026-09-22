@@ -4230,11 +4230,11 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |`fw_boot` |3 |The firmware boot smokes plus the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
 |`fabric` |13 |The fabric and filter leaves; every member is in `hosted`
-|`smc_under_smu` |17 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
+|`smc_under_smu` |21 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |29 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |64 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |96 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |68 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |100 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
