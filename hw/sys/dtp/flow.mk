@@ -8,6 +8,7 @@ include $(FLOW_DIR)/../../../flows/preamble.mk
 
 FLOW_DESIGN := dtp
 FLOW_BENDER_TARGETS := -t dtp
+FLOW_INTEGRATION_SIM_FROM_DV := 1
 
 include $(OCAH_ROOT)/flows/common.mk
 include $(OCAH_ROOT)/flows/lint/slang.mk
