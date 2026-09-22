@@ -105,7 +105,10 @@ setup that fails on some CI/LSF nodes (GID mismatch, no `XDG_RUNTIME_DIR`).
 
 The sandbox mounts the rootfs directories read-only under a tmpfs root, then
 binds the repo at its real host path so absolute paths work unchanged. `/tmp`
-is shared with the host; `/dev` and `/proc` are fresh.
+is shared with the host; `/dev` and `/proc` are fresh. `PATH` is
+`/usr/local/bin:/usr/bin:/bin`. Firmware recipes call `uv` by that name. When
+the rootfs has no `uv`, the host `uv` binary is mounted at `/run/ocah/uv` and
+`/run/ocah` is prepended to `PATH`.
 
 To extract a rootfs from the container image:
 
