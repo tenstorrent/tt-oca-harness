@@ -15,8 +15,9 @@ if { [info exists ::env(OCAH_SLANG_COMPAT_FLAGS)] } {
 # visible in another. scripts/run.sh loads the plugin before this driver runs.
 yosys read_slang --top $top_design -f $sv_flist \
     --single-unit --keep-hierarchy \
-    --allow-use-before-declare \
+    --allow-use-before-declare --ignore-assertions \
     {*}$slang_compat_args \
+    --unroll-limit=100000 --error-limit=100 \
     --timescale=$timescale
 
 # map the dont_touch attribute commonly applied to output nets of async regs
