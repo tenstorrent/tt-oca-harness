@@ -15,8 +15,12 @@ include $(OCAH_YOSYS_DIR)/pdks.mk
 # ocah.mk (ocah-synth-yosys-all dispatcher) and each flow.mk (ocah-synth-yosys
 # worker).
 
-OCAH_YOSYS_SYNTH_TCL := $(OCAH_YOSYS_DIR)/scripts/synth.tcl
+OCAH_YOSYS_SYNTH_TCL ?= $(OCAH_YOSYS_DIR)/scripts/synth.tcl
 OCAH_YOSYS_RUN := $(OCAH_YOSYS_DIR)/scripts/run.sh
+
+ifeq ($(filter /%, $(OCAH_YOSYS_SYNTH_TCL)),)
+OCAH_YOSYS_SYNTH_TCL := $(abspath $(OCAH_YOSYS_SYNTH_TCL))
+endif
 
 ## @section Synthesis (yosys)
 
