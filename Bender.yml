@@ -323,7 +323,7 @@ vendor_package:
   # this tree supplies its own through i3ccore_wrap.
   - name: i3c-core
     target_dir: "vendor/chipsalliance/i3c-core/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "a6361105cd3432699da636f1f5e6f1eb4df09ed2" }
+    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "288f00ea21caf929b17ec1234abc3317b7ec071f" }
     include_from_upstream:
       - "LICENSE"
       - "src"
