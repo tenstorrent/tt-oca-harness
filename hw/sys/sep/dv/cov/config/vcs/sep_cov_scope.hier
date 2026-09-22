@@ -12,10 +12,14 @@
 // instantiates it, and no SEP test states a requirement about one. Grading them
 // puts the score on plumbing the DUT does not own.
 //
-// The discriminator is `/upstream/` in the source path, NOT a `vendor/` prefix.
-// SEP's own SPI controller, TCM wrapper and clock gate live under
-// vendor/.../overlay/ and vendor/.../../../hw/, so a `vendor/` rule would drop
-// TT logic.
+// The discriminator is library CLASS, not authorship and not a path prefix: a
+// cell whose behaviour is the same in every design that instantiates it, and
+// about which no SEP test states a requirement. `/upstream/` in the source path
+// is the common case, not the rule -- the TT-owned och_prim and
+// och_prim_generic cells below are library-class too, and each block states
+// its own reason. A `vendor/` rule would be wrong in the other direction: SEP's
+// own SPI controller, TCM wrapper and clock gate live under
+// vendor/.../overlay/, so it would drop TT logic.
 //
 // Functional third-party IP stays graded regardless of authorship: AES, OTBN,
 // KMAC, CSRNG, EDN, HMAC, aon_timer, entropy_src and adams-bridge each have

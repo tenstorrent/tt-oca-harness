@@ -7,11 +7,10 @@
 The RTL evidence behind every entry in `cov/config/vcs/sep_cov_scope.hier`,
 `sep_unreachable_exclusions.el` and `sep_otbn_isa_scope_exclusions.el`.
 
-Read link:SEP_COV_VPLAN.adoc[SEP_COV_VPLAN] "Closure strategy" first: a waiver
-needs the RTL to DECLARE the arm unreachable -- a tie, a parameter, a constant,
-an unconnected port, or a generate arm that does not elaborate. A testbench-side
-tie is not a waiver. An assertion guarding the arm is the strongest evidence
-there is.
+The bar: a waiver needs the RTL to DECLARE the arm unreachable -- a tie, a
+parameter, a constant, an unconnected port, or a generate arm that does not
+elaborate. A testbench-side tie is not a waiver. An assertion guarding the arm
+is the strongest evidence there is.
 
 Each section below also carries a REJECTED list. Those are holes that looked
 waivable and are not: they stay in the denominator, and closing them is
@@ -713,6 +712,80 @@ driven by `sep_cov_axi_dw_upsizer_dma_test`. Waiving this does not touch the
 other `axi_dw_upsizer`-typed converters in SEP, which have real AXI masters in
 front of them.
 
+== REJECTED: the eight fabric-facing converter instances (stimulus, not waivable)
+
+The `axi_dw_upsizer` waiver above covers one instance and one shape: a slave
+port synthesised by `axi_lite_to_axi`, which forces a constant header. The
+other converter instances in SEP do not share that shape, and none of them is
+waivable. Verdict per instance, with the parameter site and the driver:
+
+[cols="3,2,2,1"]
+|===
+|Instance |Widths (slv -> mst) |Slave port driven by |Verdict
+
+|`u_sep_io.axi_dw_converter`
+|64 -> 32 (`sep_io.sv:48-49`)
+|local xbar master port (`sep.sv:430`, into `sep_io.sv:66`)
+|stimulus
+
+|`u_sep_io.axi_to_axi_lite`
+|32, lite (`sep_io.sv:74`)
+|the converter above (`sep_io.sv:94`)
+|stimulus
+
+|`u_sep_wdt_wrap.u_wdt_axi_dw_converter`
+|64 -> 32 (`sep_wdt_wrap.sv:56-57`)
+|local xbar master port (`sep.sv:439`, into `sep_wdt_wrap.sv:74`)
+|stimulus
+
+|`u_sep_wdt_wrap.u_wdt_axi_to_axi_lite`
+|32, lite (`sep_wdt_wrap.sv:97`)
+|the converter above (`sep_wdt_wrap.sv:110`)
+|stimulus
+
+|`u_sep_dma_wrap.u_axi_dw_downsizer_reg`
+|64 -> 32 (`sep_dma_wrap.sv:156-157`)
+|local xbar master port (`sep.sv:420` -> `:1113` `reg_req_i`, into `sep_dma_wrap.sv:174`)
+|stimulus
+
+|`u_sep_dma_wrap.u_axi_to_axi_lite_reg`
+|32, lite (`sep_dma_wrap.sv:190`)
+|the downsizer above (`sep_dma_wrap.sv:203`)
+|stimulus
+
+|`u_sep_reset_ctrl.u_axi_to_axi_lite`
+|64, lite (`sep_reset_ctrl.sv:81`)
+|local xbar master port (`sep.sv:442`, into `sep_reset_ctrl.sv:95`)
+|stimulus
+
+|`u_sep_entropy_fifo.u_axi_to_axi_lite`
+|64, lite (`sep_entropy_fifo.sv:114`)
+|local xbar master port (`sep.sv:433`, into `sep_entropy_fifo.sv:127`)
+|stimulus
+|===
+
+The three facts that decide it:
+
+. *The widths differ, so the conversion arms do elaborate.*
+  `axi_dw_converter.sv:46/51/81` selects exactly one of `gen_no_dw_conversion`,
+  `gen_dw_upsize` and `gen_dw_downsize` from the width parameters, so the
+  uncovered code in these instances is inside the arm that DID build. A
+  parameter argument cannot waive it.
+. *Every slave port is a crossbar master port.* Each one comes out of
+  `sep_local_axi_xbar_wrapper` (`sep.sv:397`), whose `ext_axi_req_i`
+  (`sep.sv:414`) is the SMN inbound full AXI4 master. `len`, `size`, `burst`
+  and `cache` pass the crossbar unchanged, so `axi_pkg::modifiable()` and the
+  burst arms are all a function of inbound stimulus, not of a tie.
+. *Nothing ties the header.* The only header ties in SEP are the three VeeR
+  masters' ATOP (`sep_cpu.sv:467-469`) and the `ATOPs(1'b0)` crossbar
+  parameters, which concern `atop` alone -- see F-FAB-2 for that hole, which is
+  a testbench gap and is also not waived here.
+
+So the 17--33% scores on these instances are a stimulus result. Closing them
+means driving multi-beat and non-INCR shapes at each aperture, subject to
+F-FAB-1: the SRAM aperture asserts against non-INCR, so a burst-shape leaf
+belongs on a converter aperture instead.
+
 == F-FAB-1: `sep_cov_xbar_wrap_burst_test` drives a shape its target declares unsupported (finding, not a waiver)
 
 *Symptom*: the leaf reports PASS but the simulator prints four vendor
@@ -740,7 +813,7 @@ well, but by design and without an assertion:
 * `axi_to_axi_lite` contains `axi_burst_splitter`, which documents at
   `axi_burst_splitter.sv:22` that it does not support wrapping bursts.
 
-*Recommended fix* (one tracked file, `cocotb/tests/system/sep_cov_xbar_wrap_burst_test.py`):
+*Recommended fix* (one tracked file, `sep_cov_xbar_wrap_burst_test`):
 retarget the WRAP accesses from `SEP_SRAM_MEM_BASE_ADDR` to the crypto
 aperture behind `u_otbn_axi_dw_converter`
 (`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:331`), and tolerate the
@@ -1171,7 +1244,7 @@ The `!enable_i` exits from `BootPostHTChk` and `BootPhaseDone`, and the
 `CTRL.MODULE_ENABLE` and `alert_thresh_fail_i` is `any_fail_count >=
 ALERT_THRESHOLD` (`hw/ip/entropy_source/rtl/entropy_source.sv:1025`, `:1031`).
 Both are software registers. Driven by
-`cocotb/tests/system/sep_cov_esrc_disable_alert_walk_test.py`.
+`sep_cov_esrc_disable_alert_walk_test`.
 +
 One honest caveat on line 107: `BootPostHTChk` is one cycle wide in this
 integration because `bypass_stage_rdy_i` is tied to `1'b1`
@@ -1192,7 +1265,7 @@ The auto-request states, the boot uninstantiate and `SWPortMode`.
 sets BOOT_REQ_MODE and AUTO_REQ_MODE together; the `Idle` arm at
 `vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_main_sm.sv:67` takes
 BOOT_REQ_MODE first, so the run never leaves the boot path. All three mode bits
-are CTRL fields. Driven by `cocotb/tests/system/sep_cov_edn_mode_walk_test.py`.
+are CTRL fields. Driven by `sep_cov_edn_mode_walk_test`.
 
 `edn_main_sm` lines 178 and 181 (`RejectCsrngEntropy`, `Error`)::
 Fault states, same reasoning as the `entropy_src_main_sm` `Error` row. Not
@@ -1206,7 +1279,7 @@ are `invalid_cmd_seq`, `invalid_acmd`, `reseed_cnt_exceeded`, the UPD and UNI
 commands, the multi-block generate walk (`GenCmdChk`/`SendMOP`) and the
 additional-data path through the main FSM. SW_APP_ENABLE is already set by the
 shared bring-up. Driven by
-`cocotb/tests/system/sep_cov_csrng_sw_cmd_walk_test.py`.
+`sep_cov_csrng_sw_cmd_walk_test`.
 
 `aes_key_expand` (58 lines) and `aes_cipher_control_fsm` (32 lines)::
 The AES-192 key schedule, the `CIPH_INV` decryption arms and the key / data
@@ -1215,7 +1288,7 @@ clear states. `hw/sys/sep/rtl/aes_wrapper.sv:134` overrides no parameter, so
 (`vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes.sv:13-15`) and the
 `if (AES192Enable)` arms at `aes_key_expand.sv:156` and `:335` elaborate.
 KEY_LEN, OPERATION and the TRIGGER clears are all CSRs. Driven by
-`cocotb/tests/crypto/sep_cov_aes_key192_dec_clear_test.py`.
+`sep_cov_aes_key192_dec_clear_test`.
 +
 The GCM arms of `aes_ghash` and `aes_control_fsm` are separately driven by the
 existing `sep_cov_aes_gcm_phase_walk_test`; this pass did not duplicate them.
@@ -1224,7 +1297,7 @@ existing `sep_cov_aes_gcm_phase_walk_test`; this pass did not duplicate them.
 `prim_sha2_32` (13)::
 The stop/continue context save and restore, the `WIPE_SECRET` wipe and the four
 software error codes. All are CMD, CFG, KEY, DIGEST and MSG_LENGTH registers.
-Driven by `cocotb/tests/crypto/sep_cov_hmac_stop_continue_test.py`.
+Driven by `sep_cov_hmac_stop_continue_test`.
 +
 `prim_sha2_pad` lines 115-128 -- the partial-final-word padding cases -- are
 reached only by a sub-word write to the MSG_FIFO window. `seq_lib/sep_kmac_seq.py`
@@ -1237,7 +1310,7 @@ still open.
 `err_swsequence`, `err_modestrength`, `err_prefix`, `err_entropy_ready`, the
 `StSqueezing` manual-run path and the ERR_CODE source mux. All are reached from
 CMD, CFG_SHADOWED and PREFIX. Driven by
-`cocotb/tests/crypto/sep_cov_kmac_err_squeeze_walk_test.py`.
+`sep_cov_kmac_err_squeeze_walk_test`.
 
 == Blocks judged already closed
 
