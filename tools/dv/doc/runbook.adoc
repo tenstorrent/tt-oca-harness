@@ -130,10 +130,10 @@ series
 |GitHub's log retention for the repository
 |===
 
-Two consequences follow. A published record's native links (`log`,
-`junit_xml`, `result_json`, coverage details) resolve only while the weekly
-artifact exists, so a record older than 30 days stands on its normalized
-content alone. And the branch is the only store that outlives the artifacts,
+Two consequences follow. A published record's native links
+(`artifacts.log`, `artifacts.result_json`, `artifacts.regression_json`, and
+the coverage `source_` paths) resolve only while the weekly artifact exists,
+so a record older than 30 days stands on its normalized content alone. And the branch is the only store that outlives the artifacts,
 which is why trend continuity lives there and why the `dashboard` workflow
 is the only writer of `latest/` and `data/`.
 
