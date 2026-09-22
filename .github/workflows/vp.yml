@@ -184,6 +184,25 @@ jobs:
           sudo docker image prune -af >/dev/null 2>&1 || true
           echo "after:"; df -h / | tail -1
 
+      # The image closure builds gcc, boost and openssl from source, and the store
+      # outgrows the root volume. Hosted runners carry a second, larger volume;
+      # put the store there when one is actually bigger.
+      - name: Put the nix store on the largest volume
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        run: |
+          df -h
+          root_free=$(df --output=avail -k / | tail -1)
+          for cand in /mnt /datadisk; do
+            [ -d "$cand" ] || continue
+            cand_free=$(df --output=avail -k "$cand" | tail -1)
+            [ "$cand_free" -gt "$root_free" ] || continue
+            echo "nix store -> $cand (${cand_free}K free, / has ${root_free}K)"
+            sudo mkdir -p "$cand/nix" /nix
+            sudo mount --bind "$cand/nix" /nix
+            break
+          done
+          df -h /nix 2>/dev/null || true
+
       # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
       # back to pulling docker.io/nixos/nix and building inside it otherwise.
       # The fallback builds the whole closure from scratch on every job and does
@@ -236,7 +255,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
-          key: ocah-image-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
+          # The variant belongs in the key: the two images share every hashed input,
+          # so without it a restore hands back the wrong one and the save is declined
+          # as a duplicate, leaving the image rebuilt from source on every run.
+          key: ocah-image-uv-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
 
       # Only the native leg builds dependencies, so only it has anything to
       # cache. The container carries SystemC,
@@ -477,6 +499,25 @@ jobs:
           sudo docker image prune -af >/dev/null 2>&1 || true
           echo "after:"; df -h / | tail -1
 
+      # The image closure builds gcc, boost and openssl from source, and the store
+      # outgrows the root volume. Hosted runners carry a second, larger volume;
+      # put the store there when one is actually bigger.
+      - name: Put the nix store on the largest volume
+        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        run: |
+          df -h
+          root_free=$(df --output=avail -k / | tail -1)
+          for cand in /mnt /datadisk; do
+            [ -d "$cand" ] || continue
+            cand_free=$(df --output=avail -k "$cand" | tail -1)
+            [ "$cand_free" -gt "$root_free" ] || continue
+            echo "nix store -> $cand (${cand_free}K free, / has ${root_free}K)"
+            sudo mkdir -p "$cand/nix" /nix
+            sudo mount --bind "$cand/nix" /nix
+            break
+          done
+          df -h /nix 2>/dev/null || true
+
       # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
       # back to pulling docker.io/nixos/nix and building inside it otherwise.
       # The fallback builds the whole closure from scratch on every job and does
@@ -536,7 +577,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/ocah-image-cache
-          key: ocah-image-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
+          # The variant belongs in the key: the two images share every hashed input,
+          # so without it a restore hands back the wrong one and the save is declined
+          # as a duplicate, leaving the image rebuilt from source on every run.
+          key: ocah-image-uv-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}
 
       # Its OWN key, not the sep-vp job's: local*/ here also holds the Whisper
       # tree, so a shared key would let whichever job saved first decide whether
