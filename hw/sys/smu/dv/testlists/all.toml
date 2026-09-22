@@ -2306,7 +2306,7 @@ tests = [
   "smu_sep_secure_tm_test",
   "smu_axi_in_attribute_sweep_test",
 ]
-expected_count = 69
+expected_count = 70
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -2419,7 +2419,7 @@ tests = [
   "smu_sep_secure_tm_test",
   "smu_axi_in_attribute_sweep_test",
 ]
-expected_count = 101
+expected_count = 102
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

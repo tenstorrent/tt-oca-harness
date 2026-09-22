@@ -50,8 +50,10 @@ SEP_TDO = "u_dut.u_smu.gen_sep.u_sep.jtag_tdo_o"
 
 
 def pack_dmi(addr: int, data: int, op: int, *, abits: int = DMI_ABITS) -> int:
-    return ((int(addr) & ((1 << abits) - 1)) << 34) | ((int(data) & 0xFFFF_FFFF) << 2) | (
-        int(op) & 0x3
+    return (
+        ((int(addr) & ((1 << abits) - 1)) << 34)
+        | ((int(data) & 0xFFFF_FFFF) << 2)
+        | (int(op) & 0x3)
     )
 
 
@@ -218,8 +220,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
         )
         if status != 0:
             raise AssertionError(
-                f"DMI dmstatus status={status} data=0x{data:08x} "
-                f"(IR=5'h11 through dmi_mux)"
+                f"DMI dmstatus status={status} data=0x{data:08x} (IR=5'h11 through dmi_mux)"
             )
         if version == 0:
             raise AssertionError(
