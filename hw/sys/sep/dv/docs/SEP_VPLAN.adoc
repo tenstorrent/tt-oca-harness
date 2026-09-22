@@ -273,7 +273,7 @@ never when it was written.
 |`sep_periph_bus_err_misaligned_reveal_test`
 |no_cpu
 |ocah_axi_vip
-|EXPECTED FAIL. Asserts the misaligned-offset latch condition `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` state for the bus-error status registers. The fabric refuses a misaligned in-extent beat with DECERR, so no TL-UL error reaches the block and no bit latches.
+|A misaligned in-extent access. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's `PERIPH_BUS_ERR_STATUS` bit. The fabric returns DECERR and the bit stays 0.
 |`sep_drbg_real_sink_multi_km_aes_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, entropy golden
@@ -2230,7 +2230,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of both status registers are not claimed here. The misaligned term is revealed as unimplemented by <<sep_periph_bus_err_misaligned_reveal_test>>, which fails by design against the documented contract.
+*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of both status registers are not claimed here. The misaligned-offset term is <<sep_periph_bus_err_misaligned_reveal_test>>.
 
 '''''
 
@@ -2245,7 +2245,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Reveals that the misaligned-offset latch condition stated for `PERIPH_BUS_ERR_STATUS` does not exist. `sep_cpu_ctrl.rdl:383` and `doc/interrupts.adoc:241` require a misaligned CPU access to a block's registers to receive SLVERR and latch that block's status bit; the fabric refuses the beat with DECERR instead, so no TL-UL error reaches the block and nothing latches.
+*Objective*: A misaligned CPU access inside a mapped register extent. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit. The fabric returns DECERR, so no TL-UL error reaches the block and the bit stays 0.
 
 *Test Coverage*: The misaligned-offset term of the bus-error status contract.
 
@@ -2264,10 +2264,10 @@ recovery. Those are listed in <<phase-3>>.
 |CHK-MISALIGN-BASE
 |`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. Guards the reveal against a bit left set by an earlier step.
 |CHK-MISALIGN-LATCH
-|A misaligned in-extent access receives SLVERR and latches the owning block's bit. **Fails**: the access returns DECERR and the register stays 0.
+|A misaligned in-extent access receives SLVERR and latches the owning block's bit. The fabric returns DECERR and the register stays 0.
 |===
 
-*Pass Criteria*: **EXPECTED FAIL.** This leaf asserts the contract as written, not the behaviour as built. The leaf is left unmarked so a run of `all` stays a visible fail; a spec-vs-RTL gap is not masked as `expect_fail`. It turns green only when the gap is resolved, at which point it is folded into <<sep_irq_ip_to_aggregator_test>> and the contract is claimed there, or deleted with the documentation correction.
+*Pass Criteria*: CHK-MISALIGN-BASE reads 0. CHK-MISALIGN-LATCH requires SLVERR and the owning block's bit. The fabric returns DECERR and the register stays 0.
 
 *Not claimed*: the same term on the DMA register path (`reg_path_err`), and the access-control (RACL) term of either register — RACL is disabled in this design with its error output unconnected, so that term is unreachable for a separate reason.
 

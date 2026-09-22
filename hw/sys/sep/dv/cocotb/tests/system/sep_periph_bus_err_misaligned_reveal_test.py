@@ -1,12 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PERIPH_BUS_ERR_STATUS must latch on a misaligned offset.
+"""PERIPH_BUS_ERR_STATUS on a misaligned offset.
 
-EXPECTED FAIL. The contract is sep_cpu_ctrl.rdl:383 and doc/interrupts.adoc:241:
-a CPU access at a misaligned offset is a TL-UL error, receives SLVERR, and
-latches that block's bit. The DUT does not do this. The leaf is left unmarked
-so a run of `all` stays a visible fail; a spec-vs-RTL gap is not masked as
-`expect_fail`.
+sep_cpu_ctrl.rdl and doc/interrupts.adoc require SLVERR and the owning
+block's bit. The fabric returns DECERR and the bit stays 0.
 """
 
 from __future__ import annotations
