@@ -2938,7 +2938,7 @@ the run directory, so a copied or downloaded tree describes itself:
 raw overall figure; `threshold` and `threshold_met`; `metrics`, the
 parser's per-family figures overlaid with the effective percentage of every
 family that has point records; `raw_metrics` and `effective_metrics` per
-family; `policy_thresholds`; `holes_summary`; `comparison_key`,
+family; `policy_thresholds`; the `holes_summary` counts; `comparison_key`,
 `scope_fingerprint`, and `policy_fingerprint`; `target` and
 `build_fingerprint`; the tool version and supported metrics; and the paths
 of the files below.
@@ -2947,8 +2947,9 @@ of the files below.
 |`2`
 |The merge manifest (<<runner-coverage-inputs>>) and, once the report has
 run, the grade: `status`, `metrics`, `overall_percent`, `threshold`,
-`threshold_met`, `policy_thresholds`, `holes_summary`, the fingerprints, and
-the merge and report return codes, with `artifacts.report_raw` when the
+`threshold_met`, `policy_thresholds`, the `holes_summary` counts, the
+fingerprints, and the merge and report return codes, with
+`artifacts.report_raw` when the
 report ran without its exclusion inputs as well. A combined run's manifest
 lists the runs as its inputs (`selection_source` of `run_dirs`) and carries
 the `combine` block (<<runner-cov-combine>>).
@@ -2960,9 +2961,9 @@ the `combine` block (<<runner-cov-combine>>).
 outcome per rule that applies to the run's tool and target, with
 `actual_percent`, `unclassified_points`, and `met`),
 `metrics`, `holes_summary` (`open`, `accepted`, `unclassified`, counts by
-metric, category, disposition, and status, and up to 100 sample holes),
-`comparison_key`, `scope_fingerprint`, `policy_fingerprint`, and the artifact
-paths.
+metric, category, disposition, and status, and up to 100 sample holes, which
+this file alone carries), `comparison_key`, `scope_fingerprint`,
+`policy_fingerprint`, and the artifact paths.
 
 |`cov/report/coverage-details.json`
 |`1`
