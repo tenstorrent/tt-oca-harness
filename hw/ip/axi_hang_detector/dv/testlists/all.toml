@@ -13,7 +13,7 @@ name = "ahd_sanity_test"
 module = { cocotb = "ahd_sanity_test" }
 seed = 1
 timeout_sec = 600
-tags = ["smoke", "ci", "ahd"]
+tags = ["smoke", "ci", "hang"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -21,7 +21,7 @@ name = "ahd_config_corners_test"
 module = { cocotb = "ahd_config_corners_test" }
 seed = 1
 timeout_sec = 600
-tags = ["ci", "ahd"]
+tags = ["ci", "hang"]
 run_modes = ["functional"]
 
 [[tests]]
@@ -29,7 +29,7 @@ name = "ahd_threshold_latch_test"
 module = { cocotb = "ahd_threshold_latch_test" }
 seed = 1
 timeout_sec = 600
-tags = ["ci", "ahd"]
+tags = ["ci", "hang"]
 run_modes = ["functional"]
 
 [[tests]]
@@ -37,7 +37,7 @@ name = "ahd_threshold_zero_rearm_test"
 module = { cocotb = "ahd_threshold_zero_rearm_test" }
 seed = 1
 timeout_sec = 600
-tags = ["ci", "ahd"]
+tags = ["ci", "hang"]
 run_modes = ["functional"]
 
 [[tests]]
@@ -45,7 +45,7 @@ name = "ahd_bus_progress_test"
 module = { cocotb = "ahd_bus_progress_test" }
 seed = 1
 timeout_sec = 600
-tags = ["ci", "ahd"]
+tags = ["ci", "hang"]
 run_modes = ["functional"]
 
 [[groups]]
