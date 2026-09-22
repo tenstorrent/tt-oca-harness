@@ -23,7 +23,14 @@ _MAX_SENSE_CYCLES = 20_000
 
 @pyuvm.test()
 class sep_efuse_jtag_window_allow_test(sep_base_test):
-    """TEST_DEV JTAG reads of shadow and EFUSE_PROGRAM_CTRL return OKAY."""
+    """TEST_DEV JTAG reads of shadow and EFUSE_PROGRAM_CTRL return OKAY.
+
+    The LSU scoreboard counts CPU-master transactions. This leaf's
+    transactions are on the JTAG AXI-Lite port, so that scoreboard is not
+    built. The CHK lines are the verdict.
+    """
+
+    build_env = False
 
     async def _allow(self, label: str, addr: int) -> None:
         code, rdata = await self.jtag_axil_op(write=False, addr=addr)
