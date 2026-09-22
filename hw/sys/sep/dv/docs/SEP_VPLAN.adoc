@@ -2262,7 +2262,7 @@ recovery. Those are listed in <<phase-3>>.
 |===
 |Checker |Contract
 |CHK-MISALIGN-BASE
-|`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. Guards the reveal against a bit left set by an earlier step.
+|`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. A bit left set by an earlier step fails here.
 |CHK-MISALIGN-LATCH
 |A misaligned in-extent access receives SLVERR and latches the owning block's bit. The fabric returns DECERR and the register stays 0.
 |===
