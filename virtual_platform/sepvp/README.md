@@ -39,7 +39,24 @@ make fw-run FW_TEST=hello_world
 # The pytest suite:
 make vp-test                                 # builds firmware, runs everything
 make vp-test PYTEST_ARGS="--no-build -k bootcode"
+make vp-test-host                            # only the suites needing no VP or firmware
 ```
+
+### In the container
+
+Those commands use the host toolchain. `VP_CONTAINER=1` runs them in the OCAH
+image instead; [`../README.md`](../README.md) covers building it.
+
+```bash
+make vp-test VP_CONTAINER=1
+make boot-run VP_CONTAINER=1 BOOT_ARGS="--boot primary"
+```
+
+The flag covers the run targets, not just the builds: a container-built `sep-vp`
+links the image's glibc and has to run there too. Build trees carry the same
+environment tag (`build-ctr/`, `local-ctr/`), so a native invocation does not see
+a container build and tries to compile its own — on a host with no C++20
+compiler that surfaces as a `check-cxx` failure rather than as the missing flag.
 
 Or drive the CLI directly:
 
