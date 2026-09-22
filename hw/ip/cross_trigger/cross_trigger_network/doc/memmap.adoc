@@ -44,3 +44,18 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 include::../../cross_trigger_port/regs/gen/adoc/cross_trigger_port.adoc[leveloffset=+2]
 endif::backend-pdf[]
+
+=== Composite Network Registers
+
+This map gives the CTM and CTP register offsets within the generated CTN
+composition. The individual block maps above give offsets within each block.
+
+ifdef::backend-html5[]
+++++
+include::partial$cross_trigger_network/regs/gen/html/cross_trigger_network.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/cross_trigger_network.adoc[leveloffset=+2]
+endif::backend-pdf[]

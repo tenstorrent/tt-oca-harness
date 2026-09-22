@@ -47,9 +47,13 @@ pads, minimizing the risk of unintended external drive or contention.
 ifdef::backend-html5[]
 ++++
 include::partial$gpio/regs/gen/html/gpio_intf.html[]
+include::partial$gpio/regs/gen/html/gpio_ctrl.html[]
+include::partial$gpio/regs/gen/html/gpio_wrap.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 include::../regs/gen/adoc/gpio_intf.adoc[leveloffset=+2]
+include::../regs/gen/adoc/gpio_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/gpio_wrap.adoc[leveloffset=+2]
 endif::backend-pdf[]

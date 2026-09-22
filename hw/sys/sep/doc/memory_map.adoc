@@ -227,12 +227,30 @@ ifdef::backend-html5[]
 ++++
 include::ip:partial$key_manager/regs/gen/html/key_manager.html[]
 include::ip:partial$key_manager/regs/gen/html/km_csr.html[]
+include::ip:partial$key_manager/regs/gen/html/km_kpv.html[]
+include::ip:partial$key_manager/regs/gen/html/km_drbg_sampler.html[]
+include::ip:partial$key_manager/regs/gen/html/km_mailbox_km.html[]
+include::ip:partial$key_manager/regs/gen/html/km_mailbox_sep.html[]
+include::ip:partial$key_manager/regs/gen/html/abr_wrapper_key.html[]
+include::ip:partial$key_manager/regs/gen/html/aes_wrapper_key.html[]
+include::ip:partial$key_manager/regs/gen/html/hmac_wrapper_key.html[]
+include::ip:partial$key_manager/regs/gen/html/kmac_wrapper_key.html[]
+include::ip:partial$key_manager/regs/gen/html/otbn_wrapper_key.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 include::../../../ip/key_manager/regs/gen/adoc/key_manager.adoc[leveloffset=+2]
 include::../../../ip/key_manager/regs/gen/adoc/km_csr.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_kpv.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_drbg_sampler.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_mailbox_km.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_mailbox_sep.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/abr_wrapper_key.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/aes_wrapper_key.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/hmac_wrapper_key.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/kmac_wrapper_key.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/otbn_wrapper_key.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Secure DMA
@@ -264,4 +282,20 @@ endif::backend-html5[]
 
 ifdef::backend-pdf[]
 include::../../../../vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc[leveloffset=+2]
+endif::backend-pdf[]
+
+=== External Window Reference Model
+
+The SEP external-window model supplies the eFuse SHIM control register below.
+Its execute-in-place region is a memory window rather than a register bank.
+Adopter-specific external devices require their own register documentation.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/dv/models/regs/gen/html/sep_external.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../dv/models/regs/gen/adoc/sep_external.adoc[leveloffset=+2]
 endif::backend-pdf[]

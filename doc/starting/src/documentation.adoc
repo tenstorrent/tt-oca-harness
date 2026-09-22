@@ -40,6 +40,12 @@ When including one, set `leveloffset` to the level of the containing section so
 both stay beneath it; for example, beneath `=== Detailed Register Map`, use
 `include::../regs/gen/adoc/example.adoc[leveloffset=+2]`.
 
+The TRM PDF build checks every generated register map in the open register
+inventory against the assembled document. A missing map, missing register
+section, or section deeper than the contents or bookmark limit fails the build.
+Include new maps under their owning block and keep integration reference models
+labelled as such.
+
 === Updating documentation
 
 Document updates are made by pushing changes to `main`.

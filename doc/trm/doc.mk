@@ -14,6 +14,8 @@ OCAH_TRM_DIST ?= $(OCAH_TRM_DIR)/dist
 OCAH_TRM_PLAYBOOK ?= $(OCAH_ROOT)/antora-trm-playbook.yml
 OCAH_TRM_PDF ?= ocah-trm.pdf
 OCAH_TRM_SERVE_PORT ?= 8000
+OCAH_TRM_REG_MAPS = $(sort $(filter $(OCAH_ROOT)/hw/% $(OCAH_ROOT)/vendor/%,\
+  $(foreach block,$(OCAH_REG_BLOCKS),$(call ocah_reg_adoc_target,$(block)))))
 
 .PHONY: ocah-doc-trm-meta
 ocah-doc-trm-meta:
@@ -64,8 +66,11 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF))."; echo "install asciidoctor-pdf, or run:"; echo "  ./scripts/docker-run.sh doc-pdf trm"; exit 1; }
 	@echo "Building TRM PDF documentation (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_TRM_BUILD)/latex" "$(OCAH_TRM_DIST)"
+	@printf '%s\n' $(foreach path,$(OCAH_TRM_REG_MAPS),"$(path)") > "$(OCAH_TRM_BUILD)/register-maps.txt"
 	@rm -rf "$(OCAH_TRM_SRC)/assets" && ln -s ../assets "$(OCAH_TRM_SRC)/assets"
 	@cd "$(OCAH_TRM_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+		-r "$(OCAH_ROOT)/tools/doc/register_map_coverage.rb" \
+		-a register-map-manifest="$(OCAH_TRM_BUILD)/register-maps.txt" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=9 -a outlinelevels=9 \
 		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \
