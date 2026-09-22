@@ -232,6 +232,14 @@ jobs:
             libssl-dev \
             gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
 
+      # The bootrom Makefile branches on RISCV_TOOLCHAIN, not on the picolibc
+      # probe below: left unset, its toolchain-images recipe dispatches to
+      # `docker-run.sh run-here` even though the runner's toolchain is usable.
+      # It wants a bin dir; RISCV_PREFIX resolves itself from what it finds there.
+      - name: Point the bootrom at the runner's RISC-V toolchain
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'native'
+        run: echo "RISCV_TOOLCHAIN=/usr/bin" >> "$GITHUB_ENV"
+
       # local*/ holds SystemC and CCI compiled by a specific g++, and
       # VP_CONFIG_SIG invalidation only wipes build*/, never local*/. A local/
       # restored from a cache built by a different compiler would be reused
@@ -288,11 +296,11 @@ jobs:
         run: make -C virtual_platform vp-py-deps
 
       # `ensure`, not `build`: build always rebuilds, ensure reuses a matching
-      # local image, then the cached tarball, then builds and publishes. The
-      # native leg needs it too -- fw_make dispatches the ROM/DV firmware builds
-      # to `docker-run.sh run-here` when the host toolchain lacks picolibc.
+      # local image, then the cached tarball, then builds and publishes.
+      # Container leg only: with RISCV_TOOLCHAIN set above, the native leg builds
+      # firmware in place and never reaches for the image.
       - name: Provision toolchain image
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
+        if: env.HAVE_SUBMODULE_TOKEN == 'true' && matrix.mode == 'container'
         run: ./scripts/docker-run.sh ensure
 
       - name: Check toolchains
@@ -319,9 +327,20 @@ jobs:
           if run_probe 2>/dev/null; then
             echo "picolibc: riscv64-unknown-elf-gcc works $where; firmware builds there" \
               | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ matrix.mode }}" = "native" ]; then
+            # Assert rather than report: a fallback costs a 2 h image build this
+            # leg otherwise never needs.
+            echo "::error::no usable riscv64-unknown-elf-gcc on the runner; the native leg would fall back to the toolchain image"
+            exit 1
           else
             echo "picolibc: no usable riscv64-unknown-elf-gcc $where; fw_make falls back to \`docker-run.sh run-here\`" \
               | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ "${{ matrix.mode }}" = "native" ]; then
+            test -x "${RISCV_TOOLCHAIN}/riscv64-unknown-elf-gcc" || {
+              echo "::error::RISCV_TOOLCHAIN=${RISCV_TOOLCHAIN} holds no riscv64-unknown-elf-gcc; the bootrom would dispatch to the container"
+              exit 1
+            }
           fi
 
       - name: Build sep-vp
