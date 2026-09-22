@@ -56,6 +56,8 @@
     }
 
     function render() {
+      var embedded = document.querySelector('.toc.embedded');
+      var height = embedded ? embedded.offsetHeight : 0;
       menus.forEach(function (entries) {
         entries.forEach(function (entry) {
           entry.item.hidden = !!entry.parent && (entry.parent.item.hidden || !expanded.get(entry.parent.link.hash));
@@ -65,6 +67,16 @@
         });
         highlight(entries);
       });
+
+      // Expanding the inline contents moves every section below it.
+      if (embedded && embedded.offsetHeight !== height) {
+        var target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+        if (target) {
+          var toolbar = document.querySelector('.toolbar');
+          var inset = toolbar ? toolbar.getBoundingClientRect().bottom : 0;
+          window.scrollTo({ top: window.scrollY + target.getBoundingClientRect().top - inset, behavior: 'instant' });
+        }
+      }
     }
 
     function revealHash() {
