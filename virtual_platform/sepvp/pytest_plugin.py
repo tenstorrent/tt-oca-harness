@@ -182,12 +182,17 @@ def bootcode_elf(request):
     modeled). The named variant target is used instead of `all` because oca-images
     needs uv + the tt-oca-manifest submodule, which the ELF does not."""
     if request.config.getoption("build"):
+        # container_ok=False because the bootrom Makefile splits the work itself:
+        # key-digests reads PEMs with cryptography on the host, then it dispatches
+        # only the compile into the sandbox. Wrapping the whole make in the sandbox
+        # runs key-digests there too, against a python that has no cryptography.
         res = _make(
             request.config,
             "-C",
             str(paths.BOOTCODE_DIR),
             "ot-toolchain-images",
             cwd=paths.OCAH_ROOT,
+            container_ok=False,
         )
         if res.returncode != 0:
             pytest.fail(f"bootcode build failed:\n{res.stdout[-2000:]}\n{res.stderr[-2000:]}")
