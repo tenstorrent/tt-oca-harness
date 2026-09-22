@@ -774,7 +774,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset is claimed for the HMAC, KMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. A reset of OTBN, AES, or KMAC also flushes the shared crypto EDN adapter: an outstanding `edn_req` drops with no `edn_ack`, and a sibling client is still granted afterwards. Drain-before-reset is claimed for the HMAC, KMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
@@ -2996,9 +2996,9 @@ one word and parks, which is enough for the legality check to execute.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact. The HMAC, KMAC and Adams Bridge domains also grade drain-before-reset. ABR grades the JTAG `IC_RESET` override on this leaf; its live-result isolation is on <<sep_abr_mlkem_kat_test>>.
+*Objective*: Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact. A reset of OTBN, AES, or KMAC flushes the shared crypto EDN adapter for one cycle, so an outstanding `edn_req` is cancelled instead of acknowledged. The HMAC, KMAC and Adams Bridge domains also grade drain-before-reset. ABR grades the JTAG `IC_RESET` override on this leaf; its live-result isolation is on <<sep_abr_mlkem_kat_test>>.
 
-*Test Coverage*: Per-IP software reset; neighbour crypto result survives bit-exact; HMAC, KMAC and ABR drain-before-reset; ABR JTAG override.
+*Test Coverage*: Per-IP software reset; neighbour crypto result survives bit-exact; crypto EDN request cancelled on OTBN, AES, and KMAC reset; HMAC, KMAC and ABR drain-before-reset; ABR JTAG override.
 
 *Test Procedure*:
 
@@ -3008,6 +3008,7 @@ one word and parks, which is enough for the legality check to execute.
 . Hold HMAC in software reset and prove the same `DIGEST_0` read and a `CFG` write complete SLVERR, while the sibling AES port stays OKAY.
 . Hold the KMAC reset and prove the gated reset waits for both its host and Key Manager paths to isolate, that in-flight host reads resolve, and that a read arriving inside the window resolves.
 . Hold the Adams Bridge reset and prove the gated reset waits for both the full-AXI host path and the shared Key Manager path to isolate, that in-flight host reads resolve, and that the JTAG override holds the domain while `SW_RESET_N` still shows it released.
+. Before EDN is enabled, hold an OTBN URND request and an AES request. Resetting the requester drops that request with `edn_ack` low. A KMAC reset in the same window leaves the AES request high. With OTBN then held in reset, enabling EDN still grants AES, and releasing OTBN lets URND be granted.
 
 *Checkers*:
 
@@ -3078,6 +3079,14 @@ releases. Both mux directions are graded.
 |A read issued on the first cycle a probe shows the KMAC drain window open also resolves OKAY or SLVERR. Fails explicitly if no window was ever observed, so the property cannot be satisfied by re-scoring the pre-request batch.
 |CHK-TRNG-NEIGHBORS
 |Parking the shared TRNG reset holds the TRNG `SW_RESET_N` bit and leaves the five accelerator bits released (OTBN, AES, HMAC, KMAC, ABR). HMAC DIGEST and AES DATA_OUT stay unchanged in that window. KMAC STATE, OTBN `LOAD_CHECKSUM` and the ABR datapath are not sampled here.
+|CHK-EDN-PEND
+|Before EDN is enabled, OTBN URND `edn_req` is high and `edn_ack` is low. `CHK-EDN-PEND-AES` is the same contract for the AES client, armed by a PRNG reseed that cannot yet be granted.
+|CHK-EDN-FLUSH
+|Resetting OTBN drops URND `edn_req` and URND `edn_ack` stays low. `CHK-EDN-FLUSH-AES` is the same contract for AES. `CHK-EDN-FLUSH-KMAC` resets KMAC while AES is still requesting: AES `edn_req` stays high and AES `edn_ack` stays low, so the shared adapter flush does not cancel or acknowledge a sibling.
+|CHK-EDN-SIBLING
+|With OTBN held in reset after that flush, and EDN enabled, AES receives `edn_ack`. URND `edn_req` and `edn_ack` stay low for the whole wait, so the cancelled request is not acknowledged once entropy is flowing.
+|CHK-EDN-REARM
+|Releasing OTBN lets URND assert `edn_req` again and receive `edn_ack`.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 

@@ -84,6 +84,16 @@ Isolation proof (both directions, then the remaining isolated bits):
                     TRNG-only reset. SW_RESET_N inside the window shows the
                     TRNG bit held and the five accelerator bits released
                     (OTBN, AES, HMAC, KMAC, ABR).
+  * CHK-EDN-PEND / CHK-EDN-PEND-AES  before EDN is enabled, OTBN URND and
+                    AES each hold ``edn_req`` with ``edn_ack`` low.
+  * CHK-EDN-FLUSH / CHK-EDN-FLUSH-AES  resetting that requester drops its
+                    ``edn_req`` and ``edn_ack`` stays low.
+  * CHK-EDN-FLUSH-KMAC  a KMAC reset while AES is requesting leaves the AES
+                    ``edn_req`` high and the AES ``edn_ack`` low.
+  * CHK-EDN-SIBLING  after entropy is up, with OTBN still in reset, AES
+                    receives ``edn_ack`` and the OTBN URND handshake stays low.
+  * CHK-EDN-REARM  releasing OTBN lets URND request again and receive
+                    ``edn_ack``.
 
 Reference: sep_clock_uvm_sw_reset_per_ip_test --
 the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
@@ -106,14 +116,14 @@ import hashlib
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, with_timeout
+from cocotb.triggers import ClockCycles, RisingEdge, with_timeout
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC
 from seq_lib.sep_abr_mlkem_seq import MLKEM_STATUS
-from seq_lib.sep_aes_seq import AES_DATA_OUT_0, SepAes
+from seq_lib.sep_aes_seq import AES_DATA_OUT_0, AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
 from seq_lib.sep_crypto_reset_iso_seq import (
     ENG_AES,
     ENG_HMAC,
@@ -151,6 +161,20 @@ OTBN_DMEM_MARK = 0xD3E00D3E
 KMAC_STATUS_RESET = KMAC.reset32("STATUS")
 
 _ZERO_DIGEST = [0] * 8
+# crypto_edn_req/ack client index. AES, KMAC, OTBN RND, OTBN URND.
+_EDN_AES = 0
+_EDN_URND = 3
+# Cold OTBN raises URND edn_req and holds it until an ack. Bound the wait;
+# a client that never requests fails here rather than spinning.
+_EDN_PEND_CYCLES = 50_000
+# After the requester's edn_req has fallen, sample long enough to cover the
+# one-cycle adapter flush and the cycles after it.
+_EDN_QUIET_CYCLES = 40
+# Isolate-before-reset can take longer than the flush itself. This bound is
+# only the wait for edn_req to fall, not the quiet sample.
+_EDN_DROP_CYCLES = 2_000
+# AES masking reseed ack after EDN is enabled. Above a real grant, below a hang.
+_EDN_ACK_CYCLES = 200_000
 
 
 def sha256_digest_words(msg_words: list[int]) -> list[int]:
@@ -346,22 +370,170 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await self.rst.release_resets()
         await ClockCycles(cocotb.top.clk_i, 40)
 
+    def _edn_level(self, sig) -> int:
+        if not sig.value.is_resolvable:
+            raise AssertionError(f"{sig._name} is X/Z")
+        return int(sig.value)
+
+    def _edn_req(self) -> int:
+        return self._edn_level(cocotb.top.crypto_edn_req_o)
+
+    def _edn_ack(self) -> int:
+        return self._edn_level(cocotb.top.crypto_edn_ack_o)
+
+    async def _wait_edn_req(self, bit: int, high: bool, cycles: int, what: str) -> None:
+        for _ in range(cycles):
+            if bool(self._edn_req() & (1 << bit)) == high:
+                return
+            await RisingEdge(cocotb.top.clk_i)
+        raise AssertionError(
+            f"{what} edn_req bit {bit} did not go {'high' if high else 'low'} "
+            f"in {cycles} cycles (req=0x{self._edn_req():x} ack=0x{self._edn_ack():x})"
+        )
+
+    async def _sample_edn(self, bit: int, *, req_high: bool, cycles: int, what: str) -> None:
+        """Every cycle of the window: this client's ack stays low, and its req
+        stays at the level the reset is required to leave."""
+        for _ in range(cycles):
+            req = self._edn_req()
+            ack = self._edn_ack()
+            if ack & (1 << bit):
+                raise AssertionError(
+                    f"{what}: edn_ack bit {bit} high (req=0x{req:x} ack=0x{ack:x})"
+                )
+            if bool(req & (1 << bit)) != req_high:
+                raise AssertionError(
+                    f"{what}: edn_req bit {bit} is {'low' if req_high else 'high'} "
+                    f"(req=0x{req:x} ack=0x{ack:x})"
+                )
+            await RisingEdge(cocotb.top.clk_i)
+
+    async def _prove_edn_cancel_before_grant(self) -> None:
+        """Cancel an EDN request that has not been granted.
+
+        EDN is still disabled, so a high ``edn_req`` with a low ``edn_ack`` is
+        an outstanding request. Resetting that client must drop the request
+        without an ack. A different client's reset pulses the same shared
+        adapter clear and must leave this request asserted.
+        """
+        await self._wait_edn_req(_EDN_URND, True, _EDN_PEND_CYCLES, "OTBN URND")
+        if self._edn_ack() & (1 << _EDN_URND):
+            raise AssertionError("OTBN URND edn_ack before EDN is enabled")
+        self.logger.info(
+            "CHK-EDN-PEND PASS: OTBN URND edn_req high and edn_ack low before EDN is enabled"
+        )
+
+        await self.rst.assert_reset(ENG_OTBN.rst_bit)
+        await self._wait_edn_req(_EDN_URND, False, _EDN_DROP_CYCLES, "OTBN URND after reset")
+        await self._sample_edn(
+            _EDN_URND, req_high=False, cycles=_EDN_QUIET_CYCLES, what="CHK-EDN-FLUSH OTBN"
+        )
+        self.logger.info("CHK-EDN-FLUSH PASS: OTBN reset dropped URND edn_req and edn_ack stayed 0")
+        await self.rst.release_resets()
+
+        # The trigger bit raises edn_req and holds it until EDN grants the reseed.
+        # Waiting for AES idle here cannot finish: EDN is still disabled.
+        await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
+        await self._wait_edn_req(_EDN_AES, True, _EDN_PEND_CYCLES, "AES")
+        if self._edn_ack() & (1 << _EDN_AES):
+            raise AssertionError("AES edn_ack before EDN is enabled")
+        self.logger.info(
+            "CHK-EDN-PEND-AES PASS: AES edn_req high and edn_ack low before EDN is enabled"
+        )
+
+        await self.rst.assert_reset(ENG_KMAC.rst_bit)
+        await self._sample_edn(
+            _EDN_AES,
+            req_high=True,
+            cycles=_EDN_DROP_CYCLES,
+            what="CHK-EDN-FLUSH KMAC sibling",
+        )
+        self.logger.info(
+            "CHK-EDN-FLUSH-KMAC PASS: KMAC reset left the pending AES edn_req high "
+            "and AES edn_ack low"
+        )
+        await self.rst.release_resets()
+
+        await self._wait_edn_req(_EDN_AES, True, _EDN_DROP_CYCLES, "AES still pending")
+        await self.rst.assert_reset(ENG_AES.rst_bit)
+        await self._wait_edn_req(_EDN_AES, False, _EDN_DROP_CYCLES, "AES after reset")
+        await self._sample_edn(
+            _EDN_AES, req_high=False, cycles=_EDN_QUIET_CYCLES, what="CHK-EDN-FLUSH AES"
+        )
+        self.logger.info(
+            "CHK-EDN-FLUSH-AES PASS: AES reset dropped AES edn_req and edn_ack stayed 0"
+        )
+        # Leave OTBN in reset across entropy bring-up. assert_reset restores
+        # every other engine, including AES, to the released default.
+        await self.rst.assert_reset(ENG_OTBN.rst_bit)
+        await self._wait_edn_req(_EDN_URND, False, _EDN_DROP_CYCLES, "OTBN held")
+
+    async def _prove_edn_sibling_after_flush(self) -> None:
+        """With OTBN held in reset, AES must still be granted, and the cancelled
+        URND request must not be acknowledged. Releasing OTBN must let URND
+        request and be acknowledged again."""
+        await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
+        granted = False
+        for _ in range(_EDN_ACK_CYCLES):
+            req = self._edn_req()
+            ack = self._edn_ack()
+            if ack & (1 << _EDN_URND) or req & (1 << _EDN_URND):
+                raise AssertionError(
+                    "CHK-EDN-SIBLING FAIL: URND handshake while OTBN is in reset "
+                    f"(req=0x{req:x} ack=0x{ack:x})"
+                )
+            if ack & (1 << _EDN_AES):
+                granted = True
+            if granted and not (req & (1 << _EDN_AES)):
+                break
+            await RisingEdge(cocotb.top.clk_i)
+        else:
+            raise AssertionError(
+                "CHK-EDN-SIBLING FAIL: AES edn_req was not granted while OTBN is in reset "
+                f"(req=0x{self._edn_req():x} ack=0x{self._edn_ack():x})"
+            )
+        await self._sample_edn(
+            _EDN_URND, req_high=False, cycles=_EDN_QUIET_CYCLES, what="CHK-EDN-SIBLING"
+        )
+        self.logger.info(
+            "CHK-EDN-SIBLING PASS: AES edn_ack while OTBN is in reset; URND edn_ack stayed 0"
+        )
+        await self.aes.wait_idle("edn-sibling-reseed")
+
+        await self.rst.release_resets()
+        await self._wait_edn_req(_EDN_URND, True, _EDN_PEND_CYCLES, "OTBN URND after release")
+        for _ in range(_EDN_ACK_CYCLES):
+            if self._edn_ack() & (1 << _EDN_URND):
+                self.logger.info(
+                    "CHK-EDN-REARM PASS: OTBN URND edn_req was acknowledged after release"
+                )
+                return
+            await RisingEdge(cocotb.top.clk_i)
+        raise AssertionError(
+            "CHK-EDN-REARM FAIL: OTBN URND edn_req was not acknowledged after release "
+            f"(req=0x{self._edn_req():x} ack=0x{self._edn_ack():x})"
+        )
+
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
+        self.rst = SepCryptoResetIso(self)
+        self.aes = SepAes(self)
+        await self._prove_edn_cancel_before_grant()
 
         # Entropy up so the AES masking-PRNG reseed is served (card requirement).
         # strict=False / score_km=False: this test asserts on the held crypto
         # results, not on the bit-exact DRBG golden stream; the scoreboard is used
         # only to drive the deterministic ESRC noise + observe the AES EDN leg.
+        # OTBN stays in the reset taken above, so its cancelled URND request is
+        # not granted when EDN starts.
         await self.bring_up_entropy(
             strict=False, score_km=False, score_sinks={"aes": "observe", "kmac": "observe"}
         )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
+        await self._prove_edn_sibling_after_flush()
 
-        self.rst = SepCryptoResetIso(self)
         self.hmac = SepHmac(self)
-        self.aes = SepAes(self)
         self.kmac = SepKmac(self)
         self.otbn = SepOtbn(self)
 
@@ -450,9 +622,6 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # so the isolate coordinator has real traffic to drain. Accepted beats
         # must complete; anything not yet accepted is terminated. None may hang.
         axi_driver = self.env.axi_agent.driver
-        drain_reads = [
-            axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2) for _ in range(4)
-        ]
         self._require_open_isolate_terms(
             host=cocotb.top.hmac_host_isolated_probe_o,
             km=cocotb.top.hmac_km_isolated_probe_o,
@@ -460,6 +629,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             name="HMAC",
         )
         reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_HMAC.rst_bit))
+        # A host read issued on each cycle until the host path isolates. HMAC
+        # answers in a few cycles, so only a read issued on a late cycle is
+        # still unretired at that edge. That beat is what the isolate drains.
+        drain_reads = []
 
         # The arrival beat travels the HOST path. The window that matters for
         # it is the first cycle host_hmac is 1 while the gated reset is still
@@ -481,6 +654,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "same cycle as the observed assert edge)"
                 )
                 break
+            if host_iso == 0:
+                drain_reads.append(
+                    axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
+                )
             if arrival_read is None and host_iso == 1:
                 # Beats still unretired as the isolate closes. Without this the
                 # drain check below would pass on traffic that had already

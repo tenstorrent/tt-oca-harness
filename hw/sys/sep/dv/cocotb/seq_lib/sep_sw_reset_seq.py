@@ -71,11 +71,12 @@ class SepSwReset:
         self.log.info("SW_RESET_N released %s -> 0x%08x", ",".join(engines), self.value)
 
     async def park(self, *engines: str) -> None:
-        """Hold engines in SW reset. Call while they are not live EDN
-        requesters (JTAG-held through ``rst_ni`` and fuse sense, then this
-        CSR write on the open fabric, then the override drops): dropping
-        ``edn_req`` mid-arbitration fails the crypto EDN arbiter
-        hold-until-grant assume."""
+        """Hold engines in SW reset.
+
+        Parking AES, KMAC, or OTBN while that engine has a crypto EDN request
+        outstanding is legal. The client reset flushes the shared crypto EDN
+        adapter for one cycle, so the dropped request does not leave the
+        arbiter's hold-until-grant assumption armed."""
         for eng in engines:
             self.value &= ~(1 << SW_RESET_N_BIT[eng])
         await self._write()
