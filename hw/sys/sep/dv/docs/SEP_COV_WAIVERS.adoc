@@ -712,6 +712,103 @@ driven by `sep_cov_axi_dw_upsizer_dma_test`. Waiving this does not touch the
 other `axi_dw_upsizer`-typed converters in SEP, which have real AXI masters in
 front of them.
 
+== DMA: which logic is waivable, read against a second bench's exclusion set
+
+A different bench carries a designer-reviewed DMA exclusion set, 575 items over
+`u_sep_dma_wrap` and `u_sep_dma_wrap.u_dma_local_alias_remap`. It is a
+REFERENCE for which logic is structurally dead, not a file to copy from: it was
+written against another elaboration, so no entry of it is carried over. Each
+claim was re-checked here against the open elaboration and the bar this
+document sets -- the RTL must declare the arm unreachable -- and anything
+waived in this tree is derived here, from the tie named below.
+
+*Waivable*, 23 items, each with a tie read in the open tree:
+
+[cols="2,1,3"]
+|===
+|Annotation |Items |Tie
+
+|`SEP-DMA-CTN-TIED`
+|11
+|The CTN TL-UL response is a constant in RTL:
+`hw/sys/sep/rtl/sep_dma_wrap.sv:324-333` drives `a_ready` 1, `d_valid` 0,
+`d_opcode` `AccessAck` and every other field to zero. The request side is
+unconnected at `:143`.
+
+|`SEP-DMA-LSIO-TIED`
+|10
+|`hw/sys/sep/rtl/sep.sv:1087` ties `lsio_trigger[10:1]` to zero; only bit 0
+carries the SPI trigger (`:1085`). The excluded bits are 1..10, and bit 0 is
+correctly left graded.
+
+|`SEP-DMA-ALERT-PING-TIED`
+|2
+|`hw/sys/sep/rtl/sep_dma_wrap.sv:347` ties `ping_req_i` to `1'b0` on every
+alert receiver, so `alert_rx_i[*].ping_p` and `.ping_n` cannot move.
+|===
+
+*Not waivable*, 552 items. Each is a real hole, and most of them are the same
+finding as the converter section above:
+
+[cols="2,1,4"]
+|===
+|Annotation |Items |Why it does not port
+
+|`MANUAL_AXI`
+|246
+|AXI header fields -- `len`, `size`, `burst`, `cache`, `id`, `qos`, `user`,
+`prot`, `lock`, `region`, `atop` -- on `reg_req_i` and the converted request
+inside the DMA. `reg_req_i` is a local-crossbar master port (`sep.sv:421`),
+fed from the SMN inbound full AXI4 master, so those fields are a function of
+stimulus. If they are constant in the reference bench, that is a
+testbench-side tie, which this document does not accept as a waiver.
+
+|`MANUAL_FIXED_LOCAL_REGION`
+|58
+|`sep_local_base_addr_i` and `sep_region_size_i`. Both are CSR outputs --
+`hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:759-760` drives
+them from `SEP_LOCAL_BASE_ADDR.addr` and `SEP_REGION_SIZE.size` -- so software
+can change them and a test that programs the window closes these directly.
+
+|`MANUAL_ALIGNED`
+|48
+|Address bits [1:0] across the DMA register path. Nothing in the RTL forces
+the two low bits of an inbound address: `sep_periph_bus_err_misaligned_test`
+already presents a misaligned peripheral address in this bench.
+
+|`MANUAL_TLUL` (the non-CTN part)
+|34
+|Constant TL-UL fields on `host_tl_h_*` and `tl_d_*`. Plausible -- the
+AXI-Lite-to-TL-UL bridge emits a narrow set of opcodes and sizes -- but no
+single `file:line` was found that forces each one, and `host_tl_h_o.a_size`
+tracks the DMA transfer width. Held back until each has a named tie.
+
+|`MANUAL_ADDR_TABLE`
+|158
+|Upper address bits on the DMA CSR path. The claim would be that the crossbar
+window makes them constant, but the excluded bit list is irregular -- bits 23
+and 28 of `reg_req_i.aw.addr` are NOT excluded while 9..22, 24..27 and 29..31
+are -- which is the shape of a snapshot of one run's uncovered set, not of a
+window derived from the address map. Held back until derived from the map.
+
+|`MANUAL_SCAN`, `MANUAL_DFT`
+|5
+|`test_en_i` / `scanmode`. The DUT input is driven by the testbench
+(`sep.sv:1104` passes it straight into the DMA wrapper), so holding it low is
+a testbench choice, not an RTL tie.
+
+|`MANUAL_ALERT` (the non-ping part)
+|3
+|`ack_p`, `ack_n` and `alert_p`. These move when the DMA actually raises an
+alert. That is a fault-injection gap, not an unreachable arm.
+|===
+
+So the expectation that this reference would move `u_sep_dma_wrap` materially
+does not hold: 23 of its 575 items describe logic that is dead in this
+elaboration too, all of them toggle items on tied pins. The remaining 552 are
+the DMA's real coverage debt, and the largest block of it is the same
+inbound-AXI-header stimulus gap the converter section names.
+
 == REJECTED: the eight fabric-facing converter instances (stimulus, not waivable)
 
 The `axi_dw_upsizer` waiver above covers one instance and one shape: a slave
@@ -745,7 +842,7 @@ waivable. Verdict per instance, with the parameter site and the driver:
 
 |`u_sep_dma_wrap.u_axi_dw_downsizer_reg`
 |64 -> 32 (`sep_dma_wrap.sv:156-157`)
-|local xbar master port (`sep.sv:420` -> `:1113` `reg_req_i`, into `sep_dma_wrap.sv:174`)
+|local xbar master port (`sep.sv:421` -> `:1113` `reg_req_i`, into `sep_dma_wrap.sv:174`)
 |stimulus
 
 |`u_sep_dma_wrap.u_axi_to_axi_lite_reg`
