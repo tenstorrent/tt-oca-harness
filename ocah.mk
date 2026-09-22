@@ -46,21 +46,26 @@ OCAH_PHONY += ocah-nonfree-init
 # branches, the harness model. .gitmodules addresses them over SSH, which a
 # developer has a key for and a CI runner does not.
 #
-# CI exports OCAH_SUBMODULE_TOKEN; each SSH URL is then rewritten to HTTPS
-# carrying it. The rewrite is a per-submodule url override rather than a global
-# insteadOf, so the credential reaches exactly these repositories and no other
-# github.com fetch, and .gitmodules itself is never modified. The HTTPS URL is
-# derived from whatever .gitmodules already says, so adding a private submodule
-# is one entry here and nothing else.
+# The recipe rewrites each SSH URL to HTTPS carrying a token. The rewrite is a
+# per-submodule url override rather than a global insteadOf, so the credential
+# reaches exactly these repositories and no other github.com fetch, and
+# .gitmodules itself is never modified. The HTTPS URL is derived from whatever
+# .gitmodules already says, so adding a private submodule is one entry here and
+# nothing else.
 #
-# The token is read from the ENVIRONMENT by the recipe shell and never expanded
-# by make, so it stays out of the recipe, out of `make -n` and out of build logs.
-# It is still handed to `git config` in argv for an instant, exactly as the
-# nonfree clone above hands its own token to `git clone`.
+# The token is OCAH_SUBMODULE_TOKEN when that is exported. Otherwise an ambient
+# insteadOf that maps git@github.com: onto https://<user>@host (user, no
+# password) is treated as the token, because that form blocks a headless clone.
+# Developers with an SSH key and no such insteadOf keep the .gitmodules URL.
+#
+# The token is read by the recipe shell and never expanded by make, so it stays
+# out of the recipe, out of `make -n` and out of build logs. It is still handed
+# to `git config` in argv for an instant, exactly as the nonfree clone above
+# hands its own token to `git clone`.
 OCAH_PRIVATE_SUBMODULES ?= hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 
 ## Check out the private submodules (OCA manifest tooling, and the VP model where present).
-## Uses each .gitmodules SSH URL unless OCAH_SUBMODULE_TOKEN is exported.
+## Uses each .gitmodules SSH URL unless a token is available (see above).
 .PHONY: ocah-submodules-init
 ocah-submodules-init:
 	@set -e; \
@@ -68,14 +73,20 @@ ocah-submodules-init:
 	  git -C "$(OCAH_ROOT)" config -f .gitmodules --get "submodule.$$d.url" >/dev/null 2>&1 || { \
 	    echo "error: $$d is not a submodule of this tree"; exit 1; }; \
 	  git -C "$(OCAH_ROOT)" submodule init "$$d"; \
-	  if [ -n "$${OCAH_SUBMODULE_TOKEN:-}" ]; then \
+	  token="$${OCAH_SUBMODULE_TOKEN:-}"; \
+	  if [ -z "$$token" ]; then \
+	    token=$$(git config --get-regexp '^url\..*\.insteadof' 2>/dev/null | \
+	      sed -n 's/^url\.https:\/\/\([^@:/]*\)@.*/\1/p' | \
+	      awk '$$0 != "x-access-token" { print; exit }'); \
+	  fi; \
+	  if [ -n "$$token" ]; then \
 	    url=$$(git -C "$(OCAH_ROOT)" config -f .gitmodules --get "submodule.$$d.url"); \
 	    case "$$url" in \
-	      git@github.com:*) url="https://x-access-token:$${OCAH_SUBMODULE_TOKEN}@github.com/$${url#git@github.com:}" ;; \
+	      git@github.com:*) url="https://x-access-token:$${token}@github.com/$${url#git@github.com:}" ;; \
 	    esac; \
 	    git -C "$(OCAH_ROOT)" config "submodule.$$d.url" "$$url"; \
 	  fi; \
-	  git -C "$(OCAH_ROOT)" submodule update "$$d"; \
+	  GIT_TERMINAL_PROMPT=0 git -C "$(OCAH_ROOT)" submodule update "$$d"; \
 	  test -n "$$(ls -A "$(OCAH_ROOT)/$$d" 2>/dev/null)" || { \
 	    echo "error: $$d checked out but is empty"; exit 1; }; \
 	done
