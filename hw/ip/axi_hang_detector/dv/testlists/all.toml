@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# AXI Hang Detector IP-level scenarios. The config/propagation/OR path and the
+# real SMC-level bus stalls are covered by the smc_hang_detector_* tests
+# (hw/sys/smc/dv/testlists/irq.toml); this suite covers the timeout-counter
+# datapath, which is hard to reproduce at the system level.
+
+[[tests]]
+name = "ahd_sanity_test"
+module = { cocotb = "ahd_sanity_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "ahd"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ahd_config_corners_test"
+module = { cocotb = "ahd_config_corners_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "ahd"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "ahd_threshold_latch_test"
+module = { cocotb = "ahd_threshold_latch_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "ahd"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "ahd_threshold_zero_rearm_test"
+module = { cocotb = "ahd_threshold_zero_rearm_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "ahd"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "ahd_bus_progress_test"
+module = { cocotb = "ahd_bus_progress_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "ahd"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["ahd_sanity_test"]
+
+[[groups]]
+name = "all"
+tests = [
+  "ahd_sanity_test",
+  "ahd_config_corners_test",
+  "ahd_threshold_latch_test",
+  "ahd_threshold_zero_rearm_test",
+  "ahd_bus_progress_test",
+]
