@@ -128,25 +128,27 @@ create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*3*clk]  -name SM
 # Note: For STA you need to care about the divided value (it is a programmable clock divider), but for CDC setup the fact its a divided value is all that matters
 set avs_hier u_smc_peripherals/avsbus_controller
 
-# Stamp each source's generated clock on its gater output
+# Stamp each source's generated clock on its gater output.
+# `prim_ag_clk_mux` takes the peripheral clock on clk0_i and the reference clock
+# on clk1_i, so clk1_gate is the REFCLK branch and clk0_gate the PERIPHERALCLK one.
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 1 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/clk_o"]
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/clk_o"]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 1 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/clk_o"]
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/clk_o"]
 
 # Raw primaries stop at their gater outputs before the OR
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/clk_o"] \
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/clk_o"] \
     -clocks {REFCLK}
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/clk_o"] \
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/clk_o"] \
     -clocks {PERIPHERALCLK}
 
 # Now the clock mux output is fed into a clock divider.
@@ -642,13 +644,17 @@ set gpio_uart_pad2core [get_ports {pad2core_i[11] pad2core_i[12] pad2core_i[13] 
 # AVS CLOCK + MDATA observe inputs (GPIO 49–50) — dual launch vs divider clocks (same pattern as SDATA [51]).
 set gpio_avs_clk_mdata [get_ports {pad2core_i[49] pad2core_i[50]}]
 
-# Thermal / isolate (52–53); PLL obs / PVT / straps (55–57); reserved / unbonded (61–67).
+# Thermal / isolate (52–53); PLL obs / PVT / straps (55–57); unbonded (61–64).
+# `pad2core_i` is NUM_GPIO_WRAPS wide (61 bonded + 4 unbonded = 65), so 64 is the
+# last bit. Pinout rows 65+ are dedicated JTAG/REFCLK pads, not GPIO bits.
 set gpio_misc_a [get_ports {pad2core_i[52] pad2core_i[53]}]
 set gpio_misc_b [get_ports {pad2core_i[55] pad2core_i[56] pad2core_i[57]}]
-set gpio_misc_c [get_ports {pad2core_i[61] pad2core_i[62] pad2core_i[63] pad2core_i[64] pad2core_i[65] pad2core_i[66] pad2core_i[67]}]
+set gpio_misc_c [get_ports {pad2core_i[61] pad2core_i[62] pad2core_i[63] pad2core_i[64]}]
 
-# Bits excluded from generic ck_feedthru: SPI data/DQS/CS, SPICLK_GPIO [9], I2C [37:48], AVS SDATA [51],
-# system timer [58:59], UART block [11:26], I3C [27:36], I3C [66, 67], AVS clk/mdata [49:50], misc [8] [52:53] [55:57] [61:67].
+# Bits excluded from generic ck_feedthru: SPI data/DQS [0:7] [10] [54], SPI CS [8],
+# SPICLK_GPIO [9], UART [11:26], I2C [37:48], AVS clk/mdata [49:50], AVS SDATA [51],
+# thermal/isolate [52:53], system timer / boot stall [55:57], OCCP [58:59],
+# unbonded [61:64]. The I3C bus bits [27:36] and reserved [60] keep the generic model.
 set pad2core_excluded $spi_pad2core_bits
 set pad2core_excluded [add_to_collection $pad2core_excluded $i2c_pad2core_bits]
 set pad2core_excluded [add_to_collection $pad2core_excluded [get_ports {pad2core_i[9] pad2core_i[51]}]]
