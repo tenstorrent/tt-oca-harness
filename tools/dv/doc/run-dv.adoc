@@ -2692,9 +2692,10 @@ keys, or authentication data.
 
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
-tool versions, and per-stage details. It is the authoritative run result. A
-run-level stage such as `hdl_compile` or `cov_report` carries its full
-record in `stages`. A leaf's entry carries its identity, status, timing, log,
+tool versions, and per-stage details. It is the authoritative run result,
+and the key set of every file below is pinned by the tests the interfaces
+page names. A run-level stage such as `hdl_compile` or `cov_report` carries
+its full record in `stages`. A leaf's entry carries its identity, status, timing, log,
 failure buckets, the `metadata` named above for a regression job, the job
 log of a cluster run under `artifacts.executor_log`, and `result_json`, the
 path of the leaf record that holds its artifacts, parser evidence, and build,

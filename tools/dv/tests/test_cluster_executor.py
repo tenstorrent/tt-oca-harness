@@ -1417,11 +1417,29 @@ class CoordinatorTest(unittest.TestCase):
         (unconfirmed,) = json.loads(record.read_text(encoding="utf-8"))["jobs"]
         self.assertEqual(unconfirmed["task_id"], "sim-000001-a0")
         self.assertEqual(unconfirmed["native_job_id"], unconfirmed_job)
+        self.assertEqual(
+            set(interruption),
+            {"kind", "signal", "signal_number", "reason", "recorded_at", "cancellation"},
+        )
         progress = summary["progress"]
+        self.assertEqual(
+            set(progress),
+            {
+                "state",
+                "sequence",
+                "updated_at",
+                "expected_count",
+                "completed_count",
+                "active_count",
+                "missing_count",
+                "interrupted_count",
+                "active",
+                "missing",
+                "interrupted",
+            },
+        )
         self.assertEqual(progress["state"], "interrupted")
         self.assertEqual((progress["completed_count"], progress["interrupted_count"]), (0, 2))
-        self.assertNotIn("expected", progress)
-        self.assertNotIn("completed", progress)
         jobs = {}
         for leaf in progress["interrupted"]:
             (job,) = leaf["jobs"]

@@ -286,9 +286,8 @@ class SiteDataCase(unittest.TestCase):
                     result=result,
                 ),
             )
-            jobs.append(
-                job_record(leaf, result, str((path / "result.json").relative_to(self.root)))
-            )
+            result.result_json = str((path / "result.json").relative_to(self.root))
+            jobs.append(job_record(leaf, result, result.result_json))
             finals[(leaf.item, leaf.seed)] = result
         # The run-level result lists one entry per leaf, the regression file one per attempt.
         stages = list(finals.values())
