@@ -171,9 +171,14 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
           echo "before:"; df -h / | tail -1
+          # Everything here is preinstalled runner content these jobs never use.
+          # hostedtoolcache goes entirely: the steps that want it run later and
+          # re-fetch, and the container carries its own python and node.
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-                      /usr/local/share/boost /usr/local/lib/node_modules \
-                      /opt/hostedtoolcache/CodeQL || true
+                      /usr/local/.ghcup /usr/local/share/boost \
+                      /usr/local/lib/node_modules /opt/hostedtoolcache \
+                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
           echo "after:"; df -h / | tail -1
 
       # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
@@ -456,9 +461,14 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
           echo "before:"; df -h / | tail -1
+          # Everything here is preinstalled runner content these jobs never use.
+          # hostedtoolcache goes entirely: the steps that want it run later and
+          # re-fetch, and the container carries its own python and node.
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-                      /usr/local/share/boost /usr/local/lib/node_modules \
-                      /opt/hostedtoolcache/CodeQL || true
+                      /usr/local/.ghcup /usr/local/share/boost \
+                      /usr/local/lib/node_modules /opt/hostedtoolcache \
+                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
           echo "after:"; df -h / | tail -1
 
       # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
