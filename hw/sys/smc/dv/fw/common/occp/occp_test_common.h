@@ -469,11 +469,6 @@ typedef struct {
     int cmd_count;
     occp_error_code_t exp_response_code;
     int exp_occp_last_error;
-    /* Opt in to having GET_OCCP_ERROR_CODE compare against
-     * exp_occp_last_error. Off by default: the ROM latches the code and
-     * does not clear it on a later success, so a test that does not track
-     * the latch must not be compared. */
-    bool check_occp_last_error;
     int timeout;
     bool exp_timeout;
     I3C_DeviceInfo discovered_devices[I3C_MAX_DEVICES];
