@@ -52,9 +52,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The suites that read checked-in data only. This is the one VP job a pull
-  # request runs: everything below needs the nix closure, which rebuilds from
-  # source for ~2 h whenever its inputs change.
+  # The suites that read checked-in data only, and the one VP job a pull request
+  # runs: everything below needs the nix closure.
   vp-host-tests:
     name: vp host tests
     runs-on: ubuntu-latest
@@ -106,15 +105,9 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: make -C virtual_platform vp-test-host
 
-  # Both container legs build the identical image -- same variant, same flake
-  # inputs, so the same derivation hash -- and on a cold cache each spent ~2 h
-  # producing it, then raced for the one cache slot the other's copy would have
-  # filled. Build it once here and let the legs restore it.
-  #
-  # The cost is that the native legs, which need no image, wait on this too:
-  # `needs` is per job and cannot address one matrix leg. That is a few minutes
-  # on a warm cache and the length of a closure build on a cold one, against a
-  # whole duplicate build saved every time the nix inputs change.
+  # Both container legs resolve the same derivation hash, so one build serves
+  # both. The native legs wait on it too: `needs` is per job and cannot address a
+  # single matrix leg.
   toolchain-image:
     name: toolchain image
     if: github.event_name != 'pull_request'
@@ -171,9 +164,10 @@ jobs:
           sudo docker image prune -af >/dev/null 2>&1 || true
           echo "after:"; df -h / | tail -1
 
-      # The image closure builds gcc, boost and openssl from source, and the store
-      # outgrows the root volume. Hosted runners carry a second, larger volume;
-      # put the store there when one is actually bigger.
+      # The image closure builds gcc, boost and openssl from source and outgrows
+      # the root volume. Relocate the store onto a larger volume where one exists;
+      # the current hosted image has only /, so there this prints the layout and
+      # moves nothing.
       - name: Put the nix store on the largest volume
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
@@ -208,8 +202,8 @@ jobs:
         id: image
         run: |
           hash="$(./scripts/docker-run.sh image-hash)"
-          # A malformed hash is worse than none: it still keys a cache, so every
-          # run would miss and rebuild while looking like it was caching.
+          # An empty or malformed hash still keys a cache, so every run would
+          # miss and rebuild while appearing to cache.
           case "$hash" in
             [a-z0-9][a-z0-9]*) ;;
             *) echo "::error::image-hash returned '$hash'"; exit 1 ;;
@@ -233,9 +227,8 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: ./scripts/docker-run.sh ensure
 
-      # Save here, not at job end: actions/cache only writes when the whole job
-      # succeeds, so a failing suite discarded the image and the next run paid for
-      # it again.
+      # actions/cache writes only when the whole job succeeds, so saving here is
+      # what keeps a failing suite from discarding the image.
       - name: Save toolchain image
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/cache/save@v4
@@ -380,9 +373,10 @@ jobs:
           sudo docker image prune -af >/dev/null 2>&1 || true
           echo "after:"; df -h / | tail -1
 
-      # The image closure builds gcc, boost and openssl from source, and the store
-      # outgrows the root volume. Hosted runners carry a second, larger volume;
-      # put the store there when one is actually bigger.
+      # The image closure builds gcc, boost and openssl from source and outgrows
+      # the root volume. Relocate the store onto a larger volume where one exists;
+      # the current hosted image has only /, so there this prints the layout and
+      # moves nothing.
       - name: Put the nix store on the largest volume
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
@@ -521,8 +515,7 @@ jobs:
             echo "picolibc: riscv64-unknown-elf-gcc works $where; firmware builds there" \
               | tee -a "$GITHUB_STEP_SUMMARY"
           elif [ "${{ matrix.mode }}" = "native" ]; then
-            # Assert rather than report: a fallback costs a 2 h image build this
-            # leg otherwise never needs.
+            # A silent fallback costs an image build this leg otherwise skips.
             echo "::error::no usable riscv64-unknown-elf-gcc on the runner; the native leg would fall back to the toolchain image"
             exit 1
           else
@@ -568,9 +561,8 @@ jobs:
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
           # A runner that fills its disk dies without finalising its log, so the
-          # evidence goes with it -- twice now, both times unreadable afterwards.
-          # Sample free space alongside the suites and stop while there is still
-          # room to record what grew.
+          # failure leaves no evidence. Stop while there is still room to record
+          # what grew.
           report() {
             df -h /
             echo "--- workspace ---"
@@ -743,9 +735,10 @@ jobs:
           sudo docker image prune -af >/dev/null 2>&1 || true
           echo "after:"; df -h / | tail -1
 
-      # The image closure builds gcc, boost and openssl from source, and the store
-      # outgrows the root volume. Hosted runners carry a second, larger volume;
-      # put the store there when one is actually bigger.
+      # The image closure builds gcc, boost and openssl from source and outgrows
+      # the root volume. Relocate the store onto a larger volume where one exists;
+      # the current hosted image has only /, so there this prints the layout and
+      # moves nothing.
       - name: Put the nix store on the largest volume
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |
