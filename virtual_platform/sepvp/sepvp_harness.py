@@ -107,6 +107,13 @@ class SepVpHarness(Harness):
             # still override it through SimConfig.extra_ini, which composes after
             # these.
             ("string", "och_sep_ss1.otbn.algorithm_type", "rsa_3072"),
+            # The platform config enables VeeR-ISS instruction tracing: one line per
+            # retired instruction, ~862 MB for a ROM boot, which fills a CI runner
+            # partway through the suite. whisper opens the file only when the name is
+            # non-empty and the ini parser cannot express an empty value, so discard
+            # it instead. extra_ini composes after these, so a test that wants the
+            # trace can point it at a real path.
+            ("string", "och_sep_ss1.traceFile", "/dev/null"),
         ]
         if self.config.spi_preload:
             overrides.append(
