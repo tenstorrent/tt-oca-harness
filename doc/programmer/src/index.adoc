@@ -43,6 +43,28 @@ parked hart's `RESET_VECTOR[n]` and pulse its reset to start it at that address.
 Avoid this flow where possible for the reasons described in the Technical
 Reference Manual.
 
+[[smc-ndm-reset]]
+=== External CPU cluster NDM reset
+
+Read `NDMRESET_REQUEST` bit `i` as the NDM reset request from external
+CPU cluster `i`. Write `NDMRESET_PROCESS` bit `i` to answer that
+cluster. Read `NDMRESET_CLUSTER_COUNT` and mask both registers with
+that value.
+
+This harness reports 4 in `NDMRESET_CLUSTER_COUNT`. Bits of
+`NDMRESET_REQUEST` at and above the count read as 0. Writes to those
+bits of `NDMRESET_PROCESS` stay in the register.
+
+ifdef::backend-html5[]
+The register block is
+xref:ocah-docs:smc:memmap.adoc#smc-ndm-reset-block[Chip Config, Scratch, NDM Reset, and Misc Wrap]
+in the Technical Reference Manual.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+The register block is in the _Chip Config, Scratch, NDM Reset, and Misc
+Wrap_ section of the Technical Reference Manual.
+endif::backend-pdf[]
+
 [[sep]]
 == SEP
 

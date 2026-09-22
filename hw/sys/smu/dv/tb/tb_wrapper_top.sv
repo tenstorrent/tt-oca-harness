@@ -362,6 +362,16 @@ module smu_wrapper_uvm_top (
   output logic [3:0]        tb_smc_ndmreset_process,
   output logic [31:0]       tb_isolate_req,
   output logic [31:0]       tb_ss_config,
+  // One 32-bit word per `reset_ctrl_t` field of `ss_reset_ctrl_o`. Lane i of
+  // each word is subsystem i's field, so a word lines up with the reset-unit
+  // register that owns the field.
+  output logic [31:0]       tb_ss_cold_reset_n,
+  output logic [31:0]       tb_ss_warm_reset_n,
+  output logic [31:0]       tb_ss_config_state_hold,
+  output logic [31:0]       tb_ss_sram_hold,
+  output logic [31:0]       tb_ss_critical_signal_hold,
+  output logic [31:0]       tb_ss_debug_hold,
+  output logic [31:0]       tb_ss_force_to_ref_clk_n,
   output logic              tb_sync_irq,
   output logic              tb_skip_mem_repair,
   output logic              tb_smc_cluster_ded,
@@ -697,6 +707,18 @@ module smu_wrapper_uvm_top (
   assign tb_smc_wdt_second_timeout = wdt_second_timeout_w;
   assign tb_gpio_interrupt         = gpio_interrupt_w;
   assign tb_uart_interrupt         = uart_interrupt_w;
+
+  always_comb begin
+    for (int ss = 0; ss < 32; ss++) begin
+      tb_ss_cold_reset_n[ss]         = ss_reset_ctrl_w[ss].cold_reset_n;
+      tb_ss_warm_reset_n[ss]         = ss_reset_ctrl_w[ss].warm_reset_n;
+      tb_ss_config_state_hold[ss]    = ss_reset_ctrl_w[ss].config_state_hold;
+      tb_ss_sram_hold[ss]            = ss_reset_ctrl_w[ss].sram_hold;
+      tb_ss_critical_signal_hold[ss] = ss_reset_ctrl_w[ss].critical_signal_hold;
+      tb_ss_debug_hold[ss]           = ss_reset_ctrl_w[ss].debug_hold;
+      tb_ss_force_to_ref_clk_n[ss]   = ss_reset_ctrl_w[ss].force_to_ref_clk_n;
+    end
+  end
 
   assign tb_xtrig_ctp_req_out_dout    = ctp_req_out_dout_w;
   assign tb_xtrig_ctp_req_out_dout_en = ctp_req_out_dout_en_w;

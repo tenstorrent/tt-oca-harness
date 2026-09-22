@@ -241,6 +241,16 @@ SMC reset override enables and active-low values. The DTP drives this input
 through the JTAG IC_RESET mechanism (see <<smc-dtp-interconnection>>); most
 integrations leave all override enables deasserted.
 
+[[smc-ndm-cluster-reset]]
+=== External CPU cluster NDM reset
+
+Connect `smc_ndmreset_request_i[i]` to the NDM reset request from
+external CPU cluster `i`, and return `smc_ndmreset_process_o[i]` to
+that cluster. Set `CPU_CLUSTER_COUNT` in `smc_config_pkg` to the number
+of clusters. This harness sets it to 4. The parameter sizes both ports,
+and `NDMRESET_CLUSTER_COUNT` reads that value back. The register fields
+stay 32 bits wide. Tie unused request inputs to 0.
+
 [[smc-address-map-integration]]
 === Address Map and Aperture
 
@@ -1037,7 +1047,7 @@ Connect `clk_smu_i` to the primary system clock and `clk_ref_i` to a stable
 reference source. The DTP operates on TCK for JTAG logic and on the system clock
 for cross-trigger and AXI bridges. Reset sequencing follows the SMC flow; the
 DTP JTAG state machine uses `pwr_on_rst_ni`, which the SMU connects to
-`rst_cold_ni`. The SMU internally connects DTP debug paths to the SMC and
+the SMC `powergood_stable` output. The SMU internally connects DTP debug paths to the SMC and
 optionally instantiates the SEP when the `SEP` parameter is set to 1. The full
 interconnection details are described in <<smc-dtp-interconnection>> and
 <<sep-conditional-wiring>> below.
@@ -1340,7 +1350,7 @@ wired internally within the SMU.
 
 |`clk_i` |input |1 |SMU `clk_smu_i` (shared with SMC `clk_smc_i`)
 |`rst_n_i` |input |1 |SMC `rst_primary_smc_clk_no`
-|`pwr_on_rst_ni` |input |1 |SMU `rst_cold_ni` (power-on reset for JTAG logic)
+|`pwr_on_rst_ni` |input |1 |SMC `powergood_stable_o` (power-on reset for JTAG logic)
 |===
 
 ==== Primary JTAG TAP Interface

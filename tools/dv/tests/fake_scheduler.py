@@ -97,7 +97,10 @@ class Fake:
             }
 
     def save(self) -> None:
-        self.path.write_text(json.dumps(self.state, indent=1, sort_keys=True), encoding="utf-8")
+        # A command the executor kills mid-write must leave the previous state readable.
+        temporary = self.path.with_name(self.path.name + ".tmp")
+        temporary.write_text(json.dumps(self.state, indent=1, sort_keys=True), encoding="utf-8")
+        os.replace(temporary, self.path)
 
     def record_call(self, command: str, argv: list[str], family: str) -> int:
         calls = self.state["calls"]

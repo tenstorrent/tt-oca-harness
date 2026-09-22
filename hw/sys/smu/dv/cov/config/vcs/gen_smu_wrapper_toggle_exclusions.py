@@ -73,6 +73,13 @@ CLASSES: list[tuple[str, re.Pattern[str], str]] = [
         "assigned inside the SMU rather than at the port.",
     ),
     (
+        "UNION-ALIAS",
+        re.compile(r"^smc_shadow_regs_o\.(locks|fields)(\.|\[|$)"),
+        "the `locks` and `fields` views of the eFuse shadow map. `efuse_map_t` is a packed "
+        "union, so urg lists the same 8192 flops three times; the `values` view stays graded "
+        "and carries every bit once.",
+    ),
+    (
         "SEP-OWNED",
         re.compile(
             r"^(sep_io_spi_req_o|sep_cpu_trace_o|sep_lockstep_ctrl_i|sep_lockstep_status_o|"

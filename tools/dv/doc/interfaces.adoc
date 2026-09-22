@@ -142,10 +142,12 @@ worker tests in `tools/dv/tests`.
 |The script exports the executor's `env_passthrough` values, changes to the
 checkout, and execs `worker_argv`. The executor log holds every scheduler
 command with its status and output. The unconfirmed-cancel record lists the
-job ids an interrupted run could not confirm stopped. Checked by
+job ids an interrupted run could not confirm stopped; the run-level summary
+repeats them under `interruption.cancellation`. Checked by
 `tools/dv/tests/test_cluster_executor.py`, which drives both drivers through
-fake scheduler commands, and on demand by the `slurm-qualify` workflow, which
-runs the Slurm driver on a single-node Slurm installed on the hosted runner.
+fake scheduler commands, interrupts a coordinator mid-run, and on demand by
+the `slurm-qualify` workflow, which runs the Slurm driver on a single-node
+Slurm installed on the hosted runner.
 
 |Runner command line and run tree: `run_dv.py` options; the
 `<dut-dv-root>/build/runs/<stamp>__<tool>__<label>/` layout with `stages/`,
@@ -167,7 +169,10 @@ per-leaf `result.json`, and `results/results.xml`
 an `UNKNOWN` checkpoint before the first leaf, so an incomplete run is never
 read as a pass. A run that did not finish carries `tests.completed = false`
 and `tests.pass_rate = null`, and a handled interruption adds an
-`interruption` object and a run-level errored JUnit testcase. The gate in
+`interruption` object (the signals received and, under `cancellation`, the
+attempts asked to stop, confirmed, and unconfirmed with their job ids) and a
+run-level errored JUnit testcase; on a cluster executor the checkpoint's
+active and interrupted leaves list their scheduler jobs. The gate in
 `.github/actions/dv-run` requires `schema_version == 1`, a `flow` and `tool`
 matching the invocation, `status == "PASS"`, and coverage evidence when the
 row collects coverage. The completion and expected-failure tests cover the

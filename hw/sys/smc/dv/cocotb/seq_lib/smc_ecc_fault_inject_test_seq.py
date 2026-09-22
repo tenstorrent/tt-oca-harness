@@ -224,11 +224,23 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         await self.csr_read("VERSION_LO", VERSION_LO)
 
         await ClockCycles(clk, 2)
+        # The token carries the three compares of this run on one counter: the
+        # SBE arm advanced it, the cleared inject held it, and the DBE arm
+        # advanced it again. Each is asserted here so the token cannot print
+        # for a run in which one of them did not hold.
+        assert sbe > base, f"SBE arm did not advance fire_count ({base} -> {sbe})"
+        assert mid_after == mid, (
+            f"fire_count moved {mid} -> {mid_after} with both inject pins clear"
+        )
+        assert dbe > mid, f"DBE arm did not advance fire_count ({mid} -> {dbe})"
         cocotb.log.info(
-            "CHK-ECC-INJECT: TB inject fire_count SBE %d->%d recovery_hold=%d DBE %d->%d",
+            "CHK-ECC-INJECT: TB inject fire_count SBE %d->%d (advanced while armed), held at "
+            "%d with inject clear across scratch reads %d->%d, DBE %d->%d (advanced again)",
             base,
             sbe,
-            mid,
+            mid_after,
+            scratch_hold,
+            scratch_after,
             mid,
             dbe,
         )

@@ -29,7 +29,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 63:33 | `Reserved` | - | - a| Reserved
-| 32 | `STATUS` | R | 0x0 a| Returns status of whether zeroer has completed.
+| 32 | `STATUS` | R | 0x0 a| Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `INT_EN` | RW | 0x0 a| If enabled, an interrupt will be outputted once zeroer completes.
 |===

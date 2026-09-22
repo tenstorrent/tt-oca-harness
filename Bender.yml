@@ -468,9 +468,6 @@ sources:
       - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
       - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
       - hw/ip/axi_filter/rtl/axi_filter_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
   # The cross_trigger family compiles inside the DTP DUT and standalone in the
   # per-IP benches under hw/ip/cross_trigger/*/dv (target `cross_trigger`).
   - target: any(dtp, cross_trigger)
@@ -737,9 +734,6 @@ sources:
       - hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
   # See the cross_trigger package group above: shared by the DTP DUT and the
   # per-IP benches (target `cross_trigger`).

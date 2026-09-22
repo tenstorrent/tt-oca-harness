@@ -12,8 +12,13 @@ Three surfaces, each with a fail-capable expectation:
   un-programmed identity case is the same-run positive control and the
   entry-disabled re-read is the same-run negative control, so "the remap moved
   the access" is distinguishable from "nothing happened".
-* **SMC_MMODE_REMAP_0..7 / SMC_ALIAS_REMAP_0..7** -- per-entry decode *and* the
-  RDL reset content (``expected=`` on every read, not merely an OKAY response).
+* **SMC_MMODE_REMAP_0..7 / SMC_ALIAS_REMAP_0..7 / SMC_XVISOR_REMAP_0..7** --
+  the RDL reset content of every entry (``expected=`` on every read, not merely
+  an OKAY response) and per-entry decode: every register of each table holds a
+  distinct pattern while the rest of the table holds theirs, and reads it back
+  before being restored, so an aliased pair or an OKAY-zero hole fails the
+  readback. The reset reads alone cannot make that distinction: the reset word
+  of every remap register is zero.
 * **SMC_CLA_REG** -- the Cluster Local Aggregator window: an allow leg on real
   CLA registers (RDL reset values + a scratch write/readback) paired with the
   in-window-hole leg. Unallocated offsets inside the map complete OKAY with
@@ -98,8 +103,17 @@ from smc_reg import (  # noqa: E402
 # Per-entry ATTRS addresses from the generated map. Reset value comes from the
 # same generated map (output_remap.rdl offset[55:0] = 0x0), never hand-copied.
 XVISOR_REMAP_ENTRIES = 8
-# Inside the 56-bit `offset` field; bits [63:56] stay 0.
-XVISOR_PROBE = 0x00A5_A55A_5AC3_C33C
+# Distinct co-resident patterns, one per register of each table, all inside
+# the writable field of the register they are written to: alias_remap.rdl
+# START.start_addr / END.end_addr / ATTRS.offset are bits [55:12] (ATTRS.valid
+# and .cacheable stay 0, so no entry is enabled), output_remap.rdl ATTRS.offset
+# is bits [55:0]. No outbound traffic runs while a table holds them, and every
+# register is restored to its reset before the landing leg below.
+_ALIAS_START_PATTERNS = tuple((0x100 + i) << 12 for i in range(8))
+_ALIAS_END_PATTERNS = tuple((0x200 + i) << 12 for i in range(8))
+_ALIAS_ATTRS_PATTERNS = tuple((0x300 + i) << 12 for i in range(8))
+_MMODE_PATTERNS = tuple((0x400 + i) << 12 for i in range(8))
+_XVISOR_PATTERNS = tuple((0x500 + i) << 12 for i in range(XVISOR_REMAP_ENTRIES))
 
 MMODE_REMAP_ATTRS_ADDRS = (
     SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
@@ -502,7 +516,9 @@ ALIAS0_ATTRS = SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR
 
 # CSR accesses this sequence issues, written out per phase so the number is a
 # statement of the stimulus rather than a restatement of the loops below.
-_RESET_SWEEP_ACCESSES = 8 + 24 + 8 + 4  # MMODE + ALIAS + XVISOR resets + XVISOR probe
+# MMODE + ALIAS + XVISOR reset reads, then 4 accesses (pattern write, pattern
+# read, restore write, restore read) per register of the three tables.
+_RESET_SWEEP_ACCESSES = 8 + 24 + 8 + 4 * (8 + 24 + 8)
 # resets + scratch wr/rd/restore + in-window holes + the full-aperture reset
 # sweep. The sweep length is taken from the table built off the generated
 # register map (82 software-owned rows of the 137 in the generated CLA map);
@@ -522,7 +538,7 @@ EXPECTED_JTAG_ACCESSES = 5
 _EXPECTED_VALUE_CHECKS = (
     32  # 8 MMODE ATTRS + 24 ALIAS START/END/ATTRS reset values
     + 8  # 8 XVISOR ATTRS reset values
-    + 2  # XVISOR probe readback + restore readback
+    + 2 * (8 + 8 + 24)  # co-resident pattern + restore readbacks over the three tables
     + 2  # CLA Trdstramimpl + Trdstimpl reset values
     + 2  # CLA Scratch write readback + restore readback
     + len(CLA_RESET_SWEEP)  # full-aperture reset compares, every row carries expected=
@@ -538,11 +554,10 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         # XVISOR_REMAP mirrors the MMODE table: 8 entries, one 64-bit
         # `offset[55:0]` field, plain rw storage with no lock and reset 0.
         # Addresses come from the generated indexed macro
-        # `SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR(idx)
-        #  = 0xC0014000 + idx * 0x8` (smc_addr.h:879), so base and stride are
-        # both map-sourced. Entry 7 is written and restored as the live-register
-        # proof; a reset-only compare on eight zero registers would be satisfied
-        # by an unmapped window just as well.
+        # `SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR(idx)`, so base
+        # and stride are both map-sourced. The co-resident leg below is the
+        # live-register proof; a reset-only compare on eight zero registers
+        # would be satisfied by an unmapped window just as well.
         for i in range(XVISOR_REMAP_ENTRIES):
             addr = smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR", i)
             await self.csr_read(
@@ -551,29 +566,6 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
                 expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
                 length=8,
             )
-        xv_probe_addr = smc_indexed_addr(
-            "SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR",
-            XVISOR_REMAP_ENTRIES - 1,
-        )
-        await self.csr_write("XVISOR_REMAP_PROBE", xv_probe_addr, XVISOR_PROBE, length=8)
-        await self.csr_read(
-            "XVISOR_REMAP_PROBE_RB",
-            xv_probe_addr,
-            expected=XVISOR_PROBE,
-            length=8,
-        )
-        await self.csr_write(
-            "XVISOR_REMAP_RESTORE",
-            xv_probe_addr,
-            OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
-            length=8,
-        )
-        await self.csr_read(
-            "XVISOR_REMAP_RESTORE_RB",
-            xv_probe_addr,
-            expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
-            length=8,
-        )
         for i, addr in enumerate(MMODE_REMAP_ATTRS_ADDRS):
             await self.csr_read(
                 f"MMODE_REMAP_{i}_ATTRS",
@@ -585,12 +577,61 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             await self.csr_read(name, addr, expected=expected, length=8)
         cocotb.log.info(
             "CHK-REMAP-TABLE-RESET: 8 MMODE_REMAP ATTRS + 24 ALIAS_REMAP "
-            "START/END/ATTRS all decoded and matched their generated RDL reset "
-            "value (MMODE=0x%016x, ALIAS start/end/attrs=0x%016x/0x%016x/0x%016x)",
+            "START/END/ATTRS + 8 XVISOR_REMAP ATTRS all answered OKAY and matched "
+            "their generated RDL reset value (MMODE/XVISOR=0x%016x, ALIAS "
+            "start/end/attrs=0x%016x/0x%016x/0x%016x)",
             OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
             REMAP_REGION_REGION_START_REG_DEFAULT,
             REMAP_REGION_REGION_END_REG_DEFAULT,
             REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+        )
+        # Per-entry decode, one table at a time: every register of the table
+        # holds its own pattern before any is read back, so an aliased pair
+        # holds the last pattern written and the first readback of the pair
+        # fails; every register is then restored to its reset and re-read.
+        await self.rw_coresident(
+            [
+                (
+                    f"XVISOR_REMAP_{i}_ATTRS",
+                    smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR", i),
+                    _XVISOR_PATTERNS[i],
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+                )
+                for i in range(XVISOR_REMAP_ENTRIES)
+            ],
+            length=8,
+        )
+        await self.rw_coresident(
+            [
+                (
+                    f"MMODE_REMAP_{i}_ATTRS",
+                    addr,
+                    _MMODE_PATTERNS[i],
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+                )
+                for i, addr in enumerate(MMODE_REMAP_ATTRS_ADDRS)
+            ],
+            length=8,
+        )
+        alias_patterns = {
+            "START": _ALIAS_START_PATTERNS,
+            "END": _ALIAS_END_PATTERNS,
+            "ATTRS": _ALIAS_ATTRS_PATTERNS,
+        }
+        await self.rw_coresident(
+            [
+                (name, addr, alias_patterns[name.rsplit("_", 1)[1]][int(name.split("_")[2])], reset)
+                for name, addr, reset in ALIAS_REMAP_REGS
+            ],
+            length=8,
+        )
+        cocotb.log.info(
+            "CHK-REMAP-TABLE-CORESIDENT: 8 XVISOR_REMAP ATTRS, 8 MMODE_REMAP ATTRS and "
+            "24 ALIAS_REMAP START/END/ATTRS each held a distinct pattern inside its "
+            "writable field while the rest of its table held theirs, read it back exactly "
+            "and read back its RDL reset after the restore write (%d scoreboard value "
+            "compares); no entry was valid and no outbound traffic ran meanwhile",
+            2 * (XVISOR_REMAP_ENTRIES + len(MMODE_REMAP_ATTRS_ADDRS) + len(ALIAS_REMAP_REGS)),
         )
 
     async def _cla_window(self) -> None:
@@ -801,7 +842,7 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         # `expected` fails here instead of counting as a bare access.
         assert sb.sys_axi_value_checks_seen >= _EXPECTED_VALUE_CHECKS, (
             f"expected at least {_EXPECTED_VALUE_CHECKS} value-checked reads "
-            f"(32 remap reset values, 2 CLA reset values, 2 CLA scratch "
+            f"(40 remap reset values, 80 co-resident remap readbacks, 2 CLA reset values, 2 CLA scratch "
             f"readbacks, 3 in-window CLA holes, 6 ALIAS_REMAP_0 programming "
             f"readbacks, 3 JTAG AXI data compares), scoreboard measured "
             f"{sb.sys_axi_value_checks_seen}"

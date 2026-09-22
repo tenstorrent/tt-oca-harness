@@ -458,9 +458,6 @@
 -module axi_xp
 -module axi_xp_intf
 -module axi_zero_mem
--module axil_mailbox_reg
--module axil_mailbox_sep_wrap_reg
--module axil_mailbox_smc_wrap_reg
 -module axil_okay_slv
 -module binary_to_gray
 -module boxcar
