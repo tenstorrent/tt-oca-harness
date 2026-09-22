@@ -96,8 +96,7 @@ accept the request.
 ## Harness tests
 
 The shared scenarios are implemented in
-`smc_cpu_isolate_flush_test_seq.py`. Four directed test leaves are retained
-for DV review:
+`smc_cpu_isolate_flush_test_seq.py`. Four directed test leaves are enrolled:
 
 | Test | Wedge | Post-reset proof |
 | --- | --- | --- |
