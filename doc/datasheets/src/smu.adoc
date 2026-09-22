@@ -69,9 +69,8 @@ AT A GLANCE
 !AXI IDs !8-bit input; 10-bit crossbar output; 6-bit SMC/SEP target
 !External interrupts !256 to SMC; 212 to SEP when present
 !Mailbox instances !32 SMC; 8 SEP when present
-!External cross-trigger interfaces !Current reference: 16 CTPs; 8 internal
-CTs; 8 clock-stop requests. Adopter-facing parameterization is tracked in
-https://github.com/tenstorrent/tt-oca-harness/issues/1503[issue #1503]
+!External cross-trigger interfaces !16 CTPs; 8 internal trigger interfaces;
+8 clock-stop request inputs
 !===
 
 a|

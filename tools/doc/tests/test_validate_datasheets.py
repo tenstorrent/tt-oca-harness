@@ -260,7 +260,19 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("4-core SMC", source)
         self.assertIn("!External interrupts !256 to SMC; 212 to SEP when present", source)
         self.assertIn("!Mailbox instances !32 SMC; 8 SEP when present", source)
-        self.assertIn("issues/1503[issue #1503]", source)
+        self.assertIn(
+            "!External cross-trigger interfaces !16 CTPs; 8 internal trigger interfaces;",
+            source,
+        )
+
+    def test_datasheets_carry_no_issue_tracker_links(self) -> None:
+        # Datasheets are adopter-facing, so a value is stated outright rather
+        # than deferred to the backlog item that may change it.
+        root = Path(__file__).resolve().parents[3]
+        for source_path in sorted((root / "doc/datasheets/src").glob("*.adoc")):
+            with self.subTest(datasheet=source_path.name):
+                source = source_path.read_text(encoding="utf-8")
+                self.assertNotIn("/issues/", source)
 
 
 if __name__ == "__main__":
