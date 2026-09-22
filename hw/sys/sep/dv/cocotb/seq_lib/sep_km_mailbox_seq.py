@@ -21,6 +21,9 @@ All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
@@ -149,8 +152,36 @@ KM_DEST_ABR_MLKEM_SEED_Z = 0x40
 KM_DEST_ABR_MLKEM_MSG = 0x80
 
 # Packed versions: patch[7:0], minor[15:8], major[23:16] (rom_km_version_ret_t).
-KM_HW_VER_1_0_0 = 0x0001_0000
-KM_ROM_VER_1_1_0 = 0x0001_0100
+def _hw_root() -> Path:
+    return Path(__file__).resolve().parents[5]
+
+
+def _km_csr_version_reset() -> int:
+    import importlib.util
+
+    reg_py = _hw_root() / "ip/key_manager/regs/gen/py/key_manager_reg.py"
+    spec = importlib.util.spec_from_file_location("key_manager_reg", reg_py)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {reg_py}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return int(mod.KM_CSR_VERSION_REG_REG_DEFAULT)
+
+
+def _km_rom_version() -> int:
+    """ROM version word from the firmware header, not a copied literal."""
+    hdr = (_hw_root() / "ip/key_manager/dv/fw/include/rom_defs.h").read_text()
+    parts: dict[str, int] = {}
+    for name in ("MAJOR", "MINOR", "PATCH"):
+        match = re.search(rf"#define ROM_KM_ROM_VERSION_{name}\s+(\d+)", hdr)
+        if match is None:
+            raise RuntimeError(f"ROM_KM_ROM_VERSION_{name} missing from rom_defs.h")
+        parts[name] = int(match.group(1))
+    return parts["PATCH"] | (parts["MINOR"] << 8) | (parts["MAJOR"] << 16)
+
+
+KM_HW_VER_1_0_0 = _km_csr_version_reset()
+KM_ROM_VER_1_1_0 = _km_rom_version()
 
 
 def crc8_rohc(data: bytes) -> int:

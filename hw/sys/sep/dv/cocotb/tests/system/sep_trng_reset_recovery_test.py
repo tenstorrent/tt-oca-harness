@@ -32,8 +32,10 @@ from env.sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, SEP_CPU_CTRL, sym
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS, RESP_SLVERR
+from seq_lib.sep_entropy_pool_seq import EDN_CTRL_DISABLE, POOL_POP, POOL_STATUS, RESP_SLVERR
 from seq_lib.sep_esrc_bringup_seq import (
+    EDN_CTRL,
+    EDN_CTRL_AUTO,
     SepEsrcConfigSeq,
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
@@ -110,12 +112,72 @@ class sep_trng_reset_recovery_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, 20)
         raise AssertionError(f"entropy pool did not become {'nonempty' if nonzero else 'empty'}")
 
+    def _packer_depth(self) -> int:
+        val = cocotb.top.entropy_pool_packer_depth_o.value
+        assert val.is_resolvable, "entropy_pool_packer_depth_o is unresolvable"
+        return int(val)
+
     async def _wait_packer_depth(self, expected: int, timeout: int = 80_000) -> None:
         for _ in range(timeout):
-            if int(cocotb.top.entropy_pool_packer_depth_o.value) == expected:
+            if self._packer_depth() == expected:
                 return
             await ClockCycles(cocotb.top.clk_i, 1)
-        raise AssertionError(f"entropy pool packer did not reach depth {expected}")
+        raise AssertionError(
+            f"entropy pool packer did not reach depth {expected} "
+            f"(observed {self._packer_depth()})"
+        )
+
+    async def _unstick_packer(self) -> None:
+        """A full packed word with a full pool never returns to depth 1."""
+        if self._packer_depth() != 2:
+            return
+        await ClockCycles(cocotb.top.clk_i, 8)
+        if self._packer_depth() != 2:
+            return
+        pop = await self._read(POOL_POP, length=8)
+        assert pop.resp_ok, "pool pop to unstick packer depth 2 failed"
+
+    async def _commit_parked_sel(self) -> int | None:
+        await self._write(EXT_TRNG_SRC_SEL, _SRC_SEL_PARKED)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        parked_sel = (await self._read(EXT_TRNG_SRC_SEL)).rdata & _SRC_SEL_MASK
+        if parked_sel == _SRC_SEL_PARKED and self._packer_depth() == 1:
+            return parked_sel
+        return None
+
+    async def _park_half_packed_word(self) -> int:
+        """Leave the 32->64 packer holding one word, with a non-reset sel.
+
+        An AXI source-select write is not a freeze: EDN can deliver the pairing
+        word while that write is in flight. ``EDN_ENABLE=False`` stops further
+        acks; the mux write then only programs the post-reset sel baseline.
+        One arm freezes from depth 1 (no extra ack in the disable window). The
+        other freezes from depth 0 (one extra ack in that window). Either EDN
+        rate lands on depth 1.
+        """
+        await self._write(EXT_TRNG_SRC_SEL, _SRC_SEL_FILL)
+        for phase in range(32):
+            await self._write(EDN_CTRL, EDN_CTRL_AUTO)
+            await self._unstick_packer()
+            await self._wait_packer_depth(1)
+            await ClockCycles(cocotb.top.clk_i, phase)
+            if self._packer_depth() == 1:
+                await self._write(EDN_CTRL, EDN_CTRL_DISABLE)
+                await ClockCycles(cocotb.top.clk_i, 4)
+                if self._packer_depth() == 1:
+                    parked = await self._commit_parked_sel()
+                    if parked is not None:
+                        return parked
+            await self._write(EDN_CTRL, EDN_CTRL_AUTO)
+            await ClockCycles(cocotb.top.clk_i, 4 + phase)
+            if self._packer_depth() == 0:
+                await self._write(EDN_CTRL, EDN_CTRL_DISABLE)
+                await ClockCycles(cocotb.top.clk_i, 4)
+                if self._packer_depth() == 1:
+                    parked = await self._commit_parked_sel()
+                    if parked is not None:
+                        return parked
+        raise AssertionError("could not park one half-packed entropy word")
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -153,26 +215,10 @@ class sep_trng_reset_recovery_test(sep_base_test):
         await resets.park("aes", "kmac", "otbn", "km")
 
         # Hold both at the reset: the 32->64 packer parked half full, and a sel
-        # a post-reset read can distinguish from the RDL reset. Run every
-        # stream on the internal DRBG until the packer holds one word, then put
-        # the pool stream back on the idle external source to freeze it, with
-        # the Key Manager stream left internal so sel is not the reset value. A
-        # second word can land while the park write is in flight, so the retry
-        # re-fills.
-        parked_sel = None
-        for _ in range(32):
-            await self._write(EXT_TRNG_SRC_SEL, _SRC_SEL_FILL)
-            await self._wait_packer_depth(1)
-            await self._write(EXT_TRNG_SRC_SEL, _SRC_SEL_PARKED)
-            await ClockCycles(cocotb.top.clk_i, 2)
-            parked_sel = (await self._read(EXT_TRNG_SRC_SEL)).rdata & _SRC_SEL_MASK
-            if (
-                parked_sel == _SRC_SEL_PARKED
-                and int(cocotb.top.entropy_pool_packer_depth_o.value) == 1
-            ):
-                break
-        else:
-            raise AssertionError("could not park one half-packed entropy word")
+        # a post-reset read can distinguish from the RDL reset. EDN_ENABLE=False
+        # stops further acks so the half-word cannot complete during the
+        # source-select write; that write only sets the non-reset sel.
+        parked_sel = await self._park_half_packed_word()
         assert parked_sel != _SRC_SEL_RESET, (
             "test bug: parked source-select equals the RDL reset, so a "
             "post-reset match cannot prove the CSR is outside the domain"
@@ -187,7 +233,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
             axi_driver.axi.init_read(address=addr, length=4, size=2)
             for addr in (ESRC_COMPONENT_ID, CSRNG_INTR_STATE, EDN_INTR_STATE)
         ]
-        assert int(cocotb.top.entropy_pool_packer_depth_o.value) == 1, (
+        assert self._packer_depth() == 1, (
             "packer depth was not 1 immediately before the TRNG reset; "
             "CHK-TRNG-PACKER requires a parked half-packed word"
         )
@@ -239,7 +285,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         )
 
         await ClockCycles(cocotb.top.clk_i, 20)
-        assert int(cocotb.top.entropy_pool_packer_depth_o.value) == 0, (
+        assert self._packer_depth() == 0, (
             "TRNG reset did not scrub the half-packed entropy word"
         )
         self.logger.info(

@@ -286,6 +286,10 @@ never when it was written.
 |cpu, real fuse sense
 |ocah_axi_vip, CPU FW
 |The debug-port counterpart to the two-processor coexistence test. A real-sensed PROD image makes the JTAG path LC-restricted, so one image proves allowed-MMR coexistence and the LC-gated shadow deny while the CPU reads the same eFuse port.
+|`sep_efuse_jtag_window_allow_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip
+|TEST_DEV JTAG reads of the shadow map and `EFUSE_PROGRAM_CTRL` return OKAY. Together with the PROD deny in `sep_efuse_jtag_axil_el2_cpu_mux_test`, the two windows are gated rather than hard-denied.
 |`sep_nmi_sanity_test`
 |cpu
 |ocah_axi_vip, CPU FW
@@ -350,7 +354,7 @@ never when it was written.
 |`sep_abr_mldsa_sign_verify_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|ML-DSA-87 signing and verification through the same aperture: a deterministic external-mu signature compared word-for-word against the ACVP sigGen vector, and the sigVer pair that must verify and must not, whose results must differ.
+|ML-DSA-87 signing and verification through the same aperture: a deterministic external-mu signature compared word-for-word against the ACVP sigGen vector, and the sigVer pair that must verify and must not, with `MLDSA_VERIFY_RES` compared against each signature's c~.
 |`sep_abr_mlkem_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -827,7 +831,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_abr_mldsa_keygen_kat_test`. The key-vault seed path is not claimed. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`.
 
 |Adams Bridge ML-DSA-87 sigGen / sigVer
-|`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
+|`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair with `MLDSA_VERIFY_RES` compared against each signature's c~. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
 
 |Adams Bridge ML-KEM-1024
 |`sep_abr_mlkem_kat_test`. keyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. The same leaf grades the Adams Bridge `SW_RESET_N` domain on a live result — see `Per-IP SW_RESET_N isolation`. `KEYGEN+DECAPS` and the key-vault seed path are not claimed.
@@ -2401,7 +2405,7 @@ remapped routes to the error slave and never executes.
 |CHK-JTAG-DENY
 |The protected shadow window is denied with a specific decode error and marker value, not a timeout.
 |CHK-JTAG-ALLOW
-|The register window still works after the denial — the port is gated per window, not disabled wholesale.
+|The MMR window still works after the denial. The shadow map and `EFUSE_PROGRAM_CTRL` answer OKAY under TEST_DEV in `sep_efuse_jtag_window_allow_test`, so those two windows are gated per lifecycle state rather than denied on every image.
 |CHK-CPU-MMR
 |The CPU's readback of an untouched token register stays at its reset value throughout, with zero errors — so no non-zero debug-port data leaks into the CPU's read stream. The expected value is zero, which is also what two of the three debug-port read types return, so this catches a leak of the distinctive payload but not a zeroed CPU read path.
 |CHK-COEXIST
@@ -2410,6 +2414,36 @@ remapped routes to the error slave and never executes.
 |In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the `hw/sys/sep/doc/periphs.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`.
 |CHK-JTAG-IFACE-DENY
 |In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes DECERR with the DV-owned deny-path sentinel `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_efuse_jtag_window_allow_test]]
+===== `sep_efuse_jtag_window_allow_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, real fuse sense
+
+*Bucket*: eFuse
+
+*Test Coverage*: JTAG reaches the shadow map and `EFUSE_PROGRAM_CTRL` when `LC_STATE` is TEST_DEV.
+
+*Test Procedure*:
+
+[arabic]
+. Real-sense a TEST_DEV image. TEST_DEV is not PROD and not RMA_SIP, so the JTAG lifecycle gate does not steer those addresses at the error slave.
+. Read the shadow map base and `EFUSE_PROGRAM_CTRL` on the JTAG AXI-Lite port. Both complete OKAY.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-JTAG-WINDOW-ALLOW
+|In TEST_DEV, a JTAG read of the shadow map and a JTAG read of `EFUSE_PROGRAM_CTRL` both complete OKAY. The PROD DECERR for the same two windows is `sep_efuse_jtag_axil_el2_cpu_mux_test`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -3283,13 +3317,9 @@ window compare below would be against a silent bus.
 |The 1157-word `MLDSA_SIGNATURE` window matches the vendored ACVP sigGen vector
 word-for-word, with STATUS VALID and ERROR=0, and PIC `[34]` low.
 |CHK-VERIFY-ACCEPT
-|The ACVP case that must verify completes VALID and returns a non-zero
-`MLDSA_VERIFY_RES` — zero is what an engine that never ran would report.
+|The ACVP case that must verify completes VALID and `MLDSA_VERIFY_RES` (the RDL array) equals the first part of the submitted signature, i.e. c~. That equality is the RDL pass condition.
 |CHK-VERIFY-REJECT
-|The ACVP case that must not verify returns a `MLDSA_VERIFY_RES` different from
-the accepting case. The claim is that the two are distinguished, not an absolute
-encoding: the register description does not state one, and transcribing a value
-would be checking the document rather than the engine.
+|The ACVP case that must not verify completes VALID and `MLDSA_VERIFY_RES` is not equal to that signature's c~. An engine that copies the submitted c~ into the result register -- unconditional success -- fails this checker.
 |CHK-ZEROIZE
 |`ZEROIZE` between commands drops VALID and the signature window then reads
 zero. Same scope limit as the keyGen leaf: the read port is gated on the valid
@@ -3299,15 +3329,14 @@ that the RAM was wiped.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Anti-vacuity*: the rejecting sigVer case is the load-bearing half. An engine
-that reported success unconditionally, or a result register that was never
-updated per command, passes the accepting case alone and fails
+that copies each submitted signature's c~ into `MLDSA_VERIFY_RES` (success
+unconditionally, in the RDL's terms) passes the accepting compare and fails
 `CHK-VERIFY-REJECT`. On the signing side, deterministic external-mu signing
 makes the signature a fixed function of inputs written over the bus, so a
 cached, constant or non-running engine cannot match 1157 words.
 
 *Not claimed*: `KEYGEN_SIGN` (0x4), the key-vault seed path, and
-`CMD_ABR_SK_TRANSFER` consume after a live ABR capture. The absolute encoding of
-`MLDSA_VERIFY_RES` is not pinned, only that accept and reject differ. ML-KEM is a
+`CMD_ABR_SK_TRANSFER` consume after a live ABR capture. ML-KEM is a
 separate vehicle, <<sep_abr_mlkem_kat_test>>.
 
 '''''
@@ -4972,7 +5001,7 @@ behaviour and the JTAG read are graded on
 |CHK-REMAP-TRANSLATE
 |The programmed window completes OKAY at the remapped target. Identity would miss the allow window.
 |CHK-FILTER-DROP
-|A beat outside the remapped allow set is DECERR.
+|A beat outside the remapped allow set is DECERR. One probe is the other region left at offset 0. A second probe is the next beat of the allowed region, which translates to a non-zero address outside the one-beat allow entry.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

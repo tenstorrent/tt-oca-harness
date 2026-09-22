@@ -13,8 +13,9 @@ be compared word-for-word against the published value -- a randomised signature
 could only be checked by verifying it, which is a weaker claim.
 
 VERIFY is walked twice, with the ACVP case that must verify and the one that
-must not. The rejecting case is the load-bearing half: an engine that reported
-success unconditionally would pass the accepting case alone.
+must not. The RDL pass condition is ``MLDSA_VERIFY_RES`` equal to the first
+part of the submitted signature (c~). An engine that copies each submitted c~
+into the result register fails the rejecting case.
 
 VALID is sticky and READY does not re-assert until a zeroize, so each command
 is preceded by one. ML-KEM, the key-vault seed path and KEYGEN_SIGN (0x4) are
@@ -65,6 +66,7 @@ from seq_lib.sep_abr_keygen_seq import (
     ST_ERROR,
     ST_READY,
     ST_VALID,
+    VERIFY_RES_WORDS,
     SepAbr,
     SepAbrKeygenCfg,
 )
@@ -217,40 +219,54 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
             await abr.wr32(ABR_CTRL, CMD_VERIFY | CTRL_EXTERNAL_MU)
             st = await self._wait_status(abr, ST_VALID, ST_VALID, what=f"verify-{tag} VALID")
             assert (st & ST_ERROR) == 0, f"verify-{tag}: VALID with ERROR (0x{st:08x})"
-            res = await abr.rd32(ABR_VERIFY_RES)
-            results[tag] = res
-            self.logger.info(
-                "verify-%s: MLDSA_VERIFY_RES=0x%08x (ACVP testPassed=%d)", tag, res, want
+            res = await abr.read_words(ABR_VERIFY_RES, VERIFY_RES_WORDS)
+            # Length before value: zip() stops at the shorter list.
+            assert len(res) == VERIFY_RES_WORDS, (
+                f"verify-{tag}: read {len(res)} VERIFY_RES words, "
+                f"RDL array is {VERIFY_RES_WORDS}"
             )
+            c_tilde = list(vsig[:VERIFY_RES_WORDS])
+            assert len(c_tilde) == VERIFY_RES_WORDS, (
+                f"verify-{tag}: submitted signature is {len(vsig)} words, "
+                f"shorter than c~ ({VERIFY_RES_WORDS})"
+            )
+            results[tag] = res
+            mismatch = next(
+                (i for i, (got, exp) in enumerate(zip(res, c_tilde)) if got != exp),
+                None,
+            )
+            if want:
+                assert mismatch is None, (
+                    f"CHK-VERIFY-ACCEPT FAIL: MLDSA_VERIFY_RES differs from the "
+                    f"submitted signature c~ at word {mismatch} of {VERIFY_RES_WORDS}: "
+                    f"got=0x{res[mismatch]:08x} exp=0x{c_tilde[mismatch]:08x}"
+                )
+                self.logger.info(
+                    "CHK-VERIFY-ACCEPT PASS: %d-word MLDSA_VERIFY_RES equals the "
+                    "submitted signature c~ (RDL pass condition)",
+                    VERIFY_RES_WORDS,
+                )
+            else:
+                assert mismatch is not None, (
+                    "CHK-VERIFY-REJECT FAIL: MLDSA_VERIFY_RES equals the submitted "
+                    "signature c~, which is the RDL verified condition on a case "
+                    "that must not verify"
+                )
+                self.logger.info(
+                    "CHK-VERIFY-REJECT PASS: %d-word MLDSA_VERIFY_RES differs from "
+                    "the submitted signature c~ (first mismatch at word %d: "
+                    "0x%08x != 0x%08x)",
+                    VERIFY_RES_WORDS,
+                    mismatch,
+                    res[mismatch],
+                    c_tilde[mismatch],
+                )
             await self._zeroize(abr, what=f"after verify-{tag}")
 
-        # The engine signals the result in MLDSA_VERIFY_RES. What matters, and
-        # what a DUT can fail, is that the two cases are DISTINGUISHED: the
-        # accepting vector and the rejecting vector must not produce the same
-        # value. Pinning an absolute encoding here would be transcribing a
-        # value the register description does not state.
         assert results["accept"] != results["reject"], (
-            "CHK-VERIFY-REJECT FAIL: the ACVP case that must verify and the case "
-            f"that must not both returned MLDSA_VERIFY_RES=0x{results['accept']:08x}. "
-            "The engine is not distinguishing a good signature from a bad one, or "
-            "the result register is not being updated per command."
-        )
-        assert results["accept"] != 0, (
-            "CHK-VERIFY-ACCEPT FAIL: the accepting ACVP case returned "
-            "MLDSA_VERIFY_RES=0, which is the same thing an engine that never ran "
-            "would report"
-        )
-        self.logger.info(
-            "CHK-VERIFY-ACCEPT PASS: the ACVP case that must verify returned a "
-            "non-zero MLDSA_VERIFY_RES (0x%08x)",
-            results["accept"],
-        )
-        self.logger.info(
-            "CHK-VERIFY-REJECT PASS: the ACVP case that must not verify returned a "
-            "different MLDSA_VERIFY_RES (0x%08x != 0x%08x), so the accept result is "
-            "not an unconditional success",
-            results["reject"],
-            results["accept"],
+            "CHK-VERIFY-REJECT FAIL: accept and reject returned the same "
+            f"{VERIFY_RES_WORDS}-word MLDSA_VERIFY_RES, so the result register "
+            "is not updated per command"
         )
 
         # --- CHK-ZEROIZE ------------------------------------------------------

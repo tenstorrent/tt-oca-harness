@@ -46,7 +46,7 @@ tests = ["sep_axi_smoke_test"]
 [[groups]]
 # Every test this VPLAN grades. The two class groups below cover it with one
 # deliberate exception: `cpu_stub` (CPU-stub target) plus `cpu` (full-CPU
-# target) are disjoint and together hold 103 of the 104, and the remaining
+# target) are disjoint and together hold 104 of the 105, and the remaining
 # leaf is sep_periph_bus_err_misaligned_reveal_test. That one is an
 # EXPECTED-FAIL reveal of a spec-vs-RTL gap (see its [[tests]] entry in
 # system.toml), so it is held out of the two class groups to keep the
@@ -58,7 +58,7 @@ tests = ["sep_axi_smoke_test"]
 # a coverage run grades. expected_count fails the run when membership drifts
 # from the class groups instead of silently shrinking the suite.
 name = "all"
-expected_count = 104
+expected_count = 105
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -72,6 +72,7 @@ tests = [
     "sep_efuse_image_test",
     "sep_spi_flash_jedec_smoke_test",
     "sep_efuse_lcc_lc_state_stitch_test",
+    "sep_efuse_jtag_window_allow_test",
     "sep_lcc_lc_state_w1s_prod_test",
     "sep_lcc_lc_state_w1s_prod_demote_test",
     "sep_lcc_lc_state_w1s_rma_sip_test",
@@ -209,6 +210,7 @@ tests = [
     "sep_efuse_image_test",
     "sep_spi_flash_jedec_smoke_test",
     "sep_efuse_lcc_lc_state_stitch_test",
+    "sep_efuse_jtag_window_allow_test",
     "sep_lcc_lc_state_w1s_prod_test",
     "sep_lcc_lc_state_w1s_prod_demote_test",
     "sep_lcc_lc_state_w1s_rma_sip_test",

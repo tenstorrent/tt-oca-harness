@@ -475,9 +475,10 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 # empties the fuse command request and the program interface
                 # completes with PROGRAM_DONE+ERR because secure_tm_blocked_i
                 # is set. That is a failed completion, not a starved DONE.
-                # The status word is the evidence — not fail-injection credit,
-                # which re-arms on the resense that must follow to drop the
-                # latched strap.
+                # The one-shot injection (percent 0) can fail only the first
+                # bank write after the resense. Two failed attempts therefore
+                # cannot both be that injection: a guard that let the command
+                # through would complete the second attempt.
                 blocked = _lcc_otp_program_seq(_LC_STATE_BIT_BASE + 0, max_attempts=2)
                 try:
                     await self.start_seq(blocked)
@@ -491,11 +492,20 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                             "(secure_tm_blocked completes the program FSM with "
                             f"error); status=0x{status:08x} ({exc})"
                         ) from exc
+                    if blocked.retry_count < 1:
+                        raise AssertionError(
+                            "CHK-SECURE-TM-PROG-BLOCK: one PROGRAM_DONE+ERR is "
+                            "the one-shot program-fail injection; the guard "
+                            f"must fail a second attempt (retry_count="
+                            f"{blocked.retry_count})"
+                        )
                     self._secure_tm_prog_blocked = True
                     self.logger.info(
-                        "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] "
-                        "PROGRAM_DONE+ERR (status=0x%08x) while secure_tm=1",
+                        "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] failed "
+                        "%d attempt(s) with PROGRAM_DONE+ERR (status=0x%08x) "
+                        "while secure_tm=1; one injection cannot cover both",
                         _LC_STATE_BIT_BASE,
+                        blocked.retry_count + 1,
                         status,
                     )
                 else:

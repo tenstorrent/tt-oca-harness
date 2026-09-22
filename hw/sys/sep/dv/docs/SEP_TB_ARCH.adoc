@@ -154,6 +154,17 @@ Exceptions (a closed set):
   has no frontdoor. Scope is those two registers and nothing else — never the
   error, data, busy or request outputs the checkers read. Owner:
   `sep_efuse_illegal_state_fail_closed_test`; signed off 2026-09-11.
+* *RMA-SIP digest test-enable inject* — `token_digest_test_en_inject_i`
+  forces the digest latch `test_en_i`. The production DFT input is tied low
+  at this boundary, so the latch-freeze path has no frontdoor. The force
+  targets that input only. Token commands, digest capture, and the fault
+  flags the checker reads stay frontdoor. Owner:
+  `sep_efuse_digest_latch_fault_test`.
+* *DMA host-path command-integrity inject* — `dma_host_intg_inject_i` forces
+  the host-adapter command-integrity checker input to 0 so the checker
+  asserts on the next DMA command. Software cannot emit a broken command
+  user code. The force targets that input only. `DMA_BUS_ERR_STATUS` and
+  the interrupt aggregate stay frontdoor. Owner: `sep_dma_basic_test`.
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
