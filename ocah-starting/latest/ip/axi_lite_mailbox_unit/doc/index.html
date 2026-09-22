@@ -1520,7 +1520,7 @@ example, in pair zero, <code>READ_DATA</code> is at <code>BASE + 0x8</code> outb
 <h3 id="READ_DATA">READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>0x0</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="STATUS">STATUS</h3>
 <table>
@@ -1529,7 +1529,7 @@ example, in pair zero, <code>READ_DATA</code> is at <code>BASE + 0x8</code> outb
 <tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
 <tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
 <tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
-<tr><td>0</td><td>empty</td><td>R</td><td>0x0</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
 </table>
 <h3 id="ERROR_FLAGS">ERROR_FLAGS</h3>
 <table>

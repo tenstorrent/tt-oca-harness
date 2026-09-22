@@ -205,7 +205,9 @@ Set the OCAH names in this chapter. Do not set vendor preprocessor names;
 <code>hw/common/defs/ocah_vendor_defines.svh</code> derives the aliases those names
 imply. OCAH lint and Yosys force-include that header. Native DV expands the
 same aliases onto the command line. An adopter compile must do one of those
-two.</p>
+two. Block-selection defines are not in this chapter at all: they ride the
+Bender filelist as <code>define</code> lines (<a href="#synthesis-filelist-defines">Synthesis
+filelist defines</a>).</p>
 </div>
 <div class="paragraph">
 <p>A <code> <code>define </code> in a header is visible only in compilation units that include
@@ -306,11 +308,13 @@ seed with any failure you intend to reproduce.</p>
 <p><code>SYNTHESIS</code> selects the implementation view: simulation-only SVA, <code>$readmemh</code>
 preload, procedural delays, and similar non-synthesizable paths are omitted.
 Slang lint, Verilator lint, and Yosys set it (<code>OCAH_FLOW_COMMON_DEFINES</code>, or
-<code>+define+SYNTHESIS=1</code> for Verilator lint). A Synopsys (Design Compiler,
-Fusion Compiler) or Cadence Genus synthesis compile must set it too; those
-tools may also predefine the name. Native DV does not, except the SMC <code>dual</code>
-target, which lists it next to <code>SMC_DUAL</code>. The open formal path (<code>sby</code> /
-<code>read_slang</code>) keeps it defined. Licensed formal backends leave it unset.</p>
+<code>+define+SYNTHESIS=1</code> for Verilator lint). The Bender <code>synth</code> view emits
+<code>+define+SYNTHESIS=1</code> on its filelist, so a synthesis compile that consumes
+the filelist&#8217;s defines (<a href="#synthesis-filelist-defines">below</a>) gets it without
+tool setup; Synopsys tools also predefine the name. Native DV does not set
+it, except the SMC <code>dual</code> target, which lists it next to <code>SMC_DUAL</code>. The open
+formal path (<code>sby</code> / <code>read_slang</code>) keeps it defined. Licensed formal backends
+leave it unset.</p>
 </div>
 </div>
 </div>
@@ -536,6 +540,85 @@ vendor column.</p>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="synthesis-filelist-defines"><a class="anchor" href="#synthesis-filelist-defines"></a><a class="link" href="#synthesis-filelist-defines">9. Synthesis filelist defines</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Bender <code>synth</code> view is the authoritative source for the defines a
+synthesis compile needs. Generate the filelist from that view — or use the
+filelist shipped in a release package, which is generated the same way:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">bender script flist-plus &lt;block targets&gt; -t synth &gt; &lt;block&gt;.f</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The filelist carries the defines as <code>define</code> lines paired with the sources
+they select:
+<code>SYNTHESIS=1</code>, and the package switches that choose between behavioural
+models and technology-cell overlays in vendored RTL. Consume the <code>define</code>
+lines from the filelist rather than restating them on the tool command line:
+the set changes as the tree does, and the filelist pairs each switch with the
+overlay sources it selects.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>A compile that drops the <code>define</code> lines analyzes and elaborates without
+error. The failure is silent mis-selection: vendored RTL builds its
+behavioural models instead of the technology-cell overlays, and optional
+blocks compile out of the hierarchy. After elaboration, confirm the netlist
+instantiates the primitive cells and the block structure you expect.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The filelist also lists <code>ocah_vendor_defines.svh</code>, but vendored packages
+precede it in compile order, so it does not replace the force-include
+described at the top of this chapter.</p>
+</div>
+<div class="sect2">
+<h3 id="synthesis-defines-synopsys"><a class="anchor" href="#synthesis-defines-synopsys"></a><a class="link" href="#synthesis-defines-synopsys">9.1. Synopsys Design Compiler and Fusion Compiler</a></h3>
+<div class="paragraph">
+<p><code>analyze</code> rejects a filelist as a native argument (VER-294), and
+<code>analyze -define</code> covers only names given on that command. Hand the filelist
+to the VCS-compatible reader, which parses its <code>define</code> and <code>incdir</code>
+lines:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">analyze -format sverilog -vcs "-f &lt;block&gt;.f"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>These tools predefine <code>SYNTHESIS</code>; when the filelist restates it, Design
+Compiler keeps its own value and warns (VER-1051). The value is 1 either way,
+so the warning is harmless.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="synthesis-defines-genus"><a class="anchor" href="#synthesis-defines-genus"></a><a class="link" href="#synthesis-defines-genus">9.2. Cadence Genus</a></h3>
+<div class="paragraph">
+<p>Genus parses the same lines through its optionfile reader. Select
+SystemVerilog explicitly: <code>read_hdl -f</code> treats sources as Verilog-2001
+regardless of the <code>hdl_language</code> attribute.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">read_hdl -language sv -f &lt;block&gt;.f</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </article>
