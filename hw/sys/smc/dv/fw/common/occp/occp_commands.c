@@ -1268,7 +1268,21 @@ int occp_send_get_occp_command_count_command(test_context_t *ctx, uint64_t i3c_a
 
 int occp_send_get_occp_error_code_command(test_context_t *ctx, uint64_t i3c_addr,
                                           uint32_t *status) {
-    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_ERROR_CODE, status);
+    int retval = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_ERROR_CODE, status);
+
+    /* The latched code is one byte (occp-protocol.adoc). */
+    if (retval != OCCP_SUCCESS || !ctx->check_occp_last_error) {
+        return retval;
+    }
+    if ((*status & 0xFFu) != (uint32_t)ctx->exp_occp_last_error) {
+        simputs("GET_OCCP_ERROR_CODE: FAIL\n");
+        simputshex32("Expected: ", (uint32_t)ctx->exp_occp_last_error);
+        simputshex32("Actual: ", *status & 0xFFu);
+        ctx->overall_result = false;
+    } else {
+        simputs("GET_OCCP_ERROR_CODE: PASS\n");
+    }
+    return retval;
 }
 
 int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr) {
@@ -1984,25 +1998,10 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     simputs("GET_OCCP_ERROR_CODE command timed out as expected\n");
                     return;
                 }
-                /* Compare against the expectation the tests already set.
-                 *
-                 * ctx->exp_occp_last_error had 41 writers across the OCCP suite
-                 * and no reader at all, so every one of those expectations was
-                 * discarded and this printed PASS on transport success alone.
-                 * Error codes are a byte (occp-protocol.adoc: 0x00 No error ..
-                 * 0x0A Oversized transport frame, 0xFF General error), so the
-                 * low byte is the whole field. */
                 if (!ctx->check_occp_last_error) {
                     simputshex32("GET_OCCP_ERROR_CODE value (not checked): ", status_data & 0xFF);
                     simputs("GET_OCCP_ERROR_CODE: transport OK, value unchecked -- set "
                             "ctx->check_occp_last_error to compare it\n");
-                } else if ((status_data & 0xFF) != (uint32_t)ctx->exp_occp_last_error) {
-                    simputs("GET_OCCP_ERROR_CODE: FAIL\n");
-                    simputshex32("Expected: ", (uint32_t)ctx->exp_occp_last_error);
-                    simputshex32("Actual: ", status_data & 0xFF);
-                    ctx->overall_result = false;
-                } else {
-                    simputs("GET_OCCP_ERROR_CODE: PASS\n");
                 }
             } else {
                 if (ctx->invalid_len_err_inject_enable) {

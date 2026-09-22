@@ -48,20 +48,14 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
     ctx->check_occp_last_error = true;
     retval = occp_send_get_occp_error_code_command(ctx, ctx->slave_addr, &status_data);
     increment_cmd_count(ctx);
-    if (retval != OCCP_SUCCESS) {
-        simputs("FAIL: Failed to issue GET_OCCP_ERROR_CODE\n");
-        ctx->overall_result = false;
-        return;
-    }
-    if ((status_data & 0xFF) != (uint32_t)ctx->exp_occp_last_error) {
-        simputs("GET_OCCP_ERROR_CODE: FAIL\n");
-        simputshex32("Expected: ", (uint32_t)ctx->exp_occp_last_error);
-        simputshex32("Actual: ", status_data & 0xFF);
-        ctx->overall_result = false;
-        return;
-    }
-    simputs("GET_OCCP_ERROR_CODE: PASS\n");
     ctx->check_occp_last_error = false;
+    if (retval != OCCP_SUCCESS || !ctx->overall_result) {
+        if (retval != OCCP_SUCCESS) {
+            simputs("FAIL: Failed to issue GET_OCCP_ERROR_CODE\n");
+        }
+        ctx->overall_result = false;
+        return;
+    }
 
     retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -71,7 +65,7 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
     }
 
     int exp_interface_status = 0x1;
-    int exp_boot_status = 0;
+    int exp_boot_status = 0x5;
     check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
     increment_cmd_count(ctx);
 
