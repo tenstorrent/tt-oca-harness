@@ -152,6 +152,11 @@ jobs:
             reseed: 3
             coverage: false
             runner: ubuntu-latest
+          - dut: axi_hang_detector
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -293,6 +298,11 @@ jobs:
           - dut: cross_trigger_network
             items: all
             reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+          - dut: axi_hang_detector
+            items: all
+            reseed: 1
             coverage: true
             runner: ubuntu-latest
     steps:

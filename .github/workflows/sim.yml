@@ -67,9 +67,10 @@ jobs:
         # instead of hardcoding names (see "Framework-aware CI matrices" in
         # the same doc).
         #
-        # The cross_trigger IP benches are not in the gate: their smoke cost
-        # is one job of runner setup each for seconds of simulation, and none
-        # is a required context. regress.yml runs their full groups nightly.
+        # The single-IP benches (cross_trigger, axi_hang_detector) are not in
+        # the gate: their smoke cost is one job of runner setup each for
+        # seconds of simulation, and none is a required context. regress.yml
+        # runs their full groups nightly.
         #
         # runner: the label this DUT's job runs on, and the only knob that sets
         # build parallelism (--build-jobs "$(nproc)" follows it).
