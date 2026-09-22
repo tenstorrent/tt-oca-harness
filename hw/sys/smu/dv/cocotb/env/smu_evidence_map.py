@@ -83,6 +83,43 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-SMU-ALLOW-NS-S2", "CHK-SMU-ALLOW-NS-S2", "dual-slot admits secure and NS"),
         ("CHK-SMU-ALLOW-NS-S3", "CHK-SMU-ALLOW-NS-S3", "clear returns DECERR for both"),
     ],
+    "smu_axi_in_attribute_sweep_test": [
+        (
+            "CHK-AXIIN-ATTR-PROT",
+            "CHK-AXIIN-ATTR-PROT",
+            "all eight AxPROT encodings are admitted on AR and AW when one entry matches "
+            "each prot[1] polarity, the reads returning the VERSION_LO RDL reset value",
+        ),
+        (
+            "CHK-AXIIN-ATTR-QUAL",
+            "CHK-AXIIN-ATTR-QUAL",
+            "AxREGION, AxQOS and AxCACHE at 0x0 and 0xF and AxLOCK at 0 and 1 leave the "
+            "response and the data unchanged, on AR and AW",
+        ),
+        (
+            "CHK-AXIIN-ATTR-SIZE",
+            "CHK-AXIIN-ATTR-SIZE",
+            "AxSIZE 0..3 each return the byte slice of the VERSION_LO RDL reset value the "
+            "size selects",
+        ),
+        (
+            "CHK-AXIIN-ATTR-LEN",
+            "CHK-AXIIN-ATTR-LEN",
+            "with allow_burst=0 the AxLEN 0xFF, 0xAA and 0x55 transfers are refused with "
+            "DECERR while AxLEN 0 at the same address is admitted",
+        ),
+        (
+            "CHK-AXIIN-ATTR-BURST",
+            "CHK-AXIIN-ATTR-BURST",
+            "the same entries refuse a multi-beat FIXED, INCR and WRAP transfer with DECERR",
+        ),
+        (
+            "CHK-AXIOUT-WRITE",
+            "CHK-AXIOUT-WRITE",
+            "one SMC write above the shrunk local aperture crosses smu_axi_out, the bench "
+            "responder holds the word and the B response returns OKAY",
+        ),
+    ],
     "smu_axi_in_burst_outstanding_test": [
         (
             "CHK-AXIIN-DEPTH",
