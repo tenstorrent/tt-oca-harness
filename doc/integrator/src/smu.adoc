@@ -831,8 +831,10 @@ An additional AXI extension port (`axi_extension_axi`) enables adopters to
 attach custom peripherals to the SEP interconnect fabric without modifying the
 SEP core. When unused, tie the response input to return DECERR.
 
+[[sep-memory-interfaces]]
 === Memory Interfaces
 
+[[memory-interfaces]]
 All SEP memory macros are instantiated externally and connected through
 dedicated request/response interfaces. The `sep_cpu_tcm` interface provides
 tightly-coupled memory (ICCM and DCCM) for the VeeR EL2 CPU. The `sep_sram`

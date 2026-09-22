@@ -43,7 +43,18 @@ interfaces. While this does physically separate key and data transport
 it is not scalable and requires modifications to the Key Manager
 whenever a new accelerator is added to the subsystem.
 
-image::SEP_Crypto_Complex.png[SEP_Crypto_Complex,scaledwidth=90.0%]
+.SEP cryptographic subsystem and external memories. Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9 with masking disabled.
+image::SEP_Crypto_Complex.png[alt="SEP cryptographic subsystem with integrator-supplied Key Manager, OTBN and Adams Bridge memories",scaledwidth=100%]
+
+The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
+connect them through the dedicated `abr_mem` request/response interface.
+For the memory interface and configuration requirements, see
+ifdef::backend-html5[]
+xref:ocah-integrator-guide:ROOT:smu.adoc#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/smu.html#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+endif::backend-pdf[]
 
 The `sep_crypto` module implements the integration layer, with
 `sep_crypto_axi_interconnect` centralizing its bus infrastructure. A single

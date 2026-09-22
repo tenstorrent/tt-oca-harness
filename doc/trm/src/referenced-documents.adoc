@@ -5,10 +5,28 @@
 [[trm-referenced-documents]]
 = Referenced Documents
 :description: Specifications and external design documentation referenced throughout the OCAH TRM.
+ifdef::backend-html5[]
+:ocah-integrator-guide-ref: xref:ocah-integrator-guide:ROOT:index.adoc[Open Chiplet Atlas Harness (OCAH) Integrator Guide]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:ocah-integrator-guide-ref: https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html[Open Chiplet Atlas Harness (OCAH) Integrator Guide]
+endif::backend-pdf[]
 
-This appendix collects the specifications and external design documentation
-referenced by the subsystem and IP chapters. Revisions below are those cited
-in this manual; an unspecified revision does not imply the latest edition.
+This appendix collects the companion guides, specifications and external
+design documentation referenced by the subsystem and IP chapters. Revisions
+below are those cited in this manual; an unspecified revision does not imply
+the latest edition.
+
+== OCAH Documentation
+
+[cols="2,3",options="header"]
+|===
+|Document |Referenced for
+
+|[[ref-ocah-integrator-guide]] {ocah-integrator-guide-ref}
+|Subsystem integration and external interfaces, including the SEP external
+TRNG aperture's register decode and error-response requirements.
+|===
 
 == OCA Specifications
 

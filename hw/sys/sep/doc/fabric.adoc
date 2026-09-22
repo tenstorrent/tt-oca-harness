@@ -87,7 +87,9 @@ OTBN IMEM, OTBN DMEM
 [[local-and-external-axi4-traffic-remapping]]
 == Local and External AXI4 Traffic Remapping
 
-The figure below illustrates the AXI4 traffic management performed by
+image::SEP_System.png[SEP_System,scaledwidth=90.0%]
+
+The figure above illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of
 the local masters from the SEP i.e. the CPU or the DMA controller.
 Traffic may be local to the SEP or outbound to external resources either
@@ -124,12 +126,12 @@ SMN system NoC.
 SEP’s outbound traffic serves to:
 
 1.  Provide security services and
-2.  extend its protection to the reset of the system
+2.  Extend its protection to the rest of the system
 
-For 1 the outbound traffic traverses the AP controlled remappers and for
-2 the traffic goes directly to the SMN system fabric. SEP differentiates
-between the two scenarios 1 and 2 and enforces that the correct path is
-used.
+Outbound security service traffic traverses the AP controlled remappers.
+When protecting the rest of the system, SEP traffic goes directly to the
+SMN system fabric. The SEP differentiates between these two cases and
+enforces that the correct path is used.
 
 When SEP accesses shared resources such as shared memory for example,
 the traffic goes through the AP or STEE controlled remappers to get the
@@ -290,5 +292,3 @@ to qualify this.
 |Regular |Relies on PMA/PMP or page table for protection. No special
 action required by SEP.
 |=======================================================================
-
-image::SEP_System.png[SEP_System,scaledwidth=90.0%]
