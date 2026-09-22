@@ -31,9 +31,10 @@
 # points that `smc_cov_scope.vlt` cannot drop.
 #
 # Floors are the effective percentages of a measured
-# `--dut smc --items hosted --cov` (168 leaves, Verilator 5.050):
-# line 78.0977, branch 75.9964, expression 69.0966, user 100.0, with 86
-# accepted user holes and zero unclassified user points.
+# `--dut smc --items hosted --cov` run (Verilator 5.050) taken when that
+# group listed 168 leaves: line 78.0977, branch 75.9964, expression
+# 69.0966, user 100.0, with 86 accepted user holes and zero unclassified
+# user points. This tree's `hosted` group lists 176.
 #
 # The holes below were measured from `--dut smc --items hosted --cov`.
 #
