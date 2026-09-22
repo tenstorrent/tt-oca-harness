@@ -1550,8 +1550,8 @@ class SchedulerBuildTest(CoordinatorTest):
                 leaf["reason"].startswith("dependency_blocked: hdl_compile of target default FAIL")
             )
             self.assertEqual(leaf["failure_buckets"][0]["kind"], "dependency_blocked")
-            self.assertEqual(leaf["metadata"]["dependency"]["stage"], "hdl_compile")
-            self.assertTrue(leaf["metadata"]["dependency"]["job_id"])
+            self.assertIn(f"(job {build['metadata']['scheduler']['job_id']})", leaf["reason"])
+            self.assertNotIn("dependency", leaf["metadata"])
         # The build was the only submission: no leaf reached the scheduler.
         self.assertEqual(len(self.submit_commands()), 1)
         self.assertFalse(list((self.run_dir / "stages" / "regress" / "jobs").glob("sim-*.json")))

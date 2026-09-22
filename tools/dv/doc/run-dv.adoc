@@ -1366,9 +1366,9 @@ the run like an in-process build, so the leaves' manifests carry the same
 `target_build`. Every target builds at once and the leaves are submitted only
 once the builds have ended. A build that fails, times out or is lost blocks
 its target: every planned leaf of that target grades `ERROR` with a
-`dependency_blocked` failure bucket naming the build stage and target, a
-reason naming the build job and its state, and the build's record under
-`metadata.dependency`, without being submitted; the other targets' leaves run.
+`dependency_blocked` failure bucket naming the build stage and target and a
+reason naming the build job and its state, without being submitted; the
+other targets' leaves run.
 The run's status follows from the build failure, and the run accounts for
 every planned leaf. The coordinator gates the leaves itself rather than
 through the schedulers' dependency expressions, which leave a dependent

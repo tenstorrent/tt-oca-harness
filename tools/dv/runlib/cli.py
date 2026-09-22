@@ -3393,7 +3393,6 @@ def run_flow(
             unconfirmed.append(
                 {
                     "task_id": task.task_id,
-                    "role": task.role,
                     "item": task.item,
                     "seed": task.seed,
                     "target": task.target,
@@ -3952,7 +3951,7 @@ def run_flow(
                         "count": 1,
                     }
                 ],
-                metadata={"seed": seed, "attempt": 0, "target": target, "dependency": dependency},
+                metadata={"seed": seed, "attempt": 0, "target": target},
                 target=target,
             )
             finish_leaf(leaf, blocked, [regression_job(stage, item, seed, 0, blocked)])
