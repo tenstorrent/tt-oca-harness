@@ -3321,16 +3321,20 @@ def run_flow(
             leaf_jobs.pop(leaf_id, None)
 
     def note_leaf_job(task: LeafTask, handle: JobHandle) -> None:
+        record = {
+            "task_id": task.task_id,
+            "attempt": task.attempt,
+            "debug_only": task.debug_only,
+            "executor": handle.executor,
+            "driver": handle.driver,
+            "job_id": handle.native_job_id,
+            "submitted_at": handle.submitted_at,
+        }
+        if handle.array_job_id:
+            record["array_job_id"] = handle.array_job_id
+            record["array_task_id"] = handle.array_task_id
         with progress_lock:
-            leaf_jobs.setdefault(task.leaf_id, {})[task.task_id] = {
-                "task_id": task.task_id,
-                "attempt": task.attempt,
-                "debug_only": task.debug_only,
-                "executor": handle.executor,
-                "driver": handle.driver,
-                "job_id": handle.native_job_id,
-                "submitted_at": handle.submitted_at,
-            }
+            leaf_jobs.setdefault(task.leaf_id, {})[task.task_id] = record
 
     def note_cancel_confirmed(task: LeafTask, confirmed: bool) -> None:
         with progress_lock:
@@ -3557,33 +3561,54 @@ def run_flow(
                     return dict(built.metadata["target_build"])
             return None
 
-        def submit(task: LeafTask) -> None:
-            if executor_impl.requires_manifest:
-                if not identity:
-                    identity.append(repo_identity(root))
-                commit, dirty = identity[0]
-                payload = manifest_payload(
-                    task,
-                    flow=flow,
-                    root=root,
-                    tool=tool,
-                    executor=executor,
-                    argv=list(getattr(args, "_raw_argv", []) or []),
-                    ui_leaf_mode=str(getattr(args, "_ui_leaf_mode", "full")),
-                    multi_target=multi_target,
-                    overlay=adopter_overlay_path(args),
-                    site=registries.site.path if registries.site is not None else None,
-                    repo_commit=commit,
-                    repo_dirty=dirty,
-                    target_build=build_of(task.target),
-                )
-                path = write_manifest(manifest_path(run_dir, task.task_id), payload)
-                task = replace(task, manifest_path=path)
-            handle = executor_impl.submit(task)
+        def prepare(task: LeafTask) -> LeafTask:
+            """The task with its manifest written, when the executor reads one."""
+            if not executor_impl.requires_manifest:
+                return task
+            if not identity:
+                identity.append(repo_identity(root))
+            commit, dirty = identity[0]
+            payload = manifest_payload(
+                task,
+                flow=flow,
+                root=root,
+                tool=tool,
+                executor=executor,
+                argv=list(getattr(args, "_raw_argv", []) or []),
+                ui_leaf_mode=str(getattr(args, "_ui_leaf_mode", "full")),
+                multi_target=multi_target,
+                overlay=adopter_overlay_path(args),
+                site=registries.site.path if registries.site is not None else None,
+                repo_commit=commit,
+                repo_dirty=dirty,
+                target_build=build_of(task.target),
+            )
+            path = write_manifest(manifest_path(run_dir, task.task_id), payload)
+            return replace(task, manifest_path=path)
+
+        def register(task: LeafTask, handle: JobHandle) -> None:
             tasks[task.task_id] = task
             handles[task.task_id] = handle
             if executor_impl.requires_manifest and handle.native_job_id:
                 note_leaf_job(task, handle)
+
+        def submit(task: LeafTask) -> None:
+            task = prepare(task)
+            register(task, executor_impl.submit(task))
+
+        def submit_batch(batch: list[LeafTask]) -> None:
+            """First attempts submitted together; a driver with job arrays makes them one.
+
+            Handles are registered as each submission returns, so an interruption part-way
+            through the batch cancels every job already submitted.
+            """
+            prepared = {task.task_id: prepare(task) for task in batch}
+
+            def registered(handles: list[JobHandle]) -> None:
+                for handle in handles:
+                    register(prepared[handle.task_id], handle)
+
+            executor_impl.submit_many(list(prepared.values()), registered)
 
         def record_cancellation(
             outstanding: list[JobHandle], confirmed: dict[str, bool], finished: set[str]
@@ -3724,7 +3749,8 @@ def run_flow(
         try:
             while pending or handles:
                 submitted = 0
-                while pending and len(handles) < max_in_flight:
+                batch: list[LeafTask] = []
+                while pending and len(handles) + len(batch) < max_in_flight:
                     if submit_cap is not None and submitted >= submit_cap:
                         break
                     submitted += 1
@@ -3742,7 +3768,9 @@ def run_flow(
                     leaf_id = int(leaf["id"])
                     attempts[leaf_id] = []
                     jobs_by_leaf[leaf_id] = []
-                    submit(leaf_task(leaf, 0))
+                    batch.append(leaf_task(leaf, 0))
+                if batch:
+                    submit_batch(batch)
                 if not handles:
                     continue
                 live = list(handles.values())

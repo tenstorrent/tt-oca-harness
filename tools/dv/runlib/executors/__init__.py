@@ -59,9 +59,11 @@ DEFAULT_LIMITS: dict[str, Any] = {
     "artifact_grace_sec": 60.0,
     "cancel_grace_sec": 3.0,
     "command_timeout_sec": 120.0,
+    "array_chunk_size": 100,
 }
 # A scheduler answers a cancel or a query in seconds, not milliseconds, and one query covers
-# every submission since the previous one.
+# every submission since the previous one. An array chunk stays well inside the array size
+# both schedulers allow by default (LSF MAX_JOB_ARRAY_SIZE 1000, Slurm MaxArraySize 1001).
 CLUSTER_DEFAULT_LIMITS: dict[str, Any] = {
     **DEFAULT_LIMITS,
     "submit_batch_size": 25,

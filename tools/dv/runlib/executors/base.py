@@ -17,7 +17,7 @@ import re
 import threading
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -304,6 +304,24 @@ class Executor(ABC):
 
     @abstractmethod
     def submit(self, task: LeafTask) -> JobHandle: ...
+
+    def submit_many(
+        self,
+        tasks: Sequence[LeafTask],
+        on_submitted: Callable[[Sequence[JobHandle]], None] | None = None,
+    ) -> list[JobHandle]:
+        """One handle per task, in order; a driver with job arrays submits them together.
+
+        ``on_submitted`` sees every handle as soon as its submission command has returned, so
+        a caller interrupted part-way through a batch knows which jobs it owns.
+        """
+        handles: list[JobHandle] = []
+        for task in tasks:
+            handle = self.submit(task)
+            handles.append(handle)
+            if on_submitted is not None:
+                on_submitted([handle])
+        return handles
 
     @abstractmethod
     def poll(self, handles: Sequence[JobHandle]) -> dict[str, JobObservation]:
