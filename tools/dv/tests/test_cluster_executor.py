@@ -1139,6 +1139,10 @@ class CoordinatorTest(unittest.TestCase):
     driver = "lsf"
     dut = "dtp"
     arrays = True
+    # True marks the cocotb model as already built, so no build stage runs anywhere; False
+    # lets the coordinator build it through the executor as a scheduler job.
+    prebuilt = True
+    stages = ("sim",)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -1171,7 +1175,7 @@ class CoordinatorTest(unittest.TestCase):
         self.site = self.tmp / "site.local.toml"
         self.write_site()
 
-    def write_site(self, **limits: float) -> None:
+    def write_site(self, extra: str = "", **limits: float) -> None:
         merged = {
             "poll_interval_sec": 0.1,
             "artifact_grace_sec": 5,
@@ -1189,9 +1193,10 @@ class CoordinatorTest(unittest.TestCase):
                 setup_hook = "sched.env"
                 arrays = {"true" if self.arrays else "false"}
                 defaults = {{ queue = "regress", cores = 1, mem_mb = 2048, walltime = "30" }}
-                [executors.{self.driver}.limits]
                 """
             )
+            + textwrap.dedent(extra)
+            + f"\n[executors.{self.driver}.limits]\n"
             + limit_lines
             + "\n",
             encoding="utf-8",
@@ -1234,8 +1239,7 @@ class CoordinatorTest(unittest.TestCase):
             self.dut,
             "--items",
             *self.items,
-            "--stage",
-            "sim",
+            *(part for stage in self.stages for part in ("--stage", stage)),
             "--executor",
             self.driver,
             "--sim-jobs",
@@ -1257,7 +1261,8 @@ class CoordinatorTest(unittest.TestCase):
         def prebuilt(argv: list[str] | None = None) -> Any:
             parsed = original(argv)
             # The verilator model a parallel cocotb run builds first is not part of dispatch.
-            parsed._cocotb_prebuilt_targets = {"default"}
+            if self.prebuilt:
+                parsed._cocotb_prebuilt_targets = {"default"}
             return parsed
 
         console = io.StringIO()
@@ -1465,6 +1470,160 @@ class PlainJobsCoordinatorTest(CoordinatorTest):
     """The same runs with `arrays = false` in the site table: one job per attempt."""
 
     arrays = False
+
+
+class SchedulerBuildTest(CoordinatorTest):
+    """The target build as a scheduler job the leaves wait for, and what a failed one blocks."""
+
+    prebuilt = False
+    stages = ("hdl_compile", "sim")
+
+    def build_submits(self) -> list[dict[str, Any]]:
+        return [
+            row
+            for row in self.submit_commands()
+            if "build-hdl_compile-default" in " ".join(row["argv"])
+        ]
+
+    def test_leaves_run_as_jobs_and_grade_from_their_results(self) -> None:
+        """Skipped here: the build-first ordering test below covers this run shape."""
+
+    def test_retry_resubmits_a_failed_leaf_as_a_new_job(self) -> None:
+        """Skipped here: retries do not depend on where the build ran."""
+
+    def test_a_wave_debug_rerun_is_its_own_job(self) -> None:
+        """Skipped here: reruns do not depend on where the build ran."""
+
+    def test_a_lost_job_grades_environment_error(self) -> None:
+        """Skipped here: a lost leaf does not depend on where the build ran."""
+
+    def test_interruption_cancels_the_jobs_and_records_them(self) -> None:
+        """Skipped here: the interruption tests assume no build job precedes the leaves."""
+
+    def test_a_second_signal_ends_the_confirmation_wait(self) -> None:
+        """Skipped here: the interruption tests assume no build job precedes the leaves."""
+
+    def test_the_build_runs_as_a_job_before_the_leaves(self) -> None:
+        self.scenario()
+        code, summary = self.run_dv()
+        self.assertEqual(code, 0, summary.get("status"))
+        self.assertEqual(summary["status"], "PASS")
+        build = next(stage for stage in summary["stages"] if stage["name"] == "hdl_compile")
+        self.assertEqual(build["status"], "PASS")
+        self.assertIsNone(build.get("item"))
+        self.assertEqual(build["metadata"]["target"], "default")
+        self.assertEqual(build["metadata"]["scheduler"]["driver"], self.driver)
+        self.assertTrue(build["metadata"]["scheduler"]["job_id"])
+        self.assertEqual(build["metadata"]["target_build"]["target"], "default")
+        submits = self.submit_commands()
+        self.assertEqual(len(submits), self.expected_submits(2) + 1)
+        self.assertEqual(len(self.build_submits()), 1)
+        self.assertEqual(self.build_submits()[0]["n"], 1, "the build is submitted first")
+        manifest = json.loads(
+            (
+                self.run_dir / "stages" / "regress" / "jobs" / "build-hdl_compile-default.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            (manifest["role"], manifest["item"], manifest["stage"]), ("build", "", "hdl_compile")
+        )
+        leaf_manifest = json.loads(
+            (self.run_dir / "stages" / "regress" / "jobs" / "sim-000000-a0.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(leaf_manifest["target_build"]["target"], "default")
+        self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+
+    def test_a_failed_build_blocks_its_leaves(self) -> None:
+        self.scenario()
+        code, summary = self.run_dv(statuses={"build": "FAIL"})
+        self.assertEqual(code, 2, summary.get("status"))
+        self.assertEqual(summary["status"], "ERROR")
+        build = next(stage for stage in summary["stages"] if stage["name"] == "hdl_compile")
+        self.assertEqual(build["status"], "FAIL")
+        leaves = self.leaves(summary)
+        self.assertEqual(len(leaves), 2)
+        for leaf in leaves:
+            self.assertEqual(leaf["status"], "ERROR")
+            self.assertTrue(
+                leaf["reason"].startswith("dependency_blocked: hdl_compile of target default FAIL")
+            )
+            self.assertEqual(leaf["failure_buckets"][0]["kind"], "dependency_blocked")
+            self.assertEqual(leaf["metadata"]["dependency"]["stage"], "hdl_compile")
+            self.assertTrue(leaf["metadata"]["dependency"]["job_id"])
+        # The build was the only submission: no leaf reached the scheduler.
+        self.assertEqual(len(self.submit_commands()), 1)
+        self.assertFalse(list((self.run_dir / "stages" / "regress" / "jobs").glob("sim-*.json")))
+        regression = json.loads(
+            (self.run_dir / "stages" / "regress" / "regression.json").read_text(encoding="utf-8")
+        )
+        bucket = next(
+            bucket
+            for bucket in regression["failure_buckets"]
+            if bucket["kind"] == "dependency_blocked"
+        )
+        self.assertEqual(bucket["count"], 2)
+        self.assertEqual(summary["tests"]["completed"], True)
+
+    def test_build_defaults_and_build_submit_argv_shape_the_build_job(self) -> None:
+        marker = "-app" if self.driver == "lsf" else "--comment=compile"
+        if self.driver == "lsf":
+            template = (
+                '["bsub", ["-q", "{queue}"], ["-n", "{cores}"], "-app", "compile", '
+                '"-J", "{jobname}", "-o", "{joblog}", "{script}"]'
+            )
+        else:
+            template = (
+                '["sbatch", "--parsable", ["--partition={queue}"], ["--cpus-per-task={cores}"], '
+                '"--comment=compile", "--job-name={jobname}", "--output={joblog}", "{script}"]'
+            )
+        self.write_site(
+            extra=f"""
+            build_defaults = {{ cores = 4 }}
+            build_submit_argv = {template}
+            """
+        )
+        self.scenario()
+        code, summary = self.run_dv()
+        self.assertEqual(code, 0, summary.get("status"))
+        (build_submit,) = self.build_submits()
+        argv = " ".join(build_submit["argv"])
+        self.assertIn(marker, argv)
+        self.assertIn("4" if self.driver == "lsf" else "--cpus-per-task=4", argv)
+        for row in self.submit_commands():
+            if row["n"] != build_submit["n"]:
+                self.assertNotIn(marker, " ".join(row["argv"]))
+        build = next(stage for stage in summary["stages"] if stage["name"] == "hdl_compile")
+        self.assertEqual(build["metadata"]["build_jobs"], 4)
+
+    def test_scheduler_builds_need_a_cluster_executor(self) -> None:
+        console = io.StringIO()
+        with redirect_stdout(console), redirect_stderr(console):
+            code = cli.main(
+                [
+                    "--dut",
+                    self.dut,
+                    "--items",
+                    self.items[0],
+                    "--stage",
+                    "sim",
+                    "--executor",
+                    "local",
+                    "--builds",
+                    "scheduler",
+                    "--run-dir",
+                    str(self.run_dir),
+                    "--ui",
+                    "plain",
+                ]
+            )
+        self.assertEqual(code, 2)
+        self.assertIn("--builds scheduler needs a cluster executor", console.getvalue())
+
+
+class SlurmSchedulerBuildTest(SchedulerBuildTest):
+    driver = "slurm"
 
 
 if __name__ == "__main__":

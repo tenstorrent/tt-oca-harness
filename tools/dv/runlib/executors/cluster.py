@@ -368,7 +368,10 @@ class ClusterExecutor(Executor):
             "task_id": task.task_id,
             "executor": self.name,
         }
-        result = self._run(render_argv(self._cfg["submit_argv"], values), "submit")
+        template = self._cfg["submit_argv"]
+        if task.is_build and self._cfg.get("build_submit_argv"):
+            template = self._cfg["build_submit_argv"]
+        result = self._run(render_argv(template, values), "submit")
         outcome = self._dialect.parse_submit(result)
         stamp = now_iso()
         handle = JobHandle(

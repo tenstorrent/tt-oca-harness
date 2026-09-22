@@ -1258,6 +1258,16 @@ its own table. An executor whose templates cannot carry an array (a Slurm
 `submit_argv` without `{array_range}`, an LSF `query_argv` without `jobindex`)
 submits plain jobs and says so in the executor log.
 
+|`builds`, `build_defaults`, `build_submit_argv`
+|cluster
+|`builds = "scheduler"` (the value an unset key takes) runs each target build
+as a job of its own that the leaves wait for; `"local"` builds on the
+submitting host, and `--builds` overrides either for one run.
+`build_defaults` is the build's resource request where it differs from
+`defaults`, and `build_submit_argv` its submit template where a site's build
+needs other flags (a compile-licence application profile, say); both render
+the `submit_argv` placeholders.
+
 |`env_passthrough`, `history_parser`, `description`
 |cluster
 |Variables whose values at submission the job script exports before the
@@ -1274,7 +1284,7 @@ file.
 |===
 |Template |Placeholders
 
-|`submit_argv`
+|`submit_argv`, `build_submit_argv`
 |`{queue}` `{cores}` `{mem_mb}` `{mem_gb}` `{walltime}` `{walltime_sec}`
 `{walltime_min}` `{walltime_hms}` `{jobname}` `{joblog}` `{image}` `{script}`
 `{manifest}` `{python}` `{run_dir}` `{repo_root}` `{leaf_dir}` `{task_id}`
@@ -1342,6 +1352,28 @@ executor's `limits.max_in_flight`; the coordinator submits at most
 The target build runs on the submitting host before the first submission,
 so an omitted `--build-jobs` derives from `--sim-jobs` capped at that host's
 CPU count.
+
+With `builds = "scheduler"`, or `--builds scheduler`, each target's build stage
+(`hdl_compile` or `elaborate`, and the model a parallel cocotb run builds
+before its leaves) is itself a job: a manifest with `role = "build"` and no
+item at `<run>/stages/regress/jobs/build-<stage>-<target>.json`, rendered
+through `build_submit_argv` when the executor has one and `submit_argv`
+otherwise, with the resources of the command line, the stage's `resources`
+table, `build_defaults`, then `defaults`. The worker runs the stage with the
+job's core request as its build concurrency and writes the build's result
+under `<run>/stages/regress/builds/<task>/`; the coordinator collects it into
+the run like an in-process build, so the leaves' manifests carry the same
+`target_build`. Every target builds at once and the leaves are submitted only
+once the builds have ended. A build that fails, times out or is lost blocks
+its target: every planned leaf of that target grades `ERROR` with a
+`dependency_blocked` failure bucket naming the build stage and target, a
+reason naming the build job and its state, and the build's record under
+`metadata.dependency`, without being submitted; the other targets' leaves run.
+The run's status follows from the build failure, and the run accounts for
+every planned leaf. The coordinator gates the leaves itself rather than
+through the schedulers' dependency expressions, which leave a dependent
+whose condition can no longer be met pending until someone cancels it. The
+`flist` stage and `c_compile` run on the submitting host.
 
 Every attempt is one job. The coordinator writes the leaf manifest, then a job
 script at `<run>/stages/regress/scripts/<task>.sh` that exports the
@@ -2287,7 +2319,10 @@ leaf's final result.
 * `rerun_commands` repeats the `rerun` of every failed and flaky record.
 * `failure_buckets` groups the failed leaves' buckets by `(kind, signature)`
   with a `count`, the `affected` leaves, and up to five example paths; an
-  interruption adds one `interruption` bucket naming the interrupted leaves.
+  interruption adds one `interruption` bucket naming the interrupted leaves,
+  and a target whose scheduler-managed build failed adds one
+  `dependency_blocked` bucket per build stage and target
+  (<<runner-cluster-dispatch>>).
 
 A `--waves-on-fail` rerun is recorded on the final attempt as `wave_debug`
 with `debug_only = true` and `status_affects_final_result = false`; it never
@@ -2493,6 +2528,12 @@ cluster executor is selected.
 runs leaves in this process; `lsf` and `slurm` submit each attempt as a job
 (<<runner-cluster-dispatch>>). Selecting an entry whose driver the runner
 lacks is a configuration error, and a dry run dispatches nothing.
+
+|`--builds {local,scheduler}`
+|Where a cluster executor runs the target builds: as scheduler jobs the
+leaves wait for (`scheduler`), or on the submitting host (`local`). The
+executor's `builds` key applies when omitted; `scheduler` with the local
+executor is a configuration error, and a dry run builds locally.
 
 |`--queue NAME`, `--cores N`, `--mem-mb MB`, `--walltime TIME`
 |The leaves' resource request. The command line wins over a stage's
@@ -3288,13 +3329,14 @@ tool does not need to rerun. See <<runner-waive>>.
 The following behaviors are not part of the runner contract:
 
 * A cluster executor keeps the coordinator in the foreground: there is no
-  detached mode and no scheduler-managed build. First attempts go out as job
-  arrays where the executor's templates allow it and as one job per attempt
-  otherwise; retries and wave-debug reruns are always single jobs. The target
-  build runs on the submitting host, and every worker verifies its ready
-  marker before it simulates. Queue, core, memory, and wall-time flags reach
-  a cluster job's submit command; the local executor records them and
-  enforces nothing.
+  detached mode. First attempts go out as job arrays where the executor's
+  templates allow it and as one job per attempt otherwise; retries and
+  wave-debug reruns are always single jobs. A target build is a scheduler job
+  the coordinator waits for, or an in-process build with `builds = "local"`;
+  the leaves never carry a scheduler dependency expression, and every worker
+  verifies its ready marker before it simulates. Queue, core, memory, and
+  wall-time flags reach a cluster job's submit command; the local executor
+  records them and enforces nothing.
 * The runner writes no `run.json` and has no background execution or job
   lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may

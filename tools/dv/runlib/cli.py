@@ -77,11 +77,15 @@ from .executors import (
     ClusterError,
     build_executor,
     dispatch_blocker,
+    executor_builds,
     executor_driver,
     executor_limits,
 )
 from .executors.base import (
+    BUILD_ROLE,
+    Executor,
     JobHandle,
+    JobObservation,
     JobState,
     LeafTask,
     ResourceRequest,
@@ -402,6 +406,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         metavar="NAME",
         help="Executor from executors.toml (`local`, or a cluster entry the run may use)",
+    )
+    parallel.add_argument(
+        "--builds",
+        choices=["local", "scheduler"],
+        default=None,
+        help=(
+            "Where a cluster executor runs the target builds: as scheduler jobs the leaves "
+            "wait for, or in this process (the executor's `builds` key when omitted)"
+        ),
     )
     parallel.add_argument("--queue", metavar="NAME", help="Executor queue/partition metadata")
     parallel.add_argument("--cores", type=int, metavar="N", help="Executor CPU-core request")
@@ -2525,6 +2538,25 @@ def resource_request(
     )
 
 
+def build_resource_request(
+    args: argparse.Namespace, stage: dict[str, Any], executor_cfg: dict[str, Any]
+) -> ResourceRequest:
+    """Resources for one target build: the command line, the build stage's table, then the
+    executor's `build_defaults` before its `defaults`."""
+    cli = ResourceRequest(
+        queue=getattr(args, "queue", None),
+        cores=getattr(args, "cores", None),
+        mem_mb=getattr(args, "mem_mb", None),
+        walltime=getattr(args, "walltime", None),
+    )
+    return resolve_resources(
+        cli,
+        ResourceRequest.from_mapping(stage.get("resources")),
+        ResourceRequest.from_mapping(executor_cfg.get("build_defaults")),
+        ResourceRequest.from_mapping(executor_cfg.get("defaults")),
+    )
+
+
 def tool_needs_license(simulators: dict[str, Any], tool: str) -> bool:
     """True when the registry lists license environment variables for ``tool``."""
     cfg = simulators.get(tool)
@@ -3067,6 +3099,10 @@ def run_flow(
     executor = selected_executor(flow, args, registries.executors)
     executor_cfg = registries.executors[executor]
     setattr(args, "_cluster_executor", executor_cfg.get("kind") == "cluster")
+    builds = getattr(args, "builds", None) or executor_builds(executor_cfg)
+    if builds == "scheduler" and not args._cluster_executor:
+        raise ConfigError("--builds scheduler needs a cluster executor; `local` builds in-process")
+    setattr(args, "_scheduler_builds", builds == "scheduler" and not args.dry_run)
     if getattr(args, "walltime", None):
         parse_walltime_sec(str(args.walltime))
     validate_selected_tool_available(tool, simulators, args, flow)
@@ -3338,6 +3374,93 @@ def run_flow(
             if job is not None:
                 job["cancel_confirmed"] = confirmed
 
+    def record_cancellation(
+        executor_impl: Executor,
+        tasks: dict[str, LeafTask],
+        outstanding: list[JobHandle],
+        confirmed: dict[str, bool],
+        finished: set[str],
+        cancel_grace: float,
+    ) -> None:
+        requested = [handle for handle in outstanding if handle.task_id not in finished]
+        unconfirmed: list[dict[str, Any]] = []
+        for handle in outstanding:
+            task = tasks[handle.task_id]
+            stopped = bool(confirmed.get(handle.task_id, False))
+            note_cancel_confirmed(task, stopped)
+            if stopped or handle.task_id in finished:
+                continue
+            unconfirmed.append(
+                {
+                    "task_id": task.task_id,
+                    "role": task.role,
+                    "item": task.item,
+                    "seed": task.seed,
+                    "target": task.target,
+                    "attempt": task.attempt,
+                    "debug_only": task.debug_only,
+                    "executor": handle.executor,
+                    "driver": handle.driver,
+                    "job_id": handle.native_job_id,
+                }
+            )
+        record = jobs_dir(run_dir) / UNCONFIRMED_CANCELS_NAME
+        cancellation.clear()
+        cancellation.update(
+            {
+                "executor": executor_impl.name,
+                "driver": executor_impl.driver,
+                "requested": len(requested),
+                "confirmed": len(requested) - len(unconfirmed),
+                "unconfirmed": unconfirmed,
+                "grace_sec": cancel_grace,
+                "wait_cut_short": cleanup_hurry.is_set(),
+                "record": repo_rel(root, record) if record.is_file() else None,
+            }
+        )
+        if unconfirmed:
+            ids = ", ".join(str(job["job_id"]) for job in unconfirmed)
+            console.event(
+                "executor",
+                f"{len(unconfirmed)} of {len(requested)} cancelled job(s) unconfirmed "
+                f"(job ids {ids}); check them with the scheduler by id",
+                force=True,
+            )
+
+    def cancel_outstanding(
+        executor_impl: Executor,
+        tasks: dict[str, LeafTask],
+        handles: dict[str, JobHandle],
+        cancel_grace: float,
+    ) -> set[str]:
+        """The interrupted-run cleanup both dispatch loops share: a final poll, the cancel
+        request with its bounded confirmation wait, and the cancellation record. Returns the
+        task ids whose attempt had ended before the cancellation reached them."""
+        # From here on a signal unwinds nothing more; it ends the confirmation wait.
+        interruption_requested.set()
+        outstanding = list(handles.values())
+        # A scheduler that stopped answering must not keep the run from its summary.
+        try:
+            snapshot = executor_impl.poll(outstanding)
+        except Exception as exc:  # noqa: BLE001
+            console.event("executor", f"final poll failed: {exc}", force=True)
+            snapshot = {}
+        finished = {
+            task_id
+            for task_id, seen in snapshot.items()
+            if seen.state.terminal and seen.state is not JobState.CANCELLED
+        }
+        try:
+            confirmed = executor_impl.cancel(
+                outstanding, grace_sec=cancel_grace, stop=cleanup_hurry
+            )
+        except Exception as exc:  # noqa: BLE001
+            console.event("executor", f"cancel failed: {exc}", force=True)
+            confirmed = {}
+        request_stage_cancellation()
+        record_cancellation(executor_impl, tasks, outstanding, confirmed, finished, cancel_grace)
+        return finished
+
     def leaf_is_completed(leaf: dict[str, Any]) -> bool:
         with progress_lock:
             return int(leaf["id"]) in completed_leaves_by_id
@@ -3473,6 +3596,156 @@ def run_flow(
         )
         return result
 
+    # Targets whose build ended without a usable model, with the build job that failed them;
+    # their leaves grade `dependency_blocked` instead of running.
+    blocked_targets: dict[str, dict[str, Any]] = {}
+
+    def run_builds(stage: str, targets: list[str]) -> None:
+        """Build every target of ``stage`` and append the results.
+
+        In-process builds stop at the first failure, as a flat run does. Scheduler builds run
+        every target as its own job, wait for all of them, and record each failed target as
+        blocked, so the other targets' leaves still run.
+        """
+        if not getattr(args, "_scheduler_builds", False):
+            for target in targets:
+                result = run_stage(
+                    flow,
+                    root,
+                    target_cfgs[target],
+                    catalog,
+                    stage,
+                    None,
+                    args,
+                    tool,
+                    run_dir,
+                    simulators,
+                    policies,
+                    nest=nest,
+                )
+                results.append(result)
+                if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                    break
+            return
+        build_cfg_table = registries.executors[executor]
+        limits = executor_limits(build_cfg_table)
+        executor_impl = build_executor(
+            executor,
+            build_cfg_table,
+            runner=local_runner,
+            max_workers=max(1, len(targets)),
+            root=root,
+            run_dir=run_dir,
+            on_event=lambda text: console.event("executor", text),
+        )
+        poll_interval = float(limits["poll_interval_sec"])
+        cancel_grace = float(limits["cancel_grace_sec"])
+        request = build_resource_request(args, flow_stages(flow).get(stage, {}), build_cfg_table)
+        commit, dirty = repo_identity(root)
+        tasks: dict[str, LeafTask] = {}
+        handles: dict[str, JobHandle] = {}
+        target_of: dict[str, str] = {}
+        for index, target in enumerate(targets):
+            safe_target = "".join(ch if ch.isalnum() or ch in "_.-" else "_" for ch in target)
+            label = f"build-{stage}-{safe_target}"
+            task = LeafTask(
+                task_id=label,
+                leaf_id=-(index + 1),
+                stage=stage,
+                item="",
+                seed=0,
+                attempt=0,
+                run_dir=run_dir,
+                leaf_dir=run_dir / "stages" / "regress" / "builds" / label,
+                target=target,
+                nest=False,
+                role=BUILD_ROLE,
+                resources=request,
+            )
+            payload = manifest_payload(
+                task,
+                flow=flow,
+                root=root,
+                tool=tool,
+                executor=executor,
+                argv=list(getattr(args, "_raw_argv", []) or []),
+                ui_leaf_mode=str(getattr(args, "_ui_leaf_mode", "full")),
+                multi_target=multi_target,
+                overlay=adopter_overlay_path(args),
+                site=registries.site.path if registries.site is not None else None,
+                repo_commit=commit,
+                repo_dirty=dirty,
+            )
+            task = replace(
+                task, manifest_path=write_manifest(manifest_path(run_dir, label), payload)
+            )
+            handle = executor_impl.submit(task)
+            tasks[label] = task
+            handles[label] = handle
+            target_of[label] = target
+            console.event(
+                "build",
+                f"{stage} target={target} submitted as job {handle.native_job_id or '(refused)'}",
+            )
+
+        def settle(task_id: str, handle: JobHandle, seen: JobObservation) -> None:
+            task = tasks[task_id]
+            target = target_of[task_id]
+            outcome = executor_impl.collect(handle)
+            result = outcome.result
+            if result is None:
+                result = error_result(
+                    task,
+                    f"environment_error: build {task_id} ended {outcome.state.value.lower()}: "
+                    f"{outcome.error or seen.reason or 'no result'}",
+                )
+                result.metadata = {
+                    **(result.metadata or {}),
+                    "scheduler": {
+                        "executor": handle.executor,
+                        "driver": handle.driver,
+                        "job_id": handle.native_job_id,
+                        "state": outcome.state.value,
+                        "reason": outcome.error or seen.reason,
+                    },
+                }
+            result.item = None
+            result.metadata = {**(result.metadata or {}), "target": target}
+            results.append(result)
+            console.stage_result(
+                stage=stage, status=result.status, duration_sec=result.duration_sec, target=target
+            )
+            if result.status == "PASS":
+                args._cocotb_prebuilt_targets.add(target)
+                return
+            blocked_targets[target] = {
+                "stage": stage,
+                "task_id": task_id,
+                "job_id": handle.native_job_id,
+                "state": outcome.state.value,
+                "status": result.status,
+                "reason": result.reason,
+            }
+            console.event(
+                "build",
+                f"{stage} target={target} {result.status}: its leaves are dependency-blocked",
+                force=True,
+            )
+
+        try:
+            while handles:
+                live = list(handles.values())
+                executor_impl.wait(live, poll_interval)
+                for task_id, seen in executor_impl.poll(live).items():
+                    if seen.state.terminal:
+                        settle(task_id, handles.pop(task_id), seen)
+        except BaseException:
+            cancel_outstanding(executor_impl, tasks, handles, cancel_grace)
+            executor_impl.close(wait=False)
+            raise
+        else:
+            executor_impl.close(wait=True)
+
     def attach_wave_debug(
         final: StageResult,
         jobs: list[dict[str, Any]],
@@ -3540,7 +3813,8 @@ def run_flow(
         submit_cap = executor_impl.submit_batch_size
         poll_interval = float(limits["poll_interval_sec"])
         cancel_grace = float(limits["cancel_grace_sec"])
-        pending = deque(leaves)
+        blocked_leaves = [leaf for leaf in leaves if leaf.get("target") in blocked_targets]
+        pending = deque(leaf for leaf in leaves if leaf.get("target") not in blocked_targets)
         leaf_by_id = {int(leaf["id"]): leaf for leaf in leaves}
         tasks: dict[str, LeafTask] = {}
         handles: dict[str, JobHandle] = {}
@@ -3606,53 +3880,6 @@ def run_flow(
 
             executor_impl.submit_many(list(prepared.values()), registered)
 
-        def record_cancellation(
-            outstanding: list[JobHandle], confirmed: dict[str, bool], finished: set[str]
-        ) -> None:
-            requested = [handle for handle in outstanding if handle.task_id not in finished]
-            unconfirmed: list[dict[str, Any]] = []
-            for handle in outstanding:
-                task = tasks[handle.task_id]
-                stopped = bool(confirmed.get(handle.task_id, False))
-                note_cancel_confirmed(task, stopped)
-                if stopped or handle.task_id in finished:
-                    continue
-                unconfirmed.append(
-                    {
-                        "task_id": task.task_id,
-                        "item": task.item,
-                        "seed": task.seed,
-                        "target": task.target,
-                        "attempt": task.attempt,
-                        "debug_only": task.debug_only,
-                        "executor": handle.executor,
-                        "driver": handle.driver,
-                        "job_id": handle.native_job_id,
-                    }
-                )
-            record = jobs_dir(run_dir) / UNCONFIRMED_CANCELS_NAME
-            cancellation.clear()
-            cancellation.update(
-                {
-                    "executor": executor_impl.name,
-                    "driver": executor_impl.driver,
-                    "requested": len(requested),
-                    "confirmed": len(requested) - len(unconfirmed),
-                    "unconfirmed": unconfirmed,
-                    "grace_sec": cancel_grace,
-                    "wait_cut_short": cleanup_hurry.is_set(),
-                    "record": repo_rel(root, record) if record.is_file() else None,
-                }
-            )
-            if unconfirmed:
-                ids = ", ".join(str(job["job_id"]) for job in unconfirmed)
-                console.event(
-                    "executor",
-                    f"{len(unconfirmed)} of {len(requested)} cancelled job(s) unconfirmed "
-                    f"(job ids {ids}); check them with the scheduler by id",
-                    force=True,
-                )
-
         def finish_leaf(
             leaf: dict[str, Any], final: StageResult, jobs: list[dict[str, Any]]
         ) -> None:
@@ -3698,6 +3925,38 @@ def run_flow(
             )
             finish_leaf(leaf, skipped, [regression_job(stage, item, seed, 0, skipped)])
 
+        def block_leaf(leaf: dict[str, Any]) -> None:
+            """A leaf whose target has no model: `ERROR` with a `dependency_blocked` bucket."""
+            item = str(leaf["item"])
+            seed = int(leaf["seed"])
+            target = str(leaf.get("target"))
+            dependency = blocked_targets[target]
+            stamp = datetime.now(UTC).isoformat()
+            job = dependency["job_id"] or "not submitted"
+            blocked = StageResult(
+                stage=stage,
+                item=item,
+                status="ERROR",
+                return_code=exit_code_for_status("ERROR"),
+                duration_sec=0.0,
+                started_at=stamp,
+                ended_at=stamp,
+                reason=(
+                    f"dependency_blocked: {dependency['stage']} of target {target} "
+                    f"{dependency['status']} (job {job}): {dependency['reason']}"
+                ),
+                failure_buckets=[
+                    {
+                        "kind": "dependency_blocked",
+                        "signature": f"{dependency['stage']} {target}",
+                        "count": 1,
+                    }
+                ],
+                metadata={"seed": seed, "attempt": 0, "target": target, "dependency": dependency},
+                target=target,
+            )
+            finish_leaf(leaf, blocked, [regression_job(stage, item, seed, 0, blocked)])
+
         def attempt_done(task: LeafTask, result: StageResult) -> None:
             leaf = leaf_by_id[task.leaf_id]
             jobs = jobs_by_leaf[task.leaf_id]
@@ -3742,6 +4001,8 @@ def run_flow(
                 f"{outcome.state.value.lower()}: {detail}",
             )
 
+        for leaf in blocked_leaves:
+            block_leaf(leaf)
         try:
             while pending or handles:
                 submitted = 0
@@ -3780,31 +4041,10 @@ def run_flow(
                     task = tasks.pop(task_id)
                     attempt_done(task, collect_result(handle, task, observation.reason))
         except BaseException:
-            # From here on a signal unwinds nothing more; it ends the confirmation wait.
-            interruption_requested.set()
-            outstanding = list(handles.values())
             # Only an attempt that had ended before the interruption counts as a completed
             # leaf; whatever the cancellation ends is interrupted, whichever result it wrote.
-            # A scheduler that stopped answering must not keep the run from its summary.
-            try:
-                snapshot = executor_impl.poll(outstanding)
-            except Exception as exc:  # noqa: BLE001
-                console.event("executor", f"final poll failed: {exc}", force=True)
-                snapshot = {}
-            finished = {
-                task_id
-                for task_id, seen in snapshot.items()
-                if seen.state.terminal and seen.state is not JobState.CANCELLED
-            }
-            try:
-                confirmed = executor_impl.cancel(
-                    outstanding, grace_sec=cancel_grace, stop=cleanup_hurry
-                )
-            except Exception as exc:  # noqa: BLE001
-                console.event("executor", f"cancel failed: {exc}", force=True)
-                confirmed = {}
-            request_stage_cancellation()
-            record_cancellation(outstanding, confirmed, finished)
+            outstanding = list(handles.values())
+            finished = cancel_outstanding(executor_impl, tasks, handles, cancel_grace)
             for handle in outstanding:
                 if handle.task_id not in finished:
                     continue
@@ -3899,25 +4139,34 @@ def run_flow(
         emit_dry_run_config_summary(console, flow, root, sim_cfg, simulators, tool, args)
         for stage_index, stage in enumerate(stages):
             if stage in {"flist", "hdl_compile", "elaborate"}:
-                for target in build_targets:
-                    result = run_stage(
-                        flow,
-                        root,
-                        target_cfgs[target],
-                        catalog,
-                        stage,
-                        None,
-                        args,
-                        tool,
-                        run_dir,
-                        simulators,
-                        policies,
-                        nest=nest,
+                if stage == "flist":
+                    for target in build_targets:
+                        result = run_stage(
+                            flow,
+                            root,
+                            target_cfgs[target],
+                            catalog,
+                            stage,
+                            None,
+                            args,
+                            tool,
+                            run_dir,
+                            simulators,
+                            policies,
+                            nest=nest,
+                        )
+                        results.append(result)
+                        if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                            break
+                else:
+                    run_builds(
+                        stage, [target for target in build_targets if target not in blocked_targets]
                     )
-                    results.append(result)
-                    if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
-                        break
-                if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                # A failed scheduler build blocks its target's leaves in the sim stage instead
+                # of ending the run here, so the record accounts for every planned leaf.
+                if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"} and (
+                    stage == "flist" or not getattr(args, "_scheduler_builds", False)
+                ):
                     break
             elif stage in {"sim", "regress", "formal"}:
                 leaves = leaf_plans_by_stage.get(stage_index, [])
@@ -3942,37 +4191,21 @@ def run_flow(
                         for target in build_targets
                         if needs_parallel_cocotb_prebuild(stage, target)
                     ]
+                    prebuild_stage = (
+                        "hdl_compile" if "hdl_compile" in flow_stages(flow) else "elaborate"
+                    )
                     for target in missing_prebuilds:
-                        prebuild_stage = (
-                            "hdl_compile" if "hdl_compile" in flow_stages(flow) else "elaborate"
-                        )
                         console.event(
                             "scheduler",
                             f"pre-building cocotb model for target `{target}` before parallel sim",
                         )
-                        prebuild = run_stage(
-                            flow,
-                            root,
-                            target_cfgs[target],
-                            catalog,
-                            prebuild_stage,
-                            None,
-                            args,
-                            tool,
-                            run_dir,
-                            simulators,
-                            policies,
-                            nest=nest,
-                        )
-                        results.append(prebuild)
-                        if prebuild.status != "PASS":
-                            break
-                    if missing_prebuilds and aggregate_status(results) in {
-                        "FAIL",
-                        "ERROR",
-                        "TIMEOUT",
-                        "UNKNOWN",
-                    }:
+                    if missing_prebuilds:
+                        run_builds(prebuild_stage, missing_prebuilds)
+                    if (
+                        missing_prebuilds
+                        and aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
+                        and not getattr(args, "_scheduler_builds", False)
+                    ):
                         break
                 if scheduler:
                     console.regression_start(
