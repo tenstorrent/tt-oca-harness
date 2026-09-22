@@ -433,20 +433,20 @@ needs a measured database first.</p>
 <code>SMU_RELEASE_MATRIX.adoc</code>)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Public metric</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">interface toggle: the ports of <code>smu_wrapper</code>
-(<code>smu_wrapper_uvm_top.u_dut</code>), a port counting once any of its bits has
-toggled, read from the run&#8217;s <code>cov/merged.dat</code> by <code>cov/interface_toggle.py</code>;
-plus the <code>user</code> points</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Metrics</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the runner&#8217;s native families: <code>user</code> (the <code>cov/sv</code> cover
+properties) on Verilator; <code>toggle</code> and <code>assertion</code> on VCS, where <code>toggle</code> is
+every bit of every port of <code>smu_wrapper</code> in both directions after
+<code>cov/config/vcs/smu_wrapper_toggle_exclusions.el</code> has left the population,
+and <code>assertion</code> is where urg reads the same cover properties</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Numeric target</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">interface toggle 85 percent of the wrapper&#8217;s ports (114 of
-the 129 ports that carry a toggle point = 88.4 percent on the <code>hosted</code> group
-when this chapter was written; three more ports are constant); <code>user</code> 95
-percent effective (94 of 107 hit, 90.4 percent effective, at the same time). Neither is a runner gate: the runner grades the
-native families and the policy&#8217;s <code><a id="holes"></a></code>, and the interface figure is
-reported beside them</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VCS <code>toggle</code> 80 percent effective and <code>assertion</code> 80 percent
+effective, both gated by <code>cov/config/vcs/smu_wrapper_coverage_policy.toml</code>
+(<code>toggle</code> 96.03/95.93 raw/effective and <code>assertion</code> 84.11 on the <code>hosted</code>
+group when this chapter was written);
+<code>user</code> 95 percent effective on Verilator, reported and not yet gated</p></td>
 </tr>
 </tbody>
 </table>
@@ -553,50 +553,40 @@ that replaces the crossbar, in each direction</p></td>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Public Verilator</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">line / expr / toggle / user over
-<code>smu_wrapper_cov_scope.vlt</code>, which drops everything the wrapper instantiates
-at compile time&#8201;&#8212;&#8201;the SMU block (graded on <code>--dut smu_block</code>), the SEP, SMC
-and DTP trees, the <code>hw/top</code> integration shells, vendored and generated RTL&#8201;&#8212;&#8201;so the toggle points that remain are `smu_wrapper&#8217;s own: its ports and the
-nets it declares between them</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">weekly <code>--cov</code> on the large runner
-(<code>regress.yml</code>). Nightly does not collect.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Public metric</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cov/interface_toggle.py &lt;run dir&gt;</code> keeps the per-bit,
-per-edge toggle points whose hierarchy is <code>smu_wrapper_uvm_top.u_dut</code> and
-whose name is in the port list of <code>hw/top/smu_wrapper.sv</code>, and folds them
-into one figure per port; every port is live because the single target
-elaborates SEP. <code>--list</code> names the ports that never toggled. It is the
-documented second step after any <code>--cov</code> run, on either simulator; no CI job
-invokes it</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">on any finished <code>--cov</code> run of <code>--dut smu</code>, without a simulator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">line / expr / user over <code>smu_wrapper_cov_scope.vlt</code>,
+which drops everything the wrapper instantiates at compile time&#8201;&#8212;&#8201;the SMU
+block (graded on <code>--dut smu_block</code>), the SEP, SMC and DTP trees, the <code>hw/top</code>
+integration shells, vendored and generated RTL. Toggle is not collected on
+Verilator, as the DTP set does not collect it: <code>coverage_off -file</code> does not
+apply to a source file whose last line has no newline, and the vendored and
+<code>hw/common</code> files in that state would carry subsystem toggle points into the
+wrapper&#8217;s database</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">weekly <code>--cov</code> on the large runner (<code>regress.yml</code>).
+Nightly does not collect.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Commercial</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">toggle / code / assertion databases under the licensed flow;
-<code>smu_wrapper_cov_scope.hier</code> drops the same trees, <code>-cm_tgl portsonly</code>
-keeps toggle on the wrapper&#8217;s ports and <code>-cm_noconst</code> leaves tied-off nets
-out. <code>cov/config/vcs/smu_wrapper_coverage_policy.toml</code> floors the <code>assertion</code>
-family at 80 percent, which is where urg reads the <code>cover property</code> points.
-urg&#8217;s <code>Ports</code> row, after the exclusions
-<code>cov/config/vcs/smu_wrapper_toggle_exclusions.el</code> names with a reason per
-class, is the graded port toggle: a struct field counts when every bit of it
-toggled both ways. The per-port connectivity figure comes from the same
-<code>cov/interface_toggle.py</code> fed the run&#8217;s <code>cov/report/modinfo.txt</code>, so both
-simulators are read on one definition (see <code>cov/config/vcs/README.md</code>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">not
-a public CI job; not a substitute for the public weekly</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">toggle / code / assertion databases under the licensed flow.
+<code>smu_wrapper_cov_scope.hier</code> drops the same trees and the bench&#8217;s AXI egress
+glue at compile time, <code>-cm_tgl portsonly</code> keeps toggle on the wrapper&#8217;s ports
+and <code>-cm_noconst</code> leaves tied-off nets out;
+<code>cov/config/vcs/smu_wrapper_toggle_exclusions.el</code> names, with a reason per
+class, the fields that are not the wrapper&#8217;s to toggle, and the policy
+applies it at report time. <code>cov/config/vcs/smu_wrapper_coverage_policy.toml</code>
+floors <code>toggle</code> and <code>assertion</code> at 80 percent; <code>run_dv.py</code> grades both and
+prints them on its <code>coverage</code> line (see <code>cov/config/vcs/README.md</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not a
+public CI job; not a substitute for the public weekly</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The DUT is an integration shell, and an integration level is graded on its
-interfaces. That is why the metric is toggle rather than line or expression,
-and why it is counted per port rather than per bit: a 256-bit struct port is
-one interface, not five hundred and twelve. The folding is a report over the
-database the runner already writes, not a runner family, so the coverage
-layout stays the one DTP, SEP and SMC use. A Python <code>smu_fcov.py</code> sampler is
+<p>The DUT is an integration shell with no logic of its own: <code>smu_wrapper.sv</code>
+is three instances and their wiring. What it owns is its ports, so it is
+graded on toggle rather than line or expression, on the same per-bit,
+both-directions definition and through the same runner family as every other
+DUT. The exclusion file is the only place where the population is shaped,
+and every class in it carries the reason. A Python <code>smu_fcov.py</code> sampler is
 not the release metric and is not a gate.</p>
 </div>
 </div>
