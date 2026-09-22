@@ -105,6 +105,9 @@ def _fw_env(config):
     # not the shared system python3.
     venv_bin = Path(sys.executable).parent
     env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
+    # A container build runs python from the image instead: only the uv-bundled one
+    # carries the vp group, and the bare one sends uv at this venv and strips it.
+    env["OCAH_IMAGE_WITH_UV"] = "true"
     tc = config.getoption("--riscv-toolchain")
     if tc and (Path(tc) / "bin").is_dir():
         env["PATH"] = f"{Path(tc) / 'bin'}{os.pathsep}{env.get('PATH', '')}"

@@ -98,6 +98,9 @@ jobs:
       # The runner image ships both podman and docker; pin one so the engine does
       # not change under us when the image is updated.
       OCAH_ENGINE: docker
+      # Firmware builds run python from the image: the ROM's elf-to-vmem needs
+      # pyelftools, which only the uv-bundled image carries.
+      OCAH_IMAGE_WITH_UV: "true"
       # Fork PRs never receive secrets, and tt-oca-harness-model is private. Gate
       # on this rather than failing every fork PR at checkout.
       HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
@@ -403,6 +406,9 @@ jobs:
             build_dir: virtual_platform/tt-oca-harness-model/vp/build_smc
     env:
       OCAH_ENGINE: docker
+      # Firmware builds run python from the image: the ROM's elf-to-vmem needs
+      # pyelftools, which only the uv-bundled image carries.
+      OCAH_IMAGE_WITH_UV: "true"
       HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
       # See the sep-vp job: the runner context is not available in env:.

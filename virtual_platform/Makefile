@@ -35,6 +35,10 @@ VP_DIR     := $(CURDIR)
 OCAH_ROOT  := $(abspath $(VP_DIR)/..)
 DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 
+# The ROM's elf-to-vmem needs pyelftools, which only the uv-bundled image carries;
+# the bare image points uv at the host .venv and strips the vp group from it.
+export OCAH_IMAGE_WITH_UV ?= true
+
 # Container-built and host-built artifacts must never mix: they carry
 # different glibc/libstdc++ ABIs, and CMake caches pin compiler paths. Every
 # build tree is therefore partitioned by an environment tag - empty natively,
