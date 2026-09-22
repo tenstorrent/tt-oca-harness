@@ -957,9 +957,6 @@ class ClusterExecutor(Executor):
             "exit_code": seen.exit_code,
             "reason": seen.reason,
         }
-        if handle.array_job_id:
-            scheduler["array_job_id"] = handle.array_job_id
-            scheduler["array_task_id"] = handle.array_task_id
         joblog = repo_rel(self._root, tracked.joblog) if tracked.joblog.is_file() else None
         result = self._read_result(task)
         if result is not None:

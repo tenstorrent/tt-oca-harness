@@ -1367,9 +1367,9 @@ task from the sibling `<stage>-arr<N>.tasks` list, one
 every element logs to `<run>/stages/regress/logs/<stage>-arr<N>.<index>.log`.
 From then on each element is its own job to every command, under the
 scheduler's element id (`1001[3]` on LSF, `1001_3` on Slurm): polling,
-history, cancellation and collection treat it exactly like a plain job, and a
-leaf graded from an element also carries `array_job_id` and `array_task_id`
-under `metadata.scheduler`. A `--retry` attempt and a `--waves-on-fail` rerun
+history, cancellation and collection treat it exactly like a plain job, and
+that id under `metadata.scheduler.job_id` is the leaf's whole record of the
+array. A `--retry` attempt and a `--waves-on-fail` rerun
 are plain jobs. An array the scheduler refuses grades every element `ERROR`
 (`environment_error`) and counts as one refused submission.
 

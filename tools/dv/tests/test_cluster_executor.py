@@ -538,8 +538,8 @@ class ClusterExecutorTests(FakeSchedulerCase):
             self.assertIsNotNone(outcome.result)
             scheduler = outcome.result.metadata["scheduler"]
             self.assertEqual(scheduler["job_id"], handle.native_job_id)
-            if handle.array_job_id:
-                self.assertEqual(scheduler["array_job_id"], handle.array_job_id)
+            # The element id is the whole record of the array; no further key names it.
+            self.assertNotIn("array_job_id", scheduler)
             # Each element ran the script with its own index and wrote its own leaf.
             self.assertTrue(task.result_json.is_file())
         self.assertTrue(any("submitted as array" in event for event in self.events))
@@ -1304,16 +1304,12 @@ class CoordinatorTest(unittest.TestCase):
         job_ids = {leaf["metadata"]["scheduler"]["job_id"] for leaf in self.leaves(summary)}
         self.assertEqual(len(job_ids), 2)
         if self.arrays:
-            array_ids = {
-                leaf["metadata"]["scheduler"]["array_job_id"] for leaf in self.leaves(summary)
-            }
-            self.assertEqual(len(array_ids), 1)
-            self.assertTrue(array_ids.pop())
+            # Both leaves are elements of one array: the same base id, indices 1 and 2.
+            element_ids = sorted(job_ids)
+            bases = {fake_scheduler.base_of(job_id) for job_id in element_ids}
+            self.assertEqual(len(bases), 1)
             self.assertEqual(
-                sorted(
-                    leaf["metadata"]["scheduler"]["array_task_id"] for leaf in self.leaves(summary)
-                ),
-                [1, 2],
+                sorted(fake_scheduler.index_of(job_id) for job_id in element_ids), [1, 2]
             )
             self.assertTrue(array_tasks_path(self.run_dir, "sim-arr0001").is_file())
         self.assertTrue(any(row["command"] in {"bjobs", "squeue"} for row in calls))

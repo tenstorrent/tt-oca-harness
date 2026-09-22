@@ -3321,20 +3321,16 @@ def run_flow(
             leaf_jobs.pop(leaf_id, None)
 
     def note_leaf_job(task: LeafTask, handle: JobHandle) -> None:
-        record = {
-            "task_id": task.task_id,
-            "attempt": task.attempt,
-            "debug_only": task.debug_only,
-            "executor": handle.executor,
-            "driver": handle.driver,
-            "job_id": handle.native_job_id,
-            "submitted_at": handle.submitted_at,
-        }
-        if handle.array_job_id:
-            record["array_job_id"] = handle.array_job_id
-            record["array_task_id"] = handle.array_task_id
         with progress_lock:
-            leaf_jobs.setdefault(task.leaf_id, {})[task.task_id] = record
+            leaf_jobs.setdefault(task.leaf_id, {})[task.task_id] = {
+                "task_id": task.task_id,
+                "attempt": task.attempt,
+                "debug_only": task.debug_only,
+                "executor": handle.executor,
+                "driver": handle.driver,
+                "job_id": handle.native_job_id,
+                "submitted_at": handle.submitted_at,
+            }
 
     def note_cancel_confirmed(task: LeafTask, confirmed: bool) -> None:
         with progress_lock:
