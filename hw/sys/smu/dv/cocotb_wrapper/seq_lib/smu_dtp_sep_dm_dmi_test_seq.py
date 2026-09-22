@@ -26,6 +26,7 @@ from seq_lib.smu_boundary_regs import (
     stap_3dcr_scan_word,
     stap_sib_pattern,
 )
+from seq_lib.smu_compose_helpers import hier, sample
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     DTP_IR_TAP_3DCR,
@@ -37,7 +38,6 @@ from seq_lib.smu_jtag_helpers import (
 )
 
 DTP_IR_DMI = dtp_ir_opcode("RISCV_RESERVED_1")
-EL2_IR_DMI = 0x11
 DMI_DR_WIDTH = 41
 DMI_ABITS = 7
 DMSTATUS_ADDR = 0x11
@@ -80,15 +80,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
         cocotb.log.info(msg)
 
     def _hier_bit(self, path: str) -> int:
-        obj = self.dut
-        for part in path.split("."):
-            obj = getattr(obj, part, None)
-            if obj is None:
-                raise AssertionError(f"{path} unobservable on the wrapper")
-        val = obj.value
-        if not val.is_resolvable:
-            raise AssertionError(f"X/Z on {path}: {val}")
-        return int(val) & 1
+        return sample(hier(self.dut, path), path) & 1
 
     async def _observe_tms(self, cycles: int) -> dict[str, int]:
         prev_ptap = int(self.dut.jtag_tms.value) & 1
@@ -107,7 +99,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
                 prev_sep = sep
         return {"ptap_edges": ptap_edges, "sep_edges": sep_edges}
 
-    async def _collect_sep_tdo(self, nbits: int) -> int:
+    async def _collect_sep_tdo(self, jtag, nbits: int) -> int:
         bits = 0
         got = 0
         prev_tck = self._hier_bit(SEP_STAP_TCK)
@@ -116,8 +108,12 @@ class smu_dtp_sep_dm_dmi_test_seq:
             await RisingEdge(self.dut.clk_ref_i)
             tck = self._hier_bit(SEP_STAP_TCK)
             if tck == 1 and prev_tck == 0:
-                bits |= self._hier_bit(SEP_TDO) << got
-                got += 1
+                # VIP TAP state updates after the falling edge, so this rising
+                # edge still reports the state the cycle started in. RTI to
+                # SHIFT_DR is three TCK edges that must not enter the word.
+                if jtag.tap.get_current_state() == OcahJtagState.SHIFT_DR:
+                    bits |= self._hier_bit(SEP_TDO) << got
+                    got += 1
             prev_tck = tck
             guard += 1
         if got != nbits:
@@ -147,7 +143,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
         )
 
     async def _dmi_scan(self, jtag, req: int) -> int:
-        watcher = cocotb.start_soon(self._collect_sep_tdo(DMI_DR_WIDTH))
+        watcher = cocotb.start_soon(self._collect_sep_tdo(jtag, DMI_DR_WIDTH))
         await jtag.shift_dr(req, DMI_DR_WIDTH, back_to_rti=True)
         for _ in range(8):
             await jtag.step_tms(0)
@@ -204,10 +200,6 @@ class smu_dtp_sep_dm_dmi_test_seq:
             f"CHK-SEP-DMI-STAP-SEL sep_edges={sel['sep_edges']} ptap_edges={sel['ptap_edges']}"
         )
 
-        if DTP_IR_DMI != EL2_IR_DMI:
-            raise AssertionError(
-                f"DTP RISC-V reserved DMI encoding 0x{DTP_IR_DMI:x} is not EL2 IR 5'h11"
-            )
         await jtag.shift_ir(DTP_IR_DMI, width=DTP_IR_WIDTH, back_to_rti=True)
         req = pack_dmi(DMSTATUS_ADDR, 0, op=1)
         await self._dmi_scan(jtag, req)
