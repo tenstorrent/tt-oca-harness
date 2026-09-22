@@ -389,20 +389,6 @@ bwrap_run() {
   # The repo (and, under it, nonfree/) at its real path so absolute -C paths,
   # bender filelists and generated collateral all resolve unchanged.
   binds+=(--bind "$ROOT" "$ROOT")
-  # hw/common/dv/fw/preamble.mk invokes `uv` by name. bwrap replaces PATH, so
-  # binding the tree is not enough: its bin directory has to be on PATH or the name does
-  # not resolve. Bind the tree when it exists and prepend that bin. A host
-  # without the tree keeps the image PATH.
-  local sandbox_path="/usr/local/bin:/usr/bin:/bin"
-  local site
-  for site in /tools_soc/opensrc/python/python-3.9; do
-    if [[ -e "$site" ]]; then
-      binds+=(--bind "$site" "$site")
-      if [[ -d "$site/bin" ]]; then
-        sandbox_path="$site/bin:${sandbox_path}"
-      fi
-    fi
-  done
   local extra
   for extra in ${OCAH_BWRAP_EXTRA_BINDS:-}; do
     [[ -e "$extra" ]] && binds+=(--bind "$extra" "$extra")
@@ -413,7 +399,7 @@ bwrap_run() {
   # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
   # can import 'encodings', which the firmware post-process steps run into.
   bwrap "${binds[@]}" --chdir "$workdir" \
-    --setenv PATH "$sandbox_path" \
+    --setenv PATH /usr/local/bin:/usr/bin:/bin \
     --setenv HOME /tmp \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
