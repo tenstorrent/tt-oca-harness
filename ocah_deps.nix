@@ -65,6 +65,7 @@ in {
         OCAH_REG_SKIP_UV_SYNC = "1";
         # OTBN
         OTBN_PYTHON = PYTHON;
+        VP_PYTHON = PYTHON;
       }
       else {}
     );
