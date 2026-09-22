@@ -66,6 +66,6 @@
   <path class="arrow" d="M 520 374 L 470 374"/>
   <path class="arrow" d="M 280 374 L 230 374"/>
 
-  <text class="subtitle" x="40" y="492">Executors: local runs leaves in-process; lsf and slurm submit one scheduler job per attempt (run_dv.py --worker-manifest)</text>
+  <text class="subtitle" x="40" y="492">Executors: local runs leaves in-process; lsf and slurm submit target builds and attempts as scheduler jobs, first attempts in job arrays (run_dv.py --worker-manifest)</text>
   <text class="subtitle" x="40" y="518">Result consumers: humans, CI, and run_dashboard.py</text>
 </svg>

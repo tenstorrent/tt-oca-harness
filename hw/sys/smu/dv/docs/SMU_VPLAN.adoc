@@ -202,6 +202,7 @@ one-line intent.
 |`smu_sys_in_filter_window_edge_test` |fabric |page interior OKAY; adjacent page each side DECERR
 |`smu_xtrig_ctm_remap_test` |fabric |product-pin CTM remap
 |`smu_axi_in_burst_outstanding_test` |fabric |The inbound SMN port carries several transfers in flight and refuses the burst types the register targets do not support.
+|`smu_axi_in_attribute_sweep_test` |fabric |Every AW/AR attribute the inbound SMN port carries is answered as the traffic-filter specification assigns, and one SMC write leaves the chiplet on `smu_axi_out`.
 |`smu_xbar_connectivity_matrix_test` |fabric |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
 |`smu_periph_ext_window_test` |fabric |The SMC peripheral crossbar's macro AXI-Lite window is reachable over JTAG2AXI, decodes its sub-windows, and shrinks with the SMC aperture.
 |`smu_boot_stall_jtag_cold_reset_matrix_test` |reset |boot-stall sticky matrix
@@ -4210,6 +4211,52 @@ Two things are worth reading before the entries:
 
 '''''
 
+[[sec-107-smu_axi_in_attribute_sweep_test]]
+===== 107 `smu_axi_in_attribute_sweep_test`
+
+*Source Module*: `smu_axi_in_attribute_sweep_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins and the shared responder on `u_axi_out_if`; `ocah_jtag_vip` for the inbound filter entries, the SMC aperture and the outbound write; `elaboration` firmware mode
+
+*Objective*: Every AW/AR attribute the inbound SMN port carries is answered as the traffic-filter specification assigns, and one SMC write leaves the chiplet on `smu_axi_out`.
+
+*Test Coverage*:
+
+* `hw/ip/axi_filter/doc/index.adoc` "Match, Then Permit" lists the whole match condition: `entry_enabled`, the address range after granule widening, `prot[1] == allow_ns`, the source ID, and `allow_burst = 1 or AxLEN = 0`. AxREGION, AxQOS, AxCACHE, AxLOCK, AxSIZE and AxBURST appear in none of them, so an entry that admits a transaction admits it at every value of those fields, and the sweep compares the response and the returned data against that.
+* With one entry per `prot[1]` polarity over the probe page, all eight AxPROT encodings are admitted on AR and on AW; `prot[0]` and `prot[2]` take no part in the match, so no encoding may differ. AxREGION, AxQOS and AxCACHE at `0x0` and `0xF` and AxLOCK at `0` and `1` are driven on both channels, and each read returns the VERSION_LO RDL reset value while each write is read back.
+* AxSIZE `0`..`3` is every legal encoding on a 64-bit port, and each read returns the byte slice of the VERSION_LO RDL reset value the size selects. AxSIZE[2] is not driven: an AxSIZE above 3 exceeds the data bus width and is not a legal AXI4 transfer here.
+* `allow_burst = 0` narrows the granule to the 8-byte data bus and drops every `AxLEN != 0` out of the match, so the same entries that admit AxLEN 0 deny AxLEN `0xFF`, `0xAA` and `0x55` -- whose union walks `AxLEN[7:0]` both ways -- and deny a four-beat FIXED, INCR and WRAP transfer alike. The denial is DECERR because the chapter steers a blocked transaction to an AXI error subordinate and `hw/sys/smc/doc/fabric.adoc` makes unmatched inbound traffic blocked; the admitted single beat at the same address in the same configuration is the live control.
+* Every step reconciles its cell count against the AR and AW handshakes the port accepted, counted on the `ext_in_*` pins rather than in the master.
+* AxATOP is not driven. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package carries no ATOP driver, so this leaf makes no ATOP claim, as `smu_axi_atomic_operation_test` records for the same reason.
+* Shrinking BASE_CONFIG.REGION_SIZE so the local aperture ends at the adopter external window puts that window outside the chiplet, and a JTAG2AXI write to it crosses `smu_axi_out`. The outbound write count moves by exactly one, the boundary carries the address the SMC was given with `w.last` and an OKAY `b.resp`, and the bench responder's memory holds the word.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the primary TAP, route the SMC local aperture, and program inbound entries 0 and 1 over the probe page with `allow_burst = 1`, one matching secure and one matching non-secure traffic.
+. Read VERSION_LO and write and read back SCRATCH_COLD under all eight AxPROT encodings, then under AxREGION, AxQOS and AxCACHE at `0x0` and `0xF` and AxLOCK at `0` and `1`, then read VERSION_LO at AxSIZE `0`..`3`.
+. Reprogram entries 0 and 1 as single-beat granules at VERSION_LO and SCRATCH_COLD with `allow_burst = 0`, and require DECERR for AxLEN `0xFF`, `0xAA`, `0x55` and for four-beat FIXED, INCR and WRAP on both channels, with the AxLEN 0 transfer at the same address still admitted.
+. Disable both entries, shrink BASE_CONFIG.REGION_SIZE to end the local aperture at the external window, and check the shrunk value reaches `smc_region_size_o`.
+. Write one word over JTAG2AXI to the external window base, wait for the outbound write count to move, and compare the boundary address, `w.last`, `b.resp` and the responder's memory against the contract.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AXIIN-ATTR-PROT` |all eight AxPROT encodings are admitted on AR and AW when one entry matches each `prot[1]` polarity, the reads returning the VERSION_LO RDL reset value and the writes landing in SCRATCH_COLD, over 16 AR and 8 AW address phases the port accepted
+|`CHK-AXIIN-ATTR-QUAL` |AxREGION, AxQOS and AxCACHE at `0x0` and `0xF` and AxLOCK at `0` and `1` leave the response and the data unchanged, on AR and AW, over 16 AR and 8 AW address phases
+|`CHK-AXIIN-ATTR-SIZE` |AxSIZE `0`..`3` each return the byte slice of the VERSION_LO RDL reset value the size selects
+|`CHK-AXIIN-ATTR-LEN` |with `allow_burst = 0` the AxLEN `0xFF`, `0xAA` and `0x55` transfers are refused with DECERR on both channels while AxLEN 0 at the same address is admitted and carries the VERSION_LO reset value
+|`CHK-AXIIN-ATTR-BURST` |the same entries refuse a four-beat FIXED, INCR and WRAP transfer with DECERR on both channels
+|`CHK-AXIOUT-WRITE` |one SMC write above the shrunk local aperture moves the outbound write count by exactly one, raises `aw_valid`, `w_valid`, `w.last` and `b_valid` on `smu_axi_out`, returns OKAY on `b.resp` at the address the SMC was given, and leaves the written word in the bench responder
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -4229,12 +4276,12 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |Group |Leaves |Notes
 |`fw_boot` |3 |The firmware boot smokes plus the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
-|`fabric` |13 |The fabric and filter leaves; every member is in `hosted`
+|`fabric` |14 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |21 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |29 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |68 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |100 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |69 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |101 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers

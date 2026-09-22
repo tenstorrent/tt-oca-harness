@@ -131,17 +131,25 @@ registries, and by the site-layer tests.
 worker refuses a mismatch; the overrides a manifest may carry are limited to
 wave and console options; the worker writes only its own leaf directory and
 the completion record, and a manifest it cannot trust or run leaves an
-`ERROR` result whose reason starts with `environment_error`. Checked by the
+`ERROR` result whose reason starts with `environment_error`. A manifest with
+`role = "build"` names a target and no item, and the worker runs its build
+stage with the job's core request as the build concurrency. Checked by the
 worker tests in `tools/dv/tests`.
 
-|Cluster job files: `<run>/stages/regress/scripts/<task>.sh`,
-`logs/<task>.log`, `logs/executor.log`, and `jobs/cancel-unconfirmed.json`
+|Cluster job files: `<run>/stages/regress/scripts/<task>.sh` (or
+`<stage>-arr<N>.sh` with its `.tasks` list for a job array),
+`logs/<task>.log` (or `<stage>-arr<N>.<index>.log`), `logs/executor.log`,
+`jobs/cancel-unconfirmed.json`, and a scheduler-managed build's
+`jobs/build-<stage>-<target>.json` manifest with its result under
+`builds/build-<stage>-<target>/`
 |`tools/dv/runlib/executors/cluster.py`
 |The scheduler, which receives the script as `{script}` and the log as
 `{joblog}` in `submit_argv`; operators reading a run
 |The script exports the executor's `env_passthrough` values, changes to the
-checkout, and execs `worker_argv`. The executor log holds every scheduler
-command with its status and output. The unconfirmed-cancel record lists the
+checkout, and execs `worker_argv`; an array's script first picks its element's
+task from the list by the scheduler's index variable. The executor log holds
+every scheduler command with its status and output. The unconfirmed-cancel
+record lists the
 job ids an interrupted run could not confirm stopped; the run-level summary
 repeats them under `interruption.cancellation`. Checked by
 `tools/dv/tests/test_cluster_executor.py`, which drives both drivers through

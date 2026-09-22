@@ -11,6 +11,12 @@ a record carrying an ``ERROR`` field, and the command's return code says nothing
 ``bhist -l`` has no machine-readable form, so its parser reads the event lines of each job's
 block. ``bkill`` answers one line per id, and its return code is not a signal either: a
 finished job is refused with status 255 exactly like an unknown one.
+
+A job array is ``-J name[1-N]``; its elements are ``<id>[<index>]`` to every command, and
+``bjobs -o`` reports an element's index in ``JOBINDEX`` while ``JOBID`` may or may not carry
+the bracket, so the query template must request ``jobindex`` and the parser composes the
+element id from both. ``LSB_JOBINDEX`` is the element's index inside the job and ``%I`` in
+an output path.
 """
 
 from __future__ import annotations
@@ -65,9 +71,18 @@ TERM_REASON_MAP = {
 TERM_TOKEN_RE = re.compile(r"\b(TERM_[A-Z_]+)\b")
 EXIT_CODE_RE = re.compile(r"Exited with exit code (\d+)")
 EXIT_SIGNAL_RE = re.compile(r"Exited by signal (\d+)")
-HISTORY_BLOCK_RE = re.compile(r"^Job <(\d+)>,", re.MULTILINE)
-NOT_FOUND_RE = re.compile(r"(?:Job <\d+>:? )?(?:is not found|No matching job found)")
-KILL_LINE_RE = re.compile(r"^Job <(\d+)>(?::)? (.+?)\.?$", re.MULTILINE)
+HISTORY_BLOCK_RE = re.compile(r"^Job <(\d+(?:\[\d+\])?)>,", re.MULTILINE)
+NOT_FOUND_RE = re.compile(r"(?:Job <[\d\[\]]+>:? )?(?:is not found|No matching job found)")
+KILL_LINE_RE = re.compile(r"^Job <(\d+(?:\[\d+\])?)>(?::)? (.+?)\.?$", re.MULTILINE)
+
+
+def record_job_id(record: dict[str, object]) -> str:
+    """The id a ``bjobs`` record describes: ``<id>[<index>]`` for an array element."""
+    job_id = str(record.get("JOBID", "")).strip()
+    index = str(record.get("JOBINDEX", "")).strip()
+    if "[" not in job_id and index.isdigit() and int(index) > 0:
+        return f"{job_id}[{index}]"
+    return job_id
 
 
 def exit_state(stat: str, reason: str) -> JobState:
@@ -83,6 +98,15 @@ def exit_state(stat: str, reason: str) -> JobState:
 class LsfDialect(SchedulerDialect):
     driver = "lsf"
     history_parsers = {"lsf_bhist_long": "parse_bhist_long"}
+    array_index_env = "LSB_JOBINDEX"
+    array_log_token = "%I"
+    array_query_marker = "jobindex"
+
+    def array_jobname(self, name: str, count: int) -> str:
+        return f"{name}[1-{count}]"
+
+    def element_id(self, array_id: str, index: int) -> str:
+        return f"{array_id}[{index}]"
 
     def parse_submit(self, result: CommandResult) -> SubmitOutcome:
         match = SUBMIT_RE.search(result.stdout)
@@ -106,9 +130,11 @@ class LsfDialect(SchedulerDialect):
         for record in records:
             if not isinstance(record, dict):
                 continue
-            job_id = base_job_id(str(record.get("JOBID", "")))
+            job_id = record_job_id(record)
             if job_id not in asked:
-                continue
+                job_id = base_job_id(job_id)
+                if job_id not in asked:
+                    continue
             if record.get("ERROR"):
                 outcome.missing.add(job_id)
                 continue
@@ -221,5 +247,6 @@ __all__ = [
     "LsfDialect",
     "exit_state",
     "history_observation",
+    "record_job_id",
     "record_observation",
 ]
