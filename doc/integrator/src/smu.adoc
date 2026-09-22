@@ -120,7 +120,7 @@ Other generated outputs remain under each owner's
 For the architecture-level responsibility split between the integrator, firmware,
 and the internal SEP/SMC maps, see
 ifdef::backend-html5[]
-xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
+xref:ocah-docs:sep:memory_map.adoc[OCAH Memory Map].
 endif::backend-html5[]
 ifdef::backend-pdf[]
 the _OCAH Memory Map_ section of the Technical Reference Manual.
@@ -937,21 +937,21 @@ SEP latches it into `secure_tm_o` when fuse sensing completes, or at
 cold-reset release if SEC_DIS is already asserted. Secure test mode
 forces a no-secret, no-fuse-program configuration; it is not an
 authorization bit. See
-xref:ocah-docs:ROOT:architecture.adoc#test-mode-entry[Test Mode Entry]
+xref:ocah-docs:sep:test_mode.adoc#test-mode-entry[Test Mode Entry]
 and
-xref:ocah-docs:ROOT:architecture.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain]
+xref:ocah-docs:sep:lifecycle_controller.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain]
 in the TRM. `secure_tm_o` is also an SMU output.
 
 * `security_disable_o` is the SEC_DIS token-match result (emergency
 A0 unlock). On `sep.sv`, route it to SMC `sep_security_disable_i`; the
 SMU does that internally. See
-xref:ocah-docs:ROOT:architecture.adoc#security-disable-sec_dis[Security Disable]
+xref:ocah-docs:sep:security_disable.adoc#security-disable-sec_dis[Security Disable]
 in the TRM.
 
 * `lc_state_o` is the differentially encoded LC_STATE shadow.
 `lc_sigint_err_o` is the decode integrity error (fail-closed). Both
 are SMU outputs. See
-xref:ocah-docs:ROOT:architecture.adoc#life-cycle-controller-lcc-life-cycle-controller-lcc[Life Cycle Controller]
+xref:ocah-docs:sep:lifecycle_controller.adoc#life-cycle-controller-lcc-life-cycle-controller-lcc[Life Cycle Controller]
 in the TRM.
 
 * `dbg_disable_o` is the typed per-path debug/test disable vector
@@ -961,7 +961,7 @@ in the TRM.
 * `lcc_demote_state_1_o` / `lcc_demote_state_2_o` are differentially
 encoded in-field debug demotion. They leave the SMU for adopter
 lifecycle logic and are not connected to the SMC. See
-xref:ocah-docs:ROOT:architecture.adoc#demote-1-2-in-field-debug-demotion[in-field debug demotion]
+xref:ocah-docs:sep:lifecycle_controller.adoc#demote-1-2-in-field-debug-demotion[in-field debug demotion]
 in the TRM.
 
 * `sep_fuse_dft_disable_o` / `smc_fuse_dft_disable_o` gate DFT-inserted
