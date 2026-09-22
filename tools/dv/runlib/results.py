@@ -17,6 +17,7 @@ from typing import Any
 
 from .buildcache import binary_version
 from .compat import UTC
+from .coverage_model import holes_summary_counts
 from .formal import formal_summary
 from .models import Flow, StageResult
 from .paths import repo_rel
@@ -372,6 +373,7 @@ def coverage_summary(
             details_data = data if isinstance(data, dict) else {}
         except (OSError, json.JSONDecodeError):
             pass
+    holes = summary_data.get("holes_summary")
     raw_metrics = {
         str(metric.get("metric_family")): metric.get("raw_percent")
         for metric in details_data.get("metrics", [])
@@ -413,7 +415,9 @@ def coverage_summary(
         "comparison_key": summary_data.get("comparison_key"),
         "scope_fingerprint": summary_data.get("scope_fingerprint"),
         "policy_fingerprint": summary_data.get("policy_fingerprint"),
-        "holes_summary": summary_data.get("holes_summary", {"details_available": False}),
+        "holes_summary": holes_summary_counts(holes)
+        if isinstance(holes, dict)
+        else {"details_available": False},
         "policy_thresholds": summary_data.get("policy_thresholds", []),
         "raw_metrics": raw_metrics,
         "effective_metrics": effective_metrics,
@@ -1023,7 +1027,9 @@ def fragment_payload(
         "parser": result.parser,
     }
     if result.metadata:
-        payload["metadata"] = result.metadata
+        payload["metadata"] = {
+            key: value for key, value in result.metadata.items() if key != "target_build"
+        }
         if result.metadata.get("attempt") is not None:
             payload["attempt"] = result.metadata["attempt"]
     if result.target:
