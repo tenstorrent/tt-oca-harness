@@ -127,7 +127,9 @@ args = ["+skip_fuse_sense"]
 # HMAC SHA-256 DIGEST and AES ECB-256 DATA_OUT (the AES masking-PRNG reseed consumes the
 # entropy) -- then pulse one engine's SW_RESET_N (0x1080_3000, active-low) and prove the
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
-# clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
+# clears; reverse the roles. Once URND is being acknowledged, a KMAC reset is
+# stepped across that acknowledge period and URND edn_ack stays low on every
+# gated-reset edge. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
 # address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
 # DIGEST_0 is OKAY at reset. Drain-before-reset IS claimed on the HMAC path:
 # CHK-DRAIN-ORDER (reset waits for both AXI-Lite paths to drain),

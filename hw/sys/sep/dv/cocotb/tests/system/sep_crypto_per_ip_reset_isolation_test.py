@@ -94,6 +94,11 @@ Isolation proof (both directions, then the remaining isolated bits):
                     receives ``edn_ack`` and the OTBN URND handshake stays low.
   * CHK-EDN-REARM  releasing OTBN lets URND request again and receive
                     ``edn_ack``.
+  * CHK-EDN-EDGE  URND is granted, then a KMAC reset is stepped across one
+                    measured acknowledge period. Before each step OTBN is
+                    re-armed so URND is requesting again. URND ``edn_ack`` is
+                    low on every KMAC gated-reset edge. An acknowledge on
+                    that edge is a beat the reset did not cancel.
 
 Reference: sep_clock_uvm_sw_reset_per_ip_test --
 the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
@@ -116,7 +121,7 @@ import hashlib
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge, with_timeout
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, with_timeout
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
 from ocah_axi_vip import worst_resp
@@ -514,6 +519,121 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"(req=0x{self._edn_req():x} ack=0x{self._edn_ack():x})"
         )
 
+    def _edn_bus_word(self, bit: int) -> int:
+        bus = self._edn_level(cocotb.top.crypto_edn_bus_o)
+        return (bus >> (32 * bit)) & 0xFFFF_FFFF
+
+    async def _arm_urnd(self) -> None:
+        """Pulse OTBN so URND edn_req is high again after a KMAC reset."""
+        await self.rst.assert_reset(ENG_OTBN.rst_bit)
+        await self._wait_edn_req(_EDN_URND, False, _EDN_DROP_CYCLES, "CHK-EDN-EDGE OTBN hold")
+        await self.rst.release_resets()
+        await self._wait_edn_req(_EDN_URND, True, _EDN_PEND_CYCLES, "CHK-EDN-EDGE OTBN release")
+
+    async def _prove_edn_reset_edge(self) -> None:
+        """A KMAC reset must not acknowledge a URND beat on the reset edge.
+
+        URND is granted on a steady cadence. Each step re-arms that stream,
+        waits ``offset`` cycles past a grant, and resets KMAC. The offset
+        walks one measured acknowledge period. URND ``edn_ack`` is sampled
+        on the falling edge of the KMAC gated reset.
+        """
+        clk = cocotb.top.clk_i
+        acks: list[int] = []
+        edge: list[int] = []
+        ack_on_edge = [False]
+        bus_on_edge = [0]
+        prev_ack = False
+        prev_rst = 1
+        cycle = 0
+        stop = False
+
+        async def watch() -> None:
+            nonlocal prev_ack, prev_rst, cycle
+            while not stop:
+                await RisingEdge(clk)
+                await ReadOnly()
+                cycle += 1
+                ack = bool(self._edn_ack() & (1 << _EDN_URND))
+                rst = self._edn_level(cocotb.top.kmac_gated_rst_n_probe_o)
+                if ack and not prev_ack:
+                    acks.append(cycle)
+                if not edge and prev_rst == 1 and rst == 0:
+                    edge.append(cycle)
+                    ack_on_edge[0] = ack
+                    bus_on_edge[0] = self._edn_bus_word(_EDN_URND)
+                prev_ack = ack
+                prev_rst = rst
+
+        watch_task = cocotb.start_soon(watch())
+        try:
+            for _ in range(_EDN_ACK_CYCLES):
+                if len(acks) >= 5:
+                    break
+                await RisingEdge(clk)
+            else:
+                raise AssertionError(
+                    f"CHK-EDN-EDGE FAIL: URND edn_ack did not repeat ({len(acks)} pulses)"
+                )
+            recent = [acks[i] - acks[i - 1] for i in range(1, len(acks))][-4:]
+            steady = max(recent)
+            if not 2 <= steady <= 16:
+                raise AssertionError(
+                    f"CHK-EDN-EDGE FAIL: URND acknowledge period {steady} is not walkable"
+                )
+            self.logger.info("CHK-EDN-EDGE: steady URND edn_ack gap %d cycles", steady)
+            for offset in range(steady):
+                if offset:
+                    await self._arm_urnd()
+                base = len(acks)
+                for _ in range(_EDN_ACK_CYCLES):
+                    if len(acks) >= base + 3:
+                        break
+                    await RisingEdge(clk)
+                else:
+                    raise AssertionError(
+                        "CHK-EDN-EDGE FAIL: URND edn_ack did not resume before "
+                        f"offset {offset} (req=0x{self._edn_req():x} "
+                        f"ack=0x{self._edn_ack():x})"
+                    )
+                await ClockCycles(clk, offset)
+                edge.clear()
+                await self.rst.assert_reset(ENG_KMAC.rst_bit)
+                for _ in range(_EDN_DROP_CYCLES):
+                    if edge:
+                        break
+                    await RisingEdge(clk)
+                else:
+                    raise AssertionError(
+                        f"CHK-EDN-EDGE FAIL: KMAC gated reset did not fall at offset {offset}"
+                    )
+                saw_ack = ack_on_edge[0]
+                saw_bus = bus_on_edge[0]
+                await self.rst.release_resets()
+                self.logger.info(
+                    "CHK-EDN-EDGE offset %d: URND edn_ack=%d bus=0x%08x on the "
+                    "KMAC reset edge",
+                    offset,
+                    int(saw_ack),
+                    saw_bus,
+                )
+                if saw_ack:
+                    raise AssertionError(
+                        "CHK-EDN-EDGE FAIL: URND edn_ack was high on the KMAC "
+                        f"reset edge at offset {offset} (bus=0x{saw_bus:08x})"
+                    )
+            self.logger.info(
+                "CHK-EDN-EDGE PASS: URND edn_ack stayed low on all %d KMAC "
+                "reset edges across one acknowledge period of %d cycles",
+                steady,
+                steady,
+            )
+        finally:
+            stop = True
+            await RisingEdge(clk)
+            await watch_task
+            await self.rst.release_resets()
+
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
         self.rst = SepCryptoResetIso(self)
@@ -532,6 +652,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
         await self._prove_edn_sibling_after_flush()
+        await self._prove_edn_reset_edge()
 
         self.hmac = SepHmac(self)
         self.kmac = SepKmac(self)
