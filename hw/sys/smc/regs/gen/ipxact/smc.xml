@@ -32704,7 +32704,7 @@ all other reserved.</ipxact:description>
                 <ipxact:field>
                   <ipxact:name>SOFT_RST</ipxact:name>
                   <ipxact:displayName>SOFT_RST</ipxact:displayName>
-                  <ipxact:description>Reset controller from software.</ipxact:description>
+                  <ipxact:description>Reset controller from software. Not supported currently</ipxact:description>
                   <ipxact:bitOffset>0</ipxact:bitOffset>
                   <ipxact:resets>
                     <ipxact:reset>
