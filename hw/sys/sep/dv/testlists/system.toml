@@ -245,11 +245,11 @@ args = ["+skip_fuse_sense"]
 # doc/interrupts.adoc require SLVERR and the owning block's
 # PERIPH_BUS_ERR_STATUS bit. The fabric returns DECERR and the bit stays 0.
 # The VPLAN card owns the checker contract.
-name = "sep_periph_bus_err_misaligned_reveal_test"
-module = "system.sep_periph_bus_err_misaligned_reveal_test"
+name = "sep_periph_bus_err_misaligned_test"
+module = "system.sep_periph_bus_err_misaligned_test"
 seed = 1
 timeout_sec = 600
-tags = ["interrupt", "aggregator", "system", "subsystem", "reveal"]
+tags = ["interrupt", "aggregator", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

@@ -23,7 +23,7 @@ from seq_lib.sep_irq_aggregator_seq import (
 
 
 @pyuvm.test()
-class sep_periph_bus_err_misaligned_reveal_test(sep_base_test):
+class sep_periph_bus_err_misaligned_test(sep_base_test):
     """A misaligned beat inside a mapped extent must latch the block's bit."""
 
     async def run_scenario(self) -> None:

@@ -30,7 +30,7 @@ tests = ["sep_axi_smoke_test"]
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
 # (full-CPU target) are disjoint and together hold 104 of the 105. The
-# remaining leaf, sep_periph_bus_err_misaligned_reveal_test, is in `all` and
+# remaining leaf, sep_periph_bus_err_misaligned_test, is in `all` and
 # in neither class group. Its checker contract is the VPLAN card. `rom_fw`
 # is not a member: a different owner, a third RTL target, and firmware rather
 # than hardware contracts. `all` is the coverage set. expected_count is 105.
@@ -70,7 +70,7 @@ tests = [
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_efuse_km_axil_cpu_mux_coexist_test",
     "sep_irq_ip_to_aggregator_test",
-    "sep_periph_bus_err_misaligned_reveal_test",
+    "sep_periph_bus_err_misaligned_test",
     "sep_drbg_real_sink_multi_km_aes_test",
     "sep_km_otbn_sideload_kat_test",
     "sep_km_aes_sideload_kat_test",
