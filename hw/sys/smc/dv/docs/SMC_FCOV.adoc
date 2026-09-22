@@ -68,14 +68,15 @@ count.
 [[smc-cov-waiver]]
 ==== Waiver fields
 
-Every `\[[holes]]` row must carry:
+Every `\[[holes]]` row must carry the fields `coverage_policy.py`
+requires:
 
-* `tool`, `metric_family`, hierarchy or file selector
-* `category` (`out_of_scope` / `excluded` / `waived` / `open`)
-* `disposition`
-* `owner`
-* `review_date`
-* `issue` when the disposition is actionable
+* `tool`, `metric_family`, hierarchy or file selector (`\[[holes.native]]`)
+* `category` (one of the runner's hole categories; this file uses
+`missing_stimulus`, `needs_review` and `unreachable`)
+* `disposition`, `status`, `confidence`, `rationale`
+* `owner`, `reviewer`, `date`
+* `issues` when the disposition is actionable
 
 `max_unclassified_points = 0` on the `user` row is the fail-on-new-hole
 knob. line / branch / expression floors do not set that knob: those

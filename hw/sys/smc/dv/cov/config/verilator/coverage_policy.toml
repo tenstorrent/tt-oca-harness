@@ -33,8 +33,9 @@
 # Floors are the effective percentages of a measured
 # `--dut smc --items hosted --cov` run (Verilator 5.050) taken when that
 # group listed 168 leaves: line 78.0977, branch 75.9964, expression
-# 69.0966, user 100.0, with 86 accepted user holes and zero unclassified
-# user points. This tree's `hosted` group lists 176.
+# 69.0966, user 100.0. This file carries 54 accepted user `[[holes]]`
+# rows (every `expected_matches` is 1). This tree's `hosted` group
+# lists 176.
 #
 # The holes below were measured from `--dut smc --items hosted --cov`.
 #
@@ -44,6 +45,8 @@
 #   needs_review      the cell is blocked by an open spec finding (SF-nnn in
 #                     SMC_SPEC_REVIEW); the point stays on the implemented
 #                     behaviour and takes no credit until it is answered.
+#   unreachable       no stimulus this bench can present can satisfy the
+#                     point (the rationale names the blocking path).
 # Selectors are exact hierarchies with expected_matches = 1; a point that
 # starts firing makes the grade fail loudly, which is intended.
 
