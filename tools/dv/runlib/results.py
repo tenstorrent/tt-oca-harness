@@ -40,14 +40,6 @@ EXIT_CODE_BY_STATUS = {
 
 NON_PASS_STATUSES = {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
 
-COVERAGE_BACKEND_BY_TOOL = {
-    "verilator": "verilator_coverage",
-    "vcs": "urg",
-    "xcelium": "imc",
-}
-
-SIGNOFF_COVERAGE_TOOLS = {"vcs", "xcelium"}
-
 
 def command_text(argv: list[str], root: Path) -> str:
     try:
@@ -176,8 +168,33 @@ def exit_code_for_status(status: str) -> int:
     return EXIT_CODE_BY_STATUS.get(status, 2)
 
 
+# One executed formal item counts as one test item, beside the simulation leaves.
+ITEM_STAGES = {"sim", "regress", "formal"}
+
+# The metadata a run-level leaf entry repeats from its leaf record: what identifies the
+# attempt and the scheduler job that ran it. The rest stays in the leaf's own result.json.
+LEAF_METADATA_KEYS = ("seed", "attempt", "debug_only", "scheduler", "wave_debug")
+
+
+def _leaf_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+    recorded = metadata or {}
+    kept = {key: recorded[key] for key in LEAF_METADATA_KEYS if key in recorded}
+    if isinstance(kept.get("wave_debug"), dict):
+        kept["wave_debug"] = _wave_debug_record(kept["wave_debug"])
+    return kept
+
+
+def _wave_debug_record(debug: dict[str, Any]) -> dict[str, Any]:
+    """A wave-debug rerun as the graded attempt lists it, with the two flags that mark it."""
+    record = _regression_job_record(debug)
+    for key in ("debug_only", "status_affects_final_result"):
+        if key in debug:
+            record[key] = debug[key]
+    return record
+
+
 def _stage_dict(stage: StageResult) -> dict[str, Any]:
-    payload = {
+    payload: dict[str, Any] = {
         "name": stage.stage,
         "item": stage.item,
         "status": stage.status,
@@ -186,12 +203,19 @@ def _stage_dict(stage: StageResult) -> dict[str, Any]:
         "started_at": stage.started_at,
         "ended_at": stage.ended_at,
         "log": stage.log,
-        "artifacts": stage.artifacts or {},
         "failure_buckets": stage.failure_buckets or [],
         "reason": stage.reason,
-        "parser": stage.parser,
-        "metadata": stage.metadata or {},
     }
+    if stage.stage in ITEM_STAGES:
+        payload["metadata"] = _leaf_metadata(stage.metadata)
+        payload["result_json"] = stage.result_json
+        executor_log = (stage.artifacts or {}).get("executor_log")
+        if executor_log:
+            payload["artifacts"] = {"executor_log": executor_log}
+    else:
+        payload["artifacts"] = stage.artifacts or {}
+        payload["parser"] = stage.parser
+        payload["metadata"] = stage.metadata or {}
     if stage.target:
         payload["target"] = stage.target
     if stage.formal is not None:
@@ -199,8 +223,36 @@ def _stage_dict(stage: StageResult) -> dict[str, Any]:
     return payload
 
 
-# One executed formal item counts as one test item, beside the simulation leaves.
-ITEM_STAGES = {"sim", "regress", "formal"}
+def _regression_job_record(job: dict[str, Any]) -> dict[str, Any]:
+    """One attempt as regression.json lists it; the leaf record it points at holds the rest."""
+    record = {
+        key: job.get(key)
+        for key in (
+            "stage",
+            "item",
+            "target",
+            "seed",
+            "attempt",
+            "status",
+            "return_code",
+            "reason",
+            "duration_sec",
+            "started_at",
+            "ended_at",
+            "log",
+            "result_json",
+        )
+    }
+    record["failure_buckets"] = job.get("failure_buckets") or []
+    record["metadata"] = _leaf_metadata(job.get("metadata"))
+    executor_log = (job.get("artifacts") or {}).get("executor_log")
+    if executor_log:
+        record["artifacts"] = {"executor_log": executor_log}
+    if job.get("formal") is not None:
+        record["formal"] = job["formal"]
+    if isinstance(job.get("wave_debug"), dict):
+        record["wave_debug"] = _wave_debug_record(job["wave_debug"])
+    return record
 
 
 def _has_formal(flow: Flow, stages: list[StageResult]) -> bool:
@@ -315,7 +367,6 @@ def coverage_summary(
             "supported_metrics": [],
             "target": None,
             "build_fingerprint": None,
-            "inputs": [],
             "details_available": None,
             "coverage_details": None,
             "coverage_details_raw": None,
@@ -399,7 +450,6 @@ def coverage_summary(
         "supported_metrics": manifest_data.get("supported_metrics", []),
         "target": manifest_data.get("target"),
         "build_fingerprint": manifest_data.get("build_fingerprint"),
-        "inputs": manifest_data.get("inputs", []),
         "details_available": summary_data.get(
             "details_available", details_data.get("details_available")
         ),
@@ -514,14 +564,11 @@ def _attempt_summary(job: dict[str, Any]) -> dict[str, Any]:
         "return_code": job.get("return_code"),
         "duration_sec": job.get("duration_sec"),
         "log": job.get("log"),
-        "artifacts": job.get("artifacts") or {},
         "failure_buckets": job.get("failure_buckets") or [],
-        "parser": job.get("parser"),
         "result_json": job.get("result_json"),
-        "metadata": job.get("metadata") or {},
     }
-    if job.get("wave_debug"):
-        out["wave_debug"] = job["wave_debug"]
+    if isinstance(job.get("wave_debug"), dict):
+        out["wave_debug"] = _wave_debug_record(job["wave_debug"])
     return {key: value for key, value in out.items() if value is not None}
 
 
@@ -597,17 +644,15 @@ def _failed_test_record(
         "attempt_count": len(attempts),
         "attempts": [_attempt_summary(job) for job in attempts],
         "log": final.get("log"),
-        "artifacts": final.get("artifacts") or {},
         "failure_buckets": _buckets_for_failed_job(final),
-        "parser": final.get("parser"),
         "result_json": final.get("result_json"),
         "expected_fail": (final.get("metadata") or {}).get("expected_fail"),
         "rerun": _rerun_command(flow, tool, final, args),
     }
     wave_debug = final.get("wave_debug")
     if isinstance(wave_debug, dict):
-        wave_debug_record = dict(wave_debug)
-        wave_meta = (wave_debug_record.get("metadata") or {}).get("waves", {})
+        wave_debug_record = _wave_debug_record(wave_debug)
+        wave_meta = (wave_debug.get("metadata") or {}).get("waves", {})
         if isinstance(wave_meta, dict):
             if wave_meta.get("viewer_commands"):
                 wave_debug_record["viewer_commands"] = wave_meta["viewer_commands"]
@@ -716,37 +761,6 @@ def _tests_summary_from_jobs(
     return summary
 
 
-def _coverage_provenance(
-    stages: list[StageResult],
-    run_dir: Path,
-    root: Path,
-    tool: str,
-    coverage_requested: bool,
-) -> dict[str, Any]:
-    payload = coverage_summary(stages, run_dir, root, coverage_requested)
-    backend = payload.get("backend") or COVERAGE_BACKEND_BY_TOOL.get(tool, tool)
-    has_valid_report = bool(
-        payload.get("status") == "PASS"
-        and payload.get("summary")
-        and payload.get("total_percent") is not None
-    )
-    payload.update(
-        {
-            "requested": coverage_requested,
-            "simulator": tool,
-            "coverage_backend": backend,
-            "coverage_class": "commercial_regression"
-            if tool in SIGNOFF_COVERAGE_TOOLS
-            else "contributor_baseline",
-            "signoff_quality": bool(has_valid_report and tool in SIGNOFF_COVERAGE_TOOLS),
-            "overall_percent": payload.get("total_percent"),
-            "report_dir": payload.get("report"),
-            "summary_json": payload.get("summary"),
-        }
-    )
-    return payload
-
-
 def _selection_payload(args: Any | None, items: list[str] | None) -> dict[str, Any]:
     if args is None:
         return {"expanded_items": items or [], "expanded_count": len(items or [])}
@@ -822,13 +836,7 @@ def regression_payload(
         )
     )
 
-    coverage = _coverage_provenance(
-        stages,
-        run_dir,
-        root,
-        tool,
-        bool(getattr(args, "cov", False)),
-    )
+    coverage = coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False)))
     artifacts = {
         "result_json": repo_rel(root, run_dir / "result.json"),
         "regression_json": repo_rel(root, run_dir / "stages" / "regress" / "regression.json"),
@@ -879,14 +887,13 @@ def regression_payload(
         "overrides": {"cli": cli_overrides(args)},
         "selection": _selection_payload(args, items),
         "tests": _tests_summary_from_jobs(leaves, completion),
-        "coverage": coverage,
         "failure_buckets": failure_buckets,
         "failed_tests": failed_tests,
         "flaky_tests": flaky_tests,
         "rerun_commands": [
             record["rerun"] for record in [*failed_tests, *flaky_tests] if record.get("rerun")
         ],
-        "jobs": jobs,
+        "jobs": [_regression_job_record(job) for job in jobs],
     }
     if _has_formal(flow, stages):
         payload["formal"] = formal_summary(stages)

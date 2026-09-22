@@ -93,11 +93,9 @@ from .executors.base import (
     resolve_resources,
     task_identifier,
 )
-from .executors.cluster import UNCONFIRMED_CANCELS_NAME
 from .executors.manifest import (
     attempt_args,
     execute_attempt,
-    jobs_dir,
     manifest_path,
     manifest_payload,
     repo_identity,
@@ -1987,18 +1985,6 @@ def _update_regression_coverage(
     payload = _read_json_object(path)
     if payload is None:
         return
-    previous = payload.get("coverage")
-    merged = dict(previous) if isinstance(previous, dict) else {}
-    merged.update(coverage)
-    merged.update(
-        {
-            "requested": bool(coverage.get("enabled")),
-            "overall_percent": coverage.get("total_percent"),
-            "report_dir": coverage.get("report"),
-            "summary_json": coverage.get("summary"),
-        }
-    )
-    payload["coverage"] = merged
     payload["status"] = run_status
     payload["exit_code"] = exit_code_for_status(run_status)
     artifacts = payload.setdefault("artifacts", {})
@@ -3330,8 +3316,6 @@ def run_flow(
             "active_count": len(visible_active),
             "missing_count": len(missing),
             "interrupted_count": len(interrupted),
-            "expected": [dict(leaf) for leaf in expected_leaves],
-            "completed": completed,
             "active": visible_active,
             "missing": missing,
             "interrupted": interrupted,
@@ -3360,19 +3344,8 @@ def run_flow(
         with progress_lock:
             leaf_jobs.setdefault(task.leaf_id, {})[task.task_id] = {
                 "task_id": task.task_id,
-                "attempt": task.attempt,
-                "debug_only": task.debug_only,
-                "executor": handle.executor,
-                "driver": handle.driver,
                 "job_id": handle.native_job_id,
-                "submitted_at": handle.submitted_at,
             }
-
-    def note_cancel_confirmed(task: LeafTask, confirmed: bool) -> None:
-        with progress_lock:
-            job = leaf_jobs.get(task.leaf_id, {}).get(task.task_id)
-            if job is not None:
-                job["cancel_confirmed"] = confirmed
 
     def record_cancellation(
         executor_impl: Executor,
@@ -3383,42 +3356,21 @@ def run_flow(
         cancel_grace: float,
     ) -> None:
         requested = [handle for handle in outstanding if handle.task_id not in finished]
-        unconfirmed: list[dict[str, Any]] = []
-        for handle in outstanding:
-            task = tasks[handle.task_id]
-            stopped = bool(confirmed.get(handle.task_id, False))
-            note_cancel_confirmed(task, stopped)
-            if stopped or handle.task_id in finished:
-                continue
-            unconfirmed.append(
-                {
-                    "task_id": task.task_id,
-                    "item": task.item,
-                    "seed": task.seed,
-                    "target": task.target,
-                    "attempt": task.attempt,
-                    "debug_only": task.debug_only,
-                    "executor": handle.executor,
-                    "driver": handle.driver,
-                    "job_id": handle.native_job_id,
-                }
-            )
-        record = jobs_dir(run_dir) / UNCONFIRMED_CANCELS_NAME
+        unconfirmed = [
+            handle.native_job_id
+            for handle in outstanding
+            if not confirmed.get(handle.task_id, False) and handle.task_id not in finished
+        ]
         cancellation.clear()
         cancellation.update(
             {
-                "executor": executor_impl.name,
-                "driver": executor_impl.driver,
                 "requested": len(requested),
                 "confirmed": len(requested) - len(unconfirmed),
                 "unconfirmed": unconfirmed,
-                "grace_sec": cancel_grace,
-                "wait_cut_short": cleanup_hurry.is_set(),
-                "record": repo_rel(root, record) if record.is_file() else None,
             }
         )
         if unconfirmed:
-            ids = ", ".join(str(job["job_id"]) for job in unconfirmed)
+            ids = ", ".join(str(job_id) for job_id in unconfirmed)
             console.event(
                 "executor",
                 f"{len(unconfirmed)} of {len(requested)} cancelled job(s) unconfirmed "
@@ -3700,13 +3652,7 @@ def run_flow(
                 )
                 result.metadata = {
                     **(result.metadata or {}),
-                    "scheduler": {
-                        "executor": handle.executor,
-                        "driver": handle.driver,
-                        "job_id": handle.native_job_id,
-                        "state": outcome.state.value,
-                        "reason": outcome.error or seen.reason,
-                    },
+                    "scheduler": {"job_id": handle.native_job_id, "state": outcome.state.value},
                 }
             result.item = None
             result.metadata = {**(result.metadata or {}), "target": target}
@@ -3964,6 +3910,7 @@ def run_flow(
                 attach_wave_debug(final, jobs, task, result)
                 finish_leaf(leaf, final, jobs)
                 return
+            result.result_json = repo_rel(root, task.result_json)
             attempts[task.leaf_id].append(result)
             jobs.append(
                 regression_job(
@@ -3972,7 +3919,7 @@ def run_flow(
                     task.seed,
                     task.attempt,
                     result,
-                    repo_rel(root, task.result_json),
+                    result.result_json,
                 )
             )
             if result.status != "PASS" and scheduler and task.attempt < (args.retry or 0):
@@ -4375,8 +4322,7 @@ def run_flow(
                 "recorded_at": datetime.now(UTC).isoformat(),
             }
             exit_code = exit_code_for_status("ERROR")
-        interruption["signals"] = [signal.Signals(num).name for num in interruption_signal]
-        if cancellation:
+        if cancellation.get("unconfirmed"):
             interruption["cancellation"] = dict(cancellation)
         progress = checkpoint_progress("interrupted")
         elapsed_sec = time.monotonic() - run_started
