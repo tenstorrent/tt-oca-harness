@@ -366,6 +366,30 @@ def verify_device_id_layout(buf: bytes, slot: str) -> None:
             )
 
 
+def set_device_id_word(buf: bytearray, slot: str, kind: str, index: int,
+                       value: int) -> None:
+    """Set one ``usage_constraints.chiplet_id`` / ``package_id`` word (in-TBS; re-hashed).
+
+    The ROM compares the word against the SMC fuse map only when the matching
+    ``selector_bits`` bit is set (``manifest_load.c``), so a per-word selector
+    testcase needs both halves: this writes the value, and
+    :func:`set_selector_bit` decides whether the ROM reads it.
+
+    Unlike the other mutators here, a no-op is NOT rejected: a per-word variation
+    legitimately wants some selected words left at the shipped value, and the
+    caller states per word what it intends.
+    """
+    verify_layout(buf, slot)
+    off = {"chiplet_id": OFF_CHIPLET_ID, "package_id": OFF_PACKAGE_ID}[kind]
+    if not 0 <= index < DEVICE_ID_NUM_WORDS:
+        raise ValueError(f"{kind} has {DEVICE_ID_NUM_WORDS} words, not index {index}")
+    if not 0 <= value <= 0xFFFF_FFFF:
+        raise ValueError(f"{kind} words are 32 bits")
+    base = slot_base(slot) + off + index * 4
+    struct.pack_into("<I", buf, base, value)
+    rehash(buf, slot)
+
+
 def manifest_version(buf: bytes, slot: str) -> tuple[int, int]:
     """``(manifest_version_major, manifest_version_minor)``."""
     base = slot_base(slot)

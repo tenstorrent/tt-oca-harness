@@ -290,6 +290,18 @@ def plant_device_id_defect(buf: bytearray, slot: str, kind: str,
     return (selector_mask & -selector_mask).bit_length() - 1
 
 
+def device_id_tokens(kind: str) -> tuple[str, str, str]:
+    """The ``*_IDX=`` / ``*_FUSE=`` / ``*_MFST=`` tokens one device-id arm echoes.
+
+    The prefix is ``CID``/``PID`` (``manifest_load.c``) and cannot be derived from
+    the field name, so a caller that needs one token has to read it from here
+    rather than build it. A built token silently never matches, which turns
+    :func:`hex_value` into ``None`` and any assertion resting on it into a crash
+    or a pass.
+    """
+    return _DEVICE_ID_TOKENS[kind]
+
+
 def device_id_required_markers(kind: str, reject_index: int) -> tuple[str, ...]:
     """Console lines a device-id rejection must produce.
 
@@ -315,6 +327,11 @@ def assert_device_id_mismatch(logger, console: list[str], kind: str,
     asserting its own memory model. Requiring the two to DIFFER is the part that
     belongs to the ROM: it is the comparison ``manifest_load.c`` performs, and it
     cannot pass on a run where the two agreed.
+
+    ONE CARVE-OUT. ``sep_device_id_variation_base`` does assert the ``*_FUSE=``
+    value, because it plants a MATCHING word and therefore depends on which value
+    the model serves. That family states the dependency rather than hiding it; the
+    rule above still holds for every row that only needs a mismatch.
     """
     idx_token, fuse_token, mfst_token = _DEVICE_ID_TOKENS[kind]
     fuse = hex_value(console, fuse_token)

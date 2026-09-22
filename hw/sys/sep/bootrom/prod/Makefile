@@ -322,6 +322,58 @@ $(ENCRYPTED_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 		$(PACK_RUN) --config "$(ENCRYPTED_PACK_CONFIG)" --out "$(ENCRYPTED_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(ENCRYPTED_BOOT_BIN)" "$@"
 
+# Encrypted-boot variants for the three decryption negative testcases. Each is
+# $(ENCRYPTED_PACK_CONFIG) plus exactly one override, regenerated on every build,
+# so the only difference from the image that boots is the injected fault.
+#
+# No .spi_preload: these are loaded as raw bytes by the SPI flash BFM, not by
+# $readmemh.
+#
+# The derived config is written with the packer's own YAML library, so it runs in
+# the packer's uv environment rather than assuming ruamel on the host.
+DERIVE_CONFIG_PY := $(CURDIR)/scripts/derive_pack_config.py
+DERIVE_RUN := uv run --no-project --with-editable "$(TT_BOOT_MANIFEST_DIR)" \
+	python "$(DERIVE_CONFIG_PY)"
+DECRYPT_NEG_BINS := $(BUILD_DIR)/invalid_class_key.bin \
+	$(BUILD_DIR)/invalid_encryption_iv.bin \
+	$(BUILD_DIR)/invalid_kdf_input.bin
+
+.PHONY: decrypt_negative_images
+decrypt_negative_images: $(DECRYPT_NEG_BINS)
+
+# invalid_class_key carries no manifest override: its fault is a wrong CLASS_KEY
+# fuse, which the ROM reads for every encrypted slot. Its BACKUP is packed
+# unencrypted so that one wrong fuse refuses the primary only and the boot still
+# has a slot to recover from; with both slots encrypted the fuse would refuse
+# both, which is the terminal requirement rather than this one.
+$(BUILD_DIR)/invalid_class_key.bin: PACK_OVERRIDE := \
+	--set-int backup.manifest.encrypted_payload=0
+# The IV the manifest CARRIES, against the IV the payload was encrypted with.
+# packed_encryption_iv is the packer's own hook for exactly this
+# (pack_encryption() keeps encrypting with encryption_iv).
+$(BUILD_DIR)/invalid_encryption_iv.bin: PACK_OVERRIDE := \
+	--set-str primary.manifest.packed_encryption_iv=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+# The KDF input the manifest CARRIES, against the input the AES key was derived
+# from. pack_encryption() packs encryption_kdf_input verbatim while
+# process_manifest() encrypts with encryption_derived_key, so overriding it alone
+# packs a KDF input that derives a different key.
+# Needs `meta: disable_checks: true` in $(ENCRYPTED_PACK_CONFIG): it degrades the
+# packer's kdf-derives-the-key assertion to a warning, and without it this pack
+# aborts on the very mismatch it is injecting.
+$(BUILD_DIR)/invalid_kdf_input.bin: PACK_OVERRIDE := \
+	--set-str primary.manifest.encryption_kdf_input=deadbeefcafebabe0123456789abcdeffedcba9876543410f0e1d2c3b4a59687
+
+$(DECRYPT_NEG_BINS): $(BUILD_DIR)/%.bin: bl1_test ensure-pack-deps \
+		$(DERIVE_CONFIG_PY) $(ENCRYPTED_PACK_CONFIG) | $(BUILD_DIR)
+	@test -f "$(SEP_SIGNING_KEY)" || { \
+	  echo "ERROR: $* needs the dev0 signing key."; \
+	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
+	  exit 1; }
+	$(DERIVE_RUN) --base "$(ENCRYPTED_PACK_CONFIG)" $(PACK_OVERRIDE) \
+		--out "$(BUILD_DIR)/$*.yaml"
+	OCH_ROOT="$(DV_ROOT)" ROOT="$(abspath $(dir $(SEP_SIGNING_KEY))/../..)" \
+		$(PACK_RUN) --config "$(BUILD_DIR)/$*.yaml" --out "$@" -v
+
 # Removes every variant, not just $(BUILD_DIR): a `make clean` that left one
 # behind would let a stale image survive into the next run and boot silently.
 clean:

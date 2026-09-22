@@ -810,6 +810,90 @@ args = [
   "+sep_crypto_edn_force",
 ]
 
+# ############################################################################
+# DECRYPTION INPUT NEGATIVES -- one wrong input each, three rows.
+#
+# The ROM's payload key and cipher depend on three inputs: the CLASS_KEY fuse, the
+# manifest's encryption_kdf_input and the manifest's encryption_iv
+# (manifest_crypto.c, decrypt_payload). Each row below makes exactly one of them
+# wrong and leaves the other two, the ciphertext and the signature golden.
+#
+# None of the three is a decryption error: all three decrypt to garbage, print
+# DECRYPT_OK and are refused one arm later with MANIFEST_ERR=0x00030005, so each
+# row grades the ORDER as well as the code. Every row keeps a healthy recovery
+# slot, so none of them settles the terminal-decryption requirement that
+# sep_decryption_failure_terminal_test above owns. See
+# cocotb/tests/rom_fw/sep_decrypt_input_defect.py for the per-row oracle.
+#
+# Each row's image is configs/encrypted_boot_test.yaml plus ONE override, built by
+# `make -C hw/sys/sep/bootrom/prod decrypt_negative_images`.
+#
+# Every row needs +sep_crypto_edn_force (AES is EDN client 0, OTBN is 2/3) and two
+# RSA-3072 modexps. Budget them like sep_decryption_failure_terminal_test.
+# ############################################################################
+
+[[tests]]
+# Wrong CLASS_KEY fuse: the image is golden, the OTP is not. Its image is the only
+# one with an UNENCRYPTED backup, because the fuse is not per-slot -- with both
+# slots encrypted one wrong fuse refuses both and the run would be terminal, which
+# is the sentinel's requirement rather than this one. DECRYPT_START/DECRYPT_OK
+# exactly ONCE.
+name = "sep_firmware_invalid_decryption_class_key_test"
+module = "rom_fw.sep_firmware_invalid_decryption_class_key_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_bad_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary manifest IV != the IV the payload was encrypted with. A wrong IV
+# corrupts CBC block 0 only, and block 0 is where the PTOC identifier sits, so the
+# one corrupted block is exactly the one the ROM checks. The encrypted backup
+# decrypts with the same fuse and boots: DECRYPT_START/DECRYPT_OK exactly TWICE.
+name = "sep_firmware_invalid_encryption_iv_test"
+module = "rom_fw.sep_firmware_invalid_encryption_iv_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary manifest KDF input derives an AES key the payload was never encrypted
+# under. The KBKDF SUCCEEDS -- it returns a valid key, just the wrong one -- so
+# every block is garbage rather than only block 0. The packer prints "KDF derived
+# key does not match manifest test key" when building this image; that warning is
+# the injected fault, not a build problem.
+name = "sep_firmware_invalid_decryption_kdf_input_test"
+module = "rom_fw.sep_firmware_invalid_decryption_kdf_input_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
 [[tests]]
 # MEM_REPAIR gate, BYPASS arm -- the third arm of the pair formed by
 # sep_firmware_mbist_fail_test and sep_firmware_mbist_pass_test.
@@ -4345,6 +4429,111 @@ firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+# ############################################################################
+# PER-WORD SELECTOR AND v1.x LENGTH-BOUND CLOSURE. Three rows, each pairing a
+# refused PRIMARY with an accepted BACKUP so both poles of one rule are graded in
+# a single run.
+#
+# The two device-ID rows add the selected-and-matching and unselected-and-
+# mismatching legs that the mismatch-only rows leave open. The rule they grade,
+# the fuse-map model value their matching words depend on, and what the accepted
+# slot does not establish are in
+# cocotb/tests/rom_fw/sep_device_id_variation_base.py.
+#
+# The length row declares 2049 on the primary and 2048 on the backup under the
+# same minor version, so MANIFEST_MAX_SIZE is bracketed from both sides -- the
+# off-by-one the existing minor-nonzero rows (1188 accepted, 2052 refused) leave
+# open.
+# ############################################################################
+
+[[tests]]
+# PRIMARY selector_bits[7:0] = 0x24: word 2 matches at 0x00000000, word 5 carries
+# the shipped 0xa5a5a5a5, and words 0/1/3/4 mismatch with their bits CLEAR, so
+# CID_IDX must be 5. BACKUP selects all eight words at the matching value and
+# boots. The package_id selector byte stays clear over eight mismatching words in
+# both slots.
+#
+# Needs +sep_smc_fuse_sense_done: with a non-zero selector byte the ROM waits for
+# smc_fuse_sense_done before reading the SMC fuse map and this TB has no SMC to
+# raise it; without the plusarg the ROM burns its 1,000,000-iteration bounded wait
+# on both slots and reaches the same verdict hours later. The timeout
+# fall-through is therefore NOT exercised here.
+# Needs +sep_crypto_edn_force: the recovering backup runs a full RSA-3072 modexp.
+name = "sep_chiplet_id_per_word_variations_test"
+module = "rom_fw.sep_chiplet_id_per_word_variations_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "crypto", "efuse", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+  "+sep_smc_fuse_sense_done",
+]
+
+[[tests]]
+# The mirror of the row above in the upper selector byte. PRIMARY
+# selector_bits[15:8] = 0x48: word 3 matches, word 6 does not, words 0/1/2/4/5
+# mismatch with their bits clear, so PID_IDX must be 6. BACKUP selects all eight
+# package_id words at the matching value and boots. The cross-domain control is
+# stronger here because the chiplet loop runs FIRST: a ROM feeding the upper byte
+# to it would refuse the primary on the chiplet arm, whose token is forbidden.
+#
+# The mask and index are deliberately none of the other three device-ID rows', so
+# no two of the four can satisfy each other's *_IDX= assertion.
+#
+# Same two plusargs as the row above, for the same reasons.
+name = "sep_package_id_per_word_variations_test"
+module = "rom_fw.sep_package_id_per_word_variations_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "crypto", "efuse", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+  "+sep_smc_fuse_sense_done",
+]
+
+[[tests]]
+# Both slots declare v1.1 and differ by ONE in manifest_length: the PRIMARY
+# 2049 = MANIFEST_MAX_SIZE + 1 is refused MANIFEST_ERR_BAD_LENGTH, the BACKUP 2048
+# = MANIFEST_MAX_SIZE exactly is accepted and boots. A ROM using >= would refuse
+# 2048 and the run would end terminal; a bound one higher would accept 2049 and
+# never fall over.
+#
+# DISCLOSED LIMIT: 2049 is both out of range and misaligned and both arms are
+# silent, so this row says 2049 was refused and not which arm refused it. The
+# range arm alone is shown by ..._minor_nonzero_length_large_test (2052) and the
+# alignment arm alone by ..._minor_nonzero_length_small_incorrect_test (1185).
+#
+# The accepted length forces one further flash read at backup_base + 1184, which
+# is the device-side proof the ROM acted on it.
+#
+# Needs +sep_crypto_edn_force: the recovering backup runs a full RSA-3072 modexp.
+name = "sep_manifest_v1x_length_test"
+module = "rom_fw.sep_manifest_v1x_length_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",

@@ -351,7 +351,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images secure_boot_spi encrypted_boot_spi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images secure_boot_spi encrypted_boot_spi decrypt_negative_images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
@@ -366,6 +366,12 @@ outputs = [
   # +sep_smc_mem_hex, and an undeclared input would let `--stage sim` start and
   # then die inside $readmemh instead of failing the output check.
   "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+  # The three decryption-negative images, each the encrypted config plus one
+  # override. Declared for the same reason: a missing image would otherwise
+  # surface as an unexplained SPI flash of erased bytes mid-run.
+  "hw/sys/sep/bootrom/prod/build/invalid_class_key.bin",
+  "hw/sys/sep/bootrom/prod/build/invalid_encryption_iv.bin",
+  "hw/sys/sep/bootrom/prod/build/invalid_kdf_input.bin",
 ]
 
 [c_build.boot_rom_pio]

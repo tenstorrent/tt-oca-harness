@@ -205,6 +205,29 @@ def encrypt(key: bytes, iv: bytes, plaintext: bytes) -> bytes:
     return bytes(out)
 
 
+def decrypt_raw(key: bytes, iv: bytes, ciphertext: bytes) -> bytes:
+    """AES-128-CBC decrypt with no PKCS#7 removal, as the ROM's engine does it.
+
+    The ROM decrypts ``payload_length`` bytes in place and never unpads
+    (``aes_driver.c``), so this is the plaintext a boot actually parses. It is also
+    the only way to inspect a decryption whose key or IV is WRONG: the recovered
+    bytes then carry no valid padding, and :func:`decrypt` would raise instead of
+    returning the garbage the ROM would go on to reject.
+    """
+    if len(iv) != BLOCK_BYTES:
+        raise ValueError(f"IV must be {BLOCK_BYTES} bytes, got {len(iv)}")
+    if len(ciphertext) % BLOCK_BYTES:
+        raise ValueError(f"ciphertext length {len(ciphertext)} is not a block multiple")
+    rk = _expand_key(key)
+    prev = iv
+    out = bytearray()
+    for i in range(0, len(ciphertext), BLOCK_BYTES):
+        ct = ciphertext[i:i + BLOCK_BYTES]
+        out += bytes(a ^ b for a, b in zip(decrypt_block(ct, rk), prev))
+        prev = ct
+    return bytes(out)
+
+
 def decrypt(key: bytes, iv: bytes, ciphertext: bytes) -> bytes:
     """AES-128-CBC decrypt with PKCS#7 removal."""
     if len(iv) != BLOCK_BYTES:

@@ -400,6 +400,13 @@ tests = [
     # rom_fw.toml. A run whose ONLY failure is this test is the expected result.
     # Do not remove this line to get a green run.
     "sep_decryption_failure_terminal_test",
+    # One wrong decryption input each -- the CLASS_KEY fuse, the manifest IV, the
+    # manifest KDF input. All three decrypt to garbage, are refused by the TOC
+    # identifier and recover onto a healthy slot, so none of them is the sentinel
+    # above. SLOW: each runs two RSA-3072 modexps and one or two AES decryptions.
+    "sep_firmware_invalid_decryption_class_key_test",
+    "sep_firmware_invalid_encryption_iv_test",
+    "sep_firmware_invalid_decryption_kdf_input_test",
     "sep_mbist_fail_continue_test",
     "sep_warm_reset_invalid_hang_test",
     "sep_warm_reset_below_range_hang_test",
@@ -458,6 +465,16 @@ tests = [
     "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test",
     "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_correct_test",
     "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test",
+    # The v1.x accepted case ON the bound. The primary declares 2049 and the
+    # backup 2048 under the same minor version, so MANIFEST_MAX_SIZE is bracketed
+    # from both sides in one run -- the off-by-one the rows above leave open.
+    "sep_manifest_v1x_length_test",
+    # Per-word selector variation. Each primary selects one matching
+    # and one mismatching word and is refused on the mismatching one, which pins the
+    # selector-to-word mapping; each backup selects all eight matching words and
+    # boots. The rows above select mismatching words only.
+    "sep_chiplet_id_per_word_variations_test",
+    "sep_package_id_per_word_variations_test",
     # payload_hashed_length = 0, outside 0 < value <= payload_length. The only
     # BAD_LENGTH arm in validate_manifest_header that prints its own token, so
     # these two rows are separable on the console from every other length row.

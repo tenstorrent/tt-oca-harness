@@ -1,0 +1,22 @@
+# PROD lifecycle with a CLASS_KEY that is NOT the key the payload was encrypted
+# under. The injected fault of sep_firmware_invalid_decryption_class_key_test.
+#
+# sep_efuse_lc_prod_class_key.toml is the correct-key sibling; everything else in
+# the two files is identical, so a run that differs between them differs because
+# of this key.
+#
+# CLASS_KEY is written out as an explicit zero rather than left absent. Zero is
+# what an unprogrammed fuse reads, which is the realistic failure; stating it
+# keeps the stimulus in this file instead of resting on a field's absence.
+#
+# SBOOT_DIS stays 0 and the lifecycle stays PROD: the crypto chain must be
+# enforced, or the ROM would never decrypt the payload and the wrong key would
+# never be used.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[CLASS_KEY]
+  [CLASS_KEY.fields.key]
+  value = 0x0000000000000000000000000000000000000000000000000000000000000000
