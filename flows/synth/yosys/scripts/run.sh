@@ -50,4 +50,9 @@ if ((${#expected_error_files[@]})); then
   echo "Slang preflight accepted $actual_count expected errors; see $preflight_log"
 fi
 
-exec yosys -m slang -c "$OCAH_YOSYS_SYNTH_TCL"
+# OCAH-Nix provisioned Yosys already loads slang, but from a different path, the
+# default -m slang results in a load error
+yosys_args=()
+[[ -z "${OCAH_YOSYS_BUNDLED_SLANG:-}" ]] && yosys_args+=(-m slang)
+
+exec yosys "${yosys_args[@]}" -c "$OCAH_YOSYS_SYNTH_TCL"
