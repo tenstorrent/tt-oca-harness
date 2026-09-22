@@ -2940,8 +2940,8 @@ parser's per-family figures overlaid with the effective percentage of every
 family that has point records; `raw_metrics` and `effective_metrics` per
 family; `policy_thresholds`; `holes_summary`; `comparison_key`,
 `scope_fingerprint`, and `policy_fingerprint`; `target` and
-`build_fingerprint`; the tool version and supported metrics; the input list;
-and the paths of the files below.
+`build_fingerprint`; the tool version and supported metrics; and the paths
+of the files below.
 
 |`cov/coverage.json`
 |`2`
