@@ -715,20 +715,11 @@ void rom_main(void) {
     simputs("<<C9b_ICCM_CLR\n");
 
     // ── [S18] Read sboot_dis fuse ──
-    // Read the SBOOT_DIS efuse shadow register.
-    // Chicken bit to disable secure boot (bit 0 of SEP_EFUSE_MAP_SBOOT_DIS).
-    // Kept in a function-level local, not only in bl0_state: the secure-boot
-    // decision takes it as an argument so the verdict cannot depend on mutable
-    // shared state.
-    bool sboot_dis;
-    {
-        uint32_t sboot_dis_reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
-        sboot_dis = (sboot_dis_reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
-        get_bl0_state()->sboot_dis = sboot_dis;
-        simputsdec24("FUSE: SBOOT_DIS: ", sboot_dis);
-        report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);
-        report_status(STATUS_TYPE_INFO_EXT, sboot_dis);
-    }
+    // One read of the SBOOT_DIS shadow, masked to bit 0 and latched in
+    // lifecycle.c. bl0_state, the boot measurement and the secure-boot callback
+    // all take that latched value, so they cannot disagree about which bits of
+    // the word matter or about when it was sampled. Terminal on a reserved bit.
+    rom_sboot_dis_policy();
 
     // ── [S19] Stack canary write ──
     // Place canary at __stack_bottom (lowest stack address, just above .bss).
