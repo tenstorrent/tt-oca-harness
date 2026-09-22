@@ -23,7 +23,8 @@
 #    synchronizer. The second stage is instance sync1 and is treated as normal.
 # 4. entropy_ripple_divider.sv
 #    Each divided flop Q is a generated clock. The toggle feedback into D is a
-#    false path. The divider structure is preserved.
+#    synchronous data path relative to that stage's clock and is timed normally.
+#    The divider structure is preserved.
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
@@ -173,16 +174,10 @@ set_max_fanout 12 [get_nets -hierarchical -filter \
 #------------------------------------------------------------------------------
 # Sampler clocks: u_sampler_clocks/gen_sampler_clk[*]/u_sample_clk_divider
 # (12 instances, 5 stages). Debug monitor: u_debug_monitor/u_ripple_divider
-# (7 stages). Their Q pins are generated clocks, declared above. The toggle
-# feedback into D stays a false path. Do not false-path Q or the next stage's
-# clock pin: that removes the generated clock.
+# (7 stages). Their Q pins are generated clocks, declared above. The Q-to-D
+# toggle feedback is a same-stage synchronous data path and remains timed.
 
 set_dont_touch [get_cells -hierarchical -filter "ref_name =~ entropy_ripple_divider"]
-
-set_false_path -through [get_pins -hierarchical -filter \
-    "name =~ *u_ripple_divider*/u_div_ff/d_i"]
-set_false_path -through [get_pins -hierarchical -filter \
-    "name =~ *u_sample_clk_divider*/u_div_ff/d_i"]
 
 #------------------------------------------------------------------------------
 # METASTABLE SAMPLING CONSTRAINTS
