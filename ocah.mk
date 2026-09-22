@@ -58,10 +58,8 @@ OCAH_PHONY += ocah-nonfree-init
 # password) is treated as the token, because that form blocks a headless clone.
 # Only that mapping is harvested: an insteadOf for another host, or one that
 # does not rewrite git@github.com:, is ignored so a third-party forge
-# credential is never pasted onto github.com. A userinfo that looks like a
-# GitHub login (at most 39 characters, letters, digits and hyphens) is also
-# ignored, so a credential helper still supplies the secret. Developers with
-# an SSH key and no such insteadOf keep the .gitmodules URL.
+# credential is never pasted onto github.com. Developers with an SSH key and
+# no such insteadOf keep the .gitmodules URL.
 #
 # The token is read by the recipe shell and never expanded by make, so it stays
 # out of the recipe, out of `make -n` and out of build logs. It is still handed
@@ -92,9 +90,6 @@ ocah-submodules-init:
 	        case "$$user" in \
 	          ''|x-access-token|oauth2) continue ;; \
 	        esac; \
-	        if [ $${#user} -le 39 ] && printf '%s' "$$user" | grep -Eq '^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$$'; then \
-	          continue; \
-	        fi; \
 	        printf '%s\n' "$$user"; \
 	        break; \
 	      done); \
