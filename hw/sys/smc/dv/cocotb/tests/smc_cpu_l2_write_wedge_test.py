@@ -15,12 +15,13 @@ class smc_cpu_l2_write_wedge_test(smc_base_test):
 
     auto_protocol_vip = False
     required_evidence = (
-        "CHK-CPU-ISO-FLUSH-FORCED-RESET",
-        "CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED",
-        "CHK-CPU-ISO-FLUSH-LATE-W-ABSORBED",
-        "CHK-CPU-ISO-FLUSH-L2-WRITE-RECOVERED",
         "CHK-CPU-ISO-FLUSH-CLUSTER-REOPENED",
+        "CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED",
+        "CHK-CPU-ISO-FLUSH-FORCED-RESET",
+        "CHK-CPU-ISO-FLUSH-L2-WRITE-RECOVERED",
+        "CHK-CPU-ISO-FLUSH-LATE-W-ABSORBED",
     )
+    min_evidence = 5
 
     async def run_scenario(self) -> None:
         seq = smc_cpu_l2_write_wedge_test_seq("cpu_l2_write_wedge_seq")

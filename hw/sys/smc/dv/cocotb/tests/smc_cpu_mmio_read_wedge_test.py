@@ -15,12 +15,13 @@ class smc_cpu_mmio_read_wedge_test(smc_base_test):
 
     auto_protocol_vip = False
     required_evidence = (
-        "CHK-CPU-ISO-FLUSH-FORCED-RESET",
         "CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED",
-        "CHK-CPU-ISO-FLUSH-STALE-RESP-ABSORBED",
-        "CHK-CPU-ISO-FLUSH-FW-RECOVERED",
+        "CHK-CPU-ISO-FLUSH-FORCED-RESET",
         "CHK-CPU-ISO-FLUSH-FRONT-PORT-RECOVERED",
+        "CHK-CPU-ISO-FLUSH-FW-RECOVERED",
+        "CHK-CPU-ISO-FLUSH-STALE-RESP-ABSORBED",
     )
+    min_evidence = 5
 
     async def run_scenario(self) -> None:
         seq = smc_cpu_mmio_read_wedge_test_seq("cpu_mmio_read_wedge_seq")
