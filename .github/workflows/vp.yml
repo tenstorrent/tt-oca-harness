@@ -61,8 +61,17 @@ jobs:
     #
     #   gh variable set VP_CI_RUNNER --body ubuntu-latest-16-cores
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
-    # A cold run is dominated by SystemC + CCI from source, which both legs pay.
-    timeout-minutes: 90
+    # A cold run is dominated by the nix closure: openssl-merged and boost-merged
+    # are overlay derivations, so no binary cache can serve them and both build
+    # from source. Measured at ~74 minutes, which did not fit the previous 90
+    # along with the VP build and the suite.
+    #
+    # The budget has to exceed that, not merely match it: actions/cache saves
+    # only when a job ends successfully, so a run cancelled at the timeout
+    # publishes no image tarball and the next run pays the same cost again. One
+    # run has to finish for the cache to warm. Lower this once it has, or once
+    # VP_CI_RUNNER promotes the job to a larger runner.
+    timeout-minutes: 180
     permissions: { contents: read }
     strategy:
       fail-fast: false
@@ -370,9 +379,10 @@ jobs:
   smc-smu-vp:
     name: smc-vp + smu-vp (${{ matrix.mode }})
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
-    # Cold: SystemC + CCI from source, then Whisper, then the tree twice over
-    # (all three VPs link the SEP peripheral tree).
-    timeout-minutes: 90
+    # Cold: the nix closure as above, then Whisper, then the tree twice over
+    # (all three VPs link the SEP peripheral tree). See the sep-vp job for why
+    # this has to exceed the closure build rather than match it.
+    timeout-minutes: 180
     permissions: { contents: read }
     strategy:
       fail-fast: false
