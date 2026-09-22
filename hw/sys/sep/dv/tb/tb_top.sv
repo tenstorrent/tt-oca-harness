@@ -220,11 +220,18 @@ module sep_uvm_top
         // one-cycle disable, would both pass silently.
         $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
             .AxisEdnAllAckSmHealthy_A);
-        for (int unsigned ep = 0; ep < sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT;
-             ep++) begin
-            $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
-                .gen_ep[ep].AxisEdnNoAckDuringClear_A);
-        end
+        // Unrolled: a generate-block index must resolve at elaboration, so a
+        // procedural loop variable cannot select gen_ep[]. One line per
+        // endpoint of SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT (AES, KMAC, OTBN RND,
+        // OTBN URND).
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnNoAckDuringClear_A);
         // req_chk_i changed on this instance too, so its arbiter contracts
         // must be live for the same reason.
         $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan
