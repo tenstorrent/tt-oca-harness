@@ -320,9 +320,9 @@ argv = [
 # alongside it for inspection.
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.preload.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.preload.hex",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
 ]
 
 [c_build.dual_occp]
@@ -349,8 +349,8 @@ argv = [
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
   "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.hex",
   "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.sym",
   "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.bin",
@@ -377,8 +377,8 @@ argv = [
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.hex",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.sym",
   "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.bin",
@@ -401,8 +401,8 @@ argv = [
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.hex",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.sym",
 ]
