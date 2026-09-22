@@ -650,6 +650,35 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
         ("CHK-NONVAC", "CHK-NONVAC", "boot scoreboard verdict on the SEP=1 wrapper"),
     ],
+    "smu_smc_ss_reset_ctrl_sweep_test": [
+        (
+            "CHK-SMU-SSRST-RESET",
+            "CHK-SMU-SSRST-RESET",
+            "each of the seven reset-unit registers owning an ss_reset_ctrl_o field, and "
+            "SS_COLD_RESET_LOCK, reads the reset value reset_unit.h states, and the "
+            "boundary word carries that value on all 32 lanes",
+        ),
+        (
+            "CHK-SMU-SSRST-LANE",
+            "CHK-SMU-SSRST-LANE",
+            "ss_reset_ctrl_o[i].<field> carries bit i of the register that owns the field "
+            "through five binary-code patterns and their complements, so each lane answers "
+            "with a signature unique to its index, and back to the RDL reset value",
+        ),
+        (
+            "CHK-SMU-SSRST-LOCK",
+            "CHK-SMU-SSRST-LOCK",
+            "a set SS_COLD_RESET_LOCK bit cannot be cleared and blocks its own lane of "
+            "SS_COLD_RESET_N while the same write reaches every unlocked lane, at the "
+            "register and at the boundary",
+        ),
+        (
+            "CHK-SMU-SSRST-TOGGLE",
+            "CHK-SMU-SSRST-TOGGLE",
+            "ss_reset_ctrl_o was sampled once per register state the sweep left behind, and "
+            "all 32x7 field bits were observed both rising and falling",
+        ),
+    ],
     "smu_smc_wdt_boundary_timeout_test": [
         (
             "CHK-SMU-WDT-FIRST",

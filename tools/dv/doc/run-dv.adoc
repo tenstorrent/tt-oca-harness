@@ -1388,7 +1388,12 @@ interruption the coordinator renders `cancel_argv` for the run's own job ids
 only, then confirms each within `cancel_grace_sec` by query; a job the
 scheduler reports finished counts as confirmed, and the ids it does not know
 or does not confirm are written to
-`<run>/stages/regress/jobs/cancel-unconfirmed.json` for the operator.
+`<run>/stages/regress/jobs/cancel-unconfirmed.json` for the operator and
+repeated, with their leaves, under `interruption.cancellation` in the
+interrupted summary. A second signal during that wait ends it; the summary
+is written either way (<<runner-interrupted-checkpoints>>). A `--retry`
+attempt and a `--waves-on-fail` rerun are each their own job, submitted
+when the attempt they follow has been collected.
 
 `tools/dv/tests/test_cluster_executor.py` drives both drivers through
 `tools/dv/tests/fake_scheduler.py`, which answers
@@ -2666,15 +2671,28 @@ The additive `progress` object records a stable identity for every planned leaf
 `completed`, `active`, `missing`, and `interrupted` lists with matching counts.
 Its `state`, `sequence`, and `updated_at` fields distinguish successive
 snapshots. A running checkpoint uses `active`; a handled interruption moves
-those identities to `interrupted`.
+those identities to `interrupted`. On a cluster executor every `active` or
+`interrupted` leaf also lists its scheduler `jobs`: the task id, attempt,
+whether it is a wave-debug rerun, the executor and driver, the job id, and
+the submission time, and after an interruption `cancel_confirmed`. A
+coordinator that dies without running its handler therefore leaves the ids
+of its live jobs in its last checkpoint.
 
 SIGINT and SIGTERM produce an `ERROR` checkpoint with an `interruption` object
 that records the received signal and reason. External supervisors may use
 SIGTERM for either cancellation or a wall-clock timeout, so the runner records
-the signal rather than guessing which policy sent it. If termination prevents
-the final handler from running, the most recent atomic `UNKNOWN` checkpoint
-still preserves all completed leaves. Normal completion replaces all
-checkpoint-only fields with the ordinary final aggregate.
+the signal rather than guessing which policy sent it. The first signal stops
+new submissions, cancels every attempt in flight, and waits up to the
+executor's cancel grace for the scheduler to confirm each stop; a second
+signal ends that wait, and every signal received is listed under
+`interruption.signals`. `interruption.cancellation` records the executor and
+driver, the number of attempts asked to stop and the number confirmed, the
+unconfirmed attempts with their item, seed, target, attempt, and job id, the
+grace applied, whether the wait was cut short, and the path of the
+`cancel-unconfirmed.json` record when one was written. If termination
+prevents the final handler from running, the most recent atomic `UNKNOWN`
+checkpoint still preserves all completed leaves. Normal completion replaces
+all checkpoint-only fields with the ordinary final aggregate.
 
 Every checkpoint, running or interrupted, carries `tests.completed = false`
 and `tests.pass_rate = null`. A handled interruption also prints

@@ -162,6 +162,31 @@ The dashboard publishes a cancelled weekly DUT as recorded: `FAIL` or
 A DUT whose job never produced a `result.json`, because it was cancelled
 before the runner started or never uploaded, fails the whole publication.
 
+=== What a cancelled cluster run leaves behind
+
+A run on a cluster executor cancels its own jobs by id when it is
+interrupted and waits up to the executor's cancel grace for the scheduler
+to confirm each stop; a second signal ends the wait. The interrupted
+summary then names what is still unaccounted for:
+
+[source,bash]
+----
+jq '.interruption | {signals, cancellation: (.cancellation | {requested, confirmed, wait_cut_short, record, unconfirmed: [.unconfirmed[] | {item, seed, job_id}]})}' \
+  <run>/result.json
+jq '.progress.interrupted[] | {item, seed, jobs: [.jobs[] | {job_id, cancel_confirmed}]}' \
+  <run>/result.json
+----
+
+Expected: `confirmed` equals `requested` and `unconfirmed` is empty. An
+unconfirmed job id is one the scheduler did not know or had not stopped
+when the wait ended; query it by id with the scheduler's own command
+(`bjobs <id>`, `squeue -j <id>`), and cancel it by id if it is still live.
+Never cancel by user or job-name pattern: job names repeat across runs
+that share a run directory name, and other runs share the account. If the
+coordinator died without its handler, the last `UNKNOWN` checkpoint's
+`progress.active` leaves carry the same `jobs` lists, and those ids are the
+only record of what may still be running.
+
 === Cancelling a run
 
 [source,bash]

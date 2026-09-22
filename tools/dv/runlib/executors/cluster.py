@@ -28,6 +28,7 @@ import json
 import shlex
 import subprocess
 import sys
+import threading
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -615,12 +616,19 @@ class ClusterExecutor(Executor):
 
     # -- cancel ----------------------------------------------------------------------------
 
-    def cancel(self, handles: Sequence[JobHandle], *, grace_sec: float) -> dict[str, bool]:
+    def cancel(
+        self,
+        handles: Sequence[JobHandle],
+        *,
+        grace_sec: float,
+        stop: threading.Event | None = None,
+    ) -> dict[str, bool]:
         """Cancel the run's own jobs and confirm each by query within the grace.
 
-        A job the scheduler reports finished counts as confirmed; one it does not know stays
-        unconfirmed and is recorded beside the manifests for the operator. Nothing here raises:
-        an interrupted run must reach its summary whatever the scheduler does.
+        A job the scheduler reports finished counts as confirmed; one it does not know, or
+        one live when the grace ends or ``stop`` is set, stays unconfirmed and is recorded
+        beside the manifests for the operator. Nothing here raises: an interrupted
+        run must reach its summary whatever the scheduler does.
         """
         confirmed: dict[str, bool] = {}
         targets: list[_Tracked] = []
@@ -675,7 +683,7 @@ class ClusterExecutor(Executor):
                     confirmed[tracked.task.task_id] = True
                     outstanding.remove(tracked)
             remaining = deadline - self._clock()
-            if not outstanding or remaining <= 0:
+            if not outstanding or remaining <= 0 or (stop is not None and stop.is_set()):
                 break
             self._sleep(min(CANCEL_POLL_SEC, remaining))
         for tracked in outstanding:

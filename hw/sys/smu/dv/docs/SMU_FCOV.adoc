@@ -20,9 +20,9 @@ grading rules and the waiver fields are in
 |Reference architecture |`SMU_TB_ARCH.adoc`
 |Framework |PyUVM on cocotb
 |Simulator that collects |Verilator (`--cov`) in public CI; a `[coverage.vcs]` table and `cov/config/vcs/smu_wrapper_cov_scope.hier` mirror the wrapper's scope for the licensed flow, which no public job runs
-|What `--dut smu` collects |the release group, weekly `--cov` in `regress.yml`: line, expression, toggle and `user` over a scope that drops everything the wrapper instantiates, so the toggle points that remain are `smu_wrapper`'s own; `cov/interface_toggle.py` folds the ones on its ports into a per-port figure
+|What `--dut smu` collects |the release group, weekly `--cov` in `regress.yml`: line, expression and `user` over a scope that drops everything the wrapper instantiates; toggle on the VCS flow only, over the wrapper's ports after `cov/config/vcs/smu_wrapper_toggle_exclusions.el`
 |Scope file |`cov/config/verilator/smu_wrapper_cov_scope.vlt`
-|Policy file |`cov/config/verilator/smu_wrapper_coverage_policy.toml`
+|Policy file |`cov/config/verilator/smu_wrapper_coverage_policy.toml` (Verilator `user`); `cov/config/vcs/smu_wrapper_coverage_policy.toml` (VCS `toggle` / `assertion`)
 |Cover-property modules |10 under `cov/sv/`, 111 points in all; see <<smu-fcov-points>>
 |===
 
@@ -42,11 +42,12 @@ up was exercised -- so the metric this package intends is *toggle*, with the
 `cov/sv` cover properties as *functional (`user`)* coverage beside it. Each
 subsystem grades its own internals in its own DV package.
 
-Toggle is measured over `smu_wrapper` alone -- the scope drops the SMU
-block, SEP, SMC and DTP at compile time -- and the release figure is the
-share of the wrapper's ports on which any bit toggled, which
-`cov/interface_toggle.py` reads out of the run's `cov/merged.dat`;
-`SMU_COVERAGE_POLICY.adoc` states the target and the last measured value.
+Toggle is measured over `smu_wrapper` alone on the VCS flow, where `-cm_hier`
+drops the SMU block, SEP, SMC and DTP at compile time and `-cm_tgl portsonly`
+keeps the wrapper's ports; the release figure is the runner's `toggle` family,
+every port bit in both directions after the exclusion file, and
+`SMU_COVERAGE_POLICY.adoc` states the target and the last measured value. The
+Verilator set for `--dut smu` leaves toggle out, as the DTP set does.
 
 Toggle over the whole elaborated model, SMC cluster and vendored fabric
 included, produces a database of about 0.5 GB per leaf.
@@ -168,8 +169,8 @@ Three limits decide what `SMU_VPLAN.adoc` is allowed to say about coverage:
 . *`smu_fcov.py` sources no coverage claim.* It is scenario intent, as stated
   above.
 . *No CI gate is set on these numbers.* `SMU_COVERAGE_POLICY.adoc` states the
-  targets (85 percent of the wrapper's ports toggled, 95 percent of the `user`
-  points effective) and the last measured values, says how a floor would be
+  targets (VCS `toggle` / `assertion` 80 percent effective, Verilator `user`
+  95 percent effective) and the last measured values, says how a floor would be
   set from a measured weekly database, and lists the fields a waiver must
   carry.
 

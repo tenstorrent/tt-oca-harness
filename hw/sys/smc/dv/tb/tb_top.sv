@@ -758,6 +758,14 @@ module smc_uvm_top
 
     // UART0 TX: the DUT drives one line out to the external world.
     assign tb_uart0_tx_from_dut = u_dut.u_smc.core2pad_o[UART0_TX_PAD];
+    assign tb_uart0_tx_ready = u_dut.u_smc.u_smc_peripherals.u_uart_wrap
+        .gen_uart_log_engine_wraps[0].uart_log_engine_wrap.uart_txrdy_o;
+    // A fetched byte waits at the head of the engine's read-data FIFO while the
+    // UART cannot accept it: the write FSM stays in its request state on these
+    // cycles (log_engine.sv advances only on rdata valid AND uart_tx_ready).
+    assign tb_uart0_log_write_stalled = u_dut.u_smc.u_smc_peripherals.u_uart_wrap
+        .gen_uart_log_engine_wraps[0].uart_log_engine_wrap.gen_log_engine.log_engine.rdata_fifo_rd_valid
+        & ~tb_uart0_tx_ready;
     // I2C0 SMBALERT#: OE-aware resolve (active-low when DUT drives).
     // core2pad_en_o is active-high (~lsio_core2pad_en_ni); data is 0 when OE.
     // Under +smc_i2c_shared_bus the pad is TB-driven with the shared OD net.

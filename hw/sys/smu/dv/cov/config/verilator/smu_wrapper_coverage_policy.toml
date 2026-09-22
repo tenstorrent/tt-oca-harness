@@ -13,9 +13,9 @@
 # No floor is set on the `user` family; one is set only from a measured
 # weekly `--cov` database, by the SMU DV owner, together with
 # `max_unclassified_points` -- see SMU_COVERAGE_POLICY.adoc. The effective
-# percentage is still reported, just not gated. The wrapper interface toggle
-# rate is not a runner family either: cov/interface_toggle.py folds the
-# bit-edge toggle points of smu_wrapper's ports into one figure per port.
+# percentage is still reported, just not gated. The Verilator set does not
+# collect toggle; the wrapper's toggle is graded on the VCS flow by
+# ../vcs/smu_wrapper_coverage_policy.toml.
 #
 # The wrapper has one target, `compile_smu_chiplet`, with SEP elaborated. An
 # accepted waiver whose selector matches a COVERED point is a hard

@@ -204,8 +204,9 @@ int main(void) {
 
     //--------------------------------------------------------------------------
     // SCENARIO B — log-write under UART TX backpressure. region 0x400 gives a
-    // 64-byte slot; log_len=64 exceeds TX FIFO depth (32), so the TX FIFO fills
-    // mid-transfer and drives uart_tx_ready_i low while fetched data remains.
+    // 64-byte slot; log_len=64 is the longest transfer here, and uart_tx_ready_i
+    // is low whenever the TX FIFO holds data, so each fetched byte waits for the
+    // serialiser while more fetched data remains.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: log-write under TX backpressure");
     {
@@ -221,11 +222,33 @@ int main(void) {
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
         write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 64u); // 8 log words, == 64 B slot
 
-        // The UART drains at baud while the engine refills; the engine is held off
-        // for most of the transfer. Generous timeout: 64 bytes * ~160 clk/byte +
-        // margin. Expiry is a failure, never a pass.
+        // Read the 64 bytes back as they arrive. The RX FIFO is 32 deep, so
+        // draining has to overlap the transfer; the TX FIFO still fills, because
+        // the engine refills it faster than the UART drains at baud. Every byte
+        // is compared, so a byte dropped while uart_tx_ready was low fails here.
+        // Each per-byte wait is bounded; expiry is a failure, never a pass.
+        for (uint32_t index = 0; index < 64u; index++) {
+            uint8_t actual = 0u;
+            if (read_uart_byte(&actual, 2000000u) != 0) {
+                info_msg_s(0, "FAIL: scenario B: a looped-back byte never arrived");
+                test_fail(0);
+            }
+            if (actual != (uint8_t)(0x40u + index)) {
+                info_msg_s(0, "FAIL: scenario B: looped-back byte out of sequence");
+                test_fail(0);
+            }
+        }
         if (wait_log_done(LE_LOG_CTRL0_OFF, 2000000u) != 0) {
             info_msg_s(0, "FAIL: scenario B: log not done under backpressure");
+            test_fail(0);
+        }
+        // Nothing beyond the 64 requested bytes may arrive.
+        if (wait_uart_tx_empty(2000000u) != 0) {
+            info_msg_s(0, "FAIL: scenario B: transmitter never drained");
+            test_fail(0);
+        }
+        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) != 0u) {
+            info_msg_s(0, "FAIL: scenario B: a 65th byte reached the receiver");
             test_fail(0);
         }
         if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u) != 0u) {

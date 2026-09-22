@@ -118,7 +118,10 @@ jobs:
         if: env.RUN_HARDWARE_CI == 'true'
         uses: actions/checkout@v4
 
+      # Checkout is skipped for a documentation-only diff, so this runner has
+      # no git repository. Submodule update must follow that same condition.
       - name: Checkout submodules
+        if: env.RUN_HARDWARE_CI == 'true'
         run: |
           git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init --recursive

@@ -167,15 +167,13 @@ public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
 
 [coverage.verilator]
-# Line / branch (--coverage-line), expression, toggle and SVL user coverage,
-# replacing the simulator default `--coverage`.
-#
-# Toggle is what an integration level owns: whether every interface it wires
-# up was actually exercised. smu_wrapper_cov_scope.vlt drops the SMU block,
-# the subsystem, vendored and generated trees at compile time, so the toggle
-# points that remain belong to smu_wrapper itself; cov/interface_toggle.py
-# keeps the ones on its ports and folds them into one figure per port from
-# the run's cov/merged.dat.
+# Line / branch (--coverage-line), expression and SVL user coverage, replacing
+# the simulator default `--coverage`. Toggle is left out, as the DTP Verilator
+# set leaves it out: Verilator's `coverage_off -file` does not apply to a
+# source file whose last line has no newline, and the vendored and
+# hw/common files in that state carry tens of thousands of toggle points of
+# SMC, DTP and SEP logic into the wrapper's database. The wrapper's toggle is
+# graded on the VCS flow, where -cm_hier scopes it at compile time.
 #
 # --output-groups 0 compiles the generated .cpp files one by one, as the other
 # DUTs do: grouped, one unit of the coverage-instrumented model grows past
@@ -183,7 +181,6 @@ ccache = true
 build_args = [
   "--coverage-line",
   "--coverage-expr",
-  "--coverage-toggle",
   "--coverage-user",
   "--output-groups",
   "0",
