@@ -141,24 +141,58 @@ MANIFEST_FIELDS = {
 }
 TEST_DETAIL_FIELDS = {
     "name",
-    "module",
     "category",
-    "tags",
-    "groups",
-    "target",
     "seed",
     "attempt",
     "stage",
     "status",
     "duration_sec",
     "reason",
-    "log",
-    "result_json",
-    "junit_xml",
-    "artifacts",
-    "failure_buckets",
-    "parser",
 }
+RECORD_COVERAGE_FIELDS = {
+    "status",
+    "total_percent",
+    "threshold",
+    "threshold_met",
+    "details_available",
+    "comparison_key",
+    "target",
+    "policy_thresholds",
+    "raw_metrics",
+    "effective_metrics",
+    "holes_summary",
+    "report",
+    "summary",
+    "manifest",
+    "policy_application",
+}
+HOLES_SUMMARY_FIELDS = {
+    "details_available",
+    "observations_complete",
+    "native_point_count",
+    "hole_group_count",
+    "open",
+    "accepted",
+    "unclassified",
+    "by_metric",
+    "by_category",
+    "by_disposition",
+    "by_status",
+}
+REGRESSION_FIELDS = {"failed_tests", "flaky_tests"}
+FAILED_TEST_FIELDS = {"item", "seed", "status", "reason", "rerun"}
+FLAKY_TEST_FIELDS = {"item", "seed", "final_status", "attempt_count", "rerun"}
+RUN_METADATA_FIELDS = {
+    "run_dir",
+    "result_json",
+    "label",
+    "tool",
+    "tool_version",
+    "executor",
+    "generated_at",
+    "git",
+}
+JUNIT_FIELDS = {"total", "missing"}
 DUTS = ("cross_trigger_port", "dtp", "sep", "smc")
 
 
@@ -194,14 +228,14 @@ class NormalizedRecord(ContractCase):
             "dtp",
             run_metadata={"run_dir": "x"},
             tests_detail=[],
-            junit_xml=[],
+            junit_xml={},
             regression={},
             warnings=["w"],
         )
         self.assertEqual(set(full), RESULT_FIELDS | RESULT_OPTIONAL_FIELDS)
         self.assertEqual(set(full["tests"]), TESTS_FIELDS)
         self.assertEqual(full["schema_version"], SCHEMA_VERSION)
-        self.assertEqual(SCHEMA_VERSION, "0.1")
+        self.assertEqual(SCHEMA_VERSION, "0.2")
 
     def test_status_vocabulary_is_pass_fail_unknown(self):
         summary = make_summary(self.records(("PASS", "FAIL", "UNKNOWN", "PASS")))
@@ -218,7 +252,7 @@ class AggregateSummary(ContractCase):
     def test_summary_carries_the_documented_fields(self):
         summary = make_summary(self.records())
         self.assertEqual(set(summary), SUMMARY_FIELDS)
-        self.assertEqual(summary["schema_version"], "0.1")
+        self.assertEqual(summary["schema_version"], "0.2")
         for row in summary["dut_status"]:
             self.assertEqual(set(row), DUT_STATUS_FIELDS)
         for row in summary["coverage_closure"]["by_dut"]:

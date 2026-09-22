@@ -30,6 +30,7 @@ from dashboard.schema import (  # noqa: E402
     run_completed,
 )
 from runlib.results import result_payload, write_result  # noqa: E402
+from test_dashboard_schema import TEST_DETAIL_FIELDS  # noqa: E402
 from test_results_completion import (  # noqa: E402
     INTERRUPTION,
     ITEMS,
@@ -105,6 +106,7 @@ class DashboardCompletion(unittest.TestCase):
         self.assertFalse(record["tests"]["completed"])
         self.assertIsNone(record["tests"]["pass_rate"])
         self.assertEqual(record["tests"]["passing"], 1)
+        self.assertEqual([set(test) for test in record["tests_detail"]], [TEST_DETAIL_FIELDS])
         self.assertIn("incomplete run", render_report(record))
 
     def test_summary_leaves_incomplete_runs_out_of_the_test_counters(self):

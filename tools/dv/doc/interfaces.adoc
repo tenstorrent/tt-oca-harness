@@ -42,8 +42,8 @@ tools/dv/run_dv.py
   uploads artifact dv-run-<dut>-<tool>-<tier>[-<label>]
   |
   v
-tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.1")
-tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.1")
+tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.2")
+tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.2")
                                          history.json        (string "0.2")
 .github/workflows/dashboard.yml       -> classification.json
 tools/dv/run_dashboard.py publish     -> manifest.json       (string "0.1")
@@ -219,8 +219,8 @@ simulator flow outside hosted CI
 |The documentation site's dashboard pages through `tools/doc`; external
 consumers; `dashboard` itself for history
 |One record per weekly DUT, one `dut_status` row and one `per_dut` history
-entry each. String `schema_version` values: `"0.1"` for the per-DUT record,
-the summary, and the manifest, `"0.2"` for the history;
+entry each. String `schema_version` values: `"0.2"` for the per-DUT record,
+the summary, and the history, `"0.1"` for the manifest;
 `classification.json` carries none. The conversion from the native result is
 lossy: native `ERROR` and `TIMEOUT` collapse into `FAIL`.
 `classification.json` is computed from the native leaf records, which keep
