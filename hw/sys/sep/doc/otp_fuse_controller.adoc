@@ -11,6 +11,8 @@ image::SEP_OTP_Fuse_Bank.png[SEP_OTP_Fuse_Bank,scaledwidth=90.0%]
 The One-Time Programmable (OTP) fuse controller stores persistent
 chiplet policy.
 
+== Fuse Sensing and Boot Sequencing
+
 When SEP is released from reset (chiplet_cold_reset), the sensing FSM
 automatically copies each fuse field into its dedicated memory-mapped
 shadow register.
@@ -27,6 +29,8 @@ After the fuses have been read into their shadow registers, a sense-completion
 indicator is generated. This triggers the DFT-based memory-repair machine for
 the SEP SRAMs. Once memory repair completes or is bypassed, the SEP CPU is
 enabled and fetches its first instruction from the SEP ROM.
+
+== Shadow Register and JTAG Access Control
 
 Every fuse field has two lock bits in the LOCKS field: one write-lock bit and
 one read-lock bit. When the write-lock bit is set to 1, the corresponding fuse
@@ -47,6 +51,8 @@ register that triggers a match, and the three match-status registers. Every
 other JTAG access to the fuse block — the shadow registers, the interface
 control registers and the SHIM — shall complete with an error response.
 
+== Fuse Programming and RMA Authorization
+
 The fuse-programming protection shall enable the fuse-programming function only
 after the LOCKS field has been sensed, and shall honor the write-lock value of
 each field. Programming LC_STATE is subject to additional restrictions:
@@ -57,8 +63,15 @@ implements two 256-bit registers, RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.
 These two registers can be populated by both SEP software and JTAG. Each input
 is hashed (SHA-256) and compared with the stored RMA_SIP_TOKEN_DIGEST and
 RMA_CHIPLET_TOKEN_DIGEST, respectively. Only on a match can LC_STATE[1] and
-LC_STATE[2] be programmed. This is described in more detail in the next
-section.
+LC_STATE[2] be programmed. For the matching mechanism, see
+ifdef::backend-html5[]
+xref:sep:token_processing.adoc#token-matching-mechanism-and-attack-countermeasures[Token Matching Mechanism and Attack Countermeasures].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<token-matching-mechanism-and-attack-countermeasures,Token Matching Mechanism and Attack Countermeasures>>.
+endif::backend-pdf[]
+
+=== Programming Voltage
 
 The fuse bank shall support keeping the programming-voltage rail active for an
 unlimited lifetime. This is achieved by using only the internal
@@ -69,6 +82,8 @@ The charge pump is calibrated early in wafer test, and its calibration values
 are burned into the corresponding fuse bits; this is the only time the external
 fuse-programming voltage is used. Consequently, software-initiated fuse
 programming never needs to configure the programming voltage.
+
+== Shadow Register Updates and Test-Mode Protection
 
 * Programming a fuse does not update its shadow register until the next fuse
 sensing occurs.

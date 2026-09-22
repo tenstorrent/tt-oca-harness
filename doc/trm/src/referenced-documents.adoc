@@ -101,14 +101,20 @@ chapter cites revision 6 for electrical and timing requirements.
 |https://github.com/pulp-platform/iDMA[iDMA]
 |SMC DMA engine.
 
-|https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge]
+|[[ref-adams-bridge]] https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge documentation]
 |SEP post-quantum cryptographic accelerator.
 
-|https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES],
-https://opentitan.org/book/hw/ip/hmac/index.html[HMAC],
-https://opentitan.org/book/hw/ip/kmac/index.html[KMAC] and
-https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OTBN]
-|SEP cryptographic accelerator programming models.
+|[[ref-opentitan-hmac]] https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC documentation]
+|SEP HMAC-SHA2 accelerator and programming model.
+
+|[[ref-opentitan-otbn]] https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN documentation]
+|SEP public-key accelerator and programming model.
+
+|[[ref-opentitan-aes]] https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES documentation]
+|SEP AES cipher and programming model.
+
+|[[ref-opentitan-kmac]] https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC documentation]
+|SEP KMAC-SHA3 accelerator and programming model.
 
 |https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key Manager]
 |Key Manager architecture and firmware interface.
@@ -120,13 +126,18 @@ https://opentitan.org/book/hw/ip/edn/[EDN]
 |https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller]
 |SEP DMA and its programming model.
 
-|https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host] and
-https://opentitan.org/book/hw/ip/aon_timer/[Always-On Timer]
-|SEP SPI host and watchdog timer programming models.
+|[[ref-opentitan-spi-host]] https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host documentation]
+|SEP SPI host and programming model.
 
-|https://github.com/lowRISC/opentitan/tree/master/hw/ip/i2c[OpenTitan I2C] and
-https://github.com/lowRISC/opentitan/tree/master/sw/device/lib/dif/dif_i2c.h[I2C Device Interface Functions]
-|I2C controller architecture and programming.
+|[[ref-opentitan-aon-timer]] https://opentitan.org/book/hw/ip/aon_timer/[OpenTitan Always-On Timer documentation]
+|SEP watchdog timer and programming model.
+
+|[[ref-opentitan-i2c]] https://opentitan.org/book/hw/ip/i2c/index.html[OpenTitan I2C Controller documentation]
+|SMC I2C controller architecture and programming model. The I2C chapter also
+cites the https://github.com/lowRISC/opentitan/tree/master/hw/ip/i2c[upstream source].
+
+|https://github.com/lowRISC/opentitan/tree/master/sw/device/lib/dif/dif_i2c.h[OpenTitan I2C Device Interface Functions]
+|I2C controller firmware interface.
 
 |https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan Cryptolib API]
 |SEP cryptographic software interface background.

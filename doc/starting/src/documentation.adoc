@@ -33,6 +33,13 @@ Documents are published in GitHub Pages at [https://tenstorrent.github.io/tt-oca
 
 Downloadable PDFs are also accessible from the above location.
 
+Generated register maps provide links from register names to their field tables,
+with each register listed in the contents and PDF bookmarks. The AsciiDoc
+partials contain a level-one address-map heading and level-two register headings.
+When including one, set `leveloffset` to the level of the containing section so
+both stay beneath it; for example, beneath `=== Detailed Register Map`, use
+`include::../regs/gen/adoc/example.adoc[leveloffset=+2]`.
+
 === Updating documentation
 
 Document updates are made by pushing changes to `main`.

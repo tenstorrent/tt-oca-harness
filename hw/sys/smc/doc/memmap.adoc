@@ -150,10 +150,10 @@ include::partial$smc/regs/gen/html/blocks/misc_wrap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/chip_config.adoc[]
-include::../regs/gen/adoc/blocks/scratch.adoc[]
-include::../regs/gen/adoc/blocks/ndm_reset.adoc[]
-include::../regs/gen/adoc/blocks/misc_wrap.adoc[]
+include::../regs/gen/adoc/blocks/chip_config.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/scratch.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/ndm_reset.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/misc_wrap.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Base Config, DFX Status, and GPIO POC/PBias
@@ -167,9 +167,9 @@ include::partial$smc/regs/gen/html/blocks/gpio_poc_pbias_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/smc_base_config.adoc[]
-include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[]
-include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/smc_base_config.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 == Component-Specific Register Documentation

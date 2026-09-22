@@ -40,5 +40,5 @@ include::partial$telemetry_receiver/regs/gen/html/telemetry_receiver.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/telemetry_receiver.adoc[]
+include::../regs/gen/adoc/telemetry_receiver.adoc[leveloffset=+2]
 endif::backend-pdf[]

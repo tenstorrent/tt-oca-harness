@@ -51,5 +51,5 @@ include::partial$gpio/regs/gen/html/gpio_intf.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/gpio_intf.adoc[]
+include::../regs/gen/adoc/gpio_intf.adoc[leveloffset=+2]
 endif::backend-pdf[]

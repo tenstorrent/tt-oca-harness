@@ -164,8 +164,6 @@ Cryptographic subsystem reference pages:
 
 * xref:sep:trng.adoc[TRNG and DRBG]
 
-* xref:ip:key_manager/doc/index.adoc[Key Manager]
-
 ++++
 <span id="aes-cipher"></span>
 <span id="och-modifications-2"></span>
@@ -200,5 +198,7 @@ Cryptographic subsystem reference pages:
 ++++
 
 * xref:sep:otbn.adoc[OTBN PKA Public Key Accelerator]
+
+* xref:ip:key_manager/doc/index.adoc[Key Manager]
 
 endif::backend-html5[]

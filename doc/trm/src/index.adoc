@@ -88,13 +88,15 @@ include::../../../hw/sys/sep/doc/interrupts.adoc[leveloffset=+4]
 include::../../../hw/sys/sep/doc/crypto.adoc[leveloffset=+4]
 include::../../../hw/sys/sep/doc/trng.adoc[leveloffset=+5]
 include::../../../hw/ip/entropy_source/doc/architecture.adoc[leveloffset=+6]
-include::../../../hw/ip/key_manager/doc/architecture.adoc[leveloffset=+5]
-include::../../../hw/ip/key_manager/doc/firmware.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/aes.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/hmac.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/kmac.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/adams_bridge.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/otbn.adoc[leveloffset=+5]
+include::../../../hw/ip/key_manager/doc/index.adoc[leveloffset=+5]
+
+<<<
+
 include::../../../hw/sys/sep/doc/periphs.adoc[leveloffset=+4]
 include::../../../hw/sys/sep/doc/otp_fuse_controller.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/peripheral_subsystem.adoc[leveloffset=+5]

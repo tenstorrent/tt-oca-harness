@@ -8,6 +8,8 @@
 
 The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
 
+== Software Reset Register
+
 The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
 
 [cols="<10%,<20%,<10%,<10%,<50%",options="header",]
@@ -26,6 +28,8 @@ On power-up, `SW_RESET_N` resets to `0x7E`: KM is held in reset, while OTBN,
 AES, HMAC, KMAC, the TRNG, and Adams Bridge are released. The SEP host firmware
 writes `1` to release an IP from reset and writes `0` to request its software
 reset.
+
+== Isolation and Reset Sequencing
 
 Each `SW_RESET_N` bit is a request to a per-domain sequencer. The sequencer
 isolates the domain's AXI paths, waits for outstanding transactions to drain,

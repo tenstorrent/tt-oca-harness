@@ -36,5 +36,5 @@ include::partial$i2c/regs/gen/html/i2c.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/i2c.adoc[]
+include::../regs/gen/adoc/i2c.adoc[leveloffset=+2]
 endif::backend-pdf[]

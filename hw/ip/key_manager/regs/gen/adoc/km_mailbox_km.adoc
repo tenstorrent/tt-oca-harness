@@ -1,43 +1,55 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-km_mailbox_km]
+== Address Map: km_mailbox_km
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | KM_WRITE_DATA | W a| Write data to outbound FIFO (KM→SEP messages)
-| 0x4 | KM_WRITE_SEPARATOR | RW a| Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.
-| 0x8 | KM_READ_DATA | R a| Read data from inbound FIFO (SEP→KM messages)
-| 0xC | KM_STATUS | RW a| FIFO status information
-| 0x10 | KM_IRQ_STATUS | RW a| Interrupt status register
-| 0x14 | KM_IRQ_ENABLE | RW a| Interrupt enable register for KM CPU
-| 0x18 | KM_CTRL | RW a| Control register for mailbox behavior configuration
+| 0x0 | <<reg-{regmap-instance}-km_mailbox_km-KM_WRITE_DATA,KM_WRITE_DATA>> | W a| Write data to outbound FIFO (KM→SEP messages)
+| 0x4 | <<reg-{regmap-instance}-km_mailbox_km-KM_WRITE_SEPARATOR,KM_WRITE_SEPARATOR>> | RW a| Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.
+| 0x8 | <<reg-{regmap-instance}-km_mailbox_km-KM_READ_DATA,KM_READ_DATA>> | R a| Read data from inbound FIFO (SEP→KM messages)
+| 0xC | <<reg-{regmap-instance}-km_mailbox_km-KM_STATUS,KM_STATUS>> | RW a| FIFO status information
+| 0x10 | <<reg-{regmap-instance}-km_mailbox_km-KM_IRQ_STATUS,KM_IRQ_STATUS>> | RW a| Interrupt status register
+| 0x14 | <<reg-{regmap-instance}-km_mailbox_km-KM_IRQ_ENABLE,KM_IRQ_ENABLE>> | RW a| Interrupt enable register for KM CPU
+| 0x18 | <<reg-{regmap-instance}-km_mailbox_km-KM_CTRL,KM_CTRL>> | RW a| Control register for mailbox behavior configuration
 |===
 
+[#reg-{regmap-instance}-km_mailbox_km-KM_WRITE_DATA]
+=== KM_WRITE_DATA
+
 [cols="1,3,1,1,6", options="header"]
-.KM_WRITE_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | 0x0 a| 32-bit data word to write to outbound FIFO
 |===
 
+[#reg-{regmap-instance}-km_mailbox_km-KM_WRITE_SEPARATOR]
+=== KM_WRITE_SEPARATOR
+
 [cols="1,3,1,1,6", options="header"]
-.KM_WRITE_SEPARATOR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
 | 0 | `set` | RW | 0x0 a| Write 1 to set message separator on next outbound write. Cleared by hardware when that write completes.
 |===
 
+[#reg-{regmap-instance}-km_mailbox_km-KM_READ_DATA]
+=== KM_READ_DATA
+
 [cols="1,3,1,1,6", options="header"]
-.KM_READ_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | R | 0x0 a| 32-bit data word read from inbound FIFO
 |===
 
+[#reg-{regmap-instance}-km_mailbox_km-KM_STATUS]
+=== KM_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.KM_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:26 | `rsvd` | R | 0x0 a| Reserved
@@ -55,8 +67,10 @@
 | 0 | `inbound_empty` | R | 0x1 a| Inbound FIFO is empty (no data available for KM to read)
 |===
 
+[#reg-{regmap-instance}-km_mailbox_km-KM_IRQ_STATUS]
+=== KM_IRQ_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.KM_IRQ_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `rsvd` | R | 0x0 a| Reserved
@@ -67,8 +81,10 @@
 | 0 | `inbound_read_data_avail` | R | 0x0 a| Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.
 |===
 
+[#reg-{regmap-instance}-km_mailbox_km-KM_IRQ_ENABLE]
+=== KM_IRQ_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.KM_IRQ_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `rsvd` | R | 0x0 a| Reserved
@@ -79,8 +95,10 @@
 | 0 | `inbound_read_data_avail_en` | RW | 0x0 a| Enable interrupt to KM when inbound FIFO has data available (SEP->KM messages)
 |===
 
+[#reg-{regmap-instance}-km_mailbox_km-KM_CTRL]
+=== KM_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.KM_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `rsvd` | R | 0x0 a| Reserved

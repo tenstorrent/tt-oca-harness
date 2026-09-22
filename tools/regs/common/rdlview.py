@@ -242,37 +242,48 @@ def collect(root, overrides: dict[str, str] | None = None) -> Collector:
 
 def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
     data = collect(root, overrides)
+    title = first_addrmap_name(root)
+    anchors = {
+        r.path: "reg-{regmap-instance}-" + re.sub(r"[^A-Za-z0-9_-]+", "-", r.path)
+        for r in data.regs
+    }
     lines: list[str] = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
+        "",
+        ":regmap-instance: {counter:regmap-number}",
+        "",
+        f"[#regmap-{{regmap-instance}}-{title}]",
+        f"== Address Map: {title}",
         "",
     ]
     if data.arrays:
         lines += [
             "[NOTE]",
             "======",
-            "*Register Arrays:* This register map contains the following register arrays:",
+            "*Register Arrays:*",
             "",
         ]
         for name, (count, base, stride) in data.arrays.items():
-            lines.append(f"* *{name}*: {count} registers")
-            lines.append(f"  ** Base Address: {base}")
-            if stride:
-                lines.append(f"  ** Address Increment: {stride} per register")
-            lines.append("")
+            extra = f", stride {stride}" if stride else ""
+            lines.append(f"* *{name}*: {count} registers, base {base}{extra}")
         lines.append("======\n")
     lines += [
         '[cols="1,4,1,6", options="header"]',
-        ".Register Map",
         "|===",
         "| Address | Name | Access | Description",
     ]
-    lines += [f"| {r.addr} | {r.name} | {r.access} a| {desc_adoc(r.desc)}" for r in data.regs]
+    lines += [
+        f"| {r.addr} | <<{anchors[r.path]},{r.name}>> | {r.access} a| {desc_adoc(r.desc)}"
+        for r in data.regs
+    ]
     lines.append("|===\n")
     for r in data.regs:
         lines += [
+            f"[#{anchors[r.path]}]",
+            f"=== {r.name}",
+            "",
             '[cols="1,3,1,1,6", options="header"]',
-            f".{r.name} Register",
             "|===",
             "| Bits | Field | Access | Reset | Description",
         ]
