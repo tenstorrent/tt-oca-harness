@@ -129,7 +129,15 @@ args = ["+skip_fuse_sense"]
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
 # clears; reverse the roles. Once URND is being acknowledged, a KMAC reset is
 # stepped across that acknowledge period and URND edn_ack stays low on every
-# gated-reset edge. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
+# gated-reset edge. The same walk is repeated from the JTAG KMAC override,
+# with SW_RESET_N still showing KMAC released. CHK-EDN-HOLD then arms on a URND
+# beat that is staged but not yet acknowledged and requires edn_bus/edn_fips to
+# be unchanged across a KMAC reset edge, and CHK-EDN-HOLD-KEEP requires that
+# same word to be the one URND is finally acknowledged with. THESE TWO FAIL
+# AGAINST THE CURRENT RTL BY DESIGN: the adapter clear is shared, so resetting
+# one engine discards a sibling's in-flight entropy word and breaks the
+# prim_sync_reqack_data DataSrc2Dst=0 hold contract. They are to be closed by
+# making the clear per-endpoint, not by weakening the check. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
 # address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
 # DIGEST_0 is OKAY at reset. Drain-before-reset IS claimed on the HMAC path:
 # CHK-DRAIN-ORDER (reset waits for both AXI-Lite paths to drain),
