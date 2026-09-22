@@ -121,6 +121,8 @@ class StageResult:
     target: str | None = None
     # Proof totals and per-task statuses of a graded formal stage; None on every other stage.
     formal: dict[str, Any] | None = None
+    # Repo-relative path of the leaf's own result.json; None on a run-level stage.
+    result_json: str | None = None
 
 
 @dataclass

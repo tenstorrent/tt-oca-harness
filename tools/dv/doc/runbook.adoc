@@ -171,15 +171,16 @@ summary then names what is still unaccounted for:
 
 [source,bash]
 ----
-jq '.interruption | {signals, cancellation: (.cancellation | {requested, confirmed, wait_cut_short, record, unconfirmed: [.unconfirmed[] | {item, seed, job_id}]})}' \
-  <run>/result.json
-jq '.progress.interrupted[] | {item, seed, jobs: [.jobs[] | {job_id, cancel_confirmed}]}' \
-  <run>/result.json
+jq '.interruption | {signal, cancellation}' <run>/result.json
+jq '.progress.interrupted[] | {item, seed, jobs: [.jobs[] | .job_id]}' <run>/result.json
+jq '.jobs[] | {task_id, native_job_id, last_state, cancel_reply}' \
+  <run>/stages/regress/jobs/cancel-unconfirmed.json
 ----
 
-Expected: `confirmed` equals `requested` and `unconfirmed` is empty. An
-unconfirmed job id is one the scheduler did not know or had not stopped
-when the wait ended; query it by id with the scheduler's own command
+Expected: no `cancellation` object. One is recorded only when a stop went
+unconfirmed, with `confirmed` below `requested`; each `unconfirmed` job id
+is one the scheduler did not know or had not stopped when the wait ended.
+Query it by id with the scheduler's own command
 (`bjobs <id>`, `squeue -j <id>`), and cancel it by id if it is still live.
 Never cancel by user or job-name pattern: job names repeat across runs
 that share a run directory name, and other runs share the account. If the
@@ -425,7 +426,7 @@ python3 tools/dv/run_dv.py --dut dtp --items all --tool verilator \
   --sim-jobs 1 --run-dir build/ci/runs/dtp/verilator/rehearsal &
 pid=$!
 sleep 45; kill -TERM "$pid"; wait "$pid"; echo "exit $?"
-jq '{status, interruption, progress: (.progress | {state, completed: (.completed|length), interrupted: (.interrupted|length), missing: (.missing|length)}), tests: {completed: .tests.completed, pass_rate: .tests.pass_rate}}' \
+jq '{status, interruption, progress: (.progress | {state, completed_count, interrupted_count, missing_count}), tests: {completed: .tests.completed, pass_rate: .tests.pass_rate}}' \
   build/ci/runs/dtp/verilator/rehearsal/result.json
 cat build/ci/runs/dtp/verilator/rehearsal/results/results.xml
 ----

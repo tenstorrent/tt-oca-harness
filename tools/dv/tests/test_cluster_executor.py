@@ -1291,9 +1291,14 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
         self.assertEqual(summary["tests"]["leaves_run"], 2)
         for leaf in self.leaves(summary):
-            self.assertEqual(leaf["metadata"]["scheduler"]["driver"], self.driver)
+            self.assertEqual(set(leaf["metadata"]["scheduler"]), {"job_id", "state"})
             self.assertTrue(leaf["metadata"]["scheduler"]["job_id"])
+            self.assertEqual(leaf["metadata"]["scheduler"]["state"], "SUCCEEDED")
+            self.assertEqual(set(leaf["artifacts"]), {"executor_log"})
             self.assertTrue(leaf["artifacts"]["executor_log"].endswith(".log"))
+            self.assertNotIn("parser", leaf)
+            record = json.loads((REPO_ROOT / leaf["result_json"]).read_text(encoding="utf-8"))
+            self.assertEqual((record["item"], record["status"]), (leaf["item"], "PASS"))
         jobs = sorted((self.run_dir / "stages" / "regress" / "jobs").glob("sim-*.json"))
         self.assertEqual(len([p for p in jobs if not p.name.endswith(".done.json")]), 2)
         self.assertEqual(len([p for p in jobs if p.name.endswith(".done.json")]), 2)
@@ -1371,7 +1376,7 @@ class CoordinatorTest(unittest.TestCase):
         self.assertTrue(graded_job)
         self.assertTrue(debug_job)
         self.assertNotEqual(graded_job, debug_job)
-        self.assertEqual(debug["metadata"]["scheduler"]["driver"], self.driver)
+        self.assertEqual(set(debug["metadata"]["scheduler"]), {"job_id", "state"})
         manifests = sorted(
             p.name
             for p in (self.run_dir / "stages" / "regress" / "jobs").glob("sim-*.json")
@@ -1400,34 +1405,32 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual(code, 128 + signal.SIGINT)
         self.assertEqual(summary["status"], "ERROR")
         interruption = summary["interruption"]
-        self.assertEqual(interruption["kind"], "signal")
-        self.assertEqual(interruption["signals"], ["SIGINT"])
+        self.assertEqual((interruption["kind"], interruption["signal"]), ("signal", "SIGINT"))
+        self.assertNotIn("signals", interruption)
         cancellation = interruption["cancellation"]
-        self.assertEqual(cancellation["driver"], self.driver)
+        self.assertEqual(set(cancellation), {"requested", "confirmed", "unconfirmed"})
         self.assertEqual((cancellation["requested"], cancellation["confirmed"]), (2, 1))
-        self.assertFalse(cancellation["wait_cut_short"])
-        (unconfirmed,) = cancellation["unconfirmed"]
-        self.assertEqual(unconfirmed["task_id"], "sim-000001-a0")
-        self.assertEqual(unconfirmed["item"], self.items[1])
-        self.assertTrue(unconfirmed["job_id"])
+        (unconfirmed_job,) = cancellation["unconfirmed"]
+        self.assertTrue(unconfirmed_job)
         record = self.run_dir / "stages" / "regress" / "jobs" / "cancel-unconfirmed.json"
         self.assertTrue(record.is_file())
-        self.assertTrue(cancellation["record"].endswith("jobs/cancel-unconfirmed.json"))
+        (unconfirmed,) = json.loads(record.read_text(encoding="utf-8"))["jobs"]
+        self.assertEqual(unconfirmed["task_id"], "sim-000001-a0")
+        self.assertEqual(unconfirmed["native_job_id"], unconfirmed_job)
         progress = summary["progress"]
         self.assertEqual(progress["state"], "interrupted")
         self.assertEqual((progress["completed_count"], progress["interrupted_count"]), (0, 2))
+        self.assertNotIn("expected", progress)
+        self.assertNotIn("completed", progress)
         jobs = {}
         for leaf in progress["interrupted"]:
             (job,) = leaf["jobs"]
-            self.assertEqual(job["driver"], self.driver)
+            self.assertEqual(set(job), {"task_id", "job_id"})
             self.assertTrue(job["job_id"])
-            self.assertFalse(job["debug_only"])
-            jobs[job["task_id"]] = job
-        self.assertEqual(
-            {task_id: job["cancel_confirmed"] for task_id, job in jobs.items()},
-            {"sim-000000-a0": True, "sim-000001-a0": False},
-        )
-        self.assertEqual(jobs["sim-000001-a0"]["job_id"], unconfirmed["job_id"])
+            jobs[job["task_id"]] = job["job_id"]
+        self.assertEqual(sorted(jobs), ["sim-000000-a0", "sim-000001-a0"])
+        self.assertEqual(jobs["sim-000001-a0"], unconfirmed_job)
+        self.assertNotIn(jobs["sim-000000-a0"], cancellation["unconfirmed"])
         regression = json.loads(
             (self.run_dir / "stages" / "regress" / "regression.json").read_text(encoding="utf-8")
         )
@@ -1435,7 +1438,7 @@ class CoordinatorTest(unittest.TestCase):
         self.assertTrue((self.run_dir / "results" / "results.xml").is_file())
         cancels = [row for row in self.calls() if row["command"] in {"bkill", "scancel"}]
         self.assertEqual(len(cancels), 1)
-        self.assertEqual(set(cancels[0]["argv"][1:]), {job["job_id"] for job in jobs.values()})
+        self.assertEqual(set(cancels[0]["argv"][1:]), set(jobs.values()))
 
     def test_a_second_signal_ends_the_confirmation_wait(self) -> None:
         self.write_site(cancel_grace_sec=90)
@@ -1448,13 +1451,14 @@ class CoordinatorTest(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 60)
         self.assertEqual(code, 128 + signal.SIGINT)
         interruption = summary["interruption"]
-        self.assertEqual(interruption["signals"], ["SIGINT", "SIGINT"])
+        self.assertEqual(interruption["signal"], "SIGINT")
         cancellation = interruption["cancellation"]
-        self.assertTrue(cancellation["wait_cut_short"])
         self.assertEqual((cancellation["requested"], cancellation["confirmed"]), (2, 0))
         self.assertEqual(
-            sorted(job["task_id"] for job in cancellation["unconfirmed"]),
-            ["sim-000000-a0", "sim-000001-a0"],
+            sorted(cancellation["unconfirmed"]),
+            sorted(
+                job["job_id"] for leaf in summary["progress"]["interrupted"] for job in leaf["jobs"]
+            ),
         )
         self.assertEqual(summary["progress"]["interrupted_count"], 2)
         self.assertTrue(
@@ -1512,7 +1516,7 @@ class SchedulerBuildTest(CoordinatorTest):
         self.assertEqual(build["status"], "PASS")
         self.assertIsNone(build.get("item"))
         self.assertEqual(build["metadata"]["target"], "default")
-        self.assertEqual(build["metadata"]["scheduler"]["driver"], self.driver)
+        self.assertEqual(set(build["metadata"]["scheduler"]), {"job_id", "state"})
         self.assertTrue(build["metadata"]["scheduler"]["job_id"])
         self.assertEqual(build["metadata"]["target_build"]["target"], "default")
         submits = self.submit_commands()
