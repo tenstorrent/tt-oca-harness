@@ -552,11 +552,6 @@ jobs:
             fi
           done
 
-      # KNOWN RED: test_ot_manifest_negative[rotate_to_backup] fails -- after
-      # rotating to the crafted backup slot the ROM reports an ERROR status
-      # instead of reaching SEP_MSG_STARTING_BL1. It is not deselected, so this
-      # job stays red until the ROM is fixed; do not add it to main's required
-      # checks before then.
       - name: Run the pytest suites
         if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: |

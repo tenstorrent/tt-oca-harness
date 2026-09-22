@@ -99,8 +99,7 @@ class SepVpHarness(Harness):
             # benchmark with no RSA in it, so RSA-3072 signature verification can
             # never succeed under the default. Any signed manifest then fails with
             # RSA_PKCS1_FAIL, which reads as a bad image rather than a stubbed
-            # accelerator -- that is exactly how the pre-existing
-            # test_ot_manifest_negative[rotate_to_backup] failure hid for so long.
+            # accelerator.
             #
             # Set here rather than per test: the ROM links the OTBN RSA app
             # unconditionally, so no sep-vp run of this firmware ever wants the
