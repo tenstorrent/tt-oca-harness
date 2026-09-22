@@ -210,15 +210,6 @@ class smu_dtp_sep_dm_dmi_test_seq:
             f"CHK-SEP-DMI-DMSTATUS raw=0x{captured:x} data=0x{data:08x} "
             f"status={status} version={version}"
         )
-        if status != 0:
-            raise AssertionError(
-                f"DMI dmstatus status={status} data=0x{data:08x} (IR=5'h11 through dmi_mux)"
-            )
-        if version == 0:
-            raise AssertionError(
-                f"DMI dmstatus version=0 data=0x{data:08x}; "
-                "dmi_mux core aperture returned no debug module"
-            )
         sb.expect_eq(
             "CHK-SEP-DMI-DMSTATUS",
             (status, version != 0),
