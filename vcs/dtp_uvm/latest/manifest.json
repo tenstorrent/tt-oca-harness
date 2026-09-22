@@ -7,9 +7,9 @@
       "total": 1,
       "unknown": 0
     },
-    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/dashboard-data/history.json",
-    "history_points": 10,
-    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/dashboard-data/summary.json",
+    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/dashboard-data/history.json",
+    "history_points": 11,
+    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/dashboard-data/summary.json",
     "tests": {
       "failing": 2,
       "incomplete_runs": 0,
@@ -25,14 +25,14 @@
     "dtp_uvm: native status=FAIL",
     "dtp_uvm: normalized status=FAIL"
   ],
-  "generated_at": "2026-09-22T13:22:18.776951+00:00",
+  "generated_at": "2026-09-22T16:40:13.438629+00:00",
   "git": {
-    "commit": "b3179f6689f25d83779ea9eb4f5c5cc9d2657e92",
-    "requested_ref": "b3179f6689f25d83779ea9eb4f5c5cc9d2657e92"
+    "commit": "7a3d0d14165c3bb8df44bfb76246e9a9798de751",
+    "requested_ref": "7a3d0d14165c3bb8df44bfb76246e9a9798de751"
   },
   "jenkins": {
-    "build_number": "92",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/92/",
+    "build_number": "93",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/93/",
     "job_name": "tt-oca-harness/dtp/uvm",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/"
   },
@@ -41,12 +41,13 @@
       "collector_rc": 0,
       "framework": "uvm",
       "group": "all",
-      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/runs/dtp_uvm/result.json",
+      "mode": "regression",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/runs/result.json",
       "native_status": "FAIL",
-      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/dashboard-data/dtp_uvm.result.json",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/dashboard-data/result.json",
       "normalized_status": "FAIL",
       "profile": "dtp_uvm",
-      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/jenkins-out/runs/dtp_uvm",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/runs",
       "runner_rc": 1,
       "tool": "vcs"
     }
