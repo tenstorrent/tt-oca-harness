@@ -172,6 +172,18 @@ else UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"; fi
 USER_FLAGS=()
 [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
+# A linked worktree's git metadata lies outside ROOT and needs its own mount.
+GIT_ENGINE_MOUNT=()
+GIT_COMMON_DIR=
+RUN_ROOT=/work
+if [[ -f "$ROOT/.git" ]]; then
+  GIT_COMMON_DIR=$(git -C "$ROOT" rev-parse --git-common-dir)
+  [[ "$GIT_COMMON_DIR" == /* ]] || GIT_COMMON_DIR="$ROOT/$GIT_COMMON_DIR"
+  GIT_COMMON_DIR=$(realpath "$GIT_COMMON_DIR")
+  GIT_ENGINE_MOUNT=(-v "${GIT_COMMON_DIR}:${GIT_COMMON_DIR}${VOL:+:z}")
+  RUN_ROOT=$ROOT
+fi
+
 # run_image IMAGE [-it] CMD... : engine flags before the image, command after it
 run_image() {
   local image="$1"
@@ -188,7 +200,8 @@ run_image() {
     shift
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
+    "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+    -v "${ROOT}:${RUN_ROOT}${VOL}" -w "$RUN_ROOT" "$image" "$@"
 }
 
 # Run a command in an environment with a nix binary. This will run locally if it
@@ -225,9 +238,9 @@ nixos_run() {
         GIT_CONFIG_COUNT=3
         GIT_CONFIG_KEY_0=protocol.file.allow
         GIT_CONFIG_VALUE_0=always
-        "GIT_CONFIG_KEY_1=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
+        "GIT_CONFIG_KEY_1=url.file://${RUN_ROOT}/${MANIFEST_SUBMODULE}.insteadOf"
         GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git
-        "GIT_CONFIG_KEY_2=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
+        "GIT_CONFIG_KEY_2=url.file://${RUN_ROOT}/${MANIFEST_SUBMODULE}.insteadOf"
         GIT_CONFIG_VALUE_2=ssh://git@github.com/tenstorrent/tt-oca-manifest.git
       )
     fi
@@ -389,6 +402,7 @@ bwrap_run() {
   # The repo (and, under it, nonfree/) at its real path so absolute -C paths,
   # bender filelists and generated collateral all resolve unchanged.
   binds+=(--bind "$ROOT" "$ROOT")
+  [[ -z "$GIT_COMMON_DIR" ]] || binds+=(--bind "$GIT_COMMON_DIR" "$GIT_COMMON_DIR")
   local extra
   for extra in ${OCAH_BWRAP_EXTRA_BINDS:-}; do
     [[ -e "$extra" ]] && binds+=(--bind "$extra" "$extra")
@@ -461,7 +475,8 @@ run_image_1to1() {
     shift
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
+    "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+    -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
 doc_product_paths() {
