@@ -10,7 +10,10 @@ set -euo pipefail
 : "${OUT_DIR:?OUT_DIR is required}"
 : "${TIMESCALE:?TIMESCALE is required}"
 
-expected_error_files=(${OCAH_SLANG_EXPECTED_ERROR_FILES:-})
+expected_error_files=()
+if [[ -n ${OCAH_SLANG_EXPECTED_ERROR_FILES:-} ]]; then
+  read -r -a expected_error_files <<<"$OCAH_SLANG_EXPECTED_ERROR_FILES"
+fi
 
 if ((${#expected_error_files[@]})); then
   report_dir="$OUT_DIR/reports"

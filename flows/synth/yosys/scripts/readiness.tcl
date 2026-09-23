@@ -18,7 +18,8 @@ yosys read_slang --top $top_design -f $sv_flist \
 yosys hierarchy -check -top $top_design
 yosys proc
 yosys tee -o "$rep_dir/${proj_name}_preopt_check.rpt" check
-yosys tee -o "$rep_dir/${proj_name}_latches.rpt" select -list {t:$dlatch} {t:$adlatch} {t:$dlatchsr} {t:$_DLATCH*}
+yosys tee -o "$rep_dir/${proj_name}_latches.rpt" select -list \
+    {t:$dlatch} {t:$adlatch} {t:$dlatchsr} {t:$_DLATCH*}
 yosys tee -o "$rep_dir/${proj_name}_blackboxes.rpt" select -list a:blackbox
 yosys tee -o "$rep_dir/${proj_name}_elaborated.rpt" stat
 yosys write_rtlil "$tmp_dir/${proj_name}_elaborated.il"
