@@ -106,6 +106,10 @@ Error: workdir "<symlinked path>" does not exist on container …
 
 Use `cd -P` (or `pwd -P`) so both agree. Harmless if your checkout is not symlinked.
 
+A linked worktree works with the same commands. Its `.git` file points at the main
+checkout, so `scripts/docker-run.sh` also bind-mounts that git directory. See
+`scripts/docker.md`.
+
 ### Scratch/temp space: honour `$TMPDIR`, never `/tmp`
 
 **Use the scratch directory the environment already defines, and do not invent your own.**

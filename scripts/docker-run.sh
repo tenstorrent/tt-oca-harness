@@ -172,11 +172,56 @@ else UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"; fi
 USER_FLAGS=()
 [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
+# A linked worktree stores its git directory outside the checkout. Mount that
+# directory at the same absolute path so git inside the container can open it.
+# A checkout whose .git is a directory, or a gitfile that already points inside
+# the checkout, needs no extra mount.
+git_common_dir() {
+  local gitfile="$ROOT/.git" line gitdir common rel
+  [[ -f "$gitfile" && ! -d "$gitfile" ]] || return 0
+  command -v realpath >/dev/null 2>&1 || return 0
+  line=$(sed -n '1s/^gitdir:[[:space:]]*//p' "$gitfile") || return 0
+  line="${line%$'\r'}"
+  [[ -n "$line" ]] || return 0
+  if [[ "$line" == /* ]]; then
+    gitdir=$line
+  else
+    gitdir=$ROOT/$line
+  fi
+  gitdir=$(realpath -sm -- "$gitdir") || return 0
+  [[ -d "$gitdir" ]] || return 0
+  [[ "$gitdir" == "$ROOT" || "$gitdir" == "$ROOT"/* ]] && return 0
+  common=$gitdir
+  if [[ -f "$gitdir/commondir" ]]; then
+    rel=$(tr -d '[:space:]' <"$gitdir/commondir") || return 0
+    if [[ "$rel" == /* ]]; then
+      common=$rel
+    else
+      common=$gitdir/$rel
+    fi
+    common=$(realpath -sm -- "$common") || return 0
+  fi
+  [[ -d "$common/objects" ]] || return 0
+  [[ "$common" == "$ROOT" || "$common" == "$ROOT"/* ]] && return 0
+  [[ "$ROOT" == "$common"/* ]] && return 0
+  printf '%s\n' "$common"
+}
+
+# Podman's private :Z label would stick on the main checkout's git directory
+# after the container exits. :z is the shared label.
+git_engine_volume() {
+  local common git_vol=""
+  common=$(git_common_dir) || true
+  [[ -n "$common" ]] || return 0
+  [[ -n "$VOL" ]] && git_vol=:z
+  printf '%s\n' "${common}:${common}${git_vol}"
+}
+
 # run_image IMAGE [-it] CMD... : engine flags before the image, command after it
 run_image() {
   local image="$1"
   shift
-  local f=() net_flags=()
+  local f=() net_flags=() git_volume mounts
   [[ "${1:-}" == "--net" ]] && {
     net_flags=(--network "$2" ${NETWORK_NAME:+--name "$NETWORK_NAME"})
     ensure_network "$2"
@@ -187,8 +232,11 @@ run_image() {
     f=(-it)
     shift
   }
+  mounts=(-v "${ROOT}:/work${VOL}")
+  git_volume=$(git_engine_volume) || true
+  [[ -n "$git_volume" ]] && mounts=(-v "$git_volume" "${mounts[@]}")
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
+    "${net_flags[@]}" "${USER_FLAGS[@]}" "${mounts[@]}" -w /work "$image" "$@"
 }
 
 # Run a command in an environment with a nix binary. This will run locally if it
@@ -389,6 +437,9 @@ bwrap_run() {
   # The repo (and, under it, nonfree/) at its real path so absolute -C paths,
   # bender filelists and generated collateral all resolve unchanged.
   binds+=(--bind "$ROOT" "$ROOT")
+  local git_common=""
+  git_common=$(git_common_dir) || true
+  [[ -n "$git_common" ]] && binds+=(--bind "$git_common" "$git_common")
   local extra
   for extra in ${OCAH_BWRAP_EXTRA_BINDS:-}; do
     [[ -e "$extra" ]] && binds+=(--bind "$extra" "$extra")
@@ -449,7 +500,7 @@ run_here() {
 run_image_1to1() {
   local image="$1"
   shift
-  local f=() net_flags=()
+  local f=() net_flags=() git_volume mounts
   [[ "${1:-}" == "--net" ]] && {
     net_flags=(--network "$2" ${NETWORK_NAME:+--name "$NETWORK_NAME"})
     ensure_network "$2"
@@ -460,8 +511,11 @@ run_image_1to1() {
     f=(-it)
     shift
   }
+  mounts=(-v "${ROOT}:${ROOT}${VOL}")
+  git_volume=$(git_engine_volume) || true
+  [[ -n "$git_volume" ]] && mounts=(-v "$git_volume" "${mounts[@]}")
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
+    "${net_flags[@]}" "${USER_FLAGS[@]}" "${mounts[@]}" -w "$PWD" "$image" "$@"
 }
 
 doc_product_paths() {
