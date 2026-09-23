@@ -11,11 +11,10 @@ RTL is not a source for any value this sequence programs or compares against.
 the XOR and VLT compressors behind ``debug_sig_trace_gen`` stay idle. They are
 reached only in the other two modes.
 
-``dfd_dst.rdl`` publishes the mode set in the field's own description --
-``Trdstformat``: "bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values :
-2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)" --
-so the three values this sequence walks come from the register contract and
-not from the RTL. The payload has to move for a compressor to emit anything;
+``dfd_dst.rdl`` publishes the mode set in the field's own description:
+``Trdstformat`` bit 0 is the XOR enable and bit 1 the VLT enable, and the
+supported values it names are 3, 1 and 0. The three values this sequence
+walks therefore come from the register contract and not from the RTL. The payload has to move for a compressor to emit anything;
 the Action0 sweep supplies that, because the CLA action bus drives interrupt
 and trigger outputs that the SMC debug bus carries.
 

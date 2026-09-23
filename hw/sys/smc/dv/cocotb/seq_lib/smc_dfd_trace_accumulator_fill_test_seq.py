@@ -58,11 +58,10 @@ _FUNNEL_SEGMENT = "funnel"
 # window is a DV-owned choice, small enough to be filled inside the sweep.
 _SINK_WINDOW_BYTES = 0x1000
 
-# dfd_dst.rdl Trdstformat: "bit[0]: XOR Enable, bit[1]: VLT Enable. Supported
-# values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No
-# Compression)". Uncompressed, every debug-bus sample becomes a packet; the
-# compressing reset value emits almost nothing while the selected lanes hold
-# still, and the accumulator never fills.
+# dfd_dst.rdl gives Trdstformat bit 0 as XOR enable and bit 1 as VLT enable,
+# and names 3, 1 and 0 as the supported values. Uncompressed, every debug-bus
+# sample becomes a packet; the compressing reset value emits almost nothing
+# while the selected lanes hold still, and the accumulator never fills.
 _DST_FORMAT_NONE = 0
 
 # clk_smc_i cycles between a configuration write and the first status read, and
