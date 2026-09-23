@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_axi_atomic_operation_test - non-ATOP SMN read path on SEP=0.
+"""smu_axi_atomic_operation_test - non-ATOP SMN read path on the wrapper.
 
-ATOP is not drivable on this bench. ``tb/tb_top.sv`` and ``tb/tb_wrapper_top.sv``
-tie ``smu_axi_in_req.aw.atop`` to ``'0``, the flat ``s_axi`` port list carries no
+ATOP is not drivable on this bench. ``tb/tb_wrapper_top.sv`` ties
+``smu_axi_in_req.aw.atop`` to ``'0``, the flat ``ext_in`` port list carries no
 ATOP pin, and the package contains no ATOP driver, so no ATOP transaction ever
 reaches the DUT. This test makes no claim about ATOP rejection and a green run
 here is not ATOP non-support credit.
 
-What it proves: a plain 32-bit read on the SEP=0 SMN path completes rather than
+What it proves: a plain 32-bit read on the SMN path completes rather than
 hanging, and the RID sampled off the live R channel mirrors the ARID that was
 issued. The response class and read data are logged as observations only.
 DECERR / err_slv poison stays OUT for this leaf

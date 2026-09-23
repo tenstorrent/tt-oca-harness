@@ -366,6 +366,7 @@ works for both flash types.  A failed checker record raises
 | Addresses at or beyond `flash_size` | Read as 0xFF and take no program; a read address wraps at 24 bits, not at the device size |
 | SEP-named pad-bundle class | `OcahSepSpiFlash` carries the xSPI pad-bundle binding (chip-select, clock, DQ out/in, DQ output-enable, REBAR) under the SEP name; SMC binds the same class to its lifted SPI pads |
 | SV collateral | None: no interface, SVA, coverage model, or SV-UVM realization ships; the package is cocotb only |
+| Simulators | Verilator, VCS, and Xcelium run the cocotb `dv/` harness; Verilator runs the SEP and SMC benches |
 
 ## Validation
 

@@ -160,7 +160,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
     def _last_write_addr(self) -> int:
         """AW address of the most recently B-responded output-AXI write.
 
-        `tb_top.sv:1076-1077` latches the counter and this address together on
+        `tb_top.sv:1085-1086` latches the counter and this address together on
         the same B handshake, so pairing them attributes a counted write to the
         destination it went to. A bare counter increment cannot: the counter is
         shared by every write on the output port, so op1's own response

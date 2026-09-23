@@ -576,11 +576,27 @@ module i3c_controller_fsm
     end
   end
 
+  // ctrl_bus_i lags the pads, so right after a STOP the stale SDA low reads as a
+  // phantom IBI in Idle; only detect there once the filtered SDA has been seen high.
+  logic idle_sda_high_seen_q;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni) begin
+      idle_sda_high_seen_q <= 1'b0;
+    end else if (state_q != Idle) begin
+      idle_sda_high_seen_q <= 1'b0;
+    end else if (ctrl_bus_i.sda.value) begin
+      idle_sda_high_seen_q <= 1'b1;
+    end
+  end
+
   // SDA Arbitration detection logic
   always_comb begin
     fmt_sda_arbitration_o = 1'b0;
-    // Check during arbitrable address phase (not during ACK) and in Idle state
-    if ((((state_q == Address) && ~daa_addr_phase_q) || (state_q == Idle)) && (phy_sel_od_pp_o == 1'b0) && (bus_rx_req_bit == 1'b0)) begin
+    // Check during arbitrable address phase (not during ACK) and in Idle state.
+    // Address must stay a pure level check: a losing bit may never read SDA high.
+    if ((((state_q == Address) && ~daa_addr_phase_q) ||
+         ((state_q == Idle) && idle_sda_high_seen_q)) &&
+        (phy_sel_od_pp_o == 1'b0) && (bus_rx_req_bit == 1'b0)) begin
       if (ctrl_bus_i.scl.stable_high & scl_stable_high) begin
         // (OCA) only count as arbitration lost when external agent pulled SDA line while SCL high
         // -> cannot use XOR as it would misdetect current controller puling sda low

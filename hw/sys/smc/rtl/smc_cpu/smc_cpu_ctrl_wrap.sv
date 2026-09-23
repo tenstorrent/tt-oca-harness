@@ -34,7 +34,10 @@ module smc_cpu_ctrl_wrap #(
 
   // Reset-drain handshake to/from the CPU cluster (always-on rst_cold domain)
   output logic                                    isolate_req_o,
-  input  logic                                    drained_i
+  input  logic                                    drained_i,
+
+  // Timeout-forced reset: flush request to the cluster AXI isolates
+  output logic                                    isolate_flush_o
 );
 
   localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS =
@@ -61,14 +64,14 @@ module smc_cpu_ctrl_wrap #(
 
   prim_refclk_count_w_cdc #(
     .REF_COUNT_WIDTH(RefCountWidth)
-  ) refclk_counter (
-    .i_refclk(clk_ref_i),
-    .i_prstb(rst_primary_ni),
-    .i_cnt_en(1'b1),
-    .i_cnt_update(ref_count_wr_swacc_q),
-    .i_cnt_update_value(ref_count_from_reg),
-    .i_out_clk(clk_smc_i),
-    .o_count(ref_count_sync)
+  ) u_refclk_counter (
+    .refclk_i(clk_ref_i),
+    .prst_ni(rst_primary_ni),
+    .cnt_en_i(1'b1),
+    .cnt_update_i(ref_count_wr_swacc_q),
+    .cnt_update_value_i(ref_count_from_reg),
+    .out_clk_i(clk_smc_i),
+    .count_o(ref_count_sync)
   );
 
   //////////////////////
@@ -230,7 +233,7 @@ module smc_cpu_ctrl_wrap #(
 
   logic [31:0] test_ctrl;
 
-  cpu_ctrl_reg cpu_ctrl_reg (
+  cpu_ctrl_reg u_cpu_ctrl_reg (
     .clk(clk_smc_i),
     .arst_n(rst_primary_ni),
 
@@ -338,16 +341,16 @@ module smc_cpu_ctrl_wrap #(
           .COUNT_WIDTH(16),
           .IS_ACTIVE_HIGH(0)
         ) u_pulse_core_reset (
-          .i_clk(clk_smc_i),
-          .i_reset_n(rst_primary_ni),
+          .clk_i(clk_smc_i),
+          .rst_ni(rst_primary_ni),
 
-          .i_pulse_start(core_resets_pulse_start[i]),
-          .i_pre_pulse_wait(pre_reset_pulse_wait),
-          .i_post_pulse_wait(post_reset_pulse_wait),
+          .pulse_start_i(core_resets_pulse_start[i]),
+          .pre_pulse_wait_i(pre_reset_pulse_wait),
+          .post_pulse_wait_i(post_reset_pulse_wait),
 
-          .i_pulse_in(int_core_reset_n[i]),
-          .o_pulse_out(core_reset_pulse_out[i]),
-          .o_pulse_done(core_reset_pulse_done[i])
+          .pulse_in_i(int_core_reset_n[i]),
+          .pulse_out_o(core_reset_pulse_out[i]),
+          .pulse_done_o(core_reset_pulse_done[i])
         );
       end else begin : gen_tie_off_core_reset_and_done
         assign core_reset_pulse_out[i] = 1'b0;
@@ -398,10 +401,14 @@ module smc_cpu_ctrl_wrap #(
   assign timeout_value = hwif_out.RESET_TIMEOUT.timeout_value.value;
   assign timeout_mode  = hwif_out.RESET_TIMEOUT.timeout_mode.value;
   assign pending       = sw_reset_req & ~drained_i;
-  assign force_apply   = timeout_fired_q & timeout_mode;   // mode 1 -> force the reset
+  assign force_apply   = sw_reset_req & timeout_fired_q & timeout_mode;
   assign withhold      = pending & ~force_apply;
   assign reset_applied = sw_reset_req & ~withhold;         // live status
-  assign reset_timeout = timeout_fired_q;                  // live status
+  assign reset_timeout = sw_reset_req & timeout_fired_q;   // status for the active request
+
+  // Flush the cluster AXI isolates when the timeout forces the reset; the
+  // isolates latch it and self-clear at de-isolation.
+  assign isolate_flush_o = force_apply;
 
   assign hwif_in.RESET_TIMEOUT.reset_applied.next = reset_applied;
   assign hwif_in.RESET_TIMEOUT.reset_timeout.next = reset_timeout;
@@ -436,9 +443,11 @@ module smc_cpu_ctrl_wrap #(
     if (~rst_primary_ni) begin
       timeout_cnt     <= 16'd0;
       timeout_fired_q <= 1'b0;
-    end else if (~pending) begin
+    end else if (~sw_reset_req) begin
       timeout_cnt     <= 16'd0;
       timeout_fired_q <= 1'b0;
+    end else if (~pending) begin
+      timeout_cnt <= 16'd0;
     end else if ((timeout_value != 16'd0) && ~timeout_fired_q) begin
       if (timeout_cnt >= timeout_value) begin
         timeout_fired_q <= 1'b1;
@@ -539,36 +548,8 @@ module smc_cpu_ctrl_wrap #(
   // Test Control //
   //////////////////
 
-`ifdef SYNTHESIS
+  // Tied off in RTL. A testbench can deposit onto this signal to hand test control
+  // values to firmware, which reads them back through the TEST_CTRL register.
   assign test_ctrl = 32'h0;
-`else
-  assign test_ctrl = get_test_ctrl();
-`endif
-
-`ifndef SYNTHESIS
-  typedef struct packed {
-    bit skip_pll_init;
-    bit fast_i3c;
-    bit fast_efuse;
-    bit fast_uart;
-    bit [27:0] reserved;
-  } smc_embedded_test_ctrl_t;
-  function automatic smc_embedded_test_ctrl_t get_test_ctrl;
-    smc_embedded_test_ctrl_t input_test_ctrl;
-    if ($test$plusargs("smc_skip_pll_init")) begin
-      input_test_ctrl.skip_pll_init = 1'b1;
-    end
-    if ($test$plusargs("smc_fast_i3c")) begin
-      input_test_ctrl.fast_i3c = 1'b1;
-    end
-    if ($test$plusargs("smc_fast_efuse")) begin
-      input_test_ctrl.fast_efuse = 1'b1;
-    end
-    if ($test$plusargs("smc_fast_uart")) begin
-      input_test_ctrl.fast_uart = 1'b1;
-    end
-    return input_test_ctrl;
-  endfunction
-`endif
 
 endmodule

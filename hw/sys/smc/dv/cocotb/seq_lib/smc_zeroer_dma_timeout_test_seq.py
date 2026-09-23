@@ -43,37 +43,27 @@ ZEROER_CTRL_STATUS = ZEROER_CTRL_CTRL_STATUS_REG_ADDR
 ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1)
 # --- CTRL_STATUS readback expectation (S4) ----------------------------------
 # Packed from the same generated field layout, never a literal, and every bit of
-# the 64-bit word is accounted for:
+# the 64-bit word except STATUS is accounted for:
 #
 #   INT_EN[0]  = 1  -- ``hw/ip/zeroer/regs/zeroer_ctrl.rdl``: ``sw = rw; hw = r``.
 #                     Software owns the field and hardware never writes it, so it
 #                     holds the 1 that S3 wrote to arm the completion interrupt.
-#   STATUS[32] = 0  -- the field carries BUSY (see the polarity note below) and
-#                     by the time this read is issued the operation is
-#                     independently proven finished -- the responder counted the
-#                     zeroer's AXI write and the region reads back zeros -- so
-#                     the field must be 0. This read is also the cleared leg of
-#                     the 0 -> 1 -> 0 lifecycle proven in S5.
 #   all other bits  = 0 -- the RDL declares no field there (``rsvd_0[31:1]`` and
 #                     nothing above bit 32), so reserved-zero.
-#
-# STATUS POLARITY -- the RDL description and the RTL disagree, and this
-# expectation rests on the observed lifecycle, not on the documentation:
-#   * ``hw/ip/zeroer/regs/zeroer_ctrl.rdl:51`` describes STATUS as "Returns
-#     status of whether zeroer has completed"; ``hw/sys/smc/doc/zeroer.adoc``
-#     renders that same generated field text and assigns busy/completion to no
-#     bit position of its own.
-#   * ``hw/ip/zeroer/rtl/zeroer.sv:201`` drives
-#     ``hwif_in.CTRL_STATUS.STATUS.next = zeroer_busy_o`` and ``:128`` defines
-#     ``zeroer_busy_o = status_swacc[1] | (cur_state != ST_IDLE) |
-#     (|outstanding_reqs)``. The implemented polarity is therefore BUSY.
-# No field-level source states the implemented polarity, so this testcase
-# transcribes none: S5 *observes* the lifecycle (0 before the trigger, 1 inside
-# the trigger-to-idle window, 0 again after completion), which makes the S4 zero
-# the closing half of a proven transition rather than an idle value a dead bit
-# would also return. The CHK-ZEROER-CTRL-STATUS token cites ``zeroer.sv`` and
-# the S5 observation for the polarity.
-ZEROER_CTRL_STATUS_DONE = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1, status=0)
+#   STATUS[32]      -- NOT compared to a level. The RDL
+#                     (``hw/ip/zeroer/regs/zeroer_ctrl.rdl``) describes the field
+#                     as "whether zeroer has completed" while the implemented
+#                     field is observed to read the opposite way round, and that
+#                     disagreement is an open specification issue (#1234). This
+#                     testcase therefore transcribes neither reading: S4 masks
+#                     the bit out of its exact compare, and S5 requires the bit
+#                     to LEAVE the level it rests at while a zeroing is in flight
+#                     and to RETURN to that level once the zeroing completes.
+#                     That proves the field follows the zeroer's activity and is
+#                     not tied or unconnected, without asserting which level
+#                     means busy. Once #1234 settles the description, S4 can
+#                     compare the bit exactly against the RDL.
+ZEROER_CTRL_STATUS_ARMED = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1)
 
 OUTPUT_FABRIC_NEIGHBOUR_ADDR = OUTPUT_FABRIC_ADDR + 8
 OUTPUT_FABRIC_MODEL_REGION = "zeroer_output_fabric"
@@ -89,8 +79,8 @@ ZEROER_WAIT_CYCLES = 200
 # CTRL_STATUS around it can never catch STATUS asserted. S5 therefore runs a
 # SECOND, long zeroing purely as the positive control for the
 # STATUS bit: BUSY_PROBE_SIZE bytes / 8 bytes per beat = BUSY_PROBE_BEATS beats,
-# which holds `cur_state != ST_IDLE` (and `|outstanding_reqs`) across many CSR
-# reads. It runs after every payload assertion, targets the same already-zeroed
+# which keeps the zeroer in flight across many CSR reads. It runs after every
+# payload assertion, targets the same already-zeroed
 # region, and stays inside OUTPUT_FABRIC_MODEL_SIZE so it cannot reach memory
 # any other check depends on.
 BUSY_PROBE_SIZE = 0x800
@@ -211,6 +201,9 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
     def __init__(self, name: str = "smc_zeroer_dma_timeout_test_seq") -> None:
         super().__init__(name)
         self.checked_bytes = 0
+        #: CTRL_STATUS.STATUS level read with the zeroer idle (S4); S5 proves the
+        #: field leaves and returns to it. No meaning is attached to the level.
+        self.status_idle_level = -1
 
     def _ensure_model_region(self) -> None:
         if OUTPUT_FABRIC_MODEL_REGION not in self.memory_model.regions:
@@ -307,6 +300,30 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         )
         await self.csr_write("ZEROER_DEST_ADDR", ZEROER_DEST_ADDR, OUTPUT_FABRIC_ADDR, length=8)
         await self.csr_write("ZEROER_SIZE", ZEROER_SIZE, len(ZEROER_POISON), length=8)
+        # Read both command words back before the trigger. `expected=` is the
+        # compare: the scoreboard applies an exact 64-bit equality and raises on
+        # mismatch, so a command register that dropped the write, aliased onto
+        # its sibling, or returned a reset value is caught here rather than
+        # showing up later as an unexplained wrong-sized operation. Neither
+        # register carries a write side effect (only CTRL_STATUS does --
+        # zeroer_ctrl.rdl gives INT_EN wr_swacc), so the readbacks cannot start
+        # the FSM early.
+        dest_rb = await self.csr_read(
+            "ZEROER_DEST_ADDR_RB", ZEROER_DEST_ADDR, expected=OUTPUT_FABRIC_ADDR, length=8
+        )
+        size_rb = await self.csr_read(
+            "ZEROER_SIZE_RB", ZEROER_SIZE, expected=len(ZEROER_POISON), length=8
+        )
+        assert dest_rb == OUTPUT_FABRIC_ADDR and size_rb == len(ZEROER_POISON), (
+            f"zeroer command registers did not hold the programmed values: "
+            f"DEST_ADDR read {dest_rb:#x} (wrote {OUTPUT_FABRIC_ADDR:#x}), "
+            f"SIZE read {size_rb:#x} (wrote {len(ZEROER_POISON):#x})"
+        )
+        cocotb.log.info(
+            "CHK-ZEROER-CMD-READBACK: DEST_ADDR@"
+            f"{ZEROER_DEST_ADDR:#x} reads {dest_rb:#x} and SIZE@{ZEROER_SIZE:#x} "
+            f"reads {size_rb:#x}, both equal to what S2 wrote"
+        )
         cocotb.log.info(
             "CHK-ZEROER-REGION-DECODE: csr_write ZEROER_DEST_ADDR@"
             f"{ZEROER_DEST_ADDR:#x}={OUTPUT_FABRIC_ADDR:#x} and ZEROER_SIZE@"
@@ -373,31 +390,35 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
 
         cocotb.log.info(
             "STEP S4: read ZEROER_CTRL_STATUS back and check the armed INT_EN "
-            "plus the deasserted busy status (see ZEROER_CTRL_STATUS_DONE)"
+            "and the reserved bits exactly, with STATUS masked (see "
+            "ZEROER_CTRL_STATUS_ARMED)"
         )
-        ctrl_status = await self.csr_read(
-            "ZEROER_CTRL_STATUS_DONE",
-            ZEROER_CTRL_STATUS,
-            expected=ZEROER_CTRL_STATUS_DONE,
-            length=8,
+        ctrl_status = await self.csr_read("ZEROER_CTRL_STATUS_ARMED", ZEROER_CTRL_STATUS, length=8)
+        assert (ctrl_status & ~STATUS_BM) == ZEROER_CTRL_STATUS_ARMED, (
+            f"CTRL_STATUS read {ctrl_status:#018x}; with STATUS masked "
+            f"({STATUS_BM:#018x}) expected {ZEROER_CTRL_STATUS_ARMED:#018x} "
+            f"(INT_EN latched, reserved zero)"
         )
+        self.status_idle_level = int(bool(ctrl_status & STATUS_BM))
         cocotb.log.info(
             "CHK-ZEROER-CTRL-STATUS: CTRL_STATUS@"
-            f"{ZEROER_CTRL_STATUS:#x} reads {ctrl_status:#018x} == "
-            f"{ZEROER_CTRL_STATUS_DONE:#018x} -- INT_EN[0]=1 (the completion "
-            "interrupt this test armed at S3 is latched in the register, rdl "
-            "sw=rw/hw=r), STATUS[32]=0 (polarity is BUSY per zeroer.sv:201 / "
-            ":128 and is OBSERVED in S5's 0->1->0 lifecycle, NOT transcribed "
-            "from documentation: zeroer_ctrl.rdl:51 and the generated "
-            "zeroer_ctrl.adoc that zeroer.adoc includes describe the field as "
-            "'completed'; the operation is independently proven complete "
-            "above), reserved bits 0. SCOPE: the INT_EN write is load-bearing "
-            "(zeroer_ctrl.rdl:43 gives it wr_swacc and zeroer.sv:207/:260 make "
-            "that strobe the FSM trigger), so it cannot be written as 0; the "
-            "resulting completion IRQ OUTPUT is UNOBSERVED here and by every "
-            "SMC cocotb testcase -- hw/sys/smc/dv/tb/tb_top.sv exposes no "
-            "tb_zeroer_*_irq observability port. This token claims the latched "
-            "enable only, never the interrupt firing."
+            f"{ZEROER_CTRL_STATUS:#x} reads {ctrl_status:#018x}; with STATUS "
+            f"masked it equals {ZEROER_CTRL_STATUS_ARMED:#018x} -- INT_EN[0]=1 "
+            "(the completion interrupt this test armed at S3 is latched in the "
+            "register, rdl sw=rw/hw=r), reserved bits 0. STATUS[32] reads "
+            f"{self.status_idle_level} with the operation independently proven "
+            "complete (the responder counted the zeroer's AXI write and the "
+            "region reads back zeros); that level is recorded as the field's "
+            "idle level and NOT asserted, because the RDL description "
+            "('completed') and the implemented field disagree on which level "
+            "means busy (#1234). S5 proves the field leaves this level while a "
+            "zeroing is in flight and returns to it afterwards. SCOPE: the "
+            "INT_EN write is load-bearing (zeroer_ctrl.rdl gives it wr_swacc, "
+            "the write strobe that starts an operation), so it cannot be "
+            "written as 0; the resulting completion IRQ OUTPUT is UNOBSERVED "
+            "here and by every SMC cocotb testcase -- hw/sys/smc/dv/tb/tb_top.sv "
+            "exposes no tb_zeroer_*_irq observability port. This token claims "
+            "the latched enable only, never the interrupt firing."
         )
 
         cocotb.log.info(
@@ -414,74 +435,82 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         cocotb.log.info("SMC_006 scenario PASS")
 
     async def _prove_status_busy_lifecycle(self) -> None:
-        """Observe CTRL_STATUS.STATUS 0 -> 1 -> 0 on a long zeroing.
+        """Observe CTRL_STATUS.STATUS leave its idle level and return on a long zeroing.
 
-        Without this, every STATUS compare in the testcase is against 0, and a
-        STATUS bit tied low, undriven, or never connected through the hwif path
-        passes identically to a working busy flag -- 0 is simultaneously "not
-        busy", "not completed" and "field absent"
-        ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). The asserted state is the only
-        observation that separates those.
+        Without this, every STATUS observation in the testcase is taken with the
+        zeroer idle, and a STATUS bit tied off, undriven, or never connected
+        through the hwif path passes identically to a working flag -- a constant
+        is simultaneously "not busy", "not completed" and "field absent"
+        ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). A field that changes level while a
+        zeroing is in flight and changes back when it completes is the only
+        observation that separates those. Which level means busy is not
+        asserted: the RDL description and the implemented field disagree on it
+        (#1234), so the idle level is whatever S4 recorded.
         """
         # Sampled here rather than inherited from the caller's earlier read, so
-        # the cleared leg is observed at the point the lifecycle claims it.
-        cleared_before = await self.csr_read("ZEROER_STATUS_CLEARED", ZEROER_CTRL_STATUS)
-        assert not (cleared_before & STATUS_BM), (
-            f"CTRL_STATUS pre-trigger read {cleared_before:#018x} already has "
-            f"STATUS set (mask {STATUS_BM:#018x}); the lifecycle cannot start "
-            f"from a cleared state"
+        # the idle leg is observed at the point the lifecycle claims it.
+        idle_before = await self.csr_read("ZEROER_STATUS_IDLE", ZEROER_CTRL_STATUS, length=8)
+        idle_level = int(bool(idle_before & STATUS_BM))
+        assert idle_level == self.status_idle_level, (
+            f"CTRL_STATUS.STATUS read {idle_level} with the zeroer idle, but S4 "
+            f"recorded {self.status_idle_level} in the same state; the field is "
+            f"not stable at rest, so no lifecycle can be attributed to it"
         )
 
         cocotb.log.info(
-            "STEP S5: prove CTRL_STATUS.STATUS can read 1 -- re-arm with "
+            "STEP S5: prove CTRL_STATUS.STATUS follows the zeroer -- re-arm with "
             f"SIZE={BUSY_PROBE_SIZE:#x} ({BUSY_PROBE_BEATS} beats) and sample "
-            "STATUS inside the trigger-to-idle window"
+            f"STATUS inside the trigger-to-idle window (idle level {idle_level})"
         )
         await self.csr_write("ZEROER_SIZE_BUSY_PROBE", ZEROER_SIZE, BUSY_PROBE_SIZE, length=8)
         await self.csr_write(
             "ZEROER_CTRL_STATUS_BUSY_PROBE", ZEROER_CTRL_STATUS, ZEROER_CTRL_STATUS_START, length=8
         )
 
-        busy_word = None
+        active_word = None
         for _ in range(BUSY_PROBE_ASSERT_CYCLES):
             word = await self.csr_read("ZEROER_CTRL_STATUS_BUSY_POLL", ZEROER_CTRL_STATUS, length=8)
-            if word & STATUS_BM:
-                busy_word = word
+            if int(bool(word & STATUS_BM)) != idle_level:
+                active_word = word
                 break
-        assert busy_word is not None, (
-            f"CTRL_STATUS.STATUS (mask {STATUS_BM:#018x}) never read 1 while a "
-            f"{BUSY_PROBE_SIZE:#x}-byte ({BUSY_PROBE_BEATS}-beat) zeroing was in "
-            f"flight, polled {BUSY_PROBE_ASSERT_CYCLES} times -- the busy state "
-            f"is unobservable, so every STATUS == 0 in this testcase is an "
-            f"idle-zero a dead bit would also satisfy"
+        assert active_word is not None, (
+            f"CTRL_STATUS.STATUS (mask {STATUS_BM:#018x}) never left its idle "
+            f"level {idle_level} while a {BUSY_PROBE_SIZE:#x}-byte "
+            f"({BUSY_PROBE_BEATS}-beat) zeroing was in flight, polled "
+            f"{BUSY_PROBE_ASSERT_CYCLES} times -- the in-flight state is "
+            f"unobservable, so every STATUS read in this testcase is a resting "
+            f"level a dead bit would also return"
         )
         cocotb.log.info(
             "CHK-ZEROER-STATUS-BUSY-ASSERTED: CTRL_STATUS read "
-            f"{busy_word:#018x} with STATUS[32]=1 during the "
-            f"{BUSY_PROBE_BEATS}-beat zeroing"
+            f"{active_word:#018x} with STATUS[32]={1 - idle_level} (away from "
+            f"its idle level {idle_level}) during the {BUSY_PROBE_BEATS}-beat "
+            "zeroing"
         )
 
-        cleared_word = None
+        settled_word = None
         for _ in range(BUSY_PROBE_CLEAR_CYCLES):
             word = await self.csr_read(
                 "ZEROER_CTRL_STATUS_CLEAR_POLL", ZEROER_CTRL_STATUS, length=8
             )
-            if not (word & STATUS_BM):
-                cleared_word = word
+            if int(bool(word & STATUS_BM)) == idle_level:
+                settled_word = word
                 break
-        assert cleared_word is not None, (
-            f"CTRL_STATUS.STATUS stayed 1 after the {BUSY_PROBE_BEATS}-beat "
-            f"zeroing should have retired, polled {BUSY_PROBE_CLEAR_CYCLES} "
-            f"times -- a stuck-high busy flag"
+        assert settled_word is not None, (
+            f"CTRL_STATUS.STATUS stayed at {1 - idle_level} after the "
+            f"{BUSY_PROBE_BEATS}-beat zeroing should have retired, polled "
+            f"{BUSY_PROBE_CLEAR_CYCLES} times -- a flag stuck in its in-flight "
+            f"state"
         )
-        assert cleared_word == ZEROER_CTRL_STATUS_DONE, (
-            f"CTRL_STATUS settled to {cleared_word:#018x}, expected "
-            f"{ZEROER_CTRL_STATUS_DONE:#018x} (INT_EN latched, STATUS clear, "
+        assert (settled_word & ~STATUS_BM) == ZEROER_CTRL_STATUS_ARMED, (
+            f"CTRL_STATUS settled to {settled_word:#018x}; with STATUS masked "
+            f"expected {ZEROER_CTRL_STATUS_ARMED:#018x} (INT_EN latched, "
             f"reserved zero)"
         )
         cocotb.log.info(
             "CHK-ZEROER-STATUS-LIFECYCLE: CTRL_STATUS.STATUS observed "
-            f"0 (S4 {cleared_before:#018x}) -> 1 ({busy_word:#018x}) -> "
-            f"0 ({cleared_word:#018x}); the field tracks zeroer_busy_o through "
-            "the hwif path and is not a tied-low bit"
+            f"{idle_level} (idle, {idle_before:#018x}) -> {1 - idle_level} "
+            f"({active_word:#018x}) -> {idle_level} ({settled_word:#018x}); the "
+            "field follows the zeroer's activity through the hwif path and is "
+            "not a tied bit. Which level means busy is left to #1234."
         )

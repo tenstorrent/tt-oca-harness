@@ -22,7 +22,7 @@
 // | apb2avsbus             | AXI4_LITE | 0x0000_c000_4000 | 0x0000_c000_405c |
 // | i2c                    | AXI4_LITE | 0x0000_c000_5000 | 0x0000_c000_5e0c |
 // | uart                   | AXI4_LITE | 0x0000_c000_6000 | 0x0000_c000_7000 |
-// | efuse (SMC_EFUSE_MAP)  | AXI4_LITE | 0x0000_c000_7000 | 0x0000_c000_7c00 |
+// | efuse (SMC_EFUSE_MAP)  | AXI4_LITE | 0x0000_c000_7000 | 0x0000_c000_7400 |
 // | efuse (INTF_CTRL)      | AXI4_LITE | 0x0000_c000_8000 | 0x0000_c000_801c |
 // | telemetry              | AXI4_LITE | 0x0000_c000_9000 | 0x0000_c000_9300 |
 // | system_timer_octs      | AXI4_LITE | 0x0000_c000_a000 | 0x0000_c000_a024 |

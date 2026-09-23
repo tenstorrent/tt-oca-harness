@@ -33,24 +33,24 @@ module sep_wrapper
 
   output logic wdt_timer_rst_req_o,
 
-  input  logic jtag_tck,
-  input  logic jtag_tms,
-  input  logic jtag_tdi,
-  input  logic jtag_trst_n,
-  output logic jtag_tdo,
-  output logic jtag_tdoEn,
+  input  logic jtag_tck_i,
+  input  logic jtag_tms_i,
+  input  logic jtag_tdi_i,
+  input  logic jtag_trst_ni,
+  output logic jtag_tdo_o,
+  output logic jtag_tdoEn_o,
 
   input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
 
   input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
 
-  input  logic mpc_debug_halt_req,
-  input  logic mpc_debug_run_req,
-  input  logic mpc_reset_run_req,
+  input  logic mpc_debug_halt_req_i,
+  input  logic mpc_debug_run_req_i,
+  input  logic mpc_reset_run_req_i,
 
-  input  logic i_cpu_halt_req,
-  input  logic i_cpu_run_req,
+  input  logic cpu_halt_req_i,
+  input  logic cpu_run_req_i,
 
   input  logic test_en_i,
   input  logic scan_rst_ni,
@@ -166,7 +166,6 @@ module sep_wrapper
   ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
-  logic ext_trng_alarm;
 
   // OTBN SRAM interfaces (sep <-> sep_ip_integration)
   sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req;
@@ -217,8 +216,7 @@ module sep_wrapper
     .ext_trng_axis_req_i (ext_trng_axis_req),
     .ext_trng_axis_rsp_o (ext_trng_axis_rsp),
 
-    .ext_trng_irq_i   (ext_trng_irq),
-    .ext_trng_alarm_i (ext_trng_alarm),
+    .ext_trng_irq_i (ext_trng_irq),
 
     .km_rom_mem_req_o (km_rom_mem_req),
     .km_rom_mem_rsp_i (km_rom_mem_rsp),
@@ -281,8 +279,7 @@ module sep_wrapper
     .ext_trng_axis_req_o (ext_trng_axis_req),
     .ext_trng_axis_rsp_i (ext_trng_axis_rsp),
 
-    .ext_trng_irq_o   (ext_trng_irq),
-    .ext_trng_alarm_o (ext_trng_alarm),
+    .ext_trng_irq_o (ext_trng_irq),
 
     .axi_extension_axi_req_i  (axi_extension_axi_req),
     .axi_extension_axi_resp_o (axi_extension_axi_resp),

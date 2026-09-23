@@ -16,7 +16,9 @@ class ocah_jtag_tap_reset_test extends ocah_jtag_vip_base_test;
                      "CHK-TAP-TLR-TMS5",
                      "CHK-SLAVE-STATE",
                      "CHK-JTAG-TRST-TLR",
-                     "CHK-JTAG-TRST-IDCODE"};
+                     "CHK-JTAG-TRST-IDCODE",
+                     "CHK-JTAG-IR-PAUSE",
+                     "CHK-JTAG-IR-CAPTURE-ONLY"};
     super.end_of_elaboration_phase(phase);
     require_ids(ids);
   endfunction

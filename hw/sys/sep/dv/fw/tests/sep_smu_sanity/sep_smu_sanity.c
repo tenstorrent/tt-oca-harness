@@ -7,7 +7,7 @@
  * Purpose
  * -------
  *   Demonstrates that, with the real SEP RTL instantiated inside the SMU
- *   wrapper (compile_smu_chiplet_sep_rtl, +define+SEP_RTL), the SEP CPU
+ *   wrapper (compile_smu_chiplet, +define+SEP_RTL), the SEP CPU
  *   boots from its TCM and can correctly access several IP modules through
  *   the SEP local fabric.
  *

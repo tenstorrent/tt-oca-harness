@@ -12,6 +12,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import cocotb
+
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
@@ -45,6 +47,8 @@ def _filter_reg_addr(direction: str, entry: int, field: str) -> int:
 
 class smc_filter_field_sweep_test_seq(SmcCsrSeq):
     async def body(self) -> None:
+        sb = self.env.scoreboard
+        value_checks_before = sb.sys_axi_value_checks_seen
         for direction in _DIRS:
             for i in range(_ENTRY_COUNT):
                 for field, exp in _FIELDS:
@@ -56,4 +60,20 @@ class smc_filter_field_sweep_test_seq(SmcCsrSeq):
                         length=8,
                     )
         expected = len(_DIRS) * _ENTRY_COUNT * len(_FIELDS)
-        assert self.accesses == expected, "filter field sweep count mismatch"
+        self.assert_all_reachable(expected, "FILTER_FIELD_SWEEP")
+        value_checks = sb.sys_axi_value_checks_seen - value_checks_before
+        assert value_checks == expected, (
+            f"FILTER_FIELD_SWEEP: the scoreboard booked {value_checks} exact-value "
+            f"compares for {expected} reads that each carry an expected word"
+        )
+        cocotb.log.info(
+            "CHK-FILTER-FIELD-RESET-SWEEP: %d filter CSR reads (%d fields x %d entries x "
+            "%d directions, 64-bit) each matched its RDL reset word in a scoreboard "
+            "value compare (%s); %d value compares booked",
+            expected,
+            len(_FIELDS),
+            _ENTRY_COUNT,
+            len(_DIRS),
+            ", ".join(f"{field}=0x{exp:x}" for field, exp in _FIELDS),
+            value_checks,
+        )

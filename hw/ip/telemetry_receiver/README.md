@@ -1,6 +1,6 @@
 # Telemetry Receiver
 
-Hardware decoder for multi-chiplet telemetry streams.
+Hardware decoder for telemetry streams.
 
 ## Documentation
 

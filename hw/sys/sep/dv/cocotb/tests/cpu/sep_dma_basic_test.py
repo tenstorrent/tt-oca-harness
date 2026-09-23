@@ -47,6 +47,7 @@ from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
+from seq_lib.sep_irq_aggregator_seq import IRQ_DMA_HOST_PATH, IRQ_DMA_REG_PATH
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_basic_test")
@@ -62,8 +63,6 @@ _BANNER = "SEP DMA basic test"
 
 _PARAM_MAGIC = 0xDA0A11C0
 _BUSY_LEN = 0x100
-_IRQ_DMA_REG_PATH = 40
-_IRQ_DMA_HOST_PATH = 41
 _PIC_POLL = 200_000
 
 
@@ -94,6 +93,20 @@ class SepDmaBasicCfg:
 
     def param_words(self) -> list[int]:
         return [_PARAM_MAGIC, self.src_off, self.dst_off, self.nbytes, self.fill_seed]
+
+
+def _probe_bit_raw(sig, bit: int) -> str:
+    """One bit of a probe as its raw character: '0', '1', or 'x'/'z'.
+
+    The shared rd() helper resolves unknowns to zero per bit, which is right
+    where a zero is the failing direction and wrong where it is the passing
+    one. Two cocotb versions are in use: 1.x exposes BinaryValue.binstr, 2.x a
+    LogicArray that str()s to the same characters.
+    """
+    v = sig.value
+    text = getattr(v, "binstr", None) or str(v)
+    # binstr is most-significant-first, so index from the right.
+    return text[len(text) - 1 - bit].lower()
 
 
 @pyuvm.test()
@@ -157,8 +170,8 @@ class sep_dma_basic_test(sep_base_test):
         for _ in range(_MAX_RUN_CYCLES):
             await RisingEdge(dut.clk_i)
             vec = self.rd(dut.sep_internal_interrupts_probe_o)
-            if (vec >> _IRQ_DMA_HOST_PATH) & 1:
-                assert ((vec >> _IRQ_DMA_REG_PATH) & 1) == 0, (
+            if (vec >> IRQ_DMA_HOST_PATH) & 1:
+                assert ((vec >> IRQ_DMA_REG_PATH) & 1) == 0, (
                     f"register-path [40] set on host-path inject (vec=0x{vec:x})"
                 )
                 self.logger.info(
@@ -185,15 +198,38 @@ class sep_dma_basic_test(sep_base_test):
         dut.dma_host_intg_inject_i.value = 0
         self.logger.info("STEP host-intg: dma_host_intg_inject_i=0")
 
+        # self.rd() resolves an unknown bit to 0, which is the safe direction for
+        # the assert leg above but the wrong one here: an X would read as a
+        # cleared bit and pass. Require a RESOLVED zero instead.
         for _ in range(_PIC_POLL):
             await RisingEdge(dut.clk_i)
-            vec = self.rd(dut.sep_internal_interrupts_probe_o)
-            if ((vec >> _IRQ_DMA_HOST_PATH) & 1) == 0:
+            bit = _probe_bit_raw(dut.sep_internal_interrupts_probe_o, IRQ_DMA_HOST_PATH)
+            if bit == "0":
                 self.logger.info(
-                    "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[41]=0 after DMA_BUS_ERR_CLEAR"
+                    "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[41] resolved 0 "
+                    "after DMA_BUS_ERR_CLEAR"
                 )
                 return
-        raise AssertionError("sep_internal_interrupts[41] stuck after DMA_BUS_ERR_CLEAR")
+        raise AssertionError(
+            f"sep_internal_interrupts[41] not a resolved 0 after DMA_BUS_ERR_CLEAR "
+            f"(last raw value {bit!r}); an X here is not a cleared bit"
+        )
+
+    async def _check_host_fabric_pin(self) -> None:
+        """Require the integrity inject pin low at the fabric-DECERR arm."""
+        dut = cocotb.top
+        for _ in range(_MAX_RUN_CYCLES):
+            if "CHK-HOSTFABRIC-ARM" in self.sb.console_text():
+                pin = self.rd_known(dut.dma_host_intg_inject_i)
+                assert pin == 0, f"CHK-HOSTFABRIC-ARM: dma_host_intg_inject_i={pin}, expected 0"
+                self.logger.info(
+                    "STEP host-intg: dma_host_intg_inject_i=0 at firmware CHK-HOSTFABRIC-ARM"
+                )
+                return
+            if self.sb.fw_done:
+                raise AssertionError("firmware finished without printing CHK-HOSTFABRIC-ARM")
+            await RisingEdge(dut.clk_i)
+        raise AssertionError("firmware never printed CHK-HOSTFABRIC-ARM")
 
     async def run_scenario(self) -> None:
         # Override the boot scoreboard's expected banner here (after its own
@@ -201,6 +237,7 @@ class sep_dma_basic_test(sep_base_test):
         self.sb.expected_line = _BANNER
         dtcm = self._stage_dtcm()
         inj = cocotb.start_soon(self._drive_host_intg_inject())
+        fabric = cocotb.start_soon(self._check_host_fabric_pin())
         await self.boot_firmware(
             self.sb,
             _ITCM_HEX,
@@ -211,6 +248,7 @@ class sep_dma_basic_test(sep_base_test):
             progress_every=_PROGRESS_EVERY,
         )
         await inj
+        await fabric
         cfg = self._dma_cfg
         needle = (
             f"SCENARIO src=0x{_SRAM_BASE + cfg.src_off:08x} "
@@ -234,6 +272,22 @@ class sep_dma_basic_test(sep_base_test):
                 "firmware console missing CHK-HOSTFABRIC PASS "
                 "(host-path fabric non-OKAY contract was not proven)"
             )
+        # The two checkers that actually walk the modes and the widths. Logging
+        # CHK-RAND-REP without them would put a PASS record in the kept log on a
+        # run where the walk failed -- poll_boot returns normally on a firmware
+        # FAIL, and the scoreboard verdict lands later.
+        for needle, what in (
+            ("CHK-COPY-MODE PASS:", "the INCR/FIXED/WRAP walk"),
+            ("CHK-WIDTH PASS:", "the 1B/2B/4B width walk"),
+            ("CHK-ERR-ASID PASS:", "the unencoded-ASID error legs"),
+            ("CHK-ERR-SIZE PASS:", "the unencoded-width error leg"),
+            ("CHK-ICCM PASS:", "the SRAM->ICCM->SRAM round trip"),
+        ):
+            if needle not in console:
+                raise AssertionError(
+                    f"firmware console missing {needle} ({what} did not pass), so "
+                    "CHK-RAND-REP has nothing to report"
+                )
         self.logger.info(
             "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
             cfg.seed,

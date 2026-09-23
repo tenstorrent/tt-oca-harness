@@ -26,6 +26,7 @@ vip/ocah_<proto>_vip/
   cocotb/          # all cocotb (Python) VIP code, incl. examples/
   uvm/             # SV-UVM agent collateral (where present)
   cov/             # framework-neutral SV coverage models (where present)
+  dv/              # wire-harness selftests, sim config, coverage policy (where present)
 ```
 
 `vip/ocah_lib/` is the shared framework library every bench class extends
@@ -112,10 +113,10 @@ condition under which a shared package is introduced.
 
 | Capability | Boundary |
 |------------|----------|
-| APB | No shared package: no DUT exposes an APB surface to a testbench. The APB master under `hw/ip/entropy_source/dv/tb_vcs/apb_vip/` belongs to that IP's standalone VCS bench, outside the native runner, and is not a shared package. A shared APB VIP is introduced only when a DUT regression gates real APB traffic. |
+| APB | No shared package: no DUT exposes an APB surface to a testbench. A shared APB VIP is introduced only when a DUT regression gates real APB traffic. |
 | I2C | No shared package: the SMC-local clock-sampled model (`hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py`) owns I2C/SMBus/PMBus traffic because `cocotbext-i2c` edge waits miss open-drain transitions under Verilator. A shared I2C VIP is introduced only when a second subsystem needs one and the open-drain timing fix is protocol-neutral. |
 | I3C SDR | No shared package: SMC gates on CSR decode plus a line-level pull-low check; the vendored I3C core is an RTL dependency only. A shared I3C VIP is introduced only with a reproducibly provisioned backend and a gating DUT smoke test. |
-| Entropy source/monitor | No shared package: SEP-local models drive `esrc_noise_ext_i` and check the ESRC-to-DRBG-to-EDN chain. A shared entropy VIP is introduced only when a second subsystem needs one and gates it with a real regression. |
+| Entropy source/monitor | No shared VIP package: entropy-source DV owns the noise, decorrelator, BIW, and SHA models under `hw/ip/entropy_source/dv/cocotb/models/`; SEP imports those models and keeps its ESRC-to-DRBG-to-EDN integration checks local. A shared entropy VIP is introduced only when a protocol-neutral driver or monitor has a second consumer and a gating regression. |
 | OCTS dual-chiplet sync | DUT-local: `hw/sys/smc/dv/cocotb/seq_lib/smc_octs_sync_bfm.py` drives and observes the PRIMARY/SECONDARY sync-load and credit pads for the SMC bench. A shared package is introduced only when a second subsystem drives OCTS pads. |
 | Memory-image helper | No shared package and no frozen image/preload format contract. |
 | True QSPI/OSPI multi-lane data | Out of scope for `ocah_spi_vip`: quad/octal personalities use single-bit data timing. |
@@ -174,6 +175,25 @@ be converted into checker PASS. Positive `CHK-*` text is auditable log evidence;
 passing `results.xml` and native schema-1 `result.json` remain authoritative for
 the runner.
 
+## Coverage Closure
+
+Coverage is measured where a simulator can measure it and recorded as checker
+evidence where it cannot; neither turns a failed transaction into PASS.
+
+| Realization | Metric | Record |
+|-------------|--------|--------|
+| SystemVerilog collateral (`interface/`, `sva/`, `cov/`) | Verilator line and branch coverage of the package's wire-harness selftests (`--dut ocah_<protocol>_vip --items all --cov`); SVA cover properties and `cov/` covergroups on a four-state simulator through the SV-UVM harness shape (`--framework uvm --tool vcs --cov`) | The package's `dv/cov/config/<tool>/coverage_policy.toml`: one threshold per metric family and one `[[holes]]` entry per uncovered point |
+| Python components (drivers, monitors, checkers, reference models) | No simulator metric | The `CHK-*` identifier matrix of the harness selftests and of the simulator-free selftests, with one must-fail path per rule |
+
+A policy file grades hit points over the points that remain after accepted
+waivers at 98 % or more per metric family, fails closed on an uncovered point
+that no entry classifies, and carries a raw threshold so the waived set cannot
+grow unnoticed. Every waiver names its category, rationale, owner, reviewer,
+and expiry; an expired waiver grades as open again, and a waiver that matches a
+covered point fails the run. A hole with reachable stimulus is covered by a
+selftest, never waived. Capabilities without a promoted shared package, and
+behavior a package lists as out of scope, earn no coverage or checker credit.
+
 ## Reference Model and Scoreboard Contract
 
 A scenario config may be the single source of truth for both stimulus and
@@ -229,7 +249,9 @@ python3 tools/dv/run_dv.py --doctor --dut dtp
 ```
 
 `OCAH_DV_SKIP_UV=1` skips the re-exec, for environments that already supply the
-`dv` dependency group.
+`dv` dependency group. The dependency pins with their licenses, the
+clean-environment qualification steps, and the supported Python and simulator
+matrix are in `docs/vip-deployment.adoc`.
 
 `--doctor --dut <name>` checks the shared package, required Python packages, the
 namespace bridge, one shared VIP import, and the selected DUT-local import. If an

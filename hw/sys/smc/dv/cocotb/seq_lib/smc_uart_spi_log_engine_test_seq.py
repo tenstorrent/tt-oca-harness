@@ -62,7 +62,7 @@ UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t",
 # So the level is stimulus this sequence establishes: pad 14 is driven from
 # the top-level ``tb_gpio_ext_drive_en`` / ``tb_gpio_ext_drive_value`` pins,
 # which are the highest-precedence entry in tb_top's pad-injection mux
-# (``tb_top.sv:716-721``, evaluated before the pullup and before every other
+# (``tb_top.sv:725-730``, evaluated before the pullup and before every other
 # injector) -- the same external pad-drive path the GPIO/I2C sequences use. No
 # force, no deposit, no hierarchical write.
 #

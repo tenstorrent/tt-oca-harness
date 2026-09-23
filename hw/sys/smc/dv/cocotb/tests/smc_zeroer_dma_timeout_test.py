@@ -20,7 +20,7 @@ from smc_base_test import smc_base_test
 # Composition (smc_zeroer_dma_timeout_test_seq, directed, no polling):
 #   6 output-fabric pass-all filter CSR writes
 # + ZEROER_CTRL_DEST_ADDR + ZEROER_CTRL_SIZE + ZEROER_CTRL_STATUS trigger
-# + 1 ZEROER_CTRL_STATUS readback (S4: armed INT_EN + deasserted busy status)
+# + 1 ZEROER_CTRL_STATUS readback (S4: armed INT_EN, STATUS masked)
 # + S5 busy-lifecycle control: ZEROER_CTRL_SIZE re-arm + ZEROER_CTRL_STATUS
 #   trigger + at least one busy poll read + at least one clear poll read. The
 #   two polls are bounded loops whose length is data-dependent, so only their
@@ -38,6 +38,7 @@ class smc_zeroer_dma_timeout_test(smc_base_test):
 
     required_evidence = (
         "CHK-NONVAC",
+        "CHK-ZEROER-CMD-READBACK",
         "CHK-ZEROER-CTRL-STATUS",
         "CHK-ZEROER-REGION-DECODE",
         "CHK-ZEROER-REGION-ZEROED",
@@ -45,7 +46,7 @@ class smc_zeroer_dma_timeout_test(smc_base_test):
         "CHK-ZEROER-STATUS-LIFECYCLE",
         "CHK-ZEROER-TRIGGER-STARTS",
     )
-    min_evidence = 7
+    min_evidence = 8
 
     auto_protocol_vip = False
 

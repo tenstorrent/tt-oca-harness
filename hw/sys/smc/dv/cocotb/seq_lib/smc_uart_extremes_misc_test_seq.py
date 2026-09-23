@@ -118,7 +118,7 @@ class smc_uart_extremes_misc_test_seq(SmcCsrSeq):
             lsr = await self.csr_read("POS_DR_WAIT", UART_LSR)
             if lsr & LSR_DR:
                 break
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         else:
             raise AssertionError(f"positive-control LSR.DR never set LSR=0x{lsr:08x}")
         cocotb.log.info("CHK-UART-EXT-DR-POS: LSR.DR asserted after loopback TX")
@@ -128,7 +128,7 @@ class smc_uart_extremes_misc_test_seq(SmcCsrSeq):
             if not (lsr & LSR_DR):
                 break
             await self.csr_read("POS_DRAIN_RBR", UART_RBR)
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         else:
             raise AssertionError(f"LSR.DR sticky after RBR drain LSR=0x{lsr:08x}")
 
@@ -137,7 +137,7 @@ class smc_uart_extremes_misc_test_seq(SmcCsrSeq):
             lsr = await self.csr_read(f"IDLE_LSR_{i}", UART_LSR)
             if lsr & _LSR_IDLE_CHECKED:
                 raise AssertionError(f"idle LSR.DR set LSR=0x{lsr:08x} iter={i}")
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         cocotb.log.info(
             "CHK-UART-EXT-IDLE: LSR.DR stayed 0 over the idle window after the "
             "DR+ drain; OE/PE/FE/BI are not claimed here (no control for them "

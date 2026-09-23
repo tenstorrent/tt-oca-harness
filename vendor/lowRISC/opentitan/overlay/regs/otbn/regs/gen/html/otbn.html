@@ -7,7 +7,7 @@
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: otbn</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
@@ -22,7 +22,7 @@
 <tr><td>0x24</td><td><a href="#INSN_CNT">INSN_CNT</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x28</td><td><a href="#LOAD_CHECKSUM">LOAD_CHECKSUM</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -78,7 +78,8 @@
 <tr><td>18</td><td>reg_intg_violation</td><td>RW</td><td>0x0</td><td>A `REG_INTG_VIOLATION` error was observed.</td></tr>
 <tr><td>17</td><td>dmem_intg_violation</td><td>RW</td><td>0x0</td><td>A `DMEM_INTG_VIOLATION` error was observed.</td></tr>
 <tr><td>16</td><td>imem_intg_violation</td><td>RW</td><td>0x0</td><td>A `IMEM_INTG_VIOLATION` error was observed.</td></tr>
-<tr><td>15:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>mai_software_error</td><td>RW</td><td>0x0</td><td>An `MAI_SOFTWARE_ERROR` error was observed.</td></tr>
 <tr><td>7</td><td>rnd_fips_chk_fail</td><td>RW</td><td>0x0</td><td>An `RND_FIPS_CHK_FAIL` error was observed.</td></tr>
 <tr><td>6</td><td>rnd_rep_chk_fail</td><td>RW</td><td>0x0</td><td>An `RND_REP_CHK_FAIL` error was observed.</td></tr>
 <tr><td>5</td><td>key_invalid</td><td>RW</td><td>0x0</td><td>A `KEY_INVALID` error was observed.</td></tr>

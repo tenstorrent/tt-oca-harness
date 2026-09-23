@@ -14,25 +14,26 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq(dtp_debug_tdr_base_test_seq):
 
     async def body(self) -> None:
         self.log_banner("TMP_STATUS BYPASS_ESCAPE")
+        await self.attach_family_checker(
+            {"CHK-TAP-RESET-TLR", "CHK-TMP-PERSIST", "CHK-TMP-ESCAPE", "CHK-BYPASS-DELAY"},
+            use_monitor=False,
+        )
 
         self.log_step(1, "Reset TAP and establish Persistence-On through CLAMP_HOLD")
-        await self.reset_tap()
+        await self.reset_to_tlr()
         await self.load_ir(DtpJtagInstr.CLAMP_HOLD)
-
-        held = await self.read_tmp_status()
-        decoded_held = self.log_tmp_status("After CLAMP_HOLD", held)
-        self.assert_equal("TMP_STATUS.persistence after CLAMP_HOLD", decoded_held["persistence"], 1)
+        held = await self.check_tmp_persistence("After CLAMP_HOLD", 1)
 
         self.log_step(2, "Arm BYPASS_ESCAPE and verify bit 0 is retained")
         await self.write_tmp_status(0x1)
         for idx, shift_value in enumerate([0x1, 0x3], start=1):
-            self.log_iteration(idx, 2, "Read armed TMP_STATUS with shift_value=0b%02b", shift_value)
-            armed = await self.read_tmp_status(shift_value=shift_value)
-            decoded_armed = self.log_tmp_status("Armed readback", armed)
-            self.assert_equal(
-                "TMP_STATUS.bypass_escape armed",
-                decoded_armed["bypass_escape"],
+            self.log_iteration(
+                idx, 2, "Read armed TMP_STATUS with shift_value=0b%s", format(shift_value, "02b")
+            )
+            await self.check_tmp_escape(
+                "Armed readback",
                 1,
+                shift_value=shift_value,
                 context=f"shift_value=0b{shift_value:02b}",
             )
 
@@ -43,13 +44,7 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq(dtp_debug_tdr_base_test_seq):
         await self.load_ir(DtpJtagInstr.BYPASS_3F)
 
         self.log_step(4, "Verify Persistence-Off after BYPASS escape")
-        released = await self.read_tmp_status()
-        decoded_released = self.log_tmp_status("After BYPASS escape", released)
-        self.assert_equal(
-            "TMP_STATUS.persistence after BYPASS escape",
-            decoded_released["persistence"],
-            0,
-        )
+        released = await self.check_tmp_persistence("After BYPASS escape", 0)
 
         self.log_step(5, "Check normal BYPASS scan routing after escape")
         # Seeded per-pass pattern: repeated loops shift different data through
@@ -62,3 +57,4 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq(dtp_debug_tdr_base_test_seq):
             released=f"0b{released:02b}",
             bypass_pattern=f"0x{bypass_pattern:04x}",
         )
+        await self.finalize_family_checker()

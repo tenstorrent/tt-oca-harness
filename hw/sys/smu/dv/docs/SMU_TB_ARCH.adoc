@@ -7,64 +7,43 @@
 === Overview
 
 The SMU open-source environment is a PyUVM-on-cocotb testbench driven by
-`tools/dv/run_dv.py`. Verilator is the functional backend; VCS and Xcelium run
-the same Python tests when commercial coverage is wanted. The bare `smu` DUT
-also carries a SystemVerilog UVM realization (`--framework uvm`, VCS) on the
-same `tb/tb_top.sv`; see <<sv-uvm-realization>>.
+`tools/dv/run_dv.py`. `hw/sys/smu/dv/README.md` owns which simulators run
+which groups and why; this chapter describes the bench.
 
-Two DUTs share this DV root:
+One DUT view lives in this DV root:
 
 [cols=",,",options="header",]
 |===
 |Launch name |HDL top |What it is for
-|`--dut smu_block` |`tb/tb_top.sv` (`smu_uvm_top`) |Bare `smu #(.SEP(0))` with its
-technology interfaces tied off. Holds the leaves the wrapper cannot express
-(`testlists/all.toml`), plus the SV-UVM view whose harness is this TB's `UVM`
-shape
 |`--dut smu` (alias `smu_wrapper`) |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
-`hw/top/smu_wrapper.sv` with production pins, in a `no_sep` and a `sep_rtl`
-compile profile. The SMU regression: `sep0_all` and `all`
+`hw/top/smu_wrapper.sv` with production pins, in one compile profile,
+`compile_smu_chiplet` (SEP=1). The SMU regression (`testlists/all.toml`)
 |===
 
-The two are separate evidence surfaces. Logs carry `DUT_TAG=BARE`
-or `DUT_TAG=WRAPPER`, and a wrapper PASS is not merged into bare `sep0_all`
-evidence.
+Logs carry `DUT_TAG=WRAPPER`. The SEP=0 composition (`smu #(.SEP(0))`) is
+not elaborated by this package; `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`
+holds the names that need it.
 
 === Directory Structure
 
-....
-hw/sys/smu/dv/
-├── common/{smu_dv_env,seq_lib}/  # PyUVM env and sequence library, shared by both DUTs
-├── cocotb/tests/                 # --dut smu_block test bodies and base test
-├── cocotb_wrapper/{env,tests}/   # --dut smu env additions and test bodies
-├── cov/                          # coverage scope, policy and cov/sv cover-property modules
-├── assets/                       # eFuse-shadow preload images (lifecycle states)
-├── docs/                         # this chapter set
-├── fw/                           # firmware images built for the dual-FW tests
-├── tb/                           # tb_top.sv (cocotb + UVM shapes), smu_tb_signal_list.svh,
-│                                 # smu_tb_if.sv, tb_wrapper_top.sv, public scopes
-├── uvm/{env,seq_lib,tests}/      # SV-UVM env / seq_lib / tests (--framework uvm)
-├── testlists/                    # wrapper.toml (--dut smu); all.toml + dtp.toml (--dut smu_block)
-├── tools/                        # wrapper readiness gates
-├── smu_block_sim_cfg.toml        # --dut smu_block: [frameworks.cocotb] + [frameworks.uvm]
-└── smu_sim_cfg.toml              # --dut smu
-....
+`hw/sys/smu/dv/README.md` owns the layout: its table lists every directory
+and top-level file under `dv/` and says why each of the additions to the
+shared DV directory set is held here. This chapter names paths only where it
+describes the component behind them.
 
 === Environment Components
 
-`SmuEnv` (`common/smu_dv_env/smu_env.py`) builds the
+`SmuEnv` (`cocotb/env/smu_env.py`) builds the
 scoreboard and reads `SmuEnvCfg` out of the PyUVM `ConfigDB`; the JTAG and AXI
 agents are created on demand by the sequences that need them, against
 `cocotb.top`, rather than being instantiated for every test. The one agent that
 exists from time zero is the responder of the outbound SMN AXI4 boundary:
-`tb_top.sv` keeps the crossbar's `ext_out` request/response structs and places
-them on the `ocah_axi_if` instance `u_axi_out_if` through
+`tb_wrapper_top.sv` places the `ext_out` request/response structs, behind its
+`axi_cut`, on the `ocah_axi_if` instance `u_axi_out_if` through
 `ocah_axi_struct_bridge`; `smu_base_test.bring_up` binds the shared
 `OcahAxiSlaveAgent` to that instance before the clocks start and publishes its
 slave sequence as `SmuEnvCfg.axi_out_mem` (backdoor reads and writes of what
-the SMU wrote out, one-shot SLVERR/DECERR injection, bounded READY stalls). The
-wrapper bench (`tb_wrapper_top.sv`) answers the same boundary the same way
-behind its `axi_cut`, on the wrapper `SmuEnvCfg.axi_out_mem`.
+the SMU wrote out, one-shot SLVERR/DECERR injection, bounded READY stalls).
 
 [cols=",",options="header",]
 |===
@@ -96,9 +75,15 @@ of every run.
 
 === Stimulus Strategy
 
-Sequences drive the DUT through its real pins and buses. No enrolled test uses
-Force or deposit: a scenario that needs one is not reportable as PASS and is
-classified OUT in `SMU_DEFERRED_DISPOSITION.adoc`.
+Sequences drive the DUT through its real pins and buses. One enrolled force
+exists, `+esrc_noise_force` on the twelve ESRC raw-noise lanes of three
+SEP=1 leaves; it and every other stand-in on a proof path (the fuse-sense
+skip, the `abr_reg.sv` waiver, the scan-chain loopbacks, the `prim_sync`
+stand-ins, the eFuse models) have a six-field entry in the *Bench stand-ins
+and exceptions* section of
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`. A scenario that needs a
+force or deposit outside that record is not reportable as PASS and is
+classified OUT in the same document.
 
 [[smu-checking-strategy]]
 === Checking Strategy
@@ -108,17 +93,26 @@ them:
 
 . *No vacuous PASS.* `check_phase` raises if zero checks executed. A test that
   drives stimulus but never compares anything fails.
-. *No invented checkboxes.* `prove_mapped_features()` runs after the scenario
-  and requires that every TOKEN mapped to this testcase in
-  `smu_evidence_map.py` was logged by an `expect_*` call that passed. Tokens
-  cannot be claimed after seeing a green path. A testcase with no mapped rows
-  must be declared in `UNMAPPED_TESTS`; an undeclared one fails here. What this
-  does *not* establish is the EXPECT column: it is free-text contract wording,
-  nothing compares an observed value against it, and the per-row
-  `EVIDENCE TOKEN SEEN` line says only that the token was carried by a passing
-  check. Each row prints its binding -- `evidence-arg` when a caller named the
-  token outright, `check-name-substring` when the token was matched against the
-  check's name -- and the rows in the second class are collected into an
+. *No invented checkboxes.* The base test
+  (`cocotb_wrapper/tests/smu_base_test.py`)
+  calls `bind_testcase` before bring-up and `prove_mapped_features()` after
+  the scenario for every leaf that builds an `SmuScoreboard`
+  (`use_shared_env`). The call requires that every TOKEN mapped to the
+  testcase in `smu_evidence_map.py` was logged by an `expect_*` call that
+  passed; tokens cannot be claimed after seeing a green path. A
+  scoreboard-bearing testcase with no mapped rows must be declared in
+  `UNMAPPED_TESTS` with the reason, and the gate logs the declaration instead
+  of failing; an undeclared row-less testcase fails here. A leaf that builds
+  no `SmuScoreboard` -- the firmware terminal-loop leaves, the two smokes, the
+  elaboration leaves -- is not gated: the base test logs one
+  `EVIDENCE MAP GATE SKIPPED` line naming it, and its verdict is the
+  sequence's own raise or its own scoreboard. What this does *not* establish is
+  the EXPECT column: it is free-text contract wording, nothing compares an
+  observed value against it, and the per-row `EVIDENCE TOKEN SEEN` line says
+  only that the token was carried by a passing check. Each row prints its
+  binding -- `evidence-arg` when a caller named the token outright,
+  `check-name-substring` when the token was matched against the check's name
+  -- and the rows in the second class are collected into an
   `EVIDENCE BINDING WEAK` warning.
 . *Traceable evidence.* Each satisfied check logs `EVIDENCE: <TOKEN>`, and the
   run ends with an `EVIDENCE_SUMMARY` line. `CHK-NONVAC` is emitted by
@@ -128,30 +122,10 @@ them:
 `expect_eq` and `expect_true` are the only two check primitives; both take an
 optional `evidence=` argument naming the TOKEN they prove.
 
-The SV-UVM realization checks through the mandatory two-stream scoreboard of
-the shared framework (`ocah_scoreboard`): each feature pairs a VIP monitor
-stream with the `expected_ap` of that feature's reference model.
-
-[cols=",,",options="header",]
-|===
-|Feature (SV-UVM) |Reference model -> scoreboard |What is compared
-|`ir_decode` |`dtp_ir_decode_ref_model` (JTAG event + IR-scan streams) -> `dtp_scoreboard` inside `smu_scoreboard` |The DTP one-hot decoded instruction (`dtp_tb_if.inst_decoded`) after every plain IR load
-|`idcode` |`dtp_idcode_ref_model` (scan + event streams; expected IDCODE from `smu_pkg`) -> same |The 32-bit TDO of every DR scan under IDCODE
-|`bypass` |`dtp_bypass_ref_model` (scan + event streams) -> same |TDI delayed one TCK for every DR scan under a bypass-class instruction
-|TAP FSM invariant |`dtp_tap_fsm_checker` subscriber on the JTAG event stream |Every TCK step against the IEEE 1149.1 next-state model (`CHK-TAP-STATE`)
-|Scenario evidence |`smu_base_test_seq` over `ocah_checker` |Named `CHK-*` lines with required IDs per scenario, finalized once per pass (`CHECKER_SUMMARY name=smu_scenario`)
-|PTAP protocol |`ocah_jtag_sva` in the harness |JTAG pin and state rules, gated by `smu_tb_if.jtag_sva_en`
-|===
-
-SMU integrates DTP, so the embedded-IP features are judged by the DTP bench's
-own components, reused unchanged; a required feature with zero comparisons
-fails the run. `+SMU_PTAP_IDCODE_NEGATIVE` arms a wrong expected IDCODE in the
-reference model and in the scenario evidence, so the run must FAIL.
-
 [[sep-processor-state-monitor]]
 === SEP Processor-State Monitoring (wrapper)
 
-The `sep_rtl` wrapper profile boots real SEP firmware, so every wrapper test
+The wrapper's firmware leaves boot real SEP images, so every wrapper test
 builds `cocotb_wrapper/env/smu_sep_cpu_trace_monitor.py`, a passive
 `uvm_component` that self-idles unless `+sep_itcm_hex` names a SEP image. It is
 the wrapper realization of the SEP bench's `env/sep_cpu_trace_monitor.py` and
@@ -209,11 +183,11 @@ passing run logs the same summary at info level in `report_phase`.
 
 === Coverage Strategy
 
-Verilator does not support SystemVerilog covergroups, so scenario-intent
-coverage is collected Python-side: `smu_fcov.py` maps each testcase to the bins
-its scenario is meant to reach, and `run_phase` hits them before the scoreboard
-checks. RTL code coverage comes from the commercial simulators over the same
-tests.
+`SMU_FCOV.adoc` owns coverage intent: the metric choice, the `cov/sv`
+cover-property modules, and what the plan may claim from a database. Verilator
+does not compile SystemVerilog covergroups, so `smu_fcov.py` records
+scenario intent Python-side -- `run_phase` marks the bins a testcase claims
+before the scoreboard checks -- and that table is not coverage.
 
 === Open-Source BFM Policy
 
@@ -227,131 +201,33 @@ inbound pins
 |SMC OTP AXI-Lite over JTAG2AXI |`ocah_axi_vip` AXI-Lite wrappers
 |SMC scratch / mailbox |Backdoor read plus cocotb polling
 |Cross-trigger / iJTAG |product-pin stimulus from the sequences; no dedicated VIP
+|SMC and SEP eFuse / OTP |`efuse_interface_shim` + `efuse_bank_model`, instantiated by
+`hw/top/smc_ip_integration.sv` and `hw/top/sep_ip_integration.sv` inside the DUT
+compile (a model in the product composition, not a testbench component). Shadow
+registers are preloaded under `+skip_fuse_sense`
+|BSR / STAP / DFD host scan chains |testbench loopback of `scan_out` to `scan_in`
+(`tb/tb_wrapper_top.sv`, all five host chains and the I/O and extra STAP TDO-to-TDI returns)
+|CDC synchronisers on Verilator |`prim_sync2` / `prim_sync3` stand-ins from
+`hw/sys/smc/dv/tb/verilator_stubs/`, listed in `[build].stubs`
 |===
+
+The last three rows are stand-ins on a proof path; their scope and approval
+fields are the *Bench stand-ins and exceptions* entries in
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
 
 === Testlists
 
-`testlists/*.toml` hold the leaf entries — one `[[tests]]` table per test, with
-its module, tags and timeout. `testlists/wrapper.toml` holds the `--dut smu`
-leaves and `[[groups]]`; `testlists/all.toml` holds the `--dut smu_block` groups
-and includes `dtp.toml`. A test is selectable by its own name or by any group it
-belongs to.
+`testlists/all.toml` holds the leaf entries — one `[[tests]]` table per test,
+with its module, tags and timeout — and is the one root `smu_sim_cfg.toml`
+selects; the groups it declares, and what each group is for, are the
+*Regression Groups* section of `SMU_VPLAN.adoc`. A test is selectable by its
+own name or by any group it belongs to.
 
-Names classified OUT are catalogued in `SMU_DEFERRED_DISPOSITION.adoc`; none of
-them is enrolled and none is reportable as a PASS.
+Names classified deferred or OUT are catalogued in
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`; none of them is enrolled and
+none is reportable as a PASS.
 
 === Build and Run
 
-`run_dv.py` bootstraps its own locked `uv` environment, so there is nothing to
-install or source beyond a simulator on `PATH`.
-
-[source,bash]
-----
-python3 tools/dv/run_dv.py --validate-configs
-python3 tools/dv/run_dv.py --dut smu --list
-python3 tools/dv/run_dv.py --dut smu --items smoke
-python3 tools/dv/run_dv.py --dut smu --items sep0_all
-python3 tools/dv/run_dv.py --dut smu --items smu_smc_smoke_test --seed 1
-----
-
-`--seed` applies to a single item; a multi-item regression picks its own seeds
-and reports them per test. Results land under
-`build/runs/<timestamp>__<tool>__<label>/` with a per-test `result.json` and
-`results.xml`.
-
-[source,bash]
-----
-# SV-UVM view (VCS): build, the bound scenario, the UVM-implemented smoke subset
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
-----
-
-The wrapper DUT additionally builds firmware images through
-`fw/build_firmware.py` into `build/firmware/`, declared per test as
-`[c_build.*].outputs` and staged into each per-test run directory.
-
-[source,bash]
-----
-python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
-python3 tools/dv/run_dv.py --dut smu --items smoke \
-  --stage flist --stage c_compile --stage hdl_compile --stage sim
-----
-
-[[sv-uvm-realization]]
-=== SystemVerilog UVM Realization (`--framework uvm`)
-
-The SV-UVM realization runs through the same native runner: `smu_block_sim_cfg.toml`
-declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
-testlist; `build/uvm_block/` build tree), and `--dut smu_block --framework uvm` selects it
-on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
-bind both realizations in their testlist `module` map
-(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
-entry error when selected under the UVM view, and `--skip-unimplemented` runs
-a group's UVM-implemented subset. The conventions this realization follows
-are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
-DTP and SMC benches are the reference implementations.
-
-There is exactly ONE testbench top module: `smu_uvm_top` in `tb/tb_top.sv`,
-shared between both realizations. The bare `+define+UVM` (set by the native
-profile's `[frameworks.uvm]` overlay) switches its shape: without it the
-module exposes the pin-level ANSI port list cocotb drives; with it the same
-signals, declared once in `tb/smu_tb_signal_list.svh`, become internal TB
-signals and the harness block at the end of the module takes over: the three
-clocks with periods from `smu_tb_if`, the shared `ocah_jtag_if` on the primary
-TAP pins, the SMU-local `smu_tb_if`, a `dtp_tb_if` instance wired to the
-embedded DTP (one-hot TAP state, decoded instruction, and the DTP's system and
-power-on reset assertion counters observed on the DTP instance pins), the JTAG
-protocol SVA, quiescent tie-offs at the idle values `smu_base_test.bring_up`
-uses, `uvm_config_db` publication of the four virtual interfaces (the outbound
-`ocah_axi_if` instance is shared by both shapes and published as
-`axi_out_vif`), and `run_test()`.
-
-.SV-UVM component tree (`uvm/`)
-....
-smu_dtp_jtag_smoke_test (tests/) extends smu_base_test extends ocah_test
-  build:  smu_test_cfg (seeded clock/TCK periods, settle, knobs, required
-          features, JTAG evidence policy) -> smu_env_cfg -> smu_env
-  run:    bring_up() ladder through smu_tb_if, then 16+ seeded passes of
-          smu_dtp_jtag_smoke_test_seq on smu_env.m_vseqr
-
-smu_env (env/) extends ocah_env
-  ocah_jtag_master_env        active JTAG agent on ocah_jtag_if (jtag_vif)
-  ocah_axi_slave_agent        memory-backed responder of the outbound SMN
-                              boundary on ocah_axi_if (axi_out_vif)
-  ocah_jtag_scan_builder      IR/DR scan reconstruction on the event stream
-  ocah_jtag_checker           env-owned aggregate evidence (CHK-TAP-*)
-  dtp_ir_decode_ref_model     embedded DTP: the DTP bench's reference models
-  dtp_idcode_ref_model        (expected IDCODE from smu_pkg::DefaultCfg)
-  dtp_bypass_ref_model
-  dtp_tap_fsm_checker         embedded DTP: the DTP bench's invariant checker
-  smu_scoreboard              always on; SoC verdict point:
-    dtp_scoreboard              the DTP bench's scoreboard, reused as a child
-                                (ir_decode, idcode, bypass pairing)
-  smu_virtual_sequencer       m_jtag_seqr, m_axi_out_slave_seq
-
-smu_seq_lib_pkg (seq_lib/)
-  smu_jtag_op_seq             base of the operations (tracked TAP state)
-  smu_jtag_{tap_reset,tms_walk,goto_state,ir_scan,dr_scan}_seq
-  smu_base_test_seq           TAP-state checks, bounded waits, TRST/POR
-                              controls, named evidence
-  smu_dtp_jtag_smoke_test_seq S1 setup, S2 IDCODE, S3 BYPASS, S4 TRST+POR,
-                              S5 bounded-wait inventory and NONVAC fence
-....
-
-SMU is a system that integrates IPs and subsystems, so its environment
-reuses the instantiated IP's DV components rather than re-deriving them: the
-embedded DTP is checked by the DTP bench's reference models, TAP FSM checker,
-and scoreboard (`hw/sys/dtp/dv/uvm/env`, compiled into the SMU view through
-`dtp_env_pkg`), reading the DTP observables through the same `dtp_tb_if` the
-DTP bench uses. `smu_scoreboard` is the one verdict point: it owns the
-embedded-IP scoreboards as children and registers SMU-level integration
-features itself. The same pattern applies to the embedded SMC (its bench's
-reference models and `smc_scoreboard`) for an SMC-side UVM scenario.
-
-The bring-up ladder is the cocotb one, in ref-clock cycles of the seeded
-period: power-good after `powergood_delay_cycles`, cold-reset release after
-`cold_release_delay_cycles`, the seeded settle, then bounded polls of the
-cold-stable and primary reset releases. A scenario that drops power-good
-(the smoke's POR path) restores the same released-reset baseline before its
-pass ends, so every pass of the 16-pass floor starts from a live DUT.
+`hw/sys/smu/dv/README.md` owns the build and run recipes, the tool versions and
+where a run's results land.

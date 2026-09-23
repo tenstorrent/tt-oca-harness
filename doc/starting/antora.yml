@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 name: ocah-starting
-title: Open Chiplet Atlas Harness (OCAH) Getting Started and Contributing Guide
+title: Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide
 version: latest
 start_page: index.adoc
 nav:

@@ -38,12 +38,14 @@ common_bender_targets = [
 # DUT and simulation targets.
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/common/assert"]
-# Shared TB interfaces, the shared protocol SVA checkers, and the flow-shared
-# functional-coverage modules (cov/sv/): this list feeds the cocotb/Verilator
-# filelist; the [frameworks.uvm.build] sources list (which replaces this one)
-# takes the VIP interfaces and checkers from the VIP manifests and repeats the
-# DTP entries.
+# The bench configuration package, the shared TB interfaces, the shared
+# protocol SVA checkers, and the flow-shared functional-coverage modules
+# (cov/sv/): this list feeds the cocotb/Verilator filelist; the
+# [frameworks.uvm.build] sources list (which replaces this one) takes the VIP
+# interfaces and checkers from the VIP manifests and repeats the DTP entries.
 sources = [
+  "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
+  "hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv",
   "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
@@ -64,6 +66,13 @@ python_root = "hw/sys/dtp/dv/cocotb"
 test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
+  # Generated SystemRDL Python headers of the cross-trigger IP: the bench
+  # configuration in cocotb/env/dtp_dv_cfg.py reads the port counts from the
+  # network map, and the XTRIG CSR map in cocotb/env/dtp_xtrig_types.py its
+  # windows, offsets, and field masks.
+  "hw/ip/cross_trigger/cross_trigger_network/regs/gen/py",
+  "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/py",
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/py",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
@@ -131,12 +140,40 @@ flags = [
 # several hundred MB that a hosted runner cannot compile.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
+[coverage.vcs]
+# Restates the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
+# the inherited list, then scopes and tunes the compile; the per-leaf dump stays
+# the inherited `[vcs.coverage_defaults].sim_args`. `cov/config/vcs/dtp_cov_scope.hier`
+# states what each number covers; `cov/config/vcs/coverage_policy.toml` carries
+# the thresholds the report is graded against.
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  # Continuous assignments count as lines.
+  "-cm_line",
+  "contassign",
+  # Nets a constant drives, directly or through sequential logic, leave the
+  # toggle denominator: capability, IDCODE and parameter-derived fields never
+  # toggle.
+  "-cm_noconst",
+  "-cm_seqnoconst",
+  # `-cm_hier` governs line/cond/fsm/tgl/branch; `-cm_common_hier` extends the
+  # same file to assertion coverage, whose `begin assert` section admits the
+  # coverage modules and the protocol checkers, and needs `-lca`.
+  "-cm_hier",
+  "{repo_root}/hw/sys/dtp/dv/cov/config/vcs/dtp_cov_scope.hier",
+  "-lca",
+  "-cm_common_hier",
+]
+
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
 # for both frameworks: +define+UVM (below) adds the harness block of tb/tb_top.sv (clock
 # generator, uvm_config_db publication, run_test()), which `include`s uvm/tests/dtp_tests.sv.
 [frameworks.uvm]
-description = "DTP SV-UVM smoke flow (VCS)"
+description = "DTP SV-UVM flow (VCS)"
 
 [frameworks.uvm.build]
 # The shared framework library and the VIP SV-UVM layers come from their owned ordered
@@ -146,7 +183,8 @@ description = "DTP SV-UVM smoke flow (VCS)"
 # visible), then `top_file` last:
 #   ocah_lib manifest -> ocah_jtag_vip manifest -> ocah_axi_vip manifest
 #   (each: evidence base -> interface -> collateral -> UVM pkg)
-#   -> dtp_tb_if, dtp_scan_if, dtp_xtrig_if -> generated CSR address maps -> dtp_env_pkg
+#   -> dtp_dv_cfg_pkg -> dtp_tb_if, dtp_scan_if, dtp_xtrig_if -> generated CSR address maps
+#   -> dtp_env_pkg
 #   -> dtp_seq_lib_pkg -> tb_top.sv
 # dtp_env_pkg compiles before dtp_seq_lib_pkg: the scenario virtual sequences run on the
 # dtp_virtual_sequencer the env package declares.
@@ -160,11 +198,17 @@ bender_filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_bender.f"
 work_dir = "hw/sys/dtp/dv/build/uvm"
 incdirs = [
   "hw/common/assert",
+  # Generated SystemRDL SystemVerilog headers of the cross-trigger IP: field masks
+  # for the XTRIG CSR constants in uvm/env/dtp_types.svh.
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/svh",
+  "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/svh",
   "hw/sys/dtp/dv/uvm/env",
   "hw/sys/dtp/dv/uvm/seq_lib",
   "hw/sys/dtp/dv/uvm/tests",
 ]
 sources = [
+  "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
+  "hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",

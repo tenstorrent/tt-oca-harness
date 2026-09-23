@@ -60,6 +60,29 @@ class SmcCsrSeq(smc_base_test_seq):
         await self.finish_item(item)
         self.accesses += 1
 
+    async def rw_coresident(
+        self,
+        entries: list[tuple[str, int, int, int]],
+        length: int = 4,
+    ) -> None:
+        """Write every ``(label, addr, pattern, restore)`` first, then read all back.
+
+        The patterns and the addresses must be pairwise distinct: with the
+        writes batched, a decode that collapses two of the addresses onto one
+        register holds the last pattern written and the first readback fails.
+        Every address is then restored and the restore read back exactly.
+        """
+        assert len({e[1] for e in entries}) == len(entries), "co-resident addresses not distinct"
+        assert len({e[2] for e in entries}) == len(entries), "co-resident patterns not distinct"
+        for label, addr, pattern, _restore in entries:
+            await self.csr_write(f"{label}_PATTERN", addr, pattern, length=length)
+        for label, addr, pattern, _restore in entries:
+            await self.csr_read(f"{label}_PATTERN_RB", addr, expected=pattern, length=length)
+        for label, addr, _pattern, restore in entries:
+            await self.csr_write(f"{label}_RESTORE", addr, restore, length=length)
+        for label, addr, _pattern, restore in entries:
+            await self.csr_read(f"{label}_RESTORE_RB", addr, expected=restore, length=length)
+
     async def csr_read_many(self, regs: list[tuple[str, int, int | None]]) -> None:
         for name, addr, expected in regs:
             await self.csr_read(name, addr, expected)
@@ -127,10 +150,9 @@ class SmcCsrSeq(smc_base_test_seq):
 
         The zero is a DV-owned expectation, not a document-cited value: an
         error response carries no payload, so a terminator that hands back a
-        neighbouring register's contents or a stale bus word fails here. Three
+        neighbouring register's contents or a stale bus word fails here. Two
         sequences call it: ``smc_gpio_ctrl_full_sweep_test_seq`` (the external
-        GPIO_CTRL windows) and ``smc_pvt_analog_sensor_test_seq`` (the POC/PBIAS
-        windows) rely on this DV-owned zero alone;
+        GPIO_CTRL windows) relies on this DV-owned zero alone;
         ``smc_sideband_protocol_smoke_test_seq`` reads AVS_READBACK on an empty
         FIFO, where memmap.adoc does fix the zero, and cites it at the call."""
         mask = (1 << (length * 8)) - 1
@@ -151,10 +173,6 @@ class SmcCsrSeq(smc_base_test_seq):
         got = item.rdata & mask
         assert got == 0, f"{name} @ 0x{addr:08x}: expected rdata=0, got 0x{got:0{length * 2}x}"
         return item.rdata
-
-    async def csr_read_many_decerr_zero(self, regs: list[tuple[str, int, int | None]]) -> None:
-        for name, addr, _expected in regs:
-            await self.csr_read_decerr_zero(name, addr)
 
     async def csr_read_expect_error(self, name: str, addr: int, length: int = 4) -> int:
         """Read a window that deterministically returns an AXI error response
@@ -253,7 +271,7 @@ class SmcCsrSeq(smc_base_test_seq):
 
     # Bound for the OVRD-write -> open-drain pad settle. The path is
     # CSR write ack (clk_smc) -> i2c_wrap OVRD -> GPIO pad mux -> the tb_top
-    # open-drain resolver (tb_top.sv:635-638), i.e. a handful of clk_smc cycles
+    # open-drain resolver (tb_top.sv:644-647), i.e. a handful of clk_smc cycles
     # plus the AXI-Lite write completion the caller already awaited. The bound is
     # generous so a slow build cannot flake; expiry is a FAILURE, never a pass
     # ([TIMEOUT-MUST-FAIL]).

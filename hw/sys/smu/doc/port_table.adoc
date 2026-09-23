@@ -9,7 +9,7 @@
 
 |`clk_smu_i` |`logic` |Input |1 |Primary SMU clock domain. Shared by SMC and DTP system logic. |PLL output |N/A
 |`clk_ref_i` |`logic` |Input |1 |Reference clock domain for timing-sensitive operations. |PLL reference clock |N/A
-|`rst_cold_ni` |`logic` |Input |1 |Cold reset (active low). Asynchronous assertion, synchronous deassertion. Also serves as DTP power-on reset. |System cold reset |N/A
+|`rst_cold_ni` |`logic` |Input |1 |Cold reset (active low). Assertion and deassertion are synchronous to `clk_ref_i` and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling `powergood_i` asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles. |System cold reset |N/A
 |`rst_cold_stable_ref_clk_no` |`logic` |Output |1 |Stable cold reset synchronized to reference clock domain (active low). |Downstream subsystems |N/A
 |`powergood_i` |`logic` |Input |1 |Power-good indication from supply supervisor. |Power supply supervisor |N/A
 
@@ -55,11 +55,11 @@
 
 |`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External JTAG IC_RESET override slice. Integrator-defined packed struct with `.ovrd` override enables and `.val` active-low override values. Driven by the DTP's `jtag_ic_reset_ext_o` when `Cfg.JTAG_IC_RESET_ENABLE=1`, otherwise tied to '0. An integrator needing JTAG reset overrides for logic outside the SMU sets `ic_reset_ext_t` to their own override struct and routes this port to it; the SMU does not define that type. |Integrator-defined reset overrides |N/A
 
-|`xtrig_ctm_src_req_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests (SMU external ports [7:0]; DTP [1:0] reserved for SMC). |Cross trigger network |N/A
+|`xtrig_ctm_src_req_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests. The SMU exposes DTP lanes above the SMC reservation (`smu_pkg::XTRIG_SMC_INT_CT_LANES`). |Cross trigger network |N/A
 |`xtrig_ctm_src_ack_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |Tie to '0 in pulse-sync mode
-|`xtrig_ctm_dst_req_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests. |Cross trigger network |Tie to '0 if unused
+|`xtrig_ctm_dst_req_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests. The SMU exposes DTP lanes above the SMC reservation. |Cross trigger network |Tie to '0 if unused
 |`xtrig_ctm_dst_ack_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode. |Cross trigger network |N/A
-|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests (SMU external ports [7:0]; port [0] reserved for SMC internally). |Clock stop requesters |Tie to '0 if unused
+|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests. The SMU exposes DTP lanes above the SMC reservation (`smu_pkg::XTRIG_SMC_CLK_STOP_LANES`). |Clock stop requesters |Tie to '0 if unused
 
 |`xtrig_ctp_req_out_dout_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output. |GPIO pad ring |N/A
 |`xtrig_ctp_req_out_dout_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output enable. |GPIO pad ring |N/A
@@ -131,8 +131,8 @@
 |`lc_state_o` |`logic` |Output |`[2*LC_STATE_WIDTH-1:0]` |Lifecycle state output (driven by SEP when `SEP=1`, else `8'hf0`). |External systems |N/A
 |`lc_sigint_err_o` |`logic` |Output |1 |Lifecycle signal integrity error. |External systems |N/A
 
-|`smc_ndmreset_request_i` |`logic` |Input |`[CPU_CLUSTER_COUNT-1:0]` |Non-debug-module reset requests. |Debug infrastructure |Tie to '0 if unused
-|`smc_ndmreset_process_o` |`logic` |Output |`[CPU_CLUSTER_COUNT-1:0]` |Non-debug-module reset process indicators. |Debug infrastructure |N/A
+|`smc_ndmreset_request_i` |`logic` |Input |`[CPU_CLUSTER_COUNT-1:0]` |NDM reset request from external CPU cluster `i` on bit `i`. |External CPU clusters |Tie to '0 if unused
+|`smc_ndmreset_process_o` |`logic` |Output |`[CPU_CLUSTER_COUNT-1:0]` |Firmware response to external CPU cluster `i` on bit `i`. |SMC → external CPU clusters |N/A
 
 |`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NUM_MAILBOXES-1:0]` |External mailbox interrupt outputs. |External targets |N/A
 

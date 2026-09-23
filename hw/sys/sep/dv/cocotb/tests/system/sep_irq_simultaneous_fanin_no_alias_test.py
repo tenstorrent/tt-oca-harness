@@ -7,9 +7,10 @@ KMAC done, CSRNG cmd_req_done, EDN cmd_req_done -> sep_internal_interrupts bits
 17/20/23/27, per hw/sys/sep/doc/interrupts.adoc) via each IP's real INTR_TEST
 register, then reads the aggregate vector (tb_top sep_internal_interrupts_probe_o,
 the observation-only mirror) and proves the OR-packing assembled EXACTLY those bits
--- a 1:1 source->bit map with NO non-driven neighbor in [8:33] aliasing, and no
-unresolved bit in that region. A packing that truncates a multi-bit source or
-aliases a neighbour is the defect class this leaf targets in the crypto/KM region.
+-- a 1:1 source->bit map with no non-driven neighbor in [8:33] aliasing.
+X/Z resolution of that region is graded only on a four-state simulator. A packing
+that truncates a multi-bit source or aliases a neighbour is the defect class this
+leaf targets in the crypto/KM region.
 
 reference ref: sep_irq_extended_connectivity_test.
 The reference suite asserts connectivity one source at a time; this
@@ -69,21 +70,11 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
         """
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
-        bits = str(cocotb.top.sep_internal_interrupts_probe_o.value)  # MSB first
-        region = 0
-        bad = []
-        for i in range(REGION_LO, REGION_HI + 1):
-            ch = bits[len(bits) - 1 - i].lower()
-            if ch == "1":
-                region |= 1 << i
-            elif ch != "0":
-                bad.append(i)
-        if bad:
-            raise AssertionError(
-                f"[{where}] sep_internal_interrupts bits {bad} are X/Z inside "
-                f"[{REGION_LO}:{REGION_HI}] (aggregator leg not driven)"
-            )
-        return region
+        try:
+            vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, REGION_MASK)
+        except AssertionError as exc:
+            raise AssertionError(f"[{where}] aggregator leg not driven: {exc}") from exc
+        return vec & REGION_MASK
 
     async def _poll_region(self, expect_bits: int, *, timeout: int = 400) -> tuple[bool, int]:
         """Poll until the [8:33] region of the aggregate equals exactly expect_bits."""
@@ -169,13 +160,23 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             f"raw [{REGION_LO}:{REGION_HI}]=0x{raw_region:010x}, expected "
             f"0x{want & REGION_MASK:010x} -- a non-driven bit is aliasing"
         )
-        self.logger.info(
-            "CHK-ANTI-ALIAS PASS: [%d:%d] fully resolved (no floating leg) and "
-            "equal to the driven set 0x%010x",
-            REGION_LO,
-            REGION_HI,
-            raw_region,
-        )
+        four_state = cocotb.SIM_NAME.lower() not in ("verilator",)
+        if four_state:
+            self.logger.info(
+                "CHK-ANTI-ALIAS PASS: [%d:%d] fully resolved (no floating leg) and "
+                "equal to the driven set 0x%010x",
+                REGION_LO,
+                REGION_HI,
+                raw_region,
+            )
+        else:
+            self.logger.info(
+                "CHK-ANTI-ALIAS PASS: [%d:%d] equals the driven set 0x%010x "
+                "(X/Z resolution claimed only on a four-state simulator)",
+                REGION_LO,
+                REGION_HI,
+                raw_region,
+            )
 
         # CHK-CLEAR: W1C every driven source's INTR_STATE -> the region returns to 0
         # and each IP's INTR_STATE bit reads 0 (RW1C deassert path).
@@ -183,6 +184,11 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             await self._drive(src, on=False)
         ok, vec = await self._poll_region(0)
         assert ok, f"[8:33] not clear after W1C (vec=0x{vec:010x})"
+        # The poll reads through self.rd(), so "clear" there also covers "X". This
+        # leg's passing branch is zero, so re-sample raw and require the region to
+        # be resolved -- a leg that stopped being driven must not read as cleared.
+        cleared = await self._assert_region_resolved("after W1C")
+        assert cleared == 0, f"[8:33] resolved to 0x{cleared:010x} after W1C, expected 0"
         for src in sources:
             assert await self.irq.read_state_bit(src) == 0, (
                 f"{src.name}: INTR_STATE bit not cleared by W1C"

@@ -6,13 +6,11 @@
 //
 //--------------------------------------------------
 module prim_clock_nand2 (
-  input  i_A1,
-  input  i_A2,
-  output o_Y
+  input  a1_i,
+  input  a2_i,
+  output y_o
 );
 
-  assign o_Y = ~(i_A2 & i_A1);
+  assign y_o = ~(a2_i & a1_i);
 
 endmodule
-
-

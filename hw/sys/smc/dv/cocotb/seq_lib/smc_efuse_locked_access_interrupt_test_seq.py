@@ -3,12 +3,13 @@
 """Locked eFuse shadow access raises `tb_efuse_locked_access_irq`.
 
 DECLARED PRECONDITION -- the read-lock is supplied by the bench, not the DUT.
-`CHIPLET_ID` is read-locked before this sequence does anything because word 0 of
-`hw/sys/smc/dv/assets/smc_efuse_default.hex` has `CHIPLET_ID_READ_LOCK` set, and
-the adopter-supplied simulation stand-in for the OTP macro,
+`JTAG_PUBLIC_IDENTITY` is read-locked before this sequence does anything because
+word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has
+`JTAG_PUBLIC_IDENTITY_READ_LOCK` set (bit 1 of LOCKS, value 0x2), and the
+adopter-supplied simulation stand-in for the OTP macro,
 `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the
 bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]`
-entry in `hw/sys/smc/dv/testlists/depth.toml`). The read-lock leg
+entry in `hw/sys/smc/dv/testlists/holdout.toml`). The read-lock leg
 therefore proves that the DUT ENFORCES a lock it found already set; it does not
 prove a lock can be established through the fuse-programming path. The
 write-lock leg does establish its own lock, through the real `LOCKS` CSR write
@@ -36,9 +37,9 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_map_read_locked, efuse_preload_word_at
 
 LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-CHIPLET_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR")
-WRITE_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_WRITE_LOCK_bm")
-READ_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm")
+JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
+WRITE_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_WRITE_LOCK_bm")
+READ_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bm")
 
 # Exact expectation for the LOCKS shadow word, derived from the preload asset
 # plus the generated map at run time so it follows a regenerated asset. It
@@ -46,20 +47,22 @@ READ_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm")
 # SEP_IN AXI -- so it is a transport proof of the register the whole scenario
 # depends on.
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
-#: Host-side truth about whether the asset read-locks CHIPLET_ID.
-CHIPLET_ID_READ_LOCKED = efuse_map_read_locked("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm")
-#: Fuse content behind CHIPLET_ID, i.e. the word a leaking gate would disclose.
-CHIPLET_ID_CONTENT = efuse_preload_word_at(CHIPLET_ID)
+#: Host-side truth about whether the asset read-locks JTAG_PUBLIC_IDENTITY.
+JTAG_PUBLIC_IDENTITY_READ_LOCKED = efuse_map_read_locked(
+    "SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bm"
+)
+#: Fuse content behind JTAG_PUBLIC_IDENTITY word 0, i.e. the word a leaking gate would disclose.
+JTAG_PUBLIC_IDENTITY_CONTENT = efuse_preload_word_at(JTAG_PUBLIC_IDENTITY)
 
-# Exact expectation for LOCKS after this sequence sets the CHIPLET_ID write
-# lock: the asset word plus the one bit it writes, both from generated symbols.
+# Exact expectation for LOCKS after this sequence sets the JTAG_PUBLIC_IDENTITY
+# write lock: the asset word plus the one bit it writes, both from generated symbols.
 LOCKS_AFTER_WRITE_LOCK = LOCKS_PRELOAD | WRITE_LOCK
 _UNLOCKED_PAT = 0xCAFE0001
 _DRAIN = 8
 
 
 class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
-    """CHIPLET_ID lock IRQ via lifted peripheral_interrupts[27]."""
+    """JTAG_PUBLIC_IDENTITY lock IRQ via lifted peripheral_interrupts[27]."""
 
     def __init__(self, name: str = "smc_efuse_locked_access_interrupt_test_seq") -> None:
         super().__init__(name)
@@ -118,16 +121,19 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
-        assert CHIPLET_ID_READ_LOCKED, (
-            "the preload asset does not read-lock CHIPLET_ID, so the read-lock "
-            "leg of this scenario has no precondition to enforce"
+        assert JTAG_PUBLIC_IDENTITY_READ_LOCKED, (
+            "the preload asset does not read-lock JTAG_PUBLIC_IDENTITY, so the "
+            "read-lock leg of this scenario has no precondition to enforce"
         )
 
         # Exact compare against the asset-derived word, booked by the scoreboard.
         locks = await self.csr_read("LOCKS_PRE", LOCKS, expected=LOCKS_PRELOAD)
-        assert (locks & WRITE_LOCK) == 0, f"CHIPLET_ID write-lock already set: LOCKS=0x{locks:08x}"
+        assert (locks & WRITE_LOCK) == 0, (
+            f"JTAG_PUBLIC_IDENTITY write-lock already set: LOCKS=0x{locks:08x}"
+        )
         assert (locks & READ_LOCK) != 0, (
-            f"asset read-locks CHIPLET_ID but the DUT does not report it: LOCKS=0x{locks:08x}"
+            f"asset read-locks JTAG_PUBLIC_IDENTITY but the DUT does not report it: "
+            f"LOCKS=0x{locks:08x}"
         )
         cocotb.log.info(
             "CHK-EFUSE-LOCK-PRE: LOCKS=0x%08x (asset word 0x%08x) wr=%d rd=%d",
@@ -138,11 +144,13 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
         )
 
         async def _unlocked_write() -> None:
-            await self.csr_write("CHIPLET_ID_UNLOCK_WR", CHIPLET_ID, _UNLOCKED_PAT)
+            await self.csr_write(
+                "JTAG_PUBLIC_IDENTITY_UNLOCK_WR", JTAG_PUBLIC_IDENTITY, _UNLOCKED_PAT
+            )
 
         self.unlock_edges = await self._count_edges_during("UNLOCK", _unlocked_write())
         assert self.unlock_edges == 0, (
-            f"unlocked CHIPLET_ID write pulsed IRQ {self.unlock_edges} time(s)"
+            f"unlocked JTAG_PUBLIC_IDENTITY write pulsed IRQ {self.unlock_edges} time(s)"
         )
         cocotb.log.info("CHK-EFUSE-LOCK-IRQ-UNLOCK: unlocked write edges=%d", self.unlock_edges)
 
@@ -151,11 +159,13 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
         # bit this sequence just set, stated before the access.
         locks2 = await self.csr_read("LOCKS_WR", LOCKS, expected=LOCKS_AFTER_WRITE_LOCK)
         assert (locks2 & WRITE_LOCK) != 0, (
-            f"CHIPLET_ID write-lock did not stick: LOCKS=0x{locks2:08x}"
+            f"JTAG_PUBLIC_IDENTITY write-lock did not stick: LOCKS=0x{locks2:08x}"
         )
 
         async def _locked_write() -> None:
-            await self.csr_write("CHIPLET_ID_LOCK_WR", CHIPLET_ID, _UNLOCKED_PAT ^ 0xA5A55A5A)
+            await self.csr_write(
+                "JTAG_PUBLIC_IDENTITY_LOCK_WR", JTAG_PUBLIC_IDENTITY, _UNLOCKED_PAT ^ 0xA5A55A5A
+            )
 
         self.wr_edges = await self._count_edges_during("WRLOCK", _locked_write())
         # Exactly one rising edge per locked access: with the 0-before / 0-after
@@ -163,7 +173,7 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
         # would also pass a chattering or free-running interrupt, which is the
         # failure a locked-access interrupt most needs to exclude.
         assert self.wr_edges == 1, (
-            f"write-locked CHIPLET_ID write produced {self.wr_edges} IRQ edges, "
+            f"write-locked JTAG_PUBLIC_IDENTITY write produced {self.wr_edges} IRQ edges, "
             f"expected exactly 1 (one pulse per locked APB access phase)"
         )
         cocotb.log.info("CHK-EFUSE-LOCK-IRQ-WR: write-locked write edges=%d", self.wr_edges)
@@ -173,22 +183,23 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
             # the word a read-locked shadow register returns (see the module
             # docstring). The OBSERVED datum feeds the non-disclosure asserts
             # and the evidence token below.
-            self.rd_data = await self.csr_read("CHIPLET_ID_LOCK_RD", CHIPLET_ID)
+            self.rd_data = await self.csr_read("JTAG_PUBLIC_IDENTITY_LOCK_RD", JTAG_PUBLIC_IDENTITY)
 
         self.rd_edges = await self._count_edges_during("RDLOCK", _locked_read())
         assert self.rd_edges == 1, (
-            f"read-locked CHIPLET_ID read produced {self.rd_edges} IRQ edges, expected exactly 1"
+            f"read-locked JTAG_PUBLIC_IDENTITY read produced {self.rd_edges} IRQ edges, "
+            f"expected exactly 1"
         )
         # SPEC-derived read-lock claim (architecture.adoc `lock` field table,
         # `lock[0] = 1` is read-locked): whatever word the gate substitutes, it
         # must not disclose the field, so a design that leaks fails here
         # regardless of the substituted value.
-        assert self.rd_data != CHIPLET_ID_CONTENT, (
-            f"read-locked CHIPLET_ID read returned the fuse content "
+        assert self.rd_data != JTAG_PUBLIC_IDENTITY_CONTENT, (
+            f"read-locked JTAG_PUBLIC_IDENTITY read returned the fuse content "
             f"0x{self.rd_data:08x}: the read lock did not substitute anything"
         )
         assert self.rd_data != _UNLOCKED_PAT, (
-            f"read-locked CHIPLET_ID read returned the pattern this sequence "
+            f"read-locked JTAG_PUBLIC_IDENTITY read returned the pattern this sequence "
             f"wrote (0x{self.rd_data:08x}): the read lock is not gating the "
             f"shadow register"
         )
@@ -198,6 +209,6 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
             "withheld)",
             self.rd_edges,
             self.rd_data,
-            CHIPLET_ID_CONTENT,
+            JTAG_PUBLIC_IDENTITY_CONTENT,
             _UNLOCKED_PAT,
         )

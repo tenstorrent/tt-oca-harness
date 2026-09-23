@@ -1,8 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= SEP Interconnect
+:description: SEP internal fabric, external interfaces, address remapping, and mailboxes.
+
+ifdef::backend-html5[]
+:feature-control-vector-ref: xref:sep:lifecycle_controller.adoc#feature-control-vector-definition[Disable Vector Format (SIP_DIS / SYS_DIS)]
+:axi-traffic-filter-ref: xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:feature-control-vector-ref: <<feature-control-vector-definition>>
+:axi-traffic-filter-ref: <<axi-traffic-filter>>
+endif::backend-html5[]
+
 [[sep-interconnect]]
-=== SEP Interconnect
 
 The interconnect of SEP components and subsystems is done with a
 hierarchical AXI4 crossbar fabric. Masters drive traffic onto the
@@ -22,12 +33,10 @@ handle
 * Transaction IDs (AxID) handling
 
 [[top-level-axi4]]
-==== Top Level AXI4
+== Top Level AXI4
 
-*C* = Connected, *N/C* = Not Connected.
-
-The table below reflects the generated crossbar connectivity defined in
-`meta/crossbars/configs/sep_local_axi_xbar.yaml`, along with the dedicated
+xref:sep-axi-connectivity[xrefstyle=short] shows the crossbar connectivity implemented in
+`hw/sys/sep/rtl/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
 and ten targets.
@@ -57,24 +66,16 @@ not attach to this crossbar directly; it enters SEP through the dedicated
 `smn_inbound` port and the inbound traffic filter (block-by-default), then
 through the `sep_system_peripherals` inner crossbar. That inner crossbar
 reaches the *mailboxes* and *system CSRs* directly, and loops everything
-else back into this crossbar's System Interface row. The inbound filter
+else back into this crossbar's System Interface initiator. The inbound filter
 controls which addresses the external master may reach; it is block-by-default
 after POR and configured by SEP firmware.
 
-[%autowidth,cols="<,^,^,^,^,^,^,^,^,^,^,^",frame=all,grid=all]
-|===
-.2+h|Masters 10+^h|Crossbar ^h|Dedicated Path
-h|CPU TCM h|Scratch SRAM h|DMA CSR h|WDT h|Reset Ctrl h|Crypto Periph h|System Periph h|IO Periph h|Entropy Pool h|AXI Extension h|Boot ROM
-
-|CPU IFI |N/C |C |N/C |N/C |N/C |N/C |N/C |N/C |N/C |N/C |C
-|CPU LSU |N/C |C |C |C |C |C |C |C |C |C |C
-|CPU DBG |N/C |C |C |C |C |C |C |C |C |C |N/C
-|DMA |C |C |N/C |C |C |C |C |C |N/C |C |N/C
-|System I/F |N/C |C |C |C |N/C |C |N/C |C |C |C |N/C
-|===
+[[sep-axi-connectivity]]
+.SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.
+image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720]
 
 [[subsystem-external-interfaces]]
-==== Subsystem External Interfaces
+== Subsystem External Interfaces
 
 * Memory interfaces: BL0 ROM, DCCM, ICCM, Scratch SRAM, KM SRAM, KM ROM,
 OTBN IMEM, OTBN DMEM
@@ -84,9 +85,11 @@ OTBN IMEM, OTBN DMEM
 * _RAS Interface - Alarm Processor is deferred to next generation_
 
 [[local-and-external-axi4-traffic-remapping]]
-==== Local and External AXI4 Traffic Remapping
+== Local and External AXI4 Traffic Remapping
 
-The figure below illustrates the AXI4 traffic management performed by
+image::SEP_System.png[SEP_System,scaledwidth=90.0%]
+
+The figure above illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of
 the local masters from the SEP i.e. the CPU or the DMA controller.
 Traffic may be local to the SEP or outbound to external resources either
@@ -95,7 +98,7 @@ the chiplet or remote chiplets will bridge to the system NOC also known
 as the SMN.
 
 [[transaction-routing]]
-===== Transaction Routing
+=== Transaction Routing
 
 Local resources can be addressed by SEP CPU direct internal addresses
 or by the SEP CPU local-alias view. Local resources include CSRs in SEP
@@ -123,12 +126,12 @@ SMN system NoC.
 SEP’s outbound traffic serves to:
 
 1.  Provide security services and
-2.  extend its protection to the reset of the system
+2.  Extend its protection to the rest of the system
 
-For 1 the outbound traffic traverses the AP controlled remappers and for
-2 the traffic goes directly to the SMN system fabric. SEP differentiates
-between the two scenarios 1 and 2 and enforces that the correct path is
-used.
+Outbound security service traffic traverses the AP controlled remappers.
+When protecting the rest of the system, SEP traffic goes directly to the
+SMN system fabric. The SEP differentiates between these two cases and
+enforces that the correct path is used.
 
 When SEP accesses shared resources such as shared memory for example,
 the traffic goes through the AP or STEE controlled remappers to get the
@@ -154,7 +157,7 @@ filters. Again, these filters enable filtering based on address, NS and
 source ID.
 
 [[sep-traffic-filter-decode]]
-===== Traffic Filter Decode
+=== Traffic Filter Decode
 
 Both SEP filters are instances of the common `axi_filter_wrap` block. The
 inbound filter has 16 entries and the outbound filter has 32; each entry
@@ -165,16 +168,16 @@ entry.
 
 The inbound filter is bypassed in its entirety, admitting all inbound
 traffic, while SEP-scope debug is enabled; see
-<<feature-control-vector-definition>> for the `SEP_DBG` control. The
+{feature-control-vector-ref} for the `SEP_DBG` control. The
 outbound filter has no bypass and is always in effect.
 
 The decode algorithm -- entry priority, the match conditions, the
 address range granule and its widening direction, and the response
 returned to a blocked initiator -- is common to SEP and SMC. It is
-documented once with the IP in <<axi-traffic-filter>>.
+documented once with the IP in {axi-traffic-filter-ref}.
 
 [[address-remapping]]
-===== Address Remapping
+=== Address Remapping
 
 Sixteen remap regions are available, each supported by an address
 remapper. Remappers define the following attributes:
@@ -227,7 +230,7 @@ STEE-controlled remap logic.
 mapped IO, SEP’s traffic directly goes to the system fabric.
 
 [[mailboxes]]
-===== Mailboxes
+=== Mailboxes
 
 SEP uses mailboxes to communicate with the rest of the system such as AP
 cores for example. Each different agent has its own private mailbox in
@@ -269,10 +272,10 @@ enabled entry over its aperture is unreachable from the fabric, and
 reprogramming an entry retypes that mailbox at run time. An entry pairs an
 address range with the qualification criteria below, plus separate read and
 write permissions and a write-once lock bit. See <<sep-traffic-filter-decode>>
-for the SEP filter instances and <<axi-traffic-filter>> for the entry
+for the SEP filter instances and {axi-traffic-filter-ref} for the entry
 registers and the decode algorithm used to program them.
 
-[width="100%",cols="<50%,<50%",options="header",]
+[width="100%",cols="<20%,<80%",options="header",]
 |=======================================================================
 |Mailbox Type |Description
 |ISS |Uses fabric source ID to qualify incoming transactions. Legal
@@ -289,5 +292,3 @@ to qualify this.
 |Regular |Relies on PMA/PMP or page table for protection. No special
 action required by SEP.
 |=======================================================================
-
-image::SEP_System.png[SEP_System,scaledwidth=90.0%]

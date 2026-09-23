@@ -15,8 +15,9 @@
 // CFG: CPOL/CPHA = 0 (Mode 0). CS timing CSNIDLE/TRAIL/LEAD=2 matches the OSS
 // flash BFM (composed from generated field positions, not a packed hex constant).
 #define SPI_CFG_CSN_TIMING \
-    ((2u << SPI_CONTROLLER__CFG__CSNIDLE_bp) | (2u << SPI_CONTROLLER__CFG__CSNTRAIL_bp) | \
-     (2u << SPI_CONTROLLER__CFG__CSNLEAD_bp))
+    ((2u << SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bp) | \
+     (2u << SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bp) | \
+     (2u << SPI_CONTROLLER__CONFIGOPTS__CSNLEAD_bp))
 #define SPI_CFG_CLKDIV9_CSN (SPI_CFG_CSN_TIMING | 9u)
 #define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv)&0xFFFFu))
 
@@ -28,9 +29,9 @@
  * Composed register reset values (OCH_SEP_FIELD_RESET from sep.h).
  * Keep SPI-only reset aggregates here rather than growing common sep.h.
  */
-#define SPI_CONTROLLER__INTR_STATUS_reset \
-    (OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_STATUS, ERROR) | \
-     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_STATUS, SPI_EVENT))
+#define SPI_CONTROLLER__INTR_STATE_reset \
+    (OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_STATE, ERROR) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_STATE, SPI_EVENT))
 
 #define SPI_CONTROLLER__INTR_ENABLE_reset \
     (OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_ENABLE, ERROR) | \

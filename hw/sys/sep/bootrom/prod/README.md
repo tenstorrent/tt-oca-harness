@@ -21,7 +21,7 @@ dependencies declared by the manifest-tool submodule.
 Initialize that submodule once:
 
 ```bash
-git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 ```
 
 If the required RISC-V toolchain is not available on the host, use the
@@ -31,7 +31,7 @@ the host:
 ```bash
 ./scripts/docker-run.sh run-here \
   make -C hw/sys/sep/bootrom/prod toolchain-images
-make -C hw/sys/sep/bootrom/prod pack-images
+make -C hw/sys/sep/bootrom/prod oca-images
 ```
 
 When the host provides both tool sets, build the default ROM and packed image
@@ -48,10 +48,44 @@ make -C hw/sys/sep/bootrom/prod \
   GCC_PREFIX=/path/to/bin/riscv64-unknown-elf
 ```
 
+## Build types
+
+`BUILD_TYPE` selects debug or release. It defaults to `debug`, which is the
+image DV builds and is what a bare `make` produces; any other value than these
+two is a build error.
+
+| | `debug` (default) | `release` |
+|---|---|---|
+| Modulus read from | `tests/signing_keys/` private test keys | `release_signing_keys/` public keys only |
+| Ships keys | yes, DV assets | no — provision them, or the build stops |
+| Virtual-console debug output | compiled in (`-DDEBUG`) | compiled out (`-DNDEBUG=1`) |
+| Output directory | `build/` | `build_release/` |
+| `oca-images` | packs the DV test images | not implemented (see below) |
+
+```bash
+make                      # debug
+make release              # or: make BUILD_TYPE=release
+```
+
+The ROM's anchors are always SHA-256 over the RSA-3072 **public** modulus. The
+build type selects only which file form that modulus is extracted from, so no
+private key material reaches a digest in either build.
+
+A release build refuses to produce a ROM anchored on the test keys. It reads
+public keys only, and fails if it finds any private key in the key directory —
+see [`release_signing_keys/README.md`](release_signing_keys/README.md).
+
+Release does not pack flash images. Every config under `configs/` signs with a
+private test key, and a signed flashable image carrying a test signature is as
+dangerous as a mask anchored on one. Real release signing needs a key store
+rather than a key file, and is not wired up yet; `make BUILD_TYPE=release
+oca-images` says so rather than doing nothing.
+
 ## Build variants
 
 The three ROM variants use the same source and packed manifest bytes. Each ROM
 variant has its own object directory so builds do not overwrite one another.
+They are a transport axis, independent of `BUILD_TYPE`.
 
 | Target | Output directory | Flash transport |
 |---|---|---|
@@ -64,10 +98,10 @@ Useful packaging and maintenance targets are:
 | Target | Purpose |
 |---|---|
 | `make` | Build the default ROM, BL1 test payload, and SMC-SRAM package. |
+| `debug` / `release` | Build `all` with that `BUILD_TYPE`. |
+| `key-digests` | Generate `$(BUILD_DIR)/key_digests.c` from the build type's keys. Host-only; `toolchain-images` runs it for you. |
 | `toolchain-images` | Build ROM images and the BL1 payload with the RISC-V toolchain. |
-| `pack-images` | Package the non-secure manifest and BL1 for the SMC-SRAM path. |
-| `secure_boot_spi` | Package the RSA-3072 signed SPI test image. |
-| `encrypted_boot_spi` | Package the signed, AES-CBC encrypted SPI test image. |
+| `oca-images` | Pack every OCA test image: one `.spi_preload` per entry in `OCA_IMAGES` (signed, encrypted, PQC, per-ROM-key and the negative cases) plus the bare SMC-SRAM bundle. Debug only. |
 | `clean` | Remove every ROM variant and the BL1 test build. |
 
 For example, build both OpenTitan receive paths and the signed flash image:
@@ -75,7 +109,7 @@ For example, build both OpenTitan receive paths and the signed flash image:
 ```bash
 make -C hw/sys/sep/bootrom/prod ot-toolchain-images
 make -C hw/sys/sep/bootrom/prod ot-pio-toolchain-images
-make -C hw/sys/sep/bootrom/prod secure_boot_spi
+make -C hw/sys/sep/bootrom/prod oca-images
 ```
 
 ## Outputs
@@ -101,17 +135,27 @@ The default `build/` may also contain:
 | `secure_boot.bin` / `.spi_preload` | RSA-3072 signed test image. |
 | `encrypted_boot.bin` / `.spi_preload` | Signed, AES-CBC encrypted test image. |
 
-The manifest configs and signing key shipped through the manifest-tool
-submodule are DV assets. They do not define production key provisioning.
+The manifest configs and the signing keys in `tests/signing_keys/` are DV assets
+for `BUILD_TYPE=debug`. They do not define production key provisioning, and a
+release build cannot reach them.
 
 ## Use by DV
 
 This ROM is not built by the shared firmware engine in `hw/common/dv/fw/`, so
 `make -f ocah.mk ocah-dv-fw-tests` does not produce it. `[c_build.boot_rom]` in
-`hw/sys/sep/dv/sep_sim_cfg.toml` runs `toolchain-images` and `pack-images` from
-this directory during the `c_compile` stage, falling back to the toolchain
-container when the host compiler has no picolibc. The OpenTitan variants have
-their own `[c_build.boot_rom_ot]` and `[c_build.boot_rom_ot_pio]` templates.
+`hw/sys/sep/dv/sep_sim_cfg.toml` runs `key-digests`, then
+`toolchain-images-build`, then `oca-images` from this directory during the
+`c_compile` stage, falling back to the toolchain container when the host
+compiler has no picolibc. The split is deliberate: `toolchain-images-build`
+needs the RISC-V toolchain and can run in the container, while `key-digests` and
+`oca-images` are pure Python and must run on the HOST, because their
+dependencies come from `uv` and the toolchain rootfs has none. The OpenTitan
+variants have their own `[c_build.boot_rom_ot]` and `[c_build.boot_rom_ot_pio]`
+templates, each generating digests into its own `BUILD_DIR`.
+
+A caller that enters the container without generating digests first does not get
+an import error from inside the sandbox — the rule says which command to run on
+the host.
 
 A test selects an image with `firmware = { name = "boot_rom", mode = "boot_rom" }`
 and receives it through plusargs. `hw/sys/sep/dv/testlists/rom_fw.toml` passes
@@ -129,33 +173,40 @@ Common build variables include:
 |---|---|---|
 | `DCCM_SCRUB_BYTES` | `0x20000` | Cold-boot DCCM scrub length. |
 | `SRAM_SCRUB_BYTES` | `0` | SEP SRAM scrub length. |
-| `ROM_ICCM_CLEAR_ENABLE` | `0` | Clear ICCM through the DMA before loading BL1. |
+| `ROM_ICCM_CLEAR_ENABLE` | `1` | Clear ICCM through the DMA before loading BL1. |
 | `PMP_ENABLE` | `1` | Program the BL0 PMP entries. |
 | `PMP_LOCK` | `0` | Lock the programmed PMP entries until reset. |
 | `BOOT_SPI_CONTROLLER_OT` | `0` | Select the OpenTitan SPI host when set. |
 | `BOOT_OT_SPI_USE_PIO` | `0` | Use CPU PIO instead of secure DMA for OpenTitan RX. |
 | `BOOT_OT_SPI_PROFILE` | `0` | Select the OpenTitan timing profile. |
-| `BUILD_TYPE` | `test` | Recorded in the rebuild stamp; selects no build behavior. |
+| `BUILD_TYPE` | `debug` | `debug` or `release`; see [Build types](#build-types). |
+| `SEP_ROM_RELEASE_SIGNING_KEYS_DIR` | `release_signing_keys` | Where a release build reads its public ROM keys. |
 
-The open Makefile builds a test/debug-oriented image. Its zero-length SEP SRAM
-scrub and disabled full-ICCM clear reduce RTL simulation cost. A release image
+The default build is debug-oriented. Its zero-length SEP SRAM scrub reduces RTL
+simulation cost; the full-ICCM clear is ENABLED by default
+(`ROM_ICCM_CLEAR_ENABLE ?= 1`). A release image
 must establish ECC for the full ICCM and apply the adopter's final memory
-sanitization, PMP lock, SPI-controller, version, and key-provisioning policy.
+sanitization, PMP lock, SPI-controller and version policy.
 
-There is no enforced release build mode in the current Makefile:
-`TEST_BUILD=1` and `DEBUG` are always present in `CFLAGS`, and `BUILD_TYPE`
-only participates in the rebuild stamp. Consequently, debug virtual-console
-output remains compiled in even when the status-report-disable strap skips the
-SMC status ring. The ROM version string is a fixed placeholder for the same
-reason; it keeps the open build's image, and the hash the ROM reports over
-itself, reproducible.
+`BUILD_TYPE=release` covers key provisioning and debug output: it generates the
+ROM's trust anchors from public keys that are not in this repository, and drops
+`-DDEBUG`, which compiles out the virtual console — roughly 12 KiB of the ROM,
+and with it the scratch-register writes that would otherwise report lifecycle
+state, fuse lock values, key-slot selection and the BL1 load address on a
+production part. The status-report-disable strap does not suppress those; only
+the build type does.
+
+The remaining release-hardening knobs in the table above are still
+caller-selected in both build types, and the ROM version string stays a fixed
+placeholder so the open build's image, and the hash the ROM reports over itself,
+remain reproducible. See issue #2026.
 
 The rebuild stamp tracks most variables in the table, but not
 `ROM_ICCM_CLEAR_ENABLE`. Clean before changing that variable:
 
 ```bash
 make -C hw/sys/sep/bootrom/prod clean
-make -C hw/sys/sep/bootrom/prod ROM_ICCM_CLEAR_ENABLE=1
+make -C hw/sys/sep/bootrom/prod ROM_ICCM_CLEAR_ENABLE=0
 ```
 
 ## Source layout
@@ -164,5 +215,7 @@ make -C hw/sys/sep/bootrom/prod ROM_ICCM_CLEAR_ENABLE=1
 - `include/` — image formats and SEP/SMC firmware contracts
 - `link/` — ROM and DCCM placement
 - `configs/` — DV manifest-package configurations
-- `tools/` — image conversion, ROM hash insertion, and manifest packaging
+- `tests/signing_keys/` — private test keys; debug builds only
+- `release_signing_keys/` — where a release build reads its public ROM keys; ships empty
+- `tools/` — image conversion, ROM hash insertion, key digest generation, and manifest packaging
 - `doc/` — production ROM firmware behavior

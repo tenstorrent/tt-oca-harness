@@ -59,11 +59,11 @@ module prim_clk_gater_hysteresis #(
     end
   end
 
-  prim_clkgater clkgater (
-    .i_clk(clk_i),
-    .i_en (run),
-    .i_te (test_clk_en_i),
-    .o_clk(gated_clk_o)
+  prim_clkgater u_clkgater (
+    .clk_i(clk_i),
+    .en_i (run),
+    .te_i (test_clk_en_i),
+    .clk_o(gated_clk_o)
   );
 
   wire __unused = hyst_cnt_nxt[HYST_WIDTH]; // Since we block the decrement when hyst_cnt_q is already 0, no need to capture carry-out

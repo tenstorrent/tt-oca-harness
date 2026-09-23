@@ -51,7 +51,7 @@ inputs:
     description: 'Explicit run directory (--run-dir). Keep the build/ci/runs/<dut>/<tool>/<tier>/<run_id> shape: the dashboard hashes it into the trend-point identity'
   verilator-version:
     required: false
-    default: 'v5.050'
+    default: 'v5.052'
     description: 'Verilator tag built from source on a cache miss. cocotb 2.x (locked in uv.lock) needs a newer Verilator than the Ubuntu apt package'
   python-version:
     required: false
@@ -61,6 +61,14 @@ inputs:
     required: false
     default: '14'
     description: 'Artifact retention in days'
+  executor:
+    required: false
+    default: 'local'
+    description: 'Executor, as run_dv.py --executor. A cluster executor needs its scheduler commands on the runner; the result gate then requires every simulation leaf to have run as a job of that executor'
+  extra-args:
+    required: false
+    default: ''
+    description: 'Advanced: further run_dv.py arguments appended verbatim, such as the resource request of a cluster executor (--mem-mb 2000 --walltime 30)'
 runs:
   using: 'composite'
   steps:
@@ -71,6 +79,29 @@ runs:
 
     - name: Install bender
       uses: pulp-platform/pulp-actions/bender-install@v2.5.1
+
+    - name: Verify bender
+      shell: bash
+      run: |
+        # pulp-actions/bender-install pipes `curl -f` into bash without
+        # pipefail, so a GitHub Pages 500 still reports success and leaves
+        # /tools/bender on PATH with no binary. Retry the init once with
+        # pipefail when that happens.
+        if command -v bender >/dev/null 2>&1; then
+          bender --version
+          exit 0
+        fi
+        echo "bender-install left no binary; retrying the init once"
+        sudo mkdir -p /tools/bender && sudo chmod 777 /tools/bender
+        (
+          set -o pipefail
+          cd /tools/bender
+          curl --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 -sSf \
+            https://pulp-platform.github.io/bender/init | bash
+        )
+        echo "/tools/bender" >> "$GITHUB_PATH"
+        command -v bender >/dev/null
+        bender --version
 
     - name: Cache Verilator
       id: cache-verilator
@@ -128,10 +159,11 @@ runs:
       env:
         DV_DUT: ${{ inputs.dut }}
         DV_TOOL: ${{ inputs.tool }}
+        DV_EXECUTOR: ${{ inputs.executor }}
       run: |
         verilator --version
         python3 tools/dv/run_dv.py --validate-configs
-        python3 tools/dv/run_dv.py --doctor --dut "$DV_DUT" --tool "$DV_TOOL"
+        python3 tools/dv/run_dv.py --doctor --dut "$DV_DUT" --tool "$DV_TOOL" --executor "$DV_EXECUTOR"
 
     # The explicit --run-dir keeps every tier's tree separate and means
     # run_dv.py never creates a `latest` symlink. A group item already runs
@@ -151,6 +183,8 @@ runs:
         DV_COVERAGE: ${{ inputs.coverage }}
         DV_SIM_JOBS: ${{ inputs.sim-jobs }}
         DV_RUN_DIR: ${{ inputs.run-dir }}
+        DV_EXECUTOR: ${{ inputs.executor }}
+        DV_EXTRA_ARGS: ${{ inputs.extra-args }}
       run: |
         sim_jobs="$DV_SIM_JOBS"
         if [ "$sim_jobs" = "nproc" ]; then
@@ -163,6 +197,7 @@ runs:
         if [ "$DV_COVERAGE" = "true" ]; then
           tier_args+=(--cov)
         fi
+        read -r -a extra_args <<<"$DV_EXTRA_ARGS"
         # Build parallelism is independent of sim fan-out, but run_dv.py falls
         # back to --sim-jobs when --build-jobs is absent (effective_build_jobs in
         # runlib/buildcache.py) -- which would compile the C++ model with just
@@ -176,11 +211,15 @@ runs:
           --sim-jobs "$sim_jobs" \
           --build-jobs "$(nproc)" \
           --run-dir "$DV_RUN_DIR" \
-          "${tier_args[@]}"
+          --executor "$DV_EXECUTOR" \
+          "${tier_args[@]}" "${extra_args[@]}"
 
     # run_dv.py already exits nonzero on FAIL/ERROR/TIMEOUT/UNKNOWN; this
     # gate is defense-in-depth so the job can never go green without a
-    # native schema-v1 PASS record matching this exact invocation.
+    # native schema-v1 PASS record matching this exact invocation. On a
+    # cluster executor it also requires every simulation leaf to carry a job
+    # of that executor in a terminal scheduler state, so a run the executor
+    # silently served in-process cannot pass as a scheduler qualification.
     - name: Gate on native result
       shell: bash
       env:
@@ -188,6 +227,7 @@ runs:
         DV_TOOL: ${{ inputs.tool }}
         DV_COVERAGE: ${{ inputs.coverage }}
         DV_RUN_DIR: ${{ inputs.run-dir }}
+        DV_EXECUTOR: ${{ inputs.executor }}
       run: |
         require_coverage=false
         if [ "$DV_COVERAGE" = "true" ]; then
@@ -196,11 +236,19 @@ runs:
         jq -e \
           --arg flow "$DV_DUT" \
           --arg tool "$DV_TOOL" \
+          --arg executor "$DV_EXECUTOR" \
           --argjson require_coverage "$require_coverage" \
           '.schema_version == 1
            and .flow == $flow
            and .tool == $tool
+           and .executor == $executor
            and .status == "PASS"
+           and ($executor == "local" or (
+             ([.stages[] | select(.name == "sim")] | length > 0)
+             and all(.stages[] | select(.name == "sim");
+               (.metadata.scheduler.job_id | type == "string" and length > 0)
+               and (.metadata.scheduler.state | IN("SUCCEEDED", "FAILED")))
+           ))
            and (($require_coverage | not) or (
              .coverage.enabled == true
              and (.coverage.total_percent | type == "number")

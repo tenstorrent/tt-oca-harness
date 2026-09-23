@@ -3,10 +3,6 @@
 
 = Why Open Chiplet Atlas Harness?
 
-[NOTE]
-For the full "About OCAH" chapter -- including OCA Standard Compliance 
-status -- see the xref:ocah-docs::about-ocah.adoc[Technical Reference Manual].
-
 == Implements OCA v0.8
 
 The Open Chiplet Atlas Harness (OCAH) exists to bridge the gap between a
@@ -14,7 +10,10 @@ chiplet interoperability architecture and a deployable chiplet design. The
 OCA architecture defines the rules needed to make chiplets from different
 vendors plug together at the software, system, protocol, transport, and
 physical layers, but real adoption depends on turning those rules into
-reusable implementation collateral. 
+reusable implementation collateral.
+
+The architecture specification lives at
+https://www.openchipletatlas.org/[openchipletatlas.org].
 
 *OCAH is that implementation vehicle: an open-source chiplet framework
 that currently implements OCA Specification v0.8, intended to make
@@ -67,5 +66,5 @@ common infrastructure available under a permissive license.
 *OCAH is both a technical framework and an adoption mechanism: it reduces
 duplicated engineering work, lowers the barrier to interoperable chiplet
 design, and gives partners a concrete foundation on which to build
-OCA-compliant chiplets and systems.*
+OCA architecture compliant chiplets and systems.*
 

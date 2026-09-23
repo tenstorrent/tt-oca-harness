@@ -254,33 +254,70 @@ _LITE_WRITE_KEYS = (
 _LITE_READ_KEYS = ("arvalid", "arready", "araddr", "rvalid", "rready", "rdata", "rresp")
 
 
-async def observe_lite_write(dut, *, max_cycles: int = 400) -> list[dict[str, int]]:
-    """Record the l_axi write channels once per cycle until the B handshake.
+async def observe_lite_write(
+    dut, *, max_cycles: int = 400, handshakes: int = 1
+) -> list[dict[str, int]]:
+    """Record the l_axi write channels once per cycle until the ``handshakes``-th B handshake.
 
     Start as a background task before issuing the transaction; the returned
     per-cycle sample list is the wire-level truth the tests judge the VIP's
     skew/deferral claims against (independent of the VIP's own bookkeeping).
     """
     samples: list[dict[str, int]] = []
+    seen = 0
     for _ in range(max_cycles):
         await RisingEdge(dut.clk)
         row = {key: _sample(getattr(dut, f"l_axi_{key}")) for key in _LITE_WRITE_KEYS}
         samples.append(row)
         if row["bvalid"] and row["bready"]:
-            return samples
-    raise AssertionError(f"no l_axi B handshake within {max_cycles} cycles")
+            seen += 1
+            if seen >= handshakes:
+                return samples
+    raise AssertionError(f"no {handshakes} l_axi B handshake(s) within {max_cycles} cycles")
 
 
-async def observe_lite_read(dut, *, max_cycles: int = 400) -> list[dict[str, int]]:
-    """Record the l_axi read channels once per cycle until the R handshake."""
+async def observe_lite_read(
+    dut, *, max_cycles: int = 400, handshakes: int = 1
+) -> list[dict[str, int]]:
+    """Record the l_axi read channels once per cycle until the ``handshakes``-th R handshake."""
     samples: list[dict[str, int]] = []
+    seen = 0
     for _ in range(max_cycles):
         await RisingEdge(dut.clk)
         row = {key: _sample(getattr(dut, f"l_axi_{key}")) for key in _LITE_READ_KEYS}
         samples.append(row)
         if row["rvalid"] and row["rready"]:
-            return samples
-    raise AssertionError(f"no l_axi R handshake within {max_cycles} cycles")
+            seen += 1
+            if seen >= handshakes:
+                return samples
+    raise AssertionError(f"no {handshakes} l_axi R handshake(s) within {max_cycles} cycles")
+
+
+def stall_cycles(samples: list[dict[str, int]], valid: str, ready: str) -> int:
+    """Number of sampled cycles with ``valid`` set and ``ready`` clear."""
+    return sum(1 for row in samples if row[valid] and not row[ready])
+
+
+def handshake_cycles(samples: list[dict[str, int]], valid: str, ready: str) -> list[int]:
+    """Every sample index where ``valid`` and ``ready`` are both set, in order."""
+    return [index for index, row in enumerate(samples) if row[valid] and row[ready]]
+
+
+def address_stable_while_stalled(
+    samples: list[dict[str, int]], valid: str, ready: str, addr: str
+) -> bool:
+    """True when every stalled beat kept ``valid`` set and ``addr`` unchanged until ``ready``."""
+    pending: int | None = None
+    for row in samples:
+        if row[valid] and pending is not None and row[addr] != pending:
+            return False
+        if row[valid] and not row[ready]:
+            pending = row[addr]
+        elif row[valid] and row[ready]:
+            pending = None
+        elif pending is not None:
+            return False
+    return True
 
 
 def first_cycle(samples: list[dict[str, int]], key: str, *, start: int = 0) -> int | None:

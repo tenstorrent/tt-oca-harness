@@ -17,14 +17,17 @@ into static reports:
 * `tools/dv/run_dashboard.py` collects completed run results, renders reports,
   aggregates history, and publishes static output.
 
-The guide documents the behavior of the tools in this source tree.
+The guide documents the behavior of the tools in this source tree. The
+interfaces page maps how the tools, the shared configuration, the hosted
+workflows, and the contributor environment connect; the runbook is the
+operating manual for the hosted service they form.
 
 ifdef::backend-html5[]
 == Building This Guide
 
 `tools/dv/doc` is a standalone documentation source and is not staged by the
-TRM/Antora build or documentation CI. Render all three HTML pages together so
-the landing-page links resolve:
+TRM/Antora build or documentation CI. Render every HTML page together so the
+landing-page links resolve:
 
 [source,bash]
 ----
@@ -33,7 +36,9 @@ out=$(mktemp -d "${TMPDIR:-/tmp}/ocah-dv-doc.XXXXXX")
 asciidoctor -a data-uri -D "$out" \
   tools/dv/doc/index.adoc \
   tools/dv/doc/run-dv.adoc \
-  tools/dv/doc/run-dashboard.adoc
+  tools/dv/doc/run-dashboard.adoc \
+  tools/dv/doc/interfaces.adoc \
+  tools/dv/doc/runbook.adoc
 
 asciidoctor-pdf \
   -o "$out/ocah-dv-tooling-guide.pdf" \
@@ -48,9 +53,19 @@ ifdef::backend-html5[]
   native verification runs.
 * xref:run-dashboard.adoc[DV and FV Dashboard] -- normalize, render, aggregate,
   and publish completed-run results.
+* xref:interfaces.adoc[DV Infrastructure Interfaces] -- the files and
+  command lines where the runner, the dashboard, the configuration, the
+  coverage policies, the workflows, and the environment meet, and the check
+  behind each contract.
+* xref:runbook.adoc[DV Infrastructure Runbook] -- operate the hosted
+  service: schedules and budgets, retention, what a cancellation leaves
+  behind, recovery procedures, ownership by component, escalation, and
+  known limitations.
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 include::run-dv.adoc[leveloffset=+1]
 include::run-dashboard.adoc[leveloffset=+1]
+include::interfaces.adoc[leveloffset=+1]
+include::runbook.adoc[leveloffset=+1]
 endif::backend-pdf[]

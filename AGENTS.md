@@ -41,6 +41,17 @@ partial read costs far more time than a full one.
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
+`make doc-trm-serve` builds a TRM-first preview with the other documentation
+products included, since the TRM links to their pages. Its Make dependencies
+and container equivalent are defined in `doc/trm/doc.mk` and
+`scripts/docker-run.sh`; `antora-trm-playbook.yml` selects the content.
+
+The TRM PDF includes every generated map in the open register inventory.
+`doc/trm/doc.mk` passes that inventory to `tools/doc/register_map_coverage.rb`,
+which rejects missing maps, incomplete register sections and sections below the
+contents or bookmark depth. Include new maps beneath their owning block and
+identify integration reference models explicitly.
+
 ## Environment Setup
 
 The `nonfree/` companion is not part of the open repository. If you have it, it sets the
@@ -100,6 +111,10 @@ Error: workdir "<symlinked path>" does not exist on container …
 ```
 
 Use `cd -P` (or `pwd -P`) so both agree. Harmless if your checkout is not symlinked.
+
+A linked worktree works with the same commands. Its `.git` file points at the main
+checkout, so `scripts/docker-run.sh` uses the worktree's real path and bind-mounts
+the main git directory. See `scripts/docker.md`.
 
 ### Scratch/temp space: honour `$TMPDIR`, never `/tmp`
 
@@ -183,6 +198,17 @@ bwrap: Can't mkdir parents for <repository path>: Read-only file system
 ```
 
 `unset OCAH_TOOLCHAIN_ROOTFS` to fall back to the container engine.
+
+### The toolchain sandbox carries no Python packages
+
+The image and the extracted rootfs both provide a bare `python3` with only the packages
+`tools/docker/Dockerfile` installs. Any build step importing `cryptography`,
+`ruamel.yaml` or similar fails there with `ModuleNotFoundError`.
+
+Keep such steps on the host, run the compile in the sandbox, and order the two so the
+host half produces what the compile consumes — as the SEP boot ROM does with
+`key-digests` and `oca-images` (`hw/sys/sep/bootrom/prod/README.md`). Adding a package
+to the Dockerfile does not reach the bwrap rootfs, which is extracted separately.
 
 ### Rebuilding the image invalidates existing firmware objects
 
@@ -308,7 +334,7 @@ make regen-regs
 ```
 
 After adding or moving integration collateral, regenerate the grouped symlink indexes with
-`python3 scripts/collect_integration.py`.
+`python3 scripts/update_integration_symlinks.py`.
 
 The RDL is the register specification: it describes the address map and the registers'
 behaviour, not the RTL that implements them. Naming a module, a package or an address slice in
@@ -513,9 +539,10 @@ open files to compensate.
 
 | Check | Local command |
 |---|---|
-| SystemVerilog lint (slang) | `make lint-slang-all` lints every block carrying a `flow.mk`, which `flows/common.mk` discovers under `hw/sys/*`, `hw/ip/*` and vendored IP overlays; add `BLOCK=<block…>` to restrict it. `make lint-slang` from a block's own flow lints that block alone |
-| SystemVerilog lint (Verilator) | `make lint-verilator-all` lints every discovered block as its own top; add `BLOCK=<block…>` to restrict it |
+| SystemVerilog lint (slang) | `make lint-slang-all` lints every `flow.mk` top (`dtp`, `sep`, `smc`, `smu`, `aou` today). `flows/common.mk` also globs `hw/ip/*/flow.mk`; none exist. `BLOCK=` is a top, not an IP. `make lint-slang` from a block's own flow lints that block alone |
+| SystemVerilog lint (Verilator) | `make lint-verilator-all` lints each discovered top the same way; add `BLOCK=<block…>` to restrict it |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
+| Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
@@ -523,10 +550,14 @@ open files to compensate.
 
 Each of these is an auto-generated alias for the `ocah-`-prefixed target of the same name, so
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
-plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
+plus the matching `./scripts/docker-run.sh run-here make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
-Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
-`scripts/ci/diff_class.py` is the classifier.
+The internal GitLab mirror loads its parent pipeline from a separately access-controlled
+configuration project rather than from this repository, so a pull request cannot replace the
+bootstrap that obtains the optional companion. Change the trusted configuration through its own
+review path. That parent executes the `main` revision of `scripts/ci/diff_class.py`, rather than
+the revision under test, when deciding whether a documentation-only change can skip the nonfree
+child.
 
 Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
 They share the same base inventory but use separate exclusions, so a formatter limitation does
@@ -537,12 +568,12 @@ lifetime, case completeness and hierarchy labels as manual changes requiring own
 Parameter naming remains deferred to issue #1051 and is disabled in this pass.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
-owner's `lint/` directory: `*.verible.waiver` and `*.verilator.vlt`. Central Makefiles only
-discover or pass those files, and each block `flow.mk` declares the Verilator waivers relevant
-to its elaborated top. Use the narrowest diagnostic/path/hierarchy/source match and a
-constraint-focused rationale. The CI-pinned Slang v11.0 has no native external-waiver support;
-keep its findings visible rather than substituting whole-file suppression until a release with
-TOML `--waiver-file` support is pinned.
+owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only
+`*.slang.expected-errors`. Central Makefiles only discover or pass those files, and each block
+`flow.mk` declares the exceptions relevant to its elaborated top. Use the narrowest
+diagnostic/path/hierarchy/source match and a constraint-focused rationale. Slang expected-error
+patterns must identify the path and message; the flow must fail if a pattern is unused or an
+additional error appears. Never replace a site-specific rule with whole-file suppression.
 
 The register generator owns `hw/common/regs/lint/peakrdl.verilator.vlt`, which the shared
 Verilator flow loads for every block. Its exact path and message matches cover only PeakRDL's

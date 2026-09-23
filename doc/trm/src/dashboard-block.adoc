@@ -12,7 +12,7 @@
 ifdef::backend-html5[]
 ++++
 <div class="dashboard">
-  <p><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
+  <p class="dashboard-back"><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
 
   <h3 id="dashboard-block-name">Block</h3>
   <div id="dashboard-status" class="dashboard-status">Loading dashboard data&hellip;</div>
@@ -23,6 +23,8 @@ ifdef::backend-html5[]
       <tbody id="dashboard-block-row"></tbody>
     </table>
   </div>
+
+  <p class="dashboard-more" id="dashboard-block-history"></p>
 
   <div id="dashboard-block-tests" hidden>
     <h3>Tests</h3>
@@ -36,7 +38,8 @@ ifdef::backend-html5[]
     <p class="dashboard-status dashboard-status-error">
       This page renders live regression data with JavaScript. With scripting
       disabled, read the published data directly from the
-      <code>dv-dashboard-data</code> branch.
+      <a href="https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data"><code>dv-dashboard-data</code></a>
+      branch.
     </p>
   </noscript>
 </div>

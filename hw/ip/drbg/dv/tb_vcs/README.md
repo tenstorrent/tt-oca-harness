@@ -53,13 +53,14 @@ Use the same `TESTCASE=<name>` knob for focused debug. The directed tests avoid
 simulator-specific behavior so that VCS and Verilator give the same pass/fail
 result.
 
-## Lint and Build Targets
+## Build Targets
 
 ```bash
-make -C hw/ip/drbg/dv/tb_vcs lint
-make -C hw/ip/drbg/dv/tb_vcs lint-verilator
 make -C hw/ip/drbg/dv/tb_vcs build-verilator
 ```
+
+RTL lint for this wrapper is the shared flow (`make lint-slang-all`
+/`lint-verilator-all` on the parent system), not a testbench target.
 
 ## Non-default Parameter Smoke
 

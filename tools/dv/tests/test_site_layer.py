@@ -263,16 +263,20 @@ class MergeTest(SiteCase):
         base = load_executors(REPO_ROOT)
         layer = self.load(
             """
-            [executors.lsf]
+            [executors.grid]
             kind = "cluster"
-            binary = "bsub"
-            submit_argv = ["bsub", "-q", "{queue}"]
+            binary = "qsub"
+            submit_argv = ["qsub", "-q", "{queue}"]
             wait_mode = "poll"
             """
         )
         merged = merged_executors(base, layer)
-        self.assertEqual(merged["lsf"]["binary"], "bsub")
+        self.assertEqual(merged["grid"]["binary"], "qsub")
         self.assertEqual(merged["local"], base["local"])
+        self.assertEqual(merged["lsf"], base["lsf"])
+        with self.assertRaises(ConfigError) as ctx:
+            merged_executors(base, self.load('[executors.lsf]\nkind = "local"\n'))
+        self.assertIn("kind", str(ctx.exception))
         with self.assertRaises(ConfigError) as ctx:
             merged_executors(base, self.load('[executors.local]\nbinary = "x"\n'))
         self.assertIn("binary", str(ctx.exception))

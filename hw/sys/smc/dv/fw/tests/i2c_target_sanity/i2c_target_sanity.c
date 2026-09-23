@@ -439,7 +439,7 @@ static void step_s5_stretch_ctrl(void) {
     drain_acq();
     reset_fifos_both();
 
-    /* Enable stretch-ctrl + TX_STRETCH interrupt (INTR_STATE gated by enable). */
+    /* Enable stretch-ctrl + TX_STRETCH interrupt (INTR_ENABLE masks irq_o only). */
     tctrl.w = read_reg(tgt_base() + i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)));
     tctrl.f.TX_STRETCH_CTRL_EN = 1;
     tctrl.f.ENABLEHOST = 0;

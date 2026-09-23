@@ -14,7 +14,7 @@
  * runs a scratch handshake proving the SEP is (a) live, (b) actively GO-polling,
  * (c) frozen by CLA halt while SMC keeps progressing, (d) resumed by CLA release
  * and able to finish an acknowledged completion protocol. No forces/deposits:
- * halt = CLA node0 EAP action[0] (mpc_debug_halt_req), release = actions [1]/[4].
+ * halt = CLA node0 EAP action[0] (mpc_debug_halt_req_i), release = actions [1]/[4].
  *
  * STACKLESS (smc_stackless_test.h): the SMU cocotb / SEP-driven boot does not
  * initialise the SMC SRAM stack, so main() makes no function calls and uses only
@@ -67,7 +67,7 @@ int main(void) {
     WAIT_RSP(SMU_STALL_POLL_ARMED, ok);
     if (!ok) goto fail;
 
-    /* S5: program CLA halt (action[0] mpc_debug_halt_req) only after POLL_ARMED;
+    /* S5: program CLA halt (action[0] mpc_debug_halt_req_i) only after POLL_ARMED;
      * read back every halt-phase CLA CSR before publishing HALT_OK. */
     SMC_WR64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR, SMU_STALL_CLA_CTRLSTATUS_EXPECT);
     SMC_WR64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR, SMU_STALL_CLA_EAP0_HALT);

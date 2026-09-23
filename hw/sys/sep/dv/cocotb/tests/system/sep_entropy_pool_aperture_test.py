@@ -20,6 +20,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from ocah_axi_vip import AxiTimingProfile
 from sep_base_test import sep_base_test
 from seq_lib.sep_entropy_pool_seq import (
     FIFO_DEPTH,
@@ -212,6 +213,35 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             FIFO_DEPTH,
         )
 
+        # AW and W carry no ordering requirement between them (AMBA IHI 0022
+        # A3.3); one write transaction answers one BRESP. The backend presents
+        # both in the same cycle, so the aw-first and w-first arms of that
+        # handshake are unreachable without arming the master.
+        drv = self.env.axi_agent.driver.axi.driver
+        for order, profile in (
+            ("aw-first", AxiTimingProfile(w_delay=4)),
+            ("w-first", AxiTimingProfile(aw_delay=4)),
+        ):
+            drv.set_timing(profile)
+            try:
+                wr = await pool.access(POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True)
+            finally:
+                drv.set_timing(AxiTimingProfile())
+            assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (
+                f"{order} write resp={wr.resp_code} timed_out={wr.timed_out}, "
+                f"expected one SLVERR; a slave that assumes same-cycle arrival "
+                f"either wedges or answers twice"
+            )
+            st = await pool.status()
+            assert (st & 0x3F) == level_room, (
+                f"{order} write changed fifo_level {level_room} -> {st & 0x3F}"
+            )
+            self.logger.info(
+                "CHK-WRITE-ORDER PASS: %s write BRESP=SLVERR, level unchanged (%d)",
+                order,
+                level_room,
+            )
+
         await ClockCycles(cocotb.top.clk_i, STALL_THRESH + 64)
         st_stall = await pool.status()
         fill_stall = (st_stall >> 7) & 1
@@ -237,6 +267,28 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self.logger.info(
             "CHK-IRQ-CAUSE-STALL PASS: 0x08=0x2 (fill_stall, pool_low clear), not status 0x%x",
             st_stall,
+        )
+
+        # The stall counter saturates at StallThresh and the flag clears only on
+        # forward progress, so holding the same
+        # stall far past the threshold must leave [37] asserted. A counter that
+        # wrapped, or a flag that self-cleared on saturation, would drop the
+        # fault here and let a real EDN outage go unreported.
+        await ClockCycles(cocotb.top.clk_i, STALL_THRESH * 3)
+        assert await self._irq(IRQ_FILL_STALL) == 1, (
+            f"[37] dropped after {STALL_THRESH * 3} further cycles of the same "
+            f"stall; the flag tracks the live stall state, so a saturated counter "
+            f"cannot clear it without an edn_ack"
+        )
+        cause_held = await pool.irq_cause()
+        assert cause_held == 0x2, (
+            f"irq-cause 0x{cause_held:x} after the extended stall, expected 0x2"
+        )
+        self.logger.info(
+            "CHK-STALL-DURATION PASS: [37] still 1 and cause still 0x2 after "
+            "%d cycles, well past StallThresh=%d",
+            STALL_THRESH * 3,
+            STALL_THRESH,
         )
 
         await pool.enable_edn()

@@ -9,7 +9,7 @@
 // CPU's LSU master, it drives the LSU request net directly from the tb's
 // assembled cocotb-AXI struct (sep_uvm_top.lsu_req_drive, an upward reference)
 // and the tb reads back the LSU response net by hierarchical name
-// (u_dut.sep_cpu.lsu_axi_resp). No `force` is used in the stub model -- the LSU
+// (u_dut.u_sep_cpu.lsu_axi_resp). No `force` is used in the stub model -- the LSU
 // request is single-driven, so it is driven, not forced.
 //
 // This stub removes el2_veer_wrapper, the IFU demux, the debug/DMI logic, and
@@ -39,27 +39,27 @@ module sep_cpu
   input logic rst_ni,
   input logic dbg_rstb_i,  // EL2 debugger reset
 
-  input  logic jtag_tck,    // JTAG clk
-  input  logic jtag_tms,    // JTAG TMS
-  input  logic jtag_tdi,    // JTAG tdi
-  input  logic jtag_trst_n, // JTAG Reset
-  output logic jtag_tdo,    // JTAG TDO
-  output logic jtag_tdoEn,  // JTAG Test Data Output enable
+  input  logic jtag_tck_i,   // JTAG clk
+  input  logic jtag_tms_i,   // JTAG TMS
+  input  logic jtag_tdi_i,   // JTAG tdi
+  input  logic jtag_trst_ni, // JTAG Reset
+  output logic jtag_tdo_o,   // JTAG TDO
+  output logic jtag_tdoEn_o, // JTAG Test Data Output enable
 
   // external MPC halt/run interface
-  input  logic mpc_debug_halt_req, // Async halt request
-  input  logic mpc_debug_run_req,  // Async run request
-  input  logic mpc_reset_run_req,  // Run/halt after reset
-  output logic mpc_debug_halt_ack, // Halt ack
-  output logic mpc_debug_run_ack,  // Run ack
-  output logic debug_brkpt_status, // debug breakpoint
+  input  logic mpc_debug_halt_req_i, // Async halt request
+  input  logic mpc_debug_run_req_i,  // Async run request
+  input  logic mpc_reset_run_req_i,  // Run/halt after reset
+  output logic mpc_debug_halt_ack_o, // Halt ack
+  output logic mpc_debug_run_ack_o,  // Run ack
+  output logic debug_brkpt_status_o, // debug breakpoint
 
-  input  logic i_cpu_halt_req,      // Async halt req to CPU
-  output logic o_cpu_halt_ack,      // core response to halt
-  output logic o_cpu_halt_status,   // 1'b1 indicates core is halted
-  output logic o_debug_mode_status, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-  input  logic i_cpu_run_req,       // Async restart req to CPU
-  output logic o_cpu_run_ack,       // Core response to run req
+  input  logic cpu_halt_req_i,      // Async halt req to CPU
+  output logic cpu_halt_ack_o,      // core response to halt
+  output logic cpu_halt_status_o,   // 1'b1 indicates core is halted
+  output logic debug_mode_status_o, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+  input  logic cpu_run_req_i,       // Async restart req to CPU
+  output logic cpu_run_ack_o,       // Core response to run req
 
   // Excluding from coverage as usage is determined by the integrator of the VeeR core.
   // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
@@ -209,19 +209,19 @@ module sep_cpu
   // Tie off all OTHER output ports to benign idle values (no VeeR core).
   // -------------------------------------------------------------------------
   // JTAG
-  assign jtag_tdo            = 1'b0;
-  assign jtag_tdoEn          = 1'b0;
+  assign jtag_tdo_o          = 1'b0;
+  assign jtag_tdoEn_o        = 1'b0;
 
   // MPC halt/run + debug status
-  assign mpc_debug_halt_ack  = 1'b0;
-  assign mpc_debug_run_ack   = 1'b0;
-  assign debug_brkpt_status  = 1'b0;
+  assign mpc_debug_halt_ack_o = 1'b0;
+  assign mpc_debug_run_ack_o  = 1'b0;
+  assign debug_brkpt_status_o = 1'b0;
 
   // CPU halt/run handshake + debug mode
-  assign o_cpu_halt_ack      = 1'b0;
-  assign o_cpu_halt_status   = 1'b0;
-  assign o_debug_mode_status = 1'b0;
-  assign o_cpu_run_ack       = 1'b0;
+  assign cpu_halt_ack_o      = 1'b0;
+  assign cpu_halt_status_o   = 1'b0;
+  assign debug_mode_status_o = 1'b0;
+  assign cpu_run_ack_o       = 1'b0;
 
   // DMI uncore port
   assign dmi_uncore_en       = 1'b0;

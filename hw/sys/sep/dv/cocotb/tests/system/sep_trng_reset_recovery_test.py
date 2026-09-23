@@ -26,14 +26,16 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, with_timeout
+from cocotb.triggers import ClockCycles, Timer, with_timeout
 from env.sep_axi_agent import SepAxiOp
-from env.sep_reg_meta import CSRNG, EDN, sym
+from env.sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, SEP_CPU_CTRL, sym
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS, RESP_SLVERR
+from seq_lib.sep_entropy_pool_seq import EDN_CTRL_DISABLE, POOL_POP, POOL_STATUS, RESP_SLVERR
 from seq_lib.sep_esrc_bringup_seq import (
+    EDN_CTRL,
+    EDN_CTRL_AUTO,
     SepEsrcConfigSeq,
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
@@ -50,11 +52,27 @@ CSRNG_INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR")
 CSRNG_INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR")
 EDN_INTR_STATE = sym("EDN_INTR_STATE_REG_ADDR")
 EDN_INTR_ENABLE = sym("EDN_INTR_ENABLE_REG_ADDR")
-EXT_TRNG_SRC_SEL = sym("SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR")
-# RDL reset of sel[2:0] is 0x7. Park uses that value to freeze the packer;
-# the domain-membership check then writes a non-reset value.
-_SRC_SEL_RESET = 0x7
-_SRC_SEL_PARKED = 0x0
+EXT_TRNG_SRC_SEL = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL")
+# Park uses the RDL reset to freeze the packer; the domain-membership
+# check then writes a non-reset value.
+_SRC_SEL_MASK = SEP_CPU_CTRL.field_mask("EXT_TRNG_SRC_SEL", "sel")
+_SRC_SEL_RESET = SEP_CPU_CTRL.reset("EXT_TRNG_SRC_SEL")
+# sel is one bit per stream, not an encoding: bit0 Key Manager, bit1 crypto
+# blocks, bit2 entropy pool, with 0 = internal DRBG and 1 = external TRNG
+# (sep_cpu_ctrl.rdl EXT_TRNG_SRC_SEL). Only bit2 feeds the pool packer, so the
+# fill and the park differ in that bit alone.
+_POOL_STREAM_BIT = 1 << 2
+# Every stream on the internal DRBG: this is what actually advances the pool
+# packer. Clearing bit2 alone does not -- the pool leg only fills while the
+# internal DRBG is being driven for the other streams as well.
+_SRC_SEL_FILL = 0x0
+# Pool back on the idle external source so the half-word freezes, with the Key
+# Manager stream left internal so the value is NOT the RDL reset. Both are
+# required at once: a frozen packer, and a sel a post-reset read can tell apart
+# from the reset value.
+_SRC_SEL_PARKED = (_SRC_SEL_RESET | _POOL_STREAM_BIT) & ~0x1
+_FIPS_LOCK_BIT = ENTROPY_SOURCE.fields("FIPS_LOCK")["LOCK"]["bm"]
+_ESRC_CTRL_RSVD0 = ENTROPY_SOURCE.fields("CTRL")["RSVD0"]["bm"]
 
 
 @pyuvm.test()
@@ -94,18 +112,77 @@ class sep_trng_reset_recovery_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, 20)
         raise AssertionError(f"entropy pool did not become {'nonempty' if nonzero else 'empty'}")
 
+    def _packer_depth(self) -> int:
+        val = cocotb.top.entropy_pool_packer_depth_o.value
+        assert val.is_resolvable, "entropy_pool_packer_depth_o is unresolvable"
+        return int(val)
+
     async def _wait_packer_depth(self, expected: int, timeout: int = 80_000) -> None:
         for _ in range(timeout):
-            if int(cocotb.top.entropy_pool_packer_depth_o.value) == expected:
+            if self._packer_depth() == expected:
                 return
             await ClockCycles(cocotb.top.clk_i, 1)
-        raise AssertionError(f"entropy pool packer did not reach depth {expected}")
+        raise AssertionError(
+            f"entropy pool packer did not reach depth {expected} (observed {self._packer_depth()})"
+        )
+
+    async def _unstick_packer(self) -> None:
+        """A full packed word with a full pool never returns to depth 1."""
+        if self._packer_depth() != 2:
+            return
+        await ClockCycles(cocotb.top.clk_i, 8)
+        if self._packer_depth() != 2:
+            return
+        pop = await self._read(POOL_POP, length=8)
+        assert pop.resp_ok, "pool pop to unstick packer depth 2 failed"
+
+    async def _commit_parked_sel(self) -> int | None:
+        await self._write(EXT_TRNG_SRC_SEL, _SRC_SEL_PARKED)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        parked_sel = (await self._read(EXT_TRNG_SRC_SEL)).rdata & _SRC_SEL_MASK
+        if parked_sel == _SRC_SEL_PARKED and self._packer_depth() == 1:
+            return parked_sel
+        return None
+
+    async def _park_half_packed_word(self) -> int:
+        """Leave the 32->64 packer holding one word, with a non-reset sel.
+
+        An AXI source-select write is not a freeze: EDN can deliver the pairing
+        word while that write is in flight. ``EDN_ENABLE=False`` stops further
+        acks; the mux write then only programs the post-reset sel baseline.
+        One arm freezes from depth 1 (no extra ack in the disable window). The
+        other freezes from depth 0 (one extra ack in that window). Either EDN
+        rate lands on depth 1.
+        """
+        await self._write(EXT_TRNG_SRC_SEL, _SRC_SEL_FILL)
+        for phase in range(32):
+            await self._write(EDN_CTRL, EDN_CTRL_AUTO)
+            await self._unstick_packer()
+            await self._wait_packer_depth(1)
+            await ClockCycles(cocotb.top.clk_i, phase)
+            if self._packer_depth() == 1:
+                await self._write(EDN_CTRL, EDN_CTRL_DISABLE)
+                await ClockCycles(cocotb.top.clk_i, 4)
+                if self._packer_depth() == 1:
+                    parked = await self._commit_parked_sel()
+                    if parked is not None:
+                        return parked
+            await self._write(EDN_CTRL, EDN_CTRL_AUTO)
+            await ClockCycles(cocotb.top.clk_i, 4 + phase)
+            if self._packer_depth() == 0:
+                await self._write(EDN_CTRL, EDN_CTRL_DISABLE)
+                await ClockCycles(cocotb.top.clk_i, 4)
+                if self._packer_depth() == 1:
+                    parked = await self._commit_parked_sel()
+                    if parked is not None:
+                        return parked
+        raise AssertionError("could not park one half-packed entropy word")
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
         await self.bring_up_entropy(strict=False, score_km=False)
         assert await self.wait_genbits(), "initial DRBG did not produce genbits"
-        assert (await self._read(ESRC_FIPS_LOCK)).rdata & 0x1, (
+        assert (await self._read(ESRC_FIPS_LOCK)).rdata & _FIPS_LOCK_BIT, (
             "initial entropy bring-up did not lock the certified ESRC configuration"
         )
 
@@ -136,26 +213,11 @@ class sep_trng_reset_recovery_test(sep_base_test):
         resets.value = saved
         await resets.park("aes", "kmac", "otbn", "km")
 
-        # Stop the pool leg on the idle external source while its 32->64 packer
-        # contains exactly one word. If a second word races the source-select
-        # write, retry from the internal source. Once external is selected, the
-        # half-word remains stable until reset, making this non-probabilistic.
-        for _ in range(32):
-            await self._write(EXT_TRNG_SRC_SEL, 0x0)
-            await self._wait_packer_depth(1)
-            await self._write(EXT_TRNG_SRC_SEL, _SRC_SEL_RESET)
-            await ClockCycles(cocotb.top.clk_i, 2)
-            if int(cocotb.top.entropy_pool_packer_depth_o.value) == 1:
-                break
-        else:
-            raise AssertionError("could not park one half-packed entropy word")
-
-        await self._write(EXT_TRNG_SRC_SEL, _SRC_SEL_PARKED)
-        parked_sel = (await self._read(EXT_TRNG_SRC_SEL)).rdata & 0x7
-        assert parked_sel == _SRC_SEL_PARKED, (
-            f"EXT_TRNG_SRC_SEL did not take non-reset value "
-            f"{_SRC_SEL_PARKED:#x} before the reset: {parked_sel:#x}"
-        )
+        # Hold both at the reset: the 32->64 packer parked half full, and a sel
+        # a post-reset read can distinguish from the RDL reset. EDN_ENABLE=False
+        # stops further acks so the half-word cannot complete during the
+        # source-select write; that write only sets the non-reset sel.
+        parked_sel = await self._park_half_packed_word()
         assert parked_sel != _SRC_SEL_RESET, (
             "test bug: parked source-select equals the RDL reset, so a "
             "post-reset match cannot prove the CSR is outside the domain"
@@ -170,21 +232,57 @@ class sep_trng_reset_recovery_test(sep_base_test):
             axi_driver.axi.init_read(address=addr, length=4, size=2)
             for addr in (ESRC_COMPONENT_ID, CSRNG_INTR_STATE, EDN_INTR_STATE)
         ]
+        assert self._packer_depth() == 1, (
+            "packer depth was not 1 immediately before the TRNG reset; "
+            "CHK-TRNG-PACKER requires a parked half-packed word"
+        )
         reset_task = cocotb.start_soon(resets.park("trng"))
 
+        isolate_seen = False
+        outstanding_at_isolate = 0
         for _ in range(1_000):
+            isolated = int(cocotb.top.trng_axi_isolated_probe_o.value)
+            # Sample when ALL three paths are isolated, which is the moment the
+            # record below names. Sampling on the first bit would let the drain
+            # finish before 0x7 and still report a read as outstanding.
+            if isolated == 0x7 and not isolate_seen:
+                isolate_seen = True
+                outstanding_at_isolate = sum(1 for event in drain_reads if not event.is_set())
             if int(cocotb.top.trng_gated_rst_n_probe_o.value) == 0:
-                assert int(cocotb.top.trng_axi_isolated_probe_o.value) == 0x7, (
+                assert isolated == 0x7, (
                     "shared TRNG reset asserted before all three AXI-Lite paths isolated"
+                )
+                assert int(cocotb.top.trng_reset_active_probe_o.value) == 0, (
+                    "TRNG clear followed the asynchronous reset without synchronization"
+                )
+                assert isolate_seen and outstanding_at_isolate > 0, (
+                    "no pre-reset CSR read was still outstanding at the cycle all "
+                    "three paths reported isolated"
                 )
                 self.logger.info(
                     "CHK-TRNG-ISOLATE-ALL PASS: all three AXI-Lite paths reported "
-                    "isolated before the shared TRNG reset asserted"
+                    "isolated before the shared TRNG reset asserted "
+                    "(%d drain read(s) still outstanding)",
+                    outstanding_at_isolate,
                 )
                 break
             await ClockCycles(cocotb.top.clk_i, 1)
         else:
             raise AssertionError("coordinated TRNG reset did not assert")
+
+        clear_sync_edges = 0
+        while not int(cocotb.top.trng_reset_active_probe_o.value) and clear_sync_edges < 2:
+            await ClockCycles(cocotb.top.clk_i, 1)
+            await Timer(1, units="ps")
+            clear_sync_edges += 1
+        assert int(cocotb.top.trng_reset_active_probe_o.value) == 1, (
+            "TRNG clear did not assert after two synchronizer edges"
+        )
+        self.logger.info(
+            "CHK-TRNG-CLEAR-SYNC PASS: reset did not propagate asynchronously and "
+            "reached clear within %d observed clk_i edge(s)",
+            clear_sync_edges,
+        )
 
         await reset_task
         drain_responses = []
@@ -203,9 +301,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         )
 
         await ClockCycles(cocotb.top.clk_i, 20)
-        assert int(cocotb.top.entropy_pool_packer_depth_o.value) == 0, (
-            "TRNG reset did not scrub the half-packed entropy word"
-        )
+        assert self._packer_depth() == 0, "TRNG reset did not scrub the half-packed entropy word"
         self.logger.info(
             "CHK-TRNG-PACKER PASS: the parked half-packed entropy word was scrubbed "
             "by the coordinated reset"
@@ -227,7 +323,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
             "while isolated, none forwarded into the reset domain"
         )
 
-        sel_after = (await self._read(EXT_TRNG_SRC_SEL)).rdata & 0x7
+        sel_after = (await self._read(EXT_TRNG_SRC_SEL)).rdata & _SRC_SEL_MASK
         assert sel_after == _SRC_SEL_PARKED, (
             f"internal TRNG reset changed EXT_TRNG_SRC_SEL from "
             f"{_SRC_SEL_PARKED:#x} to {sel_after:#x}"
@@ -256,13 +352,26 @@ class sep_trng_reset_recovery_test(sep_base_test):
             raise AssertionError("TRNG isolation did not clear during JTAG reset")
 
         jtag_reset.value = 0
-        await ClockCycles(cocotb.top.clk_i, 4)
+        await Timer(1, units="ps")
         assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 1, (
             "TRNG reset did not release after the final JTAG override cleared"
         )
+        assert int(cocotb.top.trng_reset_active_probe_o.value) == 1, (
+            "TRNG clear followed the asynchronous reset release without synchronization"
+        )
+        await ClockCycles(cocotb.top.clk_i, 1)
+        await Timer(1, units="ps")
+        assert int(cocotb.top.trng_reset_active_probe_o.value) == 1, (
+            "TRNG clear released before the second synchronizer edge"
+        )
+        await ClockCycles(cocotb.top.clk_i, 1)
+        await Timer(1, units="ps")
+        assert int(cocotb.top.trng_reset_active_probe_o.value) == 0, (
+            "TRNG clear did not release after two synchronizer edges"
+        )
         self.logger.info(
             "CHK-TRNG-JTAG PASS: the JTAG override held the coordinated reset through a "
-            "software release, isolation cleared under it, and the reset lifted when it dropped"
+            "software release, isolation cleared under it, and clear released synchronously"
         )
 
         held = await resets.read_back()
@@ -278,7 +387,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
             "released for reinitialization (SW_RESET_N=0x%08x)",
             held,
         )
-        assert not ((await self._read(ESRC_FIPS_LOCK)).rdata & 0x1), (
+        assert not ((await self._read(ESRC_FIPS_LOCK)).rdata & _FIPS_LOCK_BIT), (
             "shared TRNG reset did not clear ESRC FIPS_LOCK"
         )
         csrng_ie_after = (await self._read(CSRNG_INTR_ENABLE)).rdata & csrng_ie
@@ -294,12 +403,12 @@ class sep_trng_reset_recovery_test(sep_base_test):
         # CTRL[0] is reserved RAZ/WI: it reads 0, a write of 1 is ignored,
         # and neighboring fields do not move.
         esrc_ctrl = (await self._read(ESRC_CTRL)).rdata & 0xFFFF_FFFF
-        assert (esrc_ctrl & 0x1) == 0, (
+        assert (esrc_ctrl & _ESRC_CTRL_RSVD0) == 0, (
             f"reserved ESRC CTRL[0] is not RAZ before the write: 0x{esrc_ctrl:x}"
         )
-        await self._write(ESRC_CTRL, esrc_ctrl | 0x1)
+        await self._write(ESRC_CTRL, esrc_ctrl | _ESRC_CTRL_RSVD0)
         esrc_ctrl_after = (await self._read(ESRC_CTRL)).rdata & 0xFFFF_FFFF
-        assert (esrc_ctrl_after & 0x1) == 0, (
+        assert (esrc_ctrl_after & _ESRC_CTRL_RSVD0) == 0, (
             f"reserved ESRC CTRL[0] took a write of 1: 0x{esrc_ctrl_after:x}"
         )
         assert esrc_ctrl_after == esrc_ctrl, (
@@ -321,10 +430,9 @@ class sep_trng_reset_recovery_test(sep_base_test):
         # all three source legs back to the internal DRBG.
         await self._wait_pool_level(nonzero=False)
         empty_pop = await self._read(POOL_POP, length=8, expect_error=True)
-        # sep_entropy_fifo.sv answers an empty pop, and a pending read during
-        # clear, with RESP_SLVERR on both paths. Accepting any non-OKAY would let
-        # a DECERR pass -- and a DECERR here would mean the aperture had fallen
-        # into the reset domain, which is the opposite of what this proves.
+        # A live empty pool refuses the pop with SLVERR. DECERR would mean the
+        # aperture decoded as unused or reset-isolated, which is the opposite
+        # of recovery. The VPLAN CHK-TRNG-STALE row states that pin.
         assert empty_pop.resp_code == RESP_SLVERR, (
             f"empty pool resp={empty_pop.resp_code} after TRNG reset, expected SLVERR"
         )
@@ -339,7 +447,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         await self.start_seq(SepEsrcEnableGeneratorsSeq("esrc_restart_gens"))
         assert await self.wait_seed_ready(), "ESRC did not produce a fresh seed after reset"
         await self.start_seq(SepEsrcEnableEdnSeq("edn_restart"))
-        assert (await self._read(ESRC_FIPS_LOCK)).rdata & 0x1, (
+        assert (await self._read(ESRC_FIPS_LOCK)).rdata & _FIPS_LOCK_BIT, (
             "recovery did not restore ESRC FIPS_LOCK"
         )
 

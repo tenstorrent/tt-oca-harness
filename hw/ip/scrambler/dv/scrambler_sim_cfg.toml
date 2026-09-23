@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut scrambler` (discovered by the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the SRAM scrambler
+# family: every sized variant in both BYTE_WISE modes is pin-exposed on
+# tb/tb_top.sv and driven directly from cocotb; the design is combinational
+# and the bench uses no clock.
+name = "scrambler"
+profile = "native"
+default_framework = "cocotb"
+description = "SRAM scrambler family IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/scrambler/dv/build"]
+
+[build]
+top_module = "scrambler_tb_top"
+top_file = "hw/ip/scrambler/dv/tb/tb_top.sv"
+filelist = "hw/ip/scrambler/dv/build/scrambler_dut_compile.f"
+bender_filelist = "hw/ip/scrambler/dv/build/scrambler_bender.f"
+work_dir = "hw/ip/scrambler/dv/build"
+# The scrambler depends on no shared package; the scrambler target
+# (Bender.yml) carries its package and every sized variant.
+common_bender_targets = []
+bender_targets = ["scrambler"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/scrambler/dv/cocotb"
+test_dir = "hw/ip/scrambler/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Scrambler round trip and address bijection on every variant"
+timeout_sec = 900
+args = []
+
+[run_modes.functional]
+description = "Byte-wise lane independence"
+timeout_sec = 900
+args = []
+
+[targets.default]
+description = "Scrambler family IP-level cocotb target"
+build_dir = "hw/ip/scrambler/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+]

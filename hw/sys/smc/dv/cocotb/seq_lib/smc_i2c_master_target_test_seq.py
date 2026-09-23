@@ -168,6 +168,9 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.clock_gate_value: int = 0
         self.dut_host_write_ok: bool = False
+        #: START/STOP counts the EEPROM VIP framed for the repeated-START pair.
+        self.dut_host_restart_starts: int = -1
+        self.dut_host_restart_stops: int = -1
         self.dut_smbus_pec_ok: bool = False
         self.dut_smbus_ara_ok: bool = False
         # Bytes MEASURED on the DUT side of the bus (EEPROM VIP memory and
@@ -235,7 +238,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         for _ in range(self.SLAVE_STOP_TIMEOUT_US):
             if slave.stops > base_stops:
                 return
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"{label}: EEPROM VIP framed no STOP on tb_i2c0_* within "
             f"{self.SLAVE_STOP_TIMEOUT_US} us of hostidle "
@@ -262,7 +265,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             if not (status & I2C_STATUS_HOSTIDLE):
                 left_idle = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not left_idle:
             cevents = await self.csr_read(f"{label}_CEVENTS_STUCK", I2C0_CONTROLLER_EVENTS)
             raise AssertionError(
@@ -274,7 +277,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             status = await self.csr_read(f"{label}_STATUS", I2C0_STATUS)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         cevents = await self.csr_read(f"{label}_CEVENTS", I2C0_CONTROLLER_EVENTS)
         raise AssertionError(
             f"{label}: DUT I2C0 host did not reach hostidle "
@@ -297,18 +300,28 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         await self.csr_write("I2C0_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
 
         base_stops = self._i2c_slave.stops
+        base_starts = self._i2c_slave.starts
         addr_byte = (_I2C_EEPROM_ADDR << 1) | 0  # write
-        await self.csr_write(
-            "I2C0_FDATA_START_ADDR",
-            I2C0_FDATA,
-            _fdata(addr_byte, I2C_FDATA_START),
-        )
-        await self.csr_write("I2C0_FDATA_OFFSET", I2C0_FDATA, _fdata(_I2C_WRITE_OFFSET))
-        await self.csr_write(
-            "I2C0_FDATA_DATA_STOP",
-            I2C0_FDATA,
-            _fdata(_I2C_WRITE_BYTE, I2C_FDATA_STOP),
-        )
+        # Two write frames joined by a repeated START: the first frame's last
+        # entry carries no STOP, so the second frame's FDATA.START is issued
+        # with the transaction still open and the controller has to release SDA
+        # and re-drive the START condition rather than closing the bus. The
+        # OpenTitan controller has no separate restart control -- the same
+        # FDATA.START bit is a repeated START when a transaction is already in
+        # flight (i2c_controller_fsm.sv) -- so the only difference from the
+        # single-frame version is the dropped STOP.
+        #
+        # Both frames address the same EEPROM offset with the same byte, so the
+        # payload expectation below is unchanged and the new evidence is purely
+        # the framing: two STARTs against one STOP.
+        for label, flags in (
+            ("I2C0_FDATA_START_ADDR", I2C_FDATA_START),
+            ("I2C0_FDATA_RESTART_ADDR", I2C_FDATA_START),
+        ):
+            await self.csr_write(label, I2C0_FDATA, _fdata(addr_byte, flags))
+            await self.csr_write(f"{label}_OFFSET", I2C0_FDATA, _fdata(_I2C_WRITE_OFFSET))
+            stop = I2C_FDATA_STOP if label == "I2C0_FDATA_RESTART_ADDR" else 0
+            await self.csr_write(f"{label}_DATA", I2C0_FDATA, _fdata(_I2C_WRITE_BYTE, stop))
 
         await self._wait_hostidle("DUT_HOST_WRITE")
         cevents = await self.csr_read("DUT_HOST_WRITE_CEVENTS", I2C0_CONTROLLER_EVENTS)
@@ -331,6 +344,29 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             f"DUT I2C0 host write: slave mem 0x{got.hex()}, "
             f"expected 0x{_I2C_WRITE_BYTE:02X} "
             f"(CONTROLLER_EVENTS=0x{cevents:08x})"
+        )
+        # Framing check for the repeated START. Exact on both counters: two
+        # STARTs say the second frame opened, one STOP says the bus was never
+        # released between them. A controller that inserted a STOP -- the
+        # behaviour every other I2C frame in this package produces -- reports
+        # two STOPs here and fails, and a controller that dropped the second
+        # frame reports one START and fails.
+        new_starts = self._i2c_slave.starts - base_starts
+        new_stops = self._i2c_slave.stops - base_stops
+        assert new_starts == 2 and new_stops == 1, (
+            f"DUT I2C0 repeated START: the EEPROM VIP framed {new_starts} "
+            f"START(s) and {new_stops} STOP(s) on tb_i2c0_*, expected exactly "
+            f"2 STARTs against 1 STOP for two write frames joined by a "
+            f"repeated START"
+        )
+        self.dut_host_restart_starts = new_starts
+        self.dut_host_restart_stops = new_stops
+        cocotb.log.info(
+            "CHK-I2C0-HOST-REPEATED-START: %d STARTs against %d STOP framed on "
+            "tb_i2c0_* for the two write frames, so the second frame's "
+            "FDATA.START was issued with the transaction still open",
+            new_starts,
+            new_stops,
         )
         self.dut_host_write_ok = True
         cocotb.log.info(
@@ -409,7 +445,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 rdata = await self.csr_read("I2C0_RDATA_ARA", I2C0_RDATA) & 0xFF
                 self.obs_smbus_ara = bytes([rdata])
                 break
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         else:
             raise AssertionError(f"DUT SMBus ARA: RX FIFO stayed empty (STATUS=0x{status:08x})")
 

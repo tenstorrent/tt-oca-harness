@@ -45,7 +45,7 @@ from typing import Dict, List, Optional, Tuple
 # ``python_paths``) and in the prestage hook, which inserts it explicitly.
 from sep_seeded_rng import SepSeededRng  # noqa: E402
 
-# Array geometry from periphs.adoc ("exactly 8192 bits" / 256 x 32-bit words).
+# Array geometry from otp_fuse_controller.adoc ("exactly 8192 bits" / 256 x 32-bit words).
 WORD_BITS = 32
 NUM_FUSE_WORDS = sep_efuse_field_map.spec_num_fuse_bits() // WORD_BITS
 WORD_MASK = (1 << WORD_BITS) - 1
@@ -83,9 +83,9 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
     LC_PROD_END,
 )
 
-# Field schema: (name, byte_offset, n_words, kind). Offsets/widths from
-# sep_efuse_map_reg.svh; contiguous and summing to 256 words. kind drives
-# randomization + the expected-shadow transform:
+# Field schema: (name, byte_offset, n_words, kind). Offsets/widths come from the
+# generated `sep_reg` map imported above; contiguous and summing to 256 words.
+# kind drives randomization + the expected-shadow transform:
 #   "lc"       — LC_STATE: word holds raw code, shadow reads {~raw, raw}.
 #   "locks"    — LOCKS table: left unlocked by default so all fields read back.
 #   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.
@@ -96,17 +96,17 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
-# KM-secret fields named in periphs.adoc (Key Manager subset).
+# KM-secret fields named in otp_fuse_controller.adoc (Key Manager subset).
 _SECRET_REGS = sep_efuse_field_map.spec_secret_regs()
 
-# Lock-field geometry, from the periphs.adoc LOCK field (96 bits, two bits per
+# Lock-field geometry, from the otp_fuse_controller.adoc LOCK field (96 bits, two bits per
 # protected slot). LOCKS (64-bit, OTP words 0-1) plus
 # LOCKS_SPARE (32-bit, word 2) form one 96-bit field holding two bits per protected
-# field -- a write lock and a read lock -- across 40 slots (idx 0-39). locks[79:0] are
-# the meaningful pair bits; [95:80] are unassigned slots 40-47. Index 6'h3F is the
-# no-lock sentinel.
+# field -- a write lock and a read lock -- across 41 slots (idx 0-40). locks[81:0] are
+# the meaningful pair bits; [95:82] are unassigned slots 41-47. Index 6'h3F is the
+# no-lock sentinel. otp_fuse_controller.adoc: 41 lockable fields; LOCKS_SPARE holds slots 32-40.
 LOCK_FIELD_BITS = 96
-LOCK_SLOTS = 40
+LOCK_SLOTS = 41
 LOCK_BITS_PER_SLOT = 2
 LOCK_SENTINEL_IDX = 0x3F
 
@@ -367,7 +367,7 @@ class SepEfuseImage:
         # [95:64] of the first.
         #
         # The vector holds TWO bits per protected field -- a write lock and a
-        # read lock -- so 40 slots cover 80 bits. Index 6'h3F is the no-lock
+        # read lock -- so 41 slots cover 82 bits. Index 6'h3F is the no-lock
         # sentinel. The shadow checkers do not check lock ENFORCEMENT (read-lock ->
         # 0xbadcab1e, write-lock rejecting a program); expected_shadow() assumes
         # fields stay readable.
@@ -417,7 +417,7 @@ class SepEfuseImage:
     # -- golden model ------------------------------------------------------
 
     def secret_words(self) -> frozenset:
-        """Word indices of the four KM-secret fields (periphs.adoc)."""
+        """Word indices of the four KM-secret fields (otp_fuse_controller.adoc)."""
         idx: set[int] = set()
         for name in _SECRET_REGS:
             fld = self.field(name)
@@ -454,8 +454,8 @@ class SepEfuseImage:
 def _selftest_lock_pack() -> None:
     """LOCKS and LOCKS_SPARE must slice one 96-bit vector, not two draws.
 
-    lock_prob=1.0 forces every assigned slot. 40 slots x 2 bits = 80 ones;
-    LOCKS is [63:0], LOCKS_SPARE is [95:64] with [95:80] unassigned and 0.
+    lock_prob=1.0 forces every assigned slot. 41 slots x 2 bits = 82 ones;
+    LOCKS is [63:0], LOCKS_SPARE is [95:64] with [95:82] unassigned and 0.
     A per-field redraw would write [31:0] of a second vector into LOCKS_SPARE
     (0xffffffff); this pins the single-vector packing.
     """
@@ -464,10 +464,10 @@ def _selftest_lock_pack() -> None:
     spare = ones.field_int("LOCKS_SPARE")
     if locks != (1 << 64) - 1:
         raise RuntimeError(f"lock_prob=1.0 packed LOCKS {locks:#018x}, expected 0xffffffffffffffff")
-    if spare != 0x0000FFFF:
+    if spare != 0x0003FFFF:
         raise RuntimeError(
-            f"lock_prob=1.0 packed LOCKS_SPARE {spare:#010x}, expected 0x0000ffff "
-            "(bits [79:64] of the 96-bit lock vector; [95:80] unassigned)"
+            f"lock_prob=1.0 packed LOCKS_SPARE {spare:#010x}, expected 0x0003ffff "
+            "(bits [81:64] of the 96-bit lock vector; [95:82] unassigned)"
         )
     zeros = SepEfuseImage().randomize(7, lock_prob=0.0)
     if zeros.field_int("LOCKS") != 0 or zeros.field_int("LOCKS_SPARE") != 0:

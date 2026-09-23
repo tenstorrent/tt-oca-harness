@@ -18,6 +18,13 @@ from smc_base_test import smc_base_test
 class smc_wdt_timeout_pin_test(smc_base_test):
     """A programmed first timeout raises smc_wdt_first_timeout_o; uncleared, the second follows."""
 
+    required_evidence = (
+        "CHK-WDT-TIMEOUT-FIRST",
+        "CHK-WDT-TIMEOUT-RESET",
+        "CHK-WDT-TIMEOUT-SECOND",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

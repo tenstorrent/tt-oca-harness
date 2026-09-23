@@ -1233,6 +1233,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.RX_OVERFLOW.value = field_storage.INTR_STATE.RX_OVERFLOW.value;
     // Field: i2c.INTR_STATE.SCL_INTERFERENCE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1258,6 +1259,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.SCL_INTERFERENCE.value = field_storage.INTR_STATE.SCL_INTERFERENCE.value;
     // Field: i2c.INTR_STATE.SDA_INTERFERENCE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1283,6 +1285,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.SDA_INTERFERENCE.value = field_storage.INTR_STATE.SDA_INTERFERENCE.value;
     // Field: i2c.INTR_STATE.STRETCH_TIMEOUT
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1308,6 +1311,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.STRETCH_TIMEOUT.value = field_storage.INTR_STATE.STRETCH_TIMEOUT.value;
     // Field: i2c.INTR_STATE.SDA_UNSTABLE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1333,6 +1337,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.SDA_UNSTABLE.value = field_storage.INTR_STATE.SDA_UNSTABLE.value;
     // Field: i2c.INTR_STATE.CMD_COMPLETE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1358,6 +1363,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.CMD_COMPLETE.value = field_storage.INTR_STATE.CMD_COMPLETE.value;
     // Field: i2c.INTR_STATE.UNEXP_STOP
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1383,6 +1389,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.UNEXP_STOP.value = field_storage.INTR_STATE.UNEXP_STOP.value;
     // Field: i2c.INTR_STATE.HOST_TIMEOUT
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1408,6 +1415,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.HOST_TIMEOUT.value = field_storage.INTR_STATE.HOST_TIMEOUT.value;
     // Field: i2c.INTR_STATE.SMBALERT
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1433,6 +1441,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.SMBALERT.value = field_storage.INTR_STATE.SMBALERT.value;
     // Field: i2c.INTR_STATE.CONTROLLER_TX_FIFO_ERROR
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1458,6 +1467,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value = field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value;
     // Field: i2c.INTR_STATE.CONTROLLER_RX_FIFO_ERROR
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1483,6 +1493,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value = field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value;
     // Field: i2c.INTR_STATE.TARGET_TX_FIFO_ERROR
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1508,6 +1519,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.TARGET_TX_FIFO_ERROR.value = field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value;
     // Field: i2c.INTR_STATE.TARGET_RX_FIFO_ERROR
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1533,6 +1545,7 @@ module i2c_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATE.TARGET_RX_FIFO_ERROR.value = field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value;
     assign hwif_out.INTR_STATE.intr =
         |field_storage.INTR_STATE.RX_OVERFLOW.value
         || |field_storage.INTR_STATE.SCL_INTERFERENCE.value

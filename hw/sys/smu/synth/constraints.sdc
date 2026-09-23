@@ -46,7 +46,7 @@
 #     `jtag_ic_reset_ext_o*`, and `sep_ext_interrupts_i`.
 #   - The `AVS_DIV_CLK_Q_FROM_*` generated clocks below target the `div_clk`
 #     register inside `prim_prog_clk_div_posedge` (reached via
-#     `u_smc/u_smc_peripherals/avsbus_controller/...`) by name. In this RTL
+#     `u_smc/u_smc_peripherals/u_avsbus_controller/...`) by name. In this RTL
 #     that register is a plain `always_ff`-inferred flop (no discrete
 #     primitive instance called `div_clk`), so the pin only resolves
 #     post-synthesis once technology mapping assigns it a cell name; it will
@@ -246,7 +246,7 @@ if {$smu_full_hier} {
 # AVS Clock Constraints
 ############################
 # Note: For STA you need to care about the divided value (it is a programmable clock divider), but for CDC setup the fact its a divided value is all that matters
-set avs_hier u_smc/u_smc_peripherals/avsbus_controller
+set avs_hier u_smc/u_smc_peripherals/u_avsbus_controller
 
 # Refclk and periph clock both fed into a clock mux
 # I will create a generated clock on the output of the clockmux for both possible sources
@@ -254,17 +254,17 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 1 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"]
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 1 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"]
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"]
 
 # Tell the tool the raw primaries stop at the mux output — the generated clocks take over from there
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     -clocks {REFCLK PERIPHERALCLK}
 
 # Now the clock mux output is fed into a clock divider.
@@ -276,17 +276,17 @@ create_generated_clock -add -name AVS_CLK_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"]
 
 # AVS clock when sourced from PERIPHERALCLK (modes 00/01)
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"]
 
 # Same divided-clock intent on `u_clk_div/clk_o` (`pre_testmux_avs_clk`) so downstream
-# STA does not flag an undeclared setup clock when propagation from div_clk_stdbuf/o_Y
+# STA does not flag an undeclared setup clock when propagation from u_div_clk_stdbuf/y_o
 # alone does not reach the module output pin (prim_prog_clk_div_posedge).
 create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_REFCLK \
     -master_clock REFCLK \
@@ -300,22 +300,22 @@ create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK \
     -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/clk_o"]
 
-# Internal `div_clk` net (flop -> prim_stdbuf i_A): stamped so downstream STA can
+# Internal `div_clk` net (flop -> prim_stdbuf a_i): stamped so downstream STA can
 # resolve the setup clock looking for a PotentialRoot at `div_clk`, matching the
-# energy already modeled at o_Y.
+# energy already modeled at y_o.
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/i_A"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/a_i"]
 
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/i_A"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/a_i"]
 
-# Toggle flop output (feeds div_clk_stdbuf and postdiv_mux i_clk1). See the
+# Toggle flop output (feeds u_div_clk_stdbuf and u_postdiv_mux clk1_i). See the
 # `div_clk/Q` caveat in the file header: this pin only exists post-synthesis,
 # once technology mapping has assigned a concrete cell/pin name to the
 # `always_ff`-inferred `div_clk` register in prim_prog_clk_div_posedge.
@@ -335,32 +335,32 @@ create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_PERIPHERALCLK \
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
     -master_clock AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
     -master_clock AVS_CLK_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"] \
+    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLK_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"] \
+    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"] \
     [get_ports {core2pad_o[49]}]
 
 # Downstream AVS flops should resolve against `AVS_CLK_FROM_REFCLK` /
 # `AVS_CLK_FROM_PERIPHERALCLK` families, which are `-logically_exclusive` below
 # (only one premux source mode is active at a time).
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_clk_div/postdiv_mux/o_clk"] \
+    [get_pins "${avs_hier}/u_clk_div/u_postdiv_mux/clk_o"] \
     -clocks {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK}
 
 # These two can never be active simultaneously (muxed sources)

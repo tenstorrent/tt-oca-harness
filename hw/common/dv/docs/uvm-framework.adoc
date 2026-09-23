@@ -211,10 +211,8 @@ Declare every TB signal exactly once. In the interface-based core each TB
 net is one local declaration wired to an interface member (DTP's
 `tb_top.sv`). A bench whose cocotb realization binds a pin-level port list
 keeps that list in a single include file expanded into both shapes
-through direction macros, the pattern of
-`hw/sys/smu/dv/tb/smu_tb_signal_list.svh` and its expansion in SMU's
-`tb_top.sv`. Hand-maintaining two declaration blocks in lockstep is the
-failure mode both patterns exist to remove.
+through direction macros. Hand-maintaining two declaration blocks in
+lockstep is the failure mode both patterns exist to remove.
 
 ==== Step 3: Carry DUT-local controls in a TB interface
 
@@ -283,9 +281,11 @@ Give each implemented scenario its UVM binding:
 module = { cocotb = "<dut>_sanity_test", uvm = "<dut>_sanity_test" }
 ----
 
-A scenario without a `uvm` binding errors when selected under
-`--framework uvm`; during bring-up, group selections can ride
-`--skip-unimplemented` until the port is complete.
+A scenario that is cocotb-only by design declares it in the same map
+(`module = { cocotb = "<dut>_x_test", uvm = false }`); group selections skip
+it under `--framework uvm` with no flag. A scenario without any `uvm` entry
+errors when selected under `--framework uvm`; during bring-up, group
+selections can ride `--skip-unimplemented` until the port is complete.
 
 ==== Step 8: Run and verify
 

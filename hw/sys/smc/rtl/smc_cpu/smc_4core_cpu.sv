@@ -21,6 +21,8 @@ module smc_4core_cpu (
   // Reset-drain handshake (driven by smc_cpu_ctrl_wrap, always-on domain)
   input  logic                                            isolate_req_i,
   output logic                                            drained_o,
+  // Flush requests to the AXI isolate modules
+  input  logic                                            isolate_flush_i,
 
   // Reset vector inputs
   input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,
@@ -94,11 +96,11 @@ module smc_4core_cpu (
   logic debug_dmactive, debug_dmactiveAck;
   logic gated_debug_clock;
 
-  prim_flop_3sync_r sync_debug_active (
-    .i_CK(clk_i),
-    .i_RN(rst_debug_ni),
-    .i_D(debug_dmactive),
-    .o_Q(debug_dmactiveAck)
+  prim_flop_3sync_r u_sync_debug_active (
+    .clk_i(clk_i),
+    .rst_ni(rst_debug_ni),
+    .d_i(debug_dmactive),
+    .q_o(debug_dmactiveAck)
   );
 
   always @(posedge clk_i) begin
@@ -109,11 +111,11 @@ module smc_4core_cpu (
     end
   end
 
-  prim_clkgater debug_clock_gate (
-    .i_clk    (clk_i),
-    .i_en     (clock_en),
-    .i_te     (test_en_i),
-    .o_clk    (gated_debug_clock)
+  prim_clkgater u_debug_clock_gate (
+    .clk_i    (clk_i),
+    .en_i     (clock_en),
+    .te_i     (test_en_i),
+    .clk_o    (gated_debug_clock)
   );
 
   // cluster_ded has glitches because of uneven combo path, flop to mitigate CDC glitches
@@ -195,6 +197,7 @@ module smc_4core_cpu (
     .mst_req_o   (l2_frontend_axi_isolated_req),
     .mst_resp_i  (l2_frontend_axi_isolated_resp),
     .isolate_i   (cluster_boundary_isolate),
+    .flush_i     (isolate_flush_i),
     .isolated_o  (l2_frontend_isolated)
   );
 
@@ -217,6 +220,7 @@ module smc_4core_cpu (
     .mst_req_o   (mmio_axi_req_o),
     .mst_resp_i  (mmio_axi_resp_i),
     .isolate_i   (cluster_boundary_isolate),
+    .flush_i     (isolate_flush_i),
     .isolated_o  (mmio_isolated)
   );
 

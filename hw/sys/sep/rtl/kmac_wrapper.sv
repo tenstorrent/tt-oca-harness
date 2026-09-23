@@ -158,7 +158,7 @@ module kmac_wrapper (
 
   prim_mubi_pkg::mubi4_t kmac_idle;
 
-  kmac tt_kmac (
+  kmac u_tt_kmac (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
     .rst_shadowed_ni(rst_ni),

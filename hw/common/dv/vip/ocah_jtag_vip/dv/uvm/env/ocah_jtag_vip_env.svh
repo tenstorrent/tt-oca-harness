@@ -5,7 +5,8 @@
 // drives the shared reactive TAP device (IDCODE 0x1B34_C0D1, a writable 16-bit
 // CTRL register, a read-only 8-bit STATUS register behind a 5-bit instruction
 // register). The master monitor's event stream feeds a scan builder for the
-// length evidence, and one env-owned ocah_jtag_checker collects every CHK-*
+// length evidence and the master env's coverage subscriber, which also takes
+// the builder's scans; one env-owned ocah_jtag_checker collects every CHK-*
 // record; tests arm require_checks and required_ids. Sequences consume only
 // frozen surfaces: m_master_env.m_sequencer, m_slave_seq, m_scan_builder, and
 // m_checker.
@@ -45,6 +46,7 @@ class ocah_jtag_vip_env extends uvm_env;
     m_master_cfg.vif             = jtag_vif;
     m_master_cfg.is_active       = UVM_ACTIVE;
     m_master_cfg.en_monitor      = 1'b1;
+    m_master_cfg.en_cov          = 1'b1;
     m_master_cfg.tck_half_period = 10ns;
     uvm_config_db#(ocah_jtag_master_config)::set(this, "m_master_env*", "cfg", m_master_cfg);
     m_master_env = ocah_jtag_master_env::type_id::create("m_master_env", this);
@@ -70,6 +72,7 @@ class ocah_jtag_vip_env extends uvm_env;
   function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
     m_master_env.event_ap.connect(m_scan_builder.analysis_export);
+    if (m_master_env.m_cov != null) m_scan_builder.scan_ap.connect(m_master_env.m_cov.scan_export);
     m_slave_seq.responder = m_slave_agent.m_driver;
     m_slave_seq.evidence  = m_checker;
   endfunction

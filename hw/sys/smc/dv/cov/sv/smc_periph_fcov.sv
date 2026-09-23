@@ -66,9 +66,39 @@ module smc_periph_fcov #(
   input wire axi_hang_irq_sys_i,
   input wire axi_hang_irq_sep_i,
   input wire axi_hang_irq_data_i,
-  input wire axi_hang_irq_periph31_i,
+  input wire axi_hang_irq_periph30_i,
   input wire axi_hang_irq_plic_src_i,
-  input wire ext_interrupt_0_sync_i
+  input wire ext_interrupt_0_sync_i,
+
+  // Peripheral-domain AXI-Lite CDC bridge, peripheral-clock side.
+  input wire cdc_awvalid_i,
+  input wire cdc_awready_i,
+  input wire cdc_wvalid_i,
+  input wire cdc_bvalid_i,
+  input wire cdc_arvalid_i,
+  input wire cdc_arready_i,
+  input wire cdc_rvalid_i,
+
+  // Mailbox 0 FIFO occupancy and the 32-channel interrupt vector.
+  input wire [1:0] mbx0_full_i,
+  input wire [1:0] mbx0_empty_i,
+  input wire [31:0] mailbox_interrupts_i,
+
+  // Telemetry ATB receivers.
+  input wire [2:0] telem_atvalid_i,
+  input wire [2:0] telem_atready_i,
+  input wire [6:0] telem_atid0_i,
+  input wire [6:0] telem_atid1_i,
+  input wire [6:0] telem_atid2_i,
+
+  // UART TX lines and I2C mode enables.
+  input wire [3:0] uart_tx_i,
+  input wire [2:0] i2c_host_enable_i,
+  input wire [2:0] i2c_target_enable_i,
+
+  // OCTS system timer count.
+  input wire clk_ref_i,
+  input wire [63:0] timer_count_i
 );
 
   wire in_reset = (rst_cold_ni !== 1'b1);
@@ -222,13 +252,13 @@ module smc_periph_fcov #(
   wire irq_hang_sys_e = (axi_hang_irq_sys_i === 1'b1);
   wire irq_hang_sep_e = (axi_hang_irq_sep_i === 1'b1);
   wire irq_hang_data_e = (axi_hang_irq_data_i === 1'b1);
-  wire irq_hang_periph31_e = (axi_hang_irq_periph31_i === 1'b1);
+  wire irq_hang_periph30_e = (axi_hang_irq_periph30_i === 1'b1);
   wire irq_hang_plic_src_e = (axi_hang_irq_plic_src_i === 1'b1);
   `OCAH_FCOV_COVER(c_irq_axi_hang_any, irq_hang_any_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_irq_axi_hang_sys, irq_hang_sys_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_irq_axi_hang_sep, irq_hang_sep_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_irq_axi_hang_data, irq_hang_data_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_irq_axi_hang_periph31, irq_hang_periph31_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_irq_axi_hang_periph30, irq_hang_periph30_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_irq_axi_hang_plic_src, irq_hang_plic_src_e, clk_smc_i, in_reset)
 
   // Independence: exactly one hang leg up proves the legs are separate,
@@ -246,6 +276,172 @@ module smc_periph_fcov #(
   wire irq_multiple_concurrent_e = (irq_group != 4'b0000)
       && ((irq_group & (irq_group - 4'b0001)) != 4'b0000);
   `OCAH_FCOV_COVER(c_irq_multiple_concurrent, irq_multiple_concurrent_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Peripheral-domain AXI-Lite CDC bridge. The point is a request accepted
+  // on the peripheral-clock side with its response returning there, so a
+  // bridge that accepts and never answers is not covered.
+  // ------------------------------------------------------------------
+  logic cdc_wr_open_q, cdc_rd_open_q;
+  always_ff @(posedge clk_periph_i) begin
+    if (in_reset) begin
+      cdc_wr_open_q <= 1'b0;
+      cdc_rd_open_q <= 1'b0;
+    end else begin
+      if ((cdc_awvalid_i === 1'b1) && (cdc_awready_i === 1'b1)) cdc_wr_open_q <= 1'b1;
+      else if (cdc_bvalid_i === 1'b1) cdc_wr_open_q <= 1'b0;
+      if ((cdc_arvalid_i === 1'b1) && (cdc_arready_i === 1'b1)) cdc_rd_open_q <= 1'b1;
+      else if (cdc_rvalid_i === 1'b1) cdc_rd_open_q <= 1'b0;
+    end
+  end
+
+  wire cdc_bridge_write_e = cdc_wr_open_q && (cdc_bvalid_i === 1'b1);
+  wire cdc_bridge_read_e = cdc_rd_open_q && (cdc_rvalid_i === 1'b1);
+  `OCAH_FCOV_COVER(c_axil_cdc_bridge_write, cdc_bridge_write_e, clk_periph_i, in_reset)
+  `OCAH_FCOV_COVER(c_axil_cdc_bridge_read, cdc_bridge_read_e, clk_periph_i, in_reset)
+  // The peripheral-clock side carrying a request at all, kept separate so a
+  // bridge that never opened is distinguishable from one that never answered.
+  wire cdc_request_e = (cdc_awvalid_i === 1'b1) || (cdc_arvalid_i === 1'b1);
+  `OCAH_FCOV_COVER(c_axil_cdc_request_seen, cdc_request_e, clk_periph_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Mailbox instantiation. The vector is 32 bits wide by construction, so
+  // the count point is a channel above the low byte raising its own bit --
+  // that cannot be satisfied by a narrower instantiation. The depth point
+  // is the FIFO reporting full, which at depth two means two entries.
+  // ------------------------------------------------------------------
+  wire mailbox_count_32_e = (mailbox_interrupts_i[31:8] !== 24'd0)
+      && (^mailbox_interrupts_i !== 1'bx);
+  wire mailbox_depth_two_e = (mbx0_full_i !== 2'd0) && (^mbx0_full_i !== 1'bx);
+  wire mailbox_single_entry_e = (mbx0_full_i === 2'd0) && (mbx0_empty_i !== 2'b11)
+      && (^mbx0_empty_i !== 1'bx);
+  `OCAH_FCOV_COVER(c_mailbox_count_32, mailbox_count_32_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_mailbox_depth_2_full_at_two_entries, mailbox_depth_two_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_single_entry_message, mailbox_single_entry_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_two_entry_message, mailbox_depth_two_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Telemetry ATB. An accepted beat is valid and ready in the same cycle;
+  // the per-receiver points keep the three instances separable, and the
+  // distinct-ID point needs two different IDs across the run.
+  // ------------------------------------------------------------------
+  wire [2:0] atb_accept = telem_atvalid_i & telem_atready_i;
+  wire atb_transfer_accepted_e = (atb_accept !== 3'd0) && (^atb_accept !== 1'bx);
+  wire receiver_0_decode_e = (atb_accept[0] === 1'b1);
+  wire receiver_1_decode_e = (atb_accept[1] === 1'b1);
+  wire receiver_2_decode_e = (atb_accept[2] === 1'b1);
+  `OCAH_FCOV_COVER(c_atb_transfer_accepted, atb_transfer_accepted_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_receiver_0_decode, receiver_0_decode_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_receiver_1_decode, receiver_1_decode_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_receiver_2_decode, receiver_2_decode_e, clk_smc_i, in_reset)
+
+  logic [6:0] first_atid_q;
+  logic first_atid_valid_q;
+  logic distinct_atid_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      first_atid_q <= '0;
+      first_atid_valid_q <= 1'b0;
+      distinct_atid_q <= 1'b0;
+    end else if (atb_accept[0] === 1'b1) begin
+      if (!first_atid_valid_q) begin
+        first_atid_q <= telem_atid0_i;
+        first_atid_valid_q <= 1'b1;
+      end else if (telem_atid0_i !== first_atid_q) begin
+        distinct_atid_q <= 1'b1;
+      end
+    end
+  end
+
+  wire distinct_atid_values_e = distinct_atid_q
+      || ((atb_accept[1] === 1'b1) && (telem_atid1_i !== telem_atid0_i))
+      || ((atb_accept[2] === 1'b1) && (telem_atid2_i !== telem_atid0_i));
+  `OCAH_FCOV_COVER(c_distinct_atid_values, distinct_atid_values_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // UART transmission. A character starts with the line falling from idle;
+  // one such edge is a character, two are more than one.
+  // ------------------------------------------------------------------
+  logic uart0_tx_q;
+  logic [7:0] uart0_start_count_q;
+  always_ff @(posedge clk_periph_i) begin
+    if (in_reset) begin
+      uart0_tx_q <= 1'b1;
+      uart0_start_count_q <= '0;
+    end else begin
+      uart0_tx_q <= uart_tx_i[0];
+      if ((uart_tx_i[0] === 1'b0) && (uart0_tx_q === 1'b1) && (uart0_start_count_q != 8'hFF)) begin
+        uart0_start_count_q <= uart0_start_count_q + 8'd1;
+      end
+    end
+  end
+
+  wire tx_single_char_e = (uart0_start_count_q >= 8'd1);
+  wire tx_multi_char_e = (uart0_start_count_q >= 8'd2);
+  `OCAH_FCOV_COVER(c_tx_single_char, tx_single_char_e, clk_periph_i, in_reset)
+  `OCAH_FCOV_COVER(c_tx_multi_char, tx_multi_char_e, clk_periph_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // I2C direction and repeated start. The address byte's eighth bit is the
+  // read/write flag, so the bit counter after a START selects it; a START
+  // with a transfer already open is a repeated start.
+  // ------------------------------------------------------------------
+  logic i2c0_in_transfer_q;
+  logic [3:0] i2c0_bit_cnt_q;
+  logic i2c0_rw_valid_q;
+  logic i2c0_rw_q;
+  always_ff @(posedge clk_periph_i) begin
+    if (in_reset) begin
+      i2c0_in_transfer_q <= 1'b0;
+      i2c0_bit_cnt_q <= '0;
+      i2c0_rw_valid_q <= 1'b0;
+      i2c0_rw_q <= 1'b0;
+    end else if (i2c0_start_e) begin
+      i2c0_in_transfer_q <= 1'b1;
+      i2c0_bit_cnt_q <= '0;
+      i2c0_rw_valid_q <= 1'b0;
+    end else if (i2c0_stop_e) begin
+      i2c0_in_transfer_q <= 1'b0;
+      i2c0_rw_valid_q <= 1'b0;
+    end else if (i2c0_in_transfer_q && i2c0_scl_rising) begin
+      if (i2c0_bit_cnt_q != 4'd15) i2c0_bit_cnt_q <= i2c0_bit_cnt_q + 4'd1;
+      if (i2c0_bit_cnt_q == 4'd7) begin
+        i2c0_rw_valid_q <= 1'b1;
+        i2c0_rw_q <= i2c0_sda_i;
+      end
+    end
+  end
+
+  wire i2c0_host = (i2c_host_enable_i[0] === 1'b1);
+  wire i2c0_target = (i2c_target_enable_i[0] === 1'b1);
+  wire controller_write_e = i2c0_host && i2c0_rw_valid_q && (i2c0_rw_q === 1'b0);
+  wire controller_read_e = i2c0_host && i2c0_rw_valid_q && (i2c0_rw_q === 1'b1);
+  wire controller_repeated_start_e = i2c0_host && i2c0_start_e && i2c0_in_transfer_q;
+  wire target_write_received_e = i2c0_target && !i2c0_host && i2c0_rw_valid_q
+      && (i2c0_rw_q === 1'b0);
+  wire target_read_served_e = i2c0_target && !i2c0_host && i2c0_rw_valid_q
+      && (i2c0_rw_q === 1'b1);
+  `OCAH_FCOV_COVER(c_controller_write, controller_write_e, clk_periph_i, in_reset)
+  `OCAH_FCOV_COVER(c_controller_read, controller_read_e, clk_periph_i, in_reset)
+  `OCAH_FCOV_COVER(c_controller_repeated_start, controller_repeated_start_e, clk_periph_i, in_reset)
+  `OCAH_FCOV_COVER(c_target_write_received, target_write_received_e, clk_periph_i, in_reset)
+  `OCAH_FCOV_COVER(c_target_read_served, target_read_served_e, clk_periph_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // OCTS system timer. Advance is a change of the count; monotonic is the
+  // stronger form, a change that is an increase.
+  // ------------------------------------------------------------------
+  logic [63:0] timer_count_q;
+  always_ff @(posedge clk_ref_i) begin
+    if (in_reset) timer_count_q <= '0;
+    else timer_count_q <= timer_count_i;
+  end
+
+  wire timer_valid = (^timer_count_q !== 1'bx) && (^timer_count_i !== 1'bx);
+  wire octs_count_advances_e = timer_valid && (timer_count_i !== timer_count_q);
+  wire octs_count_monotonic_e = timer_valid && (timer_count_i > timer_count_q);
+  `OCAH_FCOV_COVER(c_octs_count_advances, octs_count_advances_e, clk_ref_i, in_reset)
+  `OCAH_FCOV_COVER(c_octs_count_monotonic, octs_count_monotonic_e, clk_ref_i, in_reset)
 
 `ifndef VERILATOR
   // ------------------------------------------------------------------

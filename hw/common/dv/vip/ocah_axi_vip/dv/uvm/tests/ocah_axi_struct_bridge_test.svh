@@ -3,8 +3,9 @@
 //
 // ocah_axi_struct_bridge_test — the shared slave agent behind
 // ocah_axi_struct_bridge, proven full-stack from the struct side: backdoor
-// preload, random single beats, INCR/FIXED/WRAP bursts, one-shot faults, and
-// READY stalls, with the passive env scoring the interface side. Required
+// preload, random single beats of every size, INCR/FIXED/WRAP bursts, partial
+// strobes, one-shot faults, response holds, and READY stalls, with the passive
+// env scoring the interface side. Required
 // CHK-* evidence on both the scenario checker and the wire-level scoreboard.
 
 class ocah_axi_struct_bridge_test extends ocah_axi_vip_base_test;
@@ -23,8 +24,10 @@ class ocah_axi_struct_bridge_test extends ocah_axi_vip_base_test;
     m_env.m_checker.required_ids.push_back("CHK-AXI-BRIDGE-ID");
     m_env.m_checker.required_ids.push_back("CHK-AXI-BRIDGE-BURST");
     m_env.m_checker.required_ids.push_back("CHK-AXI-BRIDGE-WRAP");
+    m_env.m_checker.required_ids.push_back("CHK-AXI-BRIDGE-STRB");
     m_env.m_checker.required_ids.push_back("CHK-AXI-BRIDGE-FAULT-RD");
     m_env.m_checker.required_ids.push_back("CHK-AXI-BRIDGE-FAULT-WR");
+    m_env.m_checker.required_ids.push_back("CHK-AXI-BRIDGE-HOLD");
     m_env.m_checker.required_ids.push_back("CHK-AXI-BRIDGE-BACKPRESSURE");
     m_env.m_mt_axi_cfg.require_checks = 1'b1;
     m_env.m_mt_axi_cfg.required_ids.push_back("CHK-AXI-RESP");

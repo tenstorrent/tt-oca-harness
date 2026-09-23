@@ -240,7 +240,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "test bug: TEST_EN raised and resensed but secure_tm_o is still 0, so the "
             "guard is not blocking and the refusal below would not be under test"
         )
-        await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, (self._control_word * 32) | _GO | _ENABLE)
         done, busy, err, data = await self._await_read_done()
         assert (done, busy, err) == (1, 0, 1), (
             f"CHK-READ-ERR-BLOCKED FAIL: a guard-blocked read reported done={done} "
@@ -411,6 +411,52 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 "would land in an idle window and grade nothing"
             )
 
+        # Pre-state control for the error term, where it can hold. error_o is one
+        # of the three things the verdict rests on, and on the program leg the
+        # injection lands in an idle window where the other two are already true.
+        #
+        # error_o is cleared by the NEXT REQUEST, not by a status write (the same
+        # rule CHK-READ-ERR-CLEAR-REQUEST grades), and _quiesce only clears the
+        # interface-level efuse_req_error. So on the first injection of an
+        # interface the control is real and is asserted; on a later one the
+        # latch is carried over from the previous leg by design, and the error
+        # term is NOT attributable there -- that leg rests on done and on the
+        # data mismatch instead. Recorded rather than asserted away.
+        await ReadOnly()
+        err_before = int(getattr(dut, f"efuse_{which}_error_o").value)
+        done_before = int(getattr(dut, f"efuse_{which}_done_o").value)
+
+        if in_flight:
+            # A command is mid-operation, so error and done are both low going in
+            # and the 1/1/0 verdict below is a consequence of the injection.
+            assert (err_before, done_before) == (0, 0), (
+                f"{which} error_o={err_before} done_o={done_before} before an "
+                "in-flight injection; the verdict terms must start low or they are "
+                "not attributable to it"
+            )
+        else:
+            # Idle-window injection. Measured on this build: error_o and done_o are
+            # BOTH already 1 here, on the first injection as well as later ones --
+            # an idle interface has retired its last command and is reporting it.
+            # busy/req are idle-low for the same reason, and the data term compares
+            # the fixed refusal sentinel against an image word, which are never
+            # equal. So every term of the 1/1/0 + data verdict is settled before
+            # the injection and none of it grades suppression.
+            #
+            # What this leg does still grade is the state-report path: the injected
+            # encoding must appear on *_state_o and the interface must recover to a
+            # legal state afterwards. That is asserted above and below, and it is
+            # what the checker row claims.
+            self.logger.info(
+                "%s idle-window injection (%#04x): error_o=%d done_o=%d before the "
+                "injection, so the 1/1/0 terms are pre-settled and grade nothing "
+                "here -- this leg grades the state report and the recovery",
+                which,
+                state,
+                err_before,
+                done_before,
+            )
+
         await NextTimeStep()
         val.value = state
         en.value = 1
@@ -421,7 +467,8 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         observed = int(getattr(dut, f"efuse_{which}_state_o").value)
         assert observed == state, (
             f"test bug: {which} state reads {observed:#04x}, expected the injected "
-            f"{state:#04x} -- the force did not reach the register"
+            f"{state:#04x} -- the force did not reach the register (inject "
+            "confirmation, not fail-closed evidence)"
         )
         # Suppression is claimed ONLY for the in-flight leg. Injected into an
         # idle interface this signal is already low, so requiring it to be low
@@ -449,6 +496,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         recovered = int(getattr(dut, f"efuse_{which}_state_o").value)
+        assert recovered in (_ST_IDLE, _ST_WAIT_RESP), (
+            f"CHK-{which.upper()}-FAILCLOSED FAIL: recovered {which} state "
+            f"{recovered:#04x} is not a legal encoding "
+            f"(idle={_ST_IDLE:#04x} wait={_ST_WAIT_RESP:#04x})"
+        )
         assert int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value) == 0, (
             f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
             f"command while recovering from {state:#04x}"
@@ -463,30 +515,44 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         done = int(getattr(dut, f"efuse_{which}_done_o").value)
         busy = int(getattr(dut, f"efuse_{which}_busy_o").value)
         data = int(data_probe.value)
-        assert (err, done, busy) == (1, 1, 0), (
-            f"CHK-{which.upper()}-FAILCLOSED FAIL: recovering from {state:#04x} the "
-            f"{which} interface reported error={err} done={done} busy={busy}, "
-            "expected 1/1/0 -- a machine that recovers silently leaves the caller "
-            "believing its operation is still in flight"
-        )
         sensed = self._sensed_control_word
-        assert data != sensed, (
-            f"CHK-{which.upper()}-FAILCLOSED FAIL: {which} read-back data = "
-            f"{data:#010x} recovering from {state:#04x}, which is the sensed "
-            f"control word -- a leaked fuse value the operation never "
-            "legitimately fetched"
-        )
-        self.logger.info(
-            "CHK-%s-FAILCLOSED PASS: recovered from %#04x %s (state now %#04x, "
-            "reported not asserted), no bank command, error and done set, not busy, "
-            "data 0x%08x is not the sensed control word 0x%08x",
-            which.upper(),
-            state,
-            "mid-operation" if in_flight else "injected while idle",
-            recovered,
-            data,
-            sensed,
-        )
+        # The 1/1/0 status terms and the data mismatch are only attributable
+        # when the injection landed mid-operation (they start 0/0). An idle
+        # interface already reports a retired command, so those compares hold
+        # whether or not the illegal encoding did anything. Idle grades the
+        # recovered legal encoding above.
+        if in_flight:
+            assert (err, done, busy) == (1, 1, 0), (
+                f"CHK-{which.upper()}-FAILCLOSED FAIL: recovering from {state:#04x} the "
+                f"{which} interface reported error={err} done={done} busy={busy}, "
+                "expected 1/1/0 -- a machine that recovers silently leaves the caller "
+                "believing its operation is still in flight"
+            )
+            assert data != sensed, (
+                f"CHK-{which.upper()}-FAILCLOSED FAIL: {which} read-back data = "
+                f"{data:#010x} recovering from {state:#04x}, which is the sensed "
+                f"control word -- a leaked fuse value the operation never "
+                "legitimately fetched"
+            )
+            self.logger.info(
+                "CHK-%s-FAILCLOSED PASS: recovered from %#04x mid-operation "
+                "(state now %#04x), no bank command, error and done set, not busy, "
+                "data 0x%08x is not the sensed control word 0x%08x",
+                which.upper(),
+                state,
+                recovered,
+                data,
+                sensed,
+            )
+        else:
+            self.logger.info(
+                "CHK-%s-FAILCLOSED PASS: recovered from %#04x injected while idle "
+                "(state now %#04x legal, no bank command); 1/1/0 and data are "
+                "pre-settled on an idle interface and are not graded",
+                which.upper(),
+                state,
+                recovered,
+            )
         await self._quiesce(which)
 
     def _pick_pg_bits(self, img) -> list[int]:

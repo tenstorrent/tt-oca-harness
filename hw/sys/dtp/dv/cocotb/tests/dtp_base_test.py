@@ -85,6 +85,12 @@ class dtp_base_test(OcahTest):
 
     def plumb_scenario_seq(self, seq: OcahSequence) -> None:
         seq.cfg = self.env.cfg
+        # Sequence evidence reaches the simulation log only from a logger under
+        # the `cocotb` hierarchy; a root-child logger drops INFO records silently.
+        if not seq.log.name.startswith("cocotb."):
+            raise RuntimeError(
+                f"{seq.get_name()} logger {seq.log.name!r} is outside the cocotb hierarchy"
+            )
 
     async def bring_up(self) -> None:
         """Walk the DTP reset ladder: start the system clock, release POR, then reset."""
@@ -107,6 +113,7 @@ class dtp_base_test(OcahTest):
         self.logger.info("dbg_disable startup vector: %s", format_dbg_disable(startup))
         cocotb.start_soon(Clock(tb.clk, self.cfg.sys_clk_period_ns, units="ns").start())
         await ClockCycles(tb.clk, 5)
+        tb.check_dv_cfg()
         tb.por_rst_n.value = 1
         await ClockCycles(tb.clk, 5)
         tb.sys_rst_n.value = 1

@@ -128,8 +128,8 @@ package smc_periph_axi_lite_xbar_pkg;
 
   // Output: efuse — split into two rules (SMC_EFUSE_MAP + EFUSE_INTERFACE_CTRL)
   localparam logic [31:0] EFUSE_EFUSE_MAP_BASE = 32'hc0007000;
-  localparam logic [31:0] EFUSE_EFUSE_MAP_SIZE = 32'hc00;
-  localparam logic [32:0] EFUSE_EFUSE_MAP_END  = 33'hc0007c00;
+  localparam logic [31:0] EFUSE_EFUSE_MAP_SIZE = 32'h400;
+  localparam logic [32:0] EFUSE_EFUSE_MAP_END  = 33'hc0007400;
 
   localparam logic [31:0] EFUSE_EFUSE_INTERFACE_CTRL_BASE = 32'hc0008000;
   localparam logic [31:0] EFUSE_EFUSE_INTERFACE_CTRL_SIZE = 32'h1c;

@@ -585,24 +585,24 @@ module smc_peripherals #(
   logic gated_clk_ref_avs;
   logic gated_clk_periph_avs;
 
-  prim_clkgater avs_clk_ref_gater (
-    .i_clk(clk_ref_i),
-    .i_en(~avs_cg_en_ref_clk),
-    .i_te(test_en_i),
-    .o_clk(gated_clk_ref_avs)
+  prim_clkgater u_avs_clk_ref_gater (
+    .clk_i(clk_ref_i),
+    .en_i(~avs_cg_en_ref_clk),
+    .te_i(test_en_i),
+    .clk_o(gated_clk_ref_avs)
   );
 
-  prim_clkgater avs_clk_periph_gater (
-    .i_clk(clk_periph_i),
-    .i_en(~avs_cg_en_periph_clk),
-    .i_te(test_en_i),
-    .o_clk(gated_clk_periph_avs)
+  prim_clkgater u_avs_clk_periph_gater (
+    .clk_i(clk_periph_i),
+    .en_i(~avs_cg_en_periph_clk),
+    .te_i(test_en_i),
+    .clk_o(gated_clk_periph_avs)
   );
 
   avsbus_controller #(
     .COMMAND_FIFO_DEPTH         (smc_config_pkg::AVS_COMMAND_FIFO_DEPTH),
     .READBACK_FIFO_DEPTH        (smc_config_pkg::AVS_READBACK_FIFO_DEPTH)
-  ) avsbus_controller (
+  ) u_avsbus_controller (
     .clk_reg_i                  (gated_clk_periph_avs),
     .clk_ref_i                  (gated_clk_ref_avs),
 
@@ -633,11 +633,11 @@ module smc_peripherals #(
 
   logic gated_clk_periph_i2c;
 
-  prim_clkgater i2c_clk_periph_gater (
-    .i_clk(clk_periph_i),
-    .i_en(~i2c_cg_en_periph_clk),
-    .i_te(test_en_i),
-    .o_clk(gated_clk_periph_i2c)
+  prim_clkgater u_i2c_clk_periph_gater (
+    .clk_i(clk_periph_i),
+    .en_i(~i2c_cg_en_periph_clk),
+    .te_i(test_en_i),
+    .clk_o(gated_clk_periph_i2c)
   );
 
   `OCAH_OT_ASSERT_INIT(
@@ -665,7 +665,7 @@ module smc_peripherals #(
     .I2C_0__REG_MAP_BASE_ADDR   (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))),
     .I2C_0__REG_MAP_SIZE        (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE)),
     .I2C_INSTANCE_SPACING       (i2c_wrap_pkg::I2C_INSTANCE_SPACING)
-  ) i2c_wrap (
+  ) u_i2c_wrap (
     .clk_i                    (gated_clk_periph_i2c),
     .rst_ni                   (rst_primary_periph_clk_n),
 
@@ -700,11 +700,11 @@ module smc_peripherals #(
 
   logic gated_clk_periph_uart;
 
-  prim_clkgater uart_clk_periph_gater (
-    .i_clk(clk_periph_i),
-    .i_en(~uart_cg_en_periph_clk),
-    .i_te(test_en_i),
-    .o_clk(gated_clk_periph_uart)
+  prim_clkgater u_uart_clk_periph_gater (
+    .clk_i(clk_periph_i),
+    .en_i(~uart_cg_en_periph_clk),
+    .te_i(test_en_i),
+    .clk_o(gated_clk_periph_uart)
   );
 
   `OCAH_OT_ASSERT_INIT(UartLogEngineWrapBaseFits_A,
@@ -792,20 +792,20 @@ module smc_peripherals #(
 
   logic gated_clk_smc_tel;
 
-  prim_clkgater tel_clk_smc_gater (
-    .i_clk(clk_smc_i),
-    .i_en(~tel_cg_en_i),
-    .i_te(test_en_i),
-    .o_clk(gated_clk_smc_tel)
+  prim_clkgater u_tel_clk_smc_gater (
+    .clk_i(clk_smc_i),
+    .en_i(~tel_cg_en_i),
+    .te_i(test_en_i),
+    .clk_o(gated_clk_smc_tel)
   );
 
   logic gated_clk_telemetry;
 
-  prim_clkgater tel_clk_telemetry_gater (
-    .i_clk(clk_telemetry_i),
-    .i_en(~tel_cg_en_telemetry_clk),
-    .i_te(test_en_i),
-    .o_clk(gated_clk_telemetry)
+  prim_clkgater u_tel_clk_telemetry_gater (
+    .clk_i(clk_telemetry_i),
+    .en_i(~tel_cg_en_telemetry_clk),
+    .te_i(test_en_i),
+    .clk_o(gated_clk_telemetry)
   );
 
   `OCAH_OT_ASSERT_INIT(
@@ -823,7 +823,7 @@ module smc_peripherals #(
 
     .TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0))),
     .TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE))
-  ) telemetry_receiver_wrap (
+  ) u_telemetry_receiver_wrap (
     .clk_i                      (gated_clk_smc_tel),
     .rst_ni                     (rst_primary_smc_clk_no),
     .clk_telemetry_i            (gated_clk_telemetry),
@@ -898,7 +898,7 @@ module smc_peripherals #(
     .NUM_STAGES(16)
   ) u_fuse_reset_n_delay (
     .clk_i(clk_smc_i),
-    .reset_n_i(rst_primary_smc_clk_no),
+    .rst_ni(rst_primary_smc_clk_no),
     .en_i(1'b1),
     .d_i(fuse_reset_stalled_n),
     .q_o(fuse_reset_n_delayed_o)
@@ -909,9 +909,9 @@ module smc_peripherals #(
 
   logic boot_stall_combined_smc_clk;
   prim_sync3 u_boot_stall_combined_sync (
-    .i_clk (clk_smc_i),
-    .i_d   (boot_stall_combined),
-    .o_q   (boot_stall_combined_smc_clk)
+    .clk_i (clk_smc_i),
+    .d_i   (boot_stall_combined),
+    .q_o   (boot_stall_combined_smc_clk)
   );
 
   // Once boot stall is deasserted, it cannot be reasserted until next primary reset
@@ -942,7 +942,7 @@ module smc_peripherals #(
   logic timer_sync_load_from_timer;
   logic timer_cnt_credit_from_timer;
 
-  system_timer_octs system_timer_octs (
+  system_timer_octs u_system_timer_octs (
     .clk_i                 (clk_smc_i),
     .rst_ni                (rst_primary_smc_clk_no),
     .axil_req_i            (axil_system_timer_octs_req),
@@ -975,11 +975,11 @@ module smc_peripherals #(
 
   logic gated_clk_periph_i3c;
 
-  prim_clkgater i3c_clk_periph_gater (
-    .i_clk(clk_periph_i),
-    .i_en(~i3c_cg_en_periph_clk),  // Note: inverted - 1 = gate clock OFF
-    .i_te(test_en_i),
-    .o_clk(gated_clk_periph_i3c)
+  prim_clkgater u_i3c_clk_periph_gater (
+    .clk_i(clk_periph_i),
+    .en_i(~i3c_cg_en_periph_clk),  // Note: inverted - 1 = gate clock OFF
+    .te_i(test_en_i),
+    .clk_o(gated_clk_periph_i3c)
   );
 
   i3ccore_wrapper #(
@@ -1061,7 +1061,7 @@ module smc_peripherals #(
   smc_misc_wrap #(
     .CHIP_ID                    (smc_config_pkg::CHIP_ID),
     .LC_STATE_WIDTH             (2 * smc_pkg::LC_STATE_WIDTH)
-  ) smc_misc_wrap (
+  ) u_smc_misc_wrap (
     .clk_i                      (clk_smc_i),
     .rst_ni                     (rst_primary_smc_clk_no),
     .rst_warm_ni                (rst_warm_smc_clk_no),
@@ -1132,9 +1132,9 @@ module smc_peripherals #(
   ////////////////////
 
   prim_sync3 u_rst_ext_wdt_irq_sync (
-    .i_clk (clk_smc_i),
-    .i_d   (~rst_ext_wdt_ni),
-    .o_q   (rst_ext_wdt_smc_clk)
+    .clk_i (clk_smc_i),
+    .d_i   (~rst_ext_wdt_ni),
+    .q_o   (rst_ext_wdt_smc_clk)
   );
 
   always_comb begin

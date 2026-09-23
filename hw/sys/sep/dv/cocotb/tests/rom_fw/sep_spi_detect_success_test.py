@@ -6,7 +6,7 @@ This ROM has no SPI device-detect step -- ``ot_spi_init`` only writes CSRs and
 polls ``STATUS.READY`` (``src/sep_ot_spi.c:166-179``), and
 ``SEP_MSG_SPI_DETECTED_DEFAULT`` (``include/status_values.h:43``) is referenced
 nowhere in the repo. Detection is therefore asserted operationally: the device
-answered at ``PRIMARY_MANIFEST_OFFSET`` with the ``TBL1`` magic and the ROM reached
+answered at ``PRIMARY_MANIFEST_OFFSET`` with the ``OCAC`` magic and the ROM reached
 ``MANIFEST_OK``. Do not "fix" this by asserting a detect status -- the ROM cannot
 print one.
 
@@ -22,8 +22,7 @@ from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# rom_spi_init() failure makes the ROM skip the primary slot outright
-# (manifest_load.c:547-550), so the subject of this test never happens.
+# rom_spi_init() failure makes the ROM skip the primary slot outright, so the subject of this test never happens.
 _SPI_INIT_OK = "SPI_INIT_OK"
 _SPI_INIT_ERR = "SPI_INIT_ERR="
 

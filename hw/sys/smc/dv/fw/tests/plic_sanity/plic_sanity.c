@@ -12,8 +12,10 @@
 #include "virt_console.h"
 
 /* PLIC source 1, which is cpu_interrupts[0] and therefore ext_interrupts_i[0]:
- * source IDs are the interrupt line plus one because the RISC-V PLIC reserves
- * ID 0, and smc_base.sv:251 puts ext_interrupts at the bottom of the vector.
+ * the SMC interrupt-vector map (doc/interrupts.adoc, "SMC CPU Interrupt Vector
+ * Map") places the external interrupts at the bottom of cpu_interrupts_o and
+ * defines the PLIC source ID as the vector bit index plus one, because the
+ * RISC-V PLIC reserves ID 0.
  *
  * Bit 0 is the only external interrupt this testbench drives: tb_top.sv ties
  * the upper ext_interrupts_i bits to zero and exposes bit 0 as
@@ -21,8 +23,28 @@
  */
 #define TEST_INTERRUPT_ID 1
 
+/* Bound on the wait for the second delivery, in polls of the claim count. The
+ * pin is held high throughout, so once the first claim has been completed the
+ * gateway forwards the source again as soon as it is unmasked; the bound only
+ * has to outlast that handful of cycles and must expire before the bench's
+ * verdict poll does. */
+#define SECOND_DELIVERY_POLLS 20000u
+
+static volatile uint32_t claimed_count;
+/* The source's priority, read back after registration; a threshold equal to
+ * it masks the source for this context. */
+static volatile unsigned int mask_threshold;
+
+/* Runs inside __metal_plic0_handler, between its claim read and its complete
+ * write. The source is masked here because the pin stays high: returning with
+ * it deliverable would re-deliver the interrupt before main can observe the
+ * first completion. It is masked through the context threshold and not the
+ * enable bit, because the PLIC honours a completion only for a source the
+ * context has enabled: clearing the enable here would make the driver's
+ * complete write a no-op and leave the gateway in flight. Returning, rather
+ * than parking, is what lets the driver reach __metal_plic0_complete_interrupt. */
 static void test_interrupt_handler(int id, void *priv) {
-    (void)priv;
+    struct metal_interrupt *plic = priv;
     simputshex32("Interrupt fired: ID = ", id);
     if (id != TEST_INTERRUPT_ID) {
         simputs("ERROR: claimed interrupt ID mismatch\n");
@@ -30,11 +52,8 @@ static void test_interrupt_handler(int id, void *priv) {
         simputs("\n");
         test_fail(0);
     }
-    test_pass(0);
-
-    while (true) {
-        __asm__ volatile("wfi");
-    }
+    metal_interrupt_set_threshold(plic, mask_threshold);
+    claimed_count++;
 }
 
 static void reset_plic_enable_registers() {
@@ -89,20 +108,40 @@ int main(void) {
     metal_interrupt_init(plic);
 
     simputs("Registering PLIC handler\n");
-    metal_interrupt_register_handler(plic, TEST_INTERRUPT_ID, test_interrupt_handler, NULL);
+    metal_interrupt_register_handler(plic, TEST_INTERRUPT_ID, test_interrupt_handler, plic);
 
     simputs("Enabling PLIC interrupt\n");
     metal_interrupt_enable(plic, TEST_INTERRUPT_ID);
+    mask_threshold = metal_interrupt_get_priority(plic, TEST_INTERRUPT_ID);
+    if (mask_threshold == 0u) {
+        simputs("ERROR: source priority reads 0, so no threshold can mask it\n");
+        test_fail(0);
+    }
+    metal_interrupt_set_threshold(plic, 0);
 
     __metal_interrupt_global_enable();
 
     write_scratch(0, 0xaaaaaaaa);
     simputs("Entering WFI loop\n");
-    while (true) {
+    while (claimed_count < 1u) {
         __asm__ volatile("wfi");
     }
 
-    return 0;
+    /* The handler returned into the driver's complete write. A PLIC gateway
+     * forwards no further interrupt for a source until that completion, so
+     * with the pin still high a second delivery after unmasking the source is
+     * the observable of the complete path; without it the count stays 1. */
+    simputs("First claim completed; unmasking the source for a second delivery\n");
+    metal_interrupt_set_threshold(plic, 0);
+    for (uint32_t poll = 0; poll < SECOND_DELIVERY_POLLS && claimed_count < 2u; poll++) {
+        __asm__ volatile("nop");
+    }
+    if (claimed_count < 2u) {
+        simputs("ERROR: no second delivery after the first claim was completed\n");
+        test_fail(0);
+    }
+    simputshex32("Claims completed and re-delivered: ", claimed_count);
+    test_pass(0);
 }
 
 int other_main(int hartid) {

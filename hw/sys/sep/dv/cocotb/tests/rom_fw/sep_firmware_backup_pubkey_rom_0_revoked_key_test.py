@@ -8,16 +8,15 @@ chooses the slot. Its OTP image is the whole of the rest of the stimulus:
 ``sep_efuse_lc_prod_pubk_revoke0.toml`` is ``sep_efuse_lc_prod.toml`` plus
 exactly ``CHIPLET_PUBK_REVOKE`` bit 0.
 
-WHY SLOT 0 IS THE STRICTEST MEMBER. Slot 0 is the only populated entry in
-``key_digests.c`` and it is the slot the shipped image is signed against
-(``configs/secure_boot_test.yaml:112-114``), so the backup manifest here is valid
-in every respect -- correct magic, correct TBS hash, a modulus that matches the
-ROM's compiled-in digest, and a dev0 signature that still verifies. The stimulus
-does not corrupt it at all: it re-writes the selector to the value it already
-holds, which the base class detects and turns into a ``verify_sealed()``
-assertion. Revocation is therefore the ONLY possible cause of the rejection, and
-``RSA_VERIFY_START`` / ``SIG_VALID`` are the load-bearing forbids -- a revocation
-check that did nothing would let this image boot.
+WHAT THIS MEMBER PINS. Slot 0 is the slot the shipped image is already signed
+against, so this member needs no graft at all: the backup manifest is the shipped
+bytes, valid in every respect -- correct magic, correct TBS hash, a modulus that
+matches the ROM's compiled-in slot 0 digest, and a signature that verifies. Every
+other member reaches the same standing by grafting in the slot signed by the key it
+names, so slot 0 is the one that gets there for free rather than the only one that
+gets there. Revocation is the ONLY possible cause of the rejection, and ``RSA_EXEC``
+/ ``RSA_VERIFY_OK`` are the load-bearing forbids -- a revocation check that did
+nothing would let this image boot.
 
 It is the matched partner of ``sep_firmware_backup_rom_key_valid_test``, which
 applies the identical flash stimulus and clears the fuse instead: same bytes,

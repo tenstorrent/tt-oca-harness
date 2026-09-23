@@ -6,78 +6,78 @@
 //
 //--------------------------------------------------
 module prim_sync3_pulse (
-  input  logic i_src_clk,
-  input  logic i_src_pulse,
-  input  logic i_src_reset_n,
-  input  logic i_dst_clk,
-  output logic o_dst_pulse
+  input  logic src_clk_i,
+  input  logic src_pulse_i,
+  input  logic src_rst_ni,
+  input  logic dst_clk_i,
+  output logic dst_pulse_o
 );
 
   wire toggle;
 
-  prim_sync3_pulse_src i_src (
-    .i_src_clk(i_src_clk),
-    .i_src_pulse(i_src_pulse),
-    .i_src_reset_n(i_src_reset_n),
-    .toggle(toggle)
+  prim_sync3_pulse_src u_src (
+    .src_clk_i(src_clk_i),
+    .src_pulse_i(src_pulse_i),
+    .src_rst_ni(src_rst_ni),
+    .toggle_o(toggle)
   );
 
-  prim_sync3_pulse_dest i_dest (
-    .i_dst_clk(i_dst_clk),
-    .i_src_reset_n(i_src_reset_n),
-    .toggle(toggle),
-    .o_dst_pulse(o_dst_pulse)
+  prim_sync3_pulse_dest u_dest (
+    .dst_clk_i(dst_clk_i),
+    .src_rst_ni(src_rst_ni),
+    .toggle_i(toggle),
+    .dst_pulse_o(dst_pulse_o)
   );
 
 endmodule
 
 module prim_sync3_pulse_src (
-  input  logic i_src_clk,
-  input  logic i_src_pulse,
-  input  logic i_src_reset_n,
-  output logic toggle
+  input  logic src_clk_i,
+  input  logic src_pulse_i,
+  input  logic src_rst_ni,
+  output logic toggle_o
 );
 
-  always_ff @(posedge i_src_clk) begin
-    if (~i_src_reset_n) begin
-      toggle <= 1'b0;
+  always_ff @(posedge src_clk_i) begin
+    if (~src_rst_ni) begin
+      toggle_o <= 1'b0;
     end else begin
-      toggle <= i_src_pulse ? ~toggle : toggle;
+      toggle_o <= src_pulse_i ? ~toggle_o : toggle_o;
     end
   end
 
 endmodule
 
 module prim_sync3_pulse_dest (
-  input  logic i_dst_clk,
-  input  logic i_src_reset_n,
-  input  logic toggle,
-  output logic o_dst_pulse
+  input  logic dst_clk_i,
+  input  logic src_rst_ni,
+  input  logic toggle_i,
+  output logic dst_pulse_o
 );
 
   wire toggle_synced;
   wire src_reset_n_reg_dst_clk;
 
-  prim_flop_3sync_r sync3 (
-    .i_CK(i_dst_clk),
-    .i_RN (src_reset_n_reg_dst_clk),
-    .i_D (toggle),
-    .o_Q (toggle_synced)
+  prim_flop_3sync_r u_sync3 (
+    .clk_i (dst_clk_i),
+    .rst_ni(src_reset_n_reg_dst_clk),
+    .d_i   (toggle_i),
+    .q_o   (toggle_synced)
   );
 
   prim_sync_reset #(
     .WIDTH(3)
-  ) src_reset_n_sync (
-    .clk       (i_dst_clk              ),
-    .rst_n     (i_src_reset_n          ),
-    .test_mode (1'b0                   ),
-    .sync_rst_n(src_reset_n_reg_dst_clk),
-    .scan_rst_n(1'b0                   )
+  ) u_src_reset_n_sync (
+    .clk_i      (dst_clk_i              ),
+    .rst_ni     (src_rst_ni             ),
+    .test_mode_i(1'b0                   ),
+    .sync_rst_no(src_reset_n_reg_dst_clk),
+    .scan_rst_ni(1'b0                   )
   );
 
   reg toggle_synced_d;
   reg toggle_synced_dd;
-  always @(posedge i_dst_clk) begin
+  always @(posedge dst_clk_i) begin
     if (~src_reset_n_reg_dst_clk) begin
       toggle_synced_d <= 1'b0;
       toggle_synced_dd <= 1'b0;
@@ -87,6 +87,6 @@ module prim_sync3_pulse_dest (
     end
   end
 
-  assign o_dst_pulse = ~src_reset_n_reg_dst_clk ? '0 : toggle_synced_d ^ toggle_synced_dd;
+  assign dst_pulse_o = ~src_reset_n_reg_dst_clk ? '0 : toggle_synced_d ^ toggle_synced_dd;
 
 endmodule

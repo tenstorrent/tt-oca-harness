@@ -15,6 +15,8 @@ class ocah_jtag_register_test extends ocah_jtag_vip_base_test;
                      "CHK-SLAVE-DR-UPDATE-COUNT",
                      "CHK-SLAVE-REG",
                      "CHK-JTAG-DR-READBACK",
+                     "CHK-JTAG-DR-PAUSE",
+                     "CHK-JTAG-DR-CAPTURE-ONLY",
                      "CHK-JTAG-RO-CAPTURE",
                      "CHK-SCAN-IR-LEN",
                      "CHK-SCAN-DR-LEN"};

@@ -89,9 +89,14 @@ EDN_ERR_CODE = sym("EDN_ERR_CODE_REG_ADDR")
 EDN_RECOV_ALERT = sym("EDN_RECOV_ALERT_STS_REG_ADDR")
 
 # --- values -----------------------------------------------------------------
-# OpenTitan multi-bit bool encodings (prim_mubi_pkg), not CSR addresses.
-_MUBI4_TRUE = 0x6
-_MUBI4_FALSE = 0x9
+# 4-bit multi-bit-bool, derived from the register export rather than copied from
+# an RTL package. csrng.rdl resets CTRL.ENABLE to the disabled encoding and
+# describes the enabling value as kMultiBitBool4True, so the field's reset IS
+# mubi-false and mubi-true is its complement across the field width. The
+# encoding is chosen for Hamming distance, which is why it is not 0 and 1.
+_MUBI4_FIELD = CSRNG.fields("CTRL")["ENABLE"]
+_MUBI4_FALSE = _MUBI4_FIELD["reset"]
+_MUBI4_TRUE = (~_MUBI4_FALSE) & ((1 << _MUBI4_FIELD["bw"]) - 1)
 CSRNG_CTRL_ENABLE = CSRNG.value(
     "CTRL",
     ENABLE=_MUBI4_TRUE,
@@ -113,12 +118,25 @@ EDN_CTRL_BOOT = EDN.value(
     AUTO_REQ_MODE=_MUBI4_FALSE,
     CMD_FIFO_RST=_MUBI4_FALSE,
 )
-CMD_INSTANTIATE = 0x0000_0901  # acmd=1, flag0=9 (use real entropy)
-CMD_RESEED = 0x0000_0902  # acmd=2
+
+
+def csrng_cmd(*, acmd: int, flag0: int = 0x9, clen: int = 0, glen: int = 0) -> int:
+    """CSRNG command word: {8'h0, glen[11:0], flag0[3:0], clen[3:0], acmd[3:0]}.
+
+    ``flag0=0x9`` is the OpenTitan ``kMultiBitBool4True`` encoding (use real
+    entropy). Field layout is the CSRNG application-command word, not an RDL
+    register; ``csrng_generate_cmd`` uses the same packing.
+    """
+    return ((glen & 0xFFF) << 12) | ((flag0 & 0xF) << 8) | ((clen & 0xF) << 4) | (acmd & 0xF)
+
+
+CMD_INSTANTIATE = csrng_cmd(acmd=1)
+CMD_RESEED = csrng_cmd(acmd=2)
 RING_OSC_SAMPLECLK_ONLY = ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0, SAMPLE_CLK_ENABLE=0xFFF)
 RING_OSC_ALL_ON = ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0xFFF, SAMPLE_CLK_ENABLE=0xFFF)
 
-# DECORRELATOR_CTRL.SAMPLE_CLK_DIV: division = field+1 (RTL entropy_decorrelator.sv).
+# DECORRELATOR_CTRL.SAMPLE_CLK_DIV: division = field+1
+# (entropy_source.rdl: "this value plus one sample-clock cycles").
 # Reset is divide-by-64 (OTP-faithful). Divide-by-8 samples faster for a quick
 # alive bring-up.
 DECOR_CTRL_DIV64 = ENTROPY_SOURCE.value("DECORRELATOR_CTRL", SAMPLE_CLK_DIV=63)
@@ -146,8 +164,8 @@ GENBITS_TIMEOUT = 60_000
 
 
 def csrng_generate_cmd(glen: int) -> int:
-    """csrng cmd word {8'h0, glen[11:0], flag0=9(use-entropy), clen=0, acmd=3}."""
-    return ((glen & 0xFFF) << 12) | (0x9 << 8) | 0x3
+    """CSRNG generate command: acmd=3, flag0=use-entropy, glen from the config."""
+    return csrng_cmd(acmd=3, glen=glen)
 
 
 @dataclass(frozen=True)
@@ -177,12 +195,13 @@ class SepEntropyCfg:
     program_boot_generate: bool = False
     reseed_interval: int = 8  # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
     # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
-    # before the CSRNG seed packer starts. ZERO for this DRBG -- drbg.sv wires the
-    # packer straight to the stream (`.csrng_word_valid_i (entropy_stream_vld_i)`,
-    # drbg.sv:150) with no distribution FIFO in between, so nothing is absorbed and
-    # the golden must not skip. A skip of 12 would model a distribution FIFO that
-    # this repository's drbg.sv does not instantiate and shift the golden by 12
-    # words: CHK3_seed (and so CHK4/CHK5) mismatch while CHK1/CHK2 match exactly.
+    # before the CSRNG seed packer starts. ZERO for this DRBG --
+    # hw/ip/drbg/doc/architecture.adoc Seed Assembly: one 32-bit entropy word per
+    # valid cycle directly from the entropy source, no upstream routing or
+    # distribution FIFO, so nothing is absorbed and the golden must not skip.
+    # A skip of 12 would model a distribution FIFO this integration does not
+    # instantiate and shift the golden by 12 words: CHK3_seed (and so CHK4/CHK5)
+    # mismatch while CHK1/CHK2 match exactly.
     ingress_skip: int = 0
     internal_drbg: bool = True  # EXT_TRNG_SRC_SEL = 0 (internal) vs 0x7 (ext_trng)
     health_ctrl: int = HEALTH_CTRL_DEFAULT
@@ -204,7 +223,7 @@ class SepEntropyCfg:
     def decor_ctrl(self) -> int:
         """DECORRELATOR_CTRL: SAMPLE_CLK_DIV in [31:12] (byte_mask is a separate
         register left at its 0xFF reset default)."""
-        return (self.sample_clk_div & 0xFFFFF) << 12
+        return ENTROPY_SOURCE.value("DECORRELATOR_CTRL", SAMPLE_CLK_DIV=self.sample_clk_div)
 
     @property
     def esrc_ctrl_whiten(self) -> int:
@@ -343,7 +362,8 @@ class SepEsrcFifoDrainSeq(uvm_sequence):
         self.words: list[int] = []
 
     async def body(self) -> None:
-        level = (await _rd(self, ESRC_FIFO_STATUS)) & 0x7F
+        level_meta = ENTROPY_SOURCE.fields("FIFO_STATUS")["LEVEL"]
+        level = ((await _rd(self, ESRC_FIFO_STATUS)) & level_meta["bm"]) >> level_meta["bp"]
         for _ in range(min(level, self.max_words)):
             self.words.append((await _rd(self, ESRC_FIFO_RDATA)) & 0xFFFFFFFF)
 

@@ -353,10 +353,10 @@ static void step_s2_fifo_reset_enable(uint32_t idx) {
     i2c_clear_interrupts(idx, 0xFFFFFFFFu);
     i2c_wr(base, SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR(0), 0xFu);
 
-    /* CONTROLLER_HALT is enabled as well as CMD_COMPLETE. In this RTL
-     * INTR_STATE.<x> is ANDed with INTR_ENABLE.<x> (i2c_core.sv:988-1012), so
-     * with the enable clear the CONTROLLER_HALT == 0 term in S3 could not have
-     * reported a halt even if one had happened. S6 is its positive control. */
+    /* CONTROLLER_HALT is enabled as well as CMD_COMPLETE so that a halt is
+     * also visible on the interrupt line (INTR_ENABLE masks irq_o only; the
+     * INTR_STATE bits themselves report regardless of the enable). S6 is the
+     * positive control for the CONTROLLER_HALT == 0 term in S3. */
     intr_en.f.CMD_COMPLETE = 1;
     intr_en.f.CONTROLLER_HALT = 1;
     i2c_wr(base, SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0), intr_en.w);

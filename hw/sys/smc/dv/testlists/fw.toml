@@ -8,7 +8,7 @@ schema_version = 1
 #
 # A `firmware = "<name>"` key is the whole opt-in. The runner inserts the
 # c_compile stage for any run whose selection contains such a test
-# (tools/dv/runlib/cli.py:1982), builds `<name>` through [c_build.default] in
+# (tools/dv/runlib/cli.py:2663-2673), builds `<name>` through [c_build.default] in
 # smc_sim_cfg.toml, and copies the declared outputs into the per-test simulator
 # directory by basename (tools/dv/runlib/stages.py:_stage_firmware_outputs),
 # hard-failing when one is missing.
@@ -44,7 +44,7 @@ name = "smc_fw_hello_world_test"
 module = "smc_fw_hello_world_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "pyuvm"]
+tags = ["firmware", "cpu"]
 run_modes = ["smoke"]
 firmware = "hello_world"
 args = [
@@ -55,14 +55,14 @@ args = [
 [[tests]]
 # The cluster PLIC's enable/priority/threshold path, which has no cocotb route:
 # the 0xC400_0000 aperture answers SEP_IN AXI reads but takes no writes from it
-# (measured by smc_cluster_plic_csr_test, unenrolled with that finding), so the
-# CPU is the only master that can program it. fw/tests/plic_sanity does the
+# (SMC_VPLAN.adoc, Known Limitations), so the CPU is the only master that can
+# program it. fw/tests/plic_sanity does the
 # programming; the sequence supplies ext_interrupts_i[0] and holds the ordering.
 name = "smc_fw_plic_claim_test"
 module = "smc_fw_plic_claim_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "interrupt", "pyuvm"]
+tags = ["firmware", "cpu", "interrupt"]
 run_modes = ["smoke"]
 firmware = "plic_sanity"
 args = [
@@ -78,7 +78,7 @@ name = "smc_fw_hello_world_multicore_test"
 module = "smc_fw_hello_world_multicore_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "pyuvm"]
+tags = ["firmware", "cpu"]
 run_modes = ["smoke"]
 firmware = "hello_world_multicore"
 args = [
@@ -94,7 +94,7 @@ name = "smc_fw_octs_p0_primary_test"
 module = "smc_fw_octs_p0_primary_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "octs", "pyuvm"]
+tags = ["firmware", "cpu", "octs"]
 run_modes = ["smoke"]
 firmware = "octs_p0_primary_test"
 args = [
@@ -113,7 +113,7 @@ name = "smc_fw_i2c_sanity_test"
 module = "smc_fw_i2c_sanity_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_sanity"
 args = [
@@ -129,7 +129,7 @@ name = "smc_fw_i2c_target_sanity_test"
 module = "smc_fw_i2c_target_sanity_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_target_sanity"
 args = [
@@ -146,7 +146,7 @@ name = "smc_fw_i2c_acq_fifo_stretch_reset_test"
 module = "smc_fw_i2c_acq_fifo_stretch_reset_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_acq_fifo_stretch_reset"
 args = [
@@ -160,7 +160,7 @@ name = "smc_fw_i2c_p1_fifo_depth_xfer_test"
 module = "smc_fw_i2c_p1_fifo_depth_xfer_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_p1_fifo_depth_xfer"
 args = [
@@ -174,7 +174,7 @@ name = "smc_fw_i2c_tx_stretch_timeout_recovery_test"
 module = "smc_fw_i2c_tx_stretch_timeout_recovery_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_tx_stretch_timeout_recovery"
 args = [
@@ -189,7 +189,7 @@ name = "smc_fw_i2c_fifo_full_test"
 module = "smc_fw_i2c_fifo_full_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_fifo_full"
 args = [
@@ -208,7 +208,7 @@ name = "smc_fw_uart_log_engine_single_entry_test"
 module = "smc_fw_uart_log_engine_single_entry_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "uart", "pyuvm"]
+tags = ["firmware", "cpu", "uart"]
 run_modes = ["smoke"]
 firmware = "uart_log_engine_single_entry"
 args = [
@@ -221,7 +221,7 @@ name = "smc_fw_uart_log_engine_boundary_backpressure_test"
 module = "smc_fw_uart_log_engine_boundary_backpressure_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "uart", "pyuvm"]
+tags = ["firmware", "cpu", "uart"]
 run_modes = ["smoke"]
 firmware = "uart_log_engine_boundary_backpressure"
 args = [
@@ -234,7 +234,7 @@ name = "smc_fw_uart_log_engine_disable_during_xfer_test"
 module = "smc_fw_uart_log_engine_disable_during_xfer_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "uart", "pyuvm"]
+tags = ["firmware", "cpu", "uart"]
 run_modes = ["smoke"]
 firmware = "uart_log_engine_disable_during_xfer"
 args = [
@@ -247,7 +247,7 @@ name = "smc_fw_uart_log_engine_fetch_err_test"
 module = "smc_fw_uart_log_engine_fetch_err_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "uart", "pyuvm"]
+tags = ["firmware", "cpu", "uart"]
 run_modes = ["smoke"]
 firmware = "uart_log_engine_fetch_err"
 args = [

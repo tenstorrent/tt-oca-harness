@@ -69,7 +69,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Returns status of whether zeroer has completed.</ipxact:description>
+            <ipxact:description>Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

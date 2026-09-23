@@ -96,7 +96,7 @@ async def _settle_tb_resolved_pad(dut, sig_name: str, level: int, step: str) -> 
     """Synchronization ONLY -- never evidence.
 
     Waits (bounded) for a pad whose level this step forced through
-    ``tb_top.sv:678-679``. Since ``ext_low`` determines it, reaching the level
+    ``tb_top.sv:687-688``. Since ``ext_low`` determines it, reaching the level
     proves nothing about the DUT; it only lets the drive change propagate before
     the step's samples are taken. Emits no ``CHK-`` token. Expiry
     still fails, because a TB-forced level that never appears means the pad
@@ -174,12 +174,14 @@ async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
         f"scl={s['tb_i3c0_scl']} sda={s['tb_i3c0_sda']}"
         for step, s in samples.items()
     )
-    # Positive evidence token: covers ONLY the property that was actually
-    # asserted (resolvability of every net at every sample).
+    # Not a CHK- token: `is_resolvable` cannot be false on a two-state
+    # simulator, so a Verilator run would carry a checker that cannot fail.
+    # The resolvability asserts above stay as X-guards on the samples; the
+    # record below is diagnostic only.
     cocotb.log.info(
-        "CHK-I3C0-PADS-RESOLVABLE: 4 external-pull steps driven with the I3C "
-        "host controller %s; all %d I3C0 nets resolvable (no X/Z) at every one "
-        "of the %d sample points",
+        "OBSERVED-ONLY-I3C0-PADS-RESOLVABLE (not a check on a two-state simulator): 4 "
+        "external-pull steps driven with the I3C host controller %s; all %d I3C0 nets "
+        "sampled resolvable at every one of the %d sample points",
         "ENABLED (HC_CONTROL.BUS_ENABLE=1)" if core_enabled else "left disabled",
         len(_I3C0_NETS),
         len(samples) * len(_I3C0_NETS),

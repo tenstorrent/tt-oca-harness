@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# I3C core wrapper block TB (native cocotb). DUT = i3ccore_wrapper under
+# tb_i3ccore.
+# Launch: python3 tools/dv/run_dv.py --dut i3ccore_wrap
+
+schema_version = 1
+
+name = "i3ccore_wrap"
+profile = "native"
+default_framework = "cocotb"
+description = "I3C core wrapper block cocotb DV (controller/target loopback)"
+default_tool = "verilator"
+tools = ["verilator", "xcelium", "vcs"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/i3ccore_wrap/dv/build"]
+
+[build]
+top_module = "tb_i3ccore"
+top_file = "hw/ip/i3ccore_wrap/dv/tb/tb_i3ccore.sv"
+filelist = "hw/ip/i3ccore_wrap/dv/build/i3ccore_wrap_dut_compile.f"
+bender_filelist = "hw/ip/i3ccore_wrap/dv/build/i3ccore_wrap_bender.f"
+work_dir = "hw/ip/i3ccore_wrap/dv/build"
+# Canonical common set, mirroring hw/sys/smc/dv/smc_wrapper_sim_cfg.toml.
+# register_interface_l1 supplies the prim packages the register-interface RAM
+# needs; without it prim_ram_1p_adv_ext.sv fails to elaborate.
+common_bender_targets = [
+  "tech_cells_generic_exclude_deprecated",
+  "tech_cells_generic_exclude_tc_sram",
+  "axi_rtl",
+  "apb_rtl",
+  "common_cells_rtl",
+  "common_cell_sync_shim",
+  "idma_rtl",
+  "register_interface_l1",
+]
+bender_targets = ["smc"]
+incdirs = ["hw/ip/i3ccore_wrap/dv/tb"]
+sources = [
+  "hw/ip/i3ccore_wrap/dv/tb/i3c_coverage_if.sv",
+]
+# The `smc` target supplies prim_ram_1p_scr_ext.sv but not the prim_cipher_pkg /
+# prim_prince / prim_subst_perm it instantiates, which are gated on
+# any(opentitan_smu, sep, smu, key_manager). Nothing in this TB uses a scrambled RAM.
+exclude_files = [
+  "hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv",
+]
+
+[frameworks.cocotb]
+python_root = "hw/ip/i3ccore_wrap/dv/cocotb"
+test_dir = "hw/ip/i3ccore_wrap/dv/cocotb/tests"
+python_paths = [
+  "hw/ip/i3ccore_wrap/regs/gen/py",
+  "vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/src",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[defaults]
+run_mode = "block"
+
+[run_modes.block]
+description = "Block-level I3C cocotb (shared open-drain controller/target loopback)"
+timeout_sec = 1800
+args = []
+
+[targets.default]
+description = "I3C block TB: i3ccore_wrapper under tb_i3ccore"
+build_dir = "hw/ip/i3ccore_wrap/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  # The shared profile defines SIMULATION, which arms prim_cdc_rand_delay's CDC
+  # instrumentation; Verilator rejects its mixed blocking/non-blocking select.
+  "-Wno-BLKANDNBLK",
+  "+define+VERILATOR",
+  "--timescale",
+  "1ns/1ps",
+]

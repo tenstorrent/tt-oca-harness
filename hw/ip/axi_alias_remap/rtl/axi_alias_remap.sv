@@ -21,8 +21,8 @@ module axi_alias_remap #(
 
   localparam int unsigned ALIAS_REMAP_OFFSET_WIDTH        = AXI_ADDR_WIDTH - ALIAS_REMAP_IDX_START
 ) (
-  input   remap_region_t                      i_remap_regions [NUM_REGIONS-1:0],
-  output  remap_debug_t                       o_remap_debug,
+  input   remap_region_t                      remap_regions_i [NUM_REGIONS-1:0],
+  output  remap_debug_t                       remap_debug_o,
 
   // AXI Input Interface
   input   axi_req_t                           axi_in_req_i,
@@ -51,15 +51,15 @@ module axi_alias_remap #(
   // Check if access is within a valid remap region
   always_comb begin
     for (int r = 0; r < NUM_REGIONS; r++) begin
-      aw_remap_hit[r] = i_remap_regions[r].region_valid && (axi_in_req_i.aw.addr >= i_remap_regions[r].region_start && axi_in_req_i.aw.addr < i_remap_regions[r].region_end);
-      ar_remap_hit[r] = i_remap_regions[r].region_valid && (axi_in_req_i.ar.addr >= i_remap_regions[r].region_start && axi_in_req_i.ar.addr < i_remap_regions[r].region_end);
+      aw_remap_hit[r] = remap_regions_i[r].region_valid && (axi_in_req_i.aw.addr >= remap_regions_i[r].region_start && axi_in_req_i.aw.addr < remap_regions_i[r].region_end);
+      ar_remap_hit[r] = remap_regions_i[r].region_valid && (axi_in_req_i.ar.addr >= remap_regions_i[r].region_start && axi_in_req_i.ar.addr < remap_regions_i[r].region_end);
     end
   end
 
   lzc #(
     .WIDTH  (NUM_REGIONS),
     .MODE   (1'b0)  // Count leading zeros to find the index of the first remap region that contains the request address
-  ) write_remap_hit (
+  ) u_write_remap_hit (
     .in_i   (aw_remap_hit),
     .cnt_o  (aw_remap_idx),
     .empty_o(no_write_hit)
@@ -68,7 +68,7 @@ module axi_alias_remap #(
   lzc #(
     .WIDTH  (NUM_REGIONS),
     .MODE   (1'b0)  // Count leading zeros to find the index of the first remap region that contains the request address
-  ) read_remap_hit (
+  ) u_read_remap_hit (
     .in_i   (ar_remap_hit),
     .cnt_o  (ar_remap_idx),
     .empty_o(no_read_hit)
@@ -76,10 +76,10 @@ module axi_alias_remap #(
 
   generate
     if (DEBUG_OUTPUT == 1) begin : gen_remap_debug
-      assign o_remap_debug.aw_remap_hit_debug = aw_remap_idx;
-      assign o_remap_debug.ar_remap_hit_debug = ar_remap_idx;
+      assign remap_debug_o.aw_remap_hit_debug = aw_remap_idx;
+      assign remap_debug_o.ar_remap_hit_debug = ar_remap_idx;
     end else begin : gen_no_remap_debug
-      assign o_remap_debug = '0;
+      assign remap_debug_o = '0;
     end
   endgenerate
 
@@ -87,31 +87,31 @@ module axi_alias_remap #(
     .DATA_WIDTH (ALIAS_REMAP_OFFSET_WIDTH+1),
     .NUM_CHUNKS (NUM_CHUNKS_CARRY_SELECT_ADDER)
   ) u_aw_addr_adder (
-    .a    ({1'b0, i_remap_regions[aw_remap_idx].offset[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
-    .b    ({1'b0, axi_in_req_i.aw.addr[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
-    .sum  (aw_addr_modified),
-    .cout ()
+    .a_i   ({1'b0, remap_regions_i[aw_remap_idx].offset[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
+    .b_i   ({1'b0, axi_in_req_i.aw.addr[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
+    .sum_o (aw_addr_modified),
+    .c_o   ()
   );
 
   prim_carry_select_adder #(
     .DATA_WIDTH (ALIAS_REMAP_OFFSET_WIDTH+1),
     .NUM_CHUNKS (NUM_CHUNKS_CARRY_SELECT_ADDER)
   ) u_ar_addr_adder (
-    .a    ({1'b0, i_remap_regions[ar_remap_idx].offset[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
-    .b    ({1'b0, axi_in_req_i.ar.addr[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
-    .sum  (ar_addr_modified),
-    .cout ()
+    .a_i   ({1'b0, remap_regions_i[ar_remap_idx].offset[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
+    .b_i   ({1'b0, axi_in_req_i.ar.addr[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
+    .sum_o (ar_addr_modified),
+    .c_o   ()
   );
 
   assign aw_remapped_addr = {
         aw_addr_modified[ALIAS_REMAP_OFFSET_WIDTH-1:0], axi_in_req_i.aw.addr[ALIAS_REMAP_IDX_START-1:0]
     };
-  assign aw_remapped_cacheable = i_remap_regions[aw_remap_idx].cacheable;
+  assign aw_remapped_cacheable = remap_regions_i[aw_remap_idx].cacheable;
 
   assign ar_remapped_addr = {
         ar_addr_modified[ALIAS_REMAP_OFFSET_WIDTH-1:0], axi_in_req_i.ar.addr[ALIAS_REMAP_IDX_START-1:0]
     };
-  assign ar_remapped_cacheable = i_remap_regions[ar_remap_idx].cacheable;
+  assign ar_remapped_cacheable = remap_regions_i[ar_remap_idx].cacheable;
 
   // AW Channel - Write Address
   assign axi_out_req_o.aw_valid   = axi_in_req_i.aw_valid;

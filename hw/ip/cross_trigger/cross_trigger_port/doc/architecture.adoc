@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctp-architecture]]
-==== Architecture
 
 The Cross Trigger Port architecture separates the register interface from core
 logic to enable reuse. The full `cross_trigger_port` module includes CSRs for
@@ -12,12 +11,18 @@ cross-trigger connections without AXI-Lite overhead.
 
 image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
 
-===== Submodule Hierarchy
+=== Submodule Hierarchy
 
 The CTP core instantiates four specialized submodules for different aspects of
 cross-trigger operation:
 
-[width="100%",cols="<30%,<70%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP submodule hierarchy" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<34,<66",options="header",role="port-reference"]
 |===
 |Module |Purpose
 
@@ -34,7 +39,13 @@ cross-trigger operation:
 |Implements sender and receiver state machines for Point-to-Point mode four-phase handshaking protocol
 |===
 
-===== Wire-OR Mode
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Wire-OR Mode
 
 Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
 existing cross triggering implementations. This scheme is very resource
@@ -43,7 +54,7 @@ network. However, the performance of the network decreases as the number of
 connected chiplets increase. Also, the duration of the cross trigger pulse must
 be pre-arranged across all connected chiplets.
 
-====== Pulse Stretcher Operation
+==== Pulse Stretcher Operation
 
 The pulse stretcher extends single-cycle core-side pulses to multi-cycle GPIO
 assertions lasting `stretch_mult + 1` clock cycles. The module implements a
@@ -77,7 +88,7 @@ in the following example diagram:
 
 image::sip_wireor_diagram.png[SiP Wire-OR Cross Trigger Diagram,scaledwidth=90.0%]
 
-===== Point-to-Point Mode
+=== Point-to-Point Mode
 
 Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a
 cross trigger quickly and reliably between two chiplets without pulse
@@ -106,14 +117,20 @@ The timing of the request/acknowledge handshake is shown in the diagram below:
 
 image::p2p_timing_diagram.svg[Point-to-Point Request/Acknowledge Timing,scaledwidth=90.0%]
 
-====== Synchronization and CDC Handling
+==== Synchronization and CDC Handling
 
 All GPIO input signals are asynchronous with respect to the CTP system clock and
 require synchronization to prevent metastability. The `ctp_synchronizer` module
 implements three independent 2-FF synchronizer chains using the
 `prim_flop_2sync` primitive:
 
-[width="100%",cols="<35%,<30%,<35%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP signal synchronization" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<28,<20,<52",options="header",role="port-reference"]
 |===
 |Signal |Used In Mode |Synchronization Purpose
 
@@ -130,13 +147,19 @@ implements three independent 2-FF synchronizer chains using the
 |Synchronizes acknowledge signal from remote receiver before sender FSM
 |===
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 After synchronization, an optional inversion is applied if the `INVERT`
 configuration bit is set. This allows adaptation to GPIO pads with different
 polarity requirements. Edge detection and state machine processing occur only on
 synchronized (and optionally inverted) signals, ensuring all CTP core logic
 operates on glitch-free inputs.
 
-====== Handshake State Machines
+==== Handshake State Machines
 
 Point-to-point mode implements two independent state machines within the
 `ctp_handshake_ctrl` module, enabling full-duplex cross-triggering. The sender
@@ -146,7 +169,13 @@ the system clock domain on synchronized GPIO inputs.
 
 *Sender State Machine:*
 
-[width="100%",cols="<25%,<25%,<25%,<25%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP sender state transitions" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<28,<22,<28,<22",options="header",role="port-reference"]
 |===
 |Current State |Condition |Next State |Output Actions
 
@@ -171,9 +200,21 @@ the system clock domain on synchronized GPIO inputs.
 |Force `ct_req_out=0`
 |===
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 *Receiver State Machine:*
 
-[width="100%",cols="<30%,<25%,<25%,<20%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP receiver state transitions" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<27,<20,<27,<26",options="header",role="port-reference"]
 |===
 |Current State |Condition |Next State |Output Actions
 
@@ -197,6 +238,12 @@ the system clock domain on synchronized GPIO inputs.
 |Remain in state
 |Continue waiting
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 The `ct_dst` output pulse is generated for a single clock cycle when the
 receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is

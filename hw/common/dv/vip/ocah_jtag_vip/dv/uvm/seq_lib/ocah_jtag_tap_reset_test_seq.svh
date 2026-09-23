@@ -5,9 +5,12 @@
 // cocotb selftest): the device's TAP controller state is the observable. A
 // TMS-high reset lands it in Test-Logic-Reset, every step of a random TMS
 // walk matches the reference model, five or more TMS-high cycles reach
-// Test-Logic-Reset from any start state, asserting TRST lands the device in
-// Test-Logic-Reset, and a DR scan after release returns IDCODE with no
-// instruction loaded. +OCAH_JTAG_SELFTEST_NEGATIVE desynchronizes the
+// Test-Logic-Reset from any start state, an instruction scan paused in
+// Pause-IR loads whole whether it resumes shifting or updates from Exit2-IR,
+// an instruction scan with no Shift-IR cycle loads the capture pattern,
+// asserting TRST lands the device in Test-Logic-Reset, and a DR scan after
+// release returns IDCODE with no instruction loaded.
+// +OCAH_JTAG_SELFTEST_NEGATIVE desynchronizes the
 // reference model before the walk so the first CHK-TAP-STATE fails and the
 // run must FAIL.
 
@@ -15,6 +18,13 @@ class ocah_jtag_tap_reset_test_seq extends ocah_jtag_vip_base_test_seq;
   `uvm_object_utils(ocah_jtag_tap_reset_test_seq)
 
   int unsigned n_steps = 48;
+  int unsigned pause_cycles = 3;
+  // Pause after two bits (the scan resumes shifting) and after the last bit
+  // (the scan updates from Exit2-IR).
+  localparam int unsigned PauseSplits[2] = '{2, IrWidth};
+  // The device's Capture-IR pattern: IEEE 1149.1 fixes the two least
+  // significant bits at 01.
+  localparam bit [63:0] IrCapture = 64'h1;
 
   function new(string name = "ocah_jtag_tap_reset_test_seq");
     super.new(name);
@@ -55,6 +65,32 @@ class ocah_jtag_tap_reset_test_seq extends ocah_jtag_vip_base_test_seq;
           ones, device_onehot(), $sformatf("from=%s", starts[i].name())
       ));
     end
+
+    // Instruction scans paused in Pause-IR load whole: the device holds its
+    // instruction shift register across the pause, whether the scan resumes
+    // shifting or updates straight from Exit2-IR. A scan with no Shift-IR
+    // cycle loads the capture pattern instead.
+    step(1'b0);  // Test-Logic-Reset -> Run-Test/Idle
+    step(1'b0);  // one idle cycle in Run-Test/Idle
+    foreach (PauseSplits[i]) begin
+      string label = (PauseSplits[i] < IrWidth) ? "resumed" : "completed";
+      string ctx = {label, " paused IR scan"};
+      paused_scan(1'b1, CtrlOpcode, IrWidth, PauseSplits[i], pause_cycles, ctx);
+      void'(evidence.expect_equal(
+          "CHK-JTAG-IR-PAUSE",
+          slave_seq.responder.active_instruction(),
+          CtrlOpcode,
+          $sformatf(
+              "instruction after a %s IR scan paused %0d cycles", label, pause_cycles)
+      ));
+    end
+    capture_only_scan(1'b1);
+    void'(evidence.expect_equal(
+        "CHK-JTAG-IR-CAPTURE-ONLY",
+        slave_seq.responder.active_instruction(),
+        IrCapture,
+        "instruction after an IR scan with no Shift-IR cycle"
+    ));
 
     goto_state(OCAH_JTAG_SHIFT_DR);
     evidence.sync_state(OCAH_JTAG_SHIFT_DR);

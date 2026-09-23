@@ -52,7 +52,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_smbus_pmbus_test": SmcProtocolVipKind.I2C,
     "smc_smbus_hostnotify_test": SmcProtocolVipKind.I2C,
     "smc_i3c_to_fabric_test": SmcProtocolVipKind.I3C,
-    "smc_i3c_ccc_ibi_full_test": SmcProtocolVipKind.I3C,
     "smc_ijtag_basic_test": SmcProtocolVipKind.JTAG,
     "smc_efuse_jtag_lc_negative_test": SmcProtocolVipKind.JTAG,
     "smc_efuse_jtag_lc_access_matrix_test": SmcProtocolVipKind.JTAG,
@@ -68,8 +67,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_efuse_otp_clock_config_depth_test": SmcProtocolVipKind.EFUSE,
     "smc_efuse_permission_boundary_test": SmcProtocolVipKind.EFUSE,
     "smc_efuse_chip_config_read_test": SmcProtocolVipKind.EFUSE,
-    "smc_pll_pvt_clock_config_test": SmcProtocolVipKind.CLOCK,
-    "smc_pll_dvfs_depth_test": SmcProtocolVipKind.CLOCK,
     "smc_static_cg_sanity_test": SmcProtocolVipKind.CLOCK,
     "smc_gpio_irq_active_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_uart_spi_log_engine_test": SmcProtocolVipKind.UART_LOG,
@@ -78,7 +75,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_uart_loopback_test": SmcProtocolVipKind.UART_LOG,
     "smc_spi_pad_bfm_test": SmcProtocolVipKind.UART_LOG,
     "smc_sideband_protocol_smoke_test": SmcProtocolVipKind.SIDEBAND,
-    "smc_sideband_avsbus_octs_bfm_test": SmcProtocolVipKind.SIDEBAND,
     "smc_octs_dual_sync_test": SmcProtocolVipKind.SIDEBAND,
     "smc_octs_sanity_test": SmcProtocolVipKind.SIDEBAND,
     "smc_avsbus_sanity_test": SmcProtocolVipKind.SIDEBAND,
@@ -97,27 +93,22 @@ _PROTOCOL_VIP_TESTS = {
     "smc_occp_sanity_secure_error_test": SmcProtocolVipKind.CPU,
     "smc_efuse_otp_burn_shadow_test": SmcProtocolVipKind.EFUSE,
     "smc_ecc_fault_inject_test": SmcProtocolVipKind.DIAGNOSTIC,
-    "smc_dfd_dbs_fault_inject_test": SmcProtocolVipKind.DIAGNOSTIC,
     "smc_cpu_ctrl_map_depth_test": SmcProtocolVipKind.CPU,
     "smc_cpu_ctrl_scratch_window_test": SmcProtocolVipKind.CPU,
     "smc_mailbox_inbound_test": SmcProtocolVipKind.MAILBOX,
     "smc_i2c_multi_instance_test": SmcProtocolVipKind.I2C,
     "smc_efuse_map_read_test": SmcProtocolVipKind.EFUSE,
     "smc_efuse_shim_ctrl_test": SmcProtocolVipKind.EFUSE,
-    "smc_pll_cgm_awm_config_test": SmcProtocolVipKind.CLOCK,
     "smc_gpio_ctrl_full_sweep_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_telemetry_receiver_csr_test": SmcProtocolVipKind.SIDEBAND,
-    "smc_pvt_analog_sensor_test": SmcProtocolVipKind.CLOCK,
     "smc_remap_cla_test": SmcProtocolVipKind.OUTPUT_FABRIC,
     "smc_mailbox_multi_instance_test": SmcProtocolVipKind.MAILBOX,
     "smc_filter_multi_entry_test": SmcProtocolVipKind.OUTPUT_FABRIC,
     "smc_gpio_intf_full_sweep_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_mailbox_field_sweep_test": SmcProtocolVipKind.MAILBOX,
     "smc_filter_field_sweep_test": SmcProtocolVipKind.OUTPUT_FABRIC,
-    "smc_pll_awm_freq_sweep_test": SmcProtocolVipKind.CLOCK,
     "smc_xvisor_remap_test": SmcProtocolVipKind.OUTPUT_FABRIC,
     "smc_cluster_beu_test": SmcProtocolVipKind.CPU,
-    "smc_pvt_droop_test": SmcProtocolVipKind.CLOCK,
 }
 
 
@@ -1032,34 +1023,7 @@ class _EvidenceRecorder:
     # set at introduction); a new name fails the run. To remove an entry, make
     # the check that already runs log a ``CHK-<ID>:`` line where it happens --
     # in the sequence, not here.
-    NO_OWN_EVIDENCE = {
-        # Scoreboard protocol-VIP record with a stimulus floor, plus expected=
-        # compares on every CSR read the sequence issues.
-        "smc_dma_sanity_test": "protocol-VIP floor and scoreboard compares",
-        "smc_filter_field_sweep_test": "protocol-VIP floor and scoreboard compares",
-        "smc_gpio_ctrl_full_sweep_test": "protocol-VIP floor and scoreboard compares",
-        "smc_gpio_intf_full_sweep_test": "protocol-VIP floor and scoreboard compares",
-        "smc_i2c_multi_instance_test": "protocol-VIP floor and scoreboard compares",
-        "smc_mailbox_inbound_test": "protocol-VIP floor and scoreboard compares",
-        "smc_mailbox_multi_instance_test": "protocol-VIP floor and scoreboard compares",
-        "smc_occp_sanity_secure_error_test": "protocol-VIP floor and sequence asserts",
-        "smc_register_boundary_depth_test": "protocol-VIP floor and scoreboard compares",
-        "smc_register_sanity_test": "protocol-VIP floor and scoreboard compares",
-        "smc_spi_pad_bfm_test": "protocol-VIP floor and sequence asserts",
-        "smc_uart_loopback_test": "protocol-VIP floor and sequence asserts",
-        "smc_xvisor_remap_test": "protocol-VIP floor and scoreboard compares",
-        # Asserts in the sequence the leaf starts; the log line carries no ID.
-        "smc_flr_sanity_test": "sequence asserts, unlabelled",
-        "smc_gpio_irq_type_matrix_test": "sequence asserts, unlabelled",
-        "smc_gpio_output_driveback_test": "sequence asserts, unlabelled",
-        "smc_smbus_alert_ara_test": "in-leaf asserts on sequence flags, unlabelled",
-        # Asserts in the leaf on the scoreboard's memory-model compare counters.
-        "smc_output_fabric_slverr_inject_test": "in-leaf asserts, unlabelled",
-        "smc_output_fabric_wr_rd_responder_test": "in-leaf asserts, unlabelled",
-        # Sequence asserts; the protocol-VIP record it books is an activity
-        # stamp (csr_accesses=0, auto_evidence=True) and is not evidence.
-        "smc_octs_dual_sync_test": "sequence asserts, unlabelled",
-    }
+    NO_OWN_EVIDENCE: dict[str, str] = {}
 
     # Past this date, ``_finalize_evidence`` warns on every run while the set is
     # non-empty. Move it only after re-reading each entry that remains.
@@ -1395,10 +1359,16 @@ class smc_base_test(uvm_test):
             dut.tb_ss_reset_complete.value = 0xFFFFFFFF
         if hasattr(dut, "tb_jtag_reset_ctrl"):
             dut.tb_jtag_reset_ctrl.value = 0
+        if hasattr(dut, "tb_sep_axi_b_hold"):
+            dut.tb_sep_axi_b_hold.value = 0
         if hasattr(dut, "tb_sep_axi_r_hold"):
             dut.tb_sep_axi_r_hold.value = 0
+        if hasattr(dut, "tb_sep_axi_r_drop"):
+            dut.tb_sep_axi_r_drop.value = 0
         if hasattr(dut, "tb_sys_axi_r_hold"):
             dut.tb_sys_axi_r_hold.value = 0
+        if hasattr(dut, "tb_sys_axi_r_drop"):
+            dut.tb_sys_axi_r_drop.value = 0
         if hasattr(dut, "tb_output_axi_resp_hold"):
             dut.tb_output_axi_resp_hold.value = 0
         if hasattr(dut, "tb_mem_repair_abort"):
@@ -1427,12 +1397,19 @@ class smc_base_test(uvm_test):
             dut.tb_spi_dq_oe_n.value = 0xFF
             if hasattr(dut, "tb_spi_miso_ext"):
                 dut.tb_spi_miso_ext.value = 0
-        # Telemetry ATB receiver 0 (U4-6): idle quiet, AFREADY high.
+        # Telemetry ATB (U4-6): every lifted receiver idles quiet, receiver 0
+        # with AFREADY high. These are the values the tie-offs they replaced
+        # presented, so a test that drives none of them is unaffected.
         if hasattr(dut, "tb_telemetry0_atvalid"):
             dut.tb_telemetry0_atdata.value = 0
             dut.tb_telemetry0_atid.value = 0
             dut.tb_telemetry0_atvalid.value = 0
             dut.tb_telemetry0_afready.value = 1
+        for telem_rx in (1, 2):
+            if hasattr(dut, f"tb_telemetry{telem_rx}_atvalid"):
+                getattr(dut, f"tb_telemetry{telem_rx}_atdata").value = 0
+                getattr(dut, f"tb_telemetry{telem_rx}_atid").value = 0
+                getattr(dut, f"tb_telemetry{telem_rx}_atvalid").value = 0
         # AVSBus sdata (pad 51): idle-high (pull-up / no ACK).
         if hasattr(dut, "tb_avs_sdata_ext"):
             dut.tb_avs_sdata_ext.value = 1
@@ -1464,11 +1441,9 @@ class smc_base_test(uvm_test):
             size=SYS_OUT_MEM_SIZE,
             name="smc_sys_out",
         ).sequence
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
-        cocotb.start_soon(
-            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns").start())
 
         await ClockCycles(dut.clk_ref_i, 10)
         self.logger.info("Asserting powergood")

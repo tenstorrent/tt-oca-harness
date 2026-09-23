@@ -163,8 +163,10 @@ class smc_multi_reset_csr_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         cocotb.log.info(
             "CHK-COOL-RESET-CLEARS-WARM-SCRATCH: %s @ 0x%08x read 0x%08x "
             "(== its mapped reset value 0x%08x) instead of the pre-cool "
-            "0x%08x — the cool pulse reached the warm reset domain this "
-            "register lives in",
+            "0x%08x -- clk_rst.adoc lists the cool reset as a Primary Reset "
+            "activation source and Primary Reset covers the SMC configuration "
+            "registers, so the scratch_cold_warm window (misc_wrap.rdl) reads "
+            "its RDL reset after the pulse",
             scratch.name,
             scratch.addr,
             got,
