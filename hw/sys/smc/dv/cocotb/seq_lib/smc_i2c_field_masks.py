@@ -37,6 +37,16 @@ I2C_CTRL_TX_STRETCH_CTRL_EN = _field_mask(_I2C_H, "I2C__CTRL__TX_STRETCH_CTRL_EN
 I2C_STATUS_HOSTIDLE = _field_mask(_I2C_H, "I2C__STATUS__HOSTIDLE_bm")
 I2C_STATUS_TARGETIDLE = _field_mask(_I2C_H, "I2C__STATUS__TARGETIDLE_bm")
 
+# Bus/stretch timeout control. `TIMEOUT_CTRL.MODE` is transcribed from its RDL
+# field description: 0 selects the Controller-Mode stretch timeout, 1 selects
+# the bus timeout that counts SCL low time from every source.
+I2C_TIMEOUT_CTRL_VAL = _field_mask(_I2C_H, "I2C__TIMEOUT_CTRL__VAL_bm")
+I2C_TIMEOUT_CTRL_MODE = _field_mask(_I2C_H, "I2C__TIMEOUT_CTRL__MODE_bm")
+I2C_TIMEOUT_CTRL_EN = _field_mask(_I2C_H, "I2C__TIMEOUT_CTRL__EN_bm")
+I2C_TIMEOUT_MODE_BUS = I2C_TIMEOUT_CTRL_MODE
+I2C_HOST_TIMEOUT_CTRL_VAL_BM = _field_mask(_I2C_H, "I2C__HOST_TIMEOUT_CTRL__VAL_bm")
+I2C_INTR_SDA_INTERFERENCE = _field_mask(_I2C_H, "I2C__INTR_STATE__SDA_INTERFERENCE_bm")
+
 # Field masks for the timeout / FIFO-config CSR sweep.
 I2C_HOST_TIMEOUT_CTRL_VAL = _field_mask(_I2C_H, "I2C__HOST_TIMEOUT_CTRL__VAL_bm")
 I2C_TARGET_TIMEOUT_CTRL_VAL = _field_mask(_I2C_H, "I2C__TARGET_TIMEOUT_CTRL__VAL_bm")
@@ -116,10 +126,18 @@ I2C_ACQDATA_ABYTE = _field_mask(_I2C_H, "I2C__ACQDATA__ABYTE_bm")
 I2C_ACQDATA_SIGNAL = _field_mask(_I2C_H, "I2C__ACQDATA__SIGNAL_bm")
 I2C_ACQDATA_SIGNAL_BP = _field_mask(_I2C_H, "I2C__ACQDATA__SIGNAL_bp")
 
-# OT ACQDATA.SIGNAL encoding (OpenTitan i2c)
-I2C_ACQ_SIGNAL_NONE = 0  # data byte (ACK path)
-I2C_ACQ_SIGNAL_START = 1
-I2C_ACQ_SIGNAL_STOP = 2
+# ACQDATA.SIGNAL encoding, transcribed from the field description in
+# `hw/ip/i2c/regs/i2c.rdl` (the ACQDATA register), which enumerates every code.
+I2C_ACQ_SIGNAL_NONE = 0  # ordinary data byte that has been ACKed
+I2C_ACQ_SIGNAL_START = 1  # address byte preceded by a START
+I2C_ACQ_SIGNAL_STOP = 2  # STOP following ACKed data bytes
+I2C_ACQ_SIGNAL_RESTART = 3  # address byte preceded by a repeated START
+I2C_ACQ_SIGNAL_NACK_DATA = 4  # NACKed data byte
+I2C_ACQ_SIGNAL_NACK_START = 5  # address byte whose following data bytes were NACKed
+# "Error. A transaction preceding ended abnormally, for example, due to an
+# unexpected STOP condition, a Bus or Stretch Timeout, a software NACK, or a
+# lost arbitration."
+I2C_ACQ_SIGNAL_ERROR = 6
 
 
 def acq_abyte(word: int) -> int:

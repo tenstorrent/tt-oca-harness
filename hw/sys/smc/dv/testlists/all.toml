@@ -52,7 +52,7 @@ includes = [
 # sep are: the loader errors when this list and the count diverge, so a leaf
 # cannot be added to a feature testlist and silently miss the regression.
 name = "all"
-expected_count = 204
+expected_count = 205
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -176,6 +176,7 @@ tests = [
     "smc_i2c_target_acq_stretch_test",
     "smc_i2c2_controller_rdwr_test",
     "smc_i2c_protocol_interruption_test",
+    "smc_i2c_target_bus_timeout_test",
     "smc_i2c_target_multi_instance_stretch_test",
     "smc_i2c_target_smbus_test",
     "smc_i3c_to_fabric_test",
@@ -267,7 +268,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 185
+expected_count = 186
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -373,6 +374,7 @@ tests = [
     "smc_i2c_target_acq_stretch_test",
     "smc_i2c2_controller_rdwr_test",
     "smc_i2c_protocol_interruption_test",
+    "smc_i2c_target_bus_timeout_test",
     "smc_i2c_target_multi_instance_stretch_test",
     "smc_i2c_target_smbus_test",
     "smc_i3c_to_fabric_test",

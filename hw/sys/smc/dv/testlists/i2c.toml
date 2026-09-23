@@ -246,3 +246,12 @@ timeout_sec = 3600
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_target_bus_timeout_test"
+module = "smc_i2c_target_bus_timeout_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]

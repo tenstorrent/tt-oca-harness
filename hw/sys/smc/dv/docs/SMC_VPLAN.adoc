@@ -436,6 +436,7 @@ feature rows.
 |`smc_i2c_target_acq_stretch_test` |The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
 |`smc_i2c_protocol_interruption_test` |Transactions cut short by a STOP, a repeated START or a cleared enable at every phase, on all three instances.
 |`smc_i2c2_controller_rdwr_test` |I2C2 driving the shared bus as controller for a write and a two-byte read against I2C1.
+|`smc_i2c_target_bus_timeout_test` |The programmable bus timeout expiring at every slot of an addressed target transaction, and against the target's own stretch, on all three instances.
 |`smc_i2c_target_multi_instance_stretch_test` |I2C1 and I2C2 as targets: the transmit path, an unmatched address, and both the transmit-FIFO and acquisition-FIFO stretches.
 |`smc_i2c_target_smbus_test` |VIP ARA + external SMBSUS# into DUT I2C0 SMBus target.
 |`smc_smbus_alert_ara_test` |U4-2: DUT SMBALERT# pad39 + VIP ARA @0x0C (TB CSR stands in for FW).
@@ -8002,6 +8003,49 @@ Drive `smc_i2c2_controller_rdwr_test_seq`. Each checker below is a named compare
 |===
 
 *Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-227-smc_i2c_target_bus_timeout_test]]
+===== 227 `smc_i2c_target_bus_timeout_test`
+
+*Source Module*: `smc_i2c_target_bus_timeout_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `SmcI2cMasterVip` bit-banging the shared open-drain I2C bus
+
+*Objective*: The programmable bus timeout expiring at every slot of an addressed target transaction, and against the target's own stretch, on all three instances.
+
+*Test Coverage*:
+
+* `hw/ip/i2c/regs/i2c.rdl` describes `TIMEOUT_CTRL.MODE` 1 as a bus timeout that fires "if SCL is LOW for more time than `TIMEOUT_CTRL.VAL`", and `doc/architecture.adoc` adds that the count "accumulates across all sources" and that "the counter resets when SCL goes high, so this count only accumulates during a single bit transfer". Parking SCL low is therefore what makes it expire.
+* Unlike a STOP or a repeated START, the timeout is a counter rather than a bus event, so it lands in states where no control symbol can be driven -- the acknowledge slots, and the states the target reaches while stretching.
+* The timeout value sits well above the VIP's per-bit SCL low time and the deliberate park sits well above the value, so the timeout fires only where this leaf puts it and never on ordinary bit timing.
+* The stretch leg drives nothing on the bus at all: the target is holding SCL low itself because its acquisition FIFO is full, and the timeout counts that hold.
+* The address-stretch leg then starts a transaction while the acquisition FIFO is still full, so the address cannot be deposited. The filling write is abandoned first: it and the new transaction share one VIP and cannot be in flight together.
+* `doc/architecture.adoc` states that a bus timeout while the target was addressed adds an entry to the ACQ FIFO, and the RDL defines `SIGNAL` 6 for a transaction that "ended abnormally, for example, due to ... a Bus or Stretch Timeout". That entry is the observable.
+
+*Test Procedure*:
+
+Drive `smc_i2c_target_bus_timeout_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C0-BUSTO-SLOT-SWEEP` |The bus timeout expired at each of nine slots of an addressed transaction on I2C0, every one recorded as an abnormal ending in the acquisition FIFO, with a clean write before and after
+|`CHK-I2C0-BUSTO-STRETCH` |With its acquisition FIFO full, I2C0 held SCL low itself and the timeout counted that hold and returned the instance to idle, with nothing driven on the bus
+|`CHK-I2C0-BUSTO-ADDR-STRETCH` |A transaction started while I2C0's acquisition FIFO was still full drove the address phase against a target with nowhere to deposit it, and the instance ran a clean write afterwards
+|`CHK-I2C1-BUSTO-SLOT-SWEEP` |The slot sweep on I2C1
+|`CHK-I2C1-BUSTO-STRETCH` |The stretch timeout on I2C1
+|`CHK-I2C1-BUSTO-ADDR-STRETCH` |The address-phase stretch on I2C1
+|`CHK-I2C2-BUSTO-SLOT-SWEEP` |The slot sweep on I2C2
+|`CHK-I2C2-BUSTO-STRETCH` |The stretch timeout on I2C2
+|`CHK-I2C2-BUSTO-ADDR-STRETCH` |The address-phase stretch on I2C2
+|===
+
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
