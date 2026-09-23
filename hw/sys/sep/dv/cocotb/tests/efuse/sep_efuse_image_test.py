@@ -17,8 +17,8 @@ multi-bit W1S program persistence across a resense.
 from __future__ import annotations
 
 import pyuvm
-from env.sep_efuse_image import SepEfuseImage
 from env.sep_efuse_feat_ctrl import feat_ctrl_nonvacuous_fixed
+from env.sep_efuse_image import SepEfuseImage
 from env.sep_lcc_golden import feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
