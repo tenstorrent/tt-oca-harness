@@ -4504,7 +4504,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 3. Each checker be
 
 *Test Coverage*:
 
-* `Trfunneldisinput`, whose RDL description reads "Bits 7:0 are reserved for N-trace srcs and 15:8 for Dst sources", set over its whole DST half and then cleared, giving a deny leg and an allow leg on the same stimulus.
+* `Trfunneldisinput`, which the RDL splits into a low half for the N-trace sources and a high half for the DST sources, set over its whole DST half and then cleared, giving a deny leg and an allow leg on the same stimulus.
 * The deny leg runs first because the sink's wrap flag is hardware-set and sticky, so a sink that has once taken data cannot be shown empty again.
 * Two sink window sizes programmed through `Trdstramlimitlow`.
 

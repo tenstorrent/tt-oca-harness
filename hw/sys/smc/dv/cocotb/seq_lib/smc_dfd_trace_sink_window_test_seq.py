@@ -7,10 +7,10 @@ type comes from the generated register map through
 :mod:`seq_lib.smc_rdl_regmap` and :mod:`seq_lib.smc_cla_regmap`. The vendored
 RTL is not a source for any value this sequence programs or compares against.
 
-``dfd_funnel.rdl`` describes ``Trfunneldisinput`` as "Bits 7:0 are reserved for
-N-trace srcs and 15:8 for Dst sources", so setting that whole upper half
-disables every DST source the funnel accepts without this sequence having to
-know which bit belongs to which source. That gives a two-legged proof on the
+``dfd_funnel.rdl`` splits ``Trfunneldisinput`` into a low half for the
+N-trace sources and a high half for the DST sources, so setting that whole
+upper half disables every DST source the funnel accepts without this sequence
+having to know which bit belongs to which source. That gives a two-legged proof on the
 same run:
 
 * **Deny leg first.** With every DST source disabled the trace is started and
@@ -110,8 +110,8 @@ class smc_dfd_trace_sink_window_test_seq(SmcCsrSeq):
         )
         disin = funnel_register("Trfunneldisinput")
         field = reg_field(disin, "Trfunneldisinput")
-        # The upper half of the field is the DST source half, per its own RDL
-        # description; the lower half is left enabled either way.
+        # The upper half of the field is the DST source half, per the split its
+        # own RDL description states; the lower half is left enabled either way.
         upper = ((1 << (field.width // 2)) - 1) << (field.width // 2)
         word = (upper if disable_dst else 0) << field.offset
         await self._write(disin, word, label)
