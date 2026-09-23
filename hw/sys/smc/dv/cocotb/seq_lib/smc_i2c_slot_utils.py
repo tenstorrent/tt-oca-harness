@@ -12,8 +12,6 @@ that this bench can drive from the pads:
   from every source -- "the counter resets when SCL goes high, so this count
   only accumulates during a single bit transfer", so parking SCL low is what
   makes it expire,
-* **arbitration lost**, which the bus monitor raises when a device attempts to
-  transmit a logic high while another pulls SDA low, and
 * a **bus inactive timeout**, which `HOST_TIMEOUT_CTRL` arms and which the bus
   monitor counts while the bus is busy and idling with SCL high.
 
@@ -30,7 +28,6 @@ from .smc_i2c_protocol_vip import SmcI2cMasterVip
 # Slots a transaction can be held at. "addr" k is after k bits of the address
 # byte, "addrack" after the address acknowledge has been clocked, "data" k
 # after k bits of the payload byte, "dataack" after the payload acknowledge.
-ADDR_SLOTS = [("addr", k) for k in range(1, 8)]
 POST_ADDR_SLOTS = [("addrack", 0)] + [("data", k) for k in range(1, 8)] + [("dataack", 0)]
 
 
@@ -83,13 +80,6 @@ async def park_scl_high(vip: SmcI2cMasterVip, hold_ns: int) -> None:
     vip._pull_scl(False)
     await vip._wait_scl_high()
     await Timer(hold_ns, unit="ns")
-
-
-async def pull_sda_low(vip: SmcI2cMasterVip, hold_ns: int) -> None:
-    """Pull SDA low for ``hold_ns`` while another device is driving it high."""
-    vip._pull_sda(True)
-    await Timer(hold_ns, unit="ns")
-    vip._pull_sda(False)
 
 
 async def release_bus(vip: SmcI2cMasterVip) -> None:
