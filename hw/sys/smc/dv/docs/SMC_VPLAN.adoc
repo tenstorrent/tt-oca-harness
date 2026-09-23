@@ -433,6 +433,7 @@ feature rows.
 |`smc_i2c_p0_stretch_test` |I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1 host READ stalls on TX_PENDING until TXDATA is supplied, then completes with that byte.
 |`smc_i2c_p0_timeout_test` |Stretch-timeout observation (empty target TX during host READ).
 |`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
+|`smc_i2c_bus_monitor_idle_test` |The I2C bus monitor's idle-with-SCL-high state entered and left on every instance, witnessed by the host-timeout interrupt.
 |`smc_i2c_target_acq_stretch_test` |The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
 |`smc_i2c_protocol_interruption_test` |Transactions cut short by a STOP, a repeated START or a cleared enable at every phase, on all three instances.
 |`smc_i2c2_controller_rdwr_test` |I2C2 driving the shared bus as controller for a write and a two-byte read against I2C1.
@@ -8043,6 +8044,47 @@ Drive `smc_i2c_target_bus_timeout_test_seq`. Each checker below is a named compa
 |`CHK-I2C2-BUSTO-SLOT-SWEEP` |The slot sweep on I2C2
 |`CHK-I2C2-BUSTO-STRETCH` |The stretch timeout on I2C2
 |`CHK-I2C2-BUSTO-ADDR-STRETCH` |The address-phase stretch on I2C2
+|===
+
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-228-smc_i2c_bus_monitor_idle_test]]
+===== 228 `smc_i2c_bus_monitor_idle_test`
+
+*Source Module*: `smc_i2c_bus_monitor_idle_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `SmcI2cMasterVip` bit-banging the shared open-drain I2C bus
+
+*Objective*: The I2C bus monitor's idle-with-SCL-high state entered and left on every instance, witnessed by the host-timeout interrupt.
+
+*Test Coverage*:
+
+* `HOST_TIMEOUT_CTRL.VAL` arms the bus monitor's inactive timeout, and the RDL calls the resulting interrupt a "Target Mode interrupt: asserted when the controller stops generating the clock longer than `HOST_TIMEOUT_CTRL.VAL`". Nothing else in this package programs that register.
+* `INTR_STATE.HOST_TIMEOUT` is what makes the state observable rather than inferred: only the idling state counts that timeout down, so the interrupt firing is a witness that the monitor was in it.
+* `TIMING4.T_BUF` is programmed long for this leaf, so the bus-free window after a STOP is wide enough for the bench to drive the bus low inside it; at the default of a few cycles it is shorter than a round trip from the sequence.
+* The enable-with-multi-controller leg drives the monitor's other entry into the idling state, but asserts only that a clean transaction follows: the inactive counter is not reloaded on that path, so the host-timeout witness does not fire there, and no register reports the monitor's state directly. That entry is stimulus, not a claim.
+
+*Test Procedure*:
+
+Drive `smc_i2c_bus_monitor_idle_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C0-BUSMON-IDLE-TIMEOUT` |With the bus busy and the bench holding SCL released mid-transaction, I2C0's monitor counted `HOST_TIMEOUT_CTRL.VAL` down and raised `INTR_STATE.HOST_TIMEOUT`, with a clean write before and after
+|`CHK-I2C0-BUSMON-RESUME` |I2C0's monitor left the idling state both ways -- SCL taken low again, and a STOP driven out of it followed by the bus pulled low inside the bus-free window -- and the instance ran a clean write after
+|`CHK-I2C0-BUSMON-MULTI-ENABLE` |I2C0 enabled with `CTRL.MULTI_CONTROLLER_MONITOR_EN` set on a quiet bus then ran a clean write that was acquired byte for byte
+|`CHK-I2C1-BUSMON-IDLE-TIMEOUT` |The idle timeout on I2C1
+|`CHK-I2C1-BUSMON-RESUME` |The resume and stop legs on I2C1
+|`CHK-I2C1-BUSMON-MULTI-ENABLE` |The multi-controller enable on I2C1
+|`CHK-I2C2-BUSMON-IDLE-TIMEOUT` |The idle timeout on I2C2
+|`CHK-I2C2-BUSMON-RESUME` |The resume and stop legs on I2C2
+|`CHK-I2C2-BUSMON-MULTI-ENABLE` |The multi-controller enable on I2C2
 |===
 
 *Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
