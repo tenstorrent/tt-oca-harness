@@ -364,7 +364,9 @@ feature rows.
 |`smc_dfd_cla_node_eap_sweep_test` |Every CLA event-action pair of every node activated over the whole LogicalOp range, cleared through its own W2C bit, with the node walk reaching all four nodes.
 |`smc_dfd_trace_accumulator_fill_test` |Debug-bus trace driven into the DST packetizer until its accumulator bank fills and the trace RAM sink takes it.
 |`smc_dfd_cla_counter_edge_test` |All four CLA counters driven from the action bus and read back counting and cleared, and every edge-detect select value walked.
-|`smc_dfd_trace_format_sweep_test` |The trace path run in each of the three compression formats the DST RDL publishes.
+|`smc_dfd_trace_format_sweep_test` |The trace path run uncompressed on a moving payload and two frame lengths.
+|`smc_dfd_trace_vlt_format_test` |The trace path run in XOR plus VLT compression on a moving payload and two frame lengths.
+|`smc_dfd_trace_xor_format_test` |The trace path run in XOR compression on a moving payload and two frame lengths.
 |`smc_dfd_trace_sink_window_test` |The trace stream blocked at the funnel, released, and taken into two sink window sizes.
 |`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of each of node 0's event-action pairs.
 |`smc_dfd_trace_sink_readout_test` |The captured trace read back out of the sink RAM, with both sink modes and the deactivation edge.
@@ -4414,16 +4416,18 @@ Drive `smc_dfd_cla_counter_edge_test_seq`. Each checker below is a named compare
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: The trace path run in each of the three compression formats the DST RDL publishes.
+*Objective*: The trace path run in the uncompressed format on a moving payload and two frame lengths.
 
 *Test Coverage*:
 
-* `Trdstformat` at each of the three values its own RDL description names -- no compression, XOR, XOR plus VLT -- with the debug bus in normal debug mode, the funnel open and the sink armed, so the XOR and VLT compressors run on a live stream instead of staying idle as they do under the uncompressed fill leaf.
-* The payload is kept moving by the `Action0` sweep, whose action bus drives interrupt and trigger outputs that the SMC debug bus carries.
+* `Trdstformat` = 0, one of the three values the field's own RDL description names, written into the DST control register and read back.
+* `DEBUG_BUS_MUX.Muxselseg0..7` walked through the segment selects its own description names (0, 1, 2, 4) while the trace is live, one write per mux id per rotation, so the lanes carry different debug-bus segments and consecutive samples differ. Without that a compressor is fed a bus that holds still and emits nothing.
+* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
+* `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
 
 *Test Procedure*:
 
-Drive `smc_dfd_trace_format_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 0. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -4431,14 +4435,89 @@ Drive `smc_dfd_trace_format_sweep_test_seq`. Each checker below is a named compa
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DST-FORMAT-IDLE` |The packetizer read empty before the first format was programmed, so the trace the run produces is its own; a packetizer already holding data fails it
-|`CHK-DST-FORMAT-STREAM` |All three published `Trdstformat` values were written into the DST control register, read back exactly, and each made the DUT clear `Trdstcontrol.Trdstempty`, so each compression mode carried a stream into the packetizer; a mode that reads back wrong or leaves the packetizer empty fails it
+|`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
+|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer off the value it was given, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move fails it and reports the packetizer and funnel state
+|`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
+|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
 |===
 
-*Known limitation*: no register the DST or its sink exposes gives a per-mode byte count, and the packetizer cannot be drained from the register interface once a mode has run, so per-mode volumes are logged and not compared and only the first mode starts from a measured idle.
+*Known limitation*: one compression mode per run. Once a mode has run the packetizer keeps a partial bank that the register interface offers no way to flush -- measured with the funnel reading empty and the sink having taken a full window while `Trdstempty` stayed 0 -- and a second mode programmed afterwards then delivers nothing. The three modes therefore have one leaf each rather than one leaf walking all three.
 
 
-*Pass Criteria*: `CHK-DST-FORMAT-IDLE`, `CHK-DST-FORMAT-STREAM` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Pass Criteria*: `CHK-DST-FORMAT-FRAMELEN`, `CHK-DST-FORMAT-IDLE`, `CHK-DST-FORMAT-PAYLOAD`, `CHK-DST-FORMAT-STREAM` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-220-smc_dfd_trace_xor_format_test]]
+===== 220 `smc_dfd_trace_xor_format_test`
+
+*Source Module*: `smc_dfd_trace_xor_format_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: The trace path run in the XOR compression format on a moving payload and two frame lengths.
+
+*Test Coverage*:
+
+* `Trdstformat` = 1, one of the three values the field's own RDL description names, written into the DST control register and read back.
+* `DEBUG_BUS_MUX.Muxselseg0..7` walked through the segment selects its own description names (0, 1, 2, 4) while the trace is live, one write per mux id per rotation, so the lanes carry different debug-bus segments and consecutive samples differ. Without that a compressor is fed a bus that holds still and emits nothing.
+* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
+* `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
+
+*Test Procedure*:
+
+Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 1. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
+|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer off the value it was given, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move fails it and reports the packetizer and funnel state
+|`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
+|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
+|===
+
+
+*Pass Criteria*: `CHK-DST-FORMAT-FRAMELEN`, `CHK-DST-FORMAT-IDLE`, `CHK-DST-FORMAT-PAYLOAD`, `CHK-DST-FORMAT-STREAM` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-221-smc_dfd_trace_vlt_format_test]]
+===== 221 `smc_dfd_trace_vlt_format_test`
+
+*Source Module*: `smc_dfd_trace_vlt_format_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: The trace path run in the XOR plus VLT compression format on a moving payload and two frame lengths.
+
+*Test Coverage*:
+
+* `Trdstformat` = 3, one of the three values the field's own RDL description names, written into the DST control register and read back.
+* `DEBUG_BUS_MUX.Muxselseg0..7` walked through the segment selects its own description names (0, 1, 2, 4) while the trace is live, one write per mux id per rotation, so the lanes carry different debug-bus segments and consecutive samples differ. Without that a compressor is fed a bus that holds still and emits nothing.
+* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
+* `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
+
+*Test Procedure*:
+
+Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 3. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
+|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer off the value it was given, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move fails it and reports the packetizer and funnel state
+|`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
+|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
+|===
+
+
+*Pass Criteria*: `CHK-DST-FORMAT-FRAMELEN`, `CHK-DST-FORMAT-IDLE`, `CHK-DST-FORMAT-PAYLOAD`, `CHK-DST-FORMAT-STREAM` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-215-smc_dfd_trace_sink_window_test]]

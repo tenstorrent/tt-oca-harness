@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Run the DST trace path in the uncompressed format, on a payload that moves.
+"""Run the DST trace path in the XOR plus VLT compression format, on a payload that moves.
 
 The packetizer keeps a partial bank once a mode has run and the register
 interface offers no flush, so the only empty packetizer this bench provides is
 the one a run starts with and each compression mode gets its own leaf. This one
-drives `Trdstformat` = 0, rotates the debug-bus mux segment selects while
+drives `Trdstformat` = 3, rotates the debug-bus mux segment selects while
 the trace is live so consecutive samples differ, and changes the frame length
 part way through.
 """
@@ -15,7 +15,7 @@ from __future__ import annotations
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_dfd_trace_format_sweep_test_seq import (
-    FORMAT_NONE,
+    FORMAT_XOR_VLT,
     smc_dfd_trace_format_sweep_test_seq,
 )
 from smc_base_test import smc_base_test
@@ -45,8 +45,8 @@ TRACE_FORMAT_MIN_CSR_ACCESSES = 355
 
 
 @pyuvm.test()
-class smc_dfd_trace_format_sweep_test(smc_base_test):
-    """Run the trace path in the uncompressed format from an empty start."""
+class smc_dfd_trace_vlt_format_test(smc_base_test):
+    """Run the trace path in the XOR plus VLT compression format from an empty start."""
 
     required_evidence = (
         "CHK-DST-FORMAT-FRAMELEN",
@@ -59,7 +59,7 @@ class smc_dfd_trace_format_sweep_test(smc_base_test):
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
-        seq = smc_dfd_trace_format_sweep_test_seq("trace_format_none_seq", fmt=FORMAT_NONE)
+        seq = smc_dfd_trace_format_sweep_test_seq("trace_format_vlt_seq", fmt=FORMAT_XOR_VLT)
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         await self.record_protocol_vip(
             SmcProtocolVipKind.DIAGNOSTIC,

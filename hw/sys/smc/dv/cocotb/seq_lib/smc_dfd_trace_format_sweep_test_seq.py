@@ -1,38 +1,43 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Run the DST trace path in each compression format its RDL publishes.
+"""Run the DST trace path in one compression format, on a payload that moves.
 
 Every address, field position, field width, reset value and software-access
 type comes from the generated register map through
-:mod:`seq_lib.smc_rdl_regmap` and :mod:`seq_lib.smc_cla_regmap`. The vendored
-RTL is not a source for any value this sequence programs or compares against.
+:mod:`seq_lib.smc_rdl_regmap` and :mod:`seq_lib.smc_cla_regmap`. Every value
+programmed into a field comes from that field's own RDL description. The
+vendored RTL is not a source for any value this sequence programs or compares
+against.
 
-``smc_dfd_trace_accumulator_fill_test`` runs the trace path uncompressed, so
-the XOR and VLT compressors behind ``debug_sig_trace_gen`` stay idle. They are
-reached only in the other two modes.
+**One mode per run, and why.** The DST packet path cannot be re-run in a
+second compression mode inside one simulation. Measured twice: after a mode
+has run, the funnel reads empty and the sink has taken a full window, yet
+``Trdstcontrol.Trdstempty`` stays 0 -- the packetizer keeps a partial bank and
+nothing the register interface offers flushes it -- and a second mode
+programmed afterwards then delivers nothing to the sink at all. The only
+empty packetizer this bench can provide is the one a run starts with, so the
+sequence takes the format as a parameter and each mode gets its own leaf.
 
-``dfd_dst.rdl`` publishes the mode set in the field's own description:
-``Trdstformat`` bit 0 is the XOR enable and bit 1 the VLT enable, and the
-supported values it names are 3, 1 and 0. The three values this sequence
-walks therefore come from the register contract and not from the RTL. The payload has to move for a compressor to emit anything;
-the Action0 sweep supplies that, because the CLA action bus drives interrupt
-and trigger outputs that the SMC debug bus carries.
+Three things have to be true at once for the XOR and VLT compressors behind
+``debug_sig_trace_gen`` to do any work, and each has an RDL handle:
 
-The first mode is measured from an idle start: the DUT is required to have
-``Trdstcontrol.Trdstempty`` at its RDL reset of 1 before any format is
-programmed, so the trace the run produces is its own.
+* **The mode.** ``dfd_dst.rdl`` gives ``Trdstformat`` bit 0 as the XOR enable
+  and bit 1 as the VLT enable, and names 3 (XOR plus VLT), 1 (XOR) and 0 (no
+  compression) as the supported values.
+* **A payload that changes between samples.** A compressor fed a bus that
+  holds still emits nothing. ``DEBUG_BUS_MUX.Muxselseg0..7`` chooses which
+  debug-bus segment each output lane carries -- "If all bits are 0, Lane0 =
+  Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5, ..." -- so
+  rotating the selects while the trace runs changes what every lane carries.
+  A mux latches its selects only while its own id is programmed, so each
+  rotation costs one write per id.
+* **More than one packet size.** ``Trdstimpl.Trdstvendorframelength``:
+  "Specify frame length. Frame Length = trDstVendorFrameLength* 64". The run
+  changes it part way through, so the packet path sees two frame lengths.
 
-**What is deliberately not claimed.** No register the DST or its sink exposes
-gives a per-mode byte count that would let a compressed stream be compared
-against an uncompressed one: ``Trdstramwplow`` saturates to its wrap flag with
-the pointer field back at zero in every mode, the flag is hardware-set and
-survives a sink disable, and ``Trdstramdata`` returns the same word at every
-read pointer this sequence seeks to. Nor can the packetizer be drained from
-the register interface once a mode has run -- disabling the DST and re-arming
-the sink does not put ``Trdstempty`` back to 1 -- so only the first mode starts
-from a measured idle. The per-mode volumes are therefore logged, and what each
-mode is held to is that its format value reached the DST control register and
-that the packetizer carried trace under it.
+``Trdstsyncmode`` ("When the field is set tp 2'b10, sent timestamp") with
+``Trdstsyncmax`` ("timestamp will be sent for every 2^(trDstSyncMax + 4)
+Cluster clocks") is set so the periodic-sync path has something to do.
 """
 
 from __future__ import annotations
@@ -51,26 +56,43 @@ from .smc_dfd_trace_accumulator_fill_test_seq import (
     sink_register,
 )
 
-# dfd_dst.rdl Trdstformat, in the order the field's own description lists them:
-# no compression, XOR, then XOR plus VLT.
-_FORMATS = (0, 1, 3)
+# dfd_dst.rdl Trdstformat, the values the field's own description names.
+FORMAT_NONE = 0
+FORMAT_XOR = 1
+FORMAT_XOR_VLT = 3
 
-# Window the trace RAM sink is given for each mode, in bytes.
+# dfd_dst.rdl Trdstimpl.Trdstvendorframelength: "Frame Length =
+# trDstVendorFrameLength* 64", so these are 64 and 192 bytes.
+_FRAME_LENGTHS = (1, 3)
+
+# dfd_dst.rdl Trdstsyncmode: "When the field is set tp 2'b10, sent timestamp".
+_SYNC_MODE_TIMESTAMP = 2
+# dfd_dst.rdl Trdstsyncmax: "every 2^(trDstSyncMax + 4) Cluster clocks".
+_SYNC_MAX_SHORTEST = 0
+
+# dfx_ctrl_status.rdl Muxselseg<n>: "If all bits are 0, Lane0 = Seg0, if bit[0]
+# = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5, ...". Zero is the lane's own
+# static segment and each set bit selects one of the upper segments.
+_SEGMENT_SELECTS = (0, 1, 2, 4)
+
 _SINK_WINDOW_BYTES = 0x4000
 
 _SETTLE_CYCLES = 32
-_EMPTY_POLLS = 3
-_IDLE_POLLS = 32
+_DELIVER_POLLS = 64
 
 
 class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
-    """Drive the trace path in each published format from an idle start."""
+    """Run the trace path in one published compression format from an empty start."""
 
-    def __init__(self, name: str = "smc_dfd_trace_format_sweep_test_seq") -> None:
+    def __init__(
+        self, name: str = "smc_dfd_trace_format_sweep_test_seq", fmt: int = FORMAT_NONE
+    ) -> None:
         super().__init__(name)
-        self.pointers: dict[int, int] = {}
-        self.accumulated: dict[int, int] = {}
-        self.idle_before: set[int] = set()
+        self.fmt = fmt
+        self.baseline = 0
+        self.delivered = 0
+        self.rotations: list[int] = []
+        self.frame_lengths: list[int] = []
         self.value_checks = 0
 
     # -- register helpers -------------------------------------------------
@@ -97,16 +119,18 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
 
     # -- bring-up ---------------------------------------------------------
 
-    async def _open_debug_bus(self) -> None:
+    async def _program_segments(self, select: int, label: str) -> None:
+        """Give every debug-bus mux the same segment select, in normal debug mode."""
         reg = dfd_register("dfx_ctrl/DEBUG_BUS_MUX")
         dbmid = reg_field(reg, "Dbmid")
-        for value in range(1 << dbmid.width):
-            await self._write(
-                reg, pack_fields(reg, {"Dbmmode": 1, "Dbmid": value}), f"normal_id{value}"
-            )
+        values = {"Dbmmode": 1}
+        values.update({f"Muxselseg{lane}": select for lane in range(8)})
+        for identity in range(1 << dbmid.width):
+            values["Dbmid"] = identity
+            await self._write(reg, pack_fields(reg, values), f"{label}_id{identity}")
+        self.rotations.append(select)
 
-    async def _restart_sink(self) -> None:
-        """Re-arm the sink with a fresh window and the write pointer back at zero."""
+    async def _open_sink(self) -> None:
         control = sink_register("Trdstramcontrol")
         await self._write(control, control.reset_word, "off")
         for name, value in (
@@ -115,43 +139,68 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
             ("Trdstramlimitlow", _SINK_WINDOW_BYTES),
             ("Trdstramlimithigh", 0),
             ("Trdstramwplow", 0),
+            ("Trdstramrplow", 0),
         ):
             reg = sink_register(name)
             await self._write(reg, value & reg.rw_mask, "window")
-        wp = sink_register("Trdstramwplow")
-        pointer = reg_field(wp, "Trdstramwplow")
-        at_zero = await self._read(wp, "rearmed")
-        assert at_zero & pointer.mask == 0, (
-            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} still reads pointer "
-            f"0x{(at_zero & pointer.mask) >> pointer.offset:x} after being written back to "
-            f"zero with the sink disabled"
+        await self._write_check(control, {"Trdstramactive": 1, "Trdstramenable": 1}, "sink")
+
+    async def _set_frame_length(self, length: int) -> None:
+        impl = dst_register("Trdstimpl")
+        stream = reg_field(impl, "Trdstvendorstreamlength")
+        await self._write_check(
+            impl,
+            {
+                "Trdstvendorframelength": length,
+                "Trdstvendorstreamlength": (impl.reset_word & stream.mask) >> stream.offset,
+                "Trdsttimestampconfig": 0,
+            },
+            f"framelen{length}",
         )
-        self.value_checks += 1
-        await self._write_check(control, {"Trdstramactive": 1, "Trdstramenable": 1}, "enable")
+        self.frame_lengths.append(length)
 
-    async def _stop_dst(self) -> None:
-        reg = dst_register("Trdstcontrol")
-        await self._write(reg, reg.reset_word, "off")
-
-    async def _note_idle(self, fmt: int) -> None:
-        """Record whether the packetizer reads empty before this mode is programmed."""
-        dst = dst_register("Trdstcontrol")
-        empty = reg_field(dst, "Trdstempty")
-        for _ in range(_IDLE_POLLS):
-            if await self._read(dst, f"idle{fmt}") & empty.mask:
-                self.idle_before.add(fmt)
-                return
-            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
-
-    async def _start_dst(self, fmt: int) -> None:
+    async def _start_dst(self) -> None:
         await self._write_check(
             dst_register("Trdstcontrol"),
-            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": fmt},
-            f"format{fmt}",
+            {
+                "Trdstactive": 1,
+                "Trdstenable": 1,
+                "Trdstformat": self.fmt,
+                "Trdstsyncmode": _SYNC_MODE_TIMESTAMP,
+                "Trdstsyncmax": _SYNC_MAX_SHORTEST,
+            },
+            f"format{self.fmt}",
+        )
+
+    async def _empty_start(self) -> None:
+        """The packetizer and the sink are both measured empty before the trace runs."""
+        dst = dst_register("Trdstcontrol")
+        empty = reg_field(dst, "Trdstempty")
+        word = await self._read(dst, "idle")
+        assert word & empty.mask, (
+            f"DST Trdstcontrol.Trdstempty @ 0x{dst.addr:08x} reads 0 with the DST enabled in "
+            f"Trdstformat {self.fmt} and no trace started; the packetizer already holds data, "
+            f"so what this mode delivers below would not be its own"
+        )
+        wp = sink_register("Trdstramwplow")
+        pointer = reg_field(wp, "Trdstramwplow")
+        self.baseline = await self._read(wp, "start")
+        assert self.baseline & pointer.mask == 0, (
+            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} reads pointer "
+            f"0x{(self.baseline & pointer.mask) >> pointer.offset:x} after being written "
+            f"back to zero, so what the sink takes below could predate this run"
+        )
+        self.value_checks += 2
+        cocotb.log.info(
+            "CHK-DST-FORMAT-IDLE: with the DST enabled in Trdstformat %d, the sink armed "
+            "over a 0x%x-byte window and no trace started, the packetizer reads empty and "
+            "the sink write pointer reads 0x%08x, so everything this run delivers is its own",
+            self.fmt,
+            _SINK_WINDOW_BYTES,
+            self.baseline,
         )
 
     async def _arm_cla(self) -> int:
-        """Enable the CLA and return a LogicalOp value that activates node 0 EAP 0."""
         ctrl = cla_register("CDbgClaCtrlStatus")
         chain = cla_field(ctrl, "ClaChainLoopDelay")
         eap = cla_register("CDbgNode0Eap0")
@@ -186,27 +235,55 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
             "its EAPs enabled, so no action of that pair can be driven and no trace can start"
         )
 
-    async def _run_actions(self, logical_op: int, fmt: int) -> None:
-        """Drive Action0 over its whole range, which starts the trace and moves the bus."""
+    async def _run_actions(self, logical_op: int) -> None:
+        """Drive Action0 over its whole range, rotating payload and frame length."""
         eap = cla_register("CDbgNode0Eap0")
         action = cla_field(eap, "Action0")
-        dst = dst_register("Trdstcontrol")
-        empty = reg_field(dst, "Trdstempty")
-        hits = 0
-        for value in range(1 << action.width):
+        span = 1 << action.width
+        rotate_step = span // len(_SEGMENT_SELECTS)
+        frame_step = span // len(_FRAME_LENGTHS)
+        for value in range(span):
+            if value and value % rotate_step == 0:
+                await self._program_segments(_SEGMENT_SELECTS[value // rotate_step], f"rot{value}")
+            if value and value % frame_step == 0:
+                await self._set_frame_length(_FRAME_LENGTHS[value // frame_step])
             await self._write(
                 eap,
                 pack_fields(eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": value}),
                 f"action{value}",
             )
             await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
-            for _ in range(_EMPTY_POLLS):
-                if await self._read(dst, f"action{value}") & empty.mask == 0:
-                    hits += 1
-                    break
-        if hits:
-            self.accumulated[fmt] = hits
-            self.value_checks += 1
+        await self._write(eap, eap.reset_word, "quiet")
+
+    async def _require_delivered(self) -> None:
+        wp = sink_register("Trdstramwplow")
+        word = self.baseline
+        for _ in range(_DELIVER_POLLS):
+            word = await self._read(wp, "delivered")
+            if word != self.baseline:
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        funnel = funnel_register("Trfunnelcontrol")
+        dst = dst_register("Trdstcontrol")
+        assert word != self.baseline, (
+            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} still reads 0x{self.baseline:08x} "
+            f"after the whole Action0 range ran in Trdstformat {self.fmt} with the segment "
+            f"selects rotated over {_SEGMENT_SELECTS} and the frame length changed, so this "
+            f"mode delivered nothing. Trdstcontrol reads "
+            f"0x{await self._read(dst, 'stall'):08x} and the funnel control "
+            f"0x{await self._read(funnel, 'stall'):08x}"
+        )
+        self.delivered = word
+        self.value_checks += 1
+        cocotb.log.info(
+            "CHK-DST-FORMAT-STREAM: Trdstformat %d, written into the DST control register "
+            "and read back exactly, moved the sink write pointer from 0x%08x to 0x%08x over "
+            "the Action0 range, so the compression the field selects carried a live stream "
+            "all the way to the trace RAM",
+            self.fmt,
+            self.baseline,
+            word,
+        )
 
     # -- body -------------------------------------------------------------
 
@@ -214,60 +291,49 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
 
         await self._write_check(dfd_register("dfx_ctrl/DEBUG_CTRL"), {"force_clk_en": 1}, "force")
-        await self._open_debug_bus()
+        await self._program_segments(_SEGMENT_SELECTS[0], "initial")
         await self._write_check(
             funnel_register("Trfunnelcontrol"),
             {"Trfunnelactive": 1, "Trfunnelenable": 1},
-            "enable",
+            "funnel",
         )
+        await self._open_sink()
+        await self._set_frame_length(_FRAME_LENGTHS[0])
+        await self._start_dst()
+        await self._empty_start()
+        await self._run_actions(await self._arm_cla())
+        await self._require_delivered()
 
-        wp = sink_register("Trdstramwplow")
-        for fmt in _FORMATS:
-            await self._stop_dst()
-            await self._restart_sink()
-            await self._note_idle(fmt)
-            await self._start_dst(fmt)
-            await self._run_actions(await self._arm_cla(), fmt)
-            self.pointers[fmt] = await self._read(wp, f"format{fmt}")
-
-        assert _FORMATS[0] in self.idle_before, (
-            "DST Trdstcontrol.Trdstempty was not at its RDL reset of 1 before the first "
-            "format was programmed, so the packetizer already held data and nothing this "
-            "sequence observes afterwards is attributable to the modes it walks"
+        assert self.rotations == list(_SEGMENT_SELECTS), (
+            f"the segment-select rotation programmed {self.rotations}, not the full set "
+            f"{list(_SEGMENT_SELECTS)} the Muxselseg description names"
         )
         self.value_checks += 1
         cocotb.log.info(
-            "CHK-DST-FORMAT-IDLE: the packetizer read empty before the first of the %d "
-            "formats, so the trace this run produced is its own. Once a mode has run the "
-            "register interface offers no way to drain the packetizer, so only formats %s "
-            "started idle and the later modes are credited with reaching the packet path, "
-            "not with a volume of their own",
-            len(_FORMATS),
-            sorted(self.idle_before),
+            "CHK-DST-FORMAT-PAYLOAD: the debug-bus mux array was walked through the segment "
+            "selects %s that the Muxselseg description names, one write per mux id per "
+            "rotation, while the trace was running, so the lanes carried different "
+            "debug-bus segments and consecutive samples differ",
+            self.rotations,
         )
 
-        silent = sorted(set(_FORMATS) - set(self.accumulated))
-        assert not silent, (
-            f"Trdstformat {silent} never made the DUT clear Trdstcontrol.Trdstempty over the "
-            f"whole Action0 range, so those modes of the format field put nothing into the "
-            f"packetizer; the modes that did were {dict(sorted(self.accumulated.items()))}"
+        assert sorted(set(self.frame_lengths)) == sorted(set(_FRAME_LENGTHS)), (
+            f"the frame length took {sorted(set(self.frame_lengths))} during the run, not "
+            f"the {sorted(set(_FRAME_LENGTHS))} values this sequence programs"
         )
-        self.value_checks += len(_FORMATS)
+        self.value_checks += 1
         cocotb.log.info(
-            "CHK-DST-FORMAT-STREAM: all %d values of Trdstformat that its RDL description "
-            "names were written into the DST control register and read back exactly with "
-            "the DST active, the funnel open and the sink armed, and the packetizer held "
-            "trace under every one of them (%s of the 64 action values per mode), so the "
-            "XOR and VLT compression the field selects each ran on a live stream. Sink "
-            "pointers after each mode, logged and not compared because no register exposes "
-            "a per-mode byte count: %s",
-            len(_FORMATS),
-            dict(sorted(self.accumulated.items())),
-            {f"Trdstformat={f}": hex(v) for f, v in sorted(self.pointers.items())},
+            "CHK-DST-FORMAT-FRAMELEN: the run changed Trdstvendorframelength through %s "
+            "while the trace was live, which its RDL description makes frame lengths of %s "
+            "bytes, each written and read back exactly, so the packet path saw more than "
+            "one frame size",
+            sorted(set(self.frame_lengths)),
+            sorted(v * 64 for v in set(_FRAME_LENGTHS)),
         )
 
-        await self._stop_dst()
         for reg in (
+            dst_register("Trdstcontrol"),
+            dst_register("Trdstimpl"),
             cla_register("CDbgNode0Eap0"),
             cla_register("CDbgClaCtrlStatus"),
             funnel_register("Trfunnelcontrol"),

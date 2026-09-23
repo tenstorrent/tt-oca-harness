@@ -116,6 +116,22 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dfd_trace_xor_format_test"
+module = "smc_dfd_trace_xor_format_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_vlt_format_test"
+module = "smc_dfd_trace_vlt_format_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dfd_cla_counter_edge_test"
 module = "smc_dfd_cla_counter_edge_test"
 seed = 1
