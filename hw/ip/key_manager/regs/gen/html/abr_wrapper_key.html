@@ -13,7 +13,7 @@
 <li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
 <li><strong>KEY[8]</strong>: 8 registers, base 0x400, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
@@ -23,7 +23,7 @@
 <tr><td>0x424</td><td><a href="#IRQ_STATUS">IRQ_STATUS</a></td><td>RW</td><td>Interrupt status for ML-KEM shared key. Sticky bit set by<br>hardware when a new shared key becomes valid; cleared by writing 1.</td></tr>
 <tr><td>0x428</td><td><a href="#IRQ_ENABLE">IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable for ML-KEM shared key. Mask for the<br>PicoRV32 IRQ vector bit driven by the shared-key-valid event.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

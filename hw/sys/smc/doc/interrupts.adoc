@@ -567,5 +567,5 @@ include::partial$smc/regs/gen/html/blocks/plic.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/plic.adoc[]
+include::../regs/gen/adoc/blocks/plic.adoc[leveloffset=+1]
 endif::backend-pdf[]

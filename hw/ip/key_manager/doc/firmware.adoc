@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[key-manager-km-firmware]]
-== Key Manager (KM) Firmware
+= Firmware
 
 This section is the developer reference for the KM ROM firmware that runs
 on the PicoRV32 and services SEP requests. It documents the SEP-facing

@@ -1,34 +1,40 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-avsbus_controller]
+== Address Map: avsbus_controller
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | AVS_CMD | W a| The command+data to be transferred to the AVS bus
-| 0x4 | AVS_READBACK | R a| Response data from AVS slave device (updated in response to both AVS read and write commands). Reading
+| 0x0 | <<reg-{regmap-instance}-avsbus_controller-AVS_CMD,AVS_CMD>> | W a| The command+data to be transferred to the AVS bus
+| 0x4 | <<reg-{regmap-instance}-avsbus_controller-AVS_READBACK,AVS_READBACK>> | R a| Response data from AVS slave device (updated in response to both AVS read and write commands). Reading
 this register causes the AVS response readback fifo pointer to advance.
-| 0x8 | AVS_DEBUG_READBACK | R a| This register mirrors the AVS_READBACK register, but reading it does NOT affect the
+| 0x8 | <<reg-{regmap-instance}-avsbus_controller-AVS_DEBUG_READBACK,AVS_DEBUG_READBACK>> | R a| This register mirrors the AVS_READBACK register, but reading it does NOT affect the
 AVS readback fifo pointer. Provided for debug purposes.
-| 0xC | AVS_LATEST_SLAVE_SUBFRAME | R a| This register contains the most recently received subframe from the AVS slave, bypassing the
+| 0xC | <<reg-{regmap-instance}-avsbus_controller-AVS_LATEST_SLAVE_SUBFRAME,AVS_LATEST_SLAVE_SUBFRAME>> | R a| This register contains the most recently received subframe from the AVS slave, bypassing the
 AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck
 settings in a timely fashion, since the status data from the next entry in the readback fifo might
 have considerable latency relative to when it was initially received from the AVS Slave.
-| 0x20 | AVS_NORMAL_STATUS | R a| Various Status bits indicating normal operating conditions for APB2AVS bridge block.
+| 0x20 | <<reg-{regmap-instance}-avsbus_controller-AVS_NORMAL_STATUS,AVS_NORMAL_STATUS>> | R a| Various Status bits indicating normal operating conditions for APB2AVS bridge block.
 These all have corresponding maskable bits in the AVS_INTERRUPT register
-| 0x24 | AVS_SLAVE_STATUS | R a| Contains the most recent status feedback from the AVS slave device
-| 0x28 | AVS_FIFOS_STATUS | R a| Contains the number of occupied and vacant slots in the AVS master's command and readback FIFOs
-| 0x30 | AVS_INTERRUPT | R a| Interrupt register - A '1' indicates an interrupt has occurred for that bit. To clear the
+| 0x24 | <<reg-{regmap-instance}-avsbus_controller-AVS_SLAVE_STATUS,AVS_SLAVE_STATUS>> | R a| Contains the most recent status feedback from the AVS slave device
+| 0x28 | <<reg-{regmap-instance}-avsbus_controller-AVS_FIFOS_STATUS,AVS_FIFOS_STATUS>> | R a| Contains the number of occupied and vacant slots in the AVS master's command and readback FIFOs
+| 0x30 | <<reg-{regmap-instance}-avsbus_controller-AVS_INTERRUPT,AVS_INTERRUPT>> | R a| Interrupt register - A '1' indicates an interrupt has occurred for that bit. To clear the
 interrupt bit, write to the corresponding field in the AVS_INTERRUPT_CLEAR register.
-| 0x34 | AVS_INTERRUPT_MASK | RW a| Interrupt mask register - Determines which AVS_INTERRUPT bits can trigger an interrupt
-| 0x38 | AVS_INTERRUPT_CLEAR | W a| Write 1 to clear corresponding interrupt bit
-| 0x50 | AVS_CFG_0 | RW a| Configuration register for APB2AVS bridge block
-| 0x54 | AVS_CFG_1 | RW a| Configuration register for APB2AVS bridge block
-| 0x58 | AVS_CONFIG | RW a| AVS Configuration Register
+| 0x34 | <<reg-{regmap-instance}-avsbus_controller-AVS_INTERRUPT_MASK,AVS_INTERRUPT_MASK>> | RW a| Interrupt mask register - Determines which AVS_INTERRUPT bits can trigger an interrupt
+| 0x38 | <<reg-{regmap-instance}-avsbus_controller-AVS_INTERRUPT_CLEAR,AVS_INTERRUPT_CLEAR>> | W a| Write 1 to clear corresponding interrupt bit
+| 0x50 | <<reg-{regmap-instance}-avsbus_controller-AVS_CFG_0,AVS_CFG_0>> | RW a| Configuration register for APB2AVS bridge block
+| 0x54 | <<reg-{regmap-instance}-avsbus_controller-AVS_CFG_1,AVS_CFG_1>> | RW a| Configuration register for APB2AVS bridge block
+| 0x58 | <<reg-{regmap-instance}-avsbus_controller-AVS_CONFIG,AVS_CONFIG>> | RW a| AVS Configuration Register
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_CMD]
+=== AVS_CMD
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_CMD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:30 | `Reserved` | - | - a| Reserved
@@ -70,8 +76,10 @@ Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0
 | 2:0 | `Reserved` | - | - a| Reserved
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_READBACK]
+=== AVS_READBACK
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_READBACK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:30 | `SLAVE_ACK` | R | 0x0 a| Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]
@@ -107,22 +115,28 @@ Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0
 | 2:0 | `CRC` | R | 0x0 a| The CRC-3 code received from slave
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_DEBUG_READBACK]
+=== AVS_DEBUG_READBACK
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_DEBUG_READBACK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `AVS_SLAVE_SUBFRAME` | R | 0xFFFFFFFF a| The current top-of-fifo AVS slave response sub-frame in the readback fifo
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_LATEST_SLAVE_SUBFRAME]
+=== AVS_LATEST_SLAVE_SUBFRAME
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_LATEST_SLAVE_SUBFRAME Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `AVS_SLAVE_SUBFRAME` | R | 0xFFFF a| The most recently received AVS slave response sub-frame
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_NORMAL_STATUS]
+=== AVS_NORMAL_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_NORMAL_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:23 | `Reserved` | - | - a| Reserved
@@ -138,8 +152,10 @@ the AVS bus can accept the next command, thus freeing space in the cmd fifo
 | 15:0 | `TOTAL_RETRIES` | R | 0x0 a| Total number of retries attempted by the AVS Master
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_SLAVE_STATUS]
+=== AVS_SLAVE_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_SLAVE_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:18 | `Reserved` | - | - a| Reserved
@@ -160,8 +176,10 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
 [/list]
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_FIFOS_STATUS]
+=== AVS_FIFOS_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_FIFOS_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:28 | `Reserved` | - | - a| Reserved
@@ -174,8 +192,10 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
 | 3:0 | `CMD_FIFO_OCCUPIED_SLOTS` | R | 0x0 a| Number of occupied slots in the command FIFO
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_INTERRUPT]
+=== AVS_INTERRUPT
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_INTERRUPT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved
@@ -195,8 +215,10 @@ the AVS bus can accept the next command, thus freeing space in the cmd fifo
 | 0 | `AVS_SLAVE_ISSUED_INTERRUPT` | R | 0x0 a| Indicates the AVS slave has signaled an interrupt
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_INTERRUPT_MASK]
+=== AVS_INTERRUPT_MASK
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_INTERRUPT_MASK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved
@@ -211,8 +233,10 @@ the AVS bus can accept the next command, thus freeing space in the cmd fifo
 | 0 | `DISABLE_AVS_SLAVE_ISSUED_INTERRUPT` | RW | 0x1 a| Disable notification of AVS slave interrupt
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_INTERRUPT_CLEAR]
+=== AVS_INTERRUPT_CLEAR
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_INTERRUPT_CLEAR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved
@@ -227,8 +251,10 @@ the AVS bus can accept the next command, thus freeing space in the cmd fifo
 | 0 | `CLEAR_AVS_SLAVE_ISSUED_INTERRUPT` | W | 0x0 a| Clear avs_slave_issued_interrupt
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_CFG_0]
+=== AVS_CFG_0
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_CFG_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
@@ -237,8 +263,10 @@ status (either due to targeted resource being busy or CRC failure)
 | 15:0 | `RESYNC_INTERVAL` | RW | 0x1000 a| Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_CFG_1]
+=== AVS_CFG_1
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_CFG_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR` | RW | 0x0 a| Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).
@@ -265,8 +293,10 @@ The master will always first issue 34 slave-resync cycles when the clock first r
 [/list]
 |===
 
+[#reg-{regmap-instance}-avsbus_controller-AVS_CONFIG]
+=== AVS_CONFIG
+
 [cols="1,3,1,1,6", options="header"]
-.AVS_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved

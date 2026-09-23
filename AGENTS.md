@@ -46,6 +46,12 @@ products included, since the TRM links to their pages. Its Make dependencies
 and container equivalent are defined in `doc/trm/doc.mk` and
 `scripts/docker-run.sh`; `antora-trm-playbook.yml` selects the content.
 
+The TRM PDF includes every generated map in the open register inventory.
+`doc/trm/doc.mk` passes that inventory to `tools/doc/register_map_coverage.rb`,
+which rejects missing maps, incomplete register sections and sections below the
+contents or bookmark depth. Include new maps beneath their owning block and
+identify integration reference models explicitly.
+
 ## Environment Setup
 
 The `nonfree/` companion is not part of the open repository. If you have it, it sets the

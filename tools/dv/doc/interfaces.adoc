@@ -42,8 +42,8 @@ tools/dv/run_dv.py
   uploads artifact dv-run-<dut>-<tool>-<tier>[-<label>]
   |
   v
-tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.1")
-tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.1")
+tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.2")
+tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.2")
                                          history.json        (string "0.2")
 .github/workflows/dashboard.yml       -> classification.json
 tools/dv/run_dashboard.py publish     -> manifest.json       (string "0.1")
@@ -149,9 +149,9 @@ worker tests in `tools/dv/tests`.
 checkout, and execs `worker_argv`; an array's script first picks its element's
 task from the list by the scheduler's index variable. The executor log holds
 every scheduler command with its status and output. The unconfirmed-cancel
-record lists the
-job ids an interrupted run could not confirm stopped; the run-level summary
-repeats them under `interruption.cancellation`. Checked by
+record names the jobs an interrupted run could not confirm stopped; the
+run-level summary lists the same ids under
+`interruption.cancellation.unconfirmed`. Checked by
 `tools/dv/tests/test_cluster_executor.py`, which drives both drivers through
 fake scheduler commands, interrupts a coordinator mid-run, and on demand by
 the `slurm-qualify` workflow, which runs the Slurm driver on a single-node
@@ -177,10 +177,13 @@ per-leaf `result.json`, and `results/results.xml`
 an `UNKNOWN` checkpoint before the first leaf, so an incomplete run is never
 read as a pass. A run that did not finish carries `tests.completed = false`
 and `tests.pass_rate = null`, and a handled interruption adds an
-`interruption` object (the signals received and, under `cancellation`, the
-attempts asked to stop, confirmed, and unconfirmed with their job ids) and a
-run-level errored JUnit testcase; on a cluster executor the checkpoint's
-active and interrupted leaves list their scheduler jobs. The gate in
+`interruption` object (the signal received and, when a stop went
+unconfirmed, a `cancellation` with the attempts asked to stop, the number
+confirmed, and the unconfirmed job ids) and a run-level errored JUnit
+testcase; on a cluster executor the checkpoint's active and interrupted
+leaves list their scheduler job ids. A leaf's `stages` entry repeats only its
+identity, status, timing, log, and failure buckets, and points at its leaf
+`result.json` through `result_json`. The gate in
 `.github/actions/dv-run` requires `schema_version == 1`, a `flow` and `tool`
 matching the invocation, `status == "PASS"`, and coverage evidence when the
 row collects coverage. The completion and expected-failure tests cover the
@@ -219,8 +222,8 @@ simulator flow outside hosted CI
 |The documentation site's dashboard pages through `tools/doc`; external
 consumers; `dashboard` itself for history
 |One record per weekly DUT, one `dut_status` row and one `per_dut` history
-entry each. String `schema_version` values: `"0.1"` for the per-DUT record,
-the summary, and the manifest, `"0.2"` for the history;
+entry each. String `schema_version` values: `"0.2"` for the per-DUT record,
+the summary, and the history, `"0.1"` for the manifest;
 `classification.json` carries none. The conversion from the native result is
 lossy: native `ERROR` and `TIMEOUT` collapse into `FAIL`.
 `classification.json` is computed from the native leaf records, which keep
@@ -431,6 +434,21 @@ workflow; `make ocah-lint-vale VALE_PATH=tools/dv/doc` lints its prose.
 
 == Changing an interface
 
+* The key set of every JSON file is pinned: the native run, regression, leaf
+  and per-test records and the coverage files in
+  `tools/dv/tests/test_json_contract.py`; the published record, summary,
+  history and manifest in `test_dashboard_schema.py` and
+  `test_dashboard_links.py`; the checkpoint, interruption and scheduler
+  records in `test_cluster_executor.py`; and the fields the documentation
+  site reads in `test_dashboard_site_data.py`. A key enters or leaves a file
+  only together with its pinned set and its readers. Each fact is written
+  once: the leaf record holds an attempt's detail, the run-level files hold
+  identities, verdicts and pointers, `cov/report/summary.json` holds the
+  coverage detail, and the published record holds what the dashboard and the
+  site read.
+* `tools/doc/trim_dashboard_data.py` is the reference for what the site
+  renders. A producer change that its output does not survive is a defect in
+  the producer; the script is not edited to absorb one.
 * A registry, result file, or normalized file carries `schema_version`. A
   change that a current reader cannot consume increments it; an additive
   field does not.

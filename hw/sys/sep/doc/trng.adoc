@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= TRNG and DRBG
+:description: SEP entropy generation, deterministic random bit generation, distribution, and reset coordination.
+ifdef::ocah-trm[]
+:page-aliases: ip:drbg/doc/index.adoc
+endif::ocah-trm[]
+
+[[true-random-number-generator-trng-true-random-number-generator-trng]]
+== True Random Number Generator (TRNG)
+
+Entropy bits are fundamental data for key generation as well as for
+attack countermeasure implementations. The entropy source must be high
+quality, meaning that it meets the
+https://csrc.nist.gov/publications/detail/sp/800-90b/final[NIST SP
+800-90B] statistical requirements for a cryptographic source.
+
+The SEP entropy path consists of the following elements:
+
+* Ring-oscillator entropy source
+* Entropy decorrelation, extraction, online health testing, and SHA-256
+  whitening
+* CSRNG implementing the AES-CTR deterministic random bit generator (DRBG)
+* Entropy distribution network (EDN) and adapters serving the Key Manager,
+  AES, KMAC, OTBN, and the fabric entropy pool
+* External-TRNG inputs and per-endpoint source-selection muxes
+* Coordinated software reset and CSR-path isolation for the internal entropy
+  complex
+
+The entropy source is typically a digital circuit employing ring
+oscillators which produces the random bit stream. Random bits are
+generated based on metastable sampling effects resulting from process,
+voltage and temperature variations in the delay of the asynchronous
+oscillator sampling. Once the entropy source is enabled it generates a
+continuous stream of random bits. The raw entropy stream will usually
+exhibit statistical biases. Debiasing is done with an LFSR like circuit
+which combines bits at a distance and down samples the stream. The
+debiaser is followed by a whitener which is most often implemented using
+a cryptographic hash function such as SHA256. Acceptable choices are
+listed in the NIST specification. The debiaser and whitener will improve
+the statistical properties of the stream, increasing the entropy rate,
+while reducing the actual bit stream rate.
+
+The online health tester monitors statistical metrics on both the raw
+entropy stream as well as the post-processed, whitened entropy stream on
+the TRNG output. Health monitoring tests include repetition count and
+markov tests, specified by NIST in addition to other tests such as
+bucket and Markov tests. The goal of the health monitor is to detect any
+measurable degradation in entropy quality due to external effects such
+as environment or active attack and to alert the security system of the
+degradation via alarm interrupts. Metrics can be queried by software via
+the CSRs.
+
+image::SEP_TRNG_Entropy.png[SEP_TRNG_Entropy,scaledwidth=90.0%]
+
+In OCAH the whitened entropy stream from the noise source is not routed
+directly to the cryptographic accelerators. Instead it seeds the DRBG,
+and the post-CSRNG output of the DRBG (NIST SP 800-90A; HMAC-SHA2 or
+AES-CTR construction) is what fans out to the rest of the crypto
+subsystem. The DRBG exposes three AXI-Stream EDN endpoints
+(`u_drbg_s3c_scan.edn_axis_o[2:0]`) that carry conditioned, DRBG-generated bits,
+one per sink domain:
+
+* endpoint `[0]` feeds the Key Manager sink domain;
+* endpoint `[1]` feeds the four native-EDN crypto clients
+  (AES, KMAC, OTBN edn_rnd, OTBN edn_urnd) through
+  `u_axis_edn_crypto_s3c_scan` — the `drbg_axis_edn_adapter` that converts the
+  32-bit AXI-Stream feed into a small round-robin native-protocol EDN
+  fan-out;
+* endpoint `[2]` feeds the fabric-level entropy-pool FIFO (`u_entropy_fifo` in
+  `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates three
+  dedicated interrupts (`entropy_pool_low`, `entropy_pool_fill_stall`, and
+ifdef::backend-html5[]
+  `entropy_pool_err`) listed in xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  `entropy_pool_err`) listed in <<sep-cpu-interrupt-vector-map>>.
+endif::backend-pdf[]
+
+FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
+sideband. The adapter forwards this bit into each client's `edn_fips` so
+that FIPS-aware consumers such as OTBN RND — which latches the bit and
+raises `rnd_fips_chk_fail` on a non-FIPS ack — observe the correct
+provenance of the bits they are receiving.
+
+The internal entropy complex uses one software-reset request,
+`SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N`. It resets ESRC, CSRNG, EDN, and the
+DRBG endpoint queues. A coordinator drains and isolates their three converted
+AXI4-Lite CSR paths before asserting the shared reset. While reset is active,
+the two post-mux EDN adapters and the fabric entropy pool synchronously clear
+their pending and buffered state; the pool remains AXI-accessible.
+
+There is no atomic reset boundary across the entropy consumers. Alarm recovery
+stops new TRNG CSR traffic before asserting the TRNG reset. A native EDN request
+already in flight stalls while the adapter clears and resumes with fresh entropy
+after reinitialization. Firmware may wait for AES, KMAC, or OTBN to become idle
+and reset them when policy requires aborting their operations, but that is not
+required by the TRNG reset coordinator.
+
+The Key Manager stream is not behind a post-mux adapter and is not scrubbed.
+The SEP host must keep the Key Manager idle before asserting the TRNG reset;
+ifdef::backend-html5[]
+see xref:sep:reset_controller.adoc#sep-trng-reset[Resetting the TRNG]. After release, firmware fully reinitializes ESRC, CSRNG,
+endif::backend-html5[]
+ifdef::backend-pdf[]
+see <<sep-trng-reset>>. After release, firmware fully reinitializes ESRC, CSRNG,
+endif::backend-pdf[]
+and EDN and waits for fresh entropy progress before releasing consumers. The
+post-mux adapters reset even when an external source is selected, so an
+external stream is interrupted and cleanly restarted; the external TRNG CSR
+passthrough itself is unaffected.
+
+The Class 2 entropy boundary starts at
+`u_trng_wrapper_s3c_scan`, whose sequencer, 128-bit release stage, and stream
+FIFOs retain seed material. Its vendor core remains covered by its delivered
+DFT view. In `sep_crypto.u_sep_trng`, `u_entropy_source_s3c_scan` covers the
+entropy FIFO and SHA-256 whitener, `u_drbg_s3c_scan` covers CSRNG/EDN and endpoint state,
+and `u_axis_edn_crypto_s3c_scan` covers staging outside the DRBG root. The
+combinational source-selection muxes are not scan assets.
+
+The noise is distributed via streaming interfaces. The stream interface is
+generic and compatible with AXI-Stream and TLUL-Stream. The following table
+describes the stream interface. Source is the generator of the signal. Sink is
+the consumer. The entropy streaming interface will not require address or mask
+signals.
+
+[cols="<20%,<20%,<20%,<40%",options="header",]
+|=======================================================================
+|Signal |Polarity |Width Range |Description
+|valid |source |1 |Active high indicates that the streaming data beat is valid.
+|ready |sink |1
+a|Backpressure from the receiver. Active high indicates the sink can accept new
+data. Low informs the transmitter that it should hold off sending more data
+until the sink is ready again.
+|data |source |[1,N]
+a|Streaming payload data can be any width 1 to N bits. If the mask signal is
+used its width must be a multiple of bytes.
+|address |source |[0,M]
+a|Optional. Used when multiple sink endpoints are available. M can be any
+integer width
+|mask |source | |Optional. Byte mask if only a subset of the data is consumed by the sink
+|=======================================================================
+
+ifdef::backend-html5[]
+The xref:ip:entropy_source/doc/index.adoc[Entropy Source] page describes the
+noise generator and its control interface.
+
+include::ip:partial$drbg/doc/architecture.adoc[leveloffset=+1]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+The <<entropy-source,Entropy Source>> section describes the noise generator
+and its control interface.
+
+include::../../../ip/drbg/doc/architecture.adoc[leveloffset=+1]
+endif::backend-pdf[]

@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-ndm_reset]
+== Address Map: ndm_reset
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | NDMRESET_REQUEST | R a| -
-| 0x4 | NDMRESET_PROCESS | RW a| -
-| 0x8 | NDMRESET_CLUSTER_COUNT | R a| -
+| 0x0 | <<reg-{regmap-instance}-ndm_reset-NDMRESET_REQUEST,NDMRESET_REQUEST>> | R a| -
+| 0x4 | <<reg-{regmap-instance}-ndm_reset-NDMRESET_PROCESS,NDMRESET_PROCESS>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-ndm_reset-NDMRESET_CLUSTER_COUNT,NDMRESET_CLUSTER_COUNT>> | R a| -
 |===
 
+[#reg-{regmap-instance}-ndm_reset-NDMRESET_REQUEST]
+=== NDMRESET_REQUEST
+
 [cols="1,3,1,1,6", options="header"]
-.NDMRESET_REQUEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `ndmreset_request` | R | 0x0 a| Bit i is the NDM reset request from external CPU cluster i.
@@ -19,8 +25,10 @@ Bits below ndmreset_cluster_count follow the request input.
 Bits at and above that count read as 0. The field holds up to 32 clusters.
 |===
 
+[#reg-{regmap-instance}-ndm_reset-NDMRESET_PROCESS]
+=== NDMRESET_PROCESS
+
 [cols="1,3,1,1,6", options="header"]
-.NDMRESET_PROCESS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `ndmreset_process` | RW | 0x0 a| Bit i is the firmware response to the NDM reset request from external CPU cluster i.
@@ -28,8 +36,10 @@ Bits below ndmreset_cluster_count are driven on the process output.
 Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.
 |===
 
+[#reg-{regmap-instance}-ndm_reset-NDMRESET_CLUSTER_COUNT]
+=== NDMRESET_CLUSTER_COUNT
+
 [cols="1,3,1,1,6", options="header"]
-.NDMRESET_CLUSTER_COUNT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved

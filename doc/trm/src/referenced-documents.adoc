@@ -1,0 +1,162 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[appendix]
+[[trm-referenced-documents]]
+= Referenced Documents
+:description: Specifications and external design documentation referenced throughout the OCAH TRM.
+ifdef::backend-html5[]
+:ocah-integrator-guide-ref: xref:ocah-integrator-guide:ROOT:index.adoc[Open Chiplet Atlas Harness (OCAH) Integrator Guide]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:ocah-integrator-guide-ref: https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html[Open Chiplet Atlas Harness (OCAH) Integrator Guide]
+endif::backend-pdf[]
+
+This appendix collects the companion guides, specifications and external
+design documentation referenced by the subsystem and IP chapters. Revisions
+below are those cited in this manual; an unspecified revision does not imply
+the latest edition.
+
+== OCAH Documentation
+
+[cols="2,3",options="header"]
+|===
+|Document |Referenced for
+
+|[[ref-ocah-integrator-guide]] {ocah-integrator-guide-ref}
+|Subsystem integration and external interfaces, including the SEP external
+TRNG aperture's register decode and error-response requirements.
+|===
+
+== OCA Specifications
+
+[cols="2,3",options="header"]
+|===
+|Document |Referenced for
+
+|[[ref-occt]] Open Chiplet Cross Triggering (OCCT) specification
+|DTP cross-trigger fabric, Cross-Trigger Network and Cross-Trigger Port.
+The cited revision and a document-specific URL are not specified in this manual.
+
+|Open Chiplet Atlas specification: Open Chiplet Time Synchronization (OCTS)
+|System Timer OCTS protocol and credit-based synchronization.
+The cited revision is not specified in this manual.
+
+|https://www.openchipletatlas.org/specifications/aou/latest[AXI-over-UCIe (AoU) specification]
+|AoU bridge protocol. The imported AoU microarchitecture specification cites
+revision 0.7 (2025).
+|===
+
+== Interface and Security Standards
+
+[cols="2,3",options="header"]
+|===
+|Document |Referenced for
+
+|Universal Chiplet Interconnect Express (UCIe) specification
+|AoU FDI interface, flit cancellation and stall handling.
+The cited revision is not specified in this manual.
+
+|IEEE 1149.1-2013
+|DTP JTAG TAPs, instruction registers and IC_RESET test data register.
+
+|IEEE 1838-2019
+|DTP hierarchical multi-chiplet test access and STAP 3D control register.
+
+|IEEE 1687-2014
+|DTP iJTAG instrumentation and segment insertion bits (SIBs).
+
+|I2C-bus specification, revisions 6 and 7.0
+|I2C controller. The feature overview cites revision 7.0; the architecture
+chapter cites revision 6 for electrical and timing requirements.
+
+|System Management Bus (SMBus) specification, revision 3.2
+|I2C controller SMBus operation.
+
+|Power Management Bus (PMBus) specification, revision 1.4
+|I2C controller PMBus operation.
+
+|AVSBus specification, version 1.3.1
+|AVSBus controller voltage-scaling frames and responses.
+
+|MIPI I3C Basic specification, versions 1.0 and 1.1.1
+|I3C core controller interface.
+
+|MIPI I3C Host Controller Interface (HCI) specification, version 1.2
+|I3C core controller register map.
+
+|TCRI recovery specification, version 1.0
+|I3C core controller recovery interface.
+
+|https://csrc.nist.gov/pubs/sp/800/90/a/r1/final[NIST SP 800-90A, revision 1]
+|DRBG and SEP random-number generation.
+
+|https://csrc.nist.gov/publications/detail/sp/800-90b/final[NIST SP 800-90B]
+|Entropy Source and SEP TRNG entropy assessment and health tests.
+
+|FIPS 140-2
+|Entropy Source discussion of planned certification readiness.
+
+|FIPS 203
+|Adams Bridge ML-KEM-1024 operations.
+
+|FIPS 204
+|Adams Bridge ML-DSA-87 operations and SEP lifecycle signing policy.
+|===
+
+== External Design Documentation
+
+[cols="2,3",options="header"]
+|===
+|Document or project |Referenced for
+
+|https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html[Rocket Core]
+|SMC CPU and memory system.
+
+|https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html[VeeR EL2 Programmer's Reference Manual]
+|SEP CPU architecture, CSRs and interrupt behavior.
+
+|https://github.com/pulp-platform/iDMA[iDMA]
+|SMC DMA engine.
+
+|[[ref-adams-bridge]] https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge documentation]
+|SEP post-quantum cryptographic accelerator.
+
+|[[ref-opentitan-hmac]] https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC documentation]
+|SEP HMAC-SHA2 accelerator and programming model.
+
+|[[ref-opentitan-otbn]] https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN documentation]
+|SEP public-key accelerator and programming model.
+
+|[[ref-opentitan-aes]] https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES documentation]
+|SEP AES cipher and programming model.
+
+|[[ref-opentitan-kmac]] https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC documentation]
+|SEP KMAC-SHA3 accelerator and programming model.
+
+|https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key Manager]
+|Key Manager architecture and firmware interface.
+
+|https://opentitan.org/book/hw/ip/csrng/[OpenTitan CSRNG] and
+https://opentitan.org/book/hw/ip/edn/[EDN]
+|DRBG core register semantics and application entropy delivery.
+
+|https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller]
+|SEP DMA and its programming model.
+
+|[[ref-opentitan-spi-host]] https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host documentation]
+|SEP SPI host and programming model.
+
+|[[ref-opentitan-aon-timer]] https://opentitan.org/book/hw/ip/aon_timer/[OpenTitan Always-On Timer documentation]
+|SEP watchdog timer and programming model.
+
+|[[ref-opentitan-i2c]] https://opentitan.org/book/hw/ip/i2c/index.html[OpenTitan I2C Controller documentation]
+|SMC I2C controller architecture and programming model. The I2C chapter also
+cites the https://github.com/lowRISC/opentitan/tree/master/hw/ip/i2c[upstream source].
+
+|https://github.com/lowRISC/opentitan/tree/master/sw/device/lib/dif/dif_i2c.h[OpenTitan I2C Device Interface Functions]
+|I2C controller firmware interface.
+
+|https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan Cryptolib API]
+|SEP cryptographic software interface background.
+|===

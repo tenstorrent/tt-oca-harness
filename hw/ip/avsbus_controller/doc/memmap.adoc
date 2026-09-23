@@ -50,5 +50,5 @@ include::partial$avsbus_controller/regs/gen/html/avsbus_controller.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/avsbus_controller.adoc[]
+include::../regs/gen/adoc/avsbus_controller.adoc[leveloffset=+2]
 endif::backend-pdf[]

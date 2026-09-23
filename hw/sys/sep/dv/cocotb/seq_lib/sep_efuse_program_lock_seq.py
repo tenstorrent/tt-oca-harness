@@ -4,7 +4,7 @@
 
 Every invocation walks unlocked-program then write-lock-reject on **each** of
 SPARE0..SPARE7, in order. Never LC_STATE. Lock slot n owns write-lock at bit 2n
-of the 96-bit LOCKS+LOCKS_SPARE vector (``hw/sys/sep/doc/periphs.adoc``:
+of the 96-bit LOCKS+LOCKS_SPARE vector (``hw/sys/sep/doc/otp_fuse_controller.adoc``:
 ``LOCKS`` slots 0–31, ``LOCKS_SPARE`` slots 32–40). Spare k is slot 32+k, so
 its write-lock is OTP bit (32+k)*2. The same slot map lives in
 ``env/sep_locked_field_irq.py``.

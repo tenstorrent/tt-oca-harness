@@ -40,82 +40,12 @@ When a GPIO pad is configured for cross triggering, the I/O pad assumes the role
 of one of these four cross trigger signals, and the pad controls and I/O data
 signals are connected to the associated CTP.
 
-The following diagram and table illustrate the logical behavior and signal
-interface of a CTP module:
+The following diagram illustrates the logical structure of a CTP module:
 
 image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
 
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="CTN cross-trigger port signals" tabindex="0">
-++++
-endif::backend-html5[]
-
-[cols="<30,<12,<58",options="header",role="port-reference"]
-|=======================================================================
-|Name |Direction |Description
-|mode |input |Indicates the operational mode of the CTP. 0 for wire-OR
-and 1 for peer-to-peer. The value at reset should be 0.
-
-|ct_src |input |Core-side cross trigger input pulse.
-
-|ct_dst |output |Core-side cross trigger output pulse.
-
-|busy |output |Optional signal indicating that an outgoing cross trigger
-pulse transfer is in progress.
-
-|reset |input |Resets the outgoing peer-to-peer handshake logic.
-
-|stretch_mult[N-1:0] |input |Configures the pulse duration of the pulse
-stretcher module for wire-OR mode.
-
-|ct_req_out_dout_en |output |Enables the output driver for the
-_CT_Req_out_ pad. In wire-OR mode this signal is enabled by a cross
-trigger pulse from the pulse stretcher. In peer-to-peer mode it is
-always enabled.
-
-|ct_req_out_din_en |output |Enables the input buffer for the
-_CT_Req_out_ pad. In wire-OR mode this signal is enabled and in
-peer-to-peer mode it is disabled.
-
-|ct_req_out_dout |output |The output data to drive on the _CT_Req_out_
-pad. In peer-to-peer mode the pulse capture latch controls this signal.
-In wire-OR mode it is held static-low.
-
-|ct_req_out_din |input |The input data that is driven on the
-_CT_Req_out_ pad. In wire-OR mode this signal triggers a pulse on
-_ct_dst_ after synchronization. In peer-to-peer mode it is unused.
-
-|ct_req_in_din_en |output |Enables the input buffer for the _CT_Req_in_
-pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it
-is disabled.
-
-|ct_req_in_din |input |The input data that is driven on the _CT_Req_in_
-pad. In peer-to-peer mode this signal triggers a pulse on _ct_dst_ after
-synchronization. In wire-OR mode it is unused.
-
-|ct_ack_in_din_en |output |Enables the input buffer for the _CT_Ack_in_
-pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it
-is disabled.
-
-|ct_ack_in_din |input |The input data that is driven on the _CT_Ack_in_
-pad. This signal clears the cross trigger request output in peer-to-peer
-mode. In wire-OR mode it is unused.
-
-|ct_ack_out_dout_en |output |Enables the output driver for the
-_CT_Ack_out_ pad. In peer-to-peer mode this signal is enabled and in
-wire-OR mode it is disabled.
-
-|ct_ack_out_dout |output |The output data to drive on the _CT_Ack_out_
-pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls
-this signal. In wire-OR mode it is unused.
-|=======================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
+Signal names, directions, and pad controls are listed in the
+<<cross-trigger-network-interface,CTP Signal Interface>>.
 
 The register interface for each CTP module is described in the
 <<ctn-memory-map,CTN Memory Map>> section below.

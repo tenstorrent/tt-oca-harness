@@ -329,6 +329,10 @@ feature rows.
 |`smc_cpu_ctrl_scratch_window_test` |Run CPU scratch-window write/readback/restore checks.
 |`smc_cpu_ecc_lint_pint_depth_test` |Run RAS/debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
 |`smc_cpu_firmware_boot_test` |SMC_002: ROM boot to PASS magic with exact CHK evidence.
+|`smc_cpu_l2_read_wedge_test` |Force-mode timeout flush recovers an L2 read drain while SEP_IN holds R.
+|`smc_cpu_l2_write_wedge_test` |Force-mode timeout flush recovers an L2 write drain and absorbs late W beats.
+|`smc_cpu_mmio_read_wedge_test` |Force-mode timeout flush absorbs a withheld SYS_OUT R and firmware repeats the read.
+|`smc_cpu_mmio_write_wedge_test` |Force-mode timeout flush absorbs a withheld SYS_OUT B and firmware repeats the write.
 |`smc_cpu_sanity_test` |Run CPU-control CSR map coverage and optional firmware boot contract.
 |`smc_ecc_codeword_ded_test` |Two flipped codeword bits: the CPU raises cluster_ded_o.
 |`smc_ecc_codeword_sec_test` |One flipped codeword bit: the CPU reads the bank and DED stays low.
@@ -7449,7 +7453,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 *Test Coverage*:
 
-* Scenarios A..E on wrap 0: A, an 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request into a 64-byte slot written against `uart_tx_ready` low -- the transmitter reports ready only while its TX FIFO holds no data, so each byte the engine fetches waits for the serialiser -- its 64 bytes read back in order from RBR while the transfer runs and no 65th byte accepted; C, a completion check against a defined UART offset (the write-error path is unreachable, as the image documents); D, a 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to one 8-byte beat. A, D and E read back exactly the requested or clamped byte count from RBR and require no extra byte. Those compares are the firmware's.
+* Scenarios A, B, D and E on wrap 0: A, an 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request into a 64-byte slot written against `uart_tx_ready` low -- the transmitter reports ready only while its TX FIFO holds no data, so each byte the engine fetches waits for the serialiser -- its 64 bytes read back in order from RBR while the transfer runs and no 65th byte accepted; D, a 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to one 8-byte beat. A, D and E read back exactly the requested or clamped byte count from RBR and require no extra byte. Those compares are the firmware's. `INTR_STATUS.LOG_WRITE_ERR` is not a claim of this image: the log-write master targets the wrapper's own UART block, which answers every write OKAY.
 * What the bench observes on its own: `tb_uart0_log_write_stalled`, published by `tb_top` as a fetched byte waiting at the wrap-0 log engine's read-data FIFO while its UART transmit-ready input is low, is sampled on every `clk_smc_i` edge while the image runs and must be 1 on at least one cycle and not on all of them: the engine's write FSM was held off with a byte waiting. The transmit-ready input alone is not the observable, because it is also low on cycles where the engine has nothing to write. The count covers the whole image; A, D and E queue eight to twenty-four bytes and can stall the same way, so the count is evidence that the log-write FSM honours `uart_tx_ready`, and B's 64-byte transfer is the scenario whose bytes the firmware compares under it. After the PASS word the SPM source holds E's 0xE0..0xEF in its first 16 bytes and B's 0x50..0x7F behind them -- B was the only scenario to write past byte 16 -- and the engine reads back programmed as E left it, with CTRL.EN and MCR.LOOP cleared by the cleanup.
 
 *Test Procedure*:
@@ -7583,6 +7587,150 @@ Drive `smc_rdl_field_sweep_test_seq`. Each checker below is a named compare the 
 |===
 
 *Pass Criteria*: all three checkers hold and the protocol-VIP record clears its 521-access floor. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-194-smc_cpu_l2_read_wedge_test]]
+===== 194 `smc_cpu_l2_read_wedge_test`
+
+*Source Module*: `smc_cpu_l2_read_wedge_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; TB holds and drops SEP_IN / SYS_IN R
+
+*Objective*: A timeout-forced CPU reset flushes a pending L2 read isolate while the fabric still withholds R, then a fresh L2 read completes.
+
+*Test Coverage*:
+
+* `RESET_TIMEOUT` force mode applies the CPU reset while L2 pending AR is nonzero and the uncore reset is still withheld.
+* The isolate reports drained while SEP_IN R remains held.
+* Stale R beats are dropped on SEP_IN and SYS_IN; the pending AR count stays 0 while they are consumed.
+* After isolate release a new L2 read returns the recovery word.
+
+*Test Procedure*:
+
+Drive `smc_cpu_l2_read_wedge_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPU-ISO-FLUSH-FORCED-RESET` |Force-mode timeout applied the CPU and uncore reset
+|`CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED` |`tb_cpu_drained` rose while the original R hold was still asserted
+|`CHK-CPU-ISO-FLUSH-STALE-R-DISCARDED` |Stale R beats drained to 0 and L2 pending AR stayed 0
+|`CHK-CPU-ISO-FLUSH-L2-READ-RECOVERED` |Post-reset L2 read returned the expected word
+|`CHK-CPU-ISO-FLUSH-CLUSTER-REOPENED` |L2 isolate released and the recovery read completed
+|===
+
+*Pass Criteria*: all five checkers hold. Enrolled in: `all`, `hosted`, `cpu`.
+
+'''''
+
+[[sec-195-smc_cpu_l2_write_wedge_test]]
+===== 195 `smc_cpu_l2_write_wedge_test`
+
+*Source Module*: `smc_cpu_l2_write_wedge_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; TB pauses the W channel after AW
+
+*Objective*: A timeout-forced CPU reset flushes a partial L2 write, absorbs late W beats, then a fresh L2 write and readback complete.
+
+*Test Coverage*:
+
+* Reset is requested before the partial-W wedge, so the leaf proves late-W cleanup after a reset is already in flight.
+* Force mode applies the reset; pending AW and W counts clear while W is still paused.
+* Releasing the W pause leaves the pending W count at 0 (late beats absorbed).
+* After isolate release an L2 write and checked readback complete.
+
+*Test Procedure*:
+
+Drive `smc_cpu_l2_write_wedge_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPU-ISO-FLUSH-FORCED-RESET` |Force-mode timeout applied the CPU and uncore reset
+|`CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED` |Isolate reports drained while W is still paused
+|`CHK-CPU-ISO-FLUSH-LATE-W-ABSORBED` |Late W beats left the pending W count at 0
+|`CHK-CPU-ISO-FLUSH-L2-WRITE-RECOVERED` |Post-reset L2 write and readback completed
+|`CHK-CPU-ISO-FLUSH-CLUSTER-REOPENED` |L2 isolate released and the recovery write completed
+|===
+
+*Pass Criteria*: all five checkers hold. Enrolled in: `all`, `hosted`, `cpu`.
+
+'''''
+
+[[sec-196-smc_cpu_mmio_read_wedge_test]]
+===== 196 `smc_cpu_mmio_read_wedge_test`
+
+*Source Module*: `smc_cpu_mmio_read_wedge_test`
+
+*BFM / Model*: `mmio_wedge` firmware on SYS_OUT; TB holds the SYS_OUT R beat
+
+*Objective*: Firmware issues a SYS_OUT read whose R is held; a timeout-forced reset absorbs the stale response; firmware reboots and the read completes.
+
+*Test Coverage*:
+
+* Requires the `mmio_wedge` image and `+smc_hold_cpu_boot`.
+* Force mode applies the reset while MMIO pending AR is nonzero.
+* Releasing the held R advances the SYS_OUT response count by one and the MMIO isolate stays held.
+* Phase-2 firmware completes exactly one external read at the wedge address; a SEP_IN front-port read then completes.
+
+*Test Procedure*:
+
+Drive `smc_cpu_mmio_read_wedge_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPU-ISO-FLUSH-FORCED-RESET` |Force-mode timeout applied the CPU and uncore reset
+|`CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED` |Isolate reports drained while SYS_OUT R is still held
+|`CHK-CPU-ISO-FLUSH-STALE-RESP-ABSORBED` |Exactly one stale SYS_OUT R was absorbed; MMIO isolate stayed held
+|`CHK-CPU-ISO-FLUSH-FW-RECOVERED` |Phase-2 firmware completed exactly one external read
+|`CHK-CPU-ISO-FLUSH-FRONT-PORT-RECOVERED` |SEP_IN front-port read completed after isolate release
+|===
+
+*Pass Criteria*: all five checkers hold. Enrolled in: `all`, `cpu`. Not in `hosted` (builds firmware).
+
+'''''
+
+[[sec-197-smc_cpu_mmio_write_wedge_test]]
+===== 197 `smc_cpu_mmio_write_wedge_test`
+
+*Source Module*: `smc_cpu_mmio_write_wedge_test`
+
+*BFM / Model*: `mmio_wedge` firmware on SYS_OUT; TB holds the SYS_OUT B beat
+
+*Objective*: Firmware issues a SYS_OUT write whose B is held; a timeout-forced reset absorbs the stale response; firmware reboots and the write is checked.
+
+*Test Coverage*:
+
+* Requires the `mmio_wedge` image and `+smc_hold_cpu_boot`.
+* Force mode applies the reset while MMIO pending AW is nonzero.
+* Releasing the held B advances the SYS_OUT response count by one and the MMIO isolate stays held.
+* Phase-2 firmware completes exactly one external write; SYS_OUT memory holds the recovery word; a SEP_IN front-port read then completes.
+
+*Test Procedure*:
+
+Drive `smc_cpu_mmio_write_wedge_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPU-ISO-FLUSH-FORCED-RESET` |Force-mode timeout applied the CPU and uncore reset
+|`CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED` |Isolate reports drained while SYS_OUT B is still held
+|`CHK-CPU-ISO-FLUSH-STALE-RESP-ABSORBED` |Exactly one stale SYS_OUT B was absorbed; MMIO isolate stayed held
+|`CHK-CPU-ISO-FLUSH-FW-RECOVERED` |Phase-2 firmware completed exactly one external write of the recovery word
+|`CHK-CPU-ISO-FLUSH-FRONT-PORT-RECOVERED` |SEP_IN front-port read completed after isolate release
+|===
+
+*Pass Criteria*: all five checkers hold. Enrolled in: `all`, `cpu`. Not in `hosted` (builds firmware).
 
 '''''
 
@@ -7861,6 +8009,7 @@ in <<smc-deferred-disposition>>.
 |`smc_octs_sanity_test` carries an OCTS name but drives the AVSBus status CSR path and the sideband observability probe |Its PASS is evidence for the AVS status window decode and the bench sideband probes, not for any OCTS register or pad; its protocol-VIP record is booked as a proxy. OCTS is covered by `smc_octs_dual_sync_test` (`dual`) and `smc_fw_octs_p0_primary_test` (`fw`) |Rename the leaf to what it drives, or give it OCTS stimulus and re-review the card
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |UART0 transmits two stop bits for a 5-bit word with `LCR.STB` set, where `uart_16550_main.rdl` describes 1.5 (#2121) |`smc_uart_baud_word_parity_format_test` measures the frame length on the TX pad for every format; for the two 5-bit `STB = 1` formats it admits either 1.5 or 2 stop bits, records which one was measured, and so does not claim the RDL count for them (one stop bit still fails). Every other format is held to the RDL count |Fix the transmitter or the RDL description under #2121, then drop the admitted alternative so the two formats are held to one count
+|`INTR_STATUS.LOG_WRITE_ERR` has no firmware-reachable stimulus in this wrap |The log-write AXI-Lite master targets the wrapper's own `uart_16550` block, which ties write-error to 0 and answers every write OKAY. `smc_fw_uart_log_engine_boundary_backpressure_test` covers length and TX backpressure only; `INTR_TEST.LOG_WRITE_ERR` proves the interrupt plumbing, not error detection |A bench-side fault injector on the log-write AXI-Lite B channel
 |===
 
 [[smc-held-out-testcases]]

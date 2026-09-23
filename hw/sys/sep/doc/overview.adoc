@@ -40,7 +40,7 @@ IMEM, OTBN DMEM
 Serviceability (RAS) port - deferred to the next generation_
 * Cryptographic subsystem
 ** Cryptographic accelerators: Public Key Engine, AES, HMAC-SHA2,
-KMAC-SHA3
+KMAC-SHA3, Adams Bridge (ABR) for post-quantum cryptography
 ** Security components: Life Cycle Controller, Key Manager, OTP Fuse
 Controller
 ** Entropy source, DRBG, Entropy Distribution
