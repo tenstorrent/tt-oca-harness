@@ -54,11 +54,13 @@ endif
 # doc/trm/src/dashboard.adoc fetches this JSON in the browser at page load.
 OCAH_DASHBOARD_DATA_DIR ?= $(OCAH_DOC_DIR)/_build/dashboard-data
 OCAH_DASHBOARD_DATA_REF ?= origin/dv-dashboard-data
-OCAH_DASHBOARD_DATA_PATH ?= latest/summary.json
+OCAH_DASHBOARD_PUBLISHERS ?= vcs
+OCAH_DASHBOARD_RUNS_LIMIT ?= 0
 OCAH_DASHBOARD_STAGE := OCAH_ROOT="$(OCAH_ROOT)" \
 	OCAH_DASHBOARD_DATA_DIR="$(OCAH_DASHBOARD_DATA_DIR)" \
 	OCAH_DASHBOARD_DATA_REF="$(OCAH_DASHBOARD_DATA_REF)" \
-	OCAH_DASHBOARD_DATA_PATH="$(OCAH_DASHBOARD_DATA_PATH)" \
+	OCAH_DASHBOARD_PUBLISHERS="$(OCAH_DASHBOARD_PUBLISHERS)" \
+	OCAH_DASHBOARD_RUNS_LIMIT="$(OCAH_DASHBOARD_RUNS_LIMIT)" \
 	bash $(OCAH_ROOT)/tools/doc/stage_dashboard_data.sh
 
 ## Stage dashboard JSON from the local clone of the data branch.

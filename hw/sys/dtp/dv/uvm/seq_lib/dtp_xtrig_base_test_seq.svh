@@ -189,7 +189,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       "axi_channel_skew_read_decode_backpressure":  ids = {ChkAxil, ChkArStall};
       "ctp_csr_sweep":        begin ids = route_ids; ids.push_back(ChkStretch); end
       "ctm_csr_sweep":        ids = route_ids;
-      "ctm_all_source_select": ids = {ChkCsr};
+      "ctm_all_source_select": ids = route_ids;
       "wire_or":              ids = {ChkCsr, ChkSignal, ChkStretch};
       "p2p":                  ids = {ChkCsr, ChkSignal};
       "random":               begin ids = route_ids; ids.push_back(ChkStretch); end
@@ -201,7 +201,19 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       "ctm_reset_wire_or_mode",
             "ctm_reset_p2p_mode",
             "ctm_reset_all_modes":  begin ids = route_ids; ids.push_back(ChkQuiet); end
-      default:                ids = route_ids;
+      "dst_port_sweep",
+            "ctm_p2p_cla_to_ctp",
+            "ctm_p2p_ctp_to_cla",
+            "ctm_p2p_cla_to_cla",
+            "ctm_p2p_ctp_to_ctp",
+            "ctm_rand_all_scenarios",
+            "ctm_rand_wire_or_only",
+            "ctm_rand_p2p_only",
+            "ctm_rand_cla_to_ctp",
+            "ctm_rand_ctp_to_cla": ids = route_ids;
+      default:
+      uvm_pkg::uvm_report_fatal("dtp_xtrig_base_test_seq", $sformatf(
+                                "scenario %s has no required-evidence set", scenario));
     endcase
   endfunction
 

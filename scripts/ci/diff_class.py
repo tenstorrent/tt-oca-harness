@@ -79,10 +79,11 @@ UNCLASSIFIED = "(unclassified)"
 
 # The tools/dv unit tests check the DV runner against the per-DUT DV packages:
 # a leaf's required_evidence tuple against the SMC_VPLAN card that declares it,
-# the testlists against the configs. Either side can move on its own, and a
-# plan card is an .adoc, so this scope is deliberately not the documentation
-# classifier above.
-DV_CHECK_DIRS = ("tools/dv/",)
+# the testlists against the configs. They also check the dashboard data the
+# runner publishes against the tools/doc scripts that read it for the site.
+# Any of these sides can move on its own, and a plan card is an .adoc, so this
+# scope is separate from the documentation classifier above.
+DV_CHECK_DIRS = ("tools/dv/", "tools/doc/")
 DV_CHECK_SYS_SUBDIR = "dv/"
 
 DOCUMENTATION_ONLY_CHILD = """\
@@ -152,7 +153,7 @@ def is_dv_check_path(path: str) -> bool:
 
 
 def is_dv_check_required(paths: list[str]) -> bool:
-    """Return True when the diff touches the DV runner or a DUT's DV package."""
+    """Return True when the diff touches the DV runner, a site reader or a DUT's DV package."""
     return any(is_dv_check_path(path) for path in paths)
 
 
@@ -536,6 +537,7 @@ version = "2.12.2"
     for path in (
         "tools/dv/run_dv.py",
         "tools/dv/tests/test_smc_required_evidence.py",
+        "tools/doc/trim_dashboard_data.py",
         "hw/sys/smc/dv/cocotb/tests/smc_dbs_idle_test.py",
         "hw/sys/smc/dv/docs/SMC_VPLAN.adoc",
         "hw/sys/sep/dv/testlists/all.toml",
@@ -587,7 +589,8 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument(
         "--is-dv-check-required",
         action="store_true",
-        help="exit 0 if the diff touches tools/dv or a hw/sys/<dut>/dv package, otherwise 1",
+        help="exit 0 if the diff touches tools/dv, tools/doc or a hw/sys/<dut>/dv package, "
+        "otherwise 1",
     )
     mode.add_argument(
         "--is-register-regen-required",

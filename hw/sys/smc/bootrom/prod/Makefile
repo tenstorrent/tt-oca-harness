@@ -56,7 +56,7 @@ SIZE := $(_TC_PREFIX)riscv64-unknown-elf-size
 NM   := $(_TC_PREFIX)riscv64-unknown-elf-nm
 
 # Architecture / ABI – same as hw/sys/smc/dv/fw/toolchain.mk
-ARCH      := rv64imafdczicsr_zba_zbb_zbc_zbs_zifencei_zihpm
+ARCH      := rv64imafdczicsr_zba_zbb_zbs_zifencei_zihpm
 ABI       := lp64d
 ARCHFLAGS := -march=$(ARCH) -mabi=$(ABI) -mtune=rocket
 

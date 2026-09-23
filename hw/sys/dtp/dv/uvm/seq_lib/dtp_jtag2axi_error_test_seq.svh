@@ -48,7 +48,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
   // injected response, then that observed status.
   dtp_j2a_status_e status = DTP_J2A_SUCCESS;
   int unsigned operation_count = 0;
-  localparam string FaultStatusCheckId = "CHK-J2A-FAULT-STATUS";
+  localparam string FaultStatusCheckId = DtpJ2aFaultStatusCheckId;
   localparam int unsigned SeriesBeats = 3;
 
   // Address plan (mirrors the cocotb layout: 0x20-spaced error slots,
