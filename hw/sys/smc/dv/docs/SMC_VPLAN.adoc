@@ -330,6 +330,7 @@ feature rows.
 |Testcase |Objective
 |`smc_cluster_beu_test` |Locks the 0xC801_0000 -> 0xC001_0000 local-fabric address fold.
 |`smc_cpu_ctrl_map_depth_test` |Run CPU-control address-map CSR depth checks.
+|`smc_cpu_ctrl_read_only_write_test` |Writes at every CPU_CTRL address the RDL makes read-only, and a write of 0 into the singlepulse reset fields.
 |`smc_cpu_ctrl_scratch_window_test` |Run CPU scratch-window write/readback/restore checks.
 |`smc_cpu_ecc_lint_pint_depth_test` |Run RAS/debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
 |`smc_cpu_firmware_boot_test` |SMC_002: ROM boot to PASS magic with exact CHK evidence.
@@ -8132,6 +8133,39 @@ Drive `smc_efuse_lock_guard_test_seq`. Each checker below is a named compare the
 |===
 
 *Pass Criteria*: `CHK-EFUSE-LOCK-GUARD-PRE`, `CHK-EFUSE-LOCK-GUARD-READ`, `CHK-EFUSE-LOCK-GUARD-WOSET`, `CHK-EFUSE-LOCK-GUARD-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-209-smc_cpu_ctrl_read_only_write_test]]
+===== 209 `smc_cpu_ctrl_read_only_write_test`
+
+*Source Module*: `smc_cpu_ctrl_read_only_write_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Write at every CPU_CTRL address the RDL makes read-only, and write 0 into the singlepulse reset fields.
+
+*Test Coverage*:
+
+* `smc_rdl_field_sweep_test` owns CPU_CTRL and drives every register the RDL makes writable, but never writes at the addresses of the registers it makes `sw = r`, so the decode row those addresses take on a write has never been exercised.
+* `TEST_CTRL`, `SMC_ATTRIBUTES` and the head of each of the four per-core writeback program-counter arrays are written with all ones and required to read the same word afterwards as before. The sequence asserts each one's `rw_mask` is zero first, so a register that gained a writable field cannot be written at here by accident.
+* `WDT_TIMEOUT_RESET` takes a full-width write of 0, which `smc_rdl_field_sweep_test` never does -- it writes the fields set and then writes 0 only over the half they do not occupy. Its four `reset_cycle_count` fields are `singlepulse`, so nothing is stored either way and the register has to read 0 afterwards. `CORE_RESET_PULSE_COUNT` is read either side as a second, weaker observation -- it carries the configured pulse durations and a bit that reads low while a core reset is in progress -- and does not catch a pulse that began and ended between the two reads.
+* `RESET_CTRL` is not written. It carries the per-core and uncore reset levels and the four core reset-pulse starts, which is why `smc_rdl_field_sweep_test` excludes it, and a write of ones into it would reset the running bench.
+
+*Test Procedure*:
+
+Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPU-CTRL-READ-ONLY-WRITE` |All six CPU_CTRL registers every field of which the RDL makes `sw = r` read the same word after a write of all ones at their address as before it
+|`CHK-CPU-CTRL-WDT-ZERO-WRITE` |A full-width write of 0 into the four singlepulse reset fields of WDT_TIMEOUT_RESET left the register reading 0, so nothing it carried was stored, and CORE_RESET_PULSE_COUNT read the same word either side with no core reset in progress when the second read landed
+|===
+
+*Pass Criteria*: `CHK-CPU-CTRL-READ-ONLY-WRITE`, `CHK-CPU-CTRL-WDT-ZERO-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
