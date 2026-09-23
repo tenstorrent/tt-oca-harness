@@ -5,30 +5,27 @@
 
 === Signal Interface
 
+These are the ports of `jtag_stap`. Packed control and bus types remain
+bundles at the module boundary; their members are not separate scalar ports.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="STAP signal interface" tabindex="0">
 ++++
 endif::backend-html5[]
 
-[cols="<28,<13,<9,<50",options="header",role="port-reference"]
+[cols="<30,<10,<25,<35",options="header",role="port-reference"]
 |===
-|Signal |Direction |Width |Description
-|clk_i |Input |1 |JTAG TCK clock
-|rst_ni |Input |1 |Active-low asynchronous reset (TRST or POR)
-|tdi_i |Input |1 |Test Data In from upstream (PTAP or previous STAP)
-|tdo_o |Output |1 |Test Data Out to downstream (next STAP or PTAP)
-|capture_i |Input |1 |Capture control from PTAP
-|shift_i |Input |1 |Shift control from PTAP
-|update_i |Input |1 |Update control from PTAP
-|tms_i |Input |1 |TMS from PTAP
-|security_disable_i |Input |1 |Active-high disable (1 = STAP locked out)
-|stap_tdi_o |Output |1 |TDI to downstream TAP
-|stap_tdo_i |Input |1 |TDO from downstream TAP
-|stap_tms_o |Output |1 |TMS to downstream TAP (or parked value when disabled)
-|stap_tck_o |Output |1 |TCK to downstream TAP
-|stap_trst_no |Output |1 |TRST to downstream TAP
-|stap_enabled_o |Output |1 |Indicates STAP is selected and enabled
+|Signal |Direction |Type / dimensions |Description
+|`client_scan_ctrl_i` |Input |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
+|`client_scan_in_i` |Input |`logic` |Scan data entering this module from the named interface.
+|`client_scan_out_o` |Output |`logic` |Scan data leaving this module at the named interface.
+|`client_tap_ctrl_i` |Input |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.
+|`security_disable_i` |Input |`logic` |Active-high disable of this STAP.
+|`host_tap_ctrl_o` |Output |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.
+|`host_tdo_oen_o` |Output |`logic` |TDO output enable for the named TAP interface.
+|`host_tdo_o` |Output |`logic` |Serial data output to the named TAP interface.
+|`host_tdi_i` |Input |`logic` |Serial data input from the named TAP interface.
 |===
 
 ifdef::backend-html5[]

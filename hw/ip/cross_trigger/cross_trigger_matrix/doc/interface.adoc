@@ -5,22 +5,24 @@
 
 === Signal Interface
 
+These are the ports of `cross_trigger_matrix`. Packed control and bus types remain
+bundles at the module boundary; their members are not separate scalar ports.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTM signal interface" tabindex="0">
 ++++
 endif::backend-html5[]
 
-[cols="<24,<13,<10,<53",options="header",role="port-reference"]
+[cols="<30,<10,<25,<35",options="header",role="port-reference"]
 |===
-|Signal |Direction |Width |Description
-|clk_i |Input |1 |System clock
-|rst_ni |Input |1 |Active-low asynchronous reset
-|ct_dst_i |Input |N+M |Cross trigger inputs from CTPs and internal sources
-|ct_src_o |Output |N+M |Cross trigger outputs to CTPs and internal sinks
-|ct_src_ack_i |Input |M |Acknowledge from internal sinks (for handshake mode)
-|ct_dst_ack_o |Output |M |Acknowledge to internal sources (for handshake mode)
-|route_cfg_i |Input |varies |Routing configuration per output port
+|Signal |Direction |Type / dimensions |Description
+|`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.
+|`rst_ni` |Input |`logic` |Active-low asynchronous system reset.
+|`axil_req_i` |Input |`axil_req_t` |AXI-Lite CSR request.
+|`axil_resp_o` |Output |`axil_resp_t` |AXI-Lite CSR response.
+|`ct_dst_i` |Input |`logic [NUM_CT_DST-1:0]` |Trigger inputs to the routing matrix.
+|`ct_src_o` |Output |`logic [NUM_CT_SRC-1:0]` |Routed trigger outputs from the matrix.
 |===
 
 ifdef::backend-html5[]
@@ -29,7 +31,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-Where N = NUM_CTP and M = NUM_INT_CT.
+`NUM_CT_SRC` and `NUM_CT_DST` come from the generated register package.
+Routing masks are programmed through the AXI-Lite CSR port; there are no
+separate route-configuration or acknowledge ports.
 
 === Data Ports
 

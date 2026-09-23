@@ -5,31 +5,35 @@
 
 === Signal Interface
 
+These are the ports of `cross_trigger_port`. Packed control and bus types remain
+bundles at the module boundary; their members are not separate scalar ports.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTP signal interface" tabindex="0">
 ++++
 endif::backend-html5[]
 
-[cols="<30,<12,<58",options="header",role="port-reference"]
+[cols="<30,<10,<25,<35",options="header",role="port-reference"]
 |===
-|Name |Direction |Description
-|mode |input |Indicates the operational mode of the CTP. 0 for wire-OR and 1 for peer-to-peer. The value at reset should be 0.
-|ct_src |input |Core-side cross trigger input pulse.
-|ct_dst |output |Core-side cross trigger output pulse.
-|busy |output |Optional signal indicating that an outgoing cross trigger pulse transfer is in progress.
-|reset |input |Resets the outgoing peer-to-peer handshake logic.
-|stretch_mult[N-1:0] |input |Configures the pulse duration of the pulse stretcher module for wire-OR mode.
-|ct_req_out_dout_en |output |Enables the output driver for the _CT_Req_out_ pad. In wire-OR mode this signal is enabled by a cross trigger pulse from the pulse stretcher. In peer-to-peer mode it is always enabled.
-|ct_req_out_din_en |output |Enables the input buffer for the _CT_Req_out_ pad. In wire-OR mode this signal is enabled and in peer-to-peer mode it is disabled.
-|ct_req_out_dout |output |The output data to drive on the _CT_Req_out_ pad. In peer-to-peer mode the pulse capture latch controls this signal. In wire-OR mode it is held static-low.
-|ct_req_out_din |input |The input data that is driven on the _CT_Req_out_ pad. In wire-OR mode this signal triggers a pulse on _ct_dst_ after synchronization. In peer-to-peer mode it is unused.
-|ct_req_in_din_en |output |Enables the input buffer for the _CT_Req_in_ pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.
-|ct_req_in_din |input |The input data that is driven on the _CT_Req_in_ pad. In peer-to-peer mode this signal triggers a pulse on _ct_dst_ after synchronization. In wire-OR mode it is unused.
-|ct_ack_in_din_en |output |Enables the input buffer for the _CT_Ack_in_ pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.
-|ct_ack_in_din |input |The input data that is driven on the _CT_Ack_in_ pad. This signal clears the cross trigger request output in peer-to-peer mode. In wire-OR mode it is unused.
-|ct_ack_out_dout_en |output |Enables the output driver for the _CT_Ack_out_ pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.
-|ct_ack_out_dout |output |The output data to drive on the _CT_Ack_out_ pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls this signal. In wire-OR mode it is unused.
+|Signal |Direction |Type / dimensions |Description
+|`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.
+|`rst_ni` |Input |`logic` |Active-low asynchronous system reset.
+|`axil_req_i` |Input |`axil_req_t` |AXI-Lite CSR request.
+|`axil_resp_o` |Output |`axil_resp_t` |AXI-Lite CSR response.
+|`ct_src_i` |Input |`logic` |Synchronous trigger pulse to transmit.
+|`ct_dst_o` |Output |`logic` |Registered received trigger pulse.
+|`busy_o` |Output |`logic` |Transfer-in-progress status.
+|`ct_req_out_dout_en_o` |Output |`logic` |Output enable for CT_Req_out pad.
+|`ct_req_out_din_en_o` |Output |`logic` |Input enable for CT_Req_out pad.
+|`ct_req_out_dout_o` |Output |`logic` |Output data for CT_Req_out pad.
+|`ct_req_out_din_i` |Input |`logic` |Input data from CT_Req_out pad.
+|`ct_req_in_din_en_o` |Output |`logic` |Input enable for CT_Req_in pad.
+|`ct_req_in_din_i` |Input |`logic` |Input data from CT_Req_in pad.
+|`ct_ack_in_din_en_o` |Output |`logic` |Input enable for CT_Ack_in pad.
+|`ct_ack_in_din_i` |Input |`logic` |Input data from CT_Ack_in pad.
+|`ct_ack_out_dout_en_o` |Output |`logic` |Output enable for CT_Ack_out pad.
+|`ct_ack_out_dout_o` |Output |`logic` |Output data for CT_Ack_out pad.
 |===
 
 ifdef::backend-html5[]
@@ -37,6 +41,12 @@ ifdef::backend-html5[]
 </div>
 ++++
 endif::backend-html5[]
+
+This table describes `cross_trigger_port`, including its CSR interface.
+The register-free `cross_trigger_port_core` instead takes `mode_wire_or_i`,
+`invert_i`, `handshake_reset_i`, and `stretch_mult_i` as configuration inputs.
+At that core interface, `mode_wire_or_i = 1` selects wire-OR and `0` selects
+point-to-point; the CSR MODE field is inverted before reaching it.
 
 === Dependencies
 

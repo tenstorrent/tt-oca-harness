@@ -42,38 +42,61 @@ to the BYPASS instruction.
 
 === Signal Interface
 
-[cols="<,<,<,<",options="header"]
+These are the ports of `jtag_ptap`. Packed control and bus types remain
+bundles at the module boundary; their members are not separate scalar ports.
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="PTAP signal interface" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<30,<10,<25,<35",options="header",role="port-reference"]
 |===
-|Signal |Direction |Width |Description
-|tck_i |Input |1 |JTAG test clock (from client_tap_ctrl_i.tck)
-|trst_ni |Input |1 |JTAG test reset (from client_tap_ctrl_i.trst_n)
-|tdi_i |Input |1 |Test Data In
-|tdo_o |Output |1 |Test Data Out
-|tms_i |Input |1 |Test Mode Select
-|tdo_en_o |Output |1 |TDO output enable
-|ir_o |Output |6 |Current instruction register value
-|tap_state_o |Output |4 |Current TAP controller state
-|capture_dr_o |Output |1 |Capture-DR state indicator
-|shift_dr_o |Output |1 |Shift-DR state indicator
-|update_dr_o |Output |1 |Update-DR state indicator
-|reset_n_o |Output |1 |Combined reset output
-|ch_reset_n_o |Output |1 |Channel reset (TMP-aware)
-|stap_tdi_o |Output |1 |STAP chain TDI output
-|stap_tdo_i |Input |1 |STAP chain TDO input
-|stap_capture_o |Output |1 |STAP capture control
-|stap_shift_o |Output |1 |STAP shift control
-|stap_update_o |Output |1 |STAP update control
-|ic_reset_ovrd_o |Output |N |IC_RESET override enables
-|ic_reset_ctrl_n_o |Output |N |IC_RESET control values
-|ijtag_tdi_o |Output |1 |iJTAG network TDI
-|ijtag_tdo_i |Input |1 |iJTAG network TDO
-|pwr_on_rst_ni |Input |1 |Power-on reset (active low), AND-combined with TRST
-|clk_i |Input |1 |System clock for AXI bridge modules
-|rst_n_i |Input |1 |System reset for AXI bridge modules (active low)
-|smc_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SMC fabric JTAG2AXI bridge (1 = bridge disabled)
-|smc_otp_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SMC OTP JTAG2AXIL bridge (1 = bridge disabled)
-|sep_otp_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SEP OTP JTAG2AXIL bridge (1 = bridge disabled)
+|Signal |Direction |Type / dimensions |Description
+|`client_tap_ctrl_i` |Input |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.
+|`client_tdi_i` |Input |`logic` |Serial data input from the named TAP interface.
+|`client_tdo_o` |Output |`logic` |Serial data output to the named TAP interface.
+|`client_tdo_oen_o` |Output |`logic` |TDO output enable for the named TAP interface.
+|`host_tap_ctrl_o` |Output |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.
+|`bsr_host_scan_ctrl_o` |Output |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
+|`bsr_host_scan_in_i` |Input |`logic` |Scan data entering this module from the named interface.
+|`bsr_host_scan_out_o` |Output |`logic` |Scan data leaving this module at the named interface.
+|`ijtag_host_scan_ctrl_o` |Output |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
+|`ijtag_host_scan_in_i` |Input |`logic` |Scan data entering this module from the named interface.
+|`ijtag_host_scan_out_o` |Output |`logic` |Scan data leaving this module at the named interface.
+|`stap_host_scan_ctrl_o` |Output |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
+|`stap_host_scan_in_i` |Input |`logic` |Scan data entering this module from the named interface.
+|`stap_host_scan_out_o` |Output |`logic` |Scan data leaving this module at the named interface.
+|`inst_decoded_o` |Output |`jtag_instruction_decoded_e` |Decoded PTAP instruction.
+|`current_state_o` |Output |`tap_state_e` |Current TAP controller state.
+|`ic_reset_smc_o` |Output |`ic_reset_smc_t` |Reset slice with active-high `.ovrd` and active-low `.val` fields.
+|`ic_reset_sep_o` |Output |`ic_reset_sep_t` |Reset slice with active-high `.ovrd` and active-low `.val` fields.
+|`ic_reset_ext_o` |Output |`ic_reset_ext_t` |Reset slice with active-high `.ovrd` and active-low `.val` fields.
+|`cla_clock_stop_i` |Input |`logic` |CLA clock-stop status for readback.
+|`jtag_clock_stop_o` |Output |`logic` |Clock-stop request from DEBUG_CONTROL.
+|`cla_clock_stop_en_o` |Output |`logic` |CLA clock-stop enable.
+|`boot_stall_ovrd_o` |Output |`logic` |Enable the JTAG boot-stall override.
+|`boot_stall_o` |Output |`logic` |Boot-stall value while the override is enabled.
+|`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.
+|`rst_n_i` |Input |`logic` |Active-low system reset for the AXI bridges.
+|`pwr_on_rst_ni` |Input |`logic` |Power-on reset for the JTAG logic.
+|`smc_jtag2axi_security_disable_i` |Input |`logic` |Active-high disable of the corresponding JTAG2AXI bridge.
+|`smc_otp_jtag2axi_security_disable_i` |Input |`logic` |Active-high disable of the corresponding JTAG2AXI bridge.
+|`sep_otp_jtag2axi_security_disable_i` |Input |`logic` |Active-high disable of the corresponding JTAG2AXI bridge.
+|`axi_smc_dbg_req_o` |Output |`smc_jtag_axi_req_t` |Debug bus request to the target.
+|`axi_smc_dbg_resp_i` |Input |`smc_jtag_axi_resp_t` |Debug bus response from the target.
+|`axil_smc_otp_jtag_req_o` |Output |`smc_otp_axil_req_t` |Debug bus request to the target.
+|`axil_smc_otp_jtag_resp_i` |Input |`smc_otp_axil_resp_t` |Debug bus response from the target.
+|`axil_sep_otp_jtag_req_o` |Output |`sep_otp_axil_req_t` |Debug bus request to the target.
+|`axil_sep_otp_jtag_resp_i` |Input |`sep_otp_axil_resp_t` |Debug bus response from the target.
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Dependencies
 
