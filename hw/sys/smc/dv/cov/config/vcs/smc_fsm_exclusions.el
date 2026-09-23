@@ -58,6 +58,12 @@ Transition EFUSE_MMR_REG_MAP->ERR_DECODE "2->3"
 Transition ERR_DECODE->EFUSE_MMR_REG_MAP "3->2"
 Transition SHADOW_REG_MAP->EFUSE_MMR_REG_MAP "0->2"
 
+CHECKSUM: "2667282759 1499231322"
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+MODULE: efuse_shadow_regs
+Fsm efuse_sense_state_q "1499231322"
+Transition StRead->StIdle "1->0"
+
 CHECKSUM: "194876589 1063748259"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: smc_cool_reset_wrap

@@ -145,6 +145,7 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
     ("trace_axi_master", "state"): [(F3, None)],
     ("efuse_interface_controller", "efuse_reg_select"): [(F4, ("state", "EFUSE_MMR_REG_MAP"))],
     ("zeroer", "cur_state"): [(F5, ("edges", ("ST_ISSUE_ADDR->ST_IDLE",)))],
+    ("efuse_shadow_regs", "efuse_sense_state_q"): [(F5, ("edges", ("StRead->StIdle",)))],
     ("smc_cool_reset_wrap", "flr_counter_state"): [(F5, ("edges", ("COUNT_DOWN->IDLE",)))],
 }
 
