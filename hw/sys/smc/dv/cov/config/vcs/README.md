@@ -102,12 +102,16 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
 The first four are written by `gen_smc_cov_exclusions.py` from urg's exclusion
 templates and the run's raw report (`cov/report_raw`, written without the
-exclusion files). The condition, branch and F2 entries list only points that
-report marks uncovered, so a reachable point is never hidden by a pattern;
-F1 and F3 take a whole state variable that is not a reachable control FSM, F4
-a state whose decode arm a parameter leaves unelaborated, F5 the uncovered
-edges that exist only as a state register's reset assignment, and F6 those a
-state register's enable-edge load cannot reach. A vector is read from the
+exclusion files). Every entry lists a point that report marks uncovered, rows,
+branch arms and FSM states and transitions alike, so a reachable point is never
+hidden by a pattern. That rule is a backstop rather than the argument: each
+class states a fact, and the fact has to be narrow enough that its pattern
+would not have named a reachable point to begin with. F1 takes a whole state
+variable that is not a control FSM, F3 the states of one that no tied-off
+response lets it reach, F4 a state whose decode arm a parameter leaves
+unelaborated, F5 the edges that exist only as a state register's reset
+assignment, and F6 those a state register's enable-edge load cannot reach. A
+vector is read from the
 report's EXPRESSION table only: below it the report scores each operand again
 under its own SUB-EXPRESSION heading, and a vector uncovered for an operand is
 often covered for the expression containing it, so those rows are dropped. A
@@ -129,10 +133,10 @@ case statement, stays graded rather than being taken for one direction:
 | `smc_xor_network_exclusions.el` | X1 XOR-NETWORK | a CRC or parity network is an XOR of four or more terms; condition coverage enumerates 2^n input combinations of a function the tests compare by its output |
 | `smc_fsm_exclusions.el` | F1 LOOPVAR | `telemetry_receiver.block_index` is the message decoder's loop variable, extracted as an FSM because it is a state-shaped register; its settled value is fixed by `NUM_BLOCKS_PER_PACKET`, and urg's FSM score counts transitions, which no ATB stimulus can move |
 | `smc_fsm_exclusions.el` | F2 DEFAULT | `avsbus_controller.cur_state` has `next_state = AVS_IDLE` as its always_comb default, which the extractor lists as an edge from every state to AVS_IDLE; every case arm assigns next_state, so the default never fires |
-| `smc_fsm_exclusions.el` | F3 TIEOFF | `trace_axi_master.state` cannot leave RESET_VALUE: `smc_dfd_wrap` ties every `m_trc_axi_*` response input to zero, so the write master never sees a handshake |
+| `smc_fsm_exclusions.el` | F3 TIEOFF | `smc_dfd_wrap` ties every `m_trc_axi_*` response input to zero, so `trace_axi_master` never completes a response handshake and cannot pass REQ_HANDSHAKE: the states an `aw_ready`, `w_ready` or `b_valid` is needed to enter, and the edges touching them, cannot occur. The request it issues on `valid_i` needs no response, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded |
 | `smc_fsm_exclusions.el` | F4 PARAM-OFF | `efuse_interface_controller.efuse_reg_select` selects EFUSE_MMR_REG_MAP only when the instance has lifecycle state (`hw/ip/efuse/doc/memmap.adoc`); `smc_efuse_wrapper` sets `HAS_LC_STATE = 0`, so the arm is not elaborated and the state and its edges have no access that reaches them |
 | `smc_fsm_exclusions.el` | F5 RESET-EDGE | a state register's reset assignment is expanded into a transition from every state; where no case arm assigns the reset state, the edge exists only if the block's reset is asserted while the FSM occupies that one state, and the package grades reset behaviour through its reset leaves |
-| `smc_fsm_exclusions.el` | F6 ENABLE-EDGE | the bus monitor loads StBusBusyHigh only on the monitor enable's rising edge in multi-controller mode, and its disabled branch parks the register at StBusFree, so an edge into it from any other state cannot occur |
+| `smc_fsm_exclusions.el` | F6 ENABLE-EDGE | the bus monitor enters StBusBusyHigh from its StBusBusyLow arm on an idle bus, and from the monitor enable's rising edge in multi-controller mode, where the disabled branch has already parked the register at StBusFree; StBusBusyStop has no arm to StBusBusyHigh and cannot be the register's value at that edge, so only an edge from there cannot occur. The edge from StBusBusyLow is the ordinary sequence and stays graded |
 | `smc_disabled_feature_exclusions.el` | P1 NTRACE-OFF | the DFD top instantiates the trace wrapper with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace half has no source; only its uncovered `trntr` conditions are listed |
 | `smc_disabled_feature_exclusions.el` | P2 SKIP-TIED-OFF | both SMC fabrics instantiate the AXI filter with `filter_skip_i` tied to zero, so the skip arm of its filter decision never runs |
 | `smc_disabled_feature_exclusions.el` | P3 WREN-TIED | the CLA assigns twenty of its MMR hardware write-enables a constant one (`cla_counter.sv`, `core_logic_analyzer.sv`), so the enable never reads zero and the write-data ternary never takes its else arm |

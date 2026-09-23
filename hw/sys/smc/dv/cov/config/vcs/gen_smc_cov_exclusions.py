@@ -83,16 +83,20 @@ state variable as a transition:
 * F2 DEFAULT: `avsbus_controller.cur_state` has `next_state = AVS_IDLE` as the
   always_comb default, which the extractor reads as an edge from every state
   to AVS_IDLE; every case arm assigns next_state, so the default never fires.
-* F3 TIEOFF: `trace_axi_master.state` never leaves RESET_VALUE because
-  `smc_dfd_wrap` ties every `m_trc_axi_*` response input to zero.
+* F3 TIEOFF: `smc_dfd_wrap` ties every `m_trc_axi_*` response input to zero,
+  so `trace_axi_master` never completes a response handshake and cannot pass
+  REQ_HANDSHAKE. The request it issues on `valid_i` needs no response, so
+  RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded.
 * F4 PARAM-OFF: `efuse_interface_controller.efuse_reg_select` reaches
   EFUSE_MMR_REG_MAP only when the instance has lifecycle state, and
   `smc_efuse_wrapper` instantiates it with `HAS_LC_STATE = 0`, so the decode
   arm that selects the state is not elaborated.
 * F6 ENABLE-EDGE: a state register that loads one state on an enable rising
-  edge, where the disabled branch parks the register at another state, can
-  only reach it from that one predecessor; edges into it from any other state
-  are the same extraction artefact as F2.
+  edge takes whatever its disabled branch parked it at as the predecessor of
+  that edge, so a state no case arm sends to the loaded state cannot precede
+  it, and an edge from such a state is the same extraction artefact as F2. A
+  state whose own arm assigns the loaded state reaches it in the ordinary
+  sequence and stays graded.
 * F5 RESET-EDGE: a state register's reset assignment is expanded into a
   transition from every state. Where no case arm assigns the reset state, the
   only way to cover such an edge is to assert the block's reset while the FSM
@@ -106,11 +110,14 @@ Input is the set of templates urg writes for the merged database::
 which leaves fullexclude_module.{cond,branch,fsm} in the working directory.
 Every checksum and entry text below comes from those templates.
 
-Only rows and branches the merged report marks uncovered are written, so a
-reachable point is never hidden by a pattern. A condition vector is read from
-the report's EXPRESSION table alone and a branch arm from the table of the
-construct at that source line, and an arm the report scores as a path through
-several decisions rather than as one direction is left graded. The report has to be the one urg
+Only points the merged report marks uncovered are written, rows, branch arms
+and FSM states and transitions alike, so a reachable point is never hidden by a
+pattern. A condition vector is read from the report's EXPRESSION table alone
+and a branch arm from the table of the construct at that source line, and an
+arm the report scores as a path through several decisions rather than as one
+direction is left graded. The rule is a backstop, not the argument: a class
+states a fact, and the fact has to be narrow enough that the pattern would
+never have named a reachable point in the first place. The report has to be the one urg
 wrote without an exclusion file: the runner keeps it as
 `<run dir>/cov/report_raw/modinfo.txt` beside the effective report, and a row
 the effective report already shows as `Excluded` would otherwise drop out of
@@ -178,9 +185,11 @@ F2 = (
     "assigns next_state, so no state reaches AVS_IDLE through the default."
 )
 F3 = (
-    "SMC-FSM-F3-TIEOFF: smc_dfd_wrap ties every m_trc_axi_* response input to zero, so "
-    "the trace write master never sees a handshake and its state register cannot leave "
-    "RESET_VALUE."
+    "SMC-FSM-F3-TIEOFF: smc_dfd_wrap ties every m_trc_axi_* response input to zero, so the "
+    "trace write master never completes a response handshake and cannot pass REQ_HANDSHAKE; "
+    "the states an aw_ready, w_ready or b_valid is needed to enter, and the edges touching "
+    "them, have no stimulus. The request the master issues on valid_i is reachable, so "
+    "RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded."
 )
 F4 = (
     "SMC-FSM-F4-PARAM-OFF: the MMR register map exists only when the eFuse instance has "
@@ -197,10 +206,12 @@ F5 = (
 )
 
 F6 = (
-    "SMC-FSM-F6-ENABLE-EDGE: the state register loads StBusBusyHigh only on the rising "
-    "edge of the monitor enable in multi-controller mode, and its disabled branch parks "
-    "the register at StBusFree, so the predecessor at that edge is always StBusFree; an "
-    "edge into it from any other state is an extraction artefact."
+    "SMC-FSM-F6-ENABLE-EDGE: the monitor enters StBusBusyHigh from the StBusBusyLow arm on an "
+    "idle bus, and from the rising edge of the monitor enable in multi-controller mode, where "
+    "the disabled branch has already parked the register at StBusFree; StBusBusyStop has no arm "
+    "to StBusBusyHigh and cannot be the register's value at that edge, so an edge from there is "
+    "an extraction artefact. The edge from StBusBusyLow is the ordinary sequence and stays "
+    "graded."
 )
 
 # (module, fsm) -> list of (class, selector). Selector None takes every point of
@@ -210,13 +221,16 @@ F6 = (
 FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" = {
     ("telemetry_receiver", "block_index"): [(F1, None)],
     ("avsbus_controller", "cur_state"): [(F2, ("to", "AVS_IDLE")), (F5, ("to", "AVS_RESET"))],
-    ("trace_axi_master", "state"): [(F3, None)],
+    ("trace_axi_master", "state"): [
+        (F3, ("state", "AW_HANDSHAKE")),
+        (F3, ("state", "W_HANDSHAKE")),
+        (F3, ("state", "RESP_HANDSHAKE")),
+        (F5, ("edges", ("REQ_HANDSHAKE->RESET_VALUE",))),
+    ],
     ("efuse_interface_controller", "efuse_reg_select"): [(F4, ("state", "EFUSE_MMR_REG_MAP"))],
     ("zeroer", "cur_state"): [(F5, ("edges", ("ST_ISSUE_ADDR->ST_IDLE",)))],
     ("efuse_shadow_regs", "efuse_sense_state_q"): [(F5, ("edges", ("StRead->StIdle",)))],
-    ("i2c_bus_monitor", "state_q"): [
-        (F6, ("edges", ("StBusBusyLow->StBusBusyHigh", "StBusBusyStop->StBusBusyHigh")))
-    ],
+    ("i2c_bus_monitor", "state_q"): [(F6, ("edges", ("StBusBusyStop->StBusBusyHigh",)))],
     ("smc_cool_reset_wrap", "flr_counter_state"): [(F5, ("edges", ("COUNT_DOWN->IDLE",)))],
 }
 
@@ -818,8 +832,10 @@ def render_fsm(
             if not facts or m is None:
                 continue
             kind, src, dst = m.group(1), m.group(2), m.group(3)
-            missing = uncovered.get((module, fsm), set())
             edge = f"{src}->{dst}"
+            point = edge if kind == "Transition" else src
+            if point not in uncovered.get((module, fsm), set()):
+                continue
             for reason, selector in facts:
                 if selector is None:
                     block.append((reason, entry))
@@ -829,8 +845,6 @@ def render_fsm(
                     if mode == "state" and src == target:
                         block.append((reason, entry))
                         break
-                    continue
-                if edge not in missing:
                     continue
                 if (
                     (mode == "to" and dst == target)
