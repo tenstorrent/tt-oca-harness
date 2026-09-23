@@ -16,14 +16,17 @@ quality, meaning that it meets the
 https://csrc.nist.gov/publications/detail/sp/800-90b/final[NIST SP
 800-90B] statistical requirements for a cryptographic source.
 
-The True Random Number Generator subsystem consists of the following
-elements:
+The SEP entropy path consists of the following elements:
 
-* Entropy source
-* Entropy extractor, debiaser and whitener
-* Statistical health online testing and reporting
-* Deterministic random bit generator (DRBG)
-* Entropy distributor
+* Ring-oscillator entropy source
+* Entropy decorrelation, extraction, online health testing, and SHA-256
+  whitening
+* CSRNG implementing the AES-CTR deterministic random bit generator (DRBG)
+* Entropy distribution network (EDN) and adapters serving the Key Manager,
+  AES, KMAC, OTBN, and the fabric entropy pool
+* External-TRNG inputs and per-endpoint source-selection muxes
+* Coordinated software reset and CSR-path isolation for the internal entropy
+  complex
 
 The entropy source is typically a digital circuit employing ring
 oscillators which produces the random bit stream. Random bits are

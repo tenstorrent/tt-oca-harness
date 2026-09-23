@@ -57,9 +57,14 @@ events selected by `EVENT_ENABLE`. `INTR_ENABLE` qualifies only the outgoing
 interrupt line; neither state bit is gated by it, so both read their source with
 the enable clear.
 
-The AXI4-Lite bridge completes a zero-strobe write locally with OKAY and does
-not present it to the core. Upstream, that write sets
-`ERROR_STATUS.ACCESSINVAL` and returns an error.
+SEP instantiates the vendored OpenTitan SPI Host without RTL modification.
+Before the core, `sep_io` narrows the 64-bit peripheral AXI bus to 32 bits and
+the wrapper converts AXI4-Lite to TL-UL. An 8-byte write is therefore emitted
+as two 4-byte writes. If its byte strobes select only one half, the other
+reaches the AXI4-Lite bridge with all strobes clear. The bridge completes that
+no-op locally with OKAY and does not issue a TL-UL request; if forwarded, the
+upstream register block would set `ERROR_STATUS.ACCESSINVAL` and return an
+error.
 
 Consult the
 https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host
