@@ -252,6 +252,7 @@ feature rows.
 |`smc_cpu_to_sep_axi_test` |Run the CPU-control to SEP-facing CSR reachability precheck.
 |`smc_deadspace_decode_test` |Probe wrap-period offsets past PeakRDL SIZE and watch live CSRs.
 |`smc_dual_base_addressing_test` |`LOCAL_BASE` is read-only at 0xC000_0000, `GLOBAL_BASE` takes and returns a pattern, `REGION_SIZE` reads its 16 MiB reset.
+|`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes.
 |`smc_filter_field_sweep_test` |Per-filter 3-field sweep x 4 entries x 2 dirs.
 |`smc_filter_multi_entry_test` |Filter 16 inbound + 16 outbound CONFIG sweep.
 |`smc_input_fabric_axi_wr_rd_test` |Run the input/output fabric CSR precheck over SEP_IN AXI.
@@ -386,6 +387,7 @@ feature rows.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
 |`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
+|`smc_gpio_intf_regblock_sweep_test` |GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycled to all-ones and all-zeros on all 65 instances, with an AxPROT allow and deny leg on each.
 |`smc_gpio_irq_active_test` |Run GPIO CSR plus IRQ-control decode precheck.
 |`smc_gpio_irq_type_matrix_test` |Drive GPIO0 for both level polarities and check the IRQ aggregate.
 |`smc_gpio_multi_sample_test` |Run the SMC OSS GPIO multi-sample observability scenario.
@@ -419,6 +421,7 @@ feature rows.
 |`smc_i2c_error_fifo_depth_test` |PROXY -- run I2C CSR decode plus SCL/SDA pin override depth checks.
 |`smc_i2c_fifo_full_test` |FMT/TX full+empty and RX/ACQ empty STATUS (CSR-only).
 |`smc_i2c_master_target_test` |U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads.
+|`smc_i2c_intr_reg_sweep_test` |I2C interrupt and event registers cycled on all three instances, with the INTR_TEST to INTR_STATE round trip and the two unread read-mux rows.
 |`smc_i2c_multi_instance_test` |I2C_1/2 + I2C_CTRL CSR sweep.
 |`smc_i2c_multi_sample_test` |Run the SMC OSS I2C multi-sample observability scenario.
 |`smc_i2c_p0_cfifo_test` |Controller FMT FIFO empty-threshold interrupt.
@@ -478,6 +481,7 @@ feature rows.
 |`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |UART0 IER gating, natural clears, and multi-source IIR priority.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
+|`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |U4-1: AXI-program UART0 THR and capture the byte on pad12 TX.
 |`smc_uart_sanity_test` |UART pad-cross byte exchange on pairs 0→3 and 1→2.
@@ -7731,6 +7735,143 @@ Drive `smc_cpu_mmio_write_wedge_test_seq`. Each checker below is a named compare
 |===
 
 *Pass Criteria*: all five checkers hold. Enrolled in: `all`, `cpu`. Not in `hosted` (builds firmware).
+
+'''''
+
+[[sec-198-smc_gpio_intf_regblock_sweep_test]]
+===== 198 `smc_gpio_intf_regblock_sweep_test`
+
+*Source Module*: `smc_gpio_intf_regblock_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER on all 65 instances.
+
+*Test Coverage*:
+
+* DATA_CTRL_ENABLE takes the all-ones and all-zeros pattern of its three override fields through half-register writes, so the byte lanes over the other half are deasserted on every write.
+* ACCESS_FILTER drives both filter enables and both AxPROT requirement fields to all-ones and all-zeros in an order that keeps the register reachable: the read requirement first while nothing is gated, then the enables with the write requirement at 0, then the read requirement cleared, then the write requirement.
+* The armed state carries an AxPROT allow leg and an AxPROT deny leg on every instance.
+* Both registers are restored to their generated RDL reset word.
+
+*Test Procedure*:
+
+Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` |All 65 DATA_CTRL_ENABLE instances read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
+|`CHK-GPIO-INTF-ACCESS-FILTER-SWEEP` |All 65 ACCESS_FILTER instances took both filter enables and both AxPROT requirement fields to all-ones and all-zeros, matched the predicted word after every step, and returned to the RDL reset 0x0001_0100
+|`CHK-GPIO-INTF-ACCESS-FILTER-DENY` |On each of the 65 instances the armed read filter returned the programmed word to the matching-AxPROT read and refused the non-matching read of the same address with DECERR and the error-slave word, so the refusal is the AxPROT gate and not a dead window
+|===
+
+*Pass Criteria*: `CHK-GPIO-INTF-ACCESS-FILTER-DENY`, `CHK-GPIO-INTF-ACCESS-FILTER-SWEEP`, `CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-199-smc_filter_config_field_sweep_test]]
+===== 199 `smc_filter_config_field_sweep_test`
+
+*Source Module*: `smc_filter_config_field_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle every FILTER_CONFIG field and the write-once lock on all 32 filter entries.
+
+*Test Coverage*:
+
+* Each of the 16 inbound and 16 outbound entries takes the all-ones and all-zeros pattern of every software-writable FILTER_CONFIG field through half-register writes and is restored to its RDL reset.
+* The ones pattern sets `entry_enabled` in the same write as `read_allowed` and `write_allowed`, and leaves `START_ADDR`/`END_ADDR` at their reset, so an armed entry admits rather than blocks.
+* The write-once `locked` field is set on every entry after all field cycles have completed, and the locked entry then refuses both a write of 0 over that bit and a write of the other half.
+* The sequence leaves all 32 entries locked; only a reset clears the field.
+
+*Test Procedure*:
+
+Drive `smc_filter_config_field_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FILTER-CONFIG-FIELD-SWEEP` |All 32 entries read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, held the reset of the bits software cannot write, and returned to that reset
+|`CHK-FILTER-CONFIG-LOCK-WOSET` |On all 32 entries the write-once `locked` field went from clear to set on a write of 1 and the entry then refused both later configuration writes with an error response while still reading the locked word, so the refused writes took no effect; the accepted writes of the field cycle on the same addresses are the live control
+|===
+
+*Pass Criteria*: `CHK-FILTER-CONFIG-FIELD-SWEEP`, `CHK-FILTER-CONFIG-LOCK-WOSET` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-200-smc_i2c_intr_reg_sweep_test]]
+===== 200 `smc_i2c_intr_reg_sweep_test`
+
+*Source Module*: `smc_i2c_intr_reg_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle the I2C interrupt and event registers on all three instances.
+
+*Test Coverage*:
+
+* INTR_ENABLE and INTR_TEST take the all-ones and all-zeros pattern of the fields the generated contract pins, through half-register writes, and are restored to their reset.
+* A write of the write-only INTR_TEST fields raises the matching INTR_STATE events and a write of the same mask back into INTR_STATE clears them.
+* CONTROLLER_EVENTS and TARGET_EVENTS take a full-width and a half-register write of their whole declared mask.
+* TARGET_ACK_CTRL and ACQ_FIFO_NEXT_DATA, the two read-mux rows no other leaf reads, are read under a STATUS word showing the block idle with both FIFOs empty.
+
+*Test Procedure*:
+
+Drive `smc_i2c_intr_reg_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-INTR-REG-SWEEP` |On all three instances INTR_ENABLE and INTR_TEST read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
+|`CHK-I2C-INTR-TEST-STATE` |On all three instances a write of the write-only INTR_TEST fields raised exactly those INTR_STATE events from a measured clear state, and a write of the same mask back into INTR_STATE cleared them again
+|`CHK-I2C-EVENTS-W1C` |All six CONTROLLER_EVENTS and TARGET_EVENTS instances read clear, took a full-width and a half-register write of their whole declared mask, and read clear after both, which is the `oneToClear` contract for a field no bus event has set
+|`CHK-I2C-READMUX-TAIL` |All six TARGET_ACK_CTRL and ACQ_FIFO_NEXT_DATA reads returned their RDL reset word with no bit outside the declared fields, under a STATUS word matching its RDL reset
+|===
+
+*Pass Criteria*: `CHK-I2C-EVENTS-W1C`, `CHK-I2C-INTR-REG-SWEEP`, `CHK-I2C-INTR-TEST-STATE`, `CHK-I2C-READMUX-TAIL` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-201-smc_uart_log_engine_field_sweep_test]]
+===== 201 `smc_uart_log_engine_field_sweep_test`
+
+*Source Module*: `smc_uart_log_engine_field_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle the UART, divisor-latch and log-engine registers on all four wrapper instances.
+
+*Test Coverage*:
+
+* IER, ITR, SCR, ECR, MCR and LCR take the all-ones and all-zeros pattern of their fields through half-register writes and are restored to their reset. LCR runs last, so the DLAB its ones pattern sets is back at 0 before the divisor-latch leg.
+* DLL and DLM are written and read behind `LCR.DLAB`, held across a clear and a re-raise of DLAB, and restored; with DLAB clear the address DLM occupies returns IER's own reset word.
+* The log engine's INTR_ENABLE takes the same cycle, and a write of the write-only INTR_TEST fields raises and then clears the matching INTR_STATUS events.
+* All 16 LOG_CTRL elements of each wrapper take an index-unique log length and are read back while the 16 signatures are co-resident, then restored. `log_engine/CTRL.EN` stays at its reset 0, so no log transfer starts.
+
+*Test Procedure*:
+
+Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-16550-FIELD-SWEEP` |On all four instances the six writable UART registers read their RDL reset, carried the all-ones and all-zeros pattern of their fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
+|`CHK-UART-16550-DL-WINDOW` |On all four instances both divisor latches took the all-ones and the reset value behind LCR.DLAB and still held the written value after DLAB was cleared and raised again, and the address DLM occupies returned IER's own reset word while DLAB was clear, so the window really switched
+|`CHK-LOG-ENGINE-INTR-SWEEP` |On all four log engines INTR_ENABLE took the all-ones and all-zeros pattern through half-register writes, and a write of the write-only INTR_TEST fields raised exactly those INTR_STATUS events from a measured clear state and a write of the same mask cleared them again
+|`CHK-LOG-ENGINE-LOG-CTRL-SWEEP` |All 64 LOG_CTRL elements returned their own index-unique log length while all 16 elements of their wrapper held theirs, so an array folded onto one physical register fails, and every element was restored to its RDL reset
+|===
+
+*Pass Criteria*: `CHK-LOG-ENGINE-INTR-SWEEP`, `CHK-LOG-ENGINE-LOG-CTRL-SWEEP`, `CHK-UART-16550-DL-WINDOW`, `CHK-UART-16550-FIELD-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

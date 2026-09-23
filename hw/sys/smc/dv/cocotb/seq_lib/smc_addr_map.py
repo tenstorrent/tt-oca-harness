@@ -314,6 +314,24 @@ def gpio_intf_u32(symbol: str) -> int:
     return _field_mask(_GPIO_INTF_H, symbol)
 
 
+_UART_16550_DL_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_dl.h"
+)
+_UART_16550_DL_ADDR_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_dl_addr.h"
+)
+
+
+def uart_16550_dl_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_dl.h``."""
+    return _field_mask(_UART_16550_DL_H, symbol)
+
+
+def uart_16550_dl_offset(symbol: str) -> int:
+    """Register offset inside the divisor-latch window from ``uart_16550_dl_addr.h``."""
+    return _field_mask(_UART_16550_DL_ADDR_H, symbol)
+
+
 _GPIO_POC_H = (
     _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "gpio_poc_pbias_ctrl.h"
 )

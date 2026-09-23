@@ -106,3 +106,11 @@ tests = [
     "smc_uart_sanity_test",
     "smc_log_engine_intr_mask_test",
 ]
+
+[[tests]]
+name = "smc_uart_log_engine_field_sweep_test"
+module = "smc_uart_log_engine_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]

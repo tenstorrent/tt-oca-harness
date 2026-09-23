@@ -60,6 +60,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_filter_config_field_sweep_test"
+module = "smc_filter_config_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_filter_field_sweep_test"
 module = "smc_filter_field_sweep_test"
 seed = 1
