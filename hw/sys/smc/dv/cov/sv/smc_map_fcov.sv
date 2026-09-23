@@ -5,8 +5,11 @@
 // spec-mapped apertures the suite reached and completed, plus the external
 // managers' read/write completions.
 //
-// Every window below is the memmap chapter's `BASE + offset` with BASE the
-// local alias 0xC000_0000. A cell is hit when a transaction to the window
+// Every window below is a `BASE + offset` with BASE the local alias
+// 0xC000_0000. The memory and data-processing windows take their bounds from
+// the generated address map (smc_top_addrmap_pkg, the same source the
+// window-top decode test reads); the remaining region rows are the memmap
+// chapter's layout table. A cell is hit when a transaction to the window
 // completed, not when its address was merely presented.
 //
 // Attributing a response to an address needs the two channels tied to one
@@ -73,7 +76,22 @@ module smc_map_fcov (
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
+  import smc_top_addrmap_pkg::*;
+
   localparam logic [55:0] LocalBase = 56'h00_C000_0000;
+
+  // Generated-map windows as offsets from the local alias. A memory's window
+  // is its size; a register block's window is the aperture the memory map
+  // gives it (smc.rdl `ocah_aperture_size`), which the package does not carry,
+  // so the two apertures are stated here beside the base they extend.
+  localparam logic [31:0] RomLo = 32'(SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR - LocalBase);
+  localparam logic [31:0] RomHi = RomLo + 32'(SMC_TOP_SPM_ROM_MEMORY_SIZE) - 32'd1;
+  localparam logic [31:0] SpmLo = 32'(SMC_TOP_SPM_MEMORY_BASE_ADDR - LocalBase);
+  localparam logic [31:0] SpmHi = SpmLo + 32'(SMC_TOP_SPM_MEMORY_SIZE) - 32'd1;
+  localparam logic [31:0] DmaLo = 32'(SMC_TOP_DMA_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] DmaHi = DmaLo + 32'h200 - 32'd1;
+  localparam logic [31:0] ZeroerLo = 32'(SMC_TOP_ZEROER_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] ZeroerHi = ZeroerLo + 32'h100 - 32'd1;
   localparam logic [1:0] RespOkay = 2'b00;
 
   // Inclusive offset window against the local alias base.
@@ -172,47 +190,47 @@ module smc_map_fcov (
   // that point records the completed access; which macro answered is the
   // checker's to decide from the data.
   // ------------------------------------------------------------------
-  wire rom_base_read_e = rd_okay && in_win(rd_addr_q, 32'h0004_0000, 32'h0004_0007);
-  wire rom_top_read_e = rd_okay && in_win(rd_addr_q, 32'h0005_FFF8, 32'h0005_FFFF);
-  wire rom_above_top_e = rd_done && in_win(rd_addr_q, 32'h0006_0000, 32'h0006_0007);
+  wire rom_base_read_e = rd_okay && in_win(rd_addr_q, RomLo, RomLo + 32'd7);
+  wire rom_top_read_e = rd_okay && in_win(rd_addr_q, RomHi - 32'd7, RomHi);
+  wire rom_above_top_e = rd_done && in_win(rd_addr_q, RomHi + 32'd1, RomHi + 32'd8);
   `OCAH_FCOV_COVER(c_rom_base_read, rom_base_read_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_rom_top_read, rom_top_read_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_rom_just_above_top_not_rom, rom_above_top_e, clk_smc_i, in_reset)
 
   // Scratchpad region edges, and a read after a write landed in the region.
-  wire spm_rd_ok = rd_okay && in_win(rd_addr_q, 32'h0006_0000, 32'h0007_FFFF);
-  wire spm_wr_ok = wr_okay && in_win(wr_addr_q, 32'h0006_0000, 32'h0007_FFFF);
+  wire spm_rd_ok = rd_okay && in_win(rd_addr_q, SpmLo, SpmHi);
+  wire spm_wr_ok = wr_okay && in_win(wr_addr_q, SpmLo, SpmHi);
   logic spm_written_seen_q;
   always_ff @(posedge clk_smc_i) begin
     if (in_reset) spm_written_seen_q <= 1'b0;
     else if (spm_wr_ok) spm_written_seen_q <= 1'b1;
   end
-  wire spm_base_e = (rd_okay && in_win(rd_addr_q, 32'h0006_0000, 32'h0006_0007))
-      || (wr_okay && in_win(wr_addr_q, 32'h0006_0000, 32'h0006_0007));
-  wire spm_top_e = (rd_okay && in_win(rd_addr_q, 32'h0007_FFF8, 32'h0007_FFFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0007_FFF8, 32'h0007_FFFF));
+  wire spm_base_e = (rd_okay && in_win(rd_addr_q, SpmLo, SpmLo + 32'd7))
+      || (wr_okay && in_win(wr_addr_q, SpmLo, SpmLo + 32'd7));
+  wire spm_top_e = (rd_okay && in_win(rd_addr_q, SpmHi - 32'd7, SpmHi))
+      || (wr_okay && in_win(wr_addr_q, SpmHi - 32'd7, SpmHi));
   wire spm_write_then_read_e = spm_rd_ok && spm_written_seen_q;
   `OCAH_FCOV_COVER(c_spm_region_base, spm_base_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_spm_region_top, spm_top_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_spm_write_then_read, spm_write_then_read_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
-  // DMA and zeroer apertures, 512 B each and adjacent.
+  // DMA (512 B) and zeroer (256 B) apertures, adjacent.
   // ------------------------------------------------------------------
-  wire dma_win_ok = (rd_okay && in_win(rd_addr_q, 32'h0003_8000, 32'h0003_81FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_8000, 32'h0003_81FF));
-  wire zeroer_win_ok = (rd_okay && in_win(rd_addr_q, 32'h0003_8200, 32'h0003_83FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_8200, 32'h0003_83FF));
-  wire dma_base_e = (rd_okay && in_win(rd_addr_q, 32'h0003_8000, 32'h0003_8007))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_8000, 32'h0003_8007));
-  wire dma_top_e = (rd_okay && in_win(rd_addr_q, 32'h0003_81F8, 32'h0003_81FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_81F8, 32'h0003_81FF));
-  wire dma_above_top_e = (rd_done && in_win(rd_addr_q, 32'h0003_8200, 32'h0003_8207))
-      || (wr_done && in_win(wr_addr_q, 32'h0003_8200, 32'h0003_8207));
-  wire zeroer_base_e = (rd_okay && in_win(rd_addr_q, 32'h0003_8200, 32'h0003_8207))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_8200, 32'h0003_8207));
-  wire zeroer_top_e = (rd_okay && in_win(rd_addr_q, 32'h0003_83F8, 32'h0003_83FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_83F8, 32'h0003_83FF));
+  wire dma_win_ok = (rd_okay && in_win(rd_addr_q, DmaLo, DmaHi))
+      || (wr_okay && in_win(wr_addr_q, DmaLo, DmaHi));
+  wire zeroer_win_ok = (rd_okay && in_win(rd_addr_q, ZeroerLo, ZeroerHi))
+      || (wr_okay && in_win(wr_addr_q, ZeroerLo, ZeroerHi));
+  wire dma_base_e = (rd_okay && in_win(rd_addr_q, DmaLo, DmaLo + 32'd7))
+      || (wr_okay && in_win(wr_addr_q, DmaLo, DmaLo + 32'd7));
+  wire dma_top_e = (rd_okay && in_win(rd_addr_q, DmaHi - 32'd7, DmaHi))
+      || (wr_okay && in_win(wr_addr_q, DmaHi - 32'd7, DmaHi));
+  wire dma_above_top_e = (rd_done && in_win(rd_addr_q, DmaHi + 32'd1, DmaHi + 32'd8))
+      || (wr_done && in_win(wr_addr_q, DmaHi + 32'd1, DmaHi + 32'd8));
+  wire zeroer_base_e = (rd_okay && in_win(rd_addr_q, ZeroerLo, ZeroerLo + 32'd7))
+      || (wr_okay && in_win(wr_addr_q, ZeroerLo, ZeroerLo + 32'd7));
+  wire zeroer_top_e = (rd_okay && in_win(rd_addr_q, ZeroerHi - 32'd7, ZeroerHi))
+      || (wr_okay && in_win(wr_addr_q, ZeroerHi - 32'd7, ZeroerHi));
   `OCAH_FCOV_COVER(c_dma_aperture_base, dma_base_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_dma_aperture_top, dma_top_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_dma_just_above_top_not_dma, dma_above_top_e, clk_smc_i, in_reset)
@@ -688,7 +706,10 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_beu_instance_3, beu3_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
-  // Address-space layout regions inside the 16 MiB reset aperture.
+  // Address-space layout regions inside the 16 MiB reset aperture. The
+  // data-processing row ends at the zeroer aperture and the memory row at the
+  // scratchpad, both from the generated map; the other rows are the memmap
+  // chapter's layout table.
   // ------------------------------------------------------------------
   localparam int unsigned NumRegions = 14;
   localparam logic [31:0] RegionLo[NumRegions] = '{
@@ -717,8 +738,8 @@ module smc_map_fcov (
       32'h0000_DFFF,
       32'h0001_7FFF,
       32'h0003_7FFF,
-      32'h0003_83FF,
-      32'h0007_FFFF,
+      ZeroerHi,
+      SpmHi,
       32'h0016_8FFF,
       32'h0040_57FF,
       32'h01FF_FFFF
