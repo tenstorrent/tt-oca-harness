@@ -32,8 +32,12 @@ Three more facts belong to one block each rather than to a family:
 Two facts are the integration's: the DFD top instantiates its trace wrapper
 with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace
 half has no source behind it (P1 NTRACE-OFF, named by the `trntr` signal
-prefix); and both SMC fabrics tie the AXI filter's `filter_skip_i` to zero, so
-the skip arm of its filter decision never runs (P2 SKIP-TIED-OFF).
+prefix, and the NTR-sink MMR rows of `mmrs`); both SMC fabrics tie the AXI
+filter's `filter_skip_i` to zero (P2 SKIP-TIED-OFF); the CLA drives twenty
+of its MMR hardware write-enables with a constant one, so their write-data
+ternaries never take the else arm (P3 WREN-TIED); one trace source can never
+prime the sink's per-way pending count (P4 SINGLE-SOURCE); and the MMR
+instruction type has no driver outside the MMR files (P5 INSTR-TYPE-CONST).
 
 A third fact is not a register block's: a CRC or parity network is an XOR
 reduction, and condition coverage enumerates 2^n input combinations of it.
@@ -206,6 +210,26 @@ P1 = (
     "conditions over its trntr signals have no stimulus that can reach them."
 )
 
+P3 = (
+    "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the "
+    "term never reads zero and the write-data ternary it selects never takes its else arm; no "
+    "software stimulus moves a tie-off."
+)
+P4 = (
+    "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the "
+    "two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which "
+    "only increments from those enables, stays at zero for the life of the design; every "
+    "TrRamPend* and south-port condition follows."
+)
+P5 = (
+    "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB "
+    "path only ever issues one instruction type and the other encoding is never presented."
+)
+WREN_TIED = (
+    "ClactrlstatusWr.CurrentNodeWrEn|ClatimestampWr.TimestampLowerWrEn|"
+    "ClatimestampconfigWr.ResyncWrEn|EapstatusWr.Node[0-3]Eap[0-3]WrEn|"
+    "ClaMmrCdbgclacounter[0-3]CfgWr.(Upper)?CounterWrEn|TrdstcontrolWr.TrdstemptyWrEn"
+)
 P2 = (
     "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI "
     "filter with filter_skip_i tied to zero, so the skip arm of the filter decision never "
@@ -216,8 +240,21 @@ P2 = (
 # or a tied-off integration input leaves without a source. Only uncovered rows
 # are taken.
 FEATURE_FACTS: "dict[str, list[tuple[str, object]]]" = {
-    "trace_sink": [(P1, re.compile(r"\btrntr"))],
+    "trace_sink": [
+        (P1, re.compile(r"\btrntr")),
+        (P4, re.compile(r"TrRamPend|TrRamSouth|TR_TS_South|South_Vld")),
+    ],
     "axi_filter_wrap": [(P2, re.compile(r"filter_skip_i"))],
+    "cla_mmr": [
+        (P3, re.compile(WREN_TIED)),
+        (P5, re.compile(r"instr_type")),
+    ],
+    "mmrs": [(P1, re.compile(r"ntr_sink|NTR_SINK|\bTrramstart(low|high)_Warl"))],
+}
+# Branch arms a feature fact also names: the else arm of a write-data ternary whose
+# enable is a tied constant.
+FEATURE_BRANCH_FACTS: "dict[str, list[tuple[str, object, str]]]" = {
+    "cla_mmr": [(P3, re.compile(WREN_TIED), "0")],
 }
 
 # module -> [(class, expression pattern, term-vector pattern or None)]. These
@@ -565,26 +602,40 @@ def render_feature(
         "//==================================================",
     ]
     count = 0
-    for module, facts in sorted(FEATURE_FACTS.items()):
-        section = templates["cond"].get(module)
-        if section is None:
-            continue
+    modules = sorted(set(FEATURE_FACTS) | set(FEATURE_BRANCH_FACTS))
+    for module in modules:
         block: list[tuple[str, str]] = []
-        for _, entry in section.entries:
-            m = COND_ROW_RE.match(entry)
-            if m is None:
-                continue
-            expr, vec = m.group(2), m.group(4)
-            if vec not in uncovered.get((module, expr), set()):
-                continue
-            for reason, pattern in facts:
-                if pattern.search(expr):
-                    block.append((reason, entry))
-                    break
+        checksum = ""
+        section = templates["cond"].get(module)
+        if section is not None:
+            checksum = section.checksum
+            for _, entry in section.entries:
+                m = COND_ROW_RE.match(entry)
+                if m is None:
+                    continue
+                expr, vec = m.group(2), m.group(4)
+                if vec not in uncovered.get((module, expr), set()):
+                    continue
+                for reason, pattern in FEATURE_FACTS.get(module, []):
+                    if pattern.search(expr):
+                        block.append((reason, entry))
+                        break
+        bsection = templates["branch"].get(module)
+        if bsection is not None:
+            checksum = checksum or bsection.checksum
+            for _, entry in bsection.entries:
+                m = BRANCH_ROW_RE.match(entry)
+                if m is None:
+                    continue
+                cond, direction = m.group(2), m.group(5)
+                for reason, pattern, want in FEATURE_BRANCH_FACTS.get(module, []):
+                    if direction == want and pattern.search(cond):
+                        block.append((reason, entry))
+                        break
         if not block:
             continue
-        out += ["", f"CHECKSUM: {section.checksum}"]
-        for reason in (P1, P2):
+        out += ["", f"CHECKSUM: {checksum}"]
+        for reason in (P1, P2, P3, P4, P5):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

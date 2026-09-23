@@ -128,6 +128,9 @@ state register's enable-edge load cannot reach:
 | `smc_fsm_exclusions.el` | F6 ENABLE-EDGE | the bus monitor loads StBusBusyHigh only on the monitor enable's rising edge in multi-controller mode, and its disabled branch parks the register at StBusFree, so an edge into it from any other state cannot occur |
 | `smc_disabled_feature_exclusions.el` | P1 NTRACE-OFF | the DFD top instantiates the trace wrapper with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace half has no source; only its uncovered `trntr` conditions are listed |
 | `smc_disabled_feature_exclusions.el` | P2 SKIP-TIED-OFF | both SMC fabrics instantiate the AXI filter with `filter_skip_i` tied to zero, so the skip arm of its filter decision never runs |
+| `smc_disabled_feature_exclusions.el` | P3 WREN-TIED | the CLA assigns twenty of its MMR hardware write-enables a constant one (`cla_counter.sv`, `core_logic_analyzer.sv`), so the enable never reads zero and the write-data ternary never takes its else arm |
+| `smc_disabled_feature_exclusions.el` | P4 SINGLE-SOURCE | with one trace source the two-source term of `TrRamPendPkt*WrEn` is always false and the per-way pending count, which only increments from those enables, stays at zero (`trace_sink.sv` pending logic); every `TrRamPend*` and south-port condition follows |
+| `smc_disabled_feature_exclusions.el` | P5 INSTR-TYPE-CONST | `reg_wr_instr_type` has no driver outside the MMR files, so the other instruction-type encoding is never presented |
 
 A regblock whose stall is `external_pending` (it has external registers)
 gets A2 only; a regblock that decodes errors gets neither. `--check` reports
