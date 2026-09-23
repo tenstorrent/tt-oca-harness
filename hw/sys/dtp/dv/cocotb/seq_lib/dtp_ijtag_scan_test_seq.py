@@ -114,11 +114,14 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
             ("secure", 0b111, {"dft_secure": 1}),
             ("nonsecure", 0b111, {"dft_nonsecure": 1}),
             ("dfd", 0b111, {"dfd": 1}),
+            ("all", 0b111, {"dft_secure": 1, "dft_nonsecure": 1, "dfd": 1}),
         ]
         # Seeded per-pass order: each loop exercises a different gate sequence.
         self.rng("ijtag_all_on_order").shuffle(gate_vectors)
         for label, pattern, dbg in gate_vectors:
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"all_on.gated.{label}")
+        # Full chain and scan controls again once every disable is clear.
+        await self.check_pattern(0b111, context="all_on.restore")
         self.log_summary("iJTAG all-on", gate_vectors=len(gate_vectors))
 
     async def run_sib_random(self) -> None:
@@ -143,6 +146,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_banner("iJTAG DFT secure/non-secure access")
         await self.check_pattern(0b010, context="dft.nonsecure_only")
         await self.check_pattern(0b100, context="dft.secure_only")
+        await self.check_pattern(0b110, context="dft.parallel")
         gate_cases = [
             ("secure_gated", 0b100, {"dft_secure": 1}),
             ("nonsecure_gated", 0b010, {"dft_nonsecure": 1}),

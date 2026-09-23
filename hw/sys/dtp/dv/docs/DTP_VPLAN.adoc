@@ -792,32 +792,31 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 
 *Test Coverage*:
 
-* CLAMP (IR=0x07) holds boundary-scan outputs at their last EXTEST-driven values
+* CLAMP (IR=0x07) leaves the boundary-scan chain deselected: the chain select stays low across CLAMP scans while the TAP's capture, shift, and update strobes pulse, so the update register that drives the chain's outputs receives no update
 * A 1-bit bypass path (TDI -++>++ 1-bit delay -++>++ TDO) is provided on DR during CLAMP
-* No glitches on boundary outputs across CLAMP entry/exit transitions
-* Core scan paths remain isolated while unrelated DR traffic is shifted
+* EXTEST before and after CLAMP selects the looped-back chain and returns its pattern
 * `jtag_instruction_cg` CLAMP opcode bin and the BYPASS behavior bin for the 1-bit path during CLAMP
 
 *Test Procedure*:
 
 [arabic]
-. Load EXTEST, preload and drive a known BSR output pattern via Update-DR.
-. Load CLAMP (IR=0x07) and confirm boundary outputs remain at the previously driven values.
-. Shift unrelated DR traffic and verify 1-bit bypass behavior (TDI delayed one TCK to TDO).
-. Confirm outputs hold steady (no glitch) throughout the shift.
-. Load a different instruction and return; verify the clamped outputs were undisturbed during CLAMP.
+. Load EXTEST and scan a seeded pattern under a scan-control window: the chain select is high across the scan and the looped-back pattern returns one TCK late.
+. Load CLAMP (IR=0x07) and scan under the same window: the select stays low while the capture, shift, and update strobes pulse once each, and TDO is TDI delayed one TCK.
+. Shift the directed and seeded one-bit bypass patterns through CLAMP.
+. Load EXTEST again and scan another seeded pattern: the chain is selected again and loops the pattern back.
+. Load BYPASS and confirm the one-TCK delay as the reference.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`clamp_output_hold_chk` |BSR outputs stay at the last EXTEST-driven values throughout CLAMP
-|`clamp_bypass_chk` |DR path is a 1-bit bypass during CLAMP
-|`clamp_glitch_free_chk` |No glitches on boundary outputs during CLAMP entry/exit transitions
+|`clamp_deselect_chk` |The chain select stays low across the CLAMP scans while the TAP strobes pulse (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
+|`clamp_bypass_chk` |DR path is a 1-bit bypass during CLAMP (`CHK-BYPASS-DELAY`)
+|`clamp_chain_restore_chk` |EXTEST before and after CLAMP selects the chain and returns the looped-back pattern (`CHK-BSR-SELECT`, `CHK-BSR-LOOPBACK`)
 |===
 
-*Pass Criteria*: CLAMP holds the boundary outputs at their last driven values glitch-free while DR acts as a 1-bit bypass, with zero scoreboard/reference-model errors.
+*Pass Criteria*: CLAMP scans leave the chain deselected while DR acts as a 1-bit bypass, and EXTEST selects the looped-back chain before and after, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -906,7 +905,7 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 * INV_BYPASS (IR=0x3E) provides a 1-bit bypass register that inverts the shifted data
 * TDO is the bitwise inverse of TDI, delayed by exactly one TCK cycle
 * Capture-DR loads the inverted default (1) into the bypass register
-* No side effects on other TDRs while inverted bypass is active
+* IDCODE reads its identification after the inverted-bypass scans
 * `jtag_instruction_cg` opcode bin 0x3E (INV_BYPASS)
 
 *Test Procedure*:
@@ -916,7 +915,7 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 . Shift a known 64-bit alternating 0/1 pattern through DR and verify TDO = inverted TDI delayed by 1 bit.
 . Shift all-zeros and confirm TDO outputs all-ones after the 1-bit delay.
 . Shift all-ones and confirm TDO outputs all-zeros after the 1-bit delay.
-. Confirm Capture-DR loaded the inverted default (1) and that no other TDR is affected.
+. Confirm Capture-DR loaded the inverted default (1), then read IDCODE and confirm the identification.
 
 *Checkers*:
 
@@ -926,10 +925,10 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 |`inv_bypass_len_chk` |DR chain length is exactly 1 bit under IR=0x3E
 |`inv_bypass_invert_chk` |TDO is the bitwise inverse of TDI, delayed by one TCK cycle
 |`inv_bypass_capture_chk` |Capture-DR loads the inverted default (1) into the bypass register
-|`inv_bypass_no_side_effect_chk` |No other TDRs are disturbed during inverted bypass
+|`inv_bypass_no_side_effect_chk` |IDCODE reads its identification after the inverted-bypass scans (`CHK-IDCODE-RAW`)
 |===
 
-*Pass Criteria*: INV_BYPASS yields a 1-bit register producing the bitwise-inverted, one-cycle-delayed TDI with an inverted default capture and no TDR side effects, with zero scoreboard/reference-model errors.
+*Pass Criteria*: INV_BYPASS yields a 1-bit register producing the bitwise-inverted, one-cycle-delayed TDI with an inverted default capture, and IDCODE reads its identification afterwards, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1096,17 +1095,17 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 * CLAMP_RELEASE (IR=0x0B) TMP instruction releases the persistent clamp state
 * CLAMP_RELEASE DR is 2 bits wide and transitions TMP from Persistence-On to Persistence-Off
 * TMP_STATUS transitions 1 -++>++ 0 after CLAMP_RELEASE
-* BSR outputs return to normal functional control on the next functional instruction
+* After the release, SAMPLE/PRELOAD selects the looped-back chain again and returns its pattern
 * `tmp_ic_reset_cg` TMP persistence bins (CLAMP_RELEASE, Persistence-On to Persistence-Off)
 
 *Test Procedure*:
 
 [arabic]
-. Engage CLAMP_HOLD (per the 0.15 setup) and confirm held boundary state with TMP_STATUS.TMP_STATUS = 1.
+. Engage CLAMP_HOLD (per the 0.15 setup) and confirm TMP_STATUS.persistence = 1.
 . Load CLAMP_RELEASE (IR=0x0B) through `OcahJtagMasterDriver` and perform a 2-bit DR scan.
 . Confirm the TMP controller exits Persistence-On.
 . Read TMP_STATUS and verify TMP_STATUS = 0.
-. Issue the next functional instruction and verify the BSR outputs return to normal (no longer clamped).
+. Load SAMPLE/PRELOAD and verify the chain is selected and loops the pattern back one TCK late.
 
 *Checkers*:
 
@@ -1115,10 +1114,10 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 |Checker |Description
 |`clamp_release_dr_len_chk` |CLAMP_RELEASE DR is exactly 2 bits wide
 |`clamp_release_tmp_status_chk` |TMP_STATUS transitions from 1 to 0 after CLAMP_RELEASE
-|`clamp_release_output_chk` |BSR outputs return to normal functional control after release
+|`clamp_release_chain_chk` |SAMPLE/PRELOAD after the release selects the chain and returns the looped-back pattern (`CHK-BSR-LOOPBACK`)
 |===
 
-*Pass Criteria*: CLAMP_RELEASE clears persistence via a 2-bit DR, drives TMP_STATUS 1-++>++0, and returns outputs to functional control, with zero scoreboard/reference-model errors.
+*Pass Criteria*: CLAMP_RELEASE clears persistence via a 2-bit DR, drives TMP_STATUS 1-++>++0, and the chain scans again after the release, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1168,32 +1167,32 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 
 *Test Coverage*:
 
-* EXTEST_PULSE (IR=0x06) drives a single-cycle pulse pattern on AC boundary-scan outputs per Run-Test/Idle entry
-* A single pulse appears on BSR outputs on each RTI entry (re-armed on re-entry)
-* BSR scan-control signals assert per the EXTEST_PULSE protocol timing
-* Captured response bits reflect the pulse stimulus
+* EXTEST_PULSE (IR=0x06) decodes as itself and selects the boundary-scan chain, which this bench loops back without boundary cells
+* The chain's run_test_idle strobe, the Run-Test/Idle decode the AC pulse launches on, pulses once across an EXTEST_PULSE scan on the return to Run-Test/Idle and holds while the TAP is parked there
+* The chain select rides the TAP's capture, shift, and update strobes across each scan
+* Captured response bits are the looped-back pattern retimed by one TCK
 * `jtag_instruction_cg` EXTEST_PULSE opcode bin and the `cg_scan_boundary` loopback observations
 
 *Test Procedure*:
 
 [arabic]
-. Load SAMPLE/PRELOAD and shift the pulse (launch) pattern into the BSR via the OCAH-local BSR model.
-. Load EXTEST_PULSE (IR=0x06) through `OcahJtagMasterDriver`.
-. Enter Run-Test/Idle and confirm a single pulse is driven on the AC boundary outputs.
-. Monitor the timing of the BSR scan-control assertions during the pulse sequence.
-. Re-enter RTI and confirm another single pulse on the next entry; verify the captured response bits.
+. Load EXTEST_TRAIN and preload a pattern through the looped-back chain.
+. Load EXTEST_PULSE (IR=0x06) through `OcahJtagMasterDriver` and scan directed, walking-one, and edge patterns: each returns one TCK late.
+. Scan a seeded pattern under a scan-control window: the chain select is high across the scan, the capture, shift, and update strobes pulse once each, and run_test_idle pulses once, on the return to Run-Test/Idle.
+. Parked in Run-Test/Idle, confirm run_test_idle is high and the chain select low.
+. Load BYPASS and scan: the select stays low while the same strobes pulse.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`extest_pulse_single_chk` |Exactly one pulse appears on AC BSR outputs per RTI entry
-|`extest_pulse_timing_chk` |BSR scan-control signals assert per EXTEST_PULSE protocol timing
-|`extest_pulse_capture_chk` |Captured response bits reflect the pulse stimulus
+|`extest_pulse_select_chk` |EXTEST_PULSE selects the chain: select high across the scan with the TAP strobes (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
+|`extest_pulse_rti_chk` |run_test_idle pulses once across the scan and holds while the TAP is parked in Run-Test/Idle (`CHK-BSR-RTI`)
+|`extest_pulse_capture_chk` |Captured response bits are the looped-back pattern retimed by one TCK (`CHK-BSR-LOOPBACK`)
 |===
 
-*Pass Criteria*: EXTEST_PULSE emits exactly one boundary-output pulse per RTI entry with correct scan-control timing and captured response, with zero scoreboard/reference-model errors.
+*Pass Criteria*: EXTEST_PULSE selects the chain with the TAP strobes on each scan, raises run_test_idle on the Run-Test/Idle return and while parked, and returns each looped-back pattern, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1558,13 +1557,13 @@ c. CLA_CLOCK_STOP readback == OR of `xtrig_clk_stop_req_i` only.
 |===
 |Checker |Description
 |`boot_stall_reset_chk` |DEBUG_CONTROL reads 0x00 out of reset
-|`boot_stall_combo_chk` |All four BOOT_STALL_OVRD / BOOT_STALL combinations drive expected outputs
+|`boot_stall_combo_chk` |All four BOOT_STALL_OVRD / BOOT_STALL combinations drive `jtag_boot_stall_ovrd_o` and `jtag_boot_stall_o` to their field values; the consumer selects the stall with the override (PTAP document, DEBUG_CONTROL)
 |`boot_stall_readback_chk` |DEBUG_CONTROL readback matches each programmed combination
 |`boot_stall_interaction_chk` |Boot-stall fields are independent of clock-stop fields
 |`boot_stall_clear_chk` |`jtag_boot_stall_ovrd_o` deasserts when BOOT_STALL_OVRD clears
 |===
 
-*Pass Criteria*: Boot-stall output tracks the TDR and is gated by the override bit, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Each boot-stall pin follows its DEBUG_CONTROL field, both stay independent of the clock-stop fields, and both deassert when the register is cleared, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4780,6 +4779,7 @@ a. Confirm status is preserved across the interleave and that the clean slot's d
 * Incrementing and fixed-address write series on each enabled bridge: the SERIES_CTRL address captured after the series and the memory every beat lands
 * Held series status: one faulted beat sets the SERIES_CTRL status, the status holds across the clean beats that follow, and `SERIES_CTRL.reset` clears it for the next series
 * Per-bridge independence: the three bridges' series beats landed interleaved in seeded order leave every bridge's captured address and every written word exact
+* A bridge whose `SERIES_CTRL.op` reads OKAY after the clean beats that follow a faulted beat fails `CHK-J2A-FAULT-STATUS`: the PTAP document holds the SLVERR or DECERR code until `SERIES_CTRL.reset`
 * The bench does not check the series FIFO depth corners or `SERIES_CTRL.pl_depth` read pipelining, and every series starts aligned to its bridge's beat size
 
 *Test Procedure*:
@@ -6510,7 +6510,8 @@ b. Read back after each write and compare the full word: the defined field holds
 * Deterministic closure of per-source select mapping for every defined CTM source-select CSR (`CT_SRC[0].CONFIG_0` through `CT_SRC[25].CONFIG_0`)
 * Single-destination, paired-destination, and inverted-destination `CT_DST_SELECT` masks written and read back at every source index
 * No source index aliases another CTM source register
-* Direct exercise of all generated CTM source-select mapping code in the default DTP configuration
+* Direct exercise of all generated CTM source-select mapping code in the bench configuration
+* One routed pulse per source after its select sweep, judged against the CTM model
 
 *Test Procedure*:
 
@@ -6521,6 +6522,7 @@ a. Write a single-destination `CT_DST_SELECT` mask, read back, and compare the d
 b. Write a paired-destination mask, read back, and compare.
 c. Write an inverted-destination mask, read back, and compare.
 d. Confirm the written value affects only this source register and no neighboring `+CT_SRC[N]_CONFIG_0+` (no aliasing).
+e. Program a single-destination route from the source, pulse it, and judge the output window against the CTM model.
 . Sample per-source select coverage so every `CT_SRC1..25_CONFIG_0` mapping is touched.
 . Disable all CTM source routing again before test exit.
 
@@ -6531,10 +6533,10 @@ d. Confirm the written value affects only this source register and no neighborin
 |Checker |Description
 |`ctm_rand_all_source_select_coverage_csr_chk` |Every defined source-select CSR accepts and returns the single/paired/inverted mask
 |`ctm_rand_all_source_select_coverage_alias_chk` |No source index aliases another CTM source register
-|`ctm_rand_all_source_select_coverage_route_chk` |Per-source route decode matches the programmed mask against the reference model
+|`ctm_rand_all_source_select_coverage_route_chk` |After each source's select sweep, a single-destination route programmed from that source delivers one pulse to its destination and to no other output (`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION`)
 |===
 
-*Pass Criteria*: Every defined CTM source-select CSR is touched with single, paired, and inverted masks and reads back correctly with no aliasing across source indices, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Every defined CTM source-select CSR is touched with single, paired, and inverted masks and reads back correctly with no aliasing across source indices, and every source routes one pulse to its selected destination, with zero scoreboard/reference-model errors.
 
 '''''
 
