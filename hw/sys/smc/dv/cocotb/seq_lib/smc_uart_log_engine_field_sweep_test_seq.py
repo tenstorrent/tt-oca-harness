@@ -42,9 +42,13 @@ from __future__ import annotations
 
 import cocotb
 
-from .smc_addr_map import smc_addr, smc_indexed_addr, uart_16550_dl_offset, uart_16550_dl_u32
-from .smc_rdl_regmap import rdl_contract_array, smc_reg_addr
-from .smc_regblock_field_sweep_utils import RegInstance, SmcRegblockFieldSweepSeq, reg_instances
+from .smc_addr_map import smc_indexed_addr, uart_16550_dl_offset, uart_16550_dl_u32
+from .smc_regblock_field_sweep_utils import (
+    RegInstance,
+    SmcRegblockFieldSweepSeq,
+    array_reg_instances,
+    reg_instances,
+)
 
 _WRAP = "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_"
 _WRAP_PY = "SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_{index}__"
@@ -75,7 +79,7 @@ _UART_REGISTERS = ("IER", "ITR", "SCR", "ECR", "MCR", "LCR")
 
 _UART_BASE = f"{_WRAP}UART_BASE_ADDR"
 _UART_IER_OFFSET_SYMBOL = "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR"
-_WRAP_STRIDE = smc_addr(f"{_WRAP}STRIDE")
+_WRAP_STRIDE_SYMBOL = f"{_WRAP}STRIDE"
 
 _DLL_OFFSET = uart_16550_dl_offset("UART_16550_DL_DLL_BASE_ADDR")
 _DLM_OFFSET = uart_16550_dl_offset("UART_16550_DL_DLM_BASE_ADDR")
@@ -193,19 +197,6 @@ class smc_uart_log_engine_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
         )
         self.pulses += 1
 
-    def _log_ctrl_instances(self, index: int) -> tuple[RegInstance, ...]:
-        out: list[RegInstance] = []
-        for element, reg in enumerate(rdl_contract_array(_LOG_CTRL_PATH)):
-            addr = reg.addr + index * _WRAP_STRIDE
-            mapped = smc_reg_addr(_LOG_CTRL_PY.format(index=index, element=element))
-            assert addr == mapped, (
-                f"LOG_CTRL[{index}][{element}]: the IP-XACT element at 0x{reg.addr:08x} plus "
-                f"{index} strides of 0x{_WRAP_STRIDE:x} gives 0x{addr:08x}, smc_reg.py says "
-                f"0x{mapped:08x}"
-            )
-            out.append(RegInstance(f"{_LOG_CTRL_PATH}[{index}][{element}]", reg, addr, element))
-        return tuple(out)
-
     async def _log_ctrl_pass(self, elements: tuple[RegInstance, ...]) -> None:
         # LOG_CTRL.LOG_LEN is `hwclr`, so the generated contract does not pin its
         # readback and the generic cycle leaves it alone; the engine is disabled
@@ -276,7 +267,9 @@ class smc_uart_log_engine_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
         )
 
         for index in range(count):
-            await self._log_ctrl_pass(self._log_ctrl_instances(index))
+            await self._log_ctrl_pass(
+                array_reg_instances(_LOG_CTRL_PATH, _LOG_CTRL_PY, _WRAP_STRIDE_SYMBOL, index)
+            )
         cocotb.log.info(
             "CHK-LOG-ENGINE-LOG-CTRL-SWEEP: %d LOG_CTRL elements each took an "
             "index-unique log length and were read back while all 16 elements of their "
@@ -284,7 +277,9 @@ class smc_uart_log_engine_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
             self.log_ctrl_elements,
         )
 
-        elements_per_wrap = len(rdl_contract_array(_LOG_CTRL_PATH))
+        elements_per_wrap = len(
+            array_reg_instances(_LOG_CTRL_PATH, _LOG_CTRL_PY, _WRAP_STRIDE_SYMBOL, 0)
+        )
         expected = count * (
             len(_UART_REGISTERS) * _ACCESSES_PER_GRANULE_CYCLE
             + _ACCESSES_PER_DL_LEG

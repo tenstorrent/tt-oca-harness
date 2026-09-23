@@ -481,6 +481,7 @@ feature rows.
 |`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |UART0 IER gating, natural clears, and multi-source IIR priority.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
+|`smc_log_engine_transfer_test` |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
 |`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |U4-1: AXI-program UART0 THR and capture the byte on pad12 TX.
@@ -7872,6 +7873,41 @@ Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named 
 |===
 
 *Pass Criteria*: `CHK-LOG-ENGINE-INTR-SWEEP`, `CHK-LOG-ENGINE-LOG-CTRL-SWEEP`, `CHK-UART-16550-DL-WINDOW`, `CHK-UART-16550-FIELD-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-202-smc_log_engine_transfer_test]]
+===== 202 `smc_log_engine_transfer_test`
+
+*Source Module*: `smc_log_engine_transfer_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the wrapper's own UART in `MCR.LOOP`
+
+*Objective*: Run a real log-engine transfer on all four uart_log_engine_wrap instances.
+
+*Test Coverage*:
+
+* The software flow of `hw/ip/uart/log_engine/doc/programming.adoc`, driven over SEP_IN AXI rather than from firmware: four logs are written into the SPM log region of each wrapper, LOG_REGION_ADDR and LOG_REGION_SIZE are pointed at them, LOG_WRITE_ADDR at the wrapper's own transmit holding register, the UART is put in `MCR.LOOP`, the engine is enabled, and all four LOG_CTRL elements are triggered at once so the round-robin arbiter has to grant more than one requester.
+* Every byte names the wrapper, the element and the slot offset it came from, so a stream that carried a neighbour's slot, repeated a byte or dropped one fails.
+* The order the arbiter interleaves the four elements in is not predicted; each element's own bytes are required to arrive in slot order, exactly once.
+* Nothing writes a pending LOG_CTRL length back to 0. The only clearing this leaf takes is the hardware one it waits for.
+* The UART divisor latches, line and modem control, FIFO control and the wrapper pad-mux enable are all restored, and the engine is disabled with its region and write addresses cleared.
+
+*Test Procedure*:
+
+Drive `smc_log_engine_transfer_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOG-ENGINE-TRANSFER-BYTES` |All 128 log bytes of the run reached the receiver of their own wrapper, every element's bytes arrived in slot order and exactly once, and no byte named another element or another wrapper; a transfer that never started fails on the byte count before the compare is reached
+|`CHK-LOG-ENGINE-TRANSFER-HWCLR` |Every driven LOG_CTRL element read a length of 0 after its log arrived, and nothing in the leaf wrote a pending length back, so the clear is the hardware completion the RDL declares
+|`CHK-LOG-ENGINE-TRANSFER-CLEAN` |Every LSR read during the transfer showed no overrun, parity, framing or break error, the receiver went quiet after the last expected byte, and INTR_STATUS read clear before and after, so the engine hit neither a fetch nor a write error and sent nothing it was not asked to
+|===
+
+*Pass Criteria*: `CHK-LOG-ENGINE-TRANSFER-BYTES`, `CHK-LOG-ENGINE-TRANSFER-CLEAN`, `CHK-LOG-ENGINE-TRANSFER-HWCLR` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

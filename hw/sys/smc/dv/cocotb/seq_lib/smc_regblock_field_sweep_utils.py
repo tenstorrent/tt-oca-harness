@@ -33,7 +33,7 @@ from dataclasses import dataclass
 
 from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_rdl_regmap import RdlReg, rdl_contract, smc_reg_addr
+from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_contract_array, smc_reg_addr
 
 
 @dataclass(frozen=True)
@@ -79,6 +79,31 @@ def reg_instances(
         f"{symbol}(0) resolves to 0x{out[0].addr:08x}, so the generated views of "
         f"the same RDL do not agree on this register"
     )
+    return tuple(out)
+
+
+def array_reg_instances(
+    path: str, py_symbol: str, stride_symbol: str, outer_index: int
+) -> tuple[RegInstance, ...]:
+    """Every element of a register array inside one copy of its register file.
+
+    The IP-XACT export declares the array once, under the first copy of the
+    register file, so element ``e`` of copy ``n`` sits ``n`` strides above the
+    declared element address. ``py_symbol`` names the per-copy, per-element
+    ``*_REG_ADDR`` symbol in ``smc_reg.py``, with ``{index}`` for the copy and
+    ``{element}`` for the element; every address is compared against it.
+    """
+    stride = smc_addr(stride_symbol)
+    out: list[RegInstance] = []
+    for element, reg in enumerate(rdl_contract_array(path)):
+        addr = reg.addr + outer_index * stride
+        mapped = smc_reg_addr(py_symbol.format(index=outer_index, element=element))
+        assert addr == mapped, (
+            f"{path}[{outer_index}][{element}]: the IP-XACT element at 0x{reg.addr:08x} plus "
+            f"{outer_index} strides of 0x{stride:x} gives 0x{addr:08x}, smc_reg.py says "
+            f"0x{mapped:08x}"
+        )
+        out.append(RegInstance(f"{path}[{outer_index}][{element}]", reg, addr, element))
     return tuple(out)
 
 

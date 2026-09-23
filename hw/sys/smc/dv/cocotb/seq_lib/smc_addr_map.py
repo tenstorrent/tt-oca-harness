@@ -322,6 +322,54 @@ _UART_16550_DL_ADDR_H = (
 )
 
 
+_UART_16550_MAIN_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
+)
+_UART_16550_WO_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
+)
+_UART_16550_WO_ADDR_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo_addr.h"
+)
+_LOG_ENGINE_H = _REPO / "hw" / "ip" / "uart" / "log_engine" / "regs" / "gen" / "c" / "log_engine.h"
+_UART_LOG_ENGINE_CTRL_H = (
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
+    / "uart_log_engine_ctrl.h"
+)
+
+
+def uart_16550_main_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_main.h``."""
+    return _field_mask(_UART_16550_MAIN_H, symbol)
+
+
+def uart_16550_wo_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_main_wo.h``."""
+    return _field_mask(_UART_16550_WO_H, symbol)
+
+
+def uart_16550_wo_offset(symbol: str) -> int:
+    """Register offset inside the write-only window from ``uart_16550_main_wo_addr.h``."""
+    return _field_mask(_UART_16550_WO_ADDR_H, symbol)
+
+
+def log_engine_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``log_engine.h``."""
+    return _field_mask(_LOG_ENGINE_H, symbol)
+
+
+def uart_log_engine_ctrl_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_log_engine_ctrl.h``."""
+    return _field_mask(_UART_LOG_ENGINE_CTRL_H, symbol)
+
+
 def uart_16550_dl_u32(symbol: str) -> int:
     """Field mask/position/reset from generated ``uart_16550_dl.h``."""
     return _field_mask(_UART_16550_DL_H, symbol)
