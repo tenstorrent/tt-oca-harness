@@ -433,6 +433,7 @@ feature rows.
 |`smc_i2c_p0_stretch_test` |I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1 host READ stalls on TX_PENDING until TXDATA is supplied, then completes with that byte.
 |`smc_i2c_p0_timeout_test` |Stretch-timeout observation (empty target TX during host READ).
 |`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
+|`smc_i2c_target_acq_stretch_test` |The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
 |`smc_i2c_target_smbus_test` |VIP ARA + external SMBSUS# into DUT I2C0 SMBus target.
 |`smc_smbus_alert_ara_test` |U4-2: DUT SMBALERT# pad39 + VIP ARA @0x0C (TB CSR stands in for FW).
 |`smc_smbus_alert_suspend_test` |I2C0 target SMBALERT + I2C1 ARA/IRQ + SMBSUS sideband.
@@ -7841,6 +7842,42 @@ Drive `smc_telemetry_atb_capture_test_seq`. Each checker below is a named compar
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-223-smc_i2c_target_acq_stretch_test]]
+===== 223 `smc_i2c_target_acq_stretch_test`
+
+*Source Module*: `smc_i2c_target_acq_stretch_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `SmcI2cMasterVip` bit-banging the open-drain I2C0 pads
+
+*Objective*: The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
+
+*Test Coverage*:
+
+* The DUT's own I2C0 block is the addressed target; the bench is the controller on the pads, so the whole transaction crosses the SMC boundary.
+* The controller writes more payload bytes than the acquisition FIFO holds and nothing drains ACQDATA, which is the only way to reach the full condition from outside.
+* The acquisition FIFO depth is measured from TARGET_FIFO_STATUS.ACQLVL rather than assumed.
+* The hold is measured, not inferred: only the samples where the resolved SCL net is low while the bench has released its own pull are counted, and nothing but the target can pull SCL low then.
+* `CTRL.ACQ_START_STOP_EN` stays at its reset, so the acquisition FIFO carries the payload bytes with no start or stop entry around them.
+* Holding SCL through the address phase of a later transaction is not driven: it needs the acquisition FIFO to still be full when that transaction starts, and this bench can only end the current transaction by freeing the room.
+
+*Test Procedure*:
+
+Drive `smc_i2c_target_acq_stretch_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-ACQ-STRETCH` |With the controller writing and nothing draining, I2C0 STATUS.ACQFULL set with a non-zero TARGET_FIFO_STATUS.ACQLVL, and the resolved SCL net was low on at least the minimum number of samples taken while the bench had released its own pull
+|`CHK-I2C-TGT-ACQ-DRAIN` |Reading ACQDATA released the hold and let the controller's write finish with every byte acknowledged -- the bench controller raises on a NACK of the address or of any data byte -- and the acquired entries are exactly the payload bytes in order, leaving STATUS.ACQFULL clear and STATUS.ACQEMPTY set
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
