@@ -198,7 +198,8 @@ module sep_uvm_top
     //
     // Scope is by subtree because these are generate-loop instances with no single
     // name to target, which also disables every other assertion under those three
-    // blocks -- so the one OCAH contract in the set is re-armed by name below.
+    // blocks. The contracts re-armed by name are the crypto EDN arbiter
+    // hold-until-grant assume, its lock assert, and FipsWindowFloor_A.
 `ifndef VERILATOR
     initial begin
         // Scope-level $assertoff: these instances have no clock or reset for
@@ -207,8 +208,37 @@ module sep_uvm_top
         $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan);
+        // req_chk_i gates these two. The adapter scope stays off because
+        // AxisEdnEndpointCount_A is an immediate assert with no reset.
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .u_arbiter.ReqStaysHighUntilGranted0_M);
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .u_arbiter.LockArbDecision_A);
+        // The adapter's own contracts for the shared clear. Without these the
+        // scope-level $assertoff above would leave the clear unpoliced: an ack
+        // leaking through it, or an ack state machine driven to Error by the
+        // one-cycle disable, would both pass silently.
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .AxisEdnAllAckSmHealthy_A);
+        // Unrolled: a generate-block index must resolve at elaboration, so a
+        // procedural loop variable cannot select gen_ep[]. One line per
+        // endpoint of SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT (AES, KMAC, OTBN RND,
+        // OTBN URND).
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnNoAckDuringClear_A);
+        // req_chk_i changed on this instance too, so its arbiter contracts
+        // must be live for the same reason.
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan
+            .u_arbiter.ReqStaysHighUntilGranted0_M);
+        $asserton(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan
+            .u_arbiter.LockArbDecision_A);
         // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
-        // The only OCAH assertion under those subtrees, and reachable stimulus:
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.
         $asserton(0, `SEP_ESRC.FipsWindowFloor_A);
