@@ -36,24 +36,22 @@ filtering mechanisms also belong to this clock domain.
 
 === The Reference Clock Domain
 
-The reference clock domain (clk_ref_i) provides a low-speed, stable
-timing foundation for operations that require consistent, predictable
-timing behavior.
+The reference clock (`clk_ref_i`) supplies reference-domain logic, including
+the DFD local time-tick source and peripheral reference-clock inputs. It is
+separate from the following timer and CPU-debug clocks.
 
-System timers, including the Core Local Interruptor (CLINT) and
-specialized system timer OCTS (Open Chiplet Time Synchronization), operate
-within this reference domain.
+=== Timer and Debug Timebases
 
-This clock is used as reference clock for PLL control and frequency
-synthesis.
-
-The reference clock domain also serves as the synchronization anchor for
-reset domain crossings, providing the stable timing reference necessary
-for implementing robust reset synchronization mechanisms.
-
-Debug infrastructure, including JTAG interfaces and debug module
-operations, benefit from this stable timing reference to ensure reliable
-debug access independent of system operational state.
+* The OCTS instance in the SMC peripheral wrapper runs on `clk_smc_i`.
+  Its timing fields count SMC-clock cycles, not reference-clock cycles.
+* CLINT receives a tick every 1000 cycles of the CPU cluster's `cbus` clock.
+  The cluster uncore clock input is connected to the CPU wrapper's `clk_i`.
+  CLINT time therefore depends on that clock and does not continue advancing
+  merely because `clk_ref_i` is running.
+* The CPU debug module receives a gated version of the CPU wrapper's `clk_i`.
+  Its gate is controlled by debug activation (with a test override). JTAG TCK
+  clocks the scan interface separately; a running TCK or reference clock does
+  not guarantee debug-module operation when the CPU clock source is stopped.
 
 === The Peripheral Clock Domain
 
