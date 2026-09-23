@@ -59,6 +59,9 @@ class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
     read_tmp_status(persistence, bypass_escape);
     family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", 64'(persistence), 64'd0,
                  "repeated release");
+    // SAMPLE/PRELOAD after the release selects the chain and loops the
+    // pattern back.
+    check_loopback_scan(6'(SAMPLE_PRELOAD_INSTR), patterns[patterns.size()-1], DtpBsrModelLen);
 
     finalize_family_checker();
   endtask
