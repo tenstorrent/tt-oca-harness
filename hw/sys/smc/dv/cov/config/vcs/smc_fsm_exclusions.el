@@ -9,28 +9,44 @@
 // merged report; regenerate rather than edit. F1 and F3 take every point of
 // a state variable that is not a reachable control FSM; F2 takes only the
 // uncovered edges the always_comb default contributes; F4 takes a state whose
-// decode arm a parameter leaves unelaborated. The generator's docstring and
-// the ANNOTATION before each block state the facts.
+// decode arm a parameter leaves unelaborated, and F5 the uncovered edges that
+// exist only as a state register's reset assignment. The generator's docstring
+// and the ANNOTATION before each block state the facts.
 //==================================================
 
 CHECKSUM: "2842179274 2272768170"
 ANNOTATION: "SMC-FSM-F2-DEFAULT: next_state = AVS_IDLE is the always_comb default of the protocol FSM, which the extractor lists as a transition from every state; every case arm assigns next_state, so no state reaches AVS_IDLE through the default."
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: avsbus_controller
 Fsm cur_state "2272768170"
 Transition AVS_END_1ST_SUBFRAME->AVS_IDLE "32->8"
+Transition AVS_END_1ST_SUBFRAME->AVS_RESET "32->1"
+Transition AVS_END_LAST_SUBFRAME->AVS_RESET "512->1"
 Transition AVS_END_MID_SUBFRAME->AVS_IDLE "128->8"
+Transition AVS_END_MID_SUBFRAME->AVS_RESET "128->1"
 Transition AVS_LAUNCH_FRAME_POST_RESYNC->AVS_IDLE "4->8"
+Transition AVS_LAUNCH_FRAME_POST_RESYNC->AVS_RESET "4->1"
 Transition AVS_PROCESS_PREVIOUS_SDATA->AVS_IDLE "65536->8"
+Transition AVS_PROCESS_PREVIOUS_SDATA->AVS_RESET "65536->1"
 Transition AVS_RESET->AVS_IDLE "1->8"
 Transition AVS_RETRY_END_RECV_SUBFRAME->AVS_IDLE "32768->8"
+Transition AVS_RETRY_END_RECV_SUBFRAME->AVS_RESET "32768->1"
 Transition AVS_RETRY_END_XMIT_AND_RECV_SUBFRAME->AVS_IDLE "2048->8"
+Transition AVS_RETRY_END_XMIT_AND_RECV_SUBFRAME->AVS_RESET "2048->1"
 Transition AVS_RETRY_END_XMIT_SUBFRAME->AVS_IDLE "8192->8"
+Transition AVS_RETRY_END_XMIT_SUBFRAME->AVS_RESET "8192->1"
 Transition AVS_RETRY_SHIFT_RECV_SUBFRAME->AVS_IDLE "16384->8"
+Transition AVS_RETRY_SHIFT_RECV_SUBFRAME->AVS_RESET "16384->1"
 Transition AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME->AVS_IDLE "1024->8"
+Transition AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME->AVS_RESET "1024->1"
 Transition AVS_RETRY_SHIFT_XMIT_SUBFRAME->AVS_IDLE "4096->8"
+Transition AVS_RETRY_SHIFT_XMIT_SUBFRAME->AVS_RESET "4096->1"
 Transition AVS_SHIFT_1ST_SUBFRAME->AVS_IDLE "16->8"
+Transition AVS_SHIFT_1ST_SUBFRAME->AVS_RESET "16->1"
 Transition AVS_SHIFT_LAST_SUBFRAME->AVS_IDLE "256->8"
+Transition AVS_SHIFT_LAST_SUBFRAME->AVS_RESET "256->1"
 Transition AVS_SHIFT_MID_SUBFRAME->AVS_IDLE "64->8"
+Transition AVS_SHIFT_MID_SUBFRAME->AVS_RESET "64->1"
 
 CHECKSUM: "1165090697 249869120"
 ANNOTATION: "SMC-FSM-F4-PARAM-OFF: the MMR register map exists only when the eFuse instance has lifecycle state, and smc_efuse_wrapper instantiates the controller with HAS_LC_STATE = 0, so the decode arm selecting EFUSE_MMR_REG_MAP is not elaborated and no access reaches the state or its edges."
@@ -41,6 +57,12 @@ Transition EFUSE_CSR_REG_MAP->EFUSE_MMR_REG_MAP "1->2"
 Transition EFUSE_MMR_REG_MAP->ERR_DECODE "2->3"
 Transition ERR_DECODE->EFUSE_MMR_REG_MAP "3->2"
 Transition SHADOW_REG_MAP->EFUSE_MMR_REG_MAP "0->2"
+
+CHECKSUM: "194876589 1063748259"
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+MODULE: smc_cool_reset_wrap
+Fsm flr_counter_state "909361475"
+Transition COUNT_DOWN->IDLE "1->0"
 
 CHECKSUM: "3252625326 330493458"
 ANNOTATION: "SMC-FSM-F1-LOOPVAR: block_index is the loop variable of the message decoder, a state-shaped register the extractor reports as an FSM; its settled value is fixed by NUM_BLOCKS_PER_PACKET and no ATB stimulus moves it."
@@ -69,3 +91,9 @@ Transition REQ_HANDSHAKE->W_HANDSHAKE "1->3"
 Transition RESP_HANDSHAKE->RESET_VALUE "4->0"
 Transition W_HANDSHAKE->RESET_VALUE "3->0"
 Transition W_HANDSHAKE->RESP_HANDSHAKE "3->4"
+
+CHECKSUM: "3391558527 4062283189"
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+MODULE: zeroer
+Fsm cur_state "4062283189"
+Transition ST_ISSUE_ADDR->ST_IDLE "2->1"

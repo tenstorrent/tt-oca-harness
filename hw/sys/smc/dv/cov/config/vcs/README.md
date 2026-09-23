@@ -104,8 +104,9 @@ The first three are written by `gen_smc_cov_exclusions.py` from urg's exclusion
 templates and the run's raw report (`cov/report_raw`, written without the
 exclusion files). The condition, branch and F2 entries list only points that
 report marks uncovered, so a reachable point is never hidden by a pattern;
-F1 and F3 take a whole state variable that is not a reachable control FSM, and
-F4 a state whose decode arm a parameter leaves unelaborated:
+F1 and F3 take a whole state variable that is not a reachable control FSM, F4
+a state whose decode arm a parameter leaves unelaborated, and F5 the uncovered
+edges that exist only as a state register's reset assignment:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions cond+branch+fsm -report <dir>
     python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
@@ -119,6 +120,7 @@ F4 a state whose decode arm a parameter leaves unelaborated:
 | `smc_fsm_exclusions.el` | F2 DEFAULT | `avsbus_controller.cur_state` has `next_state = AVS_IDLE` as its always_comb default, which the extractor lists as an edge from every state to AVS_IDLE; every case arm assigns next_state, so the default never fires |
 | `smc_fsm_exclusions.el` | F3 TIEOFF | `trace_axi_master.state` cannot leave RESET_VALUE: `smc_dfd_wrap` ties every `m_trc_axi_*` response input to zero, so the write master never sees a handshake |
 | `smc_fsm_exclusions.el` | F4 PARAM-OFF | `efuse_interface_controller.efuse_reg_select` selects EFUSE_MMR_REG_MAP only when the instance has lifecycle state (`hw/ip/efuse/doc/memmap.adoc`); `smc_efuse_wrapper` sets `HAS_LC_STATE = 0`, so the arm is not elaborated and the state and its edges have no access that reaches them |
+| `smc_fsm_exclusions.el` | F5 RESET-EDGE | a state register's reset assignment is expanded into a transition from every state; where no case arm assigns the reset state, the edge exists only if the block's reset is asserted while the FSM occupies that one state, and the package grades reset behaviour through its reset leaves |
 
 A regblock whose stall is `external_pending` (it has external registers)
 gets A2 only; a regblock that decodes errors gets neither. `--check` reports

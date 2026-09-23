@@ -36,6 +36,11 @@ state variable as a transition:
   EFUSE_MMR_REG_MAP only when the instance has lifecycle state, and
   `smc_efuse_wrapper` instantiates it with `HAS_LC_STATE = 0`, so the decode
   arm that selects the state is not elaborated.
+* F5 RESET-EDGE: a state register's reset assignment is expanded into a
+  transition from every state. Where no case arm assigns the reset state, the
+  only way to cover such an edge is to assert the block's reset while the FSM
+  occupies that one state. Reset behaviour is graded by the reset tests, not
+  by landing a reset in each protocol state.
 
 Input is the set of templates urg writes for the merged database::
 
@@ -123,14 +128,24 @@ F4 = (
     "reaches the state or its edges."
 )
 
-# (module, fsm) -> (class, selector). Selector None takes every point of the FSM;
-# ("to", S) takes the uncovered transitions into S; ("state", S) takes S and the
-# uncovered transitions that leave or enter it.
-FSM_FACTS: dict[tuple[str, str], tuple[str, tuple[str, str] | None]] = {
-    ("telemetry_receiver", "block_index"): (F1, None),
-    ("avsbus_controller", "cur_state"): (F2, ("to", "AVS_IDLE")),
-    ("trace_axi_master", "state"): (F3, None),
-    ("efuse_interface_controller", "efuse_reg_select"): (F4, ("state", "EFUSE_MMR_REG_MAP")),
+F5 = (
+    "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a "
+    "transition from every state, and no case arm of this FSM assigns the reset state, "
+    "so the edge exists only if the block's reset is asserted while the FSM occupies "
+    "that one state. The DV package grades reset behaviour through its reset leaves."
+)
+
+# (module, fsm) -> list of (class, selector). Selector None takes every point of
+# the FSM; ("to", S) the uncovered transitions into S; ("state", S) the state S
+# and the uncovered transitions that touch it; ("edges", (...)) exactly those
+# uncovered transitions.
+FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" = {
+    ("telemetry_receiver", "block_index"): [(F1, None)],
+    ("avsbus_controller", "cur_state"): [(F2, ("to", "AVS_IDLE")), (F5, ("to", "AVS_RESET"))],
+    ("trace_axi_master", "state"): [(F3, None)],
+    ("efuse_interface_controller", "efuse_reg_select"): [(F4, ("state", "EFUSE_MMR_REG_MAP"))],
+    ("zeroer", "cur_state"): [(F5, ("edges", ("ST_ISSUE_ADDR->ST_IDLE",)))],
+    ("smc_cool_reset_wrap", "flr_counter_state"): [(F5, ("edges", ("COUNT_DOWN->IDLE",)))],
 }
 
 
@@ -357,8 +372,9 @@ def render_fsm(
         "// merged report; regenerate rather than edit. F1 and F3 take every point of",
         "// a state variable that is not a reachable control FSM; F2 takes only the",
         "// uncovered edges the always_comb default contributes; F4 takes a state whose",
-        "// decode arm a parameter leaves unelaborated. The generator's docstring and",
-        "// the ANNOTATION before each block state the facts.",
+        "// decode arm a parameter leaves unelaborated, and F5 the uncovered edges that",
+        "// exist only as a state register's reset assignment. The generator's docstring",
+        "// and the ANNOTATION before each block state the facts.",
         "//==================================================",
     ]
     count = 0
@@ -371,27 +387,36 @@ def render_fsm(
                 if (module, fsm) in FSM_FACTS:
                     block.append(("", entry))
                 continue
-            fact = FSM_FACTS.get((module, fsm))
+            facts = FSM_FACTS.get((module, fsm))
             m = FSM_ENTRY_RE.match(entry)
-            if fact is None or m is None:
+            if not facts or m is None:
                 continue
-            reason, selector = fact
             kind, src, dst = m.group(1), m.group(2), m.group(3)
-            if selector is None:
-                block.append((reason, entry))
-                continue
-            mode, state = selector
             missing = uncovered.get((module, fsm), set())
-            if kind == "State":
-                if mode == "state" and src == state:
+            edge = f"{src}->{dst}"
+            for reason, selector in facts:
+                if selector is None:
                     block.append((reason, entry))
-            elif f"{src}->{dst}" in missing:
-                if (mode == "to" and dst == state) or (mode == "state" and state in (src, dst)):
+                    break
+                mode, target = selector
+                if kind == "State":
+                    if mode == "state" and src == target:
+                        block.append((reason, entry))
+                        break
+                    continue
+                if edge not in missing:
+                    continue
+                if (
+                    (mode == "to" and dst == target)
+                    or (mode == "state" and target in (src, dst))
+                    or (mode == "edges" and edge in target)
+                ):
                     block.append((reason, entry))
+                    break
         if not any(r for r, _ in block):
             continue
         out += ["", f"CHECKSUM: {section.checksum}"]
-        for reason in (F1, F2, F3, F4):
+        for reason in (F1, F2, F3, F4, F5):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")
