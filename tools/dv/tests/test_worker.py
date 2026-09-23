@@ -290,6 +290,7 @@ class WorkerMainTest(ManifestCase):
         fragment = json.loads(task.result_json.read_text(encoding="utf-8"))
         self.assertEqual((fragment["item"], fragment["status"]), ("", "PASS"))
         self.assertEqual(fragment["target_build"]["target"], "default")
+        self.assertNotIn("target_build", fragment["metadata"])
         done = json.loads(completion_path(self.run_dir, task.task_id).read_text(encoding="utf-8"))
         self.assertEqual(done["status"], "PASS")
 

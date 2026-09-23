@@ -7,7 +7,7 @@
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_cpu_ctrl</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x8</td><td><a href="#CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>TODO: clock-gate control - placeholder fields, not yet implemented.</td></tr>
@@ -45,7 +45,7 @@
 <tr><td>0x1C0</td><td><a href="#PERIPH_BUS_ERR_CLEAR">PERIPH_BUS_ERR_CLEAR</a></td><td>W</td><td>Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle<br>clear pulse to that block&#x27;s latch; bit order matches<br>PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block<br>cannot discard a fault another block raised between the status read and<br>this write. A fault arriving in the same cycle as its own clear still<br>latches.</td></tr>
 <tr><td>0x1000</td><td><a href="#SEP_VERSION_ID">SEP_VERSION_ID</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

@@ -189,7 +189,7 @@ def stage_result(name: str) -> StageResult:
 
 
 def normalised(document: Any) -> Any:
-    """The document with every timestamp replaced by one sentinel."""
+    """The document with one sentinel in place of every timestamp."""
     if isinstance(document, dict):
         return {
             key: GENERATED_AT if key == "generated_at" else normalised(value)
@@ -286,9 +286,8 @@ class SiteDataCase(unittest.TestCase):
                     result=result,
                 ),
             )
-            jobs.append(
-                job_record(leaf, result, str((path / "result.json").relative_to(self.root)))
-            )
+            result.result_json = str((path / "result.json").relative_to(self.root))
+            jobs.append(job_record(leaf, result, result.result_json))
             finals[(leaf.item, leaf.seed)] = result
         # The run-level result lists one entry per leaf, the regression file one per attempt.
         stages = list(finals.values())

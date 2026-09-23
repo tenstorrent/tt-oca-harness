@@ -51,7 +51,7 @@ DTP_NUM_CLK_STOP_REQ = XTRIG_NUM_CLK_STOP_REQ + XTRIG_SMC_CLK_STOP_LANES
 NUM_INT_TO_SMC = 256
 # hw/sys/smu/doc/port_table.adoc `lc_state_o` (`[2*LC_STATE_WIDTH-1:0]`, tie
 # value `8'hf0`); hw/sys/smc/doc/port_table.adoc `lc_state_i` "(8 bits)";
-# hw/sys/sep/doc/periphs.adoc gives the life-cycle state width as 4.
+# hw/sys/sep/doc/otp_fuse_controller.adoc gives the life-cycle state width as 4.
 LC_STATE_O_WIDTH = 8
 # hw/sys/smu/doc/port_table.adoc `lcc_demote_state_1_o` / `_2_o`: `[1:0]`.
 LCC_DEMOTE_WIDTH = 2

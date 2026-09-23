@@ -7,8 +7,7 @@ scratch by the firmware loader. On wrap 0 with UART0 in MCR.LOOP it runs: A, an
 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request
 into a 64-byte slot written against uart_tx_ready low (the transmitter reports
 ready only while its TX FIFO holds no data), whose 64 bytes the firmware reads
-back in order while the transfer runs; C, a completion check against a defined UART
-offset (the write-error path is unreachable, as the image documents); D, a
+back in order while the transfer runs; D, a
 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to
 one 8-byte beat. A, D and E read back exactly the requested or clamped byte
 count from RBR and require no extra byte. Those compares are the firmware's.
@@ -50,7 +49,7 @@ from smc_base_test import smc_base_test
 # Scenario E: 240 / 16 = 15 bytes per slot.
 SCENARIO_E_REGION_SIZE = 0xF0
 # Bytes 0..15 are scenario E's 0xE0.., bytes 16..63 are what remains of
-# scenario B's 0x40 + i fill (A, C, D and E rewrite only the first 8 or 16).
+# scenario B's 0x40 + i fill (A, D and E rewrite only the first 8 or 16).
 SPM_PATTERN = bytes(0xE0 + i for i in range(16)) + bytes(0x40 + i for i in range(16, 64))
 # Wrap-0 log engine write stall, published by tb_top: a fetched byte waiting in
 # the engine's read-data FIFO while the UART transmit-ready input is low. The

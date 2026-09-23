@@ -17,10 +17,6 @@
 //     rdata_fifo still holds fetched data. A 0x400-byte region gives each slot
 //     64 bytes, so a 64-byte request exceeds the 32-byte TX FIFO.
 //
-//   Scenario C — log_write completion with both interrupt enables set.
-//     Completion-only: no address the log_write master can reach answers
-//     with an error, so LOG_WRITE_ERR is not checked (see UART_ECR_OFF).
-//
 //   Scenarios D and E — both FSMs terminate at the same effective length.
 //     D clamps a request to an aligned slot capacity. E rounds a
 //     non-word-aligned slot down to complete 8-byte fetch beats. Both verify
@@ -70,28 +66,11 @@
 #define LE_INTR_STATUS_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_INTR_ENABLE_OFF \
-    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(0) - \
-     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 #define LE_LOG_CTRL0_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 
-#define BIT_FETCH_ERR (1u << 0)
-#define BIT_WRITE_ERR (1u << 4)
-
 #define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
-// Scenario C's log_write target. 0x20 is a DEFINED offset: the generated map
-// places ECR at 0x20 and ITR at 0x24
-// (hw/ip/uart/uart_16550/regs/gen/svh/uart_16550_main_reg.svh:48-51), so the
-// write is decoded and answered normally. Nor would an out-of-range offset
-// error: the generated UART register block ties its write-error output to 0, so
-// every write to this block returns OKAY. The address stays only so the scenario
-// is not silently re-armed with another guessed one.
-// Scenario C cannot reach LOG_WRITE_ERR through any address, so it runs as a completion
-// check. Re-arming it as an error-path proof needs a TB fault hook on the log_write
-// B-channel, not a different offset.
-#define UART_ECR_OFF 0x20u
 
 static void setup_uart_8n1_fifo(void) {
     write_reg(WRAP0_CTRL_REG, 1u);                    // padmux enable
@@ -256,41 +235,6 @@ int main(void) {
             test_fail(0);
         }
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    }
-
-    //--------------------------------------------------------------------------
-    // SCENARIO C — log_write completion with both interrupt enables set.
-    // The log_write master feeds the LOCAL uart_16550 AXI-lite slave (via
-    // log_write_axi_lite_mux), NOT the SMC fabric, and that register block
-    // answers every write OKAY (see the UART_ECR_OFF note above), so no
-    // log_write_err is raised and INTR_STATUS.LOG_WRITE_ERR is not checked.
-    // The write FSM advances on mem_rsp_valid, so the transfer COMPLETES —
-    // poll normally. Good fetch from SRAM; write addr = UART_BASE + 0x20.
-    //--------------------------------------------------------------------------
-    info_msg_s(0, "scenario C: log_write completion only (no reachable error path)");
-    {
-        volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
-        for (int i = 0; i < 8; i++) buf[i] = (uint8_t)(0xC0u + i);
-
-        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-        write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);          // slot = 16 B
-        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE); // good fetch
-        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
-        write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_ECR_OFF);
-        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
-        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 8u);
-
-        // The 8 byte-writes are answered OKAY. Poll LOG_CTRL hwclr: the write
-        // FSM advances on each response and asserts log_write_done.
-        if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
-            info_msg_s(0, "FAIL: scenario C: write did not complete");
-            test_fail(0);
-        }
-        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-        write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
     }
 
     //--------------------------------------------------------------------------

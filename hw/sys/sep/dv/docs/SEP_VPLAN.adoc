@@ -346,7 +346,7 @@ never when it was written.
 |`sep_trng_reset_recovery_test`
 |no_cpu, +skip_fuse_sense, +esrc_noise_force
 |ocah_axi_vip, entropy golden
-|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated paths answer SLVERR while the external source-select register stays outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
+|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the downstream clear crosses into `clk_i` through two synchronizer stages, the pool scrubs its stale and half-packed data, the isolated paths answer SLVERR while the external source-select register stays outside the domain, and recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
 |`sep_abr_mldsa_keygen_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -564,7 +564,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_efuse_set_only_monotonicity_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|Every `periphs.adoc` fuse-field row except `LC_STATE` is walked. Set-only rows OR-merge; SW-writable rows overwrite. `LOCK` is both RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after the other rows. The lifecycle nibble stays with the LC W1S leaves.
+|Every `otp_fuse_controller.adoc` fuse-field row except `LC_STATE` is walked. Set-only rows OR-merge; SW-writable rows overwrite. `LOCK` is both RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after the other rows. The lifecycle nibble stays with the LC W1S leaves.
 |`sep_lcc_lc_state_w1s_prod_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, LCC golden
@@ -780,7 +780,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
 
 |Coordinated TRNG reset and ordered recovery
-|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. Intra-window decode of the adopter TRNG passthrough is not graded.
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the two-stage synchronization of the reset-derived downstream clear, pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. Intra-window decode of the adopter TRNG passthrough is not graded.
 
 |Clock-gate CSR
 |`sep_clock_gate_control_test` (storage / reachability). Live per-IP gate is not in this RTL.
@@ -1635,7 +1635,7 @@ starved it to a handful of writes fails.
 |CHK-DFT-SECURE
 |`dbg_disable.dft_secure` matches Case 3 of the DTP ladder (`SIP_DBG & CHIPLET_DBG & SEP_DBG`, inverted) for the same `FEAT_CTRL` each stitch check just verified, at both strap polarities and at every later state of the walk. The TEST_EN strap is not a term: a formula of `!secure_tm` fails when Case 3 and the strap disagree (TEST_DEV with the pinned DIS vectors keeps Case 3 closed at `secure_tm=1`; `RMA_CHIPLET` opens Case 3 at `secure_tm=0`). Dump refusal on the secure chain is a DFT command-class rule, not this SIB.
 |CHK-SECRET-BLANK
-|KM-secret disconnect, proven as a transition on one image rather than as a single observation. With the strap at 0 each of `CHIPLET_UID`, `SIP_UID`, `SYS_UID` and `CLASS_KEY` is present in the sensed shadow; with it raised the same four fields do not read back their staged values. `periphs.adoc` names those four Key Manager fields and the TEST_EN disconnect of fuse-bank outputs; it does not require a zero readback. Each staged value is asserted non-zero first, so a DUT that never sensed a field cannot satisfy that field's disconnected half.
+|KM-secret disconnect, proven as a transition on one image rather than as a single observation. With the strap at 0 each of `CHIPLET_UID`, `SIP_UID`, `SYS_UID` and `CLASS_KEY` is present in the sensed shadow; with it raised the same four fields do not read back their staged values. `otp_fuse_controller.adoc` names those four Key Manager fields and the TEST_EN disconnect of fuse-bank outputs; it does not require a zero readback. Each staged value is asserted non-zero first, so a DUT that never sensed a field cannot satisfy that field's disconnected half.
 |CHK-SECURE-TM-PROG-BLOCK
 |While `secure_tm` is asserted, a program of LC_STATE bit 96 must complete with `PROGRAM_DONE`+`PROGRAM_ERR` (`PROGRAM_CTRL` bits 25 and 26), not succeed and not starve DONE. That is the software-visible refusal. Unique “the command never reached the OTP bank” is not claimed: fail-injection credit re-arms on every `rst_ni`, and the walk must `resense()` to drop the latched strap, so a later retry cannot witness whether the blocked attempt consumed credit.
 |CHK-SIGINT
@@ -2411,7 +2411,7 @@ remapped routes to the error slave and never executes.
 |CHK-COEXIST
 |The CPU made real progress during the debug-port burst — the overlap was genuine.
 |CHK-JTAG-TOKEN-BLOCK
-|In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the `hw/sys/sep/doc/periphs.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`.
+|In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the `hw/sys/sep/doc/otp_fuse_controller.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`.
 |CHK-JTAG-IFACE-DENY
 |In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes DECERR with the DV-owned deny-path sentinel `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
 |===
@@ -3057,7 +3057,7 @@ releases. Both mux directions are graded.
 |CHK-ISOLATE-LANDED
 |`SW_RESET_N` readback shows the HMAC bit held, so a refusal cannot be a missed write.
 |CHK-ISOLATE-SLVERR
-|During the window a read of the same `DIGEST_0` completes SLVERR, not OKAY, DECERR, or hang, and the beat does not carry the live digest. `periphs.adoc` names SLVERR for a transaction presented while isolated; it does not name the error data.
+|During the window a read of the same `DIGEST_0` completes SLVERR, not OKAY, DECERR, or hang, and the beat does not carry the live digest. `reset_controller.adoc` names SLVERR for a transaction presented while isolated; it does not name the error data.
 |CHK-ISOLATE-WR
 |During the window a write to HMAC `CFG` completes SLVERR. The write target is the RW `CFG` register, not the RO digest.
 |CHK-ISOLATE-SIBLING
@@ -3121,8 +3121,9 @@ out of this subsystem.
 
 *Objective*: Proves the one `SW_RESET_N` bit that resets ESRC, CSRNG and EDN
 together behaves as a single coordinated domain: the reset waits for all three
-AXI ports to isolate, the entropy pool scrubs whatever it held, the external
-source path stays outside the domain, and recovery admits only fresh entropy.
+AXI ports to isolate, its downstream clear changes only after two `clk_i`
+synchronizer edges, the entropy pool scrubs whatever it held, the external source
+path stays outside the domain, and recovery admits only fresh entropy.
 
 *Test Coverage*: Shared TRNG `SW_RESET_N` drain-before-reset and ordered recovery.
 
@@ -3137,7 +3138,7 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 . Hold every entropy consumer (KM, OTBN, AES, KMAC), then request the TRNG reset
   while concurrent reads are in flight on all three internal CSR ports.
 . Through the reset, observe the isolate probe, the fate of the in-flight
-  accesses, and the pool's packer depth.
+  accesses, the two-stage clear synchronizer, and the pool's packer depth.
 . With the domain in reset, read the three internal ports and the
   source-select register; then exercise the JTAG reset pair to hold and
   release the same coordinated reset.
@@ -3155,6 +3156,8 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |While the reset is requested the isolate probe reads all three ports isolated. This is the drain-before-reset evidence: the reset does not assert until ESRC, CSRNG and EDN have all reported isolated.
 |CHK-TRNG-DRAIN
 |Every in-flight pre-reset access completes either OKAY or SLVERR — never DECERR and never a hang — and at least one completes OKAY, so accepted traffic provably drained rather than being dropped.
+|CHK-TRNG-CLEAR-SYNC
+|The reset-derived clear remains inactive when the asynchronous TRNG reset is first observed and asserts within the following two observed `clk_i` edges.
 |CHK-TRNG-PACKER
 |The entropy pool's packer depth is zero, so a half-packed word does not survive the reset.
 |CHK-TRNG-SLVERR
@@ -3162,7 +3165,7 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |CHK-TRNG-EXTERNAL
 |After the packer is parked the test writes a source-select value that is not the RDL reset of `sel[2:0]` (`0x7` in `sep_cpu_ctrl.rdl`), confirms the write took, then asserts the same value after the internal reset. A match on the reset value would be vacuous. The `0x1091_7000` passthrough is an adopter aperture; intra-window decode is not graded.
 |CHK-TRNG-JTAG
-|The JTAG override holds the coordinated reset asserted and releases it again, the same pair used for the other domains.
+|The JTAG override holds the coordinated reset asserted and releases it again; the downstream clear remains asserted through the first `clk_i` edge and releases after the second.
 |CHK-TRNG-CONSUMERS-HELD
 |The `SW_RESET_N` readback shows the four consumers still held and the TRNG bit released, so the recovery ordering is observed rather than assumed.
 |CHK-TRNG-CSR-RESET
@@ -3172,7 +3175,7 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |CHK-TRNG-FRESH
 |ESRC produces a fresh seed, `FIPS_LOCK` sets again, and a pool read succeeds, all before the consumer resets are restored to their saved value.
 |CHK-TRNG-RECOVERY
-|Closing summary line over the eleven rows above: the pool went full, emptied and refilled, the stale read was rejected, fresh data was delivered, and the consumer resets were restored to their saved value. It carries no contract of its own.
+|Closing summary line over the twelve rows above: the pool went full, emptied and refilled, the stale read was rejected, fresh data was delivered, and the consumer resets were restored to their saved value. It carries no contract of its own.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -5637,7 +5640,7 @@ reported as such rather than counted as a pass.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the eFuse shadow-register write path on every `periphs.adoc` fuse-field row except `LC_STATE`: set-only rows OR-merge so a bit that is already set cannot be cleared by a write of zero, and SW-writable rows overwrite. Randomization is RANDCFG — every walked row is visited every seed, word index and bit patterns come from the run seed, and the write-policy contract itself is directed.
+*Objective*: Proves the eFuse shadow-register write path on every `otp_fuse_controller.adoc` fuse-field row except `LC_STATE`: set-only rows OR-merge so a bit that is already set cannot be cleared by a write of zero, and SW-writable rows overwrite. Randomization is RANDCFG — every walked row is visited every seed, word index and bit patterns come from the run seed, and the write-policy contract itself is directed.
 
 *Test Coverage*: Every walked fuse-field row follows its specification write policy. The lifecycle nibble stays with the LC W1S leaves.
 
@@ -5645,7 +5648,7 @@ reported as such rather than counted as a pass.
 
 [arabic]
 . Scope is the shadow-register write path.
-. Every `hw/sys/sep/doc/periphs.adoc` fuse-field row except `LC_STATE` is walked. Set-only rows OR-merge. SW-writable `true` rows overwrite, then a write of 0 clears.
+. Every `hw/sys/sep/doc/otp_fuse_controller.adoc` fuse-field row except `LC_STATE` is walked. Set-only rows OR-merge. SW-writable `true` rows overwrite, then a write of 0 clears.
 . `LOCK` is both RDL windows: `LOCKS` word 0, `LOCKS` word 1, and `LOCKS_SPARE`. Assigned lock slots stay 0 at sense and are written after every other row so they do not write-lock a field this invocation still writes. `LOCKS_SPARE` stages ones only in the unassigned half; the assigned half is set from zero in that same late cell.
 . `SIP_DIS` and `SYS_DIS` stay on their function-group word.
 . Program × lock is a different mechanism.
@@ -6863,7 +6866,7 @@ constraint is not an open defect.
 |The array behind the fuse-command interface is a simulation-only behavioural bank, not an OTP macro. Two properties the eFuse programming entries appear to establish are properties of that model rather than of hardware: write-one-to-set additivity is OR-only by construction, so a bank that overwrote instead of OR-ing cannot be represented and no-clobber is not a failable contract; and persistence across cold reset comes from the model having no reset on its storage. What is proven against real logic is that each program reached its addressed bit through the real programming path, and that the sense FSM re-reads the array after reset with the shadow tracking it.
 
 |JTAG MMR token-block access
-|`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG, outbound CFG, remap banks, and region CSRs outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
+|`hw/sys/sep/doc/otp_fuse_controller.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG, outbound CFG, remap banks, and region CSRs outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
 |RTL assertions are backend-dependent
 |What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA expand to nothing, and the SEP Verilator targets pass no `--assert`, so the two-state `ocah_axi_sva` rules are dropped as well. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
 

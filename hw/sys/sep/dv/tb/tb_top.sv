@@ -1057,6 +1057,8 @@ module sep_uvm_top
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
+    assign trng_reset_active_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_trng.trng_reset_active_o;
     assign trng_axi_isolated_probe_o = {
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_edn,
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_csrng,
