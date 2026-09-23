@@ -222,11 +222,43 @@ def rdl_register(path: str) -> RdlReg:
     return reg
 
 
+def rdl_contract(path: str) -> RdlReg:
+    """One register's metadata, without the ``smc_reg.py`` address cross-check.
+
+    A register the RDL declares once and the address map instantiates more than
+    once has no unindexed ``*_REG_ADDR`` symbol in ``smc_reg.py``. The caller
+    takes the contract from here and cross-checks each instance's address
+    against that map's per-instance symbol through :func:`smc_reg_addr`.
+    """
+    try:
+        return _registers()[path]
+    except KeyError as exc:
+        raise KeyError(f"{path} is not a register in {_IPXACT}") from exc
+
+
+def smc_reg_addr(symbol: str) -> int:
+    """Return one register address from the generated ``smc_reg.py`` map."""
+    value = getattr(_smc_reg_module(), symbol, None)
+    assert value is not None, f"the generated smc_reg.py declares no {symbol}"
+    return value
+
+
 def rdl_array(path: str) -> tuple[RdlReg, ...]:
     """Every element of a register array, in index order."""
     regs = [reg for key, reg in _registers().items() if key.startswith(f"{path}[")]
     assert regs, f"{path} is not a register array in {_IPXACT}"
     return tuple(rdl_register(f"{path}[{i}]") for i in range(len(regs)))
+
+
+def rdl_contract_array(path: str) -> tuple[RdlReg, ...]:
+    """Every element of a register array, without the ``smc_reg.py`` cross-check.
+
+    The counterpart of :func:`rdl_contract` for an array inside a register file
+    the address map instantiates more than once.
+    """
+    regs = [key for key in _registers() if key.startswith(f"{path}[")]
+    assert regs, f"{path} is not a register array in {_IPXACT}"
+    return tuple(rdl_contract(f"{path}[{i}]") for i in range(len(regs)))
 
 
 def rdl_registers_under(prefix: str) -> tuple[RdlReg, ...]:

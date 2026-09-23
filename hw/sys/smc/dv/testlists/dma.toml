@@ -27,3 +27,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "decode"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_multi_burst_test"
+module = "smc_zeroer_multi_burst_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "zeroer"]
+run_modes = ["smoke"]

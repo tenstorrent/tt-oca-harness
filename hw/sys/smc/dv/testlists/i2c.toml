@@ -211,3 +211,11 @@ tests = [
     "smc_i2c_target_smbus_test",
     "smc_i2c_intr_mask_test",
 ]
+
+[[tests]]
+name = "smc_i2c_intr_reg_sweep_test"
+module = "smc_i2c_intr_reg_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]

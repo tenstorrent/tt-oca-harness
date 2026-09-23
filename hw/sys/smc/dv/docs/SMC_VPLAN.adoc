@@ -212,6 +212,7 @@ feature rows.
 |`smc_default_reg_rd_test` |Run a compact OSS-safe default-register read sweep.
 |`smc_ext_interrupts_pin_test` |ext_interrupts_i[0] after prim_sync3.
 |`smc_fw_plic_claim_test` |Firmware programs the cluster PLIC and claims ext_interrupts_i[0] through it.
+|`smc_periph_regblock_sweep_test` |The peripheral register blocks no other leaf writes -- AVSBus, telemetry, system timer, eFuse interface, DMA configuration and the log-engine region registers -- cycled against their RDL contract and restored.
 |`smc_rdl_field_sweep_test` |Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
 |`smc_register_boundary_depth_test` |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |Run the SMC OSS register-sanity scenario.
@@ -234,6 +235,7 @@ feature rows.
 |`smc_wdt_key_csr_test` |CMP writes are gated by the KEY magic value, proven per core.
 |`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |Run zeroer over output-fabric payload bytes and check the model.
+|`smc_zeroer_multi_burst_test` |Clear a region larger than one AXI burst and check the first and last word of each half, with a witness word past the end.
 |`smc_zeroer_sanity_test` |Run zeroer over output-fabric payload bytes and check the model.
 |===
 
@@ -252,6 +254,7 @@ feature rows.
 |`smc_cpu_to_sep_axi_test` |Run the CPU-control to SEP-facing CSR reachability precheck.
 |`smc_deadspace_decode_test` |Probe wrap-period offsets past PeakRDL SIZE and watch live CSRs.
 |`smc_dual_base_addressing_test` |`LOCAL_BASE` is read-only at 0xC000_0000, `GLOBAL_BASE` takes and returns a pattern, `REGION_SIZE` reads its 16 MiB reset.
+|`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes.
 |`smc_filter_field_sweep_test` |Per-filter 3-field sweep x 4 entries x 2 dirs.
 |`smc_filter_multi_entry_test` |Filter 16 inbound + 16 outbound CONFIG sweep.
 |`smc_input_fabric_axi_wr_rd_test` |Run the input/output fabric CSR precheck over SEP_IN AXI.
@@ -283,6 +286,7 @@ feature rows.
 |`smc_cold_reset_repeated_test` |Run the SMC OSS repeated cold-reset re-assert scenario.
 |`smc_cold_reset_test` |Run the SMC OSS cold-reset / POR / cool SMC_001 scenario.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
+|`smc_cool_reset_zero_delay_test` |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
 |`smc_cpu_reset_source_test` |SW core0 level reset; no Force drain / no FLR isolate_req_o.
 |`smc_flr_sanity_test` |Run the SMC OSS FLR post-release sanity scenario.
@@ -326,6 +330,7 @@ feature rows.
 |Testcase |Objective
 |`smc_cluster_beu_test` |Locks the 0xC801_0000 -> 0xC001_0000 local-fabric address fold.
 |`smc_cpu_ctrl_map_depth_test` |Run CPU-control address-map CSR depth checks.
+|`smc_cpu_ctrl_read_only_write_test` |Writes at every CPU_CTRL address the RDL makes read-only, and a write of 0 into the singlepulse reset fields.
 |`smc_cpu_ctrl_scratch_window_test` |Run CPU scratch-window write/readback/restore checks.
 |`smc_cpu_ecc_lint_pint_depth_test` |Run RAS/debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
 |`smc_cpu_firmware_boot_test` |SMC_002: ROM boot to PASS magic with exact CHK evidence.
@@ -372,6 +377,7 @@ feature rows.
 |`smc_efuse_jtag_lc_access_matrix_test` |Drive lc_state_i + JTAG eFuse accesses; assert the block/allow matrix.
 |`smc_efuse_jtag_lc_negative_test` |PROD JTAG eFuse deny paths + identity-read exception.
 |`smc_efuse_locked_access_interrupt_test` |JTAG_PUBLIC_IDENTITY unlocked write silent; locked write/read pulse `tb_efuse_locked_access_irq`.
+|`smc_efuse_lock_guard_test` |Software locks established from the CSR side on three shadow fields: the write no longer lands, the lock cannot be cleared, and the read no longer discloses.
 |`smc_efuse_map_read_test` |SMC_EFUSE_MAP direct read.
 |`smc_efuse_otp_burn_shadow_test` |Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
 |`smc_efuse_otp_clock_config_depth_test` |Run eFuse OTP clock/timing register programming depth checks.
@@ -392,6 +398,7 @@ feature rows.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
 |`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
+|`smc_gpio_intf_regblock_sweep_test` |GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycled to all-ones and all-zeros on all 65 instances, with an AxPROT allow and deny leg on each.
 |`smc_gpio_irq_active_test` |Run GPIO CSR plus IRQ-control decode precheck.
 |`smc_gpio_irq_type_matrix_test` |Drive GPIO0 for both level polarities and check the IRQ aggregate.
 |`smc_gpio_multi_sample_test` |Run the SMC OSS GPIO multi-sample observability scenario.
@@ -425,6 +432,7 @@ feature rows.
 |`smc_i2c_error_fifo_depth_test` |PROXY -- run I2C CSR decode plus SCL/SDA pin override depth checks.
 |`smc_i2c_fifo_full_test` |FMT/TX full+empty and RX/ACQ empty STATUS (CSR-only).
 |`smc_i2c_master_target_test` |U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads.
+|`smc_i2c_intr_reg_sweep_test` |I2C interrupt and event registers cycled on all three instances, with the INTR_TEST to INTR_STATE round trip and the two unread read-mux rows.
 |`smc_i2c_multi_instance_test` |I2C_1/2 + I2C_CTRL CSR sweep.
 |`smc_i2c_multi_sample_test` |Run the SMC OSS I2C multi-sample observability scenario.
 |`smc_i2c_p0_cfifo_test` |Controller FMT FIFO empty-threshold interrupt.
@@ -480,10 +488,14 @@ feature rows.
 |===
 |Testcase |Objective
 |`smc_uart_baud_word_parity_format_test` |UART0 divisor x frame-format sweep decoded on the TX pad and driven on the RX pad, with the parity and framing detectors shown to assert.
+|`smc_uart_char_loopback_test` |Characters through every UART own loopback: THR to RBR, the write-only FCR read back through IIR, the interrupt identification, and the MSR levels and deltas the MCR outputs drive.
 |`smc_uart_error_conditions_test` |UART parity / overrun / break line-status proofs.
 |`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |UART0 IER gating, natural clears, and multi-source IIR priority.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
+|`smc_log_engine_abort_test` |A log-engine transfer on all four wrapper instances halted part-way by clearing CTRL.EN, then a shorter entry re-triggered and delivered in full.
+|`smc_log_engine_transfer_test` |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
+|`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |U4-1: AXI-program UART0 THR and capture the byte on pad12 TX.
 |`smc_uart_sanity_test` |UART pad-cross byte exchange on pairs 0→3 and 1→2.
@@ -7948,6 +7960,429 @@ Drive `smc_cpu_mmio_write_wedge_test_seq`. Each checker below is a named compare
 |===
 
 *Pass Criteria*: all five checkers hold. Enrolled in: `all`, `cpu`. Not in `hosted` (builds firmware).
+
+'''''
+
+[[sec-198-smc_gpio_intf_regblock_sweep_test]]
+===== 198 `smc_gpio_intf_regblock_sweep_test`
+
+*Source Module*: `smc_gpio_intf_regblock_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER on all 65 instances.
+
+*Test Coverage*:
+
+* DATA_CTRL_ENABLE takes the all-ones and all-zeros pattern of its three override fields through half-register writes, so the byte lanes over the other half are deasserted on every write.
+* ACCESS_FILTER drives both filter enables and both AxPROT requirement fields to all-ones and all-zeros in an order that keeps the register reachable: the read requirement first while nothing is gated, then the enables with the write requirement at 0, then the read requirement cleared, then the write requirement.
+* The armed state carries an AxPROT allow leg and an AxPROT deny leg on every instance.
+* Both registers are restored to their generated RDL reset word.
+
+*Test Procedure*:
+
+Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` |All 65 DATA_CTRL_ENABLE instances read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
+|`CHK-GPIO-INTF-ACCESS-FILTER-SWEEP` |All 65 ACCESS_FILTER instances took both filter enables and both AxPROT requirement fields to all-ones and all-zeros, matched the predicted word after every step, and returned to the RDL reset 0x0001_0100
+|`CHK-GPIO-INTF-ACCESS-FILTER-DENY` |On each of the 65 instances the armed read filter returned the programmed word to the matching-AxPROT read and refused the non-matching read of the same address with DECERR and the error-slave word, so the refusal is the AxPROT gate and not a dead window
+|===
+
+*Pass Criteria*: `CHK-GPIO-INTF-ACCESS-FILTER-DENY`, `CHK-GPIO-INTF-ACCESS-FILTER-SWEEP`, `CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-199-smc_filter_config_field_sweep_test]]
+===== 199 `smc_filter_config_field_sweep_test`
+
+*Source Module*: `smc_filter_config_field_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle every FILTER_CONFIG field and the write-once lock on all 32 filter entries.
+
+*Test Coverage*:
+
+* Each of the 16 inbound and 16 outbound entries takes the all-ones and all-zeros pattern of every software-writable FILTER_CONFIG field through half-register writes and is restored to its RDL reset.
+* The ones pattern sets `entry_enabled` in the same write as `read_allowed` and `write_allowed`, and leaves `START_ADDR`/`END_ADDR` at their reset, so an armed entry admits rather than blocks.
+* The write-once `locked` field is set on every entry after all field cycles have completed, and the locked entry then refuses both a write of 0 over that bit and a write of the other half.
+* The sequence leaves all 32 entries locked; only a reset clears the field.
+
+*Test Procedure*:
+
+Drive `smc_filter_config_field_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FILTER-CONFIG-FIELD-SWEEP` |All 32 entries read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, held the reset of the bits software cannot write, and returned to that reset
+|`CHK-FILTER-CONFIG-LOCK-WOSET` |On all 32 entries the write-once `locked` field went from clear to set on a write of 1 and the entry then refused both later configuration writes with an error response while still reading the locked word, so the refused writes took no effect; the accepted writes of the field cycle on the same addresses are the live control
+|===
+
+*Pass Criteria*: `CHK-FILTER-CONFIG-FIELD-SWEEP`, `CHK-FILTER-CONFIG-LOCK-WOSET` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-200-smc_i2c_intr_reg_sweep_test]]
+===== 200 `smc_i2c_intr_reg_sweep_test`
+
+*Source Module*: `smc_i2c_intr_reg_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle the I2C interrupt and event registers on all three instances.
+
+*Test Coverage*:
+
+* INTR_ENABLE and INTR_TEST take the all-ones and all-zeros pattern of the fields the generated contract pins, through half-register writes, and are restored to their reset.
+* A write of the write-only INTR_TEST fields raises the matching INTR_STATE events and a write of the same mask back into INTR_STATE clears them.
+* CONTROLLER_EVENTS and TARGET_EVENTS take a full-width and a half-register write of their whole declared mask.
+* TARGET_ACK_CTRL and ACQ_FIFO_NEXT_DATA, the two read-mux rows no other leaf reads, are read under a STATUS word showing the block idle with both FIFOs empty.
+
+*Test Procedure*:
+
+Drive `smc_i2c_intr_reg_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-INTR-REG-SWEEP` |On all three instances INTR_ENABLE and INTR_TEST read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
+|`CHK-I2C-INTR-TEST-STATE` |On all three instances a write of the write-only INTR_TEST fields raised exactly those INTR_STATE events from a measured clear state, and a write of the same mask back into INTR_STATE cleared them again
+|`CHK-I2C-EVENTS-W1C` |All six CONTROLLER_EVENTS and TARGET_EVENTS instances read clear, took a full-width and a half-register write of their whole declared mask, and read clear after both, which is the `oneToClear` contract for a field no bus event has set
+|`CHK-I2C-READMUX-TAIL` |All six TARGET_ACK_CTRL and ACQ_FIFO_NEXT_DATA reads returned their RDL reset word with no bit outside the declared fields, under a STATUS word matching its RDL reset
+|===
+
+*Pass Criteria*: `CHK-I2C-EVENTS-W1C`, `CHK-I2C-INTR-REG-SWEEP`, `CHK-I2C-INTR-TEST-STATE`, `CHK-I2C-READMUX-TAIL` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-201-smc_uart_log_engine_field_sweep_test]]
+===== 201 `smc_uart_log_engine_field_sweep_test`
+
+*Source Module*: `smc_uart_log_engine_field_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle the UART, divisor-latch and log-engine registers on all four wrapper instances.
+
+*Test Coverage*:
+
+* IER, ITR, SCR, ECR, MCR and LCR take the all-ones and all-zeros pattern of their fields through half-register writes and are restored to their reset. LCR runs last, so the DLAB its ones pattern sets is back at 0 before the divisor-latch leg.
+* DLL and DLM are written and read behind `LCR.DLAB`, held across a clear and a re-raise of DLAB, and restored; with DLAB clear the address DLM occupies returns IER's own reset word.
+* The log engine's INTR_ENABLE takes the same cycle, and a write of the write-only INTR_TEST fields raises and then clears the matching INTR_STATUS events.
+* All 16 LOG_CTRL elements of each wrapper take an index-unique log length and are read back while the 16 signatures are co-resident. The signatures stay resident: a nonzero LOG_LEN is a pending arbiter request that must hold until granted, so only the hardware clears it. `log_engine/CTRL.EN` stays at its reset 0, so no log transfer starts.
+
+*Test Procedure*:
+
+Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-16550-FIELD-SWEEP` |On all four instances the six writable UART registers read their RDL reset, carried the all-ones and all-zeros pattern of their fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
+|`CHK-UART-16550-DL-WINDOW` |On all four instances both divisor latches took the all-ones and the reset value behind LCR.DLAB and still held the written value after DLAB was cleared and raised again, and the address DLM occupies returned IER's own reset word while DLAB was clear, so the window really switched
+|`CHK-LOG-ENGINE-INTR-SWEEP` |On all four log engines INTR_ENABLE took the all-ones and all-zeros pattern through half-register writes, and a write of the write-only INTR_TEST fields raised exactly those INTR_STATUS events from a measured clear state and a write of the same mask cleared them again
+|`CHK-LOG-ENGINE-LOG-CTRL-SWEEP` |All 64 LOG_CTRL elements returned their own index-unique log length while all 16 elements of their wrapper held theirs, so an array folded onto one physical register fails
+|===
+
+*Pass Criteria*: `CHK-LOG-ENGINE-INTR-SWEEP`, `CHK-LOG-ENGINE-LOG-CTRL-SWEEP`, `CHK-UART-16550-DL-WINDOW`, `CHK-UART-16550-FIELD-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-202-smc_log_engine_transfer_test]]
+===== 202 `smc_log_engine_transfer_test`
+
+*Source Module*: `smc_log_engine_transfer_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the wrapper's own UART in `MCR.LOOP`
+
+*Objective*: Run a real log-engine transfer on all four uart_log_engine_wrap instances.
+
+*Test Coverage*:
+
+* The software flow of `hw/ip/uart/log_engine/doc/programming.adoc`, driven over SEP_IN AXI rather than from firmware: four logs are written into the SPM log region of each wrapper, LOG_REGION_ADDR and LOG_REGION_SIZE are pointed at them, LOG_WRITE_ADDR at the wrapper's own transmit holding register, the UART is put in `MCR.LOOP`, the engine is enabled, and all four LOG_CTRL elements are triggered at once so the round-robin arbiter has to grant more than one requester.
+* Each log fills its whole slot, which `log_engine.rdl` sizes as the region size over the sixteen LOG_CTRL elements rounded down to complete 8-byte fetch beats, so every element's fetch has to come back for a second beat before it is done.
+* Every byte names the wrapper, the element and the slot offset it came from, so a stream that carried a neighbour's slot, repeated a byte or dropped one fails.
+* The order the arbiter interleaves the four elements in is not predicted; each element's own bytes are required to arrive in slot order, exactly once.
+* Nothing writes a pending LOG_CTRL length back to 0. The only clearing this leaf takes is the hardware one it waits for.
+* The UART divisor latches, line and modem control, FIFO control and the wrapper pad-mux enable are all restored, and the engine is disabled with its region and write addresses cleared.
+
+*Test Procedure*:
+
+Drive `smc_log_engine_transfer_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOG-ENGINE-TRANSFER-BYTES` |All 128 log bytes of the run reached the receiver of their own wrapper, every element's bytes arrived in slot order and exactly once, and no byte named another element or another wrapper; a transfer that never started fails on the byte count before the compare is reached
+|`CHK-LOG-ENGINE-TRANSFER-HWCLR` |Every driven LOG_CTRL element read a length of 0 after its log arrived, and nothing in the leaf wrote a pending length back, so the clear is the hardware completion the RDL declares
+|`CHK-LOG-ENGINE-TRANSFER-CLEAN` |Every LSR read during the transfer showed no overrun, parity, framing or break error, the receiver went quiet after the last expected byte, and INTR_STATUS read clear before and after, so the engine hit neither a fetch nor a write error and sent nothing it was not asked to
+|===
+
+*Pass Criteria*: `CHK-LOG-ENGINE-TRANSFER-BYTES`, `CHK-LOG-ENGINE-TRANSFER-CLEAN`, `CHK-LOG-ENGINE-TRANSFER-HWCLR` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-203-smc_zeroer_multi_burst_test]]
+===== 203 `smc_zeroer_multi_burst_test`
+
+*Source Module*: `smc_zeroer_multi_burst_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the TB SYS_OUT output-fabric responder
+
+*Objective*: Clear a region larger than one AXI burst and check both halves.
+
+*Test Coverage*:
+
+* `smc_zeroer_sanity_test` clears eight bytes and its busy probe clears 0x800, both of which fit one AXI4 burst -- `AxLEN` is eight bits, so a burst carries at most 256 transfers, which on the 64-bit output path is 0x800 bytes. This leaf programs 0x1000, which no single burst can carry, so the zeroer has to return from its data phase to a second address phase.
+* Four probe words -- the first and last word of each half of the region -- are poisoned with distinct values beforehand and read back to prove the poison landed, then required to read zero.
+* A witness word immediately past the end of the region keeps its own poison, so a job that ran past its size fails.
+* The output responder's write-transaction counter has to advance by at least the two bursts the size demands, and `CTRL_STATUS.STATUS` has to leave the level it rests at while the zeroer is idle and return to it. Which level means busy is not asserted, as in `smc_zeroer_sanity_test`.
+* `SIZE` and `DEST_ADDR` are cleared afterwards, so a later write to `CTRL_STATUS` -- the register whose write side effect is the trigger -- cannot start a job over anything.
+
+*Test Procedure*:
+
+Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ZEROER-MULTI-BURST-PRELOAD` |The four probe words spanning both halves of the job and the witness word past its end were poisoned with distinct values and read back exactly, so the zero readbacks that follow can fail
+|`CHK-ZEROER-MULTI-BURST-STATUS` |`CTRL_STATUS.STATUS` left the level it rests at while the zeroer is idle and returned to it, and the output responder booked at least the two write transactions a 0x1000-byte job needs under AxLEN's 256-transfer cap, so the zeroer took a second address phase after its first data phase
+|`CHK-ZEROER-MULTI-BURST-ZEROED` |All four probe words read 0 after the job, including the first and last word of each half, and the witness word immediately past the end still holds its poison
+|===
+
+*Pass Criteria*: `CHK-ZEROER-MULTI-BURST-PRELOAD`, `CHK-ZEROER-MULTI-BURST-STATUS`, `CHK-ZEROER-MULTI-BURST-ZEROED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-204-smc_cool_reset_zero_delay_test]]
+===== 204 `smc_cool_reset_zero_delay_test`
+
+*Source Module*: `smc_cool_reset_zero_delay_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `cfg_flr_pf_active_i` driven as a TB input
+
+*Objective*: Run an FLR cool reset with no pre-reset delay programmed.
+
+*Test Coverage*:
+
+* `reset_unit.rdl` makes `ISOLATE_REQ_FLR_COUNTER_VALUE` the wait before the cool asserts and `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` the hold, and records that a hold of 0 prevents initiation whatever the pre-delay is. So the hold decides whether a cool happens and the pre-delay only decides when. `smc_cool_reset_from_pcie_test` always programs a non-zero pre-delay.
+* Deny leg: with both counters at their reset 0 the FLR request has to latch in `ISOLATE_REQ_SMC_REG` and no cool may follow.
+* Allow leg: with the same pre-delay of 0 and a non-zero hold the cool has to assert inside the synchroniser allowance -- a reset unit that counted a programmed delay anyway runs past the bound -- and then release.
+* A warm-domain scratch register written before the cool reads 0 after it, which is the DUT-side evidence that a cool went through rather than a pin wiggle.
+* The isolate-request pad is held low throughout so the FLR path is the only isolation source, `cfg_flr_pf_active_i` is dropped before the recovery wait, the warm reset is waited for before any further CSR access, and the latched request and the hold counter are cleared at the end.
+
+*Test Procedure*:
+
+Drive `smc_cool_reset_zero_delay_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FLR-ZERO-DELAY-DENY` |The FLR request latched in `ISOLATE_REQ_SMC_REG` with both counters at their reset 0 and no cool followed within the watched window, which is the RDL's "a value of 0 will prevent initiation" for the hold counter
+|`CHK-FLR-ZERO-DELAY-COOL` |With the pre-delay at 0 and a non-zero hold the cool asserted inside the synchroniser allowance, so no programmed pre-delay was counted, was held and released, and the warm-domain scratch register that carried a pattern beforehand reads 0 afterwards
+|===
+
+*Pass Criteria*: `CHK-FLR-ZERO-DELAY-COOL`, `CHK-FLR-ZERO-DELAY-DENY` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-205-smc_log_engine_abort_test]]
+===== 205 `smc_log_engine_abort_test`
+
+*Source Module*: `smc_log_engine_abort_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the wrapper's own UART in `MCR.LOOP`
+
+*Objective*: Halt a log-engine transfer with CTRL.EN on all four wrapper instances and bring the engine back.
+
+*Test Coverage*:
+
+* `smc_log_engine_transfer_test` runs transfers to completion. `log_engine.rdl` gives `CTRL.EN` the other half of its contract -- "When unset, disables the Log Engine and resets all FSMs, flops, and FIFOs" -- and no leaf has asked it to stop a transfer in flight.
+* Each wrapper is given one log filling its whole slot, which this region makes twice the UART transmit FIFO the `uart_log_engine_disable_during_xfer` firmware image pins and several fetch beats deep, so neither the fetch nor the write side can be finished when the disable lands one register access after the first byte is seen.
+* Three legs, an allow followed by a deny followed by an allow, so the deny cannot pass on a dead bus: the transfer starts and bytes reach the receiver; `CTRL.EN` is cleared and, once the UART reports itself idle, fewer than the whole log has arrived, what did arrive is the head of that slot in order, and a second drain finds nothing more; a shorter length written into the same element while the engine is still disabled is delivered in full once `CTRL.EN` is set again.
+* Draining until the UART reports transmitter-empty with no received data, for a run of polls longer than a character time, is how the firmware image measures the same thing, and it is what lets the halt be checked without knowing how many bytes the UART had buffered.
+* Nothing writes a pending LOG_CTRL length back to 0: the aborted length is replaced by a shorter non-zero one, so the arbiter request the element holds never drops before the hardware clear that ends it.
+
+*Test Procedure*:
+
+Drive `smc_log_engine_abort_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOG-ENGINE-ABORT-HALTED` |On every wrapper a transfer was in flight -- bytes had reached the receiver -- when `CTRL.EN` was cleared, and once the UART went idle at least one and fewer than the whole log had arrived, each byte the head of that wrapper's own slot in order, with a second drain finding nothing more
+|`CHK-LOG-ENGINE-ABORT-LENGTH-KEPT` |LOG_CTRL still read the length it was given while the engine was disabled, which is the RDL's reset of the FSMs, flops and FIFOs with the registers preserved
+|`CHK-LOG-ENGINE-ABORT-RETRIGGER` |A shorter length written into the same element while the engine was disabled delivered exactly its bytes from the head of the slot once `CTRL.EN` was set again, hardware cleared the length, and INTR_STATUS stayed clear across both the halt and the re-trigger
+|===
+
+*Pass Criteria*: `CHK-LOG-ENGINE-ABORT-HALTED`, `CHK-LOG-ENGINE-ABORT-LENGTH-KEPT`, `CHK-LOG-ENGINE-ABORT-RETRIGGER` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-206-smc_periph_regblock_sweep_test]]
+===== 206 `smc_periph_regblock_sweep_test`
+
+*Source Module*: `smc_periph_regblock_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle the peripheral register blocks no other leaf writes against their RDL contract.
+
+*Test Coverage*:
+
+* The AVSBus controller, the three telemetry receivers, the OCTS system timer, the eFuse interface controller, the DMA controller configuration and the four log engines' region and enable registers have never had a write from this package. Each takes the cycle the other register sweeps use: read at reset, the all-ones and the all-zeros pattern of the fields the generated contract pins, each half written on its own so the byte lanes over the other half are deasserted, then the RDL reset restored.
+* Only fields the contract makes plain read-write are driven, so a `singlepulse` trigger, a `oneToClear` event and a hardware-driven status are never written by the generic cycle.
+* `EFUSE_PROGRAM_CTRL` additionally holds `efuse_data` and `program_enable` at their reset, on top of the `singlepulse` `efuse_program_go` the contract already excludes, so no combination the sweep writes can arm a fuse burn. Its address and read-back select are driven normally.
+* `AVS_CFG_1` carries the AVS clock mux and divider, and `avsbus_controller.rdl` says to gate the clocks entering the mux before changing either and to turn them back on afterwards, which is the order this cycle takes. The gate is on the AVS protocol clock, not the register interface.
+* The telemetry `INTR_TEST.BUFFER_THRESHOLD` field is plain storage, so driving it raises an event; each receiver's INTR_STATUS is cleared afterwards by a write of its declared mask and re-read, which is that register's `oneToClear` contract.
+* The DMA controller's block answers a sub-word write with an error response, so its configuration takes the same cycle at full width instead of in halves.
+* `log_engine/CTRL` is swept last, so the enable is only ever set while the region and write addresses are back at their reset and no LOG_CTRL element holds a length, and no transfer starts.
+* `AVS_CMD`, `AVS_INTERRUPT_CLEAR`, the telemetry counters, the DMA transfer descriptors and the eFuse read and program data registers are not driven: each is a command, an event clear or a hardware-owned value with a leaf of its own or no written-value expectation.
+
+*Test Procedure*:
+
+Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PERIPH-REGBLOCK-SINGLE-SWEEP` |Every single-instance peripheral register read its RDL reset, carried the all-ones and all-zeros pattern of its driven fields after each write, drove no bit outside the fields the RDL declares, held the reset of the bits software cannot write, and returned to that reset
+|`CHK-PERIPH-TELEMETRY-SWEEP` |All three telemetry receivers cycled INTR_ENABLE, INTR_TEST and CTRL against their contract and were restored, and the events the test field raised were then cleared out of INTR_STATUS by a write of its declared mask
+|`CHK-PERIPH-LOG-ENGINE-SWEEP` |All four log engines cycled their region size, region address, write address and enable against their contract and were restored, with the enable set only while the addresses were at their reset
+|`CHK-PERIPH-REGBLOCK-COMPARES` |The scoreboard booked at least the expected number of exact-value compares of its own for the reads whose whole word the RDL contract predicts, independently of the sequence's counters
+|===
+
+*Pass Criteria*: `CHK-PERIPH-LOG-ENGINE-SWEEP`, `CHK-PERIPH-REGBLOCK-COMPARES`, `CHK-PERIPH-REGBLOCK-SINGLE-SWEEP`, `CHK-PERIPH-TELEMETRY-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-207-smc_uart_char_loopback_test]]
+===== 207 `smc_uart_char_loopback_test`
+
+*Source Module*: `smc_uart_char_loopback_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); each wrapper's own UART in `MCR.LOOP`
+
+*Objective*: Send characters through every UART's own loopback and check the registers they move.
+
+*Test Coverage*:
+
+* `smc_uart_log_engine_field_sweep_test` writes the UART's software-owned registers and the log-engine leaves read LSR and RBR while the engine feeds the transmitter, but nothing drives the UART's own transmit holding register and nothing writes the addresses the read-only registers occupy. The write side of RBR, IIR, LSR and MSR and the external-register handshake behind RBR have therefore never been exercised.
+* FCR is write-only, so its enable is checked where its effect shows: `uart_16550_main.rdl` gives `IIR.FIFOS_ENABLED` the value `0x3` with the FIFOs on and `0x0` with them off, and the leaf drives FCR both ways and requires IIR to follow. `FCR.RCVR_FIFO_RESET` is `singlepulse`, and its effect is `LSR.DR` going away with a character still unread.
+* Six distinct bytes are written into THR and compared against what comes back out of RBR on each wrapper, with the transmitter required empty before the first and the receiver quiet after the last. That is also the only access that reaches the external-register interface RBR sits behind.
+* With `IER.ERBFI` set and a character waiting, IIR has to report an interrupt pending -- `INTERRUPT_PENDING` is active low -- with the Received Data Ready id `0x2` the RDL names, and no interrupt pending once RBR is drained.
+* `hw/ip/uart/uart_16550/doc/programming.adoc` fixes the loopback modem mapping: with `MCR.LOOP` set, CTS follows RTS, DSR follows DTR, RI follows OUT1 and DCD follows OUT2. Raising the four outputs must raise exactly those four MSR levels and dropping them must clear them. The sticky deltas separate on the same two legs: DCTS, DDSR and DDCD set on either edge, while TERI sets only on the trailing edge of RI, so the rising leg must leave TERI clear and the falling leg must set it.
+* LSR and MSR have no write side, so a write at either address must leave them reading what they read before.
+
+*Test Procedure*:
+
+Drive `smc_uart_char_loopback_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-CHAR-LOOPBACK` |Every byte written into the transmit holding register of every UART came back out of the receiver of the same UART unchanged, with the transmitter reported empty before the first and the receiver quiet after the last, and no overrun, parity, framing or break error on any LSR read
+|`CHK-UART-FCR-EFFECT` |The write-only FCR was driven both ways and IIR reported the matching `FIFOS_ENABLED` encoding each time, and a write of the singlepulse receive-FIFO reset with a character waiting made LSR stop reporting received data
+|`CHK-UART-IIR-RX-READY` |IIR reported an interrupt pending with the Received Data Ready id while a character waited and the received-data interrupt was enabled, and none pending once RBR was drained
+|`CHK-UART-MSR-LOOPBACK` |Raising all four MCR outputs raised exactly the four MSR levels the programming guide maps them to with DCTS, DDSR and DDCD set and TERI clear; dropping them cleared the levels and set all four deltas including TERI; and a write at the LSR and MSR addresses left both reading what they read before
+|===
+
+*Pass Criteria*: `CHK-UART-CHAR-LOOPBACK`, `CHK-UART-FCR-EFFECT`, `CHK-UART-IIR-RX-READY`, `CHK-UART-MSR-LOOPBACK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-208-smc_efuse_lock_guard_test]]
+===== 208 `smc_efuse_lock_guard_test`
+
+*Source Module*: `smc_efuse_lock_guard_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the default eFuse image in the adopter bank model
+
+*Objective*: Establish a software lock on three eFuse shadow fields and check the guard's answer.
+
+*Test Coverage*:
+
+* `hw/ip/efuse/doc/architecture.adoc` gives every shadow field a 4-bit `lock` permission reachable two ways, and says the guard (`efuse_guard.sv`) enforces whichever of the hardware and software locks is more restrictive. The software lock is the `LOCKS` CSR, "write-1-to-set", so firmware can tighten access but never loosen it without a reset.
+* `smc_efuse_locked_access_interrupt_test` drives that path on `JTAG_PUBLIC_IDENTITY` but needs its own preload asset and is held out of the regression, so nothing in the scheduled run establishes a software lock at all.
+* Three fields -- the first two SPARE entries and the OCCP transport timeout, whose locks the default image leaves clear -- each take four steps, the first being the live control for the two denies: a pattern written and read back while unlocked; the write lock set and a different pattern shown not to land; `LOCKS` written again with that bit clear and the bit shown still set; the read lock set and the read shown not to disclose the field.
+* The sequence reads `LOCKS` first and fails if any bit it is about to set is already set by the image, so it never mistakes a pre-set lock for one it established.
+* The response to a write-locked write is recorded rather than asserted: neither the RDL nor the architecture document fixes whether the guard refuses or ignores it, and the claim is that the write did not land. Likewise the read-locked read claims non-disclosure only, because the document states the permission but not the substituted word.
+* `SMC_CONFIG` and `JTAG_PUBLIC_IDENTITY` are left alone: the first carries boot configuration other logic reads, the second is the held-out leaf's subject. A software lock is cleared only by reset, so the leaf leaves its six bits set and is terminal for those three fields.
+
+*Test Procedure*:
+
+Drive `smc_efuse_lock_guard_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-LOCK-GUARD-PRE` |LOCKS read the eFuse image word with every lock bit the sequence goes on to set still clear, so each deny that follows is against a lock the sequence established itself
+|`CHK-EFUSE-LOCK-GUARD-WRITE` |On all three fields a pattern written while unlocked read back exactly, and a different pattern written with the write lock set did not land -- the field still read the first pattern -- and the guard answered the refused write instead of wedging the bus
+|`CHK-EFUSE-LOCK-GUARD-WOSET` |On all three fields a later write of LOCKS with the field's write-lock bit clear left it set, which is the `onwrite = woset` contract the RDL gives every lock
+|`CHK-EFUSE-LOCK-GUARD-READ` |On all three fields a read taken with the read lock set returned something other than the word the field holds, so the guard withheld the content
+|===
+
+*Pass Criteria*: `CHK-EFUSE-LOCK-GUARD-PRE`, `CHK-EFUSE-LOCK-GUARD-READ`, `CHK-EFUSE-LOCK-GUARD-WOSET`, `CHK-EFUSE-LOCK-GUARD-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-209-smc_cpu_ctrl_read_only_write_test]]
+===== 209 `smc_cpu_ctrl_read_only_write_test`
+
+*Source Module*: `smc_cpu_ctrl_read_only_write_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Write at every CPU_CTRL address the RDL makes read-only, and write 0 into the singlepulse reset fields.
+
+*Test Coverage*:
+
+* `smc_rdl_field_sweep_test` owns CPU_CTRL and drives every register the RDL makes writable, but never writes at the addresses of the registers it makes `sw = r`, so the decode row those addresses take on a write has never been exercised.
+* `TEST_CTRL`, `SMC_ATTRIBUTES` and the head of each of the four per-core writeback program-counter arrays are written with all ones and required to read the same word afterwards as before. The sequence asserts each one's `rw_mask` is zero first, so a register that gained a writable field cannot be written at here by accident.
+* `WDT_TIMEOUT_RESET` takes a full-width write of 0, which `smc_rdl_field_sweep_test` never does -- it writes the fields set and then writes 0 only over the half they do not occupy. Its four `reset_cycle_count` fields are `singlepulse`, so nothing is stored either way and the register has to read 0 afterwards. `CORE_RESET_PULSE_COUNT` is read either side as a second, weaker observation -- it carries the configured pulse durations and a bit that reads low while a core reset is in progress -- and does not catch a pulse that began and ended between the two reads.
+* `RESET_CTRL` is not written. It carries the per-core and uncore reset levels and the four core reset-pulse starts, which is why `smc_rdl_field_sweep_test` excludes it, and a write of ones into it would reset the running bench.
+
+*Test Procedure*:
+
+Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPU-CTRL-READ-ONLY-WRITE` |All six CPU_CTRL registers every field of which the RDL makes `sw = r` read the same word after a write of all ones at their address as before it
+|`CHK-CPU-CTRL-WDT-ZERO-WRITE` |A full-width write of 0 into the four singlepulse reset fields of WDT_TIMEOUT_RESET left the register reading 0, so nothing it carried was stored, and CORE_RESET_PULSE_COUNT read the same word either side with no core reset in progress when the second read landed
+|===
+
+*Pass Criteria*: `CHK-CPU-CTRL-READ-ONLY-WRITE`, `CHK-CPU-CTRL-WDT-ZERO-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
