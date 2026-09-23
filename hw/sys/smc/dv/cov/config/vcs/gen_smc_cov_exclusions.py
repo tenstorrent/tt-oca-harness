@@ -40,9 +40,10 @@ A sixth belongs to the register specification rather than to the generated code:
   bench's inability to drive a partial write lane leaves that one uncovered.
 
 Two facts are the integration's: the DFD top instantiates its trace wrapper
-with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace
-half has no source behind it (P1 NTRACE-OFF, named by the `trntr` signal
-prefix, and the NTR-sink MMR rows of `mmrs`); both SMC fabrics tie the AXI
+with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so every N-trace signal of
+the trace sink reads zero and a row asking one of them for a one cannot occur
+(P1 NTRACE-OFF, decided against the report's term list rather than a name
+prefix, plus the NTR-sink MMR decode of `mmrs`); both SMC fabrics tie the AXI
 filter's `filter_skip_i` to zero (P2 SKIP-TIED-OFF); the CLA drives twenty
 of its MMR hardware write-enables with a constant one, so their write-data
 ternaries never take the else arm (P3 WREN-TIED); one trace source can never
@@ -262,9 +263,12 @@ A6 = (
 )
 
 P1 = (
-    "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) "
-    "and NTRACE_SUPPORT(0), so the trace sink's N-trace half has no source behind it; the "
-    "conditions over its trntr signals have no stimulus that can reach them."
+    "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and "
+    "NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at "
+    "zero instances, so every N-trace signal of the sink reads zero. A row is taken only where "
+    "the report's own term list shows it asking one of those signals for a value that zero "
+    "forbids; a row every N-trace term of which sits at zero stays graded, whatever the "
+    "expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 )
 
 P3 = (
@@ -336,15 +340,178 @@ def in_region(src: str, region: "tuple[str, int, int] | None") -> bool:
     name, first, last = region
     return path.endswith(name) and first <= int(line) <= last
 
-# module -> [(class, expression pattern, term-vector pattern or None, source
+# Identifiers the NUM_NTRACE_INST(0) / NTRACE_SUPPORT(0) instantiation leaves
+# without a source. trace_wrapper.sv drives Core_fuse_enable_Ntrace from a
+# ternary on the parameter and gives it '0 at zero instances, so each of these
+# reads zero for the life of the design.
+NTRACE_NAME = re.compile(r"^(trntr|insntrace)|ntrace", re.I)
+# A name carrying both halves is the mux between them, not the N-trace side.
+SHARED_NAME = re.compile(r"ntraceordst|dstorntrace", re.I)
+TERM_IDENT = re.compile(r"[A-Za-z_][A-Za-z_0-9]*(?:\.[A-Za-z_][A-Za-z_0-9]*)*")
+LITERAL = re.compile(r"^\d*'[bhdo]?[0-9a-fA-F_]+(\[[^\]]*\])?$")
+COMPARE = re.compile(r"^(.+?)\s*(!=|==|>=|<=|>|<)\s*(.+)$", re.S)
+
+
+def _peel(text: str) -> str:
+    t = text.strip()
+    while t.startswith("(") and t.endswith(")") and _balanced(t[1:-1]):
+        t = t[1:-1].strip()
+    return t
+
+
+def _balanced(text: str) -> bool:
+    depth = 0
+    for c in text:
+        depth += c == "("
+        depth -= c == ")"
+        if depth < 0:
+            return False
+    return depth == 0
+
+
+def _split_top(text: str, op: str) -> "list[str]":
+    parts, depth, cur = [], 0, ""
+    for i, c in enumerate(text):
+        depth += c == "("
+        depth -= c == ")"
+        if depth == 0 and c == op and not (i + 1 < len(text) and text[i + 1] == op):
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += c
+    parts.append(cur)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def term_identifiers(term: str) -> "list[str]":
+    """The signal names of a term, with sized literals left out."""
+    out = []
+    for m in TERM_IDENT.finditer(term):
+        if m.start() and term[m.start() - 1] in "'0123456789":
+            continue
+        out.append(m.group(0))
+    return out
+
+
+def is_ntrace_term(term: str) -> bool:
+    """Whether every signal the term reads is one the tie-off leaves at zero."""
+    ids = term_identifiers(term)
+    return bool(ids) and all(
+        NTRACE_NAME.search(i) and not SHARED_NAME.search(i) for i in ids
+    )
+
+
+def _numeric(term: str) -> "int | None":
+    """Value of an arithmetic term with every N-trace signal at zero."""
+    t = _peel(term)
+    m = re.fullmatch(r"\d+'\((.*)\)", t, re.S)
+    if m:
+        return _numeric(m.group(1))
+    for op in ("+", "*"):
+        parts = _split_top(t, op)
+        if len(parts) > 1:
+            vals = [_numeric(p) for p in parts]
+            if any(v is None for v in vals):
+                return None
+            out = 0 if op == "+" else 1
+            for v in vals:
+                out = out + v if op == "+" else out * v
+            return out
+    if LITERAL.match(t) or re.fullmatch(r"\d+(\[[^\]]*\])?", t):
+        digits = re.sub(r"\[[^\]]*\]$", "", t)
+        base = 16 if "'h" in digits else 2 if "'b" in digits else 8 if "'o" in digits else 10
+        return int(re.sub(r"^\d*'[bhdo]?", "", digits).replace("_", ""), base)
+    return 0 if is_ntrace_term(t) else None
+
+
+def tied_value(term: str) -> "int | None":
+    """The value an N-trace-only term holds with those signals at zero."""
+    t = _peel(term)
+    if re.fullmatch(r"~\s*[|&^]?\s*" + TERM_IDENT.pattern + r"(\[[^\]]*\])?", t):
+        return 1
+    if re.fullmatch(r"[|&^]?\s*" + TERM_IDENT.pattern + r"(\[[^\]]*\])?", t):
+        return 0
+    for op, fold in (("|", max), ("&", min)):
+        parts = _split_top(t, op)
+        if len(parts) > 1:
+            vals = [tied_value(p) if is_ntrace_term(p) else None for p in parts]
+            if any(v is None for v in vals):
+                return None
+            return fold(vals)
+    m = COMPARE.match(t)
+    if m:
+        left, op, right = _numeric(m.group(1)), m.group(2), _numeric(m.group(3))
+        if left is None or right is None:
+            return None
+        return int({"==": left == right, "!=": left != right, ">": left > right,
+                    "<": left < right, ">=": left >= right, "<=": left <= right}[op])
+    return None
+
+
+def ntrace_tied_off(terms: "list[str]", vector: str) -> bool:
+    """Whether a row asks an N-trace term for a value the tie-off forbids.
+
+    A row every N-trace term of which sits at the value the tie-off gives it is
+    one the fact says nothing about, whatever the expression's other signals
+    are, so it stays graded. A term this cannot evaluate is no argument for
+    excluding the row either.
+    """
+    if len(terms) != len(vector):
+        return False
+    for term, bit in zip(terms, vector):
+        if not is_ntrace_term(term):
+            continue
+        value = tied_value(term)
+        if value is not None and int(bit) != value:
+            return True
+    return False
+
+
+def expression_terms(modinfo: Path) -> "dict[tuple[str, str], list[str]]":
+    """(module, expression) -> the term texts the report underlines beneath it."""
+    out: dict[tuple[str, str], list[str]] = {}
+    module = ""
+    in_cond = False
+    pending: "tuple[int, str] | None" = None
+    for line in modinfo.read_text(errors="replace").splitlines():
+        m = re.match(r"^(\w+) Coverage for Module : (\S+)", line)
+        if m:
+            in_cond = m.group(1) == "Cond"
+            module = m.group(2).split("(")[0]
+            pending = None
+            continue
+        if not in_cond:
+            continue
+        m = re.match(r"^\s*EXPRESSION (.*)$", line)
+        if m:
+            pending = (line.index(m.group(1)), m.group(1))
+            continue
+        if pending is None:
+            continue
+        col, expr = pending
+        pending = None
+        spans = [(s.start(), s.end(), s.group(0)) for s in re.finditer(r"-+\d+-+", line)]
+        if not spans:
+            continue
+        numbered = sorted(
+            (int(re.sub(r"\D", "", tok)), expr[max(0, s - col):e - col].strip())
+            for s, e, tok in spans
+        )
+        out[(module, expr.strip())] = [term for _, term in numbered]
+    return out
+
+
+# module -> [(class, expression pattern, term-vector test or None, source
 # region or None)] for conditions a disabled build option or a tied-off
-# integration input leaves without a source. The vector pattern pins which row
-# of a multi-term expression the fact covers and the region which occurrence of
-# a repeated expression, so a row an access can reach stays graded. Only
-# uncovered rows are taken.
+# integration input leaves without a source. The third field pins which row of a
+# multi-term expression the fact covers: a pattern the vector must match, or a
+# predicate over the report's terms and the vector, for where the answer depends
+# on which term the row holds away from its tied value. The region pins which
+# occurrence of a repeated expression. A row an access can reach stays graded,
+# and only uncovered rows are taken.
 FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "trace_sink": [
-        (P1, re.compile(r"\btrntr"), None, None),
+        (P1, re.compile(r"\btrntr|Ntrace|InsnTrace"), ntrace_tied_off, None),
         # The pending valid is the leading term: the row that turns it on is the
         # fact's, the row that leaves it off belongs to ordinary trace traffic.
         (P4, re.compile(r"^\(TrRamPendPktVld_ANY\[\d\] &"), re.compile(r"^1"), None),
@@ -883,6 +1050,7 @@ def render_feature(
     templates: dict[str, dict[str, Section]],
     uncovered: dict[tuple[str, str], set[str]],
     branches: dict[tuple[str, int, str], str],
+    terms: dict[tuple[str, str], list[str]],
 ) -> tuple[str, int]:
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
@@ -916,7 +1084,10 @@ def render_feature(
                 for reason, pattern, vector, region in FEATURE_FACTS.get(module, []):
                     if not pattern.search(expr):
                         continue
-                    if vector is not None and not vector.match(vec):
+                    if callable(vector):
+                        if not vector(terms.get((module, expr), []), vec):
+                            continue
+                    elif vector is not None and not vector.match(vec):
                         continue
                     if not in_region(src, region):
                         continue
@@ -962,7 +1133,9 @@ def main() -> int:
     reg_text, reg_n = render_regblock(templates, uncovered, branches)
     xor_text, xor_n = render_xor(templates, uncovered)
     fsm_text, fsm_n = render_fsm(templates, uncovered_fsm(args.modinfo))
-    feat_text, feat_n = render_feature(templates, uncovered, branches)
+    feat_text, feat_n = render_feature(
+        templates, uncovered, branches, expression_terms(args.modinfo)
+    )
     outputs = (
         (REGBLOCK_OUT, reg_text),
         (XOR_OUT, xor_text),

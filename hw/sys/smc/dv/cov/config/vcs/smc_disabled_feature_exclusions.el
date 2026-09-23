@@ -184,7 +184,7 @@ Condition 16 "1766034539" "(r_done & w_done & r_ready_i & w_ready_i & ((!flush_i
 Branch 4 "3737172707" "kill_i" (0) "kill_i 1"
 
 CHECKSUM: "3001181867 1671278051"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), so the trace sink's N-trace half has no source behind it; the conditions over its trntr signals have no stimulus that can reach them."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 MODULE: mmrs
 Condition 19 "3808774952" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMSTARTLOW_REG_ADDR) & MmrCs[NTR_SINK_BLK_IDX]) 1 -1" (3 "11")
 Condition 21 "814690507" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMLIMITLOW_REG_ADDR) & MmrCs[NTR_SINK_BLK_IDX]) 1 -1" (3 "11")
@@ -195,11 +195,10 @@ Condition 32 "348996440" "(Trramstartlow_Warl_Check_ANY ? Trramstartlow_Warl_Dat
 Condition 33 "3332840335" "(((Trramstartlow_Warl_Check_ANY | Trramlimitlow_Warl_Check_ANY) & MmrWrEn & Trntrissrammode) ? Warl_Updated_Data_ANY : MmrWrData) 1 -1" (2 "1")
 
 CHECKSUM: "3354362860 3417673543"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), so the trace sink's N-trace half has no source behind it; the conditions over its trntr signals have no stimulus that can reach them."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; a row that needs a TrRamPend* signal or a south-port valid asserted follows. A row that holds those signals at their constant value and turns on another term stays graded, because ordinary trace traffic reaches it."
 MODULE: trace_sink
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
-Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (2 "101")
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (3 "110")
 Condition 4 "2581243109" "(trntrRamEnable_ANY & trntrStoponWrap_ANY) 1 -1" (1 "01")
 Condition 4 "2581243109" "(trntrRamEnable_ANY & trntrStoponWrap_ANY) 1 -1" (2 "10")
@@ -240,7 +239,6 @@ Condition 75 "923988676" "(((~trntrRamActiveEnable_ANY)) & trntrRamActiveEnable_
 Condition 83 "400257705" "(trntrRamEnableStart_ANY_d1 | Eff_InsnTraceWrEnPerCore_TS0[0]) 1 -1" (2 "01")
 Condition 83 "400257705" "(trntrRamEnableStart_ANY_d1 | Eff_InsnTraceWrEnPerCore_TS0[0]) 1 -1" (3 "10")
 Condition 84 "2930191227" "(trntrRamEnableStart_ANY_d1 ? (trntrRamMode_ANY ? trntrRamSMEMStartLow_ANY : trntrRamStartLow_ANY) : trntrcorefullRamWpLow_ANY[0]) 1 -1" (2 "1")
-Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trntrStoponWrap_ANY)) & Trramwplow.Trramwrap) 1 -1" (1 "011")
 Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trntrStoponWrap_ANY)) & Trramwplow.Trramwrap) 1 -1" (2 "101")
 Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trntrStoponWrap_ANY)) & Trramwplow.Trramwrap) 1 -1" (3 "110")
 Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trntrStoponWrap_ANY)) & Trramwplow.Trramwrap) 1 -1" (4 "111")
@@ -282,8 +280,12 @@ Condition 172 "1140082796" "(((~TrRamPendPktSouthWrEn_TS0)) & ((|Eff_TR_TS_South
 Condition 172 "1140082796" "(((~TrRamPendPktSouthWrEn_TS0)) & ((|Eff_TR_TS_South_Vld_stg))) 1 -1" (3 "11")
 Condition 207 "1031576379" "((TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) ? TrRamPendWrEn_Select_ANY[1] : TrRamPendWrEn_Select_ANY[0]) 1 -1" (2 "1")
 Condition 209 "1914242843" "(trdstRamWrEn_TS0_stg | trntrRamWrEn_TS0_stg) 1 -1" (2 "01")
+Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (1 "011")
+Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (3 "110")
+Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (4 "111")
+Condition 257 "1426921381" "(((|TrntrMemRamRdEn_TS1)) & (((|TrdstMemRamRdEn_TS1)) ? (TrMemRamRd_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (2 "10")
+Condition 257 "1426921381" "(((|TrntrMemRamRdEn_TS1)) & (((|TrdstMemRamRdEn_TS1)) ? (TrMemRamRd_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (3 "11")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (1 "01")
-Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (2 "10")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (3 "11")
 Condition 267 "1834590780" "(trntrRamActiveEnable_ANY & ((~trntrRamActiveEnable_ANY_d1))) 1 -1" (2 "10")
 Condition 267 "1834590780" "(trntrRamActiveEnable_ANY & ((~trntrRamActiveEnable_ANY_d1))) 1 -1" (3 "11")
@@ -322,35 +324,25 @@ Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRa
 Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 344 "1521288229" "(TrRamPendPktVld_ANY[7] & ((~TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 344 "1521288229" "(TrRamPendPktVld_ANY[7] & ((~TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (1 "011")
-Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (2 "101")
 Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (3 "110")
-Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (4 "111")
 Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (1 "011")
 Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (2 "101")
-Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (3 "110")
 Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (4 "111")
 Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (1 "011")
 Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (2 "101")
-Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (3 "110")
 Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (4 "111")
 Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (1 "011")
 Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (2 "101")
-Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (3 "110")
 Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (4 "111")
 Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (1 "011")
 Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (2 "101")
-Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (3 "110")
 Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (4 "111")
 Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (1 "011")
 Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (2 "101")
-Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (3 "110")
 Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (4 "111")
 Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (1 "011")
 Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (2 "101")
-Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (3 "110")
 Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (4 "111")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (1 "011")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (2 "101")
-Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (3 "110")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (4 "111")
