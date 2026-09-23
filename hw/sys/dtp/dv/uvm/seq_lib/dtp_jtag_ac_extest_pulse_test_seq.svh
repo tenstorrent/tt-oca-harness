@@ -41,8 +41,8 @@ class dtp_jtag_ac_extest_pulse_test_seq extends dtp_jtag_base_test_seq;
                                DtpBsrModelLen, DTP_SCAN_CTRL_SELECTED, extra, counts);
     family_check(RtiCheckId, {RtiSignal, " pulses across the scan"}, 64'(counts[RtiSignal]), 64'd1,
                  "EXTEST_PULSE DR scan");
-    `uvm_info(get_type_name(), "Step 4: EXTEST_PULSE parked in Run-Test/Idle holds run_test_idle high",
-              UVM_LOW)
+    `uvm_info(get_type_name(),
+              "Step 4: EXTEST_PULSE parked in Run-Test/Idle holds run_test_idle high", UVM_LOW)
     check_scan_observable(RtiCheckId, RtiSignal, 1'b1, "EXTEST_PULSE parked in Run-Test/Idle");
     check_scan_observable(RtiCheckId, "jtag_bsr_select", 1'b0,
                           "EXTEST_PULSE parked in Run-Test/Idle");
