@@ -27,6 +27,7 @@ ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-pr
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
 		$(OCAH_DOC_ANTORA_RELEASE_ARG) \
 		"$(OCAH_COMBINED_PLAYBOOK)"
+	$(call ocah_stage_dashboard_data,$(OCAH_GHPAGES_DIR))
 	@echo "Done: $(OCAH_GHPAGES_DIR)/ocah-home/latest/index.html"
 
 ## Stage the combined site for GitHub Pages: add PDFs + .nojekyll on top of
@@ -55,7 +56,6 @@ ocah-doc-stage-ghpages: ocah-doc-combined-html
 	else \
 		echo "warning: Application Notes PDF not found at $(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf appnotes"; \
 	fi
-	$(call ocah_stage_dashboard_data,$(OCAH_GHPAGES_DIR))
 	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
 	@echo "Note: Datasheet PDFs (SMU/DTP/SEP/SMC/AOU) have no build pipeline yet -- those Downloads links will 404 until that content and a PDF build step exist."
 

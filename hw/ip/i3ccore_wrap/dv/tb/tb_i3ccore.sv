@@ -335,7 +335,7 @@ module tb_i3ccore;
       .Width              (64),
       .DataBitsPerMask    (32),
       .EnableOutputPipeline(0)
-    ) i3c_dat_memory (
+    ) u_i3c_dat_memory (
       .clk_i   (clk),
       .rst_ni  (rst_n),
       .req_i   (dat_mem_sink[gi].req),
@@ -355,7 +355,7 @@ module tb_i3ccore;
       .Width              (128),
       .DataBitsPerMask    (32),
       .EnableOutputPipeline(0)
-    ) i3c_dct_memory (
+    ) u_i3c_dct_memory (
       .clk_i   (clk),
       .rst_ni  (rst_n),
       .req_i   (dct_mem_sink[gi].req),
@@ -374,7 +374,7 @@ module tb_i3ccore;
       .Depth          (128),
       .Width          (i3c_pkg::DatAw),
       .DataBitsPerMask(1)
-    ) i3c_rlt_memory (
+    ) u_i3c_rlt_memory (
       .clk_a_i (clk),
       .clk_b_i (clk),
       .a_req_i  (rlt_mem_sink[gi].a_req),

@@ -1,23 +1,36 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DTP TAP → SEP debug-module DMI (IR=5'h11) on the SEP=1 wrapper.
+"""DTP TAP → SEP debug-module DMI on the SEP=1 wrapper.
 
+S0: the lifecycle posture leaves SEP debug open. The entry names a TEST_DEV
+    shadow image; the exported lc_state must leave its pre-sense value and
+    `lcc_dbg_disable_o` must read the posture the lifecycle table gives that
+    state (every path open), since the DTP gates the SEP STAP host interface
+    with `dbg_disable_i.stap_sep` (integrator guide, STAP Scan Chain Topology).
 S1: PTAP IDCODE is the configured IEEE packing.
-S2: TAP_3DCR selects the SEP STAP; host TMS then follows the PTAP.
-S3: PTAP IR 6'h11 is the RISC-V reserved DMI encoding (maps to BYPASS on
-    the PTAP). The lockstep SEP EL2 TAP captures the same five LSBs as
-    IR=5'h11. A DMI read of dmstatus must return a non-zero version. That
-    read goes through dmi_mux and is gated by dmi_core_enable; a tie of 0
-    leaves the core aperture silent and this compare fails.
+S2: TAP_3DCR selects the SEP STAP; host TMS then follows the PTAP, and the
+    PTAP IDCODE reads back through the spliced network at the depth the chain
+    layout gives it.
+S3: with the SEP TAP's IR loaded with dmi through the same network, the
+    debugger's first act is a dmcontrol write setting dmactive (RISC-V Debug
+    Specification: the module holds its reset state until dmactive is 1); a
+    DMI read of dmstatus then completes with status 0 and reports the
+    debug-spec version the SEP core implements.
 
-No Force. Observe-only hierarchy is the SEP STAP host TAP and SEP TDO.
-Not claimed: abstract commands, SBA, DTMCS (IR=5'h10 does not enter the mux).
+While the PTAP 3DCR select is set, the STAP chain replaces the TDR mux output
+on every IR and DR scan (jtag_ptap architecture, "STAP selection"). The chain
+carries one SIB flop per STAP in chain order, and a selected STAP splices its
+host TAP's register TDI-side of its own SIB (DTP scan reference model,
+``chain_layout``): a scan is the PTAP register, the SIBs of the STAPs ahead of
+the SEP, the SEP TAP's register, the SEP's SIB, then the SIBs behind it. Every
+scan after selection is composed over that full network; a scan sized for the
+PTAP register alone lands its bits in the SEP TAP and the SIBs instead.
 """
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagMasterSequence, OcahJtagState
 
 from seq_lib.smu_boundary_regs import (
@@ -36,17 +49,47 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
     ptap_3dcr_value,
 )
+from seq_lib.smu_lifecycle_table import (
+    LC_STATE_PRESENSE,
+    lc_raw_from_shadow_preload,
+    lc_state_name,
+    posture,
+)
 
-DTP_IR_DMI = dtp_ir_opcode("RISCV_RESERVED_1")
-DMI_DR_WIDTH = 41
+# SEP debug TAP: RISC-V Debug Specification DTM. IR is 5 bits; dtmcs/dmi are
+# the spec's 0x10/0x11; an unrecognised IR is BYPASS (IEEE 1149.1).
+SEP_TAP_IR_WIDTH = 5
+SEP_TAP_IR_BYPASS = 0x1F
+SEP_TAP_IR_DMI = 0x11
 DMI_ABITS = 7
+DMI_DR_WIDTH = DMI_ABITS + 34
+DMI_OP_NOP = 0
+DMI_OP_READ = 1
+DMI_OP_WRITE = 2
+DMI_STATUS_OK = 0
+DMCONTROL_ADDR = 0x10
+DMCONTROL_DMACTIVE = 0x1
 DMSTATUS_ADDR = 0x11
+# RISC-V Debug Specification, dmstatus.version: 2 encodes specification 0.13,
+# the debug specification the VeeR EL2 Programmer's Reference Manual names.
+DMSTATUS_VERSION_SPEC_0_13 = 2
+# TCKs in Run-Test/Idle between the DMI request scan and the scan that captures
+# its result, so the DTM's request crosses to the debug module and back.
+DMI_IDLE_TCKS = 16
+IDCODE_DR_WIDTH = 32
+# SIB flops ahead of the SEP's host segment, and the SEP's own SIB plus those behind it.
+SIBS_BEFORE_SEP = SMU_SEP_STAP_ORDER.index("sep")
+SIBS_FROM_SEP = len(SMU_SEP_STAP_ORDER) - SIBS_BEFORE_SEP
 EDGE_SAMPLE_CYCLES = 2000
 MIN_PTAP_TMS_EDGES = DTP_IR_WIDTH
+POSTURE_SETTLE_POLLS = 500
+POSTURE_FOLLOW_CYCLES = 200
 
-SEP_STAP_TMS = "u_dut.u_smu.dtp_sep_stap_tap_ctrl.tms"
-SEP_STAP_TCK = "u_dut.u_smu.dtp_sep_stap_tap_ctrl.tck"
-SEP_TDO = "u_dut.u_smu.gen_sep.u_sep.jtag_tdo_o"
+# Bench taps published by tb_wrapper_top: the SEP STAP TCK/TMS as the DTP
+# drives them. Struct members of an internal net are not addressable from
+# cocotb under Verilator, so the bench brings them out.
+SEP_STAP_TMS = "tb_stap_sep_tms"
+SEP_STAP_TCK = "tb_stap_sep_tck"
 
 
 def pack_dmi(addr: int, data: int, op: int, *, abits: int = DMI_ABITS) -> int:
@@ -64,8 +107,34 @@ def unpack_dmi(raw: int) -> tuple[int, int, int]:
     return addr, data, op
 
 
+def network_scan(ptap_reg: int, ptap_width: int, sep_reg: int, sep_width: int) -> tuple[int, int]:
+    """A scan over the network with the SEP STAP selected and every SIB closed.
+
+    TDI-nearest first: the PTAP register, the SIBs ahead of the SEP, the SEP
+    TAP's register, the SEP's SIB and the SIBs behind it, all SIB bits 0.
+    """
+    width = ptap_width + SIBS_BEFORE_SEP + sep_width + SIBS_FROM_SEP
+    value = int(ptap_reg) << (SIBS_BEFORE_SEP + sep_width + SIBS_FROM_SEP)
+    value |= int(sep_reg) << SIBS_FROM_SEP
+    return value, width
+
+
+def network_ir_scan(ptap_instr: int, sep_ir: int) -> tuple[int, int]:
+    return network_scan(ptap_instr, DTP_IR_WIDTH, sep_ir, SEP_TAP_IR_WIDTH)
+
+
+def sep_dr_from_capture(captured: int, sep_width: int) -> int:
+    """The SEP register's segment of a network capture, natural bit order."""
+    return (int(captured) >> SIBS_FROM_SEP) & ((1 << sep_width) - 1)
+
+
+def ptap_dr_from_capture(captured: int, ptap_width: int, sep_width: int) -> int:
+    shift = SIBS_BEFORE_SEP + sep_width + SIBS_FROM_SEP
+    return (int(captured) >> shift) & ((1 << ptap_width) - 1)
+
+
 class smu_dtp_sep_dm_dmi_test_seq:
-    """Select the SEP STAP and read dmstatus through DMI IR=5'h11."""
+    """Select the SEP STAP and read dmstatus through the SEP TAP's dmi register."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -99,27 +168,6 @@ class smu_dtp_sep_dm_dmi_test_seq:
                 prev_sep = sep
         return {"ptap_edges": ptap_edges, "sep_edges": sep_edges}
 
-    async def _collect_sep_tdo(self, jtag, nbits: int) -> int:
-        bits = 0
-        got = 0
-        prev_tck = self._hier_bit(SEP_STAP_TCK)
-        guard = 0
-        while got < nbits and guard < 20000:
-            await RisingEdge(self.dut.clk_ref_i)
-            tck = self._hier_bit(SEP_STAP_TCK)
-            if tck == 1 and prev_tck == 0:
-                # VIP TAP state updates after the falling edge, so this rising
-                # edge still reports the state the cycle started in. RTI to
-                # SHIFT_DR is three TCK edges that must not enter the word.
-                if jtag.tap.get_current_state() == OcahJtagState.SHIFT_DR:
-                    bits |= self._hier_bit(SEP_TDO) << got
-                    got += 1
-            prev_tck = tck
-            guard += 1
-        if got != nbits:
-            raise AssertionError(f"SEP TDO collected {got} bits want {nbits}")
-        return bits
-
     async def _select_sep_stap(self, jtag) -> None:
         await jtag.shift_ir(DTP_IR_TAP_3DCR, width=DTP_IR_WIDTH, back_to_rti=True)
         await jtag.shift_dr(
@@ -133,24 +181,63 @@ class smu_dtp_sep_dm_dmi_test_seq:
         sib_word, sib_width = ptap_prefixed(sib, len(SMU_SEP_STAP_ORDER))
         await jtag.shift_dr(sib_word, sib_width, back_to_rti=True)
         stap_word, stap_width = stap_3dcr_scan_word(
-            "sep", config_hold=1, stap_sel=1, tms_hold=1, close_sib=0
+            "sep", config_hold=1, stap_sel=1, tms_hold=1, sib_en=0
         )
         value, width = ptap_prefixed(stap_word, stap_width)
         await jtag.shift_dr(value, width, back_to_rti=True)
+        # The selected SEP TAP now sees the PTAP's TMS; two idle TCKs re-establish
+        # lockstep in Run-Test/Idle before the first composed scan.
+        await jtag.step_tms(0)
+        await jtag.step_tms(0)
         self._log(
             f"OBS SEP STAP TAP_3DCR selected sib=0x{sib:x}->{sib_word:x}/{sib_width} "
             f"3dcr=0x{stap_word:x}->{value:x}/{width} order={SMU_SEP_STAP_ORDER}"
         )
 
     async def _dmi_scan(self, jtag, req: int) -> int:
-        watcher = cocotb.start_soon(self._collect_sep_tdo(jtag, DMI_DR_WIDTH))
-        await jtag.shift_dr(req, DMI_DR_WIDTH, back_to_rti=True)
-        for _ in range(8):
+        """One dmi DR scan through the network; returns the SEP's captured dmi word."""
+        value, width = network_scan(
+            ptap_3dcr_value(config_hold=1, select=1), PTAP_3DCR_WIDTH, req, DMI_DR_WIDTH
+        )
+        captured = await jtag.shift_dr(value, width, back_to_rti=True)
+        for _ in range(DMI_IDLE_TCKS):
             await jtag.step_tms(0)
-        return await watcher
+        return sep_dr_from_capture(captured, DMI_DR_WIDTH)
+
+    async def _require_debug_open(self, sb) -> None:
+        """The SEP STAP is reachable only when the lifecycle posture leaves debug open."""
+        preload = cocotb.plusargs.get("sep_shadow_reg_preload")
+        assert preload is not None, (
+            "+sep_shadow_reg_preload is required: it names the lifecycle state under test"
+        )
+        state = lc_state_name(lc_raw_from_shadow_preload(str(preload)))
+        want = posture(state)
+        assert want.all_open, (
+            f"the entry's shadow image encodes {state}, whose posture keeps debug disabled; "
+            f"the SEP STAP cannot be selected under it"
+        )
+        for _ in range(POSTURE_SETTLE_POLLS):
+            lc_state = sample(self.dut.smc_lc_state_in_o, "smc_lc_state_in_o")
+            if lc_state != LC_STATE_PRESENSE:
+                break
+            await ClockCycles(self.dut.clk_smu_i, 10)
+        else:
+            raise AssertionError(
+                "lc_state never left its pre-sense value; the eFuse image was not applied"
+            )
+        await ClockCycles(self.dut.clk_smu_i, POSTURE_FOLLOW_CYCLES)
+        lc_state = sample(self.dut.smc_lc_state_in_o, "smc_lc_state_in_o")
+        dbg_disable = sample(self.dut.lcc_dbg_disable_o, "lcc_dbg_disable_o")
+        sb.expect_eq(f"lc_state exported for {state}", lc_state, want.lc_state)
+        sb.expect_eq(f"dbg_disable posture for {state} (every debug path open)", dbg_disable, 0)
+        self._log(
+            f"OBS lifecycle posture {state}: lc_state=0x{lc_state:02x} "
+            f"dbg_disable=0x{dbg_disable:04x}; the SEP STAP host interface is ungated"
+        )
 
     async def run(self) -> None:
         sb = self.test.env.scoreboard
+        await self._require_debug_open(sb)
         raw = make_smu_jtag_tap(self.dut, self.cfg.jtag_period_ns)
         jtag = OcahJtagMasterSequence(raw)
         await jtag.reset_to_tlr()
@@ -181,9 +268,21 @@ class smu_dtp_sep_dm_dmi_test_seq:
         await self._select_sep_stap(jtag)
 
         sel_mon = cocotb.start_soon(self._observe_tms(EDGE_SAMPLE_CYCLES))
-        await jtag.shift_ir(dtp_ir_opcode("IDCODE"), width=DTP_IR_WIDTH, back_to_rti=True)
-        await jtag.shift_dr(0, 32, back_to_rti=True)
+        ir_value, ir_width = network_ir_scan(dtp_ir_opcode("IDCODE"), SEP_TAP_IR_BYPASS)
+        await jtag.shift_ir(ir_value, width=ir_width, back_to_rti=True)
+        dr_value, dr_width = network_scan(0, IDCODE_DR_WIDTH, 0, 1)
+        captured = await jtag.shift_dr(dr_value, dr_width, back_to_rti=True)
         sel = await sel_mon
+        spliced_idcode = ptap_dr_from_capture(captured, IDCODE_DR_WIDTH, 1)
+        self._log(
+            f"OBS network IDCODE scan width={dr_width} raw=0x{captured:x} "
+            f"ptap_idcode=0x{spliced_idcode:08x}"
+        )
+        sb.expect_eq(
+            "PTAP IDCODE at its network depth with the SEP STAP spliced",
+            spliced_idcode,
+            DTP_DEFAULT_IDCODE,
+        )
         if sel["sep_edges"] != sel["ptap_edges"]:
             raise AssertionError(
                 f"SEP STAP selected TMS sep_edges={sel['sep_edges']} "
@@ -200,20 +299,21 @@ class smu_dtp_sep_dm_dmi_test_seq:
             f"CHK-SEP-DMI-STAP-SEL sep_edges={sel['sep_edges']} ptap_edges={sel['ptap_edges']}"
         )
 
-        await jtag.shift_ir(DTP_IR_DMI, width=DTP_IR_WIDTH, back_to_rti=True)
-        req = pack_dmi(DMSTATUS_ADDR, 0, op=1)
-        await self._dmi_scan(jtag, req)
-        captured = await self._dmi_scan(jtag, pack_dmi(0, 0, op=0))
+        ir_value, ir_width = network_ir_scan(DTP_IR_TAP_3DCR, SEP_TAP_IR_DMI)
+        await jtag.shift_ir(ir_value, width=ir_width, back_to_rti=True)
+        await self._dmi_scan(jtag, pack_dmi(DMCONTROL_ADDR, DMCONTROL_DMACTIVE, op=DMI_OP_WRITE))
+        await self._dmi_scan(jtag, pack_dmi(DMSTATUS_ADDR, 0, op=DMI_OP_READ))
+        captured = await self._dmi_scan(jtag, pack_dmi(DMSTATUS_ADDR, 0, op=DMI_OP_NOP))
         _, data, status = unpack_dmi(captured)
         version = data & 0xF
         self._log(
-            f"CHK-SEP-DMI-DMSTATUS raw=0x{captured:x} data=0x{data:08x} "
+            f"CHK-SEP-DMI-DMSTATUS dmi=0x{captured:x} dmstatus=0x{data:08x} "
             f"status={status} version={version}"
         )
         sb.expect_eq(
             "CHK-SEP-DMI-DMSTATUS",
-            (status, version != 0),
-            (0, True),
+            (status, version),
+            (DMI_STATUS_OK, DMSTATUS_VERSION_SPEC_0_13),
             evidence="CHK-SEP-DMI-DMSTATUS",
         )
         self.dmstatus = data

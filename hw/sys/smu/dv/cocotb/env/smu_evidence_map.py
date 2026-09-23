@@ -308,7 +308,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-DMI-DMSTATUS",
             "CHK-SEP-DMI-DMSTATUS",
-            "DMI IR=5'h11 dmstatus version is nonzero through dmi_mux",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
         ),
     ],
     "smu_ext_boot_seq_gate_test": [
@@ -941,9 +941,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-MEMINIT-DISABLED",
             "CHK-SMU-MEMINIT-DISABLED",
             "with smc_disable_sram_auto_init_i high the zeroing sweep never "
-            "starts and no zeroing write reaches the scratch RAM, yet "
-            "smc_init_mem_done_o clears under cold reset and asserts and holds "
-            "after release",
+            "starts and no zeroing write reaches the scratch RAM, and "
+            "smc_init_mem_done_o clears under cold reset; its behaviour after "
+            "the release is recorded, not compared",
         ),
     ],
     "smu_sram_auto_init_done_test": [

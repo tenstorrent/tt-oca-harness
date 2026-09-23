@@ -80,7 +80,7 @@ module prim_axi_lite_to_apb_single #(
     .PipelineRequest(PipelineRequest),
     .PipelineResponse(PipelineResponse),
     .rule_t(rule_t)
-  ) axi_lite_to_apb (
+  ) u_axi_lite_to_apb (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .slv(axi_lite),
