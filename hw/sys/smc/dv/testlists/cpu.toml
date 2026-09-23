@@ -124,8 +124,24 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dfd_cla_event_type_sweep_test"
+module = "smc_dfd_cla_event_type_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dfd_trace_sink_window_test"
 module = "smc_dfd_trace_sink_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_sink_readout_test"
+module = "smc_dfd_trace_sink_readout_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
