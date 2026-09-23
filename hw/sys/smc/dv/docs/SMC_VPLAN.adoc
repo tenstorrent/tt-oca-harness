@@ -234,6 +234,7 @@ feature rows.
 |`smc_wdt_key_csr_test` |CMP writes are gated by the KEY magic value, proven per core.
 |`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |Run zeroer over output-fabric payload bytes and check the model.
+|`smc_zeroer_multi_burst_test` |Clear a region larger than one AXI burst and check the first and last word of each half, with a witness word past the end.
 |`smc_zeroer_sanity_test` |Run zeroer over output-fabric payload bytes and check the model.
 |===
 
@@ -284,6 +285,7 @@ feature rows.
 |`smc_cold_reset_repeated_test` |Run the SMC OSS repeated cold-reset re-assert scenario.
 |`smc_cold_reset_test` |Run the SMC OSS cold-reset / POR / cool SMC_001 scenario.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
+|`smc_cool_reset_zero_delay_test` |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
 |`smc_cpu_reset_source_test` |SW core0 level reset; no Force drain / no FLR isolate_req_o.
 |`smc_flr_sanity_test` |Run the SMC OSS FLR post-release sanity scenario.
@@ -7908,6 +7910,75 @@ Drive `smc_log_engine_transfer_test_seq`. Each checker below is a named compare 
 |===
 
 *Pass Criteria*: `CHK-LOG-ENGINE-TRANSFER-BYTES`, `CHK-LOG-ENGINE-TRANSFER-CLEAN`, `CHK-LOG-ENGINE-TRANSFER-HWCLR` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-203-smc_zeroer_multi_burst_test]]
+===== 203 `smc_zeroer_multi_burst_test`
+
+*Source Module*: `smc_zeroer_multi_burst_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the TB SYS_OUT output-fabric responder
+
+*Objective*: Clear a region larger than one AXI burst and check both halves.
+
+*Test Coverage*:
+
+* `smc_zeroer_sanity_test` clears eight bytes and its busy probe clears 0x800, both of which fit one AXI4 burst -- `AxLEN` is eight bits, so a burst carries at most 256 transfers, which on the 64-bit output path is 0x800 bytes. This leaf programs 0x1000, which no single burst can carry, so the zeroer has to return from its data phase to a second address phase.
+* Four probe words -- the first and last word of each half of the region -- are poisoned with distinct values beforehand and read back to prove the poison landed, then required to read zero.
+* A witness word immediately past the end of the region keeps its own poison, so a job that ran past its size fails.
+* The output responder's write-transaction counter has to advance by at least the two bursts the size demands, and `CTRL_STATUS.STATUS` has to leave the level it rests at while the zeroer is idle and return to it. Which level means busy is not asserted, as in `smc_zeroer_sanity_test`.
+* `SIZE` and `DEST_ADDR` are cleared afterwards, so a later write to `CTRL_STATUS` -- the register whose write side effect is the trigger -- cannot start a job over anything.
+
+*Test Procedure*:
+
+Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ZEROER-MULTI-BURST-PRELOAD` |The four probe words spanning both halves of the job and the witness word past its end were poisoned with distinct values and read back exactly, so the zero readbacks that follow can fail
+|`CHK-ZEROER-MULTI-BURST-STATUS` |`CTRL_STATUS.STATUS` left the level it rests at while the zeroer is idle and returned to it, and the output responder booked at least the two write transactions a 0x1000-byte job needs under AxLEN's 256-transfer cap, so the zeroer took a second address phase after its first data phase
+|`CHK-ZEROER-MULTI-BURST-ZEROED` |All four probe words read 0 after the job, including the first and last word of each half, and the witness word immediately past the end still holds its poison
+|===
+
+*Pass Criteria*: `CHK-ZEROER-MULTI-BURST-PRELOAD`, `CHK-ZEROER-MULTI-BURST-STATUS`, `CHK-ZEROER-MULTI-BURST-ZEROED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-204-smc_cool_reset_zero_delay_test]]
+===== 204 `smc_cool_reset_zero_delay_test`
+
+*Source Module*: `smc_cool_reset_zero_delay_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `cfg_flr_pf_active_i` driven as a TB input
+
+*Objective*: Run an FLR cool reset with no pre-reset delay programmed.
+
+*Test Coverage*:
+
+* `reset_unit.rdl` makes `ISOLATE_REQ_FLR_COUNTER_VALUE` the wait before the cool asserts and `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` the hold, and records that a hold of 0 prevents initiation whatever the pre-delay is. So the hold decides whether a cool happens and the pre-delay only decides when. `smc_cool_reset_from_pcie_test` always programs a non-zero pre-delay.
+* Deny leg: with both counters at their reset 0 the FLR request has to latch in `ISOLATE_REQ_SMC_REG` and no cool may follow.
+* Allow leg: with the same pre-delay of 0 and a non-zero hold the cool has to assert inside the synchroniser allowance -- a reset unit that counted a programmed delay anyway runs past the bound -- and then release.
+* A warm-domain scratch register written before the cool reads 0 after it, which is the DUT-side evidence that a cool went through rather than a pin wiggle.
+* The isolate-request pad is held low throughout so the FLR path is the only isolation source, `cfg_flr_pf_active_i` is dropped before the recovery wait, the warm reset is waited for before any further CSR access, and the latched request and the hold counter are cleared at the end.
+
+*Test Procedure*:
+
+Drive `smc_cool_reset_zero_delay_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FLR-ZERO-DELAY-DENY` |The FLR request latched in `ISOLATE_REQ_SMC_REG` with both counters at their reset 0 and no cool followed within the watched window, which is the RDL's "a value of 0 will prevent initiation" for the hold counter
+|`CHK-FLR-ZERO-DELAY-COOL` |With the pre-delay at 0 and a non-zero hold the cool asserted inside the synchroniser allowance, so no programmed pre-delay was counted, was held and released, and the warm-domain scratch register that carried a pattern beforehand reads 0 afterwards
+|===
+
+*Pass Criteria*: `CHK-FLR-ZERO-DELAY-COOL`, `CHK-FLR-ZERO-DELAY-DENY` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
