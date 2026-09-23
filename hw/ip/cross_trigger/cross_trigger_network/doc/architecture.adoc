@@ -23,8 +23,8 @@ Each CTP connects to four separate I/O pads:
   acknowledges the request. In wire-OR mode, this signal drives the
   output-enable port of the I/O pad for duration defined by a pulse stretching
   module, and the pad output is driven static-low. Also in wire-OR mode the I/O
-  pad input signal must be inverted, as the pad signal itself is an open-drain
-  active-low signal. +
+  pad signal is active-low. The receive-edge limitation described below applies
+  to the current implementation. +
 * *CT_Ack_in* - The cross trigger acknowledge input signal. Exclusive to
   point-to-point mode. The cross trigger receiver asserts this signal when it
   acknowledges the CTP's cross trigger request. +
@@ -51,6 +51,17 @@ The register interface for each CTP module is described in the
 <<ctn-memory-map,CTN Memory Map>> section below.
 
 ==== Wire-OR Mode
+
+[IMPORTANT]
+====
+The current CTP receives a trigger on the rising edge of the synchronized,
+optionally inverted pad input. With the normal active-low wire this is the
+*release* edge, not assertion. `INVERT` changes both transmit and receive
+polarity, so it does not correct this mismatch. The receive edge-history bit
+resets to zero and can also produce a pulse as the idle input becomes high
+after reset. Integrators must account for these implementation limits; the
+shared-wire assertion behavior described here is the intended protocol.
+====
 
 Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
 existing cross triggering implementations. This scheme is very resource
@@ -240,10 +251,10 @@ endif::backend-html5[]
 Internal CTPs reuse the cross_trigger_port_core GPIO interface but connect to
 logical signals rather than physical pads. The `INT_CT_MODE` parameter bits are
 inverted before use: `MODE_WIRE_OR = ~INT_CT_MODE[i]`. This means
-`INT_CT_MODE[i]=0` selects Point-to-Point mode, while `INT_CT_MODE[i]=1` selects
-Wire-OR mode.
+`INT_CT_MODE[i]=0` selects Wire-OR mode, while `INT_CT_MODE[i]=1` selects
+Point-to-Point mode.
 
-*Wire-OR Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):*
+*Wire-OR Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):*
 
 ifdef::backend-html5[]
 ++++
@@ -271,7 +282,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-*Point-to-Point Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):*
+*Point-to-Point Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):*
 
 ifdef::backend-html5[]
 ++++

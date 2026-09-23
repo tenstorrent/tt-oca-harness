@@ -47,6 +47,17 @@ endif::backend-html5[]
 
 === Wire-OR Mode
 
+[IMPORTANT]
+====
+The current receiver detects a rising edge after synchronization and optional
+inversion. For the active-low shared wire, `ct_dst_o` therefore pulses on
+release rather than assertion. Setting `INVERT` changes the output polarity
+as well as the input polarity and still detects release. The edge-history
+register resets to zero, so the idle input can also generate a startup pulse.
+These are implementation limitations relative to the assertion-triggered
+wire-OR protocol described below.
+====
+
 Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
 existing cross triggering implementations. This scheme is very resource
 efficient, as it only requires a single pin per chiplet connected to the
