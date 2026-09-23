@@ -6246,6 +6246,7 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 
 * `CMD_COMPLETE`, whose `(event || test) && enable` set path at `i2c_core.sv:1001` is the exact shape under test.
 * Both the held and the dropped consequence, as for the log engine.
+* Every one of the twenty sources in the `irq_o` reduction, each raised as the only enabled source so the output move belongs to that term and no other. `i2c.rdl` splits them: a latched source is `woclr` in `INTR_STATE` with a `singlepulse` `INTR_TEST` field and is released by a W1C; a level source is read-only in `INTR_STATE` with a plain `rw` `INTR_TEST` field and is released by writing that field back to 0. A source the bench holds asserted cannot be swept from a measured clear, so it is named in the evidence and skipped, and the leg states the minimum number of sources it still requires.
 
 *Test Procedure*:
 
@@ -6255,6 +6256,7 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 . Clear INTR_ENABLE only and sample the IRQ.
 . W1C the status, prove it cleared, then pulse INTR_TEST with INTR_ENABLE=0 and set the enable afterwards.
 . Require INTR_STATE to hold the event.
+. Sweep every source: clear it, enable it alone, raise it through INTR_TEST, require the IRQ to rise, release it and require the IRQ to fall with INTR_STATE clear.
 
 *Checkers*:
 
@@ -6263,10 +6265,11 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 |Checker |Description
 |`CHK-I2C-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
 |`CHK-I2C-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATE still carrying the bit -- the last is what separates an output mask from a DUT that simply clears the state
+|`CHK-I2C-INTR-MASK-EVERY-SOURCE` |At least 16 of the twenty interrupt sources each raised the IRQ while it was the only enabled source, and released it again with `INTR_STATE` clear
 |`CHK-I2C-INTR-MASK-LATCH` |An event arriving while masked is still latched and surfaces once the enable is set
 |===
 
-*Pass Criteria*: `CHK-I2C-INTR-MASK-ARM`, `CHK-I2C-INTR-MASK-DEASSERT` and `CHK-I2C-INTR-MASK-LATCH` hold after their compares; the last two are measured before either raises, so neither hides the other. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: `CHK-I2C-INTR-MASK-ARM`, `CHK-I2C-INTR-MASK-DEASSERT`, `CHK-I2C-INTR-MASK-EVERY-SOURCE` and `CHK-I2C-INTR-MASK-LATCH` hold after their compares; the last three are measured before any raises, so none hides another. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
