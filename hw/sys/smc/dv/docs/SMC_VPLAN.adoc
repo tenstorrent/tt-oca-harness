@@ -212,6 +212,7 @@ feature rows.
 |`smc_default_reg_rd_test` |Run a compact OSS-safe default-register read sweep.
 |`smc_ext_interrupts_pin_test` |ext_interrupts_i[0] after prim_sync3.
 |`smc_fw_plic_claim_test` |Firmware programs the cluster PLIC and claims ext_interrupts_i[0] through it.
+|`smc_periph_regblock_sweep_test` |The peripheral register blocks no other leaf writes -- AVSBus, telemetry, system timer, eFuse interface, DMA configuration and the log-engine region registers -- cycled against their RDL contract and restored.
 |`smc_rdl_field_sweep_test` |Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
 |`smc_register_boundary_depth_test` |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |Run the SMC OSS register-sanity scenario.
@@ -8016,6 +8017,45 @@ Drive `smc_log_engine_abort_test_seq`. Each checker below is a named compare the
 |===
 
 *Pass Criteria*: `CHK-LOG-ENGINE-ABORT-HALTED`, `CHK-LOG-ENGINE-ABORT-LENGTH-KEPT`, `CHK-LOG-ENGINE-ABORT-RETRIGGER` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-206-smc_periph_regblock_sweep_test]]
+===== 206 `smc_periph_regblock_sweep_test`
+
+*Source Module*: `smc_periph_regblock_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Cycle the peripheral register blocks no other leaf writes against their RDL contract.
+
+*Test Coverage*:
+
+* The AVSBus controller, the three telemetry receivers, the OCTS system timer, the eFuse interface controller, the DMA controller configuration and the four log engines' region and enable registers have never had a write from this package. Each takes the cycle the other register sweeps use: read at reset, the all-ones and the all-zeros pattern of the fields the generated contract pins, each half written on its own so the byte lanes over the other half are deasserted, then the RDL reset restored.
+* Only fields the contract makes plain read-write are driven, so a `singlepulse` trigger, a `oneToClear` event and a hardware-driven status are never written by the generic cycle.
+* `EFUSE_PROGRAM_CTRL` additionally holds `efuse_data` and `program_enable` at their reset, on top of the `singlepulse` `efuse_program_go` the contract already excludes, so no combination the sweep writes can arm a fuse burn. Its address and read-back select are driven normally.
+* `AVS_CFG_1` carries the AVS clock mux and divider, and `avsbus_controller.rdl` says to gate the clocks entering the mux before changing either and to turn them back on afterwards, which is the order this cycle takes. The gate is on the AVS protocol clock, not the register interface.
+* The telemetry `INTR_TEST.BUFFER_THRESHOLD` field is plain storage, so driving it raises an event; each receiver's INTR_STATUS is cleared afterwards by a write of its declared mask and re-read, which is that register's `oneToClear` contract.
+* The DMA controller's block answers a sub-word write with an error response, so its configuration takes the same cycle at full width instead of in halves.
+* `log_engine/CTRL` is swept last, so the enable is only ever set while the region and write addresses are back at their reset and no LOG_CTRL element holds a length, and no transfer starts.
+* `AVS_CMD`, `AVS_INTERRUPT_CLEAR`, the telemetry counters, the DMA transfer descriptors and the eFuse read and program data registers are not driven: each is a command, an event clear or a hardware-owned value with a leaf of its own or no written-value expectation.
+
+*Test Procedure*:
+
+Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PERIPH-REGBLOCK-SINGLE-SWEEP` |Every single-instance peripheral register read its RDL reset, carried the all-ones and all-zeros pattern of its driven fields after each write, drove no bit outside the fields the RDL declares, held the reset of the bits software cannot write, and returned to that reset
+|`CHK-PERIPH-TELEMETRY-SWEEP` |All three telemetry receivers cycled INTR_ENABLE, INTR_TEST and CTRL against their contract and were restored, and the events the test field raised were then cleared out of INTR_STATUS by a write of its declared mask
+|`CHK-PERIPH-LOG-ENGINE-SWEEP` |All four log engines cycled their region size, region address, write address and enable against their contract and were restored, with the enable set only while the addresses were at their reset
+|`CHK-PERIPH-REGBLOCK-COMPARES` |The scoreboard booked at least the expected number of exact-value compares of its own for the reads whose whole word the RDL contract predicts, independently of the sequence's counters
+|===
+
+*Pass Criteria*: `CHK-PERIPH-LOG-ENGINE-SWEEP`, `CHK-PERIPH-REGBLOCK-COMPARES`, `CHK-PERIPH-REGBLOCK-SINGLE-SWEEP`, `CHK-PERIPH-TELEMETRY-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

@@ -33,7 +33,7 @@ from dataclasses import dataclass
 
 from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_contract_array, smc_reg_addr
+from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_contract_array, rdl_register, smc_reg_addr
 
 
 @dataclass(frozen=True)
@@ -80,6 +80,17 @@ def reg_instances(
         f"the same RDL do not agree on this register"
     )
     return tuple(out)
+
+
+def single_reg_instance(path: str) -> RegInstance:
+    """The one instance of a register the address map instantiates once.
+
+    :func:`smc_rdl_regmap.rdl_register` already compares the IP-XACT address
+    against the register's own ``*_REG_ADDR`` symbol in ``smc_reg.py``, so the
+    two generated views have to agree before the caller sees the address.
+    """
+    reg = rdl_register(path)
+    return RegInstance(path, reg, reg.addr, 0)
 
 
 def array_reg_instances(
@@ -173,22 +184,48 @@ class SmcRegblockFieldSweepSeq(SmcCsrSeq):
         self.value_checks += 1
         return value
 
-    async def granule_cycle(self, inst: RegInstance, low_value: int = 0) -> None:
-        """Half-register writes on one instance, then the RDL reset restored."""
+    @staticmethod
+    def _held_mask(inst: RegInstance, hold_fields: frozenset[str]) -> int:
+        mask = 0
+        for field in inst.reg.fields:
+            if field.name in hold_fields:
+                mask |= field.mask
+        missing = hold_fields - {field.name for field in inst.reg.fields}
+        assert not missing, (
+            f"{inst.label}: the generated map declares no field named "
+            f"{', '.join(sorted(missing))}, so holding it would hold nothing"
+        )
+        return mask
+
+    async def granule_cycle(
+        self,
+        inst: RegInstance,
+        low_value: int = 0,
+        hold_fields: frozenset[str] = frozenset(),
+    ) -> None:
+        """Half-register writes on one instance, then the RDL reset restored.
+
+        ``hold_fields`` names software-writable fields this cycle must leave at
+        their reset: the caller states why at the call site. They stay in the
+        model, so every read still checks them, and they are simply never given
+        the ones pattern.
+        """
         reg = inst.reg
-        assert reg.rw_mask, (
+        held = self._held_mask(inst, hold_fields)
+        driven = reg.rw_mask & ~held
+        assert driven, (
             f"{inst.label}: no field of the register is software-writable with a "
-            f"readback the contract pins, so the cycle would write nothing"
+            f"readback the contract pins and not held, so the cycle would write nothing"
         )
         half = inst.width_bytes // 2
         granules = ((0, half), (half, inst.width_bytes - half))
         model = reg.reset_word
         await self.read_check(inst, "reset", model)
 
-        for pattern, tag in ((reg.rw_mask, "ones"), (low_value, "low")):
+        for pattern, tag in ((driven, "ones"), (low_value & driven, "low")):
             for offset, width in granules:
                 gmask = ((1 << (width * 8)) - 1) << (offset * 8)
-                touched = reg.rw_mask & gmask
+                touched = driven & gmask
                 await self.csr_write(
                     f"{inst.label}:{tag}@{offset}",
                     inst.addr + offset,
@@ -206,6 +243,35 @@ class SmcRegblockFieldSweepSeq(SmcCsrSeq):
                 (reg.reset_word & gmask) >> (offset * 8),
                 length=width,
             )
+        await self.read_check(inst, "restore", reg.reset_word)
+        self.registers_swept += 1
+
+    async def word_cycle(
+        self,
+        inst: RegInstance,
+        low_value: int = 0,
+        hold_fields: frozenset[str] = frozenset(),
+    ) -> None:
+        """Full-width writes on one instance, then the RDL reset restored.
+
+        For a register block whose bus adapter refuses a sub-word write, so the
+        half-register cycle cannot be used. The caller says which block and why.
+        """
+        reg = inst.reg
+        held = self._held_mask(inst, hold_fields)
+        driven = reg.rw_mask & ~held
+        assert driven, (
+            f"{inst.label}: no field of the register is software-writable with a "
+            f"readback the contract pins and not held, so the cycle would write nothing"
+        )
+        await self.read_check(inst, "reset", reg.reset_word)
+        for pattern, tag in ((driven, "ones"), (low_value & driven, "low")):
+            model = (reg.reset_word & ~driven) | (pattern & driven)
+            await self.csr_write(f"{inst.label}:{tag}", inst.addr, model, length=inst.width_bytes)
+            await self.read_check(inst, tag, model)
+        await self.csr_write(
+            f"{inst.label}:restore", inst.addr, reg.reset_word, length=inst.width_bytes
+        )
         await self.read_check(inst, "restore", reg.reset_word)
         self.registers_swept += 1
 
