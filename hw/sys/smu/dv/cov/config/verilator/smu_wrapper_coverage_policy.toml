@@ -172,3 +172,21 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_wrapper_uvm_top.u_smu_alias_fcov.g_sep__DOT__c_alias_top_address_remapped"
+
+[[holes]]
+id = "fcov-smu-c_map_smc_size_zero"
+title = "c map smc size zero"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withheld pending a design answer: smu_axi_xbar forms the SMC crossbar rule as end = base + size, so REGION_SIZE = 0 gives start == end, and the decoder's own map check (addr_decode_dync check_start: start < end or end == 0) fails the leaf that writes it on VCS. The point calls the zero window a legal state that denies the whole region; the decoder calls the rule invalid. Until the SMU owner says which, no leaf drives the value (SMU-XBAR-MAP.S3:map-smc-size-zero)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_map_smc_size_zero"

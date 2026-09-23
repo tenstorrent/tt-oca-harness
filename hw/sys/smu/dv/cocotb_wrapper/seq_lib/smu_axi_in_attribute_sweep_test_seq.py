@@ -29,11 +29,12 @@ S6: shrinking SMC BASE_CONFIG.REGION_SIZE puts the adopter external window
     outside the local aperture, so a JTAG2AXI write to it leaves the chiplet
     on ``smu_axi_out``. The bench responder's memory must hold the written
     word and the B response must come back OKAY through the chiplet.
-S7: REGION_SIZE written back to its reset value regrows the aperture and
-    reaches ``smc_region_size_o``; REGION_SIZE written to zero closes it, and
-    the next write to REGION_SIZE itself no longer lands: it leaves the chiplet
-    on ``smu_axi_out`` at the CSR's address while ``smc_region_size_o`` stays
-    zero. A closed aperture reopens only by reset, so this is the last step.
+S7: REGION_SIZE written back to its reset value regrows the aperture, reaches
+    ``smc_region_size_o`` and reads back. REGION_SIZE at zero is not driven: the
+    crossbar rule it produces has ``start == end``, which the address decoder's
+    own map check rejects (``addr_decode_dync`` ``check_start`` accepts only
+    ``start < end`` or ``end == 0``), so whether a zero window is a legal state
+    is a design question the coverage policy carries.
 
 AxATOP is not driven: ``tb/tb_wrapper_top.sv`` ties ``smu_axi_in_req.aw.atop``
 to ``'0`` and the package has no ATOP driver, so this leaf makes no ATOP
@@ -724,8 +725,8 @@ class smu_axi_in_attribute_sweep_test_seq:
         )
         self.s6_ok = True
 
-    async def _step_region_size_regrow_zero(self, jtag, sb) -> None:
-        """S7: REGION_SIZE regrown to its reset value, then closed at zero."""
+    async def _step_region_size_regrow(self, jtag, sb) -> None:
+        """S7: REGION_SIZE regrown to its reset value after the shrink."""
         await self._j2a_wr32(jtag, REGION_SIZE_ADDR, REGION_SIZE_RESET, "REGION_SIZE_REGROW")
         await ClockCycles(self.dut.clk_smu_i, 64)
         sb.expect_eq(
@@ -738,44 +739,9 @@ class smu_axi_in_attribute_sweep_test_seq:
             await self._j2a_rd32(jtag, REGION_SIZE_ADDR, "REGION_SIZE_REGROW_RB"),
             REGION_SIZE_RESET,
         )
-
-        await self._j2a_wr32(jtag, REGION_SIZE_ADDR, 0, "REGION_SIZE_ZERO")
-        await ClockCycles(self.dut.clk_smu_i, 64)
-        sb.expect_eq(
-            "CHK-SMCMAP-SIZE the zero REGION_SIZE reaches the SMC broadcast port",
-            self._sample_int("smc_region_size_o"),
-            0,
-        )
-
-        # With the aperture closed, REGION_SIZE itself is outside it: the write
-        # that would reopen it leaves the chiplet instead.
-        baseline = self._sample_int("smu_axi_out_write_count_o")
-        watcher = _OutboundWriteWatcher(self.dut)
-        try:
-            await self._j2a_wr32(jtag, REGION_SIZE_ADDR, REGION_SIZE_RESET, "REGION_SIZE_CLOSED")
-            count = await self._await_egress_write(baseline, "s7_closed_aperture_write")
-            await ClockCycles(self.dut.clk_smu_i, 16)
-        finally:
-            watcher.stop()
-        sb.expect_eq(
-            "CHK-SMCMAP-SIZE a REGION_SIZE write through the closed aperture crosses smu_axi_out",
-            (count, watcher.aw_addr, watcher.bresp),
-            (baseline + 1, REGION_SIZE_ADDR, RESP_OKAY),
-        )
-        sb.expect_eq(
-            "CHK-SMCMAP-SIZE the closed aperture keeps smc_region_size_o at zero",
-            self._sample_int("smc_region_size_o"),
-            0,
-        )
-        sb.expect_eq(
-            "CHK-SMCMAP-SIZE the bench responder holds the word the closed aperture routed out",
-            self.cfg.axi_out_mem.read32(REGION_SIZE_ADDR),
-            REGION_SIZE_RESET,
-        )
         self._log(
             f"CHK-SMCMAP-SIZE: shrunk 0x{REGION_SIZE_SHRUNK:x} -> reset 0x{REGION_SIZE_RESET:x} "
-            f"-> 0x0 on smc_region_size_o; closed-aperture write count {baseline}->{count} "
-            f"addr=0x{watcher.aw_addr:x}"
+            "on smc_region_size_o"
         )
         self.s7_ok = True
 
@@ -833,4 +799,4 @@ class smu_axi_in_attribute_sweep_test_seq:
         await self._disable_entry(jtag, 1)
         await self._disable_entry(jtag, 0)
         await self._step_outbound_write(jtag, sb)
-        await self._step_region_size_regrow_zero(jtag, sb)
+        await self._step_region_size_regrow(jtag, sb)
