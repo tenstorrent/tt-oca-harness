@@ -19,6 +19,8 @@ class dtp_jtag2axi_series_corner_all_bridges_test(dtp_base_test):
         "CHK-AXI-RESP",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-SERIES-ADDR",
+        "CHK-J2A-FAULT-STATUS",
     )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 

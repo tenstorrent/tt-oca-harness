@@ -10,6 +10,7 @@ from env.dtp_types import (
     ABORT_MIDFLIGHT_CHECK_ID,
     ABORT_RECOVERY_CHECK_ID,
     CDC_CLEAR_CHECK_ID,
+    FAULT_STATUS_CHECK_ID,
     STALL_BUSY_CHECK_ID,
     STALL_FSM_CHECK_ID,
     DtpJtag2AxiOp,
@@ -17,11 +18,17 @@ from env.dtp_types import (
     unpack_single_op,
 )
 
-from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
+from .dtp_jtag2axi_base_test_seq import (
+    AXI_RESP_DECERR,
+    AXI_RESP_SLVERR,
+    dtp_jtag2axi_base_test_seq,
+)
 
 AXI_DECERR = 3
 ROBUST_TARGETS = ("smc_axi", "smc_otp", "sep_otp")
 ROBUST_BASE = 0x3800
+# Series-corner windows: one 0x400 window per bridge, one 0x100 leg per series.
+SERIES_CORNER_BASE = 0x5000
 # Reset-abort stimulus: the READY stall outlasts everything and is released
 # after the reset, so the write sits on the bus throughout the reset pulse.
 ABORT_HOLD_CYCLES = 100_000
@@ -555,52 +562,227 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             self.operation_count += 1
         self._emit_decode_error_nonvacuity("mixed")
 
+    @staticmethod
+    def _series_corner_base(target_idx: int, leg: int) -> int:
+        """Aligned base of one series leg's window."""
+        return SERIES_CORNER_BASE + target_idx * 0x400 + leg * 0x100
+
+    def _record_series_status(
+        self, target: str, observed: int, expected: DtpJtag2AxiStatus, *, context: str
+    ) -> None:
+        """CHK-J2A-FAULT-STATUS on a SERIES_CTRL capture, recorded and asserted."""
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            scoreboard.expect_equal(
+                FAULT_STATUS_CHECK_ID,
+                DtpJtag2AxiStatus(observed).name,
+                DtpJtag2AxiStatus(expected).name,
+                context=f"{context} target={target}",
+            )
+        self.assert_equal(f"{context}.status", observed, expected)
+
+    async def _series_corner_beat(
+        self, target: str, addr: int, data: int, *, size: int, increment: int, context: str
+    ) -> None:
+        """Land one write beat of a programmed series and compare the word it wrote."""
+        before = await self.target_activity_counts(target)
+        if increment:
+            await self.series_data_incr(data, size=size, target=target, back_to_rti=True)
+        else:
+            await self.series_data_no_incr(data, size=size, target=target, back_to_rti=True)
+        await self.wait_for_target_activity(target, before=before, read=False, context=context)
+        self.assert_equal(
+            f"{context}.mem", self.read_target_mem_int(target, addr, size), data, f"addr=0x{addr:x}"
+        )
+        self.operation_count += 1
+
+    async def _series_corner_progressions(
+        self, target: str, target_idx: int, beats: int, rng
+    ) -> None:
+        """An incrementing then a fixed-address series: the captured address follows the mode."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size
+        base = self._series_corner_base(target_idx, 0)
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, reset=1, size=size, target=target)
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, target=target)
+        for beat in range(beats):
+            data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
+            await self._series_corner_beat(
+                target,
+                base + beat * cfg.beat_bytes,
+                data,
+                size=size,
+                increment=1,
+                context=f"series_corner.incr.{target}.{beat}",
+            )
+        status = await self.check_series_addr(
+            target, base + beats * cfg.beat_bytes, size=size, context=f"series_corner.incr.{target}"
+        )
+        self._record_series_status(
+            target, status, DtpJtag2AxiStatus.SUCCESS, context=f"series_corner.incr.{target}"
+        )
+        addr = self._series_corner_base(target_idx, 1)
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, addr, size=size, target=target)
+        for beat in range(beats):
+            data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
+            await self._series_corner_beat(
+                target,
+                addr,
+                data,
+                size=size,
+                increment=0,
+                context=f"series_corner.fixed.{target}.{beat}",
+            )
+        status = await self.check_series_addr(
+            target, addr, size=size, context=f"series_corner.fixed.{target}"
+        )
+        self._record_series_status(
+            target, status, DtpJtag2AxiStatus.SUCCESS, context=f"series_corner.fixed.{target}"
+        )
+        self.status = status
+
+    async def _series_corner_sticky_status(
+        self, target: str, target_idx: int, beats: int, rng
+    ) -> None:
+        """One faulted beat sets the series status, which holds across the clean beats
+        after it until SERIES_CTRL.reset starts a fresh series."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size
+        base = self._series_corner_base(target_idx, 2)
+        # At least one clean beat follows the fault, so the held status is observed
+        # after a beat the responder accepted.
+        fault_beat = rng.randrange(0, beats - 1)
+        resp = rng.choice((AXI_RESP_SLVERR, AXI_RESP_DECERR))
+        fault_addr = base + fault_beat * cfg.beat_bytes
+        expected = self.configure_target_error(target, fault_addr, resp, read=False, write=True)
+        fault_before = self.read_target_mem_int(target, fault_addr, size)
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, target=target)
+        for beat in range(beats):
+            addr = base + beat * cfg.beat_bytes
+            data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
+            context = f"series_corner.sticky.{target}.{beat}"
+            before = await self.target_activity_counts(target)
+            await self.series_data_incr(data, size=size, target=target, back_to_rti=True)
+            await self.wait_for_target_activity(target, before=before, read=False, context=context)
+            observed = self.read_target_mem_int(target, addr, size)
+            if beat == fault_beat:
+                self.assert_equal(
+                    f"{context}.mem_dropped", observed, fault_before, f"addr=0x{addr:x}"
+                )
+                # The capture right after the faulted beat carries the code.
+                status = await self.check_series_addr(
+                    target, addr + cfg.beat_bytes, size=size, context=f"{context}.faulted"
+                )
+                self._record_series_status(target, status, expected, context=f"{context}.faulted")
+            else:
+                self.assert_equal(f"{context}.mem", observed, data, f"addr=0x{addr:x}")
+            self.operation_count += 1
+        # The code holds across the clean beats that followed the fault.
+        status = await self.check_series_addr(
+            target,
+            base + beats * cfg.beat_bytes,
+            size=size,
+            context=f"series_corner.sticky.{target}",
+        )
+        self._record_series_status(
+            target, status, expected, context=f"series_corner.sticky.{target}.held"
+        )
+        self.clear_target_errors(target)
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, reset=1, size=size, target=target)
+        clear_addr = base + (beats + 1) * cfg.beat_bytes
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, clear_addr, size=size, target=target)
+        await self._series_corner_beat(
+            target,
+            clear_addr,
+            rng.getrandbits(cfg.data_width) & self.data_mask(size),
+            size=size,
+            increment=1,
+            context=f"series_corner.sticky.{target}.cleared",
+        )
+        status = await self.check_series_addr(
+            target,
+            clear_addr + cfg.beat_bytes,
+            size=size,
+            context=f"series_corner.sticky.{target}.cleared",
+        )
+        self._record_series_status(
+            target,
+            status,
+            DtpJtag2AxiStatus.SUCCESS,
+            context=f"series_corner.sticky.{target}.cleared",
+        )
+        self.status = status
+
+    async def _series_corner_interleaved(self, beats: int, rng) -> None:
+        """Beats of the three bridges' series landed in seeded interleaved order leave every
+        bridge's address progression and every word exact."""
+        bases: dict[str, int] = {}
+        words: dict[str, list[int]] = {}
+        for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
+            cfg = self.target_cfg(target)
+            size = cfg.default_size
+            bases[target] = self._series_corner_base(target_idx, 3)
+            words[target] = [
+                rng.getrandbits(cfg.data_width) & self.data_mask(size) for _ in range(beats)
+            ]
+            await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, reset=1, size=size, target=target)
+            await self.jtag2axi_series_ctrl(
+                DtpJtag2AxiOp.WRITE, bases[target], size=size, target=target
+            )
+        for beat in range(beats):
+            order = list(ROBUST_TARGETS)
+            rng.shuffle(order)
+            for target in order:
+                cfg = self.target_cfg(target)
+                await self._series_corner_beat(
+                    target,
+                    bases[target] + beat * cfg.beat_bytes,
+                    words[target][beat],
+                    size=cfg.default_size,
+                    increment=1,
+                    context=f"series_corner.interleaved.{target}.{beat}",
+                )
+        for target in ROBUST_TARGETS:
+            cfg = self.target_cfg(target)
+            size = cfg.default_size
+            status = await self.check_series_addr(
+                target,
+                bases[target] + beats * cfg.beat_bytes,
+                size=size,
+                context=f"series_corner.interleaved.{target}",
+            )
+            self._record_series_status(
+                target,
+                status,
+                DtpJtag2AxiStatus.SUCCESS,
+                context=f"series_corner.interleaved.{target}",
+            )
+            for beat in range(beats):
+                addr = bases[target] + beat * cfg.beat_bytes
+                self.assert_equal(
+                    f"series_corner.interleaved.{target}.final#{beat}",
+                    self.read_target_mem_int(target, addr, size),
+                    words[target][beat],
+                    f"addr=0x{addr:x}",
+                )
+            self.status = status
+
     async def run_series_corner_all_bridges(self) -> None:
         self.log_banner("JTAG2AXI series corner coverage across all bridges")
         await self.reset_tap()
         rng = self.rng("series_corner_all_bridges")
+        # Seeded per-pass beat count, above the two beats a progression needs.
+        beats = rng.randint(3, 6)
+        self.log_step(1, "Incrementing and fixed-address series on each bridge, %d beats", beats)
         for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
-            cfg = self.target_cfg(target)
-            size = cfg.default_size
-            base = 0x5000 + target_idx * 0x100
-            self.log_iteration(
-                target_idx, len(ROBUST_TARGETS), "target=%s series reset/pipeline/status", target
-            )
-            await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, reset=1, size=size, target=target)
-            await self.jtag2axi_series_ctrl(
-                DtpJtag2AxiOp.WRITE,
-                base,
-                pipeline_depth=1,
-                size=size,
-                target=target,
-            )
-            for beat in range(2):
-                data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-                before = await self.target_activity_counts(target)
-                await self.series_data_with_status(
-                    data,
-                    size=size,
-                    increment=1,
-                    target=target,
-                    back_to_rti=True,
-                )
-                await self.wait_for_target_activity(
-                    target,
-                    before=before,
-                    read=False,
-                    context=f"series_corner.write.{target}.{beat}",
-                )
-                self.assert_equal(
-                    f"series_corner.mem.{target}.{beat}",
-                    self.read_target_mem_int(target, base + beat * cfg.beat_bytes, size),
-                    data,
-                )
-            _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=target)
-            self.assert_equal(f"series_corner.status.{target}", status, DtpJtag2AxiStatus.SUCCESS)
-            self.assert_equal(
-                f"series_corner.addr_after.{target}", addr_after, base + 2 * cfg.beat_bytes
-            )
-            self.operation_count += 1
+            await self._series_corner_progressions(target, target_idx, beats, rng)
+        self.log_step(
+            2, "One faulted beat per bridge: the series status holds until SERIES_CTRL.reset"
+        )
+        for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
+            await self._series_corner_sticky_status(target, target_idx, beats, rng)
+        self.log_step(3, "Interleaved beats across the three bridges")
+        await self._series_corner_interleaved(beats, rng)
 
     async def body(self) -> None:
         await self.enable_all_debug()
