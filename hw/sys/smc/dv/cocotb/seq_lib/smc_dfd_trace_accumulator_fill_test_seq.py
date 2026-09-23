@@ -75,18 +75,18 @@ _EMPTY_POLLS = 3
 _HANDOFF_POLLS = 32
 
 
-def _field(reg: RdlReg, name: str) -> RdlField:
+def reg_field(reg: RdlReg, name: str) -> RdlField:
     for field in reg.fields:
         if field.name == name:
             return field
     raise KeyError(f"{reg.path} has no field {name} in the generated map")
 
 
-def _pack(reg: RdlReg, values: dict[str, int]) -> int:
+def pack_fields(reg: RdlReg, values: dict[str, int]) -> int:
     """Register word with the named fields set and every other bit 0."""
     word = 0
     for name, value in values.items():
-        field = _field(reg, name)
+        field = reg_field(reg, name)
         assert value < (1 << field.width), (
             f"{reg.path}.{name} is {field.width} bits, cannot hold {value}"
         )
@@ -95,7 +95,7 @@ def _pack(reg: RdlReg, values: dict[str, int]) -> int:
 
 
 @lru_cache(maxsize=None)
-def _block_register(block: str, name: str) -> RdlReg:
+def block_register(block: str, name: str) -> RdlReg:
     """One register of a sub-block of the SMC_CLA aperture, by its RDL name.
 
     A sub-block is a register file the map may spell with or without its
@@ -114,16 +114,21 @@ def _block_register(block: str, name: str) -> RdlReg:
     return next(iter(matches.values()))
 
 
-def _dst_register(name: str) -> RdlReg:
-    return _block_register(_DST_SEGMENT, name)
+def dst_register(name: str) -> RdlReg:
+    return block_register(_DST_SEGMENT, name)
 
 
-def _sink_register(name: str) -> RdlReg:
-    return _block_register(_SINK_SEGMENT, name)
+def sink_register(name: str) -> RdlReg:
+    return block_register(_SINK_SEGMENT, name)
 
 
-def _funnel_register(name: str) -> RdlReg:
-    return _block_register(_FUNNEL_SEGMENT, name)
+def funnel_register(name: str) -> RdlReg:
+    return block_register(_FUNNEL_SEGMENT, name)
+
+
+def dfd_register(path: str) -> RdlReg:
+    """One register of the SMC DFX control block, by its IP-XACT path."""
+    return rdl_register(path)
 
 
 class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
@@ -148,7 +153,7 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
 
     async def _write_check(self, reg: RdlReg, values: dict[str, int], label: str) -> None:
         """Write the named fields and require the writable bits to read back."""
-        word = _pack(reg, values)
+        word = pack_fields(reg, values)
         await self.csr_write(f"{self._short(reg)}:{label}", reg.addr, word, length=reg.width_bytes)
         readback = await self._read(reg, f"{label}_rb")
         assert readback & reg.rw_mask == word & reg.rw_mask, (
@@ -160,12 +165,12 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
     # -- bring-up ---------------------------------------------------------
 
     async def _hold_dfd_clock(self) -> None:
-        await self._write_check(rdl_register("dfx_ctrl/DEBUG_CTRL"), {"force_clk_en": 1}, "force")
+        await self._write_check(dfd_register("dfx_ctrl/DEBUG_CTRL"), {"force_clk_en": 1}, "force")
 
     async def _idle_witness(self) -> None:
         """Both observed registers carry their RDL reset before any trace runs."""
-        dst = _dst_register("Trdstcontrol")
-        empty = _field(dst, "Trdstempty")
+        dst = dst_register("Trdstcontrol")
+        empty = reg_field(dst, "Trdstempty")
         word = await self._read(dst, "idle")
         expected = (dst.reset_word & empty.mask) >> empty.offset
         assert (word & empty.mask) >> empty.offset == expected, (
@@ -174,7 +179,7 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
             f"reset is {expected}, so the packetizer already holds data and a later 'it "
             f"filled' observation would prove nothing"
         )
-        wp = _sink_register("Trdstramwplow")
+        wp = sink_register("Trdstramwplow")
         at_reset = await self._read(wp, "idle")
         assert at_reset == wp.reset_word, (
             f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} reads 0x{at_reset:08x} before any "
@@ -193,13 +198,13 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
 
     async def _open_debug_bus(self) -> None:
         """Put every debug-bus mux of the array into normal debug mode."""
-        reg = rdl_register("dfx_ctrl/DEBUG_BUS_MUX")
-        dbmid = _field(reg, "Dbmid")
+        reg = dfd_register("dfx_ctrl/DEBUG_BUS_MUX")
+        dbmid = reg_field(reg, "Dbmid")
         for value in range(1 << dbmid.width):
             await self.csr_write(
                 f"DEBUG_BUS_MUX:normal_id{value}",
                 reg.addr,
-                _pack(reg, {"Dbmmode": 1, "Dbmid": value}),
+                pack_fields(reg, {"Dbmmode": 1, "Dbmid": value}),
                 length=reg.width_bytes,
             )
             self.dbmids_programmed += 1
@@ -216,26 +221,26 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
             ("Trdstramlimitlow", _SINK_WINDOW_BYTES),
             ("Trdstramlimithigh", 0),
         ):
-            reg = _sink_register(name)
+            reg = sink_register(name)
             await self.csr_write(
                 f"{name}:window", reg.addr, value & reg.rw_mask, length=reg.width_bytes
             )
         await self._write_check(
-            _sink_register("Trdstramcontrol"),
+            sink_register("Trdstramcontrol"),
             {"Trdstramactive": 1, "Trdstramenable": 1},
             "enable",
         )
 
     async def _open_funnel(self) -> None:
         await self._write_check(
-            _funnel_register("Trfunnelcontrol"),
+            funnel_register("Trfunnelcontrol"),
             {"Trfunnelactive": 1, "Trfunnelenable": 1},
             "enable",
         )
 
     async def _enable_dst(self) -> None:
         await self._write_check(
-            _dst_register("Trdstcontrol"),
+            dst_register("Trdstcontrol"),
             {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
             "enable",
         )
@@ -252,7 +257,7 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         await self.csr_write(
             "CDbgClaCtrlStatus:arm",
             ctrl.addr,
-            _pack(
+            pack_fields(
                 ctrl,
                 {
                     "EnableCla": 1,
@@ -270,7 +275,7 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
             await self.csr_write(
                 f"CDbgNode0Eap0:op{value}",
                 eap.addr,
-                _pack(eap, {"LogicalOp": value, "DestNode": 0}),
+                pack_fields(eap, {"LogicalOp": value, "DestNode": 0}),
                 length=eap.width_bytes,
             )
             await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
@@ -292,13 +297,13 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         """Drive Action0 over its whole range and watch the packetizer fill."""
         eap = cla_register("CDbgNode0Eap0")
         action = cla_field(eap, "Action0")
-        dst = _dst_register("Trdstcontrol")
-        empty = _field(dst, "Trdstempty")
+        dst = dst_register("Trdstcontrol")
+        empty = reg_field(dst, "Trdstempty")
         for value in range(1 << action.width):
             await self.csr_write(
                 f"CDbgNode0Eap0:action{value}",
                 eap.addr,
-                _pack(eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": value}),
+                pack_fields(eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": value}),
                 length=eap.width_bytes,
             )
             self.actions_swept += 1
@@ -329,9 +334,9 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
 
     async def _bank_handoff(self) -> None:
         """The sink takes a filled bank, so the accumulator hands data on."""
-        wp = _sink_register("Trdstramwplow")
-        pointer = _field(wp, "Trdstramwplow")
-        wrap = _field(wp, "Trdstramwrap")
+        wp = sink_register("Trdstramwplow")
+        pointer = reg_field(wp, "Trdstramwplow")
+        wrap = reg_field(wp, "Trdstramwrap")
         word = wp.reset_word
         for _ in range(_HANDOFF_POLLS):
             word = await self._read(wp, "handoff")
@@ -360,11 +365,11 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         for reg in (
             cla_register("CDbgNode0Eap0"),
             cla_register("CDbgClaCtrlStatus"),
-            _dst_register("Trdstcontrol"),
-            _funnel_register("Trfunnelcontrol"),
-            _sink_register("Trdstramcontrol"),
-            rdl_register("dfx_ctrl/DEBUG_BUS_MUX"),
-            rdl_register("dfx_ctrl/DEBUG_CTRL"),
+            dst_register("Trdstcontrol"),
+            funnel_register("Trfunnelcontrol"),
+            sink_register("Trdstramcontrol"),
+            dfd_register("dfx_ctrl/DEBUG_BUS_MUX"),
+            dfd_register("dfx_ctrl/DEBUG_CTRL"),
         ):
             await self.csr_write(
                 f"{self._short(reg)}:restore",
