@@ -242,7 +242,7 @@ module efuse_shadow_regs
       .efuse_apb_resp_t (efuse_apb_resp_t),
       .efuse_addr_t     (efuse_addr_t),
       .efuse_data_t     (efuse_data_t)
-  ) efuse_shadow_reg_access_control (
+  ) u_efuse_shadow_reg_access_control (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
 

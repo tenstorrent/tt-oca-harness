@@ -1,2 +1,265 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# tclint-disable line-length
+
+# For waiving violations on IP developed by Tenstorrent teams
+
+#=======================================================================================================================
+# RULE INFO:
+#=======================================================================================================================
+# STARC05-1_1_1_1: Module name should be the same as file name
+# STARC05-3_3_1_4b: Flop should have async set or reset
+# W362: Arithmetic comparison with unequal length
+# W164b: LHS of assignment wider than RHS
+# STARC05-2_1_3_1: width of function arguments must match width of function inputs
+# W553: Different bits of a bus are driven in different combinational blocks
+# W391: Module driven by both edges of a clock
+# STARC05-2_10_6_1: Possible loss of carry or borrow in addition or subtraction when width of LHS = width of RHS
+# W401: Clock generated internally in module
+# W193: Empty statement (isolated semicolon)
+# W123: Signal is read but not set
+# W240: Input declared but not read
+# STARC05-1_3_1_3: Async reset used as sync reset or non-reset
+# STARC05-2_11_3_1: Sequential and combinational parts of FSM described in same "always" block
+# W415: Signal has multiple drivers but is not declared a tri-state
+#=======================================================================================================================
+
+# Rule Waivers (should be consolidated into new ruleset)
+# Prefix for Module filters; set by the flow's post_proc script.
+# Defaults to empty string so waivers still match unprefixed module names.
+if { ![info exists PREFIX] } {
+    set PREFIX ""
+}
+# Substitute the literal ${PREFIX} token in a -filter expression with $PREFIX's
+# value. Uses string map rather than brace interpolation so that $clog2, bus
+# indices like [i], and embedded quotes inside the filter are preserved verbatim.
+proc apply_prefix { filter } {
+    return [string map [list {${PREFIX}} $::PREFIX] $filter]
+}
+
+# Build an OR-of-equals Module predicate from a module-name list. Applies the packager module-name prefix when the ocah_smu auto-pull has set ::PREFIX; at subcomponent level ::PREFIX is unset or empty and the bare names are used.
+proc module_any { mods } {
+    set p ""
+    if { [info exists ::PREFIX] } { set p $::PREFIX }
+    set parts {}
+    foreach m $mods { lappend parts "(Module == \"${p}${m}\")" }
+    return "([join $parts { OR }])"
+}
+
+# Build an OR-of-globs DesignObjSignal predicate from a list of net paths.
+proc signal_any { sigs } {
+    set parts {}
+    foreach s $sigs { lappend parts "(DesignObjSignal =~ \"*${s}*\")" }
+    return "([join $parts { OR }])"
+}
+
+#=======================================================================================================================
+# STARC05-3.3.1.4b module lists (flop without async set/reset)
+#=======================================================================================================================
+# Shared OCH primitives: CDC synchronisers, pulse/handshake cells, clock gaters, sync FIFOs and counters. The list is
+set SMC_OCH_PRIM_UNRESET_MODULES {
+    prim_apb_arb prim_clk_counter prim_clk_counter_fifo_sync prim_clk_gater_hysteresis
+    prim_fair_rr_arb prim_fifo_sync_parity prim_flop_3sync prim_jtag_scan_reg
+    prim_prog_clk_div_posedge prim_pulse_signal prim_sync3_pulse_dest prim_sync3_pulse_src
+    prim_sync_data_autohs prim_updown_counter
+}
+
+# Vendored OpenTitan FIFO. Only one prim_fifo_sync exists in the tree
+set SMC_VENDOR_UNRESET_FIFO_MODULES {
+    prim_fifo_async prim_fifo_sync
+}
+
+# Application logic using synchronous reset only, per the project preference to limit async resets.
+set SMC_APP_SYNC_RESET_MODULES {
+    avsbus_async_fifo avsbus_controller efuse_guard idma_wrapper
+    smc_4core_cpu smc_cool_reset_wrap smc_cpu_ctrl_wrap smc_dfd_wrap
+    smc_peripherals smc_peripherals_cdc telemetry_receiver zeroer
+}
+
+# Vendored tt-hw-debug flop with an explicit SYNCHRONOUS reset
+set SMC_VENDOR_SYNC_RESET_MODULES {
+    generic_dff
+}
+
+# Vendored tt-hw-debug clock gater.
+set SMC_VENDOR_UNRESET_CCG_MODULES {
+    generic_ccg
+}
+
+#=======================================================================================================================
+# checkMultipleDrivers module list (per-bit drivers of an instance array)
+#=======================================================================================================================
+# och_prim synchronisers that build their flop chain as an instance ARRAY rather than a parameterised multi-bit cell.
+set SMC_SYNC_INSTANCE_ARRAY_MODULES {
+    prim_sync3 prim_sync3r
+}
+
+set SMC_SYNC_INSTANCE_ARRAY_NETS {
+    u_smc_base.ext_debug_bus_smc_clk
+    u_smc_base.ext_interrupts_smc_clk
+    u_smc_base.u_internal_regs.u_smc_dfd_wrap.ref_cnt_gray_sync
+    u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_refclk_counter.ref_count_sync_gray
+    u_smc_peripherals.i2c_enable_smc_clk
+    u_smc_peripherals.i2c_irqs_smc_clk
+    u_smc_peripherals.i3c_irqs_smc_clk
+    u_smc_peripherals.ndmreset_request_smc_clk
+    u_smc_peripherals.u_smc_peripherals_cdc.gen_sync3.u_i2c_debug_sync.o_q
+    u_smc_peripherals.u_smc_reset_unit.u_smc_subsystem_resets.ss_reset_complete
+    u_smc_peripherals.uart_enable_smc_clk
+    u_smc_peripherals.uart_irq_combined_smc_clk
+}
+
+waive_violation -add {SMC_ReserveName} -comment {Error is meant for flagging reserved words in VHDL -- not relevant since not intended to port it to VHDL. Created by nbetik on 19-Feb-2025} -filter {(Module =~ "*")} -app { lint } -tag { ReserveName } -user { nbetik } -timestamp { 26-02-2026 14:27:03 }
+waive_violation -add {SMC_STARC05-1_1_1_1} -comment {Not functionally relevant, only important for code readability. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND ((Module == "${PREFIX}cdc_fifo_gray_src") OR (Module == "${PREFIX}i2c_controller_fsm_i3ccore") OR (Module == "${PREFIX}i2c_target_fsm_i3ccore") OR (Module == "${PREFIX}idma_transport_layer_rw_axi") OR (Module == "${PREFIX}prim_axi_user_override_struct"))}] -app { lint } -tag { STARC05-1.1.1.1 } -user { nbetik } -timestamp { 26-02-2026 14:27:45 }
+
+# NoGenLabel-ML (No label on generate block)
+waive_violation -add {SMC_NoGenLabel-ML_axi_demux_simple_redo} -comment {PULP AXI IP. Error is for readability only. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_demux_simple") AND (NodeType == "generate-if") AND (Module_Name == "${PREFIX}axi_demux_simple") AND (Statement == "  end else begin")}] -app { lint } -tag { NoGenLabel-ML } -user { nbetik } -timestamp { 21-04-2026 14:05:19 }
+
+# AutomaticFuncTask-ML (Function/task should be declared automatic)
+waive_violation -add {SMC_AutomaticFuncTask-ML_axi_burst_splitter_gran_txn_supported} -comment {ETH-Z/PULP AXI IP (not modified). txn_supported is a pure combinational function with no persistent state, so a static function is functionally safe; lint only wants automatic for reentrancy. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_burst_splitter_gran") AND (RTL_TYPE == "Function") AND (FUNC_TASK_NAME == "txn_supported")}] -app { lint } -tag { AutomaticFuncTask-ML } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+
+# STARC05-1.3.1.3 (Asynchronous reset used as a synchronous reset or as a non-reset)
+waive_violation -add {SMC_STARC05-1_3_1_3_avs_clear_avs_slave_int_resync} -comment {CDC reset synchronizer (src_reset_n_sync) inside the clear_avs_slave interrupt resync; the synchronized reset correctly resets the destination capture flop. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_avsbus_controller.u_clear_avs_slave_int_resync.u_dest.u_src_reset_n_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_avsbus_controller.R_avs_interrupt_F_avs_slave_issued_interrupt_AVSCLK.EN")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_avs_clear_slave_unresponsive_resync} -comment {CDC reset synchronizer (src_reset_n_sync) inside the clear_slave_unresponsive interrupt resync; the synchronized reset correctly resets the destination capture flop. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_avsbus_controller.u_clear_slave_unresponsive_int_resync.u_dest.u_src_reset_n_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_avsbus_controller.R_avs_interrupt_F_slave_unresponsive_int_AVSCLK.EN")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_avs_clk_reset_sync_cur_state_resync} -comment {Synchronized reset from avs_clk_reset_sync; lint tags it async only because it traverses the DFT scan-bypass mux before resetting avs_mdata_o. Reset is properly synchronized. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_avsbus_controller.u_avs_clk_reset_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_avsbus_controller.u_cur_state_resync*")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_fuse_reset_stalled_n_delay} -comment {fuse_reset_stalled_n is intentionally fed as data into the u_fuse_reset_n_delay pipeline to generate a delayed reset; reset-as-data is by design. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}smc_peripherals") AND (SeqSetRstNet =~ "*u_smc_peripherals.fuse_reset_stalled_n") AND (DesignInstanceName =~ "*u_smc_peripherals.u_fuse_reset_n_delay.gen_pipe_stages*.u_prim_pipe_stage.q_o.D*")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_efuse_reset_n_o_delay} -comment {efuse_interface_controller reset_n_o is intentionally pipelined through u_fuse_reset_n_delay to produce a delayed reset; reset-as-data is by design. Created by gchang on 14-Aug-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_interface_controller") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.reset_n_o") AND (DesignInstanceName =~ "*u_smc_peripherals.u_fuse_reset_n_delay.gen_pipe_stages*.u_prim_pipe_stage.q_o.D*")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { gchang } -timestamp { 14-08-2026 15:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_efuse_reset_n_sync_delay} -comment {efuse rst_ni (synchronized via u_reset_n_sync) is intentionally pipelined through u_fuse_reset_n_delay to produce a delayed reset; reset-as-data is by design. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_clock_mux2") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_reset_n_sync.g_scan_mux.u_scan_mux.clk_o") AND (DesignInstanceName =~ "*u_smc_peripherals.u_fuse_reset_n_delay.gen_pipe_stages*.u_prim_pipe_stage.q_o.D*")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_cluster_ded_deglitch} -comment {rst_uncore_ni is used as a synchronous reset on the cluster_ded_o retime/deglitch flop (clk_i-only) to mitigate CDC glitches; deliberate per the RTL comment at the flop. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}smc_cpu_ctrl_wrap") AND (SeqSetRstNet =~ "*u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.cluster_uncore_reset_n_n0_scan_o") AND (DesignInstanceName =~ "*u_smc_cpu_wrapper.u_smc_cpu.cluster_ded_o.D")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_clk_div_reset_sync_divclk} -comment {Synchronized reset from the clk_div reset_sync; tagged async due to the DFT scan-bypass mux before use in the programmable clock divider. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_avsbus_controller.u_clk_div.u_reset_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_avsbus_controller.u_clk_div.div_clk.D")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_powergood_stretcher_extend_count} -comment {Synchronized reset from the powergood_stretcher reset_sync; tagged async due to the DFT scan-bypass mux before gating the extend counter. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_smc_reset_unit.u_smc_reset_ctrl.u_powergood_stretcher_n0_scan*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_smc_reset_unit.u_smc_reset_ctrl.extend_count_n0_scan.EN")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_pre_div_clk_reset_sync_divider_value_resync} -comment {Synchronized reset from pre_div_clk_reset_sync; tagged async due to the DFT scan-bypass mux before use in the clock-divider value update. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_avsbus_controller.u_pre_div_clk_reset_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_avsbus_controller.u_divider_value_resync*")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_debug_reset_n_reg} -comment {debug_reset_n is a SW-writable field of the reset-control register (reset_ctrl_reg, async-reset by rst_cold_ni); the flagged .D path is the register write. The field is then used as a downstream reset by design. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}smc_cpu_ctrl_wrap") AND (SeqSetRstNet =~ "*u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.reset_ctrl_reg_value_n0_scan.debug_reset_n_n0_scan*") AND (DesignInstanceName =~ "*u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.reset_ctrl_reg_value_n0_scan.debug_reset_n_n0_scan*.D")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_rst_cold_ref_flr_set_cnt} -comment {Synchronized reset from rst_cold_ref_clk_sync; tagged async due to the DFT scan-bypass mux before use in the FLR set-count CDC. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_smc_reset_unit.u_smc_reset_sync.u_rst_cold_ref_clk_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_smc_reset_unit.u_smc_cool_reset_wrap.u_flr_set_cnt_sync.clk2_val_reg.D*")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_rst_primary_smc_boot_stall} -comment {Synchronized reset from rst_primary_smc_sync; tagged async due to the DFT scan-bypass mux before resetting the boot_stall sticky flop. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_smc_reset_unit.u_smc_reset_sync.u_rst_primary_smc_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.boot_stall_sticky.D")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_rst_cold_smc_gpio_isolate} -comment {Synchronized reset from rst_cold_smc_sync; tagged async due to the DFT scan-bypass mux before driving the GPIO isolation mux select. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_smc_reset_unit.u_smc_reset_sync.u_rst_cold_smc_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_smc_padring.gen_gpio_intf*.u_gpio_interface.I_MUX_lsio_pad2core_data_o.SEL")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_apb_clk_reset_sync_avsint} -comment {Synchronized reset from apb_clk_reset_sync; tagged async due to the DFT scan-bypass mux before resetting the AVS cmd_fifo_overflow interrupt flop. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_rst_mux2_hf_n") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_avsbus_controller.u_apb_clk_reset_sync.u_sync_rst_n_bypass.u_rst_bypassmux.rst_no*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_avsbus_controller.R_avs_interrupt_F_cmd_fifo_overflow_int.D*")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_rst_primary_periph_curstate_dbg} -comment {Synchronized reset from rst_primary_periph_clk_sync; tagged async due to the DFT scan-bypass mux before use in the AVS current-state debug CDC. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_smc_reset_unit.u_smc_reset_sync.u_rst_primary_periph_clk_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_smc_peripherals_cdc.u_avsbus_cur_state_debug_sync.clk1_val_reg.D*")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+waive_violation -add {SMC_STARC05-1_3_1_3_avs_int_resync_src_toggle} -comment {Reset is used in a sequential block but not in sensitivity list (a synchronous reset). Synthesis builds the if statement as a mux with the reset used as the select. Proper, intentional, and safe. Created by gchang on 02-Sep-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (SeqSetRstNet =~ "*u_smc_peripherals.u_avsbus_controller.u_apb_clk_reset_sync*") AND (DesignInstanceName =~ "*u_smc_peripherals.u_avsbus_controller.u_clear_avs_slave_int_resync.u_src.*SEL")}] -app { lint } -tag { STARC05-1.3.1.3 } -user { gchang } -timestamp { 02-09-2026 00:00:00 }
+
+# STARC05-1.4.3.2 (Q pin of flop used as clock pin for another flop)
+waive_violation -add {SMC_STARC05-1_4_3_2_prim_prog_clk_div} -comment {Flopped output is intended as it is the output of the clock division. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_prog_clk_div_posedge") AND (DesignObjSignal =~ "*u_smc_peripherals.u_avsbus_controller.u_clk_div.div_clk") AND (Statement == "      div_clk <= ~div_clk_buf;")}] -app { lint } -tag { STARC05-1.4.3.2 } -user { nbetik } -timestamp { 21-04-2026 12:50:09 }
+
+# STARC05-1.4.3.4 (Clock signal enters D pin of another flop)
+waive_violation -add {SMC_STARC05-1_4_3_4_prim_prog_clk_div} -comment {Clock is intentionally buffered. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_prog_clk_div_posedge") AND (NonClkPath =~ "*u_smc_peripherals.u_avsbus_controller.u_clk_div.div_clk_buf") AND (DesignObjSignal =~ "*u_smc_peripherals.u_avsbus_controller.u_clk_div.div_clk") AND (Statement == "      div_clk <= ~div_clk_buf;")}] -app { lint } -tag { STARC05-1.4.3.4 } -user { nbetik } -timestamp { 21-04-2026 12:46:00 }
+
+# STARC05-2.1.3.1 (Bit width mismatch between function argument definition and provided value)
+waive_violation -add {SMC_STARC05-2_1_3_1_efuse_shadow_regs_word_idx} -comment {Helper function argument is zero-extended to match input. No information lost, safe. Created by gchang on 12-Aug-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_shadow_regs") AND (NodeType1 == "word_idx") AND (Exp_Size == "10") AND (ExprSize == "32")}] -app { lint } -tag { STARC05-2.1.3.1 } -user { gchang } -timestamp { 12-08-2026 12:38:35 }
+waive_violation -add {SMC_STARC05-2_1_3_1_axi_dw_downsizer_aligned_addr} -comment {ETH-Z IP explicitly states the function argument is intentionally extra wide & they rely on synthesis to optimize away extra bits. Created by nbetik on 22-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_dw_downsizer") AND (Exp_Size == "32") AND (NodeType1 == "addr") AND (Statement =~ "*aligned_addr(*") AND (ExprSize == "128")}] -app { lint } -tag { STARC05-2.1.3.1 } -user { nbetik } -timestamp { 22-04-2026 14:44:47 }
+
+# ImproperRangeIndex-ML (Index is wider than the indexed signal needs)
+waive_violation -add {SMC_ImproperRangeIndex-ML_efuse_shadow_class1_storage} -comment {Both the array index and size are computed from the same source of truth value CLASS1_SHADOW_RANGES, therefore the size and index always agree. So the range of values of the index always matches the array size. There are also assertions to validate. Created by gchang on 12-Aug-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_shadow_regs") AND (NodeName == "shadow_efuse_values_n0_scan") AND (RTL_EXPRESSION =~ "*class1_shadow_storage_idx*") AND (NewExprSize == "32")}] -app { lint } -tag { ImproperRangeIndex-ML } -user { gchang } -timestamp { 12-08-2026 12:38:35 }
+waive_violation -add {SMC_ImproperRangeIndex-ML_efuse_shadow_normal_storage} -comment {Indexed by efuse_pkg::normal_shadow_storage_idx(), which returns a 32-bit int unsigned. The array is sized NumNormalShadowWords = NumShadowWords - ActualNumClass1ShadowWords, and the function subtracts exactly those same class-1 words from the incoming word index, so the result always lands inside the array. Covered by the same Class1ShadowRangesValid_A / Class1ShadowCountFits_A elaboration assertions. Created by gchang on 12-Aug-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_shadow_regs") AND (NodeName == "shadow_efuse_values") AND (RTL_EXPRESSION =~ "*normal_shadow_storage_idx*") AND (NewExprSize == "32")}] -app { lint } -tag { ImproperRangeIndex-ML } -user { gchang } -timestamp { 12-08-2026 12:38:35 }
+waive_violation -add {SMC_ImproperRangeIndex-ML_efuse_field_map_lock_idx} -comment {Width-only index flag: idx is EFUSE_FIELD_MAP_IDX_WIDTH wide, index*2 is wider than the lock vector needs. Index is bounded/guarded by EfuseFieldMapIdxInRange_A assertion, safe. TT IP. Created by gchang on 04-Sep-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND ((Module == "${PREFIX}efuse_shadow_reg_access_control") OR (Module == "${PREFIX}efuse_guard")) AND (RTL_EXPRESSION =~ "*index * 2*")}] -app { lint } -tag { ImproperRangeIndex-ML } -user { gchang } -timestamp { 04-09-2026 00:00:00 }
+
+# STARC05-2.1.5.3 (Condition is not a 1-bit scalar)
+
+# STARC05-2.2.3.3 (Multiple assignments to same signal in an always block)
+waive_violation -add {SMC_STARC05-2_2_3_3_zeroer_ctrlreg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}zeroer_ctrl_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_uart_log_engine_ctrl_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}uart_log_engine_ctrl_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_uart_16550_main_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}uart_16550_main_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_uart_16550_main_wo_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}uart_16550_main_wo_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_uart_16550_dl_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}uart_16550_dl_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_telemetry_receiver_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}telemetry_receiver_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_system_timer_octs_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}system_timer_octs_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_output_remap_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}output_remap_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_scratch_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}scratch_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_reset_unit_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}reset_unit_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_ndm_reset_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}ndm_reset_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_log_engine_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}log_engine_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_i2c_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}i2c_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_i2c_ctrl_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}i2c_ctrl_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_gpio_intf_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}gpio_intf_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_filter_ctrl_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}filter_ctrl_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_efuse_interface_ctrl_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_interface_ctrl_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_dfx_ctrl_status_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}dfx_ctrl_status_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_cpu_ctrl_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}cpu_ctrl_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_smc_base_config_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}smc_base_config_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_chip_config_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}chip_config_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+waive_violation -add {SMC_STARC05-2_2_3_3_alias_remap_reg} -comment {Autogenerated by PeakRDL. Created by nbetik on 26-Feb-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}alias_remap_reg")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 26-02-2026 14:32:56 }
+
+# STARC05-2.3.4.2 (Initial construct used)
+waive_violation -add {SMC_STARC05-2_3_4_2_prim_axi_user_override_struct} -comment {Initial construct only used for assertions. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_axi_user_override_struct") AND (Statement == "  initial begin")}] -app { lint } -tag { STARC05-2.3.4.2 } -user { nbetik } -timestamp { 21-04-2026 13:18:38 }
+waive_violation -add {SMC_STARC05-2_2_3_3_id_queue_linked_data_q} -comment {Member of struct "free" intentionally overwrites default value. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}id_queue") AND (Statement == "                linked_data_q[i].free <= 1'b1;")}] -app { lint } -tag { STARC05-2.2.3.3 } -user { nbetik } -timestamp { 21-04-2026 13:44:16 }
+waive_violation -add {SMC_STARC05-2_3_4_2_addr_decode_dync} -comment {Initial construct used for assertions only. Created by nbetik on 24-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}addr_decode_dync") AND (Statement == "  initial begin : proc_check_parameters")}] -app { lint } -tag { STARC05-2.3.4.2 } -user { nbetik } -timestamp { 24-04-2026 10:38:40 }
+
+# STARC05-2.10.6.1 (LHS of assignment should account for overflow/underflow from addition/subtraction on RHS)
+waive_violation -add {SMC_STARC05-2_10_6_1_sema} -comment {Semaphore is signed so overflow and underflow represent valid operations (adding 1 to -1 or subtracting 1 from 0). Created by nbetik on 23-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}smc_cpu_ctrl_wrap") AND (LHS_Size == "16") AND (RHS_Size == "16") AND (Statement == "          sema[i] <= sema[i] + (external_wr_data[15:0] & external_wr_bit_mask[15:0]);") AND (HIERARCHY == "smc.u_smc_base.u_internal_regs.u_smc_cpu_ctrl_wrap")}] -app { lint } -tag { STARC05-2.10.6.1 } -user { nbetik } -timestamp { 23-04-2026 12:04:54 }
+waive_violation -add {SMC_STARC05-2_10_6_1_477} -comment {ETH-Z IP. Overflow is not possible as INPUT_WIDTH determines PopcountWidth and bounds the addition. Created by nbetik on 23-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}popcount") AND (LHS_Size == "1") AND (LHSExpr == "popcount_o") AND (RHS_Size == "1") AND (RHSExpr == "(popcount_o + data_i[i])") AND (Statement == "      popcount_o += data_i[i];")}] -app { lint } -tag { STARC05-2.10.6.1 } -user { nbetik } -timestamp { 23-04-2026 12:34:37 }
+waive_violation -add {SMC_STARC05-2_10_6_1_axi_burst_splitter_gran_ax_chan} -comment {ETH-Z PULP AXI IP. Subtraction is guarded by conditional statement, no risk of underflow. Created by nbetik on 24-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_burst_splitter_gran_ax_chan") AND (LHS_Size == "9") AND (RHS_Size == "9") AND (Statement == "            num_beats_d = num_beats_q - max_beats;")}] -app { lint } -tag { STARC05-2.10.6.1 } -user { nbetik } -timestamp { 24-04-2026 10:49:11 }
+waive_violation -add {SMC_STARC05-2_10_6_1_axi_burst_splitter_ax_chan} -comment {PULP AXI IP. Subtraction is guarded by conditional statement guaranteeing underflow cannot occur. Created by nbetik on 28-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_burst_splitter_gran_ax_chan") AND (LHS_Size == "9") AND (RHS_Size == "9") AND (Statement == "            num_beats_d = num_beats_q - max_beats;")}] -app { lint } -tag { STARC05-2.10.6.1 } -user { nbetik } -timestamp { 28-04-2026 12:04:49 }
+
+# STARC05-2.11.3.1 (Sequential and combinational parts of FSM in same always block)
+
+# checkIOPinConnectedToNet (pin on an instance is unconnected)
+
+# UndrivenInTerm-ML (Input terminal is undriven)
+waive_violation -add {SMC_UndrivenInTerm-ML_shadow_reg_preload_lo} -comment {shadow_reg_preload only used for simulation if skip_fuse_sense is set. In this case it is driven by readmemh() function. Created by nbetik on 23-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_shadow_regs") AND (DesignObjSignal == "u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_reg_preload[1:0][31:0]")}] -app { lint } -tag { UndrivenInTerm-ML } -user { nbetik } -timestamp { 23-04-2026 14:10:05 }
+waive_violation -add {SMC_UndrivenInTerm-ML_shadow_reg_preload_hi} -comment {shadow_reg_preload only used for simulation if skip_fuse_sense is set. In this case it is driven by readmemh() function. Created by nbetik on 23-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_shadow_regs") AND (DesignObjSignal =~ "*u_efuse_interface_controller.u_efuse_shadow_regs.shadow_reg_preload*")}] -app { lint } -tag { UndrivenInTerm-ML } -user { nbetik } -timestamp { 23-04-2026 14:10:05 }
+
+# UndrivenNet-ML (Undriven net)
+waive_violation -add {SMC_UndrivenNet-ML_shadow_reg_preload} -comment {shadow_reg_preload is a simulation-only preload array, driven by $readmemh when skip_fuse_sense is set; undriven in synthesis by design. Matches the existing UndrivenInTerm-ML/W123 waivers for the same signal. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_shadow_regs") AND (DesignObjSignal =~ "*u_efuse_interface_controller.u_efuse_shadow_regs.shadow_reg_preload*")}] -app { lint } -tag { UndrivenNet-ML } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+
+# UnrecSynthDir (Unrecognized synthesis directive)
+waive_violation -add {SMC_UnrecSynthDir-ML_prim_subreg_arb_pragma_cov} -comment {OpenTitan IP. Pragma coverage is used to wrap a dummy wire that prevents lint issues. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_subreg_arb") AND (Statement =~ "*// pragma coverage*")}] -app { lint } -tag { UnrecSynthDir-ML } -user { nbetik } -timestamp { 21-04-2026 12:36:58 }
+
+# W116 (Bitwise operator does not have matching operand widths)
+waive_violation -add {SMC_W116_addr_decode_dync} -comment {ETH-Z IP. Bitwise operator will assume unmatched upper bits are 0. Created by nbetik on 22-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}addr_decode_dync") AND (LHS_Size == "32") AND (LHSExpr == "addr_i") AND (RHS_Size == "33") AND (RHSExpr == "addr_map_i[i].end_addr")}] -app { lint } -tag { W116 } -user { nbetik } -timestamp { 22-04-2026 14:36:04 }
+waive_violation -add {SMC_W116_addr_decode_dync_2} -comment {Created by nbetik on 22-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}addr_decode_dync") AND (LHS_Size == "32") AND (LHSExpr == "addr_map_i[i].start_addr") AND (RHS_Size == "33") AND (RHSExpr == "addr_map_i[i].end_addr")}] -app { lint } -tag { W116 } -user { nbetik } -timestamp { 22-04-2026 14:36:52 }
+
+# W123 (Variable read but never set)
+waive_violation -add {SMC_W123_shadow_reg_preload} -comment {Shadow_reg_preload only used in simulation, guarded by conditional statement. Created by nbetik on 28-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}efuse_shadow_regs") AND (VariableName == "shadow_reg_preload") AND (Statement == "                shadow_reg_preload[i];")}] -app { lint } -tag { W123 } -user { nbetik } -timestamp { 28-04-2026 11:47:09 }
+
+# W164b (LHS width of assignment is greater than RHS)
+waive_violation -add {SMC_W164b_axi_dw_downsizer_axi_port_strb_width} -comment {ETH-Z PULP AXI IP. Logic gets lower offset bits only and stores them in address type to avoid explicitly casting them later. Upper bits will zero-extend. Created by nbetik on 22-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_dw_downsizer") AND (LHS_Size == "32") AND (LHSExpr =~ "*_port_offset") AND (RHSExpr =~ "*_req_q.a*.addr[(idx_width(Axi*PortStrbWidth) - 1):0] ")}] -app { lint } -tag { W164b } -user { nbetik } -timestamp { 22-04-2026 15:02:57 }
+waive_violation -add {SMC_W164b_axi_dw_downsizer_burst_len} -comment {9th bit needed for 2:1 downsizing (as burst will need to be double length). This assignment is the initialization where 9th bit will be 0. Created by nbetik on 22-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_dw_downsizer") AND (LHS_Size == "9") AND (LHSExpr =~ "*_req_d.burst_len") AND (RHS_Size == "8")}] -app { lint } -tag { W164b } -user { nbetik } -timestamp { 22-04-2026 15:08:41 }
+
+# W193 (Empty statement)
+waive_violation -add {SMC_W193_axi_dw_downsizer_FSMs} -comment {PULP AXI IP. Default empty statements are okay because default values are assigned above case statements. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_dw_downsizer") AND (Statement =~ "*default: ;")}] -app { lint } -tag { W193 } -user { nbetik } -timestamp { 21-04-2026 14:04:11 }
+waive_violation -add {SMC_W193_axi_burst_splitter_gran} -comment {PULP AXI IP. Empty statement is okay because default values assigned at top of FSM. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_burst_splitter_gran") AND (Statement == "      default: /*do nothing*/;")}] -app { lint } -tag { W193 } -user { nbetik } -timestamp { 21-04-2026 14:07:57 }
+waive_violation -add {SMC_W193_axi_burst_splitter_gran_ax_chan} -comment {PULP AXI IP. Empty statement is okay because default values assigned at top of FSM. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_burst_splitter_gran_ax_chan") AND (Statement == "      default: /*do nothing*/;")}] -app { lint } -tag { W193 } -user { nbetik } -timestamp { 21-04-2026 14:08:47 }
+waive_violation -add {SMC_W193_axi_burst_splitter_new} -comment {ETH-Z IP. Default values for case statement applied at top of FSM comb block. Created by nbetik on 22-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_burst_splitter") AND (Statement =~ "*default: /*do nothing*/;")}] -app { lint } -tag { W193 } -user { nbetik } -timestamp { 22-04-2026 14:49:30 }
+
+# W239 (Hierarchical reference may not be synthesizable)
+waive_violation -add {SMC_W239_uart_16550_assert_hier} -comment {Hierarchical reference used for assertions only. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}uart_16550") AND (Statement =~ "    `*ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(")}] -app { lint } -tag { W239 } -user { nbetik } -timestamp { 21-04-2026 11:34:56 }
+waive_violation -add {SMC_W239_i2c_core_prim_count_error_trigger_alert} -comment {Hierarchical references only used for assertions. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}i2c_core") AND (Statement =~ "    `*ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(*")}] -app { lint } -tag { W239 } -user { nbetik } -timestamp { 21-04-2026 13:55:49 }
+
+# W287a (Input of instance is undriven)
+
+# W336 (Blocking assignment used inside an inferred sequential block)
+waive_violation -add {SMC_W336_prim_clkgater_latch} -comment {Intentional latch-based clock gate. The blocking assignment inside always_latch is the correct convention for latch inference; the latch captures the enable for the gated clock output. Created by nbetik on 09-Jun-2026.} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_clkgater") AND (HDL_STATEMENT =~ "latched_en =*en_i*") AND (NodeName == "Latch")}] -app { lint } -tag { W336 } -user { nbetik } -timestamp { 09-06-2026 10:00:00 }
+
+# W362 (Bitwise operator does not have matching operand widths)
+waive_violation -add {SMC_W362_axi_burst_splitter_gran_counters} -comment {ETH-Z PULP AXI IP. short operand will zero-extend for comparison, no risk. Created by nbetik on 24-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}axi_burst_splitter_gran_counters") AND (LHS_Size == "8") AND (LHSExpr == "cnt_len_o") AND (RHS_Size == "9") AND (RHSExpr == "cnt_delta_i") AND (Statement == "  assign idq_oup_pop = cnt_req_i & cnt_gnt_o & cnt_dec_i & (cnt_len_o < cnt_delta_i);")}] -app { lint } -tag { W362 } -user { nbetik } -timestamp { 24-04-2026 10:51:50 }
+waive_violation -add {SMC_W362_addr_decode_dync} -comment {ETH-Z IP. Comparison will assume unmatched upper bits are 0. Created by nbetik on 22-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}addr_decode_dync") AND (LHS_Size == "32") AND (LHSExpr == "addr_i") AND (RHS_Size == "33") AND (RHSExpr == "addr_map_i[i].end_addr")}] -app { lint } -tag { W362 } -user { nbetik } -timestamp { 22-04-2026 14:34:53 }
+
+# W391 (Clock drives on multiple edges)
+waive_violation -add {SMC_W391_prim_prog_clk_div_posedge} -comment {Clock is intentionally inverted and sampled on opposing edges inside anti-glitch mux. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_prog_clk_div_posedge") AND (NegEdgeFlop =~ "*gen_sel_clk1_selected.u_clk1_sel.q_d") AND (PosEdgeFlop =~ "*gen_sync_clk1_selected.u_sync_clk1.q_dddd_inv") AND (Statement == "      q_dddd_inv <= q_ddd_inv;")}] -app { lint } -tag { W391 } -user { nbetik } -timestamp { 21-04-2026 12:44:30 }
+waive_violation -add {SMC_W391_avs_sdata} -comment {AVS mdata captures on negative edge. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (NegEdgeFlop =~ "*u_avsbus_controller.avs_sdata_capture*") AND (PosEdgeFlop =~ "*u_avsbus_controller.*") AND (DesignObjSignal =~ "*u_avsbus_controller.u_clk_div.u_postdiv_mux.*")}] -app { lint } -tag { W391 } -user { nbetik } -timestamp { 21-04-2026 13:03:28 }
+waive_violation -add {SMC_W391_avsbus_gf_mux} -comment {GF mux intentionally drives some flops on negative edge. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_clock_mux2") AND (NegEdgeFlop == "u_smc_peripherals.u_avsbus_controller.u_clk_div.u_postdiv_mux.gen_sel_clk1_selected.u_clk0_sel.q_d") AND (PosEdgeFlop == "u_smc_peripherals.u_avsbus_controller.u_clk_div.div_clk") AND (DesignObjSignal =~ "*u_smc_peripherals.u_avsbus_controller.u_test_clkmux2_0.I_AND_N_2") AND (Statement == "      div_clk <= ~div_clk_buf;")}] -app { lint } -tag { W391 } -user { nbetik } -timestamp { 21-04-2026 13:05:05 }
+waive_violation -add {SMC_W391_prim_clkgater_gf_mux} -comment {GF mux intentionally drievs on inverted edges. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_clkgater") AND (NegEdgeFlop =~ "*gen_sel_clk*_selected.clk*_sel.q_d") AND (PosEdgeFlop =~ "*gen_sync_clk*_selected.sync_clk*.q_dddd_inv") AND (Statement == "      q_dddd_inv <= q_ddd_inv;")}] -app { lint } -tag { W391 } -user { nbetik } -timestamp { 21-04-2026 13:14:36 }
+waive_violation -add {SMC_W391_prim_clkgater} -comment {Glitch-free clock mux intentionally drives on inverted clock. Created by nbetik on 23-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}prim_clkgater") AND (NegEdgeFlop == "u_smc_peripherals.u_avsbus_controller.u_refclk_apbclk_mux.gen_sel_clk1_selected.u_clk0_sel.q_d") AND (PosEdgeFlop == "u_smc_peripherals.u_avsbus_controller.u_refclk_apbclk_mux.gen_sync_clk0_not_selected.u_sync_clk0.q_dddd") AND (DesignObjSignal =~ "*u_smc_peripherals.u_avsbus_controller.u_apbclk_clkgate.clk_o")}] -app { lint } -tag { W391 } -user { nbetik } -timestamp { 23-04-2026 14:15:36 }
+
+# W401 (Clock is generated internal to module)
+waive_violation -add {SMC_W401_smc_dfd_wrap_clk_gated} -comment {Clock is intentionally generated internally by a clock gater (dfd_rv_ccg). Created by gchang on 14-Aug-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}smc_dfd_wrap") AND (DesignObjSignal =~ "*u_smc_base.u_internal_regs.u_smc_dfd_wrap.clk_gated_i")}] -app { lint } -tag { W401 } -user { gchang } -timestamp { 14-08-2026 14:20:00 }
+waive_violation -add {SMC_W401_avs_clk} -comment {AVS clk is intentionally generated internally by clock divider. Created by nbetik on 21-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}avsbus_controller") AND (DesignObjSignal =~ "*u_smc_peripherals.u_avsbus_controller.pre_testmux_avs_clk")}] -app { lint } -tag { W401 } -user { nbetik } -timestamp { 21-04-2026 14:13:07 }
+
+# W481a (loop variable is not used in terminating condition of for loop)
+waive_violation -add {SMC_W481a_prim_util_clog2} -comment {OpenTitan IP. Condition is handled in main body loop. Created by nbetik on 23-Apr-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}smc") AND (VariableName == "result") AND (Statement == "    for (result = 0; v > 0; result++) begin")}] -app { lint } -tag { W481a } -user { nbetik } -timestamp { 23-04-2026 14:08:26 }
+
+# STARC05-3.3.1.4b
+waive_violation -add {SMC_STARC05-3_3_1_4b_och_prim} -comment {CDC synchronisers, pulse/handshake cells, clock gaters, sync FIFOs and counters. Storage and synchroniser stages are intentionally unreset - an async reset on a CDC flop reintroduces the reset-domain-crossing hazard the synchroniser exists to remove. Created by gchang on 18-Aug-2026} -filter "(Goal == \"lint_rtl_enhanced\") AND [module_any $SMC_OCH_PRIM_UNRESET_MODULES]" -app { lint } -tag { STARC05-3.3.1.4b } -user { gchang } -timestamp { 18-08-2026 00:00:00 }
+waive_violation -add {SMC_STARC05-3_3_1_4b_vendor_prim_fifo_sync} -comment {FIFO storage is intentionally unreset - entries are written before read and the pointers, which do reset, track validity. 3rd party vendor IP shouldn't be modified. Created by gchang on 18-Aug-2026} -filter "(Goal == \"lint_rtl_enhanced\") AND [module_any $SMC_VENDOR_UNRESET_FIFO_MODULES]" -app { lint } -tag { STARC05-3.3.1.4b } -user { gchang } -timestamp { 18-08-2026 00:00:00 }
+waive_violation -add {SMC_STARC05-3_3_1_4b_app_sync_reset} -comment {52 of 73 have an explicit SYNCHRONOUS reset and are flagged only for lacking an ASYNC one (project preference is to limit async resets); 3 already have an async reset; the remaining 18 are CDC *_flopped synchroniser stages in smc_peripherals_cdc, async-FIFO storage in avsbus_async_fifo, a data-capture register (avs_sdata_capture) and per-core cycle counters (cycle_count) - all unreset by idiom rather than oversight. Created by gchang on 18-Aug-2026} -filter "(Goal == \"lint_rtl_enhanced\") AND [module_any $SMC_APP_SYNC_RESET_MODULES]" -app { lint } -tag { STARC05-3.3.1.4b } -user { gchang } -timestamp { 18-08-2026 00:00:00 }
+waive_violation -add {SMC_STARC05-3_3_1_4b_vendor_generic_dff} -comment {Vendored tt-hw-debug generic_dff carries an explicit sync reset and is flagged only for lacking an async one, which is the project preference to limit async resets. Vendor IP can't be modified. Created by gchang on 02-Sep-2026} -filter "(Goal == \"lint_rtl_enhanced\") AND [module_any $SMC_VENDOR_SYNC_RESET_MODULES] AND (Signal =~ \"out*\")" -app { lint } -tag { STARC05-3.3.1.4b } -user { gchang } -timestamp { 02-09-2026 00:00:00 }
+waive_violation -add {SMC_STARC05-3_3_1_4b_vendor_generic_ccg} -comment {Vendored tt-hw-debug clock gater. The flagged enable flop o_en is intentionally unreset: ~rst_n is OR'd into the enable expression so the gate is forced OPEN while reset is asserted, which is what allows resets to propagate into the gated clock domain. Created by gchang on 02-Sep-2026} -filter "(Goal == \"lint_rtl_enhanced\") AND [module_any $SMC_VENDOR_UNRESET_CCG_MODULES] AND (Signal =~ \"o_en*\")" -app { lint } -tag { STARC05-3.3.1.4b } -user { gchang } -timestamp { 02-09-2026 00:00:00 }
+waive_violation -add {SMC_NoGenLabel-ML_vendor_generic_ccg} -comment {Vendored tt-hw-debug clock gater. Unlabeled generate-for around the clock gate instances. Lint category is for visual cleanliness only. 3rd party vendor IP shouldn't be modified. Created by gchang on 04-Sep-2026} -filter [apply_prefix {(Goal == "lint_rtl_enhanced") AND (Module == "${PREFIX}generic_ccg")}] -app { lint } -tag { NoGenLabel-ML } -user { gchang } -timestamp { 04-09-2026 00:00:00 }
+
+# checkMultipleDrivers (list of non tri-state drivers for a signal)
+waive_violation -add {SMC_STARC05-1_4_3_4_dfd_refclk_sync} -comment {Refclk is intentionally synchronized to sysclk. Created by nbetik on 09-Jun-2026} -filter [apply_prefix {(Module == "${PREFIX}prim_flop_3sync_r") AND (NonClkPath =~ "*u_smc_base.u_internal_regs.u_smc_dfd_wrap.ref_clk_sync.u_sync3r[0].d_i") AND (DesignFlop1 =~ "*u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_refclk_counter.bin_count[0]") AND (DesignObjSignal == "clk_ref_i") AND (Statement == "      q_d   <= i_D;")}] -app { lint } -tag { STARC05-1.4.3.4 } -user { nbetik } -timestamp { 09-06-2026 17:10:13 }
+
+# uart_16550_pkg get_frame_length(): a 4-bit accumulator (frame_length += ...). Max frame = 1 start + 8 data + 1
+# parity + 2 stop = 12 < 16, so the carry/truncation width flags never overflow in practice. TT IP. Benign. nbetik 13-Jul-2026.
+waive_violation -add {SMC_STARC05-2_10_6_1_uart_16550_pkg} -comment {uart_16550_pkg get_frame_length 4-bit accumulator; max frame length 12 < 16, no real overflow. Carry/borrow width flag only. TT IP. Benign. Created by nbetik on 13-Jul-2026} -filter {(Goal == "lint_rtl_enhanced") AND (((LHSExpr == "frame_length") AND (RHSExpr == "(frame_length + 4'(parity_en))")) OR ((LHSExpr == "frame_length") AND (RHSExpr == "(frame_length + word_length)")))} -app { lint } -tag { STARC05-2.10.6.1 } -user { nbetik } -timestamp { 13-07-2026 10:00:00 }
+waive_violation -add {SMC_W164a_uart_16550_pkg} -comment {uart_16550_pkg get_frame_length 4-bit accumulator; += is intentionally modular within the bounded (<=12) range. LHS<RHS width flag only. TT IP. Benign. Created by nbetik on 13-Jul-2026} -filter {(Goal == "lint_rtl_enhanced") AND (((LHSExpr == "frame_length") AND (RHSExpr == "(frame_length + 4'(parity_en))")) OR ((LHSExpr == "frame_length") AND (RHSExpr == "(frame_length + word_length)")))} -app { lint } -tag { W164a } -user { nbetik } -timestamp { 13-07-2026 10:00:00 }

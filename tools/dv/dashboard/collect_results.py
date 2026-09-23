@@ -169,34 +169,6 @@ def _rebase_artifacts(
     return rebased
 
 
-def _rebase_parser(
-    repo_root: Path,
-    run_root: Path,
-    parser: Any,
-    recorded_run_root: Path | None,
-) -> Any:
-    if not isinstance(parser, dict):
-        return parser
-    rebased = dict(parser)
-    evidence_out = []
-    for evidence in parser.get("evidence") or []:
-        if not isinstance(evidence, dict):
-            evidence_out.append(evidence)
-            continue
-        entry = dict(evidence)
-        if entry.get("path"):
-            entry["path"] = _artifact_text(
-                repo_root,
-                run_root,
-                entry["path"],
-                recorded_run_root,
-            )
-        evidence_out.append(entry)
-    if "evidence" in parser:
-        rebased["evidence"] = evidence_out
-    return rebased
-
-
 def _rebase_failure_buckets(
     repo_root: Path,
     run_root: Path,
@@ -219,109 +191,6 @@ def _rebase_failure_buckets(
                 recorded_run_root,
             )["examples"]
         rebased.append(entry)
-    return rebased
-
-
-def _rebase_result_record(
-    repo_root: Path,
-    run_root: Path,
-    record: dict[str, Any],
-    recorded_run_root: Path | None,
-) -> dict[str, Any]:
-    rebased = dict(record)
-    for key in ("log", "result_json"):
-        if rebased.get(key):
-            rebased[key] = _artifact_text(
-                repo_root,
-                run_root,
-                rebased[key],
-                recorded_run_root,
-            )
-    if isinstance(rebased.get("artifacts"), dict):
-        rebased["artifacts"] = _rebase_artifacts(
-            repo_root,
-            run_root,
-            rebased["artifacts"],
-            recorded_run_root,
-        )
-    if "parser" in rebased:
-        rebased["parser"] = _rebase_parser(
-            repo_root,
-            run_root,
-            rebased["parser"],
-            recorded_run_root,
-        )
-    if isinstance(rebased.get("failure_buckets"), list):
-        rebased["failure_buckets"] = _rebase_failure_buckets(
-            repo_root,
-            run_root,
-            rebased["failure_buckets"],
-            recorded_run_root,
-        )
-    for key in ("attempts",):
-        if isinstance(rebased.get(key), list):
-            rebased[key] = [
-                _rebase_result_record(
-                    repo_root,
-                    run_root,
-                    entry,
-                    recorded_run_root,
-                )
-                if isinstance(entry, dict)
-                else entry
-                for entry in rebased[key]
-            ]
-    if isinstance(rebased.get("wave_debug"), dict):
-        rebased["wave_debug"] = _rebase_result_record(
-            repo_root,
-            run_root,
-            rebased["wave_debug"],
-            recorded_run_root,
-        )
-    return rebased
-
-
-def _rebase_regression(
-    repo_root: Path,
-    run_root: Path,
-    regression: dict[str, Any],
-    recorded_run_root: Path | None,
-) -> dict[str, Any]:
-    rebased = dict(regression)
-    if isinstance(rebased.get("artifacts"), dict):
-        rebased["artifacts"] = _rebase_artifacts(
-            repo_root,
-            run_root,
-            rebased["artifacts"],
-            recorded_run_root,
-        )
-    if isinstance(rebased.get("coverage"), dict):
-        rebased["coverage"] = _rebase_artifacts(
-            repo_root,
-            run_root,
-            rebased["coverage"],
-            recorded_run_root,
-        )
-    if isinstance(rebased.get("failure_buckets"), list):
-        rebased["failure_buckets"] = _rebase_failure_buckets(
-            repo_root,
-            run_root,
-            rebased["failure_buckets"],
-            recorded_run_root,
-        )
-    for key in ("jobs", "failed_tests", "flaky_tests"):
-        if isinstance(rebased.get(key), list):
-            rebased[key] = [
-                _rebase_result_record(
-                    repo_root,
-                    run_root,
-                    entry,
-                    recorded_run_root,
-                )
-                if isinstance(entry, dict)
-                else entry
-                for entry in rebased[key]
-            ]
     return rebased
 
 
@@ -515,12 +384,6 @@ def _test_detail_from_record(
     recorded_artifacts = (
         merged.get("artifacts") if isinstance(merged.get("artifacts"), dict) else {}
     )
-    artifacts = _rebase_artifacts(
-        repo_root,
-        run_root,
-        recorded_artifacts,
-        recorded_run_root,
-    )
     parser = merged.get("parser")
     junit_values = _path_values(recorded_artifacts.get("results_xml"))
     if not junit_values:
@@ -539,60 +402,15 @@ def _test_detail_from_record(
         if guessed:
             junit_paths.append(guessed)
 
-    result_json_path = _artifact_text(
-        repo_root,
-        run_root,
-        record.get("result_json"),
-        recorded_run_root,
-    )
-    if not result_json_path:
-        flat = run_root / item / "result.json"
-        if flat.is_file():
-            result_json_path = _repo_rel(repo_root, flat)
-    log_path = _artifact_text(
-        repo_root,
-        run_root,
-        merged.get("log"),
-        recorded_run_root,
-    )
-    parser_evidence = []
-    if isinstance(parser, dict):
-        for evidence in (parser.get("evidence") or [])[:5]:
-            if not isinstance(evidence, dict):
-                continue
-            entry = dict(evidence)
-            if entry.get("path"):
-                entry["path"] = _artifact_text(
-                    repo_root,
-                    run_root,
-                    entry["path"],
-                    recorded_run_root,
-                )
-            parser_evidence.append(entry)
-
     detail = {
         "name": meta["name"],
-        "module": meta["module"],
         "category": meta["category"],
-        "tags": meta["tags"],
-        "groups": meta["groups"],
-        "target": merged.get("target") or meta.get("target"),
         "seed": merged.get("seed"),
         "attempt": merged.get("attempt"),
         "stage": merged.get("stage", fallback_stage),
         "status": merged.get("status", STATUS_UNKNOWN),
         "duration_sec": merged.get("duration_sec"),
         "reason": merged.get("reason", ""),
-        "log": log_path,
-        "result_json": result_json_path,
-        "junit_xml": junit_paths[0] if junit_paths else "",
-        "artifacts": artifacts,
-        "failure_buckets": merged.get("failure_buckets") or [],
-        "parser": {
-            "policy": parser.get("policy") if isinstance(parser, dict) else None,
-            "status_source": parser.get("status_source") if isinstance(parser, dict) else None,
-            "evidence": parser_evidence,
-        },
     }
     junit_entries = [
         {
@@ -729,6 +547,64 @@ def _collect_test_details(
     return details, dedup_junit, warnings
 
 
+SITE_COVERAGE_KEYS = (
+    "status",
+    "total_percent",
+    "threshold",
+    "threshold_met",
+    "details_available",
+    "comparison_key",
+    "target",
+    "policy_thresholds",
+    "raw_metrics",
+    "effective_metrics",
+    "report",
+    "summary",
+    "manifest",
+    "policy_application",
+)
+HOLES_SUMMARY_KEYS = (
+    "details_available",
+    "observations_complete",
+    "native_point_count",
+    "hole_group_count",
+    "open",
+    "accepted",
+    "unclassified",
+    "by_metric",
+    "by_category",
+    "by_disposition",
+    "by_status",
+)
+FAILED_TEST_KEYS = ("item", "seed", "status", "reason", "rerun")
+FLAKY_TEST_KEYS = ("item", "seed", "final_status", "attempt_count", "rerun")
+
+
+def _site_coverage(coverage: dict[str, Any]) -> dict[str, Any]:
+    """The coverage fields the dashboard reads; the native object under `cov/` keeps the rest."""
+    trimmed = {key: coverage[key] for key in SITE_COVERAGE_KEYS if key in coverage}
+    holes = coverage.get("holes_summary")
+    if isinstance(holes, dict):
+        trimmed["holes_summary"] = {key: holes[key] for key in HOLES_SUMMARY_KEYS if key in holes}
+    return trimmed
+
+
+def _regression_record(regression: dict[str, Any]) -> dict[str, Any]:
+    """The regression's final failures and flaky leaves, one short entry each."""
+    return {
+        "failed_tests": [
+            {key: entry.get(key) for key in FAILED_TEST_KEYS}
+            for entry in regression.get("failed_tests") or []
+            if isinstance(entry, dict)
+        ],
+        "flaky_tests": [
+            {key: entry.get(key) for key in FLAKY_TEST_KEYS}
+            for entry in regression.get("flaky_tests") or []
+            if isinstance(entry, dict)
+        ],
+    }
+
+
 def _load_regression(repo_root: Path, run_root: Path) -> dict[str, Any] | None:
     path = run_root / "stages" / "regress" / "regression.json"
     data = _safe_load_json(path)
@@ -746,38 +622,17 @@ def _run_metadata(
     run_root: Path,
     result_path: Path,
     result: dict[str, Any],
-    run_json: dict[str, Any] | None,
     regression: dict[str, Any] | None,
 ) -> dict[str, Any]:
     return {
         "run_dir": result.get("run_dir", _repo_rel(repo_root, run_root)),
         "result_json": _repo_rel(repo_root, result_path),
-        "run_json": _repo_rel(repo_root, run_root / "run.json")
-        if (run_root / "run.json").is_file()
-        else "",
         "label": result.get("label", ""),
-        "items": result.get("items") or [],
-        "stages": [
-            stage.get("name") for stage in result.get("stages", []) if isinstance(stage, dict)
-        ],
         "tool": result.get("tool", ""),
         "tool_version": result.get("tool_version", ""),
-        "tool_versions": result.get("tool_versions", {}),
         "executor": result.get("executor", regression.get("executor", "") if regression else ""),
         "generated_at": result.get("generated_at", ""),
-        "dry_run": result.get("dry_run", False),
-        "overrides": result.get("overrides", {}),
         "git": result.get("git", {}),
-        "selection": regression.get("selection", {}) if regression else {},
-        "invocation": run_json or {},
-        "progress": result.get(
-            "progress",
-            regression.get("progress", {}) if regression else {},
-        ),
-        "interruption": result.get(
-            "interruption",
-            regression.get("interruption", {}) if regression else {},
-        ),
     }
 
 
@@ -796,17 +651,9 @@ def _collect_native_result(
 
     run_root = path.parent
     run_json_path = run_root / "run.json"
-    run_json = _safe_load_json(run_json_path) if run_json_path.is_file() else None
     regression = _load_regression(repo_root, run_root)
     recorded_run_root = _recorded_run_root(result, regression)
-    if regression is not None:
-        regression = _rebase_regression(
-            repo_root,
-            run_root,
-            regression,
-            recorded_run_root,
-        )
-    tests_detail, junit_xml, warnings = _collect_test_details(
+    tests_detail, junit_entries, warnings = _collect_test_details(
         repo_root,
         run_root,
         flow,
@@ -820,11 +667,13 @@ def _collect_native_result(
     status = raw_status if raw_status in {STATUS_PASS, STATUS_UNKNOWN} else STATUS_FAIL
 
     tests = result.get("tests") or {}
-    coverage = _rebase_artifacts(
-        repo_root,
-        run_root,
-        result.get("coverage") if isinstance(result.get("coverage"), dict) else {},
-        recorded_run_root,
+    coverage = _site_coverage(
+        _rebase_artifacts(
+            repo_root,
+            run_root,
+            result.get("coverage") if isinstance(result.get("coverage"), dict) else {},
+            recorded_run_root,
+        )
     )
     timing = _native_timing(result.get("stages", []))
 
@@ -854,15 +703,7 @@ def _collect_native_result(
             sim_stage["log"],
             recorded_run_root,
         )
-    for key in (
-        "report",
-        "summary",
-        "merged",
-        "manifest",
-        "coverage_details",
-        "coverage_details_raw",
-        "policy_application",
-    ):
+    for key in ("report", "summary", "manifest", "policy_application"):
         value = coverage.get(key)
         if value:
             artifacts[f"coverage_{key}"] = value
@@ -883,9 +724,6 @@ def _collect_native_result(
         if isinstance(tests.get("completed"), bool)
         else None,
         coverage_percent=coverage.get("total_percent"),
-        coverage_breakdown={
-            k.removesuffix("_percent"): v for k, v in (coverage.get("metrics") or {}).items()
-        },
         coverage_details=coverage,
         artifacts=artifacts,
         failure_buckets=_rebase_failure_buckets(
@@ -899,10 +737,13 @@ def _collect_native_result(
             "label": str(result.get("label", "")),
             "native_status": raw_status,
         },
-        run_metadata=_run_metadata(repo_root, run_root, path, result, run_json, regression),
+        run_metadata=_run_metadata(repo_root, run_root, path, result, regression),
         tests_detail=tests_detail,
-        junit_xml=junit_xml,
-        regression=regression,
+        junit_xml={
+            "total": len(junit_entries),
+            "missing": sum(1 for entry in junit_entries if not entry.get("exists", True)),
+        },
+        regression=_regression_record(regression) if regression is not None else None,
         warnings=warnings,
     )
 

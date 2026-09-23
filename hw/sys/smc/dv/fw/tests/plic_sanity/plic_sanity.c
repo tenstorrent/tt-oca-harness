@@ -12,8 +12,10 @@
 #include "virt_console.h"
 
 /* PLIC source 1, which is cpu_interrupts[0] and therefore ext_interrupts_i[0]:
- * source IDs are the interrupt line plus one because the RISC-V PLIC reserves
- * ID 0, and smc_base.sv:251 puts ext_interrupts at the bottom of the vector.
+ * the SMC interrupt-vector map (doc/interrupts.adoc, "SMC CPU Interrupt Vector
+ * Map") places the external interrupts at the bottom of cpu_interrupts_o and
+ * defines the PLIC source ID as the vector bit index plus one, because the
+ * RISC-V PLIC reserves ID 0.
  *
  * Bit 0 is the only external interrupt this testbench drives: tb_top.sv ties
  * the upper ext_interrupts_i bits to zero and exposes bit 0 as

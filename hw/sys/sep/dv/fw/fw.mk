@@ -145,7 +145,7 @@ SEP_ROM_BASE := 0x10040000
 
 define FW_TEST_POSTPROCESS
 $(if $(filter rom_only,$(3)),
-	python3 "$(SEP_BOOTROM_DIR)/tools/elf-to-vmem.py" \
+	$(PYTHON) "$(SEP_BOOTROM_DIR)/tools/elf-to-vmem.py" \
 	  --base $(SEP_ROM_BASE) --gcc-prefix $(patsubst %-,%,$(OCAH_FW_TOOL_PREFIX)) \
 	  -o "$(4).vmem" "$(1)"
 ,
@@ -155,6 +155,9 @@ $(if $(filter rom_only,$(3)),
 	  --only-section=.data --only-section=.sdata --only-section=.rodata --only-section=.srodata \
 	  --only-section=.tdata --only-section=.bss --only-section=.sbss \
 	  --change-addresses "-0xC0040000" "$(4).dtcm.hex"
+	$(if $(filter sep_smu_debug_bus,$(2)),$(PYTHON) \
+	  "$(OCAH_ROOT)/tools/dv/generate_fw_symbol_pins.py" \
+	  --sym "$(4).tcm.sym" --output "$(dir $(4))sep_debug_bus_symbols.h")
 )
 endef
 

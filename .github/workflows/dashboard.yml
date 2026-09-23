@@ -63,6 +63,11 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
 
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init --recursive
+
       - name: Checkout dashboard data branch
         uses: actions/checkout@v4
         with:
@@ -147,9 +152,9 @@ jobs:
               --run-dir "weekly-runs/$name" \
               --output "bundle/$dut.result.json"
             jq -e --arg dut "$dut" \
-              '.schema_version == "0.1" and .flow == $dut and (.status | IN("PASS", "FAIL", "UNKNOWN"))' \
+              '.schema_version == "0.2" and .flow == $dut and (.status | IN("PASS", "FAIL", "UNKNOWN"))' \
               "bundle/$dut.result.json" > /dev/null \
-              || { echo "::error::bundle/$dut.result.json is not a schema 0.1 record for $dut"; exit 1; }
+              || { echo "::error::bundle/$dut.result.json is not a schema 0.2 record for $dut"; exit 1; }
           done < rows.tsv
 
       # Data-only aggregate: summary plus trend history, no HTML. The count
@@ -165,7 +170,7 @@ jobs:
             --history-in ghdata/data/history.json \
             --history-out ghdata/data/history.json
           jq -e --argjson n "$DUT_COUNT" \
-            '.schema_version == "0.1" and .flows.total == $n and (.dut_status | length) == $n' \
+            '.schema_version == "0.2" and .flows.total == $n and (.dut_status | length) == $n' \
             bundle/summary.json > /dev/null \
             || { echo "::error::summary.json does not carry $DUT_COUNT flows"; exit 1; }
           jq -e --argjson n "$DUT_COUNT" \
@@ -302,8 +307,8 @@ jobs:
           directory. The documentation site renders its verification dashboard
           from this branch. Do not edit by hand.
 
-              latest/<dut>.result.json                      one normalized result per weekly DUT (schema "0.1")
-              latest/summary.json                           the aggregate over those results (schema "0.1")
+              latest/<dut>.result.json                      one normalized result per weekly DUT (schema "0.2")
+              latest/summary.json                           the aggregate over those results (schema "0.2")
               latest/artifacts/<dut>/coverage/              staged coverage files of a run that collected coverage
               data/history.json                             trend history, newest 90 points (schema "0.2")
               data/runs/<dut>/<date>-run<id>.result.json.gz  archives of the newest 90 runs, per DUT

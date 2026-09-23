@@ -449,10 +449,10 @@ module smc_uvm_top
     // compile timescale is 1ns/1ps, and Xcelium rejects $assertcontrol(4, 31).
 `ifndef VERILATOR
     initial begin
-        $assertoff(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+        $assertoff(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
         wait (rst_cold_n_int === 1'b1);
         @(posedge clk_smc_i);
-        $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+        $asserton(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
     end
 `endif
 
@@ -795,6 +795,14 @@ module smc_uvm_top
 
     // UART0 TX: the DUT drives one line out to the external world.
     assign tb_uart0_tx_from_dut = u_dut.u_smc.core2pad_o[UART0_TX_PAD];
+    assign tb_uart0_tx_ready = u_dut.u_smc.u_smc_peripherals.u_uart_wrap
+        .gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.uart_txrdy_o;
+    // A fetched byte waits at the head of the engine's read-data FIFO while the
+    // UART cannot accept it: the write FSM stays in its request state on these
+    // cycles (log_engine.sv advances only on rdata valid AND uart_tx_ready).
+    assign tb_uart0_log_write_stalled = u_dut.u_smc.u_smc_peripherals.u_uart_wrap
+        .gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.rdata_fifo_rd_valid
+        & ~tb_uart0_tx_ready;
     // I2C0 SMBALERT#: OE-aware resolve (active-low when DUT drives).
     // core2pad_en_o is active-high (~lsio_core2pad_en_ni); data is 0 when OE.
     // Under +smc_i2c_shared_bus the pad is TB-driven with the shared OD net.
@@ -837,8 +845,8 @@ module smc_uvm_top
     assign s_axi_bid                = sep_axi_in_resp.b.id;
     assign s_axi_bresp              = sep_axi_in_resp.b.resp;
     assign s_axi_buser              = sep_axi_in_resp.b.user;
-    assign s_axi_bvalid             = sep_axi_in_resp.b_valid;
-    assign sep_axi_in_req.b_ready   = s_axi_bready;
+    assign s_axi_bvalid             = sep_axi_in_resp.b_valid & ~tb_sep_axi_b_hold;
+    assign sep_axi_in_req.b_ready   = s_axi_bready & ~tb_sep_axi_b_hold;
 
     assign sep_axi_in_req.ar.id     = s_axi_arid;
     assign sep_axi_in_req.ar.addr   = s_axi_araddr;
@@ -859,8 +867,11 @@ module smc_uvm_top
     assign s_axi_rresp              = sep_axi_in_resp.r.resp;
     assign s_axi_rlast              = sep_axi_in_resp.r.last;
     assign s_axi_ruser              = sep_axi_in_resp.r.user;
-    assign s_axi_rvalid             = sep_axi_in_resp.r_valid & ~tb_sep_axi_r_hold;
-    assign sep_axi_in_req.r_ready   = s_axi_rready & ~tb_sep_axi_r_hold;
+    assign tb_sep_axi_r_raw_valid   = sep_axi_in_resp.r_valid;
+    assign s_axi_rvalid = sep_axi_in_resp.r_valid &
+                          ~(tb_sep_axi_r_hold | tb_sep_axi_r_drop);
+    assign sep_axi_in_req.r_ready = tb_sep_axi_r_drop |
+                                    (s_axi_rready & ~tb_sep_axi_r_hold);
 
     assign sys_axi_in_req.aw.id     = sys_axi_awid;
     assign sys_axi_in_req.aw.addr   = sys_axi_awaddr;
@@ -909,8 +920,11 @@ module smc_uvm_top
     assign sys_axi_rresp            = sys_axi_in_resp.r.resp;
     assign sys_axi_rlast            = sys_axi_in_resp.r.last;
     assign sys_axi_ruser            = sys_axi_in_resp.r.user;
-    assign sys_axi_rvalid           = sys_axi_in_resp.r_valid & ~tb_sys_axi_r_hold;
-    assign sys_axi_in_req.r_ready   = sys_axi_rready & ~tb_sys_axi_r_hold;
+    assign tb_sys_axi_r_raw_valid   = sys_axi_in_resp.r_valid;
+    assign sys_axi_rvalid = sys_axi_in_resp.r_valid &
+                            ~(tb_sys_axi_r_hold | tb_sys_axi_r_drop);
+    assign sys_axi_in_req.r_ready = tb_sys_axi_r_drop |
+                                    (sys_axi_rready & ~tb_sys_axi_r_hold);
 
     assign jtag_axi_in_req.aw.id     = jtag_axi_awid;
     assign jtag_axi_in_req.aw.addr   = jtag_axi_awaddr;
@@ -1265,7 +1279,7 @@ module smc_uvm_top
         .ext_boot_seq_done_i        (ext_boot_seq_done),
         // Tied low: the eFuse sense bypass (sense FSM never routed to the bank,
         // shadow regs exposed unsensed, warm domain held in reset) is unreachable
-        // here; hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
+        // here; docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (lc_sigint_err),
@@ -1342,7 +1356,7 @@ module smc_uvm_top
     assign tb_dma_cg_en = u_dut.u_smc.u_smc_base.cg_ctrl_dma_cg_en;
     assign tb_dma_gated_clk =
         u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
-            .request_maneger_cg.gated_clk_o;
+            .u_request_maneger_cg.gated_clk_o;
     assign tb_dma_busy = u_dut.u_smc.u_smc_base.dma_busy;
     assign tb_dma_frontend_busy =
         u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
@@ -1503,6 +1517,31 @@ module smc_uvm_top
         .u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr.reg_mepc;
     assign tb_cpu_cluster_isolate =
         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.cluster_boundary_isolate;
+`define SMC_CPU_WRAP u_dut.u_smc.u_smc_cpu_wrapper
+`define SMC_CPU      `SMC_CPU_WRAP.u_smc_cpu
+`define SMC_CPU_CTRL `SMC_CPU_WRAP.u_smc_cpu_ctrl_wrap
+`define SMC_L2_ISO   `SMC_CPU.u_l2_frontend_axi_isolate
+`define SMC_MMIO_ISO `SMC_CPU.u_mmio_axi_isolate
+    assign tb_cpu_isolate_req      = `SMC_CPU_WRAP.isolate_req;
+    assign tb_cpu_drained          = `SMC_CPU_WRAP.drained;
+    assign tb_cpu_reset_timeout    = `SMC_CPU_CTRL.reset_timeout;
+    assign tb_cpu_reset_applied    = `SMC_CPU_CTRL.reset_applied;
+    assign tb_cpu_uncore_reset_n   = `SMC_CPU_WRAP.cluster_uncore_reset_n;
+    assign tb_cpu_l2_isolated      = `SMC_CPU.l2_frontend_isolated;
+    assign tb_cpu_l2_pending_aw    = `SMC_L2_ISO.i_axi_isolate.pending_aw_q;
+    assign tb_cpu_l2_pending_w     = `SMC_L2_ISO.i_axi_isolate.pending_w_q;
+    assign tb_cpu_l2_pending_ar    = `SMC_L2_ISO.i_axi_isolate.pending_ar_q;
+    assign tb_cpu_l2_flush_active  = `SMC_L2_ISO.flush_active_q;
+    assign tb_cpu_mmio_isolated    = `SMC_CPU.mmio_isolated;
+    assign tb_cpu_mmio_pending_aw  = `SMC_MMIO_ISO.i_axi_isolate.pending_aw_q;
+    assign tb_cpu_mmio_pending_w   = `SMC_MMIO_ISO.i_axi_isolate.pending_w_q;
+    assign tb_cpu_mmio_pending_ar  = `SMC_MMIO_ISO.i_axi_isolate.pending_ar_q;
+    assign tb_cpu_mmio_flush_active = `SMC_MMIO_ISO.flush_active_q;
+`undef SMC_MMIO_ISO
+`undef SMC_L2_ISO
+`undef SMC_CPU_CTRL
+`undef SMC_CPU
+`undef SMC_CPU_WRAP
     assign tb_cpu_debug_dmactive =
         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactive;
     assign tb_cpu_debug_dmactive_ack =
@@ -1513,6 +1552,8 @@ module smc_uvm_top
     `define SMC_HART0_CSR u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
     assign tb_cpu_core_reset_n = u_dut.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
     assign tb_cpu_trace_valid  = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign tb_cpu_trace_valid_unmasked = `SMC_HART0_CSR.io_trace_0_valid;
+    assign tb_cpu_trace_pc_unmasked    = `SMC_HART0_CSR.io_trace_0_iaddr;
     assign tb_cpu_trace_pc     = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_iaddr : '0;
     assign tb_cpu_trace_insn   = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_insn : '0;
     assign tb_cpu_trace_exc    = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_exception : 1'b0;
@@ -1603,8 +1644,8 @@ module smc_uvm_top
     // AXI master port the transfer moves on.
     // ------------------------------------------------------------------
     `define SMC_DMA u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
-    `define SMC_DMA_FE `SMC_DMA.idma_frontend_wrapper
-    `define SMC_DMA_REG `SMC_DMA_FE.gen_axi_to_iDMA_fe[0].iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
+    `define SMC_DMA_FE `SMC_DMA.u_idma_frontend_wrapper
+    `define SMC_DMA_REG `SMC_DMA_FE.gen_axi_to_iDMA_fe[0].u_iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
     assign tb_dma_next_id_re = `SMC_DMA_REG.next_id_0_re;
     assign tb_dma_next_id    = `SMC_DMA_REG.next_id_0_qs;
     assign tb_dma_status0    = `SMC_DMA_REG.status_0_qs;
@@ -1648,9 +1689,9 @@ module smc_uvm_top
     assign tb_zeroer_size        = `SMC_ZEROER.size;
     assign tb_zeroer_trigger     = `SMC_ZEROER.status_swacc[1];
     assign tb_zeroer_status_read = `SMC_ZEROER.status_swacc[0];
-    assign tb_zeroer_strb_dest   = `SMC_ZEROER.zeroer_reg.decoded_reg_strb.DEST_ADDR;
-    assign tb_zeroer_strb_size   = `SMC_ZEROER.zeroer_reg.decoded_reg_strb.SIZE;
-    assign tb_zeroer_req_is_wr   = `SMC_ZEROER.zeroer_reg.decoded_req_is_wr;
+    assign tb_zeroer_strb_dest   = `SMC_ZEROER.u_zeroer_reg.decoded_reg_strb.DEST_ADDR;
+    assign tb_zeroer_strb_size   = `SMC_ZEROER.u_zeroer_reg.decoded_reg_strb.SIZE;
+    assign tb_zeroer_req_is_wr   = `SMC_ZEROER.u_zeroer_reg.decoded_req_is_wr;
     assign tb_zeroer_disable_cg  = `SMC_ZEROER.disable_cg;
     assign tb_zeroer_axi_clk_enable = `SMC_ZEROER.axi_clk_enable;
     `undef SMC_ZEROER
@@ -1669,14 +1710,14 @@ module smc_uvm_top
 
     // Inbound fabric filter decisions, and the JTAG leg of the alias remap.
     `define SMC_INB u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric
-    assign tb_inb_write_hit     = `SMC_INB.smc_sys_inbound_filter.write_filter_hit;
-    assign tb_inb_read_hit      = `SMC_INB.smc_sys_inbound_filter.read_filter_hit;
-    assign tb_inb_isolate_write = `SMC_INB.smc_sys_inbound_filter.isolate_write;
-    assign tb_inb_isolate_read  = `SMC_INB.smc_sys_inbound_filter.isolate_read;
+    assign tb_inb_write_hit     = `SMC_INB.u_smc_sys_inbound_filter.write_filter_hit;
+    assign tb_inb_read_hit      = `SMC_INB.u_smc_sys_inbound_filter.read_filter_hit;
+    assign tb_inb_isolate_write = `SMC_INB.u_smc_sys_inbound_filter.isolate_write;
+    assign tb_inb_isolate_read  = `SMC_INB.u_smc_sys_inbound_filter.isolate_read;
     assign tb_remap_jtag_aw_hit =
-        `SMC_INB.smc_alias_remap_wrap.remap_debug_jtag_o.aw_remap_hit_debug;
+        `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.aw_remap_hit_debug;
     assign tb_remap_jtag_ar_hit =
-        `SMC_INB.smc_alias_remap_wrap.remap_debug_jtag_o.ar_remap_hit_debug;
+        `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.ar_remap_hit_debug;
     `undef SMC_INB
 
     // Isolation / FLR sequencing state. The two watchdog timeout pins are
@@ -1698,12 +1739,12 @@ module smc_uvm_top
     assign tb_telem_atid0   = `SMC_PERIPH.telemetry_atid_i[0];
     assign tb_telem_atid1   = `SMC_PERIPH.telemetry_atid_i[1];
     assign tb_telem_atid2   = `SMC_PERIPH.telemetry_atid_i[2];
-    assign tb_i2c_host_enable[0] = `SMC_PERIPH.i2c_wrap.gen_i2cs[0].i2c.i2c_core.host_enable;
-    assign tb_i2c_host_enable[1] = `SMC_PERIPH.i2c_wrap.gen_i2cs[1].i2c.i2c_core.host_enable;
-    assign tb_i2c_host_enable[2] = `SMC_PERIPH.i2c_wrap.gen_i2cs[2].i2c.i2c_core.host_enable;
-    assign tb_i2c_target_enable[0] = `SMC_PERIPH.i2c_wrap.gen_i2cs[0].i2c.i2c_core.target_enable;
-    assign tb_i2c_target_enable[1] = `SMC_PERIPH.i2c_wrap.gen_i2cs[1].i2c.i2c_core.target_enable;
-    assign tb_i2c_target_enable[2] = `SMC_PERIPH.i2c_wrap.gen_i2cs[2].i2c.i2c_core.target_enable;
+    assign tb_i2c_host_enable[0] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.host_enable;
+    assign tb_i2c_host_enable[1] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.host_enable;
+    assign tb_i2c_host_enable[2] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.host_enable;
+    assign tb_i2c_target_enable[0] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.target_enable;
+    assign tb_i2c_target_enable[1] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.target_enable;
+    assign tb_i2c_target_enable[2] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.target_enable;
     assign tb_uart_tx = `SMC_PERIPH.uart_tx;
     assign tb_periph_cdc_awvalid = `SMC_PERIPH.axil_i2c_req_periph_clk.aw_valid;
     assign tb_periph_cdc_awready = `SMC_PERIPH.axil_i2c_resp_periph_clk.aw_ready;
@@ -1724,7 +1765,7 @@ module smc_uvm_top
     assign tb_efuse_shim_resp_status =
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.status;
     assign tb_efuse_locks = shadow_regs.locks.locks;
-    `define SMC_MBX0 u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_axil_mailbox.gen_mailbox[0].axi_lite_mailbox
+    `define SMC_MBX0 u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_axil_mailbox.gen_mailbox[0].u_axi_lite_mailbox
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;
     `undef SMC_MBX0
@@ -2905,7 +2946,7 @@ module smc_uvm_top
     for (genvar b = 0; b < SCRATCH_NUM_BANKS; b++) begin : gen_peek_bank
         assign peek_bank_data[b] =
             u_dut.u_smc_wrapper.u_smc_ip_integration.u_mems
-                .gen_scratch_rams[b].mem.mem.mem[peek_entry];
+                .gen_scratch_rams[b].u_mem.u_mem.mem[peek_entry];
     end
 
     always_comb begin
@@ -2918,7 +2959,7 @@ module smc_uvm_top
     for (genvar b = 0; b < SCRATCH_NUM_BANKS; b++) begin : gen_bfm_peek_bank
         assign bfm_peek_bank_data[b] =
             u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems
-                .gen_scratch_rams[b].mem.mem.mem[bfm_peek_entry];
+                .gen_scratch_rams[b].u_mem.u_mem.mem[bfm_peek_entry];
     end
 
     assign bfm_peek_word            = bfm_peek_bank_data[bfm_peek_bank];
@@ -2951,7 +2992,7 @@ module smc_uvm_top
             if (bfm_rom_fd != 0) begin
                 $fclose(bfm_rom_fd);
                 $readmemh(bfm_rom_path,
-                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.rom_mem.mem.mem);
+                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.mem);
                 $display("[tb_top:dual] u_bfm ROM override (hex) %s", bfm_rom_path);
             end else begin
                 $error("[tb_top:dual] missing +bfm_rom_hex image %s", bfm_rom_path);
@@ -2961,7 +3002,7 @@ module smc_uvm_top
             if (bfm_rom_fd != 0) begin
                 $fclose(bfm_rom_fd);
                 $readmemb(bfm_rom_path,
-                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.rom_mem.mem.mem);
+                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.mem);
                 $display("[tb_top:dual] u_bfm ROM override (bin64) %s", bfm_rom_path);
             end else begin
                 $error("[tb_top:dual] missing +bfm_rom_bin64 image %s", bfm_rom_path);
@@ -3019,6 +3060,9 @@ module smc_uvm_top
     logic [31:0] cold_rst_assert_count = '0;
     always @(negedge rst_cold_ni) cold_rst_assert_count <= cold_rst_assert_count + 32'd1;
     assign u_tb_if.cold_rst_assert_count = cold_rst_assert_count;
+    logic [31:0] cool_rst_assert_count = '0;
+    always @(negedge rst_cool_ni) cool_rst_assert_count <= cool_rst_assert_count + 32'd1;
+    assign u_tb_if.cool_rst_assert_count = cool_rst_assert_count;
 
     // SEP_IN AXI4 initiator: the shared ocah_axi_vip UVM master agent drives
     // the s_axi_* request side (the agent's driver procedurally drives the
@@ -3074,9 +3118,12 @@ module smc_uvm_top
     assign u_sep_in_master_if.ruser   = 16'(s_axi_ruser);
     assign u_sep_in_master_if.rvalid  = s_axi_rvalid;
 
-    // The SEP_IN R-channel hold is a cocotb hang-detector control; the UVM
-    // shape keeps the channel transparent.
+    // The SEP_IN response holds are cocotb controls; the UVM shape keeps both
+    // channels transparent.
+    assign tb_sep_axi_b_hold = 1'b0;
     assign tb_sep_axi_r_hold = 1'b0;
+    assign tb_sep_axi_r_drop = 1'b0;
+    assign tb_sys_axi_r_drop = 1'b0;
 
     // Passive mirror of the SEP_IN bus for the shared-VIP monitor (the
     // smc_scoreboard predictors consume its item stream) and the protocol
@@ -3276,6 +3323,21 @@ module smc_uvm_top
 
     // SYS_OUT responder control: no response hold.
     assign tb_output_axi_resp_hold = 1'b0;
+    assign tb_cpu_isolate_req       = 1'b0;
+    assign tb_cpu_drained           = 1'b0;
+    assign tb_cpu_reset_timeout     = 1'b0;
+    assign tb_cpu_reset_applied     = 1'b0;
+    assign tb_cpu_uncore_reset_n    = 1'b0;
+    assign tb_cpu_l2_isolated       = 1'b0;
+    assign tb_cpu_l2_pending_aw     = '0;
+    assign tb_cpu_l2_pending_w      = '0;
+    assign tb_cpu_l2_pending_ar     = '0;
+    assign tb_cpu_l2_flush_active   = 1'b0;
+    assign tb_cpu_mmio_isolated     = 1'b0;
+    assign tb_cpu_mmio_pending_aw   = '0;
+    assign tb_cpu_mmio_pending_w    = '0;
+    assign tb_cpu_mmio_pending_ar   = '0;
+    assign tb_cpu_mmio_flush_active = 1'b0;
 
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
     // parked (TMS high, reset asserted); UART0 RX idle-high.
@@ -3537,7 +3599,7 @@ module smc_dual_inst
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
         // Tied low: the eFuse sense bypass is unreachable here;
-        // hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
+        // docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_i),
         .lc_sigint_err_o            (),

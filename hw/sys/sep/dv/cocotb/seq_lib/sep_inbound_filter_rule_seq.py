@@ -8,7 +8,8 @@ SMN master (m_axi, the only path through u_inbound_filter) probes them:
   * allowed address (covered by the entry, read_allowed/write_allowed set, src_id
     match) -> the access traverses the filter + identity global->local remap
     (smc_global_base=0) and reaches the SEP-local CSR -> OKAY + exact value;
-  * any other address (block-by-default) -> the filter's err-slave -> DECERR;
+  * any other address (block-by-default) -> the filter's err-slave ->
+    DECERR + ERR_SLV_RDATA;
   * clearing read_allowed/write_allowed flips the matched read/write to DECERR.
 
 This stays sep_debug=0 and proves PER-ENTRY rule enforcement (vs the global
@@ -30,14 +31,18 @@ SepInboundFilterWidenCfg covers the widen itself: with allow_burst=1 and
 START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
 whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
-is write-once. A further write of a locked entry completes SLVERR, so the
-frozen allow_burst keeps governing the granule.
+is write-once per fabric.adoc, so the field must not change once set. That
+document does not say how a write to a locked entry completes; SEP refuses it
+with BRESP=SLVERR, steering AW/W to a separate AXI-Lite error slave, so the
+frozen allow_burst keeps governing the granule. The held field is the
+specified contract, the SLVERR is SEP's choice of completion code.
 """
 
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import DENY_READ_SENTINEL, deny_read_rdata
 from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -45,6 +50,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
     ALIAS_BASE,
     AP_BASE,
+    DBW_RO_VAL,
     F_ALLOW_BURST,
     F_ALLOW_NS,
     F_ENTRY_ENABLED,
@@ -59,7 +65,12 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     OUTFILT_BASE,
     STEE_BASE,
 )
-from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
+from seq_lib.sep_scratch_reset_seq import (
+    SCRATCH_COLD_0,
+    SCRATCH_N,
+    SCRATCH_STRIDE,
+    SCRATCH_WARM_0,
+)
 
 # Same-page allow_burst=1 rewrites START down and END up to the 4 KB page
 # (hw/ip/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
@@ -76,7 +87,18 @@ WINDOW_B_VALUE = 0xA11C_BEEF
 BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
 RESP_SLVERR = 2
+# AMBA AXI4-Lite encodings (IHI 0022): OKAY=0, SLVERR=2, DECERR=3.
 RESP_DECERR = 3
+# DV-owned deny-path marker (env.sep_spec_tables.DENY_READ_SENTINEL).
+ERR_SLV_RDATA = deny_read_rdata(0)
+ERR_SLV_WORD = DENY_READ_SENTINEL
+
+
+def err_slv_rdata(addr: int) -> int:
+    """The deny-path half a 32-bit beat at ``addr`` must return."""
+    return deny_read_rdata(addr)
+
+
 # Entry count from the generated export, not a literal: the bank is an RDL
 # array (`inbound_filter_ctrl[16]`), and a sequence that carries its own number
 # goes stale the moment the array changes. disable_all() must clear every entry
@@ -107,9 +129,7 @@ BURST_ALLOW_SPAN = 0x2000
 # reach a neighbouring block.
 PAGE_SHIFT = 12
 PAGE_SIZE = 1 << PAGE_SHIFT
-GRANULE_BYTES = 8  # FILTER_CONFIG.data_bus_width reset 3 => 8-byte beat
-SCRATCH_STRIDE = 0x8  # sep_scratch.rdl: 8 x 64-bit per bank
-SCRATCH_BANK_REGS = 8
+GRANULE_BYTES = 1 << DBW_RO_VAL
 # The dual scratch banks are the widen page: both banks are plain RW storage, so
 # every probe lands on a real register and an OKAY/DECERR split can only come
 # from the filter, never from an address-decode hole.
@@ -164,8 +184,8 @@ class SepInboundFilterWidenCfg:
     def from_rng(cls, rng: SepSeededRng) -> "SepInboundFilterWidenCfg":
         # Cold scratch 0 stays outside the programmed window on every seed so it
         # is always a valid widen probe.
-        window_idx = rng.randrange(1, SCRATCH_BANK_REGS)
-        warm_idx = rng.randrange(SCRATCH_BANK_REGS)
+        window_idx = rng.randrange(1, SCRATCH_N)
+        warm_idx = rng.randrange(SCRATCH_N)
         below_addr = rng.choice(list(WIDEN_ADJ_BELOW))
         vals: list[int] = []
         for i in range(3):
@@ -383,8 +403,8 @@ class SepInboundFilter(SepAxiRegDriver):
     async def write_tolerant(self, addr: int, data: int) -> int:
         """Write tolerating a non-OKAY response; return the AXI resp_code.
 
-        A locked entry's further writes complete SLVERR, so the proof is
-        the resp code plus the read-back.
+        A locked entry refuses further writes, which SEP completes as
+        SLVERR, so the proof is the resp code plus the read-back.
         """
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",

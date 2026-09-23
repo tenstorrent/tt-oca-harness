@@ -94,8 +94,6 @@ def interrupted_progress(expected: int, completed: int) -> dict:
         "active_count": 0,
         "missing_count": expected - completed - 1,
         "interrupted_count": 1,
-        "expected": [],
-        "completed": [],
         "active": [],
         "missing": [],
         "interrupted": [],

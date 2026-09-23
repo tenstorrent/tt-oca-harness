@@ -10,6 +10,8 @@ response and the all-zero word ``csr_read_decerr_zero`` expects.
 
 from __future__ import annotations
 
+import cocotb
+
 from .smc_addr_map import external_gpio_ctrl_addr, external_gpio_ctrl_indices
 from .smc_csr_seq_utils import SmcCsrSeq
 
@@ -26,4 +28,16 @@ class smc_gpio_ctrl_full_sweep_test_seq(SmcCsrSeq):
         monitor.expected_decerr_addrs.update(addrs)
         for idx, addr in zip(idxs, addrs):
             await self.csr_read_decerr_zero(f"GPIO_CTRL_{idx}", addr)
-        assert self.accesses == len(idxs), f"GPIO_CTRL full sweep count mismatch: {self.accesses}"
+        self.assert_all_reachable(len(idxs), "GPIO_CTRL_FULL_SWEEP")
+        cocotb.log.info(
+            "CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP: %d GPIO_CTRL window reads "
+            "(GPIO_CTRL_%d @ 0x%08x .. GPIO_CTRL_%d @ 0x%08x) each answered with an AXI "
+            "error response and an all-zero data word; %d SEP_IN accesses checked by the "
+            "scoreboard",
+            len(idxs),
+            idxs[0],
+            addrs[0],
+            idxs[-1],
+            addrs[-1],
+            self.accesses,
+        )

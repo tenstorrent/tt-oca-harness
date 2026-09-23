@@ -6,37 +6,40 @@
 
 === Overview
 
-The AVSBus Controller provides a comprehensive register interface
-through a 256-byte address space (0x00-0xFF) accessible via AXI4-Lite or
-APB4 protocols. The register map is organized into functional groups
-including control registers for transaction management, status registers
-for monitoring operations, configuration registers for system
-parameters, and FIFO interfaces for command and response data handling.
-
-All registers are 32-bit aligned and designed for efficient software
-access patterns. The interface supports both polling and
-interrupt-driven operation modes, with extensive status reporting and
-diagnostic capabilities for robust system integration and debugging.
+The AVSBus Controller occupies a 128-byte address space (0x00-0x7F) reached
+through its AXI4-Lite port. The register map holds the command and readback
+FIFO windows, status registers for monitoring the bus and the target,
+interrupt status, mask and clear registers, and configuration registers for
+the clock, the retry budget and the resync interval.
 
 === Address Alignment and Access Requirements
 
-*Address Alignment*: - All registers aligned to 32-bit boundaries
-(addresses multiples of 4) - 256-byte total address space (0x00-0xFF) -
-Compatible with standard AXI4-Lite and APB4 addressing schemes
+All registers are 32 bits wide and aligned to a 4-byte boundary. The highest
+allocated offset is `0x58`; offsets `0x5C` through `0x7F` are unallocated and
+reserved.
 
-*Access Width Requirements*: - All registers must be accessed using
-32-bit operations - Byte and halfword accesses not supported - may cause
-unpredictable behavior - AXI4-Lite: Write strobes should be 4'b1111 for
-all register writes - APB4: All pstrb_i bits should be asserted for
-register writes
+The controller decodes only the low 7 address bits, so an access above `0x7F`
+aliases back onto a live register rather than erroring. The integrating
+address decoder is responsible for confining the block to its 128-byte window.
 
-*Atomic Access Considerations*: - FIFO registers (AVS_CMD, AVS_READBACK)
-are inherently atomic - Status registers provide consistent snapshots of
-hardware state - No special atomic access patterns required for normal
-operation
+Stored registers honour byte strobes, so a partial write updates only the
+addressed byte lanes. The two FIFO windows do not:
 
-Offsets `0x5C` through `0xFF` are unallocated and reserved for future
-extensions.
+* *`AVS_CMD`* ignores write strobes and pushes the whole 32-bit write data
+word into the command FIFO, so it must be written with a single full-width
+access. A partial write enqueues a malformed command.
+* *`AVS_READBACK`* pops the readback FIFO on any read, whatever the access
+width, so it must be read exactly once per response. `AVS_DEBUG_READBACK`
+returns the same data without popping.
+
+Neither FIFO window back-pressures the bus; both report a failed access
+instead. A write to `AVS_CMD` while the command FIFO is full is dropped, and a
+read of `AVS_READBACK` while the readback FIFO is empty returns the FIFO
+contents at the read pointer rather than a defined value. Each case raises its
+interrupt and completes the access with an error response, so software can
+detect the condition from the bus response alone. `AVS_DEBUG_READBACK` reads
+0xFFFFFFFF when the FIFO is empty and never errors, which makes it the safer
+register to poll.
 
 === Detailed Register Map
 
@@ -47,5 +50,5 @@ include::partial$avsbus_controller/regs/gen/html/avsbus_controller.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/avsbus_controller.adoc[]
+include::../regs/gen/adoc/avsbus_controller.adoc[leveloffset=+2]
 endif::backend-pdf[]

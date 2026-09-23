@@ -7,6 +7,7 @@ Run from the repository root:
     python3 -m unittest discover tools/dv/tests
 """
 
+import os
 import sys
 import unittest
 from argparse import Namespace
@@ -16,10 +17,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from runlib.stages import (  # noqa: E402
     COCOTB_RUNNER_TOOLS,
+    _build_jobs_arg,
     _cocotb_build_args,
     _last_plusarg_wins,
     _uvm_testname_override,
     _vcs_uvm_precompile_cmd,
+    expand_ocah_vendor_define_aliases,
 )
 
 
@@ -173,3 +176,77 @@ class CocotbVcsRunnerBuildArgs(unittest.TestCase):
         self.assertIn("+define+X=1", argv)
         self.assertIn("-j8", argv)
         self.assertIn("-partcomp", argv)
+
+
+class BuildJobsDerivation(unittest.TestCase):
+    """An omitted --build-jobs follows --sim-jobs, except that a cluster fan-out stops at this host."""
+
+    def test_local_fan_out_is_the_build_fan_out(self):
+        self.assertEqual(_build_jobs_arg(Namespace(build_jobs=None, sim_jobs=6)), 6)
+
+    def test_explicit_build_jobs_win_on_a_cluster(self):
+        args = Namespace(build_jobs=3, sim_jobs=64, _cluster_executor=True)
+        self.assertEqual(_build_jobs_arg(args), 3)
+
+    def test_cluster_fan_out_is_capped_at_the_host(self):
+        cores = os.cpu_count() or 1
+        wide = Namespace(build_jobs=None, sim_jobs=cores * 8, _cluster_executor=True)
+        self.assertEqual(_build_jobs_arg(wide), cores)
+        narrow = Namespace(build_jobs=None, sim_jobs=1, _cluster_executor=True)
+        self.assertEqual(_build_jobs_arg(narrow), 1)
+
+
+class OcahVendorDefineAliases(unittest.TestCase):
+    def _args(self, **overrides) -> Namespace:
+        base = {"define": [], "comp_arg": [], "build_jobs": None, "sim_jobs": 1}
+        base.update(overrides)
+        return Namespace(**base)
+
+    def test_bare_simulation_gains_abr_alias(self):
+        self.assertEqual(
+            expand_ocah_vendor_define_aliases(["SIMULATION", "RANDOM=0"]),
+            ["SIMULATION", "RANDOM=0", "ABR_SIMULATION"],
+        )
+
+    def test_plusdefine_verilator_gains_target_alias(self):
+        self.assertEqual(
+            expand_ocah_vendor_define_aliases(["+define+VERILATOR", "-Wno-fatal"]),
+            ["+define+VERILATOR", "-Wno-fatal", "+define+TARGET_VERILATOR"],
+        )
+
+    def test_unrelated_defines_are_unchanged(self):
+        self.assertEqual(expand_ocah_vendor_define_aliases(["A=1", "B"]), ["A=1", "B"])
+
+    def test_cocotb_vcs_expands_simulation(self):
+        argv = _cocotb_build_args(
+            "vcs",
+            None,
+            Path("/repo"),
+            {},
+            {"defines": ["SIMULATION"]},
+            {},
+            {},
+            Path("/repo/f.f"),
+            self._args(),
+        )
+        self.assertIn("+define+SIMULATION", argv)
+        self.assertIn("+define+ABR_SIMULATION", argv)
+
+    def test_cocotb_verilator_expands_aliases_without_force_include(self):
+        argv = _cocotb_build_args(
+            "verilator",
+            None,
+            Path("/repo"),
+            {},
+            {
+                "defines": ["SIMULATION"],
+                "tools": {"verilator": {"flags": ["+define+VERILATOR"]}},
+            },
+            {},
+            {},
+            Path("/repo/f.f"),
+            self._args(),
+        )
+        self.assertIn("+define+ABR_SIMULATION", argv)
+        self.assertIn("+define+TARGET_VERILATOR", argv)
+        self.assertNotIn("-FI", argv)

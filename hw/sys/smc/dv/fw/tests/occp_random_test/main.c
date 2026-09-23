@@ -17,7 +17,6 @@ static void run_test_suite(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // check_occp_status_data ignores exp_boot_status; the ROM leaves boot status at 0 here.
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
 

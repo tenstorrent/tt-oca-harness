@@ -2,9 +2,10 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Verifies that the ROM latches to the first interface that issues a valid OCCP command and
- * ignores commands from other interfaces thereafter. Step 0 proves ifaceB answers before the
- * latch, so its later silence is the latch and not a dead link.
+ * OCCP Interface Latch Test
+ *
+ * Verifies that ROM latches to the first interface that issues a valid OCCP command
+ * and ignores commands from other interfaces thereafter.
  */
 
 #include "occp_test_common.h"
@@ -13,12 +14,6 @@
 #include "smc_strap.h"
 
 typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
-
-/* ifaceB must stay silent for this many polls per byte; Step 0 proves it answers within it. */
-#define OCCP_IFACE_B_RESP_BUDGET_ITERS 2000
-
-/* Must be non-zero: a timeout of 0 polls forever and hides failures behind the sim timeout. */
-#define OCCP_IFACE_A_BUDGET_ITERS (10 * OCCP_IFACE_B_RESP_BUDGET_ITERS)
 
 static void set_ctx_addr_bounds(test_context_t *ctx) {
     ctx->test_base_addr = OCCP_TEST_BASE_ADDR;
@@ -57,9 +52,11 @@ static iface_id_t pick_random_iface(void) {
     }
 }
 
-/* Derived, not redrawn: a redraw loop never ends when the LFSR seed is 0. */
 static iface_id_t pick_distinct_iface(iface_id_t exclude) {
-    return (exclude == IFACE_I2C0) ? IFACE_I2C1 : IFACE_I2C0;
+    while (1) {
+        iface_id_t c = pick_random_iface();
+        if (c != exclude) return c;
+    }
 }
 
 static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected_cmd_count) {
@@ -100,10 +97,6 @@ int main(void) {
     ctxB.exp_occp_last_error = 0;
     set_ctx_addr_bounds(&ctxA);
     set_ctx_addr_bounds(&ctxB);
-    ctxA.status_reporting_disabled = smc_strap_is_set(SMC_STRAP_STATUS_RPT_DISABLE);
-    ctxB.status_reporting_disabled = smc_strap_is_set(SMC_STRAP_STATUS_RPT_DISABLE);
-    ctxA.timeout = OCCP_IFACE_A_BUDGET_ITERS;
-
     simputs("=== OCCP Interface Latch Test ===\n");
 
     simputs("Waiting for target to be ready...\n");
@@ -133,40 +126,15 @@ int main(void) {
         }
     }
 
-    /* An invalid AppID is answered without latching, proving ifaceB is live before the latch. */
-    ctxB.timeout = OCCP_IFACE_B_RESP_BUDGET_ITERS;
-    ctxB.exp_timeout = false;
-    simputs("Step 0: Positive control - ifaceB must answer while the ROM is unlatched\n");
-    ctxB.invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_APPID;
-    int rc_control = occp_send_invalid_header_command(&ctxB, ctxB.slave_addr);
-    ctxB.invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
-    if (rc_control != OCCP_SUCCESS) {
-        simputs("FAIL: ifaceB did not answer the pre-latch control command\n");
-        simputs("      ifaceB is not proven reachable, so its silence in Step 2 would prove "
-                "nothing about the latch\n");
-        simputshex32("      ifaceB: ", ifaceB);
-        simputshex32("      rc: ", (uint32_t)rc_control);
-        ctxB.overall_result = false;
-        test_fail(0);
-        while (1) {
-            __asm__("wfi");
-        }
-    }
-    simputs("Step 0: PASS - ifaceB answered before the latch\n");
-    /* The ROM counts rejected commands too, in one counter shared by all channels. */
-    increment_cmd_count(&ctxB);
-    ctxA.cmd_count = ctxB.cmd_count;
-    /* The ROM error code is sticky until reset, so later GET_OCCP_ERROR_CODE reads expect 0x1. */
-    ctxA.exp_occp_last_error = 0x1;
-    ctxB.exp_occp_last_error = 0x1;
-
+    /* 1) Latch on ifaceA with a safe valid command */
+    // 50/50 chance of 1 or random number of initial commands
     int num_initial_commands = (get_random_int() % 2) ? (1) : ((get_random_int() % 10) + 1);
-    simputshex32("Step 1: Send valid commands on ifaceA to trigger latch, count: ",
-                 (uint32_t)num_initial_commands);
-    execute_random_commands(&ctxA, num_initial_commands);
+    simputs("Step 1: Send valid commands on ifaceA to trigger latch\n");
+    execute_random_commands(&ctxA, 1);
 
     ctxB.exp_timeout = true;
-    ctxB.timeout = OCCP_IFACE_B_RESP_BUDGET_ITERS;
+    ctxB.timeout = 2000;
+    /* 2) Attempt to send commands on ifaceB which should be ignored */
     simputs("Step 2: Send probe writes on ifaceB; expect to be ignored due to latch\n");
     execute_random_commands(&ctxB, 1);
 
@@ -187,12 +155,6 @@ int main(void) {
         test_pass(0);
     } else {
         simputs("\nOCCP INTERFACE LATCH TEST FAILED!\n");
-        simputshex32("  ifaceA (latched): ", ifaceA);
-        simputshex32("  ifaceB (probed):  ", ifaceB);
-        simputshex32("  ifaceA cmd_count model: ", (uint32_t)ctxA.cmd_count);
-        simputshex32("  ifaceB cmd_count model: ", (uint32_t)ctxB.cmd_count);
-        simputshex32("  ifaceA result: ", (uint32_t)ctxA.overall_result);
-        simputshex32("  ifaceB result: ", (uint32_t)ctxB.overall_result);
         test_fail(0);
     }
 

@@ -6,15 +6,14 @@
 // never enters the coverage database. Edit then `--rebuild`.
 //
 // The wrapper is graded on its interface: what stays instrumented is
-// hw/top/smu_wrapper.sv -- its ports and the nets it declares between them,
-// of which cov/interface_toggle.py keeps the ports -- and the cov/sv
-// functional-coverage modules. Everything the wrapper instantiates is
-// internal logic with an owner of its own -- `smu.sv` and its crossbar on the
-// `--dut smu_block` bench (smu_cov_scope.vlt), SMC, DTP and SEP in their own
+// hw/top/smu_wrapper.sv -- its ports and the nets it declares between them
+// -- and the cov/sv functional-coverage modules. Toggle is graded on the
+// VCS flow (`../vcs/smu_wrapper_cov_scope.hier` with `-cm_tgl portsonly`).
+// Everything the wrapper instantiates is internal logic with an owner of
+// its own -- `smu.sv` and its crossbar, SMC, DTP and SEP in their own
 // DV packages -- and grading it again here would attribute their holes to
 // SMU and bury the interface inside a denominator two orders of magnitude
-// larger. The VCS counterpart is `tgl(portsonly)` in
-// ../vcs/smu_wrapper_cov_scope.hier.
+// larger.
 //
 // GLOB NOTE: the pattern is matched against the path as Verilator OPENED the
 // file, not the absolute path it records in the generated code, and
@@ -30,13 +29,11 @@
 // ---------------------------------------------------------------------------
 // Testbench code.
 // ---------------------------------------------------------------------------
-coverage_off -file "*hw/sys/smu/dv/tb/tb_top.sv"
 coverage_off -file "*hw/sys/smu/dv/tb/tb_wrapper_top.sv"
-coverage_off -file "*hw/sys/smu/dv/tb/smu_tb_if.sv"
 
 // ---------------------------------------------------------------------------
-// Internal logic: the SMU block itself, graded on `--dut smu_block`, and the
-// subsystems that carry their own DV package and their own coverage.
+// Internal logic: the SMU block itself, and the subsystems that carry their
+// own DV package and their own coverage.
 // ---------------------------------------------------------------------------
 coverage_off -file "*hw/sys/smu/rtl/*"
 coverage_off -file "*hw/sys/smc/*"

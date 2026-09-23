@@ -475,7 +475,7 @@ include::ip:partial$axi_alias_remap/regs/gen/html/alias_remap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/axi_alias_remap/regs/gen/adoc/alias_remap.adoc[]
+include::../../../ip/axi_alias_remap/regs/gen/adoc/alias_remap.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Output Remap Registers
@@ -492,7 +492,7 @@ include::ip:partial$output_remap/regs/gen/html/output_remap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/output_remap/regs/gen/adoc/output_remap.adoc[]
+include::../../../ip/output_remap/regs/gen/adoc/output_remap.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Inbound Traffic Filter Control Registers
@@ -509,7 +509,7 @@ include::ip:partial$axi_filter/regs/gen/html/filter_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc[]
+include::../../../ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Outbound Traffic Filter Control Registers

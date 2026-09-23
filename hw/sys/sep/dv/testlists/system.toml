@@ -127,7 +127,17 @@ args = ["+skip_fuse_sense"]
 # HMAC SHA-256 DIGEST and AES ECB-256 DATA_OUT (the AES masking-PRNG reseed consumes the
 # entropy) -- then pulse one engine's SW_RESET_N (0x1080_3000, active-low) and prove the
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
-# clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
+# clears; reverse the roles. Once URND is being acknowledged, a KMAC reset is
+# stepped across that acknowledge period and URND edn_ack stays low on every
+# gated-reset edge. The same walk is repeated from the JTAG KMAC override,
+# with SW_RESET_N still showing KMAC released. CHK-EDN-HOLD then arms on a URND
+# beat that is staged but not yet acknowledged and requires edn_bus/edn_fips to
+# be unchanged across a KMAC reset edge, and CHK-EDN-HOLD-KEEP requires that
+# same word to be the one URND is finally acknowledged with. THESE TWO FAIL
+# AGAINST THE CURRENT RTL BY DESIGN: the adapter clear is shared, so resetting
+# one engine discards a sibling's in-flight entropy word and breaks the
+# prim_sync_reqack_data DataSrc2Dst=0 hold contract. They are to be closed by
+# making the clear per-endpoint, not by weakening the check. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
 # address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
 # DIGEST_0 is OKAY at reset. Drain-before-reset IS claimed on the HMAC path:
 # CHK-DRAIN-ORDER (reset waits for both AXI-Lite paths to drain),
@@ -236,6 +246,20 @@ module = "system.sep_irq_ip_to_aggregator_test"
 seed = 1
 timeout_sec = 1800
 tags = ["interrupt", "aggregator", "csrng", "edn", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Misaligned in-extent register access. sep_cpu_ctrl.rdl and
+# doc/interrupts.adoc require SLVERR and the owning block's
+# PERIPH_BUS_ERR_STATUS bit. The fabric returns DECERR and the bit stays 0.
+# The VPLAN card owns the checker contract.
+name = "sep_periph_bus_err_misaligned_test"
+module = "system.sep_periph_bus_err_misaligned_test"
+seed = 1
+timeout_sec = 600
+tags = ["interrupt", "aggregator", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
@@ -362,6 +386,20 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI transaction IDs on the response path. Eight scratch words are primed
+# with eight distinct values, then read with eight reads outstanding at once,
+# one per ID; each must return its own word. Directed, not randomized: the
+# proof is a value compare, and a random ID on either side would remove it.
+name = "sep_axi_id_routing_test"
+module = "system.sep_axi_id_routing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "axi", "id", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

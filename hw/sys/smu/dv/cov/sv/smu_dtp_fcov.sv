@@ -5,8 +5,8 @@
 // SMU-XTRIG-CTP scenarios of the feature list: the external IC_RESET
 // override slice and the cross-trigger CTP pad groups.
 //
-// One passive, signal-driven module shared by tb_top and tb_wrapper_top.
-// Every port is a signal both benches expose at their top level.
+// One passive, signal-driven module. Every port is a signal the bench
+// exposes at its top level.
 //
 // The CTP width points sample at the primary reset release edge, the first
 // moment the pad groups are presented; the inert point needs a full quiet

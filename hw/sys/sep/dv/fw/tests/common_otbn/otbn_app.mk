@@ -20,21 +20,27 @@ ifndef OCAH_ROOT
 $(error OCAH_ROOT is not set. Please run: export OCAH_ROOT=<path to the tt-oca checkout>)
 endif
 
+
+
 # Directory structure
 COMMON_OTBN_DIR := $(OCAH_ROOT)/hw/sys/sep/dv/fw/tests/common_otbn
 OTBN_IP_DIR    := $(OCAH_ROOT)/vendor/lowRISC/opentitan/upstream/hw/ip/otbn
 OTBN_UTIL_DIR   := $(OTBN_IP_DIR)/util
 OTBN_DATA_DIR   := $(OTBN_IP_DIR)/data
 
+# Allow uv binary or python override
+UV ?= uv
+OTBN_PYTHON     ?= $(UV) --directory "$(OCAH_ROOT)" run --locked python3
+
 # Build tools from vendored OpenTitan OTBN
-OTBN_AS := python3 $(OTBN_UTIL_DIR)/otbn_as.py
+OTBN_AS := $(OTBN_PYTHON) $(OTBN_UTIL_DIR)/otbn_as.py
 # otbn_as.py passes -mabi=ilp32 but leaves the ISA to the assembler's default,
 # which for a riscv64 binutils is 64-bit and rejects that ABI. OTBN's base ISA
 # is RV32I; the M extension covers the mul/div in the crypto sources, and zicsr
 # the csrrw that drives OTBN's flag/mod CSRs (binutils split zicsr out of the
 # base ISA, so it has to be named explicitly).
 OTBN_AS_FLAGS ?= -march=rv32im_zicsr
-OTBN_OBJDUMP := python3 $(OTBN_UTIL_DIR)/otbn_objdump.py
+OTBN_OBJDUMP := $(OTBN_PYTHON) $(OTBN_UTIL_DIR)/otbn_objdump.py
 # The toolchain container ships riscv64 binutils only; they cover 32-bit
 # RISC-V targets, so ld is pointed at the elf32lriscv emulation explicitly.
 RV32_PREFIX ?= riscv64-unknown-elf-
@@ -130,7 +136,7 @@ $(OTBN_APP_DMEM_BIN): $(OTBN_APP_ELF)
 # C file generation: .bin + .elf -> .c/.h with CRC calculation and symbol extraction
 $(OTBN_APP_C_FILE) $(OTBN_APP_H_FILE): $(OTBN_APP_IMEM_BIN) $(OTBN_APP_DMEM_BIN) $(OTBN_APP_ELF)
 	@echo "Generating C arrays, CRC values, and symbol addresses for $(OTBN_APP_NAME)"
-	$(OTBN_PYTHON_ENV) python3 $(COMMON_OTBN_DIR)/generate_otbn_c.py \
+	$(OTBN_PYTHON_ENV) $(OTBN_PYTHON) $(COMMON_OTBN_DIR)/generate_otbn_c.py \
 		--app-name $(OTBN_APP_NAME) \
 		--imem-bin $(OTBN_APP_IMEM_BIN) \
 		--dmem-bin $(OTBN_APP_DMEM_BIN) \

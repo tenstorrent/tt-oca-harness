@@ -46,7 +46,8 @@ from seq_lib.sep_esrc_bringup_seq import (
     RING_OSC_SAMPLECLK_ONLY,
 )
 
-LOCK_BIT = 0x1
+LOCK_BIT = ENTROPY_SOURCE.fields("FIPS_LOCK")["LOCK"]["bm"]
+OBS_ENABLE_BIT = ENTROPY_SOURCE.fields("BIW_OBS_CTRL")["RAW_ENABLE"]["bm"]
 SHA256_BIT = ENTROPY_SOURCE.fields("CTRL")["SHA256_WHITENING_ENABLE"]["bm"]
 CHURN_BIT = ENTROPY_SOURCE.fields("FIFO_CTRL")["ENTROPY_CHURN_ENABLE"]["bm"]
 WINDOW_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_WINDOW_SIZE")["SIZE"]["bm"]
@@ -418,10 +419,10 @@ class SepEsrcFipsLock(SepAxiRegDriver):
         return cur, await self._rd(ESRC_CTRL)
 
     async def write_obs_enable(self, enable: int) -> None:
-        await self._wr(ESRC_BIW_OBS_CTRL, enable & 0x1)
+        await self._wr(ESRC_BIW_OBS_CTRL, enable & OBS_ENABLE_BIT)
 
     async def read_obs_enable(self) -> int:
-        return (await self._rd(ESRC_BIW_OBS_CTRL)) & 0x1
+        return (await self._rd(ESRC_BIW_OBS_CTRL)) & OBS_ENABLE_BIT
 
     async def write_min_entropy_h(self, h: int) -> None:
         await self._wr(ESRC_MIN_ENTROPY_H, h & MIN_ENTROPY_H_MASK)

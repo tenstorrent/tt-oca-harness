@@ -198,6 +198,35 @@ Isolation is coordinated with the control logic
   isolated their ports, telling the control logic the withheld reset may now be
   released.
 
+=== Timeout Recovery
+
+`CPU_CTRL.RESET_TIMEOUT` limits how long a software-requested reset waits for
+the drain handshake. A `timeout_value` of zero disables the timer. When the
+timer expires, `timeout_mode=0` reports the timeout and continues to withhold
+the reset. `timeout_mode=1` forces the reset and flushes both AXI isolation
+blocks.
+
+`reset_timeout` remains high until the software reset request is removed,
+including after a recovery flush completes. `reset_applied` is high once the
+reset is applied by a completed drain or a force-mode timeout.
+
+The flush clears outstanding-transaction records at the cluster boundary and
+discards late responses and write data until isolation is released. This lets
+the reset complete when the CPU cluster is unresponsive but the surrounding
+fabric remains operational.
+
+[WARNING]
+====
+The flush cannot cancel an address request or write-data beat while `VALID` is
+high and `READY` is low. It waits for that transfer before flushing the channel.
+If `READY` never goes high, isolation cannot complete.
+
+The flush clears only the CPU isolation blocks. It does not clear state
+elsewhere in the SMC fabric. The cluster reset may complete while another block
+remains unresponsive or holds a response, leaving that route or AXI ID blocked,
+so that block must be recovered separately or through the eventual cold reset.
+====
+
 === Reset-Domain Crossing
 
 The flops driving the isolate-control logic are held by the cluster's
@@ -295,9 +324,9 @@ include::partial$smc/regs/gen/html/blocks/wdt.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[]
-include::../regs/gen/adoc/blocks/clint.adoc[]
-include::../regs/gen/adoc/blocks/debug_module.adoc[]
-include::../regs/gen/adoc/blocks/bus_error_unit.adoc[]
-include::../regs/gen/adoc/blocks/wdt.adoc[]
+include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/clint.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/debug_module.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/bus_error_unit.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/wdt.adoc[leveloffset=+1]
 endif::backend-pdf[]

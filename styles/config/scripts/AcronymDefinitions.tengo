@@ -45,7 +45,7 @@ canonical := {
   KPV:    ["key and policy vault"], // hw/ip/key_manager/doc/architecture.adoc
   LCC:    ["life cycle controller"], // hw/sys/sep/doc/lifecycle_controller.adoc
   AGP:    ["alarm aggregation processor"], // hw/sys/sep/doc/cpu.adoc
-  ARBC:   ["anti-rollback counter"], // hw/sys/sep/doc/periphs.adoc
+  ARBC:   ["anti-rollback counter"], // hw/sys/sep/doc/otp_fuse_controller.adoc
   FLR:    ["function level reset"], // hw/sys/smc/doc/clk_rst.adoc
   CLINT:  ["core local interruptor"], // hw/sys/smc/doc/interrupts.adoc
   PLIC:   ["platform-level interrupt controller"], // hw/sys/smc/doc/interrupts.adoc
@@ -54,7 +54,7 @@ canonical := {
   TRNG:   ["true random number generator"], // hw/sys/sep/doc/crypto.adoc
   DRBG:   ["deterministic random bit generator"], // hw/ip/drbg/doc/architecture.adoc
   DCLS:   ["dual core lock step"], // hw/sys/sep/doc/cpu.adoc
-  AVSBus: ["adaptive voltage scaling bus"], // hw/ip/avsbus_controller/README.adoc
+  AVSBus: ["adaptive voltage scaling bus"], // hw/ip/avsbus_controller/README.md
   TTI:    ["target transaction interface"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
   DAT:    ["device address table"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
   DCT:    ["device characteristic table"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
@@ -65,7 +65,7 @@ canonical := {
   MBIST:  ["memory built-in self-test"], // hw/sys/smc/doc/clk_rst.adoc
   DMA:    ["direct memory access"], // hw/sys/sep/doc/cpu.adoc
   AES:    ["advanced encryption standard"], // hw/ip/entropy_source/dv/tb_vcs/models/compressor/README.md
-  SPI:    ["serial peripheral interface"], // hw/sys/sep/doc/periphs.adoc
+  SPI:    ["serial peripheral interface"], // hw/sys/sep/doc/spi.adoc
   CSR:    ["control and status register"], // hw/ip/i2c/doc/architecture.adoc
   CSRs:   ["control and status registers"], // hw/ip/i2c/doc/architecture.adoc
   RDL:    ["register description language"], // hw/ip/memory_interface/README.adoc
@@ -80,7 +80,7 @@ canonical := {
   KMCSR:  ["key manager control and status registers"], // hw/ip/key_manager/doc/architecture.adoc
   ABR:    ["adams bridge"], // hw/ip/key_manager/doc/architecture.adoc
   CCC:    ["common command codes"], // hw/ip/i3ccore_wrap/doc/interface.adoc
-  WDT:    ["watchdog timer"], // hw/sys/sep/doc/periphs.adoc
+  WDT:    ["watchdog timer"], // hw/sys/sep/doc/watchdog.adoc
   RoT:    ["root of trust"], // doc/trm/src/architecture.adoc
   PCRV:   ["pcr vault"], // hw/ip/key_manager/doc/architecture.adoc
   PIC:    ["programmable interrupt controller"], // hw/sys/sep/doc/cpu.adoc

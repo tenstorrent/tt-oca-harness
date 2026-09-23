@@ -36,13 +36,16 @@ ocah_reg_is_composite = $(wildcard $(dir $(OCAH_REG_RDL_$(call ocah_reg_key,$(1)
 # -- is self-consistent and does not emit uncommitted <blk>_reg[_pkg].sv.
 # oca_i3c_wrap describes the same map as the SMC top sees it (HCI fields
 # expanded), while its register RTL comes from the vendored i3c-core.
+# The axil_mailbox maps describe the register interface implemented by the
+# vendored PULP mailbox RTL.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic aon_timer dfd smc_cla dma_ctrl \
-  pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager
+  pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
+  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
@@ -56,17 +59,14 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 # the open DV placeholder and the Samsung shim that shadows it, and only the
 # latter gets a RAL.
 #
-# aes/hmac/kmac/otbn/aon_timer/secure_dma and efuse_mmr are RAL leaves, not
-# sub-blocks: they are homed at the vendored overlay (or hw/ip/efuse), not in the
-# SEP blocks/ tree, so the composite glob does not see them. As leaves they emit
-# their RAL at that home -- as csrng/edn do -- and the SEP DV testbench includes
-# each by bare name via a +incdir on it. Sub-blocks below have no other home.
-#
-# spi_controller is a composite sub-block homed in blocks/: its vendored overlay
-# RDL describes a different, newer spi_host layout than the spi_controller_reg_pkg.sv
-# the SEP DUT instantiates, so the DUT-matching blocks/ copy is the generated one.
+# aes/hmac/kmac/otbn/aon_timer/secure_dma, spi_controller and efuse_mmr are RAL
+# leaves, not sub-blocks: they are homed at the vendored overlay (or
+# hw/ip/efuse), not in the SEP blocks/ tree, so the composite glob does not see
+# them. As leaves they emit their RAL at that home -- as csrng/edn do -- and the
+# SEP DV testbench includes each by bare name via a +incdir on it. Sub-blocks
+# below have no other home.
 OCAH_REG_RAL_SUB_BLOCKS ?= \
-  sep_efuse_map spi_controller \
+  sep_efuse_map \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
 OCAH_REG_RAL_LEAF_BLOCKS ?= \
   hw/ip/axi_alias_remap/regs/alias_remap \
@@ -84,7 +84,8 @@ OCAH_REG_RAL_LEAF_BLOCKS ?= \
   vendor/lowRISC/opentitan/overlay/regs/hmac \
   vendor/lowRISC/opentitan/overlay/regs/kmac \
   vendor/lowRISC/opentitan/overlay/regs/otbn \
-  vendor/lowRISC/opentitan/overlay/regs/secure_dma
+  vendor/lowRISC/opentitan/overlay/regs/secure_dma \
+  vendor/lowRISC/opentitan/overlay/regs/spi_controller
 # Overlay append hooks (the nonfree vendor shim blocks the SEP TB drives).
 OCAH_REG_RAL_SUB_BLOCKS += $(OCAH_REG_RAL_SUB_BLOCKS_EXTRA)
 OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
@@ -161,11 +162,14 @@ OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(O
 
 # Tops that get the shared catalog on their -I path: composite tops, plus plain
 # wrapper/top RDLs that include sibling blocks by bare filename. The relocated
-# OpenTitan overlay blocks hmac/kmac/otbn (like edn) pull the shared
-# opentitan_udps.rdl fragment by bare include, so they need the catalog too.
+# OpenTitan HJSON-exported blocks can pull the shared opentitan_udps.rdl
+# fragment by bare include, so they need the catalog too.
 # smc_cla is a leaf but composes the six generated dfd_<blk> RDLs, which live in
 # the tt-hw-debug overlay include dir the catalog already globs.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
+  aes \
+  aon_timer \
+  csrng \
   edn \
   efuse_interface_ctrl \
   hmac \
@@ -174,9 +178,11 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   kmac \
   oca_i3c_wrap \
   otbn \
+  secure_dma \
   sep_external \
   smc \
   smc_cla \
+  spi_controller \
   telemetry_receiver_wrap \
   uart_log_engine_wrap \
   uart_wrap

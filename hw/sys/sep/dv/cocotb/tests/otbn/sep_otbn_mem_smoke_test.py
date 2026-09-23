@@ -53,3 +53,10 @@ class sep_otbn_mem_smoke_test(sep_base_test):
             f"OTBN DMEM SRAM requests {dmem_reqs}/{dmem_writes} != "
             f"expected {EXP_DMEM_REQS}/{EXP_DMEM_WRITES} (req/write)"
         )
+        self.logger.info(
+            "CHK-OTBN-MEM PASS: imem=%d/%d dmem=%d/%d",
+            imem_reqs,
+            imem_writes,
+            dmem_reqs,
+            dmem_writes,
+        )

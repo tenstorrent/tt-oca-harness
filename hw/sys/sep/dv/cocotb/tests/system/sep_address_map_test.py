@@ -16,12 +16,18 @@ from __future__ import annotations
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
 from sep_base_test import sep_base_test
-from sep_reg_meta import SEP_CPU_CTRL
+from sep_reg_meta import SEP_CPU_CTRL, sym
 from seq_lib.sep_address_map_seq import CPU_CTRL_INTERIOR_HOLES, sep_address_map_seq
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 RESP_OKAY = 0
+RESP_DECERR = 3
 MASK32 = 0xFFFF_FFFF
+
+# Generated SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP window. An unmapped address
+# in the remainder of that external aperture answers DECERR (AXI decode).
+EFUSE_SHIM_BASE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR")
+EFUSE_SHIM_SIZE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
 
 
 @pyuvm.test()
@@ -36,8 +42,9 @@ class sep_address_map_test(sep_base_test):
         "CHK-RW-READBACK",
         "CHK-FABRIC-WALK",
         "CHK-CPU-CTRL-HOLE",
+        "CHK-EXT-DEMUX-BOUND",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     async def _access(
         self,
@@ -45,6 +52,7 @@ class sep_address_map_test(sep_base_test):
         addr: int,
         *,
         wdata: int = 0,
+        expect_error: bool = False,
     ) -> SepAxiAccessSeq:
         seq = SepAxiAccessSeq(
             f"cpu_ctrl_{op.value}_0x{addr:08x}",
@@ -53,6 +61,7 @@ class sep_address_map_test(sep_base_test):
             wdata=wdata,
             length=4,
             size=2,
+            expect_error=expect_error,
         )
         await self.start_seq(seq)
         return seq
@@ -72,7 +81,7 @@ class sep_address_map_test(sep_base_test):
             f"the PASS summary; first: {sb_errors[0]}"
         )
         self.logger.info(
-            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable as 0x%08x_%08x",
+            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable and advancing, last read 0x%08x_%08x",
             seq.ref_counter_high,
             seq.ref_counter_low,
         )
@@ -164,4 +173,50 @@ class sep_address_map_test(sep_base_test):
             "the hole write retired OKAY, and none aliases SEP_SW_DEBUG "
             "(control write proved it writable)",
             hole_ok,
+        )
+
+        # CHK-EXT-DEMUX-BOUND. ext_demux_decode() in sep.sv is TT-owned decode
+        # on an adopter-owned aperture: the first word selects the eFuse shim
+        # port, the next word leaves SEP and is terminated by the extension
+        # error slave. Nothing else in the suite selects the shim port, so
+        # u_efuse_shim_demux has only ever seen one of its two master ports.
+        # The two responses must differ. The value behind the shim is adopter
+        # owned and is not graded -- only which port the decode chose.
+        off = EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE
+        # Keyed off the response rather than the monitor tally: the monitor
+        # counts on its own clock edge, which may not have run when start_seq
+        # returns, and a standing credit would absorb the next unexpected DECERR
+        # anywhere on this bus.
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        past = await self._access(SepAxiOp.READ, off, expect_error=True)
+        if past.timed_out or past.resp_code != RESP_DECERR:
+            mon.release_expected_decerr(1)
+        assert not past.timed_out, (
+            f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} timed out; the external "
+            f"port must be terminated, not left to hang"
+        )
+        assert past.resp_code == RESP_DECERR, (
+            f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} resp={past.resp_code}, "
+            f"expected DECERR (3) from the extension error slave -- one word past "
+            f"the shim window must leave SEP"
+        )
+
+        inside = await self._access(SepAxiOp.READ, EFUSE_SHIM_BASE)
+        assert not inside.timed_out, (
+            f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{EFUSE_SHIM_BASE:08x} timed out"
+        )
+        assert inside.resp_code != RESP_DECERR, (
+            f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{EFUSE_SHIM_BASE:08x} also answered "
+            f"DECERR, so the shim port was never selected and the decode boundary "
+            f"is not proven -- both addresses took the external path"
+        )
+        self.logger.info(
+            "CHK-EXT-DEMUX-BOUND PASS: 0x%08x selected the shim port (resp=%d) "
+            "and 0x%08x left SEP to the extension error slave (DECERR); the "
+            "%d-byte window boundary is graded, the adopter value is not",
+            EFUSE_SHIM_BASE,
+            inside.resp_code,
+            off,
+            EFUSE_SHIM_SIZE,
         )

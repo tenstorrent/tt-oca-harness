@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut log_engine` (registered in
+# hw/common/dv/configs/duts.toml — the DV root is nested one level below the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the Log Engine: the
+# DUT's AXI4-Lite CSR port is driven by the shared AXI VIP's AXI4-Lite master,
+# its log-fetch and log-write master ports are answered by the VIP's
+# memory-backed responders, and the log-write stream is captured by the VIP
+# monitor, all on the pin-exposed ports of tb/tb_top.sv.
+name = "log_engine"
+profile = "native"
+default_framework = "cocotb"
+description = "Log Engine IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/uart/log_engine/dv/build"]
+
+[build]
+top_module = "log_engine_tb_top"
+top_file = "hw/ip/uart/log_engine/dv/tb/tb_top.sv"
+filelist = "hw/ip/uart/log_engine/dv/build/log_engine_dut_compile.f"
+bender_filelist = "hw/ip/uart/log_engine/dv/build/log_engine_bender.f"
+work_dir = "hw/ip/uart/log_engine/dv/build"
+# Shared dependency targets: the pulp AXI package/typedefs plus the
+# common-cells closure the axi_rtl group parses against.
+common_bender_targets = [
+  "axi_rtl",
+  "common_cells_rtl",
+]
+# The uart family target (Bender.yml): the four UART-family IPs' packages
+# and RTL plus the vendored OpenTitan prim closure.
+bender_targets = ["uart"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/uart/log_engine/dv/cocotb"
+test_dir = "hw/ip/uart/log_engine/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+  "hw/ip/uart/log_engine/regs/gen/py",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Log Engine register sanity and single-byte transfer"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "Log Engine transfer, arbitration, pacing and interrupt scenarios"
+timeout_sec = 900
+args = []
+
+[targets.default]
+description = "Log Engine IP-level cocotb target"
+build_dir = "hw/ip/uart/log_engine/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+]

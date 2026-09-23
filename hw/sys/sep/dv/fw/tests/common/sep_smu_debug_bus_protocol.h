@@ -9,11 +9,11 @@
  * DFD-arm firmware programs DFX/DFD/CLA (bogus negative then exact marker PC)
  * and writes GO only after that setup.
  * Closure is CLA EapStatus[0] + snapshot[63:48] == (marker_low16 << 2).
- * The RTL packs trace_rv_i_address_ip[15:0] that way, so marker 0xc00001f6
- * is 0x07d8, not byte-PC 0x01f6 and not (full_pc>>2)=0x007d.
+ * The RTL packs trace_rv_i_address_ip[15:0] that way: LOW16 << 2, not the
+ * byte-PC and not (full_pc >> 2).
  *
- * Marker/wait PCs come from sep_debug_bus_symbols.h, pinned against the
- * built SEP .sym.
+ * Marker/wait PCs come from sep_debug_bus_symbols.h, generated from the
+ * built SEP .sym when sep_smu_debug_bus links.
  */
 #ifndef SEP_SMU_DEBUG_BUS_PROTOCOL_H
 #define SEP_SMU_DEBUG_BUS_PROTOCOL_H

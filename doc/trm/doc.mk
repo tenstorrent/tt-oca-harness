@@ -14,6 +14,8 @@ OCAH_TRM_DIST ?= $(OCAH_TRM_DIR)/dist
 OCAH_TRM_PLAYBOOK ?= $(OCAH_ROOT)/antora-trm-playbook.yml
 OCAH_TRM_PDF ?= ocah-trm.pdf
 OCAH_TRM_SERVE_PORT ?= 8000
+OCAH_TRM_REG_MAPS = $(sort $(filter $(OCAH_ROOT)/hw/% $(OCAH_ROOT)/vendor/%,\
+  $(foreach block,$(OCAH_REG_BLOCKS),$(call ocah_reg_adoc_target,$(block)))))
 
 .PHONY: ocah-doc-trm-meta
 ocah-doc-trm-meta:
@@ -43,12 +45,14 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh"
 	@if [ "$(if $(OCAH_DOC_RELEASE_ENABLED),1,0)" = "1" ]; then \
 		rm -f "$(OCAH_TRM_BUILD)/html_antora/ocah-docs/latest/revision.html" \
-			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-docs/latest/revision.html"; \
+			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-docs/latest/revision.html" \
+			"$(OCAH_TRM_BUILD)/html_antora/ocah-docs/latest/aou-records-of-changes.html" \
+			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-docs/latest/aou-records-of-changes.html"; \
 	fi
 
 .PHONY: ocah-doc-trm-html
-ocah-doc-trm-html: ocah-doc-all-setup
-	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html trm"; exit 1; }
+ocah-doc-trm-html: ocah-doc-trm-setup
+	@command -v $(OCAH_ANTORA) >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html trm"; exit 1; }
 	@echo "Building TRM HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
@@ -62,10 +66,13 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF))."; echo "install asciidoctor-pdf, or run:"; echo "  ./scripts/docker-run.sh doc-pdf trm"; exit 1; }
 	@echo "Building TRM PDF documentation (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_TRM_BUILD)/latex" "$(OCAH_TRM_DIST)"
+	@printf '%s\n' $(foreach path,$(OCAH_TRM_REG_MAPS),"$(path)") > "$(OCAH_TRM_BUILD)/register-maps.txt"
 	@rm -rf "$(OCAH_TRM_SRC)/assets" && ln -s ../assets "$(OCAH_TRM_SRC)/assets"
 	@cd "$(OCAH_TRM_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+		-r "$(OCAH_ROOT)/tools/doc/register_map_coverage.rb" \
+		-a register-map-manifest="$(OCAH_TRM_BUILD)/register-maps.txt" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
-		-a toc -a toclevels=3 \
+		-a toc -a toclevels=9 -a outlinelevels=9 \
 		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \
 		-o "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" src/index.adoc
 	@cp "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" "$(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)"

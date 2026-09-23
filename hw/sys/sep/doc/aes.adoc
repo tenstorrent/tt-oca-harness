@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AES Cipher
+:description: SEP AES integration, entropy interface, and Key Manager key delivery.
+
+[[aes-cipher]]
+
+The module is based on the
+https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES] design.
+
+Key sizes: 128, 192 and 256
+Modes: ECB, CBC, CFB, OFB, CTR, CTR-GCM
+
+The accelerator consumes 128-bit data blocks written into its CSR memory
+space and produces 128-bit output blocks _round_ number of cycles. The
+_round_ value depends on the key size used.
+
+* 128 bit key: 10 rounds
+* 192 bit key: 12 rounds
+* 256 bit key: 14 rounds
+
+[[och-modifications-2]]
+== OCAH Modifications
+
+* AXI4-lite key bus slave interface replaces side loading interface
+* AXI4-lite control/status bus slave interface
+
+The AES host path follows the standard conversion and isolation sequence in the
+crypto interconnect (64-bit AXI → 32-bit AXI → AXI-Lite → isolate), without
+address adjustment or cache-attribute patching. `aes_wrapper` bridges the
+isolated path to TL-UL. EDN requests are served by the shared
+`drbg_axis_edn_adapter` instance
+`u_axis_edn_crypto_s3c_scan`, which converts the post-CSRNG DRBG AXI-Stream feed
+for the crypto sink domain into AES's native-protocol EDN response. The adapter
+forwards the per-beat FIPS bit from the stream's `tuser` sideband into
+`edn_fips`; AES itself does not consume the flag. The AES core uses `rst_ni` for
+both the main and shadow reset domains. Life-cycle escalation is tied to its
+inactive state. AES occupies alert indices `[4:3]` in
+ifdef::backend-html5[]
+xref:sep:crypto.adoc#sep-crypto-alert-policy[OpenTitan Alert Termination] and exports an `idle_o` status output but no
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-crypto-alert-policy>> and exports an `idle_o` status output but no
+endif::backend-pdf[]
+interrupt.
+
+The Key Manager delivers a 256-bit AES key as eight words per share, in the
+ifdef::backend-html5[]
+format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]. Software shall set
+endif::backend-html5[]
+ifdef::backend-pdf[]
+format given in <<km-key-delivery>>. Software shall set
+endif::backend-pdf[]
+`CTRL_SHADOWED.sideload` to select the delivered key. While that bit is 0 the
+engine uses its software key registers and the delivered key has no effect,
+and no error is reported. Software shall also program `CTRL_SHADOWED.key_len`
+to the 256-bit encoding to consume the whole delivered key: the key length is
+independent of the delivery path, and a shorter setting consumes only part of
+it. AES carries the two shares into the cipher datapath as a masked pair and
+does not combine them on the delivery path.
+
+Consult the
+https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES
+documentation] for the authoritative core functionality of the IP. The
+ifdef::backend-html5[]
+register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+endif::backend-pdf[]

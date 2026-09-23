@@ -24,6 +24,9 @@ and both compose the shared OCAH VIPs (`hw/common/dv/vip/`) for the standard
 interfaces; both extend the shared framework library
 `hw/common/dv/vip/ocah_lib/`. Scenario names, testlist bindings, knob names,
 the evidence grammar, and the functional-coverage modules are common to both.
+The Layout table of the DV `README.md` says what each directory holds and its
+Getting Started section gives the runner commands; the Regression Groups
+section of `DTP_VPLAN.adoc` defines the testlist groups.
 
 === VIP Selection Policy
 
@@ -170,50 +173,6 @@ tb/tb_top.sv                  one framework-neutral core: interface instances, D
 |Run verdict |phase assertions, `results.xml` |`UVM_ERROR`/`UVM_FATAL` counts plus `UVM TEST PASSED` from `report_phase`
 |Tests |one module per scenario, `@pyuvm.test()` |one class per scenario, `include`d by `dtp_tests.sv` in module scope
 |===
-
-=== Directory Structure
-
-[source,text]
-----
-hw/sys/dtp/dv/
-  README.md
-  dtp_sim_cfg.toml
-  docs/           DTP_TB_ARCH.adoc, DTP_VPLAN.adoc, DTP_FCOV.adoc, DTP_SCOPE_TRACEABILITY.adoc
-  tb/             tb_top.sv, dtp_tb_if.sv, dtp_scan_if.sv, dtp_xtrig_if.sv
-  cov/sv/         dtp_fcov.sv, dtp_jtag2axi_fcov.sv, dtp_debug_tdr_fcov.sv,
-                  dtp_scan_fcov.sv, dtp_xtrig_fcov.sv
-  cov/config/     verilator/coverage_policy.toml
-  testlists/      all.toml, jtag.toml, jtag2axi.toml, debug_tdr.toml, scan.toml, xtrig.toml
-  formal/props/   dtp_tap_props.sv, dtp_tap_bind.sv
-  formal/fpv/sby/ dtp.sby, dtp_sby_env.sv
-  cocotb/
-    env/          dtp_env.py, dtp_env_cfg.py, dtp_tb_if.py, dtp_jtag_agent.py, dtp_jtag_item.py,
-                  dtp_axi_agent.py, dtp_axi_scoreboard.py, dtp_xtrig_agent.py,
-                  dtp_stap_ds_agent.py, dtp_scoreboard.py, dtp_scan_window_monitor.py,
-                  dtp_scan_ref_model.py, dtp_scan_model.py, dtp_jtag_bypass_model.py,
-                  dtp_tap_device.py, dtp_dbg_disable.py, dtp_types.py, dtp_xtrig_types.py,
-                  dtp_fcov.py
-    seq_lib/      dtp_base_test_seq.py, dtp_<family>_base_test_seq.py,
-                  dtp_<family>_cmd_lib_seq.py, dtp_<scenario>_test_seq.py
-    tests/        dtp_base_test.py, dtp_<scenario>_test.py
-  uvm/
-    env/          dtp_env_pkg.sv, dtp_types.svh, dtp_test_cfg.svh, dtp_env_cfg.svh,
-                  dtp_virtual_sequencer.svh, dtp_env.svh, dtp_scoreboard.svh,
-                  dtp_expected_item.svh, dtp_jtag2axi_status_item.svh,
-                  dtp_<feature>_ref_model.svh (ir_decode, idcode, bypass, xtrig_csr,
-                  xtrig_decode, jtag2axi_req, jtag2axi_status),
-                  dtp_jtag_ir_model.svh, dtp_xtrig_csr_model.svh, dtp_jtag2axi_model.svh,
-                  dtp_tap_fsm_checker.svh, dtp_scan_window_monitor.svh,
-                  dtp_ijtag_sib_model.svh, dtp_stap_ds_state.svh, dtp_stap_3dcr_model.svh,
-                  dtp_xtrig_ctm_model.svh
-    seq_lib/      dtp_seq_lib_pkg.sv,
-                  dtp_jtag_op_seq.svh, dtp_jtag_<op>_seq.svh, dtp_jtag2axi_<op>_seq.svh,
-                  dtp_axi_csr_<op>_seq.svh,
-                  dtp_base_test_seq.svh, dtp_<family>_base_test_seq.svh,
-                  dtp_<scenario>_test_seq.svh
-    tests/        dtp_tests.sv, dtp_base_test.svh, dtp_xtrig_base_test.svh,
-                  dtp_jtag2axi_robustness_base_test.svh, dtp_<scenario>_test.svh
-----
 
 === HDL Top
 
@@ -468,10 +427,15 @@ Negative validation proves each checking path can fail:
 `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` corrupts every family expectation,
 `DTP_JTAG_TAP_CHECKER_NEGATIVE` arms a wrong IDCODE, `DTP_AXI_SCOREBOARD_NEGATIVE`
 arms the wrong expected response, `DTP_XTRIG_CHECKER_NEGATIVE` inverts the
-CTM model selects, (SV-UVM) `DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge
-request reference model predict corrupted addresses so the scoreboard pairing
-fails against the observed bus, `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the
-expected address size of the per-pass CAPS comparison, and
+CTM model selects, `+DTP_XTRIG_NEGATIVE_CHECK=<n>+` corrupts the observed
+value of one cross-trigger evidence ID wherever the scenario records it (1
+`CHK-XTRIG-CSR`, 2 `CHK-XTRIG-SIGNAL`, 3 `CHK-XTRIG-ROUTE-MODEL`, 4
+`CHK-XTRIG-ISOLATION`, 5 `CHK-XTRIG-QUIET`, 6 `CHK-XTRIG-STRETCH`, 7
+`CHK-XTRIG-AXIL`, 8 `CHK-XTRIG-AW-LOCK`, 9 `CHK-XTRIG-AR-STALL`), (SV-UVM)
+`DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge request reference model predict
+corrupted addresses so the scoreboard pairing fails against the observed bus,
+`DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected address size of the per-pass
+CAPS comparison, and
 `DTP_J2A_STATUS_BIT_NEGATIVE` leaves the with-status fault beat unarmed while
 its expectation stands; a run with any of them set must fail. The same
 knob names are environment variables in cocotb and plusargs in SV-UVM.
@@ -655,33 +619,3 @@ vendor VIP collateral cannot be committed here:
 A vendor library brings its own compile-unit requirements (packer-size
 defines applied to every analysis step, macro-header ordering, an
 installation-root variable); those live in the overlay's build recipe.
-
-=== Build and Run
-
-
-[source,bash]
-----
-python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
-python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
-python3 tools/dv/run_dv.py --dut dtp --items debug_tdr
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_test
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_read_test
-python3 tools/dv/run_dv.py --dut dtp --items functional
-python3 tools/dv/run_dv.py --dut dtp --items dbg_disable
-python3 tools/dv/run_dv.py --dut dtp --items all --dry-run
-
-# SV-UVM realization (VCS)
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test --seed 1
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items basic_jtag
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items scan
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items xtrig
-----
-
-The `smoke` group is a fast TAP/IDCODE gate. The `basic_jtag` group runs the
-Smoke and Basic JTAG scenarios. The `debug_tdr` group runs the TMP_STATUS,
-IC_RESET, DEBUG_CONTROL, and CAPS scenarios. The `functional` group runs the
-smoke tests plus the single-operation JTAG2AXI write/read tests, while `all`
-collects every included DTP testlist.

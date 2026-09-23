@@ -11,7 +11,7 @@
  * 1. Enable controller
  * 2. Read STATUS when SPIEN=0, verify READY behavior
  * 3. Enable controller (SPIEN=1), verify STATUS
- * 4. Software reset (SW_RST pulse), verify state clears
+ * 4. Software reset: hold SW_RST, verify state clears, release
  * 5. Disable controller (SPIEN=0)
  */
 
@@ -21,6 +21,8 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+
+#define TIMEOUT_LIMIT 100000
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -36,12 +38,12 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
+    spi_controller__CONTROL_t ctrl;
     spi_controller__STATUS_t status;
 
     /* Step 1: Read CTRL default */
     printf("Step 1: CTRL default check\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("CTRL default", ctrl.w, 0u)) pass = 0;
     if (!check_reg("SPIEN default", ctrl.f.SPIEN, 0)) pass = 0;
     if (!check_reg("OUTPUT_EN default", ctrl.f.OUTPUT_EN, 0)) pass = 0;
@@ -54,12 +56,12 @@ int main(void) {
 
     /* Step 3: Enable controller */
     printf("\nStep 3: Enable SPI controller (SPIEN=1)\n");
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("SPIEN after enable", ctrl.f.SPIEN, 1)) pass = 0;
     if (!check_reg("OUTPUT_EN after set", ctrl.f.OUTPUT_EN, 1)) pass = 0;
 
@@ -67,31 +69,44 @@ int main(void) {
     printf("  STATUS after enable: 0x%08x (READY=%u, TXEMPTY=%u)\n", status.w, status.f.READY,
            status.f.TXEMPTY);
 
-    /* Step 4: Software reset */
+    /* Step 4: Software reset. SW_RST is a level: it reads back as written and
+     * the core stays in reset until software clears it, so the drain is
+     * observed while it is held and the release is what makes the controller
+     * usable again. */
     printf("\nStep 4: Software reset (SW_RST)\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    volatile int delay;
-    for (delay = 0; delay < 1000; delay++) {
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    if (!check_reg("SW_RST reads 1 while held", ctrl.f.SW_RST, 1)) pass = 0;
+
+    int t = TIMEOUT_LIMIT;
+    while (t-- > 0) {
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        if (status.f.TXEMPTY && status.f.RXEMPTY && !status.f.ACTIVE) break;
     }
-
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    if (t <= 0) {
+        printf("  FAIL: TIMEOUT draining the FIFOs under SW_RST (STATUS=0x%08x)\n",
+               (unsigned)status.w);
+        pass = 0;
+    }
     printf("  STATUS after SW_RST: TXEMPTY=%u, RXEMPTY=%u, ACTIVE=%u\n", status.f.TXEMPTY,
            status.f.RXEMPTY, status.f.ACTIVE);
 
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
-    if (!check_reg("SW_RST reads 0 (singlepulse)", ctrl.f.SW_RST, 0)) pass = 0;
+    ctrl.f.SW_RST = 0;
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    if (!check_reg("SW_RST reads 0 after release", ctrl.f.SW_RST, 0)) pass = 0;
 
     /* Step 5: Disable controller */
     printf("\nStep 5: Disable SPI controller (SPIEN=0)\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SPIEN = 0;
     ctrl.f.OUTPUT_EN = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("SPIEN after disable", ctrl.f.SPIEN, 0)) pass = 0;
     if (!check_reg("OUTPUT_EN after clear", ctrl.f.OUTPUT_EN, 0)) pass = 0;
 

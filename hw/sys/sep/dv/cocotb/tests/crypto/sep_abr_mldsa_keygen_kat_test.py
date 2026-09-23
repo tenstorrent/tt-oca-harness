@@ -30,6 +30,8 @@ from seq_lib.sep_abr_keygen_seq import (
     ABR_PUBKEY,
     ABR_SEED,
     ABR_STATUS,
+    ABR_VERSION0,
+    ABR_VERSION1,
     CMD_KEYGEN,
     CTRL_ZEROIZE,
     IRQ_ABR_ERROR,
@@ -40,6 +42,8 @@ from seq_lib.sep_abr_keygen_seq import (
     ST_ERROR,
     ST_READY,
     ST_VALID,
+    VER0_EXP,
+    VER1_EXP,
     SepAbr,
     SepAbrKeygenCfg,
 )
@@ -96,6 +100,17 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
             f"expected 0x{NAME0_EXP:08x}_0x{NAME1_EXP:08x} (MLDSA-87)"
         )
         self.logger.info("CHK-NAME PASS: NAME0=0x%08x NAME1=0x%08x (MLDSA-87)", name0, name1)
+
+        # VERSION sits one register pair above NAME in the same aperture and is
+        # the other half of the identity gate: NAME alone passes on a core of
+        # the wrong version.
+        ver0 = await abr.rd32(ABR_VERSION0)
+        ver1 = await abr.rd32(ABR_VERSION1)
+        assert ver0 == VER0_EXP and ver1 == VER1_EXP, (
+            f"MLDSA VERSION 0x{ver0:08x}_0x{ver1:08x}, "
+            f"expected 0x{VER0_EXP:08x}_0x{VER1_EXP:08x} (2.0.1)"
+        )
+        self.logger.info("CHK-VERSION PASS: VER0=0x%08x VER1=0x%08x (2.0.1)", ver0, ver1)
 
         st0 = await abr.rd32(ABR_STATUS)
         assert (st0 & ST_READY) and not (st0 & ST_VALID) and not (st0 & ST_ERROR), (

@@ -2,9 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Forces the encoded WLen/RLen of READ and WRITE commands to 0 through length injection and
- * expects error code 0x03 Invalid_header. A timeout, no error, or any other code fails the
- * command.
+ * OCCP Invalid Message Length (Zero-Length Body) Test
+ *
+ * Sends READ and WRITE commands while forcing the OCCP header length field to 0
+ * using the test context length injection. Expects the target to return an
+ * error response with code INVALID_MESSAGE_LENGTH. The command helpers treat
+ * that as success under injection, mirroring the unsupported status ID test style.
  */
 
 #include "occp_test_common.h"

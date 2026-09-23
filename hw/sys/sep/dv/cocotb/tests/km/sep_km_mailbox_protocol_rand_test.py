@@ -66,10 +66,13 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_MBOX_DEPTH,
     KM_MBOX_IRQ_AGG,
     KM_STATUS_INBOUND_DEPTH_LSB,
+    KM_STATUS_INBOUND_DEPTH_MASK,
     KM_STATUS_INBOUND_EMPTY,
     KM_STATUS_INBOUND_FULL,
     KM_STATUS_INBOUND_OVERFLOW,
+    KM_STATUS_LOW_MASK,
     KM_STATUS_OUTBOUND_DEPTH_LSB,
+    KM_STATUS_OUTBOUND_DEPTH_MASK,
     KM_STATUS_OUTBOUND_EMPTY,
     KM_STATUS_OUTBOUND_FULL,
     KM_STATUS_OUTBOUND_UNDERFLOW,
@@ -100,8 +103,8 @@ def _pack_status(
         (inbound_empty << KM_STATUS_INBOUND_EMPTY)
         | (inbound_full << KM_STATUS_INBOUND_FULL)
         | (outbound_empty << KM_STATUS_OUTBOUND_EMPTY)
-        | ((inbound_depth & 0xFF) << KM_STATUS_INBOUND_DEPTH_LSB)
-        | ((outbound_depth & 0xFF) << KM_STATUS_OUTBOUND_DEPTH_LSB)
+        | ((inbound_depth & KM_STATUS_INBOUND_DEPTH_MASK) << KM_STATUS_INBOUND_DEPTH_LSB)
+        | ((outbound_depth & KM_STATUS_OUTBOUND_DEPTH_MASK) << KM_STATUS_OUTBOUND_DEPTH_LSB)
         | (inbound_overflow << KM_STATUS_INBOUND_OVERFLOW)
         | (outbound_underflow << KM_STATUS_OUTBOUND_UNDERFLOW)
         | (outbound_full << KM_STATUS_OUTBOUND_FULL)
@@ -173,7 +176,8 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         await self._chk_flush()
 
     def _irq_agg(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> KM_MBOX_IRQ_AGG) & 1
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << KM_MBOX_IRQ_AGG)
+        return (vec >> KM_MBOX_IRQ_AGG) & 1
 
     async def _expect_status(self, where: str, **fields) -> None:
         got = await self.mb.read_status()
@@ -313,10 +317,10 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         assert st & (1 << KM_STATUS_INBOUND_OVERFLOW), (
             f"CHK-FLUSH FAIL: flush cleared inbound_overflow (STATUS=0x{st:08x})"
         )
-        assert (st & 0xFFF) == ((1 << KM_STATUS_INBOUND_EMPTY) | (1 << KM_STATUS_OUTBOUND_EMPTY)), (
-            f"CHK-FLUSH FAIL: FIFOs not empty after flush (STATUS=0x{st:08x})"
-        )
-        assert ((st >> KM_STATUS_INBOUND_DEPTH_LSB) & 0xFF) == 0, (
+        assert (st & KM_STATUS_LOW_MASK) == (
+            (1 << KM_STATUS_INBOUND_EMPTY) | (1 << KM_STATUS_OUTBOUND_EMPTY)
+        ), f"CHK-FLUSH FAIL: FIFOs not empty after flush (STATUS=0x{st:08x})"
+        assert ((st >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK) == 0, (
             f"CHK-FLUSH FAIL: inbound_depth not 0 after flush (STATUS=0x{st:08x})"
         )
 

@@ -6,11 +6,11 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import importlib.metadata
 import json
 import os
 import secrets
+import shutil
 import signal
 import subprocess
 import sys
@@ -18,8 +18,8 @@ import textwrap
 import threading
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed, wait
-from dataclasses import dataclass
+from collections import deque
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from re import compile
@@ -40,6 +40,7 @@ from .config import (
     load_simulators,
     load_test_catalog,
     merge_simulator_defaults,
+    parse_walltime_sec,
     resolved_target_name,
     selected_target,
     target_names,
@@ -56,6 +57,7 @@ from .coverage_closure import (
     grade_coverage_run,
     parse_coverage_run,
 )
+from .coverage_combine import plan_combine
 from .coverage_policy import (
     CoveragePolicy,
     expired_holes,
@@ -71,6 +73,34 @@ from .duts import (
     load_formal_views,
     resolve_dut,
 )
+from .executors import (
+    ClusterError,
+    build_executor,
+    dispatch_blocker,
+    executor_builds,
+    executor_driver,
+    executor_limits,
+)
+from .executors.base import (
+    BUILD_ROLE,
+    Executor,
+    JobHandle,
+    JobObservation,
+    JobState,
+    LeafTask,
+    ResourceRequest,
+    error_result,
+    resolve_resources,
+    task_identifier,
+)
+from .executors.manifest import (
+    attempt_args,
+    execute_attempt,
+    manifest_path,
+    manifest_payload,
+    repo_identity,
+    write_manifest,
+)
 from .junit import materialize_interruption_junit, materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog
@@ -79,8 +109,7 @@ from .results import (
     aggregate_status,
     coverage_summary,
     exit_code_for_status,
-    fragment_payload,
-    git_info,
+    git_provenance,
     incomplete_run_note,
     regression_payload,
     result_payload,
@@ -91,6 +120,7 @@ from .results import (
 )
 from .site import (
     SiteLayer,
+    ToolLaunch,
     launch_env,
     load_site_layer,
     locate_tool,
@@ -364,13 +394,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--build-jobs",
         type=int,
         metavar="N",
-        help="Backend compile/build job count; uses --sim-jobs when omitted",
+        help=(
+            "Backend compile/build job count; uses --sim-jobs when omitted, capped at this "
+            "host's CPU count on a cluster executor"
+        ),
     )
     parallel.add_argument(
         "--executor",
         default=None,
         metavar="NAME",
-        help="Executor from executors.toml (`local` is the implemented dispatch)",
+        help="Executor from executors.toml (`local`, or a cluster entry the run may use)",
+    )
+    parallel.add_argument(
+        "--builds",
+        choices=["local", "scheduler"],
+        default=None,
+        help=(
+            "Where a cluster executor runs the target builds: as scheduler jobs the leaves "
+            "wait for, or in this process (the executor's `builds` key when omitted)"
+        ),
     )
     parallel.add_argument("--queue", metavar="NAME", help="Executor queue/partition metadata")
     parallel.add_argument("--cores", type=int, metavar="N", help="Executor CPU-core request")
@@ -463,6 +505,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Coverage report threshold override",
     )
     coverage.add_argument(
+        "--cov-combine",
+        nargs="+",
+        metavar="RUN_DIR",
+        help=(
+            "Combine the coverage of the finished runs at RUN_DIR... into one new graded run "
+            "directory (--run-dir names it); the runs must share the DUT, the tool and the "
+            "commit, and no simulator runs"
+        ),
+    )
+    coverage.add_argument(
         "--waive",
         nargs="?",
         const="",
@@ -552,6 +604,7 @@ _SIM_ONLY_FLAGS = {
     "cov": "--cov",
     "fail_under": "--fail-under",
     "waive": "--waive",
+    "cov_combine": "--cov-combine",
     "rebuild": "--rebuild",
     "define": "--define",
     "comp_arg": "--comp-arg",
@@ -1446,6 +1499,10 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
                 required_too_old = (version, floor)
 
     print()
+    executor_rows, executor_missing = _doctor_executors(registries, flow, args)
+    for row in executor_rows:
+        print(row)
+    print()
     if required is None:
         print("Result: survey only (no --dut/--tool selected); missing tools are informational")
         return 0
@@ -1465,8 +1522,66 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
             f"its registry table sets min_version {floor}"
         )
         return 2
+    if executor_missing:
+        name, binaries = executor_missing
+        print(
+            f"Result: executor `{name}` needs scheduler command(s) this machine lacks: "
+            + ", ".join(binaries)
+        )
+        return 2
     print(f"Result: required tool `{required}` is available")
     return 0
+
+
+def _doctor_executors(
+    registries: Registries, flow: Flow | None, args: argparse.Namespace
+) -> tuple[list[str], tuple[str, list[str]] | None]:
+    """One row per registered executor; the selected one's missing binaries fail the doctor."""
+    selected: str | None = None
+    if flow is not None:
+        try:
+            selected = flow_executor_name(flow, args)
+        except ConfigError:
+            selected = None
+    rows = [f"  {'executor':<10} {'driver':<8} status"]
+    missing_selected: tuple[str, list[str]] | None = None
+    for name in sorted(registries.executors):
+        cfg = registries.executors[name]
+        driver = executor_driver(cfg) or "-"
+        if cfg.get("kind") == "local":
+            status = "in-process"
+        else:
+            binaries = as_str_list(cfg.get("binaries"), f"{name}.binaries") or (
+                [str(cfg["binary"])] if cfg.get("binary") else []
+            )
+            hook = cfg.get("setup_hook")
+            launch = ToolLaunch(
+                tool=name,
+                binary=binaries[0] if binaries else name,
+                setup_hook=Path(str(hook)) if hook else None,
+            )
+            try:
+                env = launch_env(launch)
+                hook_error = ""
+            except ConfigError as exc:
+                env = dict(os.environ)
+                hook_error = str(exc)
+            found = {binary: shutil.which(binary, path=env.get("PATH")) for binary in binaries}
+            missing = [binary for binary, path in found.items() if not path]
+            blocker = dispatch_blocker(name, cfg)
+            parts = [
+                "dispatch ready" if blocker is None else f"cannot dispatch ({blocker})",
+                ", ".join(f"{binary} {'OK' if found[binary] else 'MISSING'}" for binary in binaries)
+                or "no binaries declared",
+            ]
+            if hook_error:
+                parts.append(f"setup_hook FAILED: {hook_error}")
+            status = "; ".join(parts)
+            if name == selected and (missing or hook_error):
+                missing_selected = (name, missing or [str(hook)])
+        note = "  <- selected" if name == selected else ""
+        rows.append(f"  {name:<10} {driver:<8} {status}{note}")
+    return rows, missing_selected
 
 
 def list_flows(
@@ -1870,18 +1985,6 @@ def _update_regression_coverage(
     payload = _read_json_object(path)
     if payload is None:
         return
-    previous = payload.get("coverage")
-    merged = dict(previous) if isinstance(previous, dict) else {}
-    merged.update(coverage)
-    merged.update(
-        {
-            "requested": bool(coverage.get("enabled")),
-            "overall_percent": coverage.get("total_percent"),
-            "report_dir": coverage.get("report"),
-            "summary_json": coverage.get("summary"),
-        }
-    )
-    payload["coverage"] = merged
     payload["status"] = run_status
     payload["exit_code"] = exit_code_for_status(run_status)
     artifacts = payload.setdefault("artifacts", {})
@@ -1908,6 +2011,24 @@ def validate_waive_options(args: argparse.Namespace) -> None:
             raise ConfigError(f"{flag} cannot be combined with --waive")
     if not args.run_dir:
         raise ConfigError("--waive requires --run-dir naming the finished run")
+
+
+# Options --cov-combine accepts besides --dut, --run-dir, --result, --tool, --framework,
+# --overlay, --verbose and --quiet.
+_COMBINE_COMPANIONS = {"cov_combine", "fail_under", "dry_run", "timeout"}
+
+
+def validate_combine_options(args: argparse.Namespace) -> None:
+    run_flags = {**_SIM_ONLY_FLAGS, **_FORMAL_ONLY_FLAGS, **_WAIVE_SELECTION_FLAGS}
+    for attr, flag in run_flags.items():
+        if attr not in _COMBINE_COMPANIONS and _flag_was_set(args, attr):
+            hint = (
+                "; `--stage cov_merge` re-merges one run's own leaves, `--cov-combine` merges "
+                "finished runs"
+                if attr == "stage"
+                else ""
+            )
+            raise ConfigError(f"{flag} cannot be combined with --cov-combine{hint}")
 
 
 def _waive_recorded_run(
@@ -2226,7 +2347,143 @@ def cmd_waive(
         return 2
 
 
-def selected_executor(flow: Flow, args: argparse.Namespace) -> str:
+def cmd_cov_combine(
+    root: Path,
+    registries: Registries,
+    args: argparse.Namespace,
+) -> int:
+    """`--cov-combine`: exit 0 when the combined run meets its thresholds, 1 when it does
+    not, 2 when the runs cannot be combined."""
+
+    try:
+        validate_combine_options(args)
+        flow = resolve_dut(
+            root,
+            args.dut,
+            mode=args.mode,
+            framework=args.framework,
+            adopter_overlay=adopter_overlay_path(args),
+            site=registries.site,
+        )
+        validate_flow(flow, root, registries.simulators, registries.policies, registries.executors)
+        return combine_flow(root=root, flow=flow, registries=registries, args=args)
+    except (ConfigError, CoverageError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+
+def combine_flow(
+    *,
+    root: Path,
+    flow: Flow,
+    registries: Registries,
+    args: argparse.Namespace,
+) -> int:
+    """Combine finished runs into a new run directory and grade it.
+
+    The new run carries the DUT's `cov_merge` and `cov_report` stages over the runs' design
+    and merged databases, so its `cov/coverage.json`, report, summary and `result.json`
+    have the shape of any coverage run; the manifest's `combine` block names the input runs.
+    """
+
+    simulators, policies = registries.simulators, registries.policies
+    if registries.site is not None:
+        setattr(args, "_site_layer", registries.site.label)
+    activate_adopter_overlay_env(flow.raw)
+    plan = plan_combine(
+        root,
+        flow,
+        args.tool,
+        [Path(value).expanduser() for value in args.cov_combine],
+    )
+    tool = plan.tool
+    if tool not in flow.tools:
+        raise ConfigError(f"tool `{tool}` is not allowed for flow `{flow.name}`")
+    args.tool = tool
+    args.cov = True
+    validate_selected_tool_available(tool, simulators, args, flow)
+    available = flow_stages(flow)
+    for stage in ("cov_merge", "cov_report"):
+        if stage not in available:
+            raise ConfigError(f"{flow.path}: this flow declares no `{stage}` stage")
+    sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
+    catalog = load_test_catalog(flow, root)
+    setattr(args, "_cov_combine_plan", plan)
+
+    if args.run_dir:
+        run_dir = Path(args.run_dir).expanduser()
+        if not run_dir.is_absolute():
+            run_dir = root / run_dir
+    else:
+        stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        run_dir = default_run_dir(repo_path(root, flow.root), stamp, tool, "combine")
+        # `latest` stays on the last simulation run: the dashboard's default collection
+        # follows it, and a combined run has no leaves of its own.
+        run_dir = reserve_run_dir(run_dir, args.dry_run)
+    result_path = run_dir / "result.json"
+
+    console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
+    args._ui_console = console
+    args._ui_leaf_mode = "full"
+    commit = plan.commit or "unknown"
+    console.event(
+        "coverage",
+        f"combine runs={len(plan.runs)} frameworks={','.join(plan.frameworks)} "
+        f"commit={commit[:12]} inputs="
+        + ",".join(repo_rel(root, run.run_dir) or str(run.run_dir) for run in plan.runs),
+    )
+    for run in plan.runs:
+        if run.dirty:
+            console.event(
+                "warning",
+                f"{repo_rel(root, run.run_dir)} was recorded on a dirty tree",
+                force=True,
+            )
+    run_started = time.monotonic()
+    results: list[StageResult] = []
+    for stage in ("cov_merge", "cov_report"):
+        result = run_stage(
+            flow, root, sim_cfg, catalog, stage, None, args, tool, run_dir, simulators, policies
+        )
+        results.append(result)
+        if result.status != "PASS" and stage == "cov_merge":
+            break
+    payload = result_payload(
+        flow=flow,
+        root=root,
+        tool=tool,
+        run_dir=run_dir,
+        stages=results,
+        dry_run=args.dry_run,
+        items=[],
+        label="combine",
+        args=args,
+        versions=tool_versions(root),
+        git_metadata=git_provenance(root, run_dir),
+        planned_leaves=0,
+    )
+    if not args.dry_run:
+        write_result(result_path, payload)
+        if args.result:
+            export_path = Path(args.result).expanduser()
+            if not export_path.is_absolute():
+                export_path = root / export_path
+            if export_path != result_path:
+                write_result(export_path, payload)
+    status = str(payload.get("status", aggregate_status(results)))
+    console.result(
+        status=status,
+        elapsed_sec=time.monotonic() - run_started,
+        tests=0,
+        run_dir=repo_rel(root, run_dir),
+        result_json=repo_rel(root, result_path),
+        incomplete=None,
+    )
+    return exit_code_for_status(status)
+
+
+def flow_executor_name(flow: Flow, args: argparse.Namespace) -> str:
+    """The executor a run of ``flow`` selects: ``--executor``, else the profile's default."""
     scheduler = flow.raw.get("scheduler", {})
     if not isinstance(scheduler, dict):
         raise ConfigError(f"{flow.path}: [scheduler] must be a table")
@@ -2234,11 +2491,56 @@ def selected_executor(flow: Flow, args: argparse.Namespace) -> str:
     allowed = as_str_list(scheduler.get("allowed"), "scheduler.allowed")
     if allowed and executor not in allowed:
         raise ConfigError(f"executor `{executor}` is not allowed for flow `{flow.name}`")
-    if executor != "local":
-        raise ConfigError(
-            f"executor `{executor}` is configured but non-local dispatch is not implemented"
-        )
     return executor
+
+
+def selected_executor(flow: Flow, args: argparse.Namespace, executors: dict[str, Any]) -> str:
+    """The selected executor once the registry knows it and its driver can dispatch."""
+    executor = flow_executor_name(flow, args)
+    cfg = executors.get(executor)
+    if not isinstance(cfg, dict):
+        raise ConfigError(f"executor `{executor}` is not in the executor registry")
+    blocker = dispatch_blocker(executor, cfg)
+    if blocker:
+        raise ConfigError(blocker)
+    return executor
+
+
+def resource_request(
+    args: argparse.Namespace, stage: dict[str, Any], executor_cfg: dict[str, Any]
+) -> ResourceRequest:
+    """Resources for one stage's leaves: the command line, then the stage table, then the
+    executor's defaults."""
+    cli = ResourceRequest(
+        queue=getattr(args, "queue", None),
+        cores=getattr(args, "cores", None),
+        mem_mb=getattr(args, "mem_mb", None),
+        walltime=getattr(args, "walltime", None),
+    )
+    return resolve_resources(
+        cli,
+        ResourceRequest.from_mapping(stage.get("resources")),
+        ResourceRequest.from_mapping(executor_cfg.get("defaults")),
+    )
+
+
+def build_resource_request(
+    args: argparse.Namespace, stage: dict[str, Any], executor_cfg: dict[str, Any]
+) -> ResourceRequest:
+    """Resources for one target build: the command line, the build stage's table, then the
+    executor's `build_defaults` before its `defaults`."""
+    cli = ResourceRequest(
+        queue=getattr(args, "queue", None),
+        cores=getattr(args, "cores", None),
+        mem_mb=getattr(args, "mem_mb", None),
+        walltime=getattr(args, "walltime", None),
+    )
+    return resolve_resources(
+        cli,
+        ResourceRequest.from_mapping(stage.get("resources")),
+        ResourceRequest.from_mapping(executor_cfg.get("build_defaults")),
+        ResourceRequest.from_mapping(executor_cfg.get("defaults")),
+    )
 
 
 def tool_needs_license(simulators: dict[str, Any], tool: str) -> bool:
@@ -2780,7 +3082,15 @@ def run_flow(
     overlay_env = activate_adopter_overlay_env(flow.raw)
     replay_run_dir, existing_result = _existing_run_result(root, flow, args)
     tool = selected_tool(flow, args, simulators)
-    executor = selected_executor(flow, args)
+    executor = selected_executor(flow, args, registries.executors)
+    executor_cfg = registries.executors[executor]
+    setattr(args, "_cluster_executor", executor_cfg.get("kind") == "cluster")
+    builds = getattr(args, "builds", None) or executor_builds(executor_cfg)
+    if builds == "scheduler" and not args._cluster_executor:
+        raise ConfigError("--builds scheduler needs a cluster executor; `local` builds in-process")
+    setattr(args, "_scheduler_builds", builds == "scheduler" and not args.dry_run)
+    if getattr(args, "walltime", None):
+        parse_walltime_sec(str(args.walltime))
     validate_selected_tool_available(tool, simulators, args, flow)
     if args.waves:
         wave_format = resolve_wave_format(args, simulators, tool)
@@ -2917,7 +3227,9 @@ def run_flow(
     replaying_coverage = existing_result is not None and replay_run_dir == run_dir
     checkpoint_enabled = bool(expected_leaves) and not args.dry_run and not replaying_coverage
     run_versions = tool_versions(root)
-    run_git = git_info(root)
+    # Archives the uncommitted diff beside result.json when the tree is dirty, so the
+    # commit hash plus that diff identify the sources every leaf of this run compiled.
+    run_git = git_provenance(root, run_dir)
 
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console
@@ -2953,10 +3265,26 @@ def run_flow(
     final_failures = 0
     progress_lock = threading.Lock()
     interruption_requested = threading.Event()
+    # A signal that arrives while the interruption is being handled sets this: the
+    # cancellation stops waiting for confirmations and the summary is written with what it has.
+    cleanup_hurry = threading.Event()
+    interruption_signal: list[int] = []
     args._cancellation_event = interruption_requested
     active_leaf_ids: set[int] = set()
     completed_leaves_by_id: dict[int, dict[str, Any]] = {}
+    # Scheduler jobs of the leaves in flight, by leaf id then task id; a leaf drops its jobs
+    # once it is recorded. The checkpoint lists them: after the coordinator dies, they are the
+    # only record of which jobs are live.
+    leaf_jobs: dict[int, dict[str, dict[str, Any]]] = {}
+    cancellation: dict[str, Any] = {}
     checkpoint_sequence = 0
+
+    def with_leaf_jobs(leaf: dict[str, Any]) -> dict[str, Any]:
+        entry = dict(leaf)
+        jobs = leaf_jobs.get(int(leaf["id"]))
+        if jobs:
+            entry["jobs"] = [dict(job) for job in jobs.values()]
+        return entry
 
     def checkpoint_progress(state: str) -> dict[str, Any]:
         nonlocal checkpoint_sequence
@@ -2969,7 +3297,9 @@ def run_flow(
                 for leaf in expected_leaves
                 if int(leaf["id"]) in completed_ids
             ]
-            active = [dict(leaf) for leaf in expected_leaves if int(leaf["id"]) in active_ids]
+            active = [
+                with_leaf_jobs(leaf) for leaf in expected_leaves if int(leaf["id"]) in active_ids
+            ]
             missing = [
                 dict(leaf)
                 for leaf in expected_leaves
@@ -2986,8 +3316,6 @@ def run_flow(
             "active_count": len(visible_active),
             "missing_count": len(missing),
             "interrupted_count": len(interrupted),
-            "expected": [dict(leaf) for leaf in expected_leaves],
-            "completed": completed,
             "active": visible_active,
             "missing": missing,
             "interrupted": interrupted,
@@ -3010,6 +3338,79 @@ def run_flow(
         with progress_lock:
             active_leaf_ids.discard(leaf_id)
             completed_leaves_by_id[leaf_id] = completed
+            leaf_jobs.pop(leaf_id, None)
+
+    def note_leaf_job(task: LeafTask, handle: JobHandle) -> None:
+        with progress_lock:
+            leaf_jobs.setdefault(task.leaf_id, {})[task.task_id] = {
+                "task_id": task.task_id,
+                "job_id": handle.native_job_id,
+            }
+
+    def record_cancellation(
+        executor_impl: Executor,
+        tasks: dict[str, LeafTask],
+        outstanding: list[JobHandle],
+        confirmed: dict[str, bool],
+        finished: set[str],
+        cancel_grace: float,
+    ) -> None:
+        requested = [handle for handle in outstanding if handle.task_id not in finished]
+        unconfirmed = [
+            handle.native_job_id
+            for handle in outstanding
+            if not confirmed.get(handle.task_id, False) and handle.task_id not in finished
+        ]
+        cancellation.clear()
+        cancellation.update(
+            {
+                "requested": len(requested),
+                "confirmed": len(requested) - len(unconfirmed),
+                "unconfirmed": unconfirmed,
+            }
+        )
+        if unconfirmed:
+            ids = ", ".join(str(job_id) for job_id in unconfirmed)
+            console.event(
+                "executor",
+                f"{len(unconfirmed)} of {len(requested)} cancelled job(s) unconfirmed "
+                f"(job ids {ids}); check them with the scheduler by id",
+                force=True,
+            )
+
+    def cancel_outstanding(
+        executor_impl: Executor,
+        tasks: dict[str, LeafTask],
+        handles: dict[str, JobHandle],
+        cancel_grace: float,
+    ) -> set[str]:
+        """The interrupted-run cleanup both dispatch loops share: a final poll, the cancel
+        request with its bounded confirmation wait, and the cancellation record. Returns the
+        task ids whose attempt had ended before the cancellation reached them."""
+        # From here on a signal unwinds nothing more; it ends the confirmation wait.
+        interruption_requested.set()
+        outstanding = list(handles.values())
+        # A scheduler that stopped answering must not keep the run from its summary.
+        try:
+            snapshot = executor_impl.poll(outstanding)
+        except Exception as exc:  # noqa: BLE001
+            console.event("executor", f"final poll failed: {exc}", force=True)
+            snapshot = {}
+        finished = {
+            task_id
+            for task_id, seen in snapshot.items()
+            if seen.state.terminal and seen.state is not JobState.CANCELLED
+        }
+        try:
+            confirmed = executor_impl.cancel(
+                outstanding, grace_sec=cancel_grace, stop=cleanup_hurry
+            )
+        except Exception as exc:  # noqa: BLE001
+            console.event("executor", f"cancel failed: {exc}", force=True)
+            confirmed = {}
+        request_stage_cancellation()
+        record_cancellation(executor_impl, tasks, outstanding, confirmed, finished, cancel_grace)
+        return finished
 
     def leaf_is_completed(leaf: dict[str, Any]) -> bool:
         with progress_lock:
@@ -3079,134 +3480,543 @@ def run_flow(
             job["formal"] = result.formal
         return job
 
-    def run_wave_debug_leaf(
-        stage: str,
-        item: str,
-        seed: int,
-        attempt: int,
-        source_result: StageResult,
-    ) -> tuple[StageResult, str | None]:
-        log_path = repo_path(root, source_result.log) if source_result.log else None
-        failure_time = find_failure_time_ps(log_path)
-        debug_args = copy.copy(args)
-        debug_args.waves = args.waves_on_fail
-        debug_args.waves_on_fail = None
-        debug_args.wave_retention = args.wave_retention or "failed"
-        debug_args._wave_debug_rerun = True
-        debug_args._wave_failure_time = failure_time
-        debug_args._ui_leaf_mode = "compact" if scheduler else "full"
-        console.event(
-            "waves",
-            f"rerun item={item} seed={seed} attempt={attempt} "
-            f"format={resolve_wave_format(debug_args, simulators, tool)}",
-        )
-        debug_result = run_stage(
-            flow,
-            root,
-            sim_cfg_for_item(item),
-            catalog,
-            stage,
-            item,
-            debug_args,
-            tool,
-            run_dir,
-            simulators,
-            policies,
-            nest=True,
-            attempt=attempt,
-            seed_override=seed,
-        )
-        item_dir = item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=True)
-        result_json = repo_rel(root, item_dir / "result.json")
-        if not args.dry_run:
-            write_result(
-                item_dir / "result.json",
-                fragment_payload(
-                    flow=flow,
-                    root=root,
-                    tool=tool,
-                    run_dir=run_dir,
-                    item=item,
-                    seed=seed,
-                    result=debug_result,
-                ),
-            )
-        return debug_result, result_json
+    # Stage tables are shared across leaves; the shallow copies a debug rerun takes of `args`
+    # must share this set so a model built by one attempt counts as built for the rest.
+    if not isinstance(getattr(args, "_cocotb_prebuilt_targets", None), set):
+        args._cocotb_prebuilt_targets = set()
+    resources_by_stage: dict[str, ResourceRequest] = {}
 
-    def run_leaf(
+    def stage_resources(stage: str) -> ResourceRequest:
+        request = resources_by_stage.get(stage)
+        if request is None:
+            request = resource_request(args, flow_stages(flow).get(stage, {}), executor_cfg)
+            resources_by_stage[stage] = request
+        return request
+
+    def leaf_task(
         leaf: dict[str, Any],
-    ) -> tuple[dict[str, Any], StageResult, list[dict[str, Any]]]:
-        if not mark_leaf_active(leaf):
-            raise RuntimeError("run interrupted before leaf execution")
+        attempt: int,
+        *,
+        debug_only: bool = False,
+        source: StageResult | None = None,
+    ) -> LeafTask:
         stage = str(leaf["stage"])
         item = str(leaf["item"])
         seed = int(leaf["seed"])
-        attempt_results: list[StageResult] = []
-        jobs: list[dict[str, Any]] = []
-        for attempt in range((args.retry or 0) + 1):
-            result = run_stage(
-                flow,
-                root,
-                sim_cfg_for_item(item),
-                catalog,
-                stage,
-                item,
-                args,
-                tool,
-                run_dir,
-                simulators,
-                policies,
-                nest=nest,
-                attempt=attempt,
-                seed_override=seed,
-            )
-            attempt_results.append(result)
-            item_dir = item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=nest)
-            result_json = repo_rel(root, item_dir / "result.json")
-            jobs.append(regression_job(stage, item, seed, attempt, result, result_json))
-            if not args.dry_run:
-                write_result(
-                    item_dir / "result.json",
-                    fragment_payload(
-                        flow=flow,
-                        root=root,
-                        tool=tool,
-                        run_dir=run_dir,
-                        item=item,
-                        seed=seed,
-                        result=result,
-                    ),
+        # A wave-debug rerun always nests, so its artifacts never overwrite the graded attempt.
+        task_nest = nest or debug_only
+        overrides: dict[str, Any] = {}
+        failure_time = None
+        if debug_only:
+            log_path = repo_path(root, source.log) if source is not None and source.log else None
+            failure_time = find_failure_time_ps(log_path)
+            overrides = {
+                "waves": args.waves_on_fail,
+                "waves_on_fail": None,
+                "wave_retention": args.wave_retention or "failed",
+            }
+        return LeafTask(
+            task_id=task_identifier(stage, int(leaf["id"]), attempt, debug_only=debug_only),
+            leaf_id=int(leaf["id"]),
+            stage=stage,
+            item=item,
+            seed=seed,
+            attempt=attempt,
+            run_dir=run_dir,
+            leaf_dir=item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=task_nest),
+            target=leaf.get("target"),
+            nest=task_nest,
+            debug_only=debug_only,
+            resources=stage_resources(stage),
+            args_overrides=overrides,
+            wave_failure_time=failure_time,
+        )
+
+    def local_runner(task: LeafTask) -> StageResult:
+        task_args = attempt_args(args, task) if task.args_overrides or task.debug_only else args
+        result, _result_json = execute_attempt(
+            flow=flow,
+            root=root,
+            sim_cfg=sim_cfg_for_item(task.item),
+            catalog=catalog,
+            task=task,
+            args=task_args,
+            tool=tool,
+            simulators=simulators,
+            policies=policies,
+        )
+        return result
+
+    # Targets whose build ended without a usable model, with the build job that failed them;
+    # their leaves grade `dependency_blocked` instead of running.
+    blocked_targets: dict[str, dict[str, Any]] = {}
+
+    def run_builds(stage: str, targets: list[str]) -> None:
+        """Build every target of ``stage`` and append the results.
+
+        In-process builds stop at the first failure, as a flat run does. Scheduler builds run
+        every target as its own job, wait for all of them, and record each failed target as
+        blocked, so the other targets' leaves still run.
+        """
+        if not getattr(args, "_scheduler_builds", False):
+            for target in targets:
+                result = run_stage(
+                    flow,
+                    root,
+                    target_cfgs[target],
+                    catalog,
+                    stage,
+                    None,
+                    args,
+                    tool,
+                    run_dir,
+                    simulators,
+                    policies,
+                    nest=nest,
                 )
-            if result.status == "PASS" or not scheduler:
-                break
-        final = attempt_results[-1]
-        if (
+                results.append(result)
+                if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                    break
+            return
+        build_cfg_table = registries.executors[executor]
+        limits = executor_limits(build_cfg_table)
+        executor_impl = build_executor(
+            executor,
+            build_cfg_table,
+            runner=local_runner,
+            max_workers=max(1, len(targets)),
+            root=root,
+            run_dir=run_dir,
+            on_event=lambda text: console.event("executor", text),
+        )
+        poll_interval = float(limits["poll_interval_sec"])
+        cancel_grace = float(limits["cancel_grace_sec"])
+        request = build_resource_request(args, flow_stages(flow).get(stage, {}), build_cfg_table)
+        commit, dirty = repo_identity(root)
+        tasks: dict[str, LeafTask] = {}
+        handles: dict[str, JobHandle] = {}
+        target_of: dict[str, str] = {}
+        for index, target in enumerate(targets):
+            safe_target = "".join(ch if ch.isalnum() or ch in "_.-" else "_" for ch in target)
+            label = f"build-{stage}-{safe_target}"
+            task = LeafTask(
+                task_id=label,
+                leaf_id=-(index + 1),
+                stage=stage,
+                item="",
+                seed=0,
+                attempt=0,
+                run_dir=run_dir,
+                leaf_dir=run_dir / "stages" / "regress" / "builds" / label,
+                target=target,
+                nest=False,
+                role=BUILD_ROLE,
+                resources=request,
+            )
+            payload = manifest_payload(
+                task,
+                flow=flow,
+                root=root,
+                tool=tool,
+                executor=executor,
+                argv=list(getattr(args, "_raw_argv", []) or []),
+                ui_leaf_mode=str(getattr(args, "_ui_leaf_mode", "full")),
+                multi_target=multi_target,
+                overlay=adopter_overlay_path(args),
+                site=registries.site.path if registries.site is not None else None,
+                repo_commit=commit,
+                repo_dirty=dirty,
+            )
+            task = replace(
+                task, manifest_path=write_manifest(manifest_path(run_dir, label), payload)
+            )
+            handle = executor_impl.submit(task)
+            tasks[label] = task
+            handles[label] = handle
+            target_of[label] = target
+            console.event(
+                "build",
+                f"{stage} target={target} submitted as job {handle.native_job_id or '(refused)'}",
+            )
+
+        def settle(task_id: str, handle: JobHandle, seen: JobObservation) -> None:
+            task = tasks[task_id]
+            target = target_of[task_id]
+            outcome = executor_impl.collect(handle)
+            result = outcome.result
+            if result is None:
+                result = error_result(
+                    task,
+                    f"environment_error: build {task_id} ended {outcome.state.value.lower()}: "
+                    f"{outcome.error or seen.reason or 'no result'}",
+                )
+                result.metadata = {
+                    **(result.metadata or {}),
+                    "scheduler": {"job_id": handle.native_job_id, "state": outcome.state.value},
+                }
+            result.item = None
+            result.metadata = {**(result.metadata or {}), "target": target}
+            results.append(result)
+            console.stage_result(
+                stage=stage, status=result.status, duration_sec=result.duration_sec, target=target
+            )
+            if result.status == "PASS":
+                args._cocotb_prebuilt_targets.add(target)
+                return
+            blocked_targets[target] = {
+                "stage": stage,
+                "task_id": task_id,
+                "job_id": handle.native_job_id,
+                "state": outcome.state.value,
+                "status": result.status,
+                "reason": result.reason,
+            }
+            console.event(
+                "build",
+                f"{stage} target={target} {result.status}: its leaves are dependency-blocked",
+                force=True,
+            )
+
+        try:
+            while handles:
+                live = list(handles.values())
+                executor_impl.wait(live, poll_interval)
+                for task_id, seen in executor_impl.poll(live).items():
+                    if seen.state.terminal:
+                        settle(task_id, handles.pop(task_id), seen)
+        except BaseException:
+            cancel_outstanding(executor_impl, tasks, handles, cancel_grace)
+            executor_impl.close(wait=False)
+            raise
+        else:
+            executor_impl.close(wait=True)
+
+    def attach_wave_debug(
+        final: StageResult,
+        jobs: list[dict[str, Any]],
+        debug_task: LeafTask,
+        debug_result: StageResult,
+    ) -> None:
+        debug_json = repo_rel(root, debug_task.result_json)
+        debug_record = regression_job(
+            debug_task.stage,
+            debug_task.item,
+            debug_task.seed,
+            debug_task.attempt,
+            debug_result,
+            debug_json,
+        )
+        debug_record["debug_only"] = True
+        debug_record["status_affects_final_result"] = False
+        final.metadata = dict(final.metadata or {})
+        final.metadata["wave_debug"] = debug_record
+        jobs[-1]["wave_debug"] = debug_record
+        jobs[-1].setdefault("artifacts", {})
+        if debug_result.artifacts:
+            for key, value in debug_result.artifacts.items():
+                if key.startswith("wave") or key == "waves":
+                    jobs[-1]["artifacts"][f"debug_{key}"] = value
+                    final.artifacts = dict(final.artifacts or {})
+                    final.artifacts[f"debug_{key}"] = value
+        if debug_json:
+            jobs[-1]["artifacts"]["debug_result_json"] = debug_json
+            final.artifacts = dict(final.artifacts or {})
+            final.artifacts["debug_result_json"] = debug_json
+
+    def needs_wave_debug(stage: str, result: StageResult) -> bool:
+        return (
             waves_on_fail_requested(args)
             and stage in {"sim", "regress"}
-            and final.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
-        ):
-            debug_attempt = len(jobs)
-            debug_result, debug_json = run_wave_debug_leaf(stage, item, seed, debug_attempt, final)
-            debug_record = regression_job(
-                stage, item, seed, debug_attempt, debug_result, debug_json
+            and result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
+        )
+
+    def attempt_is_final(task: LeafTask, result: StageResult) -> bool:
+        if result.status != "PASS" and scheduler and task.attempt < (args.retry or 0):
+            return False
+        return not needs_wave_debug(task.stage, result)
+
+    def run_leaf_stage(stage: str, leaves: list[dict[str, Any]], parallel: bool) -> None:
+        """Drive one stage's leaves through the executor until every leaf is recorded."""
+        nonlocal final_failures
+        # A dry run plans; it submits nothing to a scheduler.
+        stage_executor = "local" if args.dry_run else executor
+        stage_executor_cfg = registries.executors[stage_executor]
+        limits = executor_limits(stage_executor_cfg)
+        max_in_flight = args.sim_jobs if parallel else 1
+        if limits.get("max_in_flight"):
+            max_in_flight = min(max_in_flight, int(limits["max_in_flight"]))
+        executor_impl = build_executor(
+            stage_executor,
+            stage_executor_cfg,
+            runner=local_runner,
+            max_workers=max_in_flight,
+            root=root,
+            run_dir=run_dir,
+            on_event=lambda text: console.event("executor", text),
+        )
+        max_in_flight = max(1, min(max_in_flight, executor_impl.max_in_flight))
+        submit_cap = executor_impl.submit_batch_size
+        poll_interval = float(limits["poll_interval_sec"])
+        cancel_grace = float(limits["cancel_grace_sec"])
+        blocked_leaves = [leaf for leaf in leaves if leaf.get("target") in blocked_targets]
+        pending = deque(leaf for leaf in leaves if leaf.get("target") not in blocked_targets)
+        leaf_by_id = {int(leaf["id"]): leaf for leaf in leaves}
+        tasks: dict[str, LeafTask] = {}
+        handles: dict[str, JobHandle] = {}
+        attempts: dict[int, list[StageResult]] = {}
+        jobs_by_leaf: dict[int, list[dict[str, Any]]] = {}
+        completed_leaves = 0
+        identity: list[tuple[str | None, bool | None]] = []
+
+        def build_of(target: str | None) -> dict[str, Any] | None:
+            for built in results:
+                if built.stage not in {"hdl_compile", "elaborate"} or not built.metadata:
+                    continue
+                if built.metadata.get("target") == target and built.metadata.get("target_build"):
+                    return dict(built.metadata["target_build"])
+            return None
+
+        def prepare(task: LeafTask) -> LeafTask:
+            """The task with its manifest written, when the executor reads one."""
+            if not executor_impl.requires_manifest:
+                return task
+            if not identity:
+                identity.append(repo_identity(root))
+            commit, dirty = identity[0]
+            payload = manifest_payload(
+                task,
+                flow=flow,
+                root=root,
+                tool=tool,
+                executor=executor,
+                argv=list(getattr(args, "_raw_argv", []) or []),
+                ui_leaf_mode=str(getattr(args, "_ui_leaf_mode", "full")),
+                multi_target=multi_target,
+                overlay=adopter_overlay_path(args),
+                site=registries.site.path if registries.site is not None else None,
+                repo_commit=commit,
+                repo_dirty=dirty,
+                target_build=build_of(task.target),
             )
-            debug_record["debug_only"] = True
-            debug_record["status_affects_final_result"] = False
-            final.metadata = dict(final.metadata or {})
-            final.metadata["wave_debug"] = debug_record
-            jobs[-1]["wave_debug"] = debug_record
-            jobs[-1].setdefault("artifacts", {})
-            if debug_result.artifacts:
-                for key, value in debug_result.artifacts.items():
-                    if key.startswith("wave") or key == "waves":
-                        jobs[-1]["artifacts"][f"debug_{key}"] = value
-                        final.artifacts = dict(final.artifacts or {})
-                        final.artifacts[f"debug_{key}"] = value
-            if debug_json:
-                jobs[-1]["artifacts"]["debug_result_json"] = debug_json
-                final.artifacts = dict(final.artifacts or {})
-                final.artifacts["debug_result_json"] = debug_json
-        return leaf, attempt_results[-1], jobs
+            path = write_manifest(manifest_path(run_dir, task.task_id), payload)
+            return replace(task, manifest_path=path)
+
+        def register(task: LeafTask, handle: JobHandle) -> None:
+            tasks[task.task_id] = task
+            handles[task.task_id] = handle
+            if executor_impl.requires_manifest and handle.native_job_id:
+                note_leaf_job(task, handle)
+
+        def submit(task: LeafTask) -> None:
+            task = prepare(task)
+            register(task, executor_impl.submit(task))
+
+        def submit_batch(batch: list[LeafTask]) -> None:
+            """First attempts submitted together; a driver with job arrays makes them one.
+
+            Handles are registered as each submission returns, so an interruption part-way
+            through the batch cancels every job already submitted.
+            """
+            prepared = {task.task_id: prepare(task) for task in batch}
+
+            def registered(handles: list[JobHandle]) -> None:
+                for handle in handles:
+                    register(prepared[handle.task_id], handle)
+
+            executor_impl.submit_many(list(prepared.values()), registered)
+
+        def finish_leaf(
+            leaf: dict[str, Any], final: StageResult, jobs: list[dict[str, Any]]
+        ) -> None:
+            nonlocal completed_leaves, final_failures
+            item = str(leaf["item"])
+            seed = int(leaf["seed"])
+            failed = record_leaf(leaf, final, jobs)
+            if scheduler:
+                completed_leaves += 1
+                console.regression_leaf_done(
+                    index=completed_leaves,
+                    total=len(leaves),
+                    item=item,
+                    seed=seed,
+                    attempt=max(0, len(jobs) - 1),
+                    status=final.status,
+                    duration_sec=final.duration_sec,
+                    log=final.log,
+                    reason=final.reason,
+                    target=(final.target or target_by_item.get(item)) if multi_target else None,
+                )
+            if failed:
+                final_failures += 1
+                if args.max_failures is not None and final_failures >= args.max_failures:
+                    console.event(
+                        "note",
+                        f"max failures reached ({args.max_failures}); remaining jobs will be skipped",
+                    )
+
+        def skip_leaf(leaf: dict[str, Any]) -> None:
+            item = str(leaf["item"])
+            seed = int(leaf["seed"])
+            stamp = datetime.now(UTC).isoformat()
+            skipped = StageResult(
+                stage=stage,
+                item=item,
+                status="SKIP",
+                return_code=0,
+                duration_sec=0.0,
+                started_at=stamp,
+                ended_at=stamp,
+                reason="skipped after --max-failures threshold",
+            )
+            finish_leaf(leaf, skipped, [regression_job(stage, item, seed, 0, skipped)])
+
+        def block_leaf(leaf: dict[str, Any]) -> None:
+            """A leaf whose target has no model: `ERROR` with a `dependency_blocked` bucket."""
+            item = str(leaf["item"])
+            seed = int(leaf["seed"])
+            target = str(leaf.get("target"))
+            dependency = blocked_targets[target]
+            stamp = datetime.now(UTC).isoformat()
+            job = dependency["job_id"] or "not submitted"
+            blocked = StageResult(
+                stage=stage,
+                item=item,
+                status="ERROR",
+                return_code=exit_code_for_status("ERROR"),
+                duration_sec=0.0,
+                started_at=stamp,
+                ended_at=stamp,
+                reason=(
+                    f"dependency_blocked: {dependency['stage']} of target {target} "
+                    f"{dependency['status']} (job {job}): {dependency['reason']}"
+                ),
+                failure_buckets=[
+                    {
+                        "kind": "dependency_blocked",
+                        "signature": f"{dependency['stage']} {target}",
+                        "count": 1,
+                    }
+                ],
+                metadata={"seed": seed, "attempt": 0, "target": target},
+                target=target,
+            )
+            finish_leaf(leaf, blocked, [regression_job(stage, item, seed, 0, blocked)])
+
+        def attempt_done(task: LeafTask, result: StageResult) -> None:
+            leaf = leaf_by_id[task.leaf_id]
+            jobs = jobs_by_leaf[task.leaf_id]
+            if task.debug_only:
+                final = attempts[task.leaf_id][-1]
+                attach_wave_debug(final, jobs, task, result)
+                finish_leaf(leaf, final, jobs)
+                return
+            result.result_json = repo_rel(root, task.result_json)
+            attempts[task.leaf_id].append(result)
+            jobs.append(
+                regression_job(
+                    stage,
+                    task.item,
+                    task.seed,
+                    task.attempt,
+                    result,
+                    result.result_json,
+                )
+            )
+            if result.status != "PASS" and scheduler and task.attempt < (args.retry or 0):
+                submit(leaf_task(leaf, task.attempt + 1))
+                return
+            if needs_wave_debug(stage, result):
+                debug = leaf_task(leaf, len(jobs), debug_only=True, source=result)
+                console.event(
+                    "waves",
+                    f"rerun item={task.item} seed={task.seed} attempt={debug.attempt} "
+                    f"format={resolve_wave_format(attempt_args(args, debug), simulators, tool)}",
+                )
+                submit(debug)
+                return
+            finish_leaf(leaf, result, jobs)
+
+        def collect_result(handle: JobHandle, task: LeafTask, reason: str) -> StageResult:
+            outcome = executor_impl.collect(handle)
+            if outcome.result is not None:
+                return outcome.result
+            detail = outcome.error or reason or "no result"
+            return error_result(
+                task,
+                f"environment_error: attempt {task.task_id} ended "
+                f"{outcome.state.value.lower()}: {detail}",
+            )
+
+        for leaf in blocked_leaves:
+            block_leaf(leaf)
+        try:
+            while pending or handles:
+                submitted = 0
+                batch: list[LeafTask] = []
+                while pending and len(handles) + len(batch) < max_in_flight:
+                    if submit_cap is not None and submitted >= submit_cap:
+                        break
+                    submitted += 1
+                    leaf = pending.popleft()
+                    if (
+                        scheduler
+                        and args.max_failures is not None
+                        and final_failures >= args.max_failures
+                    ):
+                        skip_leaf(leaf)
+                        continue
+                    if not mark_leaf_active(leaf):
+                        signum = interruption_signal[-1] if interruption_signal else signal.SIGINT
+                        raise RunInterrupted(signum)
+                    leaf_id = int(leaf["id"])
+                    attempts[leaf_id] = []
+                    jobs_by_leaf[leaf_id] = []
+                    batch.append(leaf_task(leaf, 0))
+                if batch:
+                    submit_batch(batch)
+                if not handles:
+                    continue
+                live = list(handles.values())
+                # With submissions capped per turn, keep filling before the first real wait.
+                throttled = bool(pending) and len(handles) < max_in_flight
+                executor_impl.wait(live, 0.0 if throttled else poll_interval)
+                for task_id, observation in executor_impl.poll(live).items():
+                    if not observation.state.terminal:
+                        continue
+                    handle = handles.pop(task_id)
+                    task = tasks.pop(task_id)
+                    attempt_done(task, collect_result(handle, task, observation.reason))
+        except BaseException:
+            # Only an attempt that had ended before the interruption counts as a completed
+            # leaf; whatever the cancellation ends is interrupted, whichever result it wrote.
+            outstanding = list(handles.values())
+            finished = cancel_outstanding(executor_impl, tasks, handles, cancel_grace)
+            for handle in outstanding:
+                if handle.task_id not in finished:
+                    continue
+                task = tasks[handle.task_id]
+                leaf = leaf_by_id[task.leaf_id]
+                if task.debug_only or leaf_is_completed(leaf):
+                    continue
+                outcome = executor_impl.collect(handle)
+                if outcome.result is None or not attempt_is_final(task, outcome.result):
+                    continue
+                jobs = [
+                    *jobs_by_leaf[task.leaf_id],
+                    regression_job(
+                        stage,
+                        task.item,
+                        task.seed,
+                        task.attempt,
+                        outcome.result,
+                        repo_rel(root, task.result_json),
+                    ),
+                ]
+                record_leaf(leaf, outcome.result, jobs, refresh_checkpoint=False)
+            executor_impl.close(wait=False)
+            raise
+        else:
+            executor_impl.close(wait=True)
 
     def record_leaf(
         leaf: dict[str, Any],
@@ -3248,6 +4058,10 @@ def run_flow(
     previous_signal_handlers: dict[int, Any] = {}
 
     def interrupt_handler(signum: int, _frame: Any) -> None:
+        interruption_signal.append(signum)
+        if interruption_requested.is_set():
+            cleanup_hurry.set()
+            return
         interruption_requested.set()
         raise RunInterrupted(signum)
 
@@ -3271,25 +4085,34 @@ def run_flow(
         emit_dry_run_config_summary(console, flow, root, sim_cfg, simulators, tool, args)
         for stage_index, stage in enumerate(stages):
             if stage in {"flist", "hdl_compile", "elaborate"}:
-                for target in build_targets:
-                    result = run_stage(
-                        flow,
-                        root,
-                        target_cfgs[target],
-                        catalog,
-                        stage,
-                        None,
-                        args,
-                        tool,
-                        run_dir,
-                        simulators,
-                        policies,
-                        nest=nest,
+                if stage == "flist":
+                    for target in build_targets:
+                        result = run_stage(
+                            flow,
+                            root,
+                            target_cfgs[target],
+                            catalog,
+                            stage,
+                            None,
+                            args,
+                            tool,
+                            run_dir,
+                            simulators,
+                            policies,
+                            nest=nest,
+                        )
+                        results.append(result)
+                        if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                            break
+                else:
+                    run_builds(
+                        stage, [target for target in build_targets if target not in blocked_targets]
                     )
-                    results.append(result)
-                    if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
-                        break
-                if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                # A failed scheduler build blocks its target's leaves in the sim stage instead
+                # of ending the run here, so the record accounts for every planned leaf.
+                if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"} and (
+                    stage == "flist" or not getattr(args, "_scheduler_builds", False)
+                ):
                     break
             elif stage in {"sim", "regress", "formal"}:
                 leaves = leaf_plans_by_stage.get(stage_index, [])
@@ -3301,7 +4124,6 @@ def run_flow(
                     (len(str(leaf["seed"])) for leaf in leaves),
                     default=8,
                 )
-                completed_leaves = 0
                 parallel = (
                     scheduler
                     and args.sim_jobs > 1
@@ -3315,38 +4137,23 @@ def run_flow(
                         for target in build_targets
                         if needs_parallel_cocotb_prebuild(stage, target)
                     ]
+                    prebuild_stage = (
+                        "hdl_compile" if "hdl_compile" in flow_stages(flow) else "elaborate"
+                    )
                     for target in missing_prebuilds:
-                        prebuild_stage = (
-                            "hdl_compile" if "hdl_compile" in flow_stages(flow) else "elaborate"
-                        )
                         console.event(
                             "scheduler",
                             f"pre-building cocotb model for target `{target}` before parallel sim",
                         )
-                        prebuild = run_stage(
-                            flow,
-                            root,
-                            target_cfgs[target],
-                            catalog,
-                            prebuild_stage,
-                            None,
-                            args,
-                            tool,
-                            run_dir,
-                            simulators,
-                            policies,
-                            nest=nest,
-                        )
-                        results.append(prebuild)
-                        if prebuild.status != "PASS":
-                            break
-                    if missing_prebuilds and aggregate_status(results) in {
-                        "FAIL",
-                        "ERROR",
-                        "TIMEOUT",
-                        "UNKNOWN",
-                    }:
+                    if missing_prebuilds:
+                        run_builds(prebuild_stage, missing_prebuilds)
+                    if (
+                        missing_prebuilds
+                        and aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
+                        and not getattr(args, "_scheduler_builds", False)
+                    ):
                         break
+                if scheduler:
                     console.regression_start(
                         total=len(leaves),
                         jobs=args.sim_jobs,
@@ -3358,135 +4165,7 @@ def run_flow(
                         item_width=leaf_item_width,
                         seed_width=leaf_seed_width,
                     )
-                    pool = ThreadPoolExecutor(max_workers=args.sim_jobs)
-                    futures: dict[Any, dict[str, Any]] = {}
-                    try:
-                        futures = {pool.submit(run_leaf, leaf): leaf for leaf in leaves}
-                        for future in as_completed(futures):
-                            leaf, result, jobs = future.result()
-                            item = str(leaf["item"])
-                            seed = int(leaf["seed"])
-                            failed = record_leaf(leaf, result, jobs)
-                            completed_leaves += 1
-                            console.regression_leaf_done(
-                                index=completed_leaves,
-                                total=len(leaves),
-                                item=item,
-                                seed=seed,
-                                attempt=max(0, len(jobs) - 1),
-                                status=result.status,
-                                duration_sec=result.duration_sec,
-                                log=result.log,
-                                reason=result.reason,
-                                target=(result.target or target_by_item.get(item))
-                                if multi_target
-                                else None,
-                            )
-                            if failed:
-                                final_failures += 1
-                    except BaseException:
-                        completed_before_interrupt = [
-                            future for future in futures if future.done() and not future.cancelled()
-                        ]
-                        for future in futures:
-                            future.cancel()
-                        request_stage_cancellation()
-                        wait(futures, timeout=3)
-                        for future in completed_before_interrupt:
-                            try:
-                                leaf, result, jobs = future.result()
-                            except BaseException:
-                                continue
-                            if not leaf_is_completed(leaf):
-                                record_leaf(
-                                    leaf,
-                                    result,
-                                    jobs,
-                                    refresh_checkpoint=False,
-                                )
-                        pool.shutdown(wait=False, cancel_futures=True)
-                        raise
-                    else:
-                        pool.shutdown()
-                else:
-                    if scheduler:
-                        console.regression_start(
-                            total=len(leaves),
-                            jobs=args.sim_jobs,
-                            executor=executor,
-                            seeds=regression_seed_label(
-                                [(str(leaf["item"]), int(leaf["seed"])) for leaf in leaves]
-                            ),
-                            retry=args.retry or 0,
-                            item_width=leaf_item_width,
-                            seed_width=leaf_seed_width,
-                        )
-                    for leaf in leaves:
-                        item = str(leaf["item"])
-                        seed = int(leaf["seed"])
-                        if (
-                            scheduler
-                            and args.max_failures is not None
-                            and final_failures >= args.max_failures
-                        ):
-                            skipped = StageResult(
-                                stage=stage,
-                                item=item,
-                                status="SKIP",
-                                return_code=0,
-                                duration_sec=0.0,
-                                started_at=datetime.now(UTC).isoformat(),
-                                ended_at=datetime.now(UTC).isoformat(),
-                                reason="skipped after --max-failures threshold",
-                            )
-                            record_leaf(
-                                leaf,
-                                skipped,
-                                [regression_job(stage, item, seed, 0, skipped)],
-                            )
-                            completed_leaves += 1
-                            console.regression_leaf_done(
-                                index=completed_leaves,
-                                total=len(leaves),
-                                item=item,
-                                seed=seed,
-                                attempt=0,
-                                status=skipped.status,
-                                duration_sec=skipped.duration_sec,
-                                log=skipped.log,
-                                reason=skipped.reason,
-                                target=target_by_item.get(item) if multi_target else None,
-                            )
-                            continue
-
-                        leaf, result, jobs = run_leaf(leaf)
-                        failed = record_leaf(leaf, result, jobs)
-                        if scheduler:
-                            completed_leaves += 1
-                            console.regression_leaf_done(
-                                index=completed_leaves,
-                                total=len(leaves),
-                                item=item,
-                                seed=seed,
-                                attempt=max(0, len(jobs) - 1),
-                                status=result.status,
-                                duration_sec=result.duration_sec,
-                                log=result.log,
-                                reason=result.reason,
-                                target=(result.target or target_by_item.get(item))
-                                if multi_target
-                                else None,
-                            )
-                        if failed:
-                            final_failures += 1
-                            if (
-                                args.max_failures is not None
-                                and final_failures >= args.max_failures
-                            ):
-                                console.event(
-                                    "note",
-                                    f"max failures reached ({args.max_failures}); remaining jobs will be skipped",
-                                )
+                run_leaf_stage(stage, leaves, parallel)
             else:
                 if stage == "c_compile" and items:
                     for item in items:
@@ -3619,19 +4298,32 @@ def run_flow(
             incomplete=incomplete_run_note(payload.get("tests")),
         )
         return exit_code_for_status(status)
-    except RunInterrupted as exc:
+    except (RunInterrupted, ClusterError) as exc:
+        interruption_requested.set()
         # The signal unwound run_stage past its console.suppress exit, so this thread is
         # still muted; everything below is for the operator.
         console.clear_suppression()
         request_stage_cancellation()
-        signal_name = signal.Signals(exc.signum).name
-        interruption = {
-            "kind": "signal",
-            "signal": signal_name,
-            "signal_number": exc.signum,
-            "reason": f"run interrupted by {signal_name}",
-            "recorded_at": datetime.now(UTC).isoformat(),
-        }
+        if isinstance(exc, RunInterrupted):
+            signal_name = signal.Signals(exc.signum).name
+            interruption = {
+                "kind": "signal",
+                "signal": signal_name,
+                "signal_number": exc.signum,
+                "reason": f"run interrupted by {signal_name}",
+                "recorded_at": datetime.now(UTC).isoformat(),
+            }
+            exit_code = 128 + exc.signum
+        else:
+            interruption = {
+                "kind": "executor",
+                "executor": executor,
+                "reason": f"run aborted by executor `{executor}`: {exc}",
+                "recorded_at": datetime.now(UTC).isoformat(),
+            }
+            exit_code = exit_code_for_status("ERROR")
+        if cancellation.get("unconfirmed"):
+            interruption["cancellation"] = dict(cancellation)
         progress = checkpoint_progress("interrupted")
         elapsed_sec = time.monotonic() - run_started
         if nest and checkpoint_enabled:
@@ -3682,7 +4374,7 @@ def run_flow(
             f"{progress['expected_count']} planned leaves ran",
             force=True,
         )
-        return 128 + exc.signum
+        return exit_code
     finally:
         for signum, previous_handler in previous_signal_handlers.items():
             signal.signal(signum, previous_handler)
@@ -3696,6 +4388,7 @@ def main(argv: list[str] | None = None) -> int:
         # (with the examples) instead of the --dut-required error.
         parse_args(["--help"])
     args = parse_args(raw_argv)
+    args._raw_argv = raw_argv
     try:
         validate_mode_options(args)
         if args.json and not args.list:
@@ -3746,6 +4439,8 @@ def main(argv: list[str] | None = None) -> int:
             raise ConfigError(f"unknown DUT `{args.dut}`")
         if args.waive is not None:
             return cmd_waive(root, simulators, policies, executors, args)
+        if args.cov_combine:
+            return cmd_cov_combine(root, registries, args)
         flow = resolve_dut(
             root,
             args.dut,

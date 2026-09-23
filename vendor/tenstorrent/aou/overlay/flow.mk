@@ -9,6 +9,7 @@ include $(FLOW_DIR)/../../../../flows/preamble.mk
 
 # Actual top-level module name (upstream/RTL/AOU_TOP.sv).
 FLOW_DESIGN := AOU_TOP
+FLOW_INTEGRATION_NAME := aou
 # ../Bender.yml scopes the flist to just this package's sources.
 FLOW_BENDER_TARGETS := -t aou
 OCAH_FLOW_COMMON_BENDER_TARGETS :=

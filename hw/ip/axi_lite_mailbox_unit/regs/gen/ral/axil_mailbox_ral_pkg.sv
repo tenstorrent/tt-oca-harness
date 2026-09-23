@@ -32,7 +32,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_0__READ_DATA
 
@@ -50,13 +50,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_0__STATUS
 
@@ -72,9 +72,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_0__ERROR_FLAGS
 
@@ -121,11 +121,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_0__IRQS
 
@@ -163,11 +163,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_0__IRQP
 
@@ -288,7 +288,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_0__READ_DATA
 
@@ -306,13 +306,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_0__STATUS
 
@@ -328,9 +328,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_0__ERROR_FLAGS
 
@@ -377,11 +377,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_0__IRQS
 
@@ -419,11 +419,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_0__IRQP
 
@@ -544,7 +544,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_1__READ_DATA
 
@@ -562,13 +562,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_1__STATUS
 
@@ -584,9 +584,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_1__ERROR_FLAGS
 
@@ -633,11 +633,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_1__IRQS
 
@@ -675,11 +675,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_1__IRQP
 
@@ -800,7 +800,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_1__READ_DATA
 
@@ -818,13 +818,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_1__STATUS
 
@@ -840,9 +840,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_1__ERROR_FLAGS
 
@@ -889,11 +889,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_1__IRQS
 
@@ -931,11 +931,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_1__IRQP
 
@@ -1056,7 +1056,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_2__READ_DATA
 
@@ -1074,13 +1074,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_2__STATUS
 
@@ -1096,9 +1096,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_2__ERROR_FLAGS
 
@@ -1145,11 +1145,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_2__IRQS
 
@@ -1187,11 +1187,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_2__IRQP
 
@@ -1312,7 +1312,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_2__READ_DATA
 
@@ -1330,13 +1330,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_2__STATUS
 
@@ -1352,9 +1352,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_2__ERROR_FLAGS
 
@@ -1401,11 +1401,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_2__IRQS
 
@@ -1443,11 +1443,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_2__IRQP
 
@@ -1568,7 +1568,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_3__READ_DATA
 
@@ -1586,13 +1586,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_3__STATUS
 
@@ -1608,9 +1608,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_3__ERROR_FLAGS
 
@@ -1657,11 +1657,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_3__IRQS
 
@@ -1699,11 +1699,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_3__IRQP
 
@@ -1824,7 +1824,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_3__READ_DATA
 
@@ -1842,13 +1842,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_3__STATUS
 
@@ -1864,9 +1864,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_3__ERROR_FLAGS
 
@@ -1913,11 +1913,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_3__IRQS
 
@@ -1955,11 +1955,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_3__IRQP
 
@@ -2080,7 +2080,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_4__READ_DATA
 
@@ -2098,13 +2098,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_4__STATUS
 
@@ -2120,9 +2120,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_4__ERROR_FLAGS
 
@@ -2169,11 +2169,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_4__IRQS
 
@@ -2211,11 +2211,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_4__IRQP
 
@@ -2336,7 +2336,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_4__READ_DATA
 
@@ -2354,13 +2354,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_4__STATUS
 
@@ -2376,9 +2376,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_4__ERROR_FLAGS
 
@@ -2425,11 +2425,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_4__IRQS
 
@@ -2467,11 +2467,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_4__IRQP
 
@@ -2592,7 +2592,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_5__READ_DATA
 
@@ -2610,13 +2610,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_5__STATUS
 
@@ -2632,9 +2632,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_5__ERROR_FLAGS
 
@@ -2681,11 +2681,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_5__IRQS
 
@@ -2723,11 +2723,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_5__IRQP
 
@@ -2848,7 +2848,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_5__READ_DATA
 
@@ -2866,13 +2866,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_5__STATUS
 
@@ -2888,9 +2888,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_5__ERROR_FLAGS
 
@@ -2937,11 +2937,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_5__IRQS
 
@@ -2979,11 +2979,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_5__IRQP
 
@@ -3104,7 +3104,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_6__READ_DATA
 
@@ -3122,13 +3122,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_6__STATUS
 
@@ -3144,9 +3144,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_6__ERROR_FLAGS
 
@@ -3193,11 +3193,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_6__IRQS
 
@@ -3235,11 +3235,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_6__IRQP
 
@@ -3360,7 +3360,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_6__READ_DATA
 
@@ -3378,13 +3378,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_6__STATUS
 
@@ -3400,9 +3400,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_6__ERROR_FLAGS
 
@@ -3449,11 +3449,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_6__IRQS
 
@@ -3491,11 +3491,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_6__IRQP
 
@@ -3616,7 +3616,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_7__READ_DATA
 
@@ -3634,13 +3634,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_7__STATUS
 
@@ -3656,9 +3656,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_7__ERROR_FLAGS
 
@@ -3705,11 +3705,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_7__IRQS
 
@@ -3747,11 +3747,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_7__IRQP
 
@@ -3872,7 +3872,7 @@
 
         virtual function void build();
             this.read_data = uvm_reg_field::type_id::create("read_data");
-            this.read_data.configure(this, 64, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_data.configure(this, 64, 0, "RO", 1, 'h0, 0, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_7__READ_DATA
 
@@ -3890,13 +3890,13 @@
 
         virtual function void build();
             this.empty = uvm_reg_field::type_id::create("empty");
-            this.empty.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.empty.configure(this, 1, 0, "RO", 1, 'h1, 1, 1, 0);
             this.full = uvm_reg_field::type_id::create("full");
-            this.full.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.full.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.write_level_above_thresh = uvm_reg_field::type_id::create("write_level_above_thresh");
-            this.write_level_above_thresh.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.write_level_above_thresh.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.read_level_above_thresh = uvm_reg_field::type_id::create("read_level_above_thresh");
-            this.read_level_above_thresh.configure(this, 1, 3, "RO", 0, 'h0, 1, 1, 0);
+            this.read_level_above_thresh.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_7__STATUS
 
@@ -3912,9 +3912,9 @@
 
         virtual function void build();
             this.read_error = uvm_reg_field::type_id::create("read_error");
-            this.read_error.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.read_error.configure(this, 1, 0, "RC", 1, 'h0, 1, 1, 0);
             this.write_error = uvm_reg_field::type_id::create("write_error");
-            this.write_error.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.write_error.configure(this, 1, 1, "RC", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_7__ERROR_FLAGS
 
@@ -3961,11 +3961,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_7__IRQS
 
@@ -4003,11 +4003,11 @@
 
         virtual function void build();
             this.wtirq = uvm_reg_field::type_id::create("wtirq");
-            this.wtirq.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
+            this.wtirq.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.rtirq = uvm_reg_field::type_id::create("rtirq");
-            this.rtirq.configure(this, 1, 1, "RO", 0, 'h0, 1, 1, 0);
+            this.rtirq.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.eirq = uvm_reg_field::type_id::create("eirq");
-            this.eirq.configure(this, 1, 2, "RO", 0, 'h0, 1, 1, 0);
+            this.eirq.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_7__IRQP
 

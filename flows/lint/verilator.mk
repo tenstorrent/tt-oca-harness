@@ -54,12 +54,13 @@ ocah-lint-verilator-flist:
 ## @param OCAH_LINT_VERILATOR_TOP=<module> Override the top within this block's filelist
 .PHONY: ocah-lint-verilator
 ocah-lint-verilator: ocah-lint-verilator-flist
-	$(call ocah_require_host_tool,verilator,./scripts/docker-run.sh eda-run make ocah-lint-verilator)
+	$(call ocah_require_host_tool,verilator,./scripts/docker-run.sh run-here make ocah-lint-verilator)
 	verilator --lint-only -sv --language 1800-2023 \
 		--timing \
 		--timescale $(OCAH_FLOW_TIMESCALE) \
 		--top-module $(OCAH_LINT_VERILATOR_TOP) \
 		$(OCAH_LINT_VERILATOR_DEFINES) \
+		-FI $(OCAH_VENDOR_DEFINES_SVH) \
 		$(OCAH_LINT_VERILATOR_EXTRA_FLAGS) \
 		-Wno-fatal \
 		+define+ASSERTS_OFF \

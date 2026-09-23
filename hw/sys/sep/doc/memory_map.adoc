@@ -5,11 +5,13 @@
 :description: SEP address regions and generated register tables.
 ifdef::backend-html5[]
 :sep-crypto-access-ref: xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]
-:sep-drbg-architecture-ref: xref:ip:drbg/doc/index.adoc[Architecture]
+:sep-drbg-architecture-ref: xref:sep:trng.adoc#drbg-deterministic-random-bit-generator[Architecture]
+:sep-integrator-guide-ref: xref:ocah-docs:ROOT:referenced-documents.adoc#ref-ocah-integrator-guide[Integrator Guide]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :sep-crypto-access-ref: <<crypto-single-beat-only,Single-Beat Access Only>>
 :sep-drbg-architecture-ref: <<drbg-deterministic-random-bit-generator,Architecture>>
+:sep-integrator-guide-ref: <<ref-ocah-integrator-guide,Integrator Guide>>
 endif::backend-pdf[]
 
 [[sep-memory-map]]
@@ -78,7 +80,7 @@ The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
 does not decode offsets inside that window, so every access reaches the TRNG
 slave. Intra-aperture decode is an integrator constraint: an address that owns
 no register must return SLVERR and must not alias onto a live register. See the
-Integrator Guide.
+{sep-integrator-guide-ref}.
 
 The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
 single-beat transactions only; see {sep-crypto-access-ref}.
@@ -108,7 +110,7 @@ include::partial$sep/regs/gen/html/blocks/sep_cpu_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/sep_cpu_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/sep_cpu_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
@@ -118,7 +120,7 @@ include::partial$sep/regs/gen/html/blocks/el2_pic.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/el2_pic.adoc[]
+include::../regs/gen/adoc/blocks/el2_pic.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Reset and Lifecycle
@@ -131,8 +133,8 @@ include::partial$sep/regs/gen/html/blocks/sep_lifecycle_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[]
-include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Scratch and eFuse
@@ -149,9 +151,9 @@ include::ip:partial$efuse/regs/gen/html/efuse_mmr.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/sep_scratch.adoc[]
-include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[]
-include::../../../ip/efuse/regs/gen/adoc/efuse_mmr.adoc[]
+include::../regs/gen/adoc/blocks/sep_scratch.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[leveloffset=+2]
+include::../../../ip/efuse/regs/gen/adoc/efuse_mmr.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Timers
@@ -163,7 +165,7 @@ include::ip:partial$aon_timer/regs/gen/html/aon_timer.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Cryptographic Accelerators
@@ -178,10 +180,10 @@ include::ip:partial$otbn/regs/gen/html/otbn.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc[leveloffset=+2]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc[leveloffset=+2]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc[leveloffset=+2]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Entropy Source
@@ -197,7 +199,7 @@ include::ip:partial$entropy_source/regs/gen/html/entropy_source.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
+include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === DRBG
@@ -213,8 +215,8 @@ include::ip:partial$edn/regs/gen/html/edn.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[leveloffset=+2]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Key Manager
@@ -225,12 +227,30 @@ ifdef::backend-html5[]
 ++++
 include::ip:partial$key_manager/regs/gen/html/key_manager.html[]
 include::ip:partial$key_manager/regs/gen/html/km_csr.html[]
+include::ip:partial$key_manager/regs/gen/html/km_kpv.html[]
+include::ip:partial$key_manager/regs/gen/html/km_drbg_sampler.html[]
+include::ip:partial$key_manager/regs/gen/html/km_mailbox_km.html[]
+include::ip:partial$key_manager/regs/gen/html/km_mailbox_sep.html[]
+include::ip:partial$key_manager/regs/gen/html/abr_wrapper_key.html[]
+include::ip:partial$key_manager/regs/gen/html/aes_wrapper_key.html[]
+include::ip:partial$key_manager/regs/gen/html/hmac_wrapper_key.html[]
+include::ip:partial$key_manager/regs/gen/html/kmac_wrapper_key.html[]
+include::ip:partial$key_manager/regs/gen/html/otbn_wrapper_key.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/key_manager/regs/gen/adoc/key_manager.adoc[]
-include::../../../ip/key_manager/regs/gen/adoc/km_csr.adoc[]
+include::../../../ip/key_manager/regs/gen/adoc/key_manager.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_csr.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_kpv.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_drbg_sampler.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_mailbox_km.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/km_mailbox_sep.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/abr_wrapper_key.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/aes_wrapper_key.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/hmac_wrapper_key.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/kmac_wrapper_key.adoc[leveloffset=+2]
+include::../../../ip/key_manager/regs/gen/adoc/otbn_wrapper_key.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Secure DMA
@@ -244,7 +264,7 @@ include::ip:partial$secure_dma/regs/gen/html/secure_dma.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === SPI Controller
@@ -256,10 +276,26 @@ register map follows.
 
 ifdef::backend-html5[]
 ++++
-include::partial$sep/regs/gen/html/blocks/spi_controller.html[]
+include::ip:partial$spi_controller/regs/gen/html/spi_controller.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/spi_controller.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc[leveloffset=+2]
+endif::backend-pdf[]
+
+=== External Window Reference Model
+
+The SEP external-window model supplies the eFuse SHIM control register below.
+Its execute-in-place region is a memory window rather than a register bank.
+Adopter-specific external devices require their own register documentation.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/dv/models/regs/gen/html/sep_external.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../dv/models/regs/gen/adoc/sep_external.adoc[leveloffset=+2]
 endif::backend-pdf[]

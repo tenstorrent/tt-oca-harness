@@ -14,7 +14,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from dashboard.schema import SCHEMA_VERSION
+MANIFEST_SCHEMA_VERSION = "0.1"
 
 
 def _copy_tree(src: Path, dst: Path) -> None:
@@ -74,7 +74,7 @@ def _summary_result_files(source: Path) -> list[str]:
 
 def write_manifest(source: Path, name: str, timestamp: str) -> Path:
     manifest = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": MANIFEST_SCHEMA_VERSION,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "publish_name": name,
         "timestamp": timestamp,

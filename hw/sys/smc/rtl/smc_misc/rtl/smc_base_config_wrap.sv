@@ -53,7 +53,7 @@ module smc_base_config_wrap (
 
   smc_base_config_reg_pkg::smc_base_config__out_t hwif_out;
 
-  smc_base_config_reg smc_base_config_reg (
+  smc_base_config_reg u_smc_base_config_reg (
     .clk(clk_i),
     .arst_n(rst_n_i),
 

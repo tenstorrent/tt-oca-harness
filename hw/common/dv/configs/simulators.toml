@@ -82,6 +82,10 @@ design_artifact = "{build_cov_dir}"
 input_glob = "**/coverage/simv.vdb"
 merged_name = "merged.vdb"
 merge_cmd = ["urg", "-full64", "-dir", "{design_db}", "-dir", "{inputs}", "-dbname", "{merged}"]
+# `--cov-combine`: the inputs are the design and merged databases of finished runs. Runs
+# of different frameworks elaborate different harness tops, and only a flexible union merge
+# keeps the DUT subtree the databases share.
+combine_cmd = ["urg", "-full64", "-flex_merge", "union", "-dir", "{inputs}", "-dbname", "{merged}"]
 report_cmd = ["urg", "-full64", "-dir", "{merged}", "-report", "{report}", "-format", "both"]
 
 [vcs.parser_extensions]

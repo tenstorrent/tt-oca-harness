@@ -9,7 +9,7 @@ things, and neither can express the other's form:
 | File | Flow | Mechanism |
 | --- | --- | --- |
 | `../verilator/smc_cov_scope.vlt` | public CI (graded) | `coverage_off -file`, globs |
-| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, instance trees |
+| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` |
 
 Both are applied at **compile** time, following what SEP measured
 (`hw/sys/sep/dv/cov/config/vcs/README.md`): a report-time filter prunes the
@@ -17,42 +17,43 @@ report pages and still grades the whole database, so scope that has to hold
 must keep the code out of the database. Edit either file then `--rebuild` —
 neither is fingerprinted.
 
-**The two files must be kept in step by hand.** They do not express the same
-set, and cannot:
-
-- Verilator's `coverage_off` takes `-file` only. There is no `-module` form;
-  `coverage_off -module "prim_rom"` is a syntax error. Globbing source paths
-  makes dropping all of `vendor/**` a one-liner.
-- VCS scopes by hierarchy. Vendored pulp `axi` / `common_cells` are structural
-  glue instantiated at dozens of distinct places, so no `-tree` reaches them
-  without dropping real SMC RTL, and naming every vendored module with
-  `-module` would be unmaintainable. The VCS file therefore names
-  the two vendored blocks that *do* sit under one instance each — i3c-core and
-  tt-hw-debug — and leaves pulp glue in.
+**The two files express one set.** Verilator's `coverage_off` takes `-file`
+only, so the Verilator file drops trees by source path with globs. VCS scopes
+by design unit or instance, and the trees SMC does not own -- vendored RTL,
+`hw/ip`, `hw/common`, the chipyard-generated CPU cluster, the bench's own
+models -- are instantiated at hundreds of places inside SMC's own modules, so
+no `-tree` reaches them without dropping real SMC RTL. `gen_smc_cov_scope.py`
+therefore reads the build filelists, takes every module, interface and
+program compiled from those trees, and writes one `-module` line per unit;
+the file is regenerated (`--check` says when it is stale) rather than kept by
+hand.
 
 ## What the numbers are
 
-Say which one you are quoting.
-
-- **Verilator**: the SMC DUT **minus the CPU cluster, the I3C core, the
-  lowRISC prims, and TB code** — pulp glue and tt-hw-debug still counted, see
-  the known gap below.
-- **VCS**: the SMC DUT **minus the CPU cluster, the I3C core, the debug-bus
-  block, and TB code** — pulp glue still counted.
-
-Neither is "SMC coverage". The two exclude overlapping but different sets, so
-they are not comparable to each other either.
+Both grade what SMC owns: `hw/sys/smc/rtl/**` (less the chipyard-generated
+cluster), `hw/sys/smc/regs/**`, the two `hw/top` integration shells and the
+`cov/sv` points. They still differ in what a point is -- Verilator's
+expression family against VCS's condition, FSM and toggle -- and Verilator
+5.050 leaves some vendored files instrumented that VCS drops (the known gap
+below), so quote the simulator with the number.
 
 ## What each file excludes
 
 ### `smc_cov_scope.hier` (VCS)
 
-    -tree smc_uvm_top 1                     TB top's own body, children kept
-    -tree ...u_smc_cpu_wrapper.u_smc_cpu      chipyard-generated CPU cluster
-    -tree ...u_smc_peripherals.u_i3ccore_wrapper  vendored i3c-core
-    -tree ...u_internal_regs.u_smc_dfd_wrap   vendored tt-hw-debug trace/mmr
+    -tree smc_uvm_top 1        TB top's own body, children kept
+    -module <unit>             one line per design unit compiled from
+                               vendor/, hw/ip/, hw/common/, the chipyard-
+                               generated cluster, hw/sys/smc/dv/tb and
+                               hw/sys/smc/dv/models
 
-Each vendored tree is 100% contained by that one instance.
+The `-module` lines are generated:
+
+    python3 tools/dv/run_dv.py --dut smc --items smoke      # any build
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_scope.py
+
+VCS warns `VCM-HFUFF` once per listed unit the current elaboration did not
+instantiate; that is the list being a superset of one build, not an error.
 
 ### `../verilator/smc_cov_scope.vlt`
 
@@ -94,13 +95,9 @@ denominator. Patterns that do nothing are not carried in the scope file:
 config that looks like scope and does nothing is worse than a documented gap.
 
 The SYS_OUT responder is the shared VIP slave agent, class code with no RTL to
-score; only its interface instance and struct bridge sit in the TB body. The
-VCS `.hier` file has no equivalent gap for the blocks it names by instance.
-
-The `hw/ip/**` and `hw/common/**` exclusion has no `.hier` equivalent either:
-VCS scopes by instance tree and those blocks are instantiated in dozens of
-places, so the commercial number still includes them until the `.hier` file
-names each tree.
+score; only its interface instance and struct bridge sit in the TB body. VCS
+has no equivalent gap: `-module` names every unit regardless of where its
+source file ends.
 
 ## Verilator glob matching
 
@@ -123,9 +120,10 @@ model, not by the build passing.
 
 ## VCS bring-up checklist
 
-On a VCS run check that: the compile accepts `-lca -cm_common_hier`; the
-`-tree` paths in `smc_cov_scope.hier` resolve (instance names move when RTL is
-refactored, and VCS accepts a stale scope file silently); and `u_dut` matches
+On a VCS run check that: the compile accepts `-lca -cm_common_hier`; 
+`gen_smc_cov_scope.py --check` passes (a unit added to a vendored tree since
+the file was generated would otherwise be graded, and VCS accepts a stale
+scope file silently); and `u_dut` matches
 `smc_uvm_top` in every column, which is what shows assertions were scoped too.
 
 ## VCS scope behaviour
