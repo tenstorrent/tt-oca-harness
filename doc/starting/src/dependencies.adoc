@@ -47,7 +47,7 @@ run `make uv-sync` or `uv sync` from the repository root.
 * *GnuMake*: Version 4.4.1
 * *Bender*: Version 0.32.0 - Used to manage Vendor RTL and code
 * *Slang*: Version 9.1+
-* *Yosys*: Version 0.60+
+* *Yosys*: Version 0.68+
 ** *SV-Elab*: Version 2026-08-30+ (formerly yosys-slang)
 * *GCC*: Version 15.3.0+ recommended
 * *CCache*: Version 4.12.3+

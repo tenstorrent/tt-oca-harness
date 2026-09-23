@@ -285,6 +285,7 @@ build_image() {
   if [[ -n "$DOCKER_CACHE_DIR" ]]; then
     image_location="$(image_cache_tar)"
   else
+    mkdir -p local
     image_location="local/nix-container-image.tar.gz"
   fi
   nixos_run "nix build \$(pwd)#dockerContainers.x86_64-linux.$flake_output &&
@@ -564,7 +565,7 @@ doc_html_all() {
 doc_pdf() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-  run_image "$IMAGE" env \
+  run env \
     OCAH_DOC_REGEN_REGS=0 \
     OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
     make "$pdf_target"
