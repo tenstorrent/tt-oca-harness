@@ -1515,6 +1515,8 @@ module smc_uvm_top
     `define SMC_HART0_CSR u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
     assign tb_cpu_core_reset_n = u_dut.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
     assign tb_cpu_trace_valid  = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign tb_cpu_trace_valid_unmasked = `SMC_HART0_CSR.io_trace_0_valid;
+    assign tb_cpu_trace_pc_unmasked    = `SMC_HART0_CSR.io_trace_0_iaddr;
     assign tb_cpu_trace_pc     = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_iaddr : '0;
     assign tb_cpu_trace_insn   = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_insn : '0;
     assign tb_cpu_trace_exc    = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_exception : 1'b0;

@@ -2,6 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_003 ANCHOR: smc_cg_dft_reset_bringup_test
+
+Two clock-gating bring-up properties on the DMA and Zeroer gaters:
+
+* ``test_en_i`` bypass: with gating programmed on and both blocks idle the
+  gaters take the clocks away; ``test_en_i`` = 1 gives them back every cycle;
+  ``test_en_i`` = 0 with gating re-programmed takes them away again (A-B-A).
+* Zeroer clocks under the primary reset: while ``rst_primary_smc_clk_n`` is
+  asserted the Zeroer's gated clocks run every cycle. The cold reset also
+  returns ``CLOCK_GATE_CONTROL`` to its generated reset, where the Zeroer
+  enable is 0, and the leaf samples and records that enable inside the
+  window. An enabled gate held in reset is therefore not reachable from the
+  frontdoor on this bench, and the leaf does not claim that case: the claim
+  is the free-running clock under reset with the enable at its reset value.
 """
 
 from __future__ import annotations
@@ -37,8 +50,8 @@ CG_HYST_MASK = _addr.CG_HYST_MASK
 
 
 class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
-    """LIVE/CONNECTIVITY DFT test_en_i bypass (DMA+Zeroer) and Zeroer reset-override
-    free-running (SMCCGP0_003)."""
+    """LIVE/CONNECTIVITY DFT test_en_i bypass (DMA+Zeroer) and Zeroer clocks free-running
+    under the primary reset with the gating enable at its reset value (SMCCGP0_003)."""
 
     def __init__(self, name: str = "smc_cg_dft_reset_bringup_test_seq") -> None:
         super().__init__(name)
@@ -214,10 +227,13 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         )
         cg.mark_fence(self.fence, "dft-bypass-free-run-observed")
 
-        # ---- S3: deassert test_en_i; assert rst_ni (reset held); gating still enabled ----
+        # ---- S3: deassert test_en_i; assert the cold reset (reset held). The
+        # reset returns CLOCK_GATE_CONTROL to its generated reset (enables 0),
+        # so the window below observes a reset-cleared gate, and says so. ----
         cg.log_step(
             "S3",
-            "deassert test_en_i; assert rst_ni (reset held); gating still enabled",
+            "deassert test_en_i; assert rst_ni (reset held); CLOCK_GATE_CONTROL returns to its "
+            "reset, Zeroer gating enable 0",
         )
         dut.tb_test_en_i.value = 0
         await self._reset_op(SmcResetOp.COLD_RST_LO)
@@ -234,19 +250,28 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
             "sample zeroer_axi_gated_clk / zeroer_reg_gated_clk for a fixed window with "
             "rst_ni asserted",
         )
+        cg_en_before = int(dut.tb_zeroer_cg_en.value)
         zaxi_rst_edges, zreg_rst_edges = await cg.count_enabled_pair_at_smc_rise(
             dut,
             "tb_zeroer_gated_axi_clk",
             "tb_zeroer_gated_reg_clk",
             IDLE_OBSERVE,
         )
+        cg_en_after = int(dut.tb_zeroer_cg_en.value)
         assert zaxi_rst_edges == IDLE_OBSERVE, (
-            f"Zeroer axi_clk gated under rst_ni override: edges={zaxi_rst_edges} "
+            f"Zeroer axi_clk gated under the primary reset: edges={zaxi_rst_edges} "
             f"window={IDLE_OBSERVE}"
         )
         assert zreg_rst_edges == IDLE_OBSERVE, (
-            f"Zeroer reg_clk gated under rst_ni override: edges={zreg_rst_edges} "
+            f"Zeroer reg_clk gated under the primary reset: edges={zreg_rst_edges} "
             f"window={IDLE_OBSERVE}"
+        )
+        # The register reset is what the token records: the enable is 0 across
+        # the window, so this is a reset-cleared gate running free, not an
+        # enabled gate being overridden.
+        assert cg_en_before == 0 and cg_en_after == 0, (
+            f"tb_zeroer_cg_en={cg_en_before}/{cg_en_after} across the reset window; the cold "
+            f"reset was expected to return CLOCK_GATE_CONTROL to its reset (enable 0)"
         )
         rst_every = int(zaxi_rst_edges == IDLE_OBSERVE and zreg_rst_edges == IDLE_OBSERVE)
         cg.emit_chk(
@@ -254,7 +279,10 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
             "CHK-RESET-OVERRIDE-FREE-RUN",
             "CHK-RESET-OVERRIDE-FREE-RUN: toggles_every_cycle="
             f"{rst_every} zeroer_axi_edges={zaxi_rst_edges} "
-            f"zeroer_reg_edges={zreg_rst_edges} window={IDLE_OBSERVE} rst_primary_smc_clk_n=0",
+            f"zeroer_reg_edges={zreg_rst_edges} window={IDLE_OBSERVE} rst_primary_smc_clk_n=0 "
+            f"zeroer_cg_en={cg_en_before}->{cg_en_after} (CLOCK_GATE_CONTROL at its reset: the "
+            "clocks run free under reset with the gate disabled; an enabled gate held in reset is "
+            "not reachable from the frontdoor and is not claimed)",
         )
         cg.mark_fence(self.fence, "reset-override-free-run-observed")
 
