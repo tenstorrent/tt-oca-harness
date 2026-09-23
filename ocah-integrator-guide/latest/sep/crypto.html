@@ -378,8 +378,8 @@ bit cannot discard another.</p>
 <p>The crypto complex uses whole-instance Class 2 scan boundaries so all
 sequential key, round-key, digest-working, seed, and random-distribution state
 is covered without per-register marking. The marked roots in <code>sep_crypto</code> are
-<code>hmac_wrapper_s3c_scan</code>, <code>sep_crypto_otbn_wrapper_s3c_scan</code>,
-<code>aes_wrapper_s3c_scan</code>, <code>kmac_wrapper_s3c_scan</code>,
+<code>u_hmac_wrapper_s3c_scan</code>, <code>u_sep_crypto_otbn_wrapper_s3c_scan</code>,
+<code>u_aes_wrapper_s3c_scan</code>, <code>u_kmac_wrapper_s3c_scan</code>,
 <code>u_sep_crypto_abr_wrapper_s3c_scan</code>, <code>u_entropy_source_s3c_scan</code>,
 <code>u_drbg_s3c_scan</code>, <code>u_axis_edn_crypto_s3c_scan</code>, and
 <code>u_key_manager_s3c_scan</code>. The integration module itself, public bus

@@ -343,7 +343,7 @@ passthrough itself is unaffected.</p>
 <p>The Class 2 entropy boundary starts at
 <code>u_trng_wrapper_s3c_scan</code>, whose sequencer, 128-bit release stage, and stream
 FIFOs retain seed material. Its vendor core remains covered by its delivered
-DFT view. In <code>sep_crypto.u_sep_trng</code>, <code>u_entropy_source_s3c_scan</code> covers the
+DFT view. In <code>u_sep_crypto.u_sep_trng</code>, <code>u_entropy_source_s3c_scan</code> covers the
 entropy FIFO and SHA-256 whitener, <code>u_drbg_s3c_scan</code> covers CSRNG/EDN and endpoint state,
 and <code>u_axis_edn_crypto_s3c_scan</code> covers staging outside the DRBG root. The
 combinational source-selection muxes are not scan assets.</p>
