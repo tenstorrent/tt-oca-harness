@@ -261,7 +261,7 @@ synchronous and crosses no domains.
 
 All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
 units; the authoritative `cpu_interrupts_o` map; PLIC/CLINT register
-documentation; and BEU NMI delivery—is documented in
+documentation; and BEU direct interrupt delivery—is documented in
 ifdef::backend-html5[]
 xref:smc:interrupts.adoc#interrupts[Interrupts].
 endif::backend-html5[]

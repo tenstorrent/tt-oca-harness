@@ -13,7 +13,7 @@ interrupt routing and priority handling.
 
 This chapter is the single place for interrupt **address maps**, the
 **`cpu_interrupts_o` vector**, **PLIC/CLINT register** includes, and **bus
-error (NMI)** behavior.
+error** behavior.
 
 == Interrupt controllers (MMIO)
 
@@ -54,11 +54,17 @@ additional globals (for example per-core Chipyard watchdog timers at indices
 
 === Bus Error Unit interrupts
 
-The Bus Error Units (BEU) provide per-core bus error monitoring. Unlike
-other interrupt sources, BEU interrupts bypass the PLIC and connect
-directly to each CPU core's interrupt input as a non-maskable interrupt
-(NMI-like behavior). This ensures immediate notification of bus errors
-regardless of PLIC configuration or interrupt masking.
+Each Bus Error Unit (BEU) accumulates error events for one core. The register
+named `ACCRUED_ENABLE` is sticky status, not an enable mask: events set its bits
+independently of `ENABLE`. Ordinary writes replace those bits; write zero to
+clear them. `ENABLE` instead gates capture of the first error's `CAUSE` and
+`PHYS_ADDR` while `CAUSE` is zero. Software can also write `PHYS_ADDR`.
+
+`LOCAL_ENABLE` selects accrued errors for direct delivery to the core, bypassing
+the PLIC and the ordinary per-source `mie` bits. This is not an unconditionally
+non-maskable interrupt: in machine mode, `mstatus.MIE = 0` suppresses delivery.
+The machine interrupt is enabled while executing in lower privilege modes.
+The BEU also has a separate output selected by `PLIC_ENABLE`.
 
 For the raw `cpu_interrupts_o` bit map traced back to the SMC RTL,
 including the distinction between raw vector bits and PLIC source IDs,
@@ -446,7 +452,7 @@ external intervention
 
 |Bus Error Detection Units |0xC801_0000 + (N × 0x1000), 4 per-core AXI
 monitoring instances, direct to cores (not PLIC) |Bus infrastructure integrity monitoring and fault
-isolation |Immediate fault reporting as NMI-like interrupt
+isolation |Direct core delivery, subject to machine-mode global interrupt masking
 |=======================================================================
 
 ifdef::backend-html5[]
