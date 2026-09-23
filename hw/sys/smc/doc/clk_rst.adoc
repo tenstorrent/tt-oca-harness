@@ -302,7 +302,7 @@ include::partial$smc/regs/gen/html/blocks/reset_unit.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/reset_unit.adoc[]
+include::../regs/gen/adoc/blocks/reset_unit.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 == Clock and Reset-Based Power Management Integration

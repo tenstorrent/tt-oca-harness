@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= KMAC-SHA3
+:description: SEP KMAC-SHA3 integration, entropy interface, and Key Manager key delivery.
+
+[[kmac-sha3]]
+
+The module is based on the
+https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC] design.
+
+[[och-modifications-3]]
+== OCAH Modifications
+
+* AXI4-lite key bus slave interface replaces side loading interface
+* AXI4-lite control/status bus slave interface
+
+The KMAC host path uses the same conversion and isolation sequence as AES. The
+address path subtracts the KMAC base address and masks to a 12-bit window
+(4 KB) before the `axi_to_axi_lite` stage, aligning the internal decoder with
+the OpenTitan register block. `kmac_wrapper` bridges the isolated AXI-Lite path
+to TL-UL. EDN is handled identically to AES: KMAC is one of the four clients
+arbitrated by `u_axis_edn_crypto_s3c_scan` (the shared
+`drbg_axis_edn_adapter`), served from the same post-CSRNG DRBG AXI-Stream feed.
+The `app_i` application interface is tied off since the SEP does not use the
+KMAC hardware application path. Life-cycle escalation is inactive. KMAC
+ifdef::backend-html5[]
+occupies alert indices `[6:5]` in xref:sep:crypto.adoc#sep-crypto-alert-policy[OpenTitan Alert Termination] and exports three
+endif::backend-html5[]
+ifdef::backend-pdf[]
+occupies alert indices `[6:5]` in <<sep-crypto-alert-policy>> and exports three
+endif::backend-pdf[]
+interrupts: `done`, `fifo_empty`, and `err`.
+
+The Key Manager delivers a 256-bit KMAC key as eight words per share, in the
+ifdef::backend-html5[]
+format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]. Software shall set `CFG_SHADOWED.sideload`
+endif::backend-html5[]
+ifdef::backend-pdf[]
+format given in <<km-key-delivery>>. Software shall set `CFG_SHADOWED.sideload`
+endif::backend-pdf[]
+to select the delivered key; while that bit is 0 the engine uses its software
+key registers. Unlike AES and HMAC, software does not declare a key length for
+a delivered key: the engine applies the delivered key's length automatically
+and ignores its key-length register for that operation. KMAC is also the only
+accelerator that fails loudly on a missing key -- beginning a keyed operation
+that uses the delivered key while `KEY_CTRL.KEY_VALID` is 0 raises an error
+instead of producing a digest.
+
+Consult the
+https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC
+documentation] for the authoritative core functionality of the IP. The
+ifdef::backend-html5[]
+register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+endif::backend-pdf[]

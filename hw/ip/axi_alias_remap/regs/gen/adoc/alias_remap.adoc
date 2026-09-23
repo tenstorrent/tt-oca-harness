@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-alias_remap]
+== Address Map: alias_remap
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | region_start | RW a| -
-| 0x8 | region_end | RW a| -
-| 0x10 | region_attrs | RW a| -
+| 0x0 | <<reg-{regmap-instance}-alias_remap-REGION-region_start,region_start>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-alias_remap-REGION-region_end,region_end>> | RW a| -
+| 0x10 | <<reg-{regmap-instance}-alias_remap-REGION-region_attrs,region_attrs>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-alias_remap-REGION-region_start]
+=== region_start
+
 [cols="1,3,1,1,6", options="header"]
-.region_start Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
@@ -19,8 +25,10 @@
 | 11:0 | `Reserved` | - | - a| Reserved
 |===
 
+[#reg-{regmap-instance}-alias_remap-REGION-region_end]
+=== region_end
+
 [cols="1,3,1,1,6", options="header"]
-.region_end Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
@@ -28,8 +36,10 @@
 | 11:0 | `Reserved` | - | - a| Reserved
 |===
 
+[#reg-{regmap-instance}-alias_remap-REGION-region_attrs]
+=== region_attrs
+
 [cols="1,3,1,1,6", options="header"]
-.region_attrs Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63 | `valid` | RW | 0x0 a| If set, this remap will be active

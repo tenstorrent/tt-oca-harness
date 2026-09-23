@@ -31,8 +31,8 @@ ifdef::backend-html5[]
 * xref:interrupts.adoc[Interrupts] -- PIC assignments and non-PIC interrupt paths.
 * xref:crypto.adoc[Cryptographic Subsystem] -- cryptographic accelerators,
   entropy, and key management.
-* xref:periphs.adoc[Fuse Controller and Peripherals] -- OTP, SPI, watchdog, and
-  reset control.
+* xref:periphs.adoc[Fuse Controller and Lifecycle Controller] -- OTP, lifecycle
+  and security control, SPI, watchdog, and reset control.
 
 == Security Control
 

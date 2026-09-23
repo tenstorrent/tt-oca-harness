@@ -252,6 +252,7 @@ module sep_crypto #(
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_req;
   drbg_pkg::drbg_axis_rsp_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_rsp;
   logic trng_reset_active;
+  logic [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_endpoint_rst_n;
 
   // Muxed AXI-Stream outputs (one per mux)
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] entropy_muxed_req;
@@ -571,11 +572,15 @@ module sep_crypto #(
   // (2) Terminate the KM's private ABR key bus with DECERR. The key CSR block
   //     now lives inside the CALIPTRA-only wrapper, so there is no OKAY
   //     responder here; use an AXI4-Lite err-slave (mirrors u_abr_axi_err_slv).
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH (km_intf_pkg::KM_AXI_DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH (km_intf_pkg::KM_AXI_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (km_intf_pkg::KM_AXI_DATA_WIDTH),
     .axil_req_t     (km_intf_pkg::km_axil_req_t),
-    .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
+    .axil_resp_t    (km_intf_pkg::km_axil_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (km_intf_pkg::KM_AXI_DATA_WIDTH),
+    .RESP_DATA      (32'hBADCAB1E),
+    .MAX_TRANS      (1)
   ) u_abr_key_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
@@ -878,17 +883,22 @@ module sep_crypto #(
   // These post-mux adapters also serve the external source, so they remain in
   // the POR reset domain. An internal-TRNG reset synchronously clears buffered
   // entropy and handshake state without exporting a generated reset domain.
+  // Client resets cancel only their own endpoint. OTBN owns both RND and URND.
+  assign crypto_edn_endpoint_rst_n = {
+    gated_rst_ni.otbn, gated_rst_ni.otbn, gated_rst_ni.kmac, gated_rst_ni.aes
+  };
 
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT)
   ) u_axis_edn_crypto_s3c_scan (
-    .clk_i      (clk_i),
-    .rst_ni     (rst_ni),
-    .clear_i    (trng_reset_active),
-    .axis_req_i (entropy_muxed_req[1]),
-    .axis_rsp_o (entropy_muxed_rsp[1]),
-    .edn_req_i  (crypto_edn_req),
-    .edn_rsp_o  (crypto_edn_rsp)
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .endpoint_rst_ni (crypto_edn_endpoint_rst_n),
+    .clear_i         (trng_reset_active),
+    .axis_req_i      (entropy_muxed_req[1]),
+    .axis_rsp_o      (entropy_muxed_rsp[1]),
+    .edn_req_i       (crypto_edn_req),
+    .edn_rsp_o       (crypto_edn_rsp)
   );
 
   //=========================================================================
@@ -905,13 +915,14 @@ module sep_crypto #(
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT)
   ) u_axis_edn_pool_s3c_scan (
-    .clk_i      (clk_i),
-    .rst_ni     (rst_ni),
-    .clear_i    (trng_reset_active),
-    .axis_req_i (entropy_muxed_req[2]),
-    .axis_rsp_o (entropy_muxed_rsp[2]),
-    .edn_req_i  (pool_edn_req),
-    .edn_rsp_o  (pool_edn_rsp)
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .endpoint_rst_ni ({sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT{rst_ni}}),
+    .clear_i         (trng_reset_active),
+    .axis_req_i      (entropy_muxed_req[2]),
+    .axis_rsp_o      (entropy_muxed_rsp[2]),
+    .edn_req_i       (pool_edn_req),
+    .edn_rsp_o       (pool_edn_rsp)
   );
 
   //=========================================================================

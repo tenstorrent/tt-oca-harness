@@ -39,7 +39,7 @@ include::smc:partial$smc/regs/gen/html/blocks/smc_efuse_map.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc[]
+include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === MMR Registers
@@ -54,7 +54,7 @@ include::partial$efuse/regs/gen/html/efuse_mmr.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/efuse_mmr.adoc[]
+include::../regs/gen/adoc/efuse_mmr.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === eFuse Control Registers
@@ -72,7 +72,7 @@ include::partial$efuse/regs/gen/html/efuse_interface_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/efuse_interface_ctrl.adoc[]
+include::../regs/gen/adoc/efuse_interface_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === SHIM Control Registers
@@ -89,5 +89,5 @@ include::partial$efuse/dv/models/regs/gen/html/efuse_shim_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../dv/models/regs/gen/adoc/efuse_shim_ctrl.adoc[]
+include::../dv/models/regs/gen/adoc/efuse_shim_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]

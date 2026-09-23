@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# DTP VCS coverage policy: the signoff thresholds of DTP_FCOV.adoc, graded over
+# DTP VCS coverage policy: the coverage thresholds of DTP_FCOV.adoc, graded over
 # the database that `dtp_cov_scope.hier` scopes at compile time (`[coverage.vcs]`
 # in dtp_sim_cfg.toml). URG hands the runner family totals and no per-point
 # list, so this file carries no [[holes]] and every rule grades its family
@@ -15,11 +15,11 @@ schema_version = 1
 dut = "dtp"
 scope_epoch = "dtp-vcs-cov-v1"
 
-# The code-coverage points a formal unreachability analysis over the qualification
-# regression's merged database proves no stimulus reaches in the bench's environment;
-# URG applies it at report time and applies no entry whose scope checksum differs from the
-# reported design. The digest pins the reviewed file: a regenerated list takes a new review.
-# Generated from the three-seed baseline at fc7eb2c6a on 2026-09-22.
+# The code-coverage points a formal unreachability analysis over the `all`
+# regression's merged coverage database proves no stimulus reaches in the
+# bench's environment; URG applies it at report time and applies no entry whose
+# scope checksum differs from the reported design. The digest pins the file: a
+# regenerated list takes a new entry.
 [[native_files]]
 tool = "vcs"
 role = "unreachable"

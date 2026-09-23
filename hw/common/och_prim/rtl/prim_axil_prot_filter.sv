@@ -104,11 +104,15 @@ module prim_axil_prot_filter #(
   );
 
   // Connect demuxed port [0] to AXI-Lite error slave
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH(DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH(ADDR_WIDTH),
+    .AXI_DATA_WIDTH(DATA_WIDTH),
     .axil_req_t(axil_req_t),
-    .axil_resp_t(axil_resp_t)
+    .axil_resp_t(axil_resp_t),
+    .RESP(axi_pkg::RESP_DECERR),
+    .RESP_WIDTH(DATA_WIDTH),
+    .RESP_DATA(DATA_WIDTH'('hBADCAB1E)),
+    .MAX_TRANS(1)
   ) u_filter_err_slv (
     .clk_i(clk_i),
     .rst_ni(rst_ni),

@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-wdt]
+== Address Map: wdt
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | CTRL | RW a| KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
-| 0x8 | COUNT | RW a| -
-| 0x10 | SCALED_COUNT | RW a| -
-| 0x18 | FEED | RW a| -
-| 0x1C | KEY | RW a| -
-| 0x20 | CMP | RW a| -
+| 0x0 | <<reg-{regmap-instance}-wdt-CTRL,CTRL>> | RW a| KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
+| 0x8 | <<reg-{regmap-instance}-wdt-COUNT,COUNT>> | RW a| -
+| 0x10 | <<reg-{regmap-instance}-wdt-SCALED_COUNT,SCALED_COUNT>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-wdt-FEED,FEED>> | RW a| -
+| 0x1C | <<reg-{regmap-instance}-wdt-KEY,KEY>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-wdt-CMP,CMP>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-wdt-CTRL]
+=== CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:29 | `rsvd3` | R | 0x0 a| Reserved
@@ -29,8 +35,10 @@
 | 3:0 | `wdogscale` | RW | 0x0 a| WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value
 |===
 
+[#reg-{regmap-instance}-wdt-COUNT]
+=== COUNT
+
 [cols="1,3,1,1,6", options="header"]
-.COUNT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `Reserved` | - | - a| Reserved
@@ -38,8 +46,10 @@
 KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
 |===
 
+[#reg-{regmap-instance}-wdt-SCALED_COUNT]
+=== SCALED_COUNT
+
 [cols="1,3,1,1,6", options="header"]
-.SCALED_COUNT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
@@ -47,24 +57,30 @@ KEY reg must be written to before any other register in this addrmap can be writ
 KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
 |===
 
+[#reg-{regmap-instance}-wdt-FEED]
+=== FEED
+
 [cols="1,3,1,1,6", options="header"]
-.FEED Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `wdogfeed` | RW | 0x0 a| Feed register. Writing 0xD09F00D will reset the counter value back to 0.
 KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
 |===
 
+[#reg-{regmap-instance}-wdt-KEY]
+=== KEY
+
 [cols="1,3,1,1,6", options="header"]
-.KEY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `wdogkey` | RW | 0x0 a| Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
 is unlocked, 0 otherwise.
 |===
 
+[#reg-{regmap-instance}-wdt-CMP]
+=== CMP
+
 [cols="1,3,1,1,6", options="header"]
-.CMP Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
