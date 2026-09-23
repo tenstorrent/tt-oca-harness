@@ -207,7 +207,7 @@ for the field:
 |Bits |Function |Encoding
 |`lock[0]` |Read |`0` = readable, `1` = read-locked
 |`lock[2:1]` |Write |`00` = unlocked, `10` = set-only (1's may be added, never cleared), `11` = write-locked
-|`lock[3]` |Secure test mode |`0` = unrestricted, `1` = access requires secure test mode
+|`lock[3]` |Secure-test write lock |`1` adds a shadow write lock while secure test mode is active; `0` adds no such lock. Other locks still apply.
 |=====================================================================================
 
 === Hardware vs. Software Locks

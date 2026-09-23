@@ -197,7 +197,7 @@ endif::backend-html5[]
 
 |`is_efuse_req_err_o` |Output |1 |A request was blocked/errored by the eFuse guard
 
-|`is_secure_tm_blocked_o` |Output |1 |Access blocked because secure test mode is not active
+|`is_secure_tm_blocked_o` |Output |1 |Fuse traffic blocked while secure test mode is active
 
 |`is_rma_sip_token_match_debug` |Output |6 |RMA SiP token match status code
 
