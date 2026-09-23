@@ -151,9 +151,10 @@ case "$(basename "$PRODUCT")" in
 trm)
   mkdir -p "$MOD/aou/partials/pdf"
   for page in overview architecture interrupts-errors ppa-appendices; do
-    cp -f "$AOU_DOC/$page.adoc" "$MOD/aou/partials/"
+    sed -E 's/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
+      >"$MOD/aou/partials/$page.adoc"
     # The PDF inherits book numbering instead of the standalone specification's numbers.
-    sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /' "$AOU_DOC/$page.adoc" \
+    sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /; s/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
       >"$MOD/aou/partials/pdf/$page.adoc"
   done
   # The web appendices have separate pages; the PDF keeps the complete section.

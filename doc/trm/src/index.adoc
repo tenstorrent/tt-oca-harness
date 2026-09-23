@@ -6,6 +6,9 @@
 :sectanchors:
 :sectlinks:
 :sectnums:
+:sectnumlevels: 9
+:xrefstyle: short
+:block-catalog:
 :source-highlighter: highlight.js
 :revnumber: 0.5.33
 :revdate: 2026-09-11
@@ -25,13 +28,20 @@ System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 
 This manual is the architecture and register-level reference for those
 blocks. Motivation, use cases, and the OCA-layer feature overview are on
+ifdef::backend-html5[]
 xref:ocah-home::index.adoc[Home].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/index.html[the OCAH documentation home page].
+endif::backend-pdf[]
 
 ifdef::backend-html5[]
 == Documentation Overview
 
 This documentation is organized into the following sections:
 
+* xref:list-of-figures.adoc[List of Figures]
+* xref:list-of-tables.adoc[List of Tables]
 ifndef::release[]
 * xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
@@ -55,6 +65,15 @@ endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: ../assets
+
+[[list-of-figures]]
+[preface]
+== List of Figures
+
+[[list-of-tables]]
+[preface]
+== List of Tables
+
 ifndef::release[]
 include::revision.adoc[leveloffset=+1]
 endif::release[]

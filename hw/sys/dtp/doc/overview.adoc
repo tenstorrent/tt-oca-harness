@@ -18,9 +18,7 @@ The figure uses blue borders and connectors for JTAG/JIU paths (including
 instruction decode and selection signals), red for CTN paths, grey for pad I/O,
 and gold-dashed for the `jtag_clock_stop` control signal from PTAP to the
 clock-stop aggregator. Arrowheads indicate direction; solid arrows show primary
-paths and dashed arrows show return, selection, or control paths. JTAG scan-in
-and scan-out, AXI-Lite requests and responses, and CTP pad outputs and inputs
-each use separate arrows.
+paths and dashed arrows show return, selection, or control paths.
 
 == JTAG Interface Unit
 
