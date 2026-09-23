@@ -1,34 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary address blank, backup address serves the boot (PyUVM).
+"""Primary SPI slot blank, backup slot serves the boot (PyUVM).
 
-STIMULUS. The primary slot's whole flash span is erased to 0xFF and the backup is
-left untouched, so one device answers at both addresses but only the backup holds a
-boot slot. Erasing the SPAN rather than just the 1184-byte header matters: a slot's
-payload is fetched at a manifest-relative offset (``manifest_load.c``), so
-leaving the primary payload would leave a half-populated address.
-
-The backup boots standalone because both slots carry ``payload_offset = 0x1000``
-and the ROM resolves it as ``src_addr + payload_offset``
-(``manifest_load.c``), so the backup at 0x41000 fetches its payload from
-0x42000.
-
-This ROM has no SPI detect/retry status -- ``SEP_MSG_SPI_TRY_BACKUP``
-(``include/status_values.h``) is referenced nowhere in the repo -- and no device
-probe in ``src/sep_ot_spi.c``. So "no-detect" is per-address blankness, and
-the failover is asserted as the ordered pair ``MANIFEST_ERR=0x00030002`` then
-``MANIFEST_SRC=0x00041000``, which pins both the reason and the destination.
-
-``"SPI init failed, using backup manifest"`` is forbidden because that is the
-``spi_status`` skip path (``manifest_load.c``), which reaches the backup
-because the CONTROLLER died. Without that forbid, a broken-controller run would
-look like a passing address failover -- the most likely false pass here.
-
-Order is asserted on both the console and the device log, not mere presence. Slot
-identity is asserted on ``MANIFEST_SRC=`` and device addresses, never on the
-``MANIFEST_PRIMARY`` / ``MANIFEST_BACKUP`` label: the ROM derives the label from the
-retry counter but the offset from the possibly-rotated slot index
-(``manifest_load.c``), so under ``rotate_update`` they disagree.
+Erases the whole primary slot span and checks that the ROM rejects it, fails over
+to the backup address and boots; order is checked on the console and the flash log.
 """
 
 from __future__ import annotations
@@ -39,19 +14,18 @@ from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# manifest.h. An erased slot fails the identifier check in
-# validate_manifest_header (manifest_load.c), which runs before the hash
-# check, so the verdict is deterministically BAD_MAGIC.
+# An erased slot fails the identifier check before the hash check, so the code is BAD_MAGIC.
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 
 _SPI_INIT_OK = "SPI_INIT_OK"
 _SPI_INIT_ERR = "SPI_INIT_ERR="
+# Identify slots by MANIFEST_SRC: under rotate_update the PRIMARY/BACKUP label can disagree.
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _PRIMARY_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_MAGIC:08x}"
 _MANIFEST_OK = "MANIFEST_OK"
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
-# Controller-failure route to the backup; see the docstring.
+# Controller-failure route to the backup, which would otherwise look like a failover.
 _SPI_INIT_FAILED_SKIP = "SPI init failed, using backup manifest"
 
 
@@ -68,8 +42,7 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         start, end = mm.erase_slot(buf, "primary")
-        # Self-check both halves: a changed slot layout would otherwise erase the
-        # wrong bytes, or a damaged backup would fail for an unintended reason.
+        # A changed slot layout would erase the wrong bytes or break the backup.
         assert mm.slot_is_erased(buf, "primary"), (
             "primary slot is not fully erased after erase_slot()"
         )
@@ -95,13 +68,11 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
                     return i
             return -1
 
-        # --- console ordering ------------------------------------------------
         i_psrc = index_of(_PRIMARY_SRC)
         i_perr = index_of(_PRIMARY_ERR)
         i_bsrc = index_of(_BACKUP_SRC)
         i_ok = index_of(_MANIFEST_OK)
-        # Presence is already guaranteed by required_markers; these are the
-        # sequence claims, which that mechanism cannot express.
+        # Order only: required_markers gives presence; index_of() returns -1 when absent.
         assert i_psrc < i_perr < i_bsrc < i_ok, (
             f"failover sequence is out of order: {_PRIMARY_SRC}@{i_psrc} -> "
             f"{_PRIMARY_ERR}@{i_perr} -> {_BACKUP_SRC}@{i_bsrc} -> "
@@ -113,26 +84,18 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
             i_psrc, i_perr, i_bsrc, i_ok,
         )
 
-        # --- device evidence -------------------------------------------------
         rds = ev.reads(txns)
         assert rds, (
             f"flash BFM served no read transactions; nothing was fetched over SPI. "
             f"All {len(txns)} transactions: {[hex(t['opcode']) for t in txns]}"
         )
 
-        # CHK-PRIMARY-BLANK: the device was addressed at the primary slot and
-        # answered blank. This is the "no-detect" half of the stimulus, measured at
-        # the device rather than inferred from the ROM's complaint.
         p_hit = ev.covering_read(rds, mm.PRIMARY_MANIFEST_OFFSET)
         assert p_hit is not None, (
             f"no SPI read covered 0x{mm.PRIMARY_MANIFEST_OFFSET:x}: the ROM never "
             f"interrogated the primary address, so it did not fail over FROM it"
         )
         p_idx, p_txn = p_hit
-        # Every byte the device returned for this read, not just the 4 magic bytes:
-        # the ROM fetches the whole 1184-byte manifest here, so checking the lot
-        # makes the device-side claim ("this address is blank") as strong as the
-        # stimulus self-check already guarantees, instead of resting on it.
         p_all = bytes(p_txn["data_out"])
         assert ev.all_erased(p_all), (
             f"device returned non-erased bytes in the {len(p_all)}-byte read at "
@@ -141,7 +104,6 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
             f"blank, so the rejection came from something other than no-detect"
         )
 
-        # CHK-BACKUP-DETECT: the backup address answered with a real manifest.
         b_hit = ev.covering_read(rds, mm.BACKUP_MANIFEST_OFFSET)
         assert b_hit is not None, (
             f"no SPI read covered 0x{mm.BACKUP_MANIFEST_OFFSET:x}: the ROM never "
@@ -154,8 +116,6 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
             f"expected {mm.MANIFEST_MAGIC!r}"
         )
 
-        # CHK-DEVICE-ORDER: the two addresses were interrogated in the failover
-        # order, per the device's own record. Independent of the console.
         assert p_idx < b_idx, (
             f"device served the backup address (read[{b_idx}]) before the primary "
             f"(read[{p_idx}]): the transaction order is not a failover"

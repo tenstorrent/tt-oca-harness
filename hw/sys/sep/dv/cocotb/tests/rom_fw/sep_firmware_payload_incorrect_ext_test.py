@@ -2,37 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A randomly oversized EXT payload is refused; the backup boots.
 
-The randomized half of the over-capacity pair. Its sibling
-(``sep_firmware_payload_incorrect_ext_62kb_test``) pins the first whole KiB past
-the capacity, which is the value a bound that is one KiB too loose would let
-through; this member draws uniformly from 1 to 100 KiB past it, which is the
-reference's own range, so the same refusal has to arrive from a whole family of
-lengths rather than from the one value a bound off by a single KiB would admit.
-
-THE CAPACITY IS THIS DESIGN'S, NOT THE REFERENCE'S. The reference randomizes from
-its own 59.75 KiB usable EXT SRAM; here the base is the 252 KiB that
-:func:`sep_payload_size_base.ext_payload_capacity` derives from
-``OCH_SEP_TOP_SEP_SRAM_SIZE`` and the shipped ``payload_offset``. The
-distribution, the mutated field and the failover are the reference's.
-
-THE REFUSAL IS NOT THE REFERENCE'S TOKEN. The reference expects ``WARNING:
-INVALID_ENCRYPTED_PAYLOAD_LENGTH``, which comes from its
-``payload_hashed_length != payload_length`` arm on an ENCRYPTED payload rather
-than from its capacity test; the fixed-value sibling's docstring sets out how that
-happens. This port aims at the capacity decision the matrix row names and forbids
-the hashed-length tokens.
-
-WHY THE ORDER OF CHECKS IS NOT A LOOPHOLE. Every length in this range breaks more
-than one of the ROM's bounds: the SRAM capacity, the flash slot span
-(``boot_flash.h``), and the staging destination's own capacity. Only the first is
-reached -- ``validate_manifest_header`` runs before the payload location and before
-staging -- so requiring ``MANIFEST_ERR=0x00030007`` exactly, and forbidding
-``PAYLOAD_LOC_OT_OOB``, ``PAYLOAD_NO_ROOM=`` and every other length token, is what
-keeps the verdict attributable to the capacity decision whichever value the seed
-drew.
-
-The seed is the runner's, so a failing draw is reproducible with the run's own
-``--seed``; the drawn value is logged as ``CHK-STIMULUS-PAYLOAD-SIZE``.
+The seed draws 1 to 100 KiB past the SEP SRAM capacity, and every draw must be
+refused with ``MANIFEST_ERR_PAYLOAD_TOO_LARGE`` before any other length bound.
 """
 
 from __future__ import annotations
@@ -43,7 +14,6 @@ from env.sep_seeded_rng import SepSeededRng
 from rom_fw import sep_payload_size_base as psb
 
 _CAPACITY = psb.ext_payload_capacity(psb.shipped_payload_offset("primary"))
-# The reference's range: capacity + 1..100 KiB.
 _EXCESS_KIB_MIN = 1
 _EXCESS_KIB_MAX = 100
 _REQUIRED, _FORBIDDEN = psb.refused_markers(psb.shipped_payload_bytes("backup"))

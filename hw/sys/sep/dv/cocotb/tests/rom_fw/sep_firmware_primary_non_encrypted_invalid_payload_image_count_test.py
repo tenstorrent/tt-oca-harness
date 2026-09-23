@@ -1,38 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary's PLAINTEXT payload declares an out-of-range image count; the backup boots.
+"""Primary's plaintext payload declares an out-of-range image count; the backup boots.
 
-``validate_manifest_payload`` (``bootrom/prod/src/manifest_load.c``) requires
-``0 < image_count <= 256`` and returns ``MANIFEST_ERR_TOC_COUNT`` (0x00030010)
-otherwise. The primary's rejection returns into ``rom_manifest_boot``'s retry
-loop, so the required outcome is a completed boot from the untouched backup.
-
-THE PAYLOAD IS NOT ENCRYPTED. This row loads ``secure_boot.bin``, whose slots both
-carry ``encrypted_payload = 0``, and the base asserts the flag on the loaded
-image.
-
-THE PLANTED VALUE. 257 -- one past the ``n > 256`` bound. The ``image_count == 0``
-half of the same arm is therefore not exercised by this row. See
-``sep_toc_defect.BAD_IMAGE_COUNT``.
-``TOC_REGION_OOB=`` -- the arm immediately after the count -- is forbidden, which
-asserts rather than assumes that the count bound ran first.
-
-SECURE BOOT STAYS ON. Under LC=PROD, ``secure_boot_enabled()``
-(``manifest_load.c``) enforces the chain regardless of the manifest flag: the base
-requires the primary's own ``RSA_VERIFY_START`` and ``SIG_VALID`` inside its
-attempt and ahead of its error, so the count rejection is
-provably downstream of a verified signature. ``SBOOT_OFF`` is forbidden.
-
-WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
-
-  * from the TOC-VERSION cell -- the error code, 0x00030010 against 0x00030006,
-    with the sibling code FORBIDDEN;
-  * from the ENCRYPTED cell -- ``DECRYPT_START`` must NEVER appear;
-  * from the BACKUP cell -- the rejection sits between the primary read and the
-    backup read, and the run ends in a completed boot;
-  * from all of them -- the device must be shown to have served the planted
-    little-endian bytes at this row's field address.
-
+The primary's TOC ``image_count`` is 257, one past the bound, so it fails TOC_COUNT.
 Needs ``+sep_crypto_edn_force``: both slots run a full RSA-3072 modexp on OTBN.
 """
 

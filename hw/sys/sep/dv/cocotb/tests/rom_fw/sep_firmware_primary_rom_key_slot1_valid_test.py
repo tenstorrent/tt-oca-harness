@@ -2,53 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary names ROM key slot 1 and boots -> proves a non-zero slot can verify.
 
-The slot-0 twin of this scenario is ``sep_firmware_primary_rom_key_valid_test``.
-Until ROM key slots 1-5 carried digests, slot 0 was the only slot that could
-verify anything, so every non-zero slot could only ever be tested as a REFUSAL
-(``ROM_KEY_EMPTY`` or ``KEY_REVOKED``). This testcase is what establishes that a
-non-zero slot reaches and passes the digest bind and the signature check.
-
-WHY THE STIMULUS NEEDS THREE WRITES, NOT ONE. The ROM binds the manifest's own
-modulus to the compiled-in digest for the selected slot
-(``check_pubkey_hash``), so pointing the selector at slot 1 while leaving the
-dev0 modulus in place would be refused at ``PUBK_HASH_MISMATCH`` -- which is a
-different verdict from the one under test. The manifest must therefore carry
-slot 1's modulus and be signed by slot 1's private key. All three writes, and the
-measurements that prove each one landed, are
-:func:`env.sep_rom_key_slots.bind_manifest_to_rom_slot`, shared with
-``sep_key_revocation_bitmap_random_test`` so one slot's binding and six slots'
-bindings cannot drift apart. The payload is untouched, so ``payload_hash`` and
-the TOC digests stay valid and are deliberately not recomputed.
-
-WHAT MAKES THIS MORE THAN "IT BOOTED". A boot that silently failed over, or one
-where key selection never ran, would also reach ``MANIFEST_OK``. Four channels
-are required and none of them is boot completion:
-
-  * ``PUBK_SEL=0x00000001`` -- the selector the ROM read. ``{index:4,
-    selection:3}`` (``manifest.h``) makes 0x0001 uniquely
-    "selection=PUBK_SEL_ROM_KEY, index=1", which also excludes the fuse-key arm
-    that shares ``check_pubkey_revoked``;
-  * ``PUBK_REVOKE=0x00000000`` -- the fuse word the revocation check read,
-    proving it ran and permitted slot 1 rather than being skipped;
-  * ``RSA_VERIFY_START`` then ``SIG_VALID`` then ``CRYPTO_VALIDATE_OK``, after
-    the selector echo -- slot 1's modulus reached the verifier and slot 1's
-    signature verified, which only happens once the index bound, the revocation
-    check and the digest bind have all passed;
-  * ``PUBK_HASH_MISMATCH`` and ``ROM_KEY_EMPTY`` forbidden -- the two verdicts a
-    ROM would produce if slot 1's digest were absent or did not match, i.e. the
-    exact near-misses that would otherwise let this testcase pass for the wrong
-    reason.
-
-THE DIGEST IS CROSS-CHECKED, NOT ASSUMED. The helper reads slot 1's digest out of
-``key_digests.c`` and asserts that ``SHA-256`` of the PEM's modulus reproduces it.
-A regenerated table or a swapped PEM therefore fails loudly at stimulus
-construction instead of turning into a ``PUBK_HASH_MISMATCH`` whose cause is
-unclear.
-
-SLOT 1 IS A TEST-ONLY KEY. Its private half is committed in the clear under
-``bootrom/prod/tools/test_signing_keys/`` and it is compiled into the ROM only
-under ``TEST_BUILD``; a release build leaves the slot NULL, where the same
-selector would be refused with ``ROM_KEY_EMPTY``.
+The manifest carries slot 1's modulus and is re-signed with slot 1's test key. That key
+exists only under ``TEST_BUILD``; a release ROM refuses slot 1 with ``ROM_KEY_EMPTY``.
 """
 
 from __future__ import annotations
@@ -100,9 +55,6 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         _LC_PROD, _PRIMARY_SRC, _PUBK_SEL_ECHO, _REVOKE_ECHO, _RSA_START,
         _SIG_VALID, _CRYPTO_OK, _BL1_COPIED, _BL1_JUMP,
     )
-    # Every rejecting arm of validate_signature plus the failover evidence. Any
-    # one of them would mean the boot completed in spite of a key-selection
-    # complaint, or from a slot this testcase did not select.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _SBOOT_OFF, _SBOOT_DIS_FUSE, _BACKUP_SRC, _ANY_MANIFEST_ERR, _ALL_FAILED,
         "BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL", "ROM_KEY_EMPTY",
@@ -110,7 +62,6 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         "RSA_VERIFY_FAIL", "CRYPTO_FAIL=",
     )
 
-    # --- stimulus ----------------------------------------------------------
     def build_efuse_image(self):
         assert _EFUSE_PRELOAD.is_file(), f"eFuse preload missing: {_EFUSE_PRELOAD}"
         image = self.select_efuse_image(default_preload=_EFUSE_PRELOAD)
@@ -143,10 +94,6 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         info = ks.bind_manifest_to_rom_slot(buf, "primary", _VALID_SLOT)
-        # The shipped primary selects ROM slot 0, so selecting slot 1 must move
-        # bytes inside the signed region. An unchanged TBS would mean the packer
-        # config already names slot 1 and this testcase is not the stimulus it
-        # claims to be.
         assert info["tbs_changed"], (
             f"selecting slot {_VALID_SLOT} left the TBS unchanged; the shipped "
             f"primary already selects it (configs/secure_boot_test.yaml)"
@@ -162,7 +109,6 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         self.logger.info("CHK-SPI-TXNS:\n%s",
                          ev.summarize(flash.get_transactions(), self._image_len))
 
-    # --- checks ------------------------------------------------------------
     def check_transport(self, console: list[str], flash) -> None:
         def index_of(marker: str) -> int:
             for i, line in enumerate(console):
@@ -177,17 +123,12 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         i_sig = index_of(_SIG_VALID)
         i_ok = index_of(_CRYPTO_OK)
 
-        # Presence alone says nothing about order, and order is the substance: the
-        # slot must be read, its selector echoed, the revocation bitmap consulted
-        # and only then the verifier driven.
         assert 0 <= i_psrc < i_sel < i_revoke < i_rsa < i_sig < i_ok, (
             f"key selection did not run on the primary in the architected order: "
             f"primary@{i_psrc} -> {_PUBK_SEL_ECHO}@{i_sel} -> {_REVOKE_ECHO}"
             f"@{i_revoke} -> {_RSA_START}@{i_rsa} -> {_SIG_VALID}@{i_sig} -> "
             f"{_CRYPTO_OK}@{i_ok}. Console: {console}"
         )
-        # The backup is never read in this scenario, so a second occurrence would
-        # mean a slot this testcase did not select also reached the verifier.
         for marker in (_PUBK_SEL_ECHO, _REVOKE_ECHO, _RSA_START, _SIG_VALID):
             n = sum(1 for line in console if marker in line)
             assert n == 1, (
@@ -201,7 +142,6 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
             i_rsa, _SIG_VALID, i_sig, _CRYPTO_OK, i_ok, _VALID_SLOT,
         )
 
-        # --- device evidence -------------------------------------------------
         txns = flash.get_transactions()
         rds = ev.reads(txns)
         assert rds, (
@@ -221,8 +161,7 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
             f"device returned {magic!r} at 0x{mm.PRIMARY_MANIFEST_OFFSET:x}, "
             f"expected {mm.MANIFEST_MAGIC!r}"
         )
-        # The channel the ROM cannot fake. A run whose primary was refused and
-        # whose backup booted would satisfy every console marker above.
+        # Console markers alone cannot tell a primary boot from a failover.
         backup_hits = ev.slot_read_indices(rds, "backup", self._image_len)
         assert not backup_hits, (
             f"device served {len(backup_hits)} read(s) inside the backup slot span "

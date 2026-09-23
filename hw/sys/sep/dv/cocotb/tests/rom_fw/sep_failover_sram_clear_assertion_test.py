@@ -2,97 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The SEP EXT SRAM is cleared between the primary failure and the backup fetch.
 
-WHAT THIS PROVES, AND WHAT IT DOES NOT. Read this before citing a green run.
-
-Two clears could belong in the window between "primary-fail status published" and
-"SPI re-init for backup": EXT SRAM and SMC SRAM. Only the first exists in this ROM.
-
-  * **EXT SRAM -- covered here, in full.** ``rom_manifest_boot()`` calls
-    ``clear_sram_region(SRAM_BASE, SRAM_SIZE)`` on the retry path in
-    ``manifest_load.c``, which zeroes the whole 256 KiB. It is compiled in
-    unconditionally. In ``boot_rom.dis`` it is the loop
-
-        lui  a4,0x10000        ; a4 = 0x1000_0000  = SRAM_BASE
-        lui  a3,0x10040        ; a3 = 0x1004_0000  = SRAM_BASE + SIZE
-        sw   zero,0(a4)
-        addi a4,a4,4
-        bne  a4,a3,<store>
-        jalr <ot_spi_reinit>   ; = boot_flash_reinit()
-
-    That instruction stream is also the proof of the ORDER: the store loop cannot
-    exit until the last word is written, and the SPI re-init call is the next
-    instruction after it. Nothing observable sits between them, so "cleared before
-    SPI re-init" is settled by the linked image; simulation settles "cleared, and
-    cleared entirely", which is what this test measures.
-
-  * **SMC SRAM -- NOT covered. The stimulus exists; the ROM branch that would
-    need the clear does not.** The clear is conditional on the payload actually
-    being staged in SMC SRAM, and what decides that is the USE_EXT bit in
-    ``flag_args``. The manifest side is fully implemented: the host-side packer
-    emits the bit (``tt-boot-manifest``), and every image this DV tree boots is
-    built with it CLEAR -- the three ``bootrom/prod/configs/*_test.yaml`` all set
-    ``use_ext_sram: 0``. The ROM side is not: ``FLAG_ARGS_BIT_USE_EXT_SRAM``
-    (``manifest.h``) is referenced nowhere under ``bootrom/prod/src/`` or
-    ``bootrom/prod/include/`` apart from that ``#define``, and the payload load in
-    ``manifest_load.c`` unconditionally targets ``dest + payload_offset`` with
-    ``dest == SRAM_BASE``.
-    THIS RUN OBSERVES THE DEVIATION rather than inferring it. The backup manifest
-    it boots logs ``flag_args=0x00000000`` (CHK-STIMULUS-SPI), i.e. USE_EXT clear,
-    so its payload belongs in SMC SRAM -- and the same run logs
-    ``COPY_SRC=0x10002000``, the payload staged in EXT SRAM. (``LOAD`` and
-    ``COPY_DST`` are 0xC0000000, BL1's ICCM destination, not the staging area.)
-    So the SMC-clear condition can be requested but never becomes true in the ROM,
-    and a testcase for it has nothing to assert against. Consistently with that, no
-    store loop anywhere in ``boot_rom.dis`` targets ``sep_get_smc_sram_base()``
-    (0x4006_0000) -- all six 0x40060 references are bounds checks, manifest-source
-    arithmetic, or the status ring. The condition is partition-limited for a
-    reason: the ROM's own status ring lives at 0x4006_0000 (``status_ring.c``; this
-    run logs ``ring buffer address: 0x40060000``), so a wholesale SMC SRAM clear
-    would destroy the ROM's own reporting channel.
-    Second, independent reason the window does not exist there: the only path whose
-    manifest comes from SMC SRAM runs ``num_retries = 0`` (``manifest_load.c``), so
-    it has no backup retry at all.
-    This test asserts nothing about SMC SRAM.
-
-DO NOT confuse this clear with ``rom_clear_ext_sram()``. That is a DIFFERENT,
-one-time, pre-manifest scrub (``rom_main.c`` -> ``rom_mem_clear.c``) gated
-on ``SRAM_SCRUB_BYTES``, which the ROM Makefile defaults to 0 -- every boot log in
-this tree prints ``SRAM_CLR_SKIP`` for it. It is compiled out, it runs before SPI
-init, and it is outside this window entirely. The failover clear asserted here is a
-separate call site and is NOT gated on that knob.
-
-WHY THE MEMORY IS POISONED FIRST. Under Verilator the SRAM array powers up all
-zero (``tb_top.sv`` compiles the explicit zero-fill only for simulators that do not
-0-init). A test that simply asserted "the SRAM reads zero after the failure" would
-therefore pass on a ROM that never cleared anything. So every one of the 32768
-words is first written with a distinct non-zero value, and CHK-SRAM-POISON reads
-all 32768 back before the boot starts: if the instrument silently no-ops, this test
-goes red rather than green. The poison strengthens the check; it does not create
-the pass, and it is not on any DUT decision path -- the ROM reads none of it before
-overwriting or zeroing it.
-
-Part of the claim does not rest on the poison, and it is worth separating. Word 0
-holds ``0xFFFF_FFFF_FFFF_FFFF`` -- the erased primary slot's own bytes, put there
-by the ROM's DMA, not by this test -- and reads 0 inside the window. So "the
-rejected image's bytes were in SRAM and then were not" survives discounting the
-poison entirely. What the poison adds is the other 32767 words (i.e. that the
-clear covered the whole 256 KiB rather than the 148 words the ROM happened to
-write) and the evidence that the clear had not already started when the primary
-landed.
-
-OBSERVATION CHANNEL. ``sep_public_scope.vlt`` marks ``prim_ram_1p.mem``
-``public_flat_rw``, and the built model registers the scope and the variable, so
-the whole array is reachable by VPI from cocotb and no testbench change is needed.
-The two pre-existing port probes (``sram_word0_probe_o``, ``sram_payload_probe_o``,
-``tb_top.sv``) expose only 7 of the 32768 words, which cannot support a claim about
-a 256 KiB clear.
-
-STIMULUS. Inherited whole from ``sep_spi_primary_fail_backup_test`` -- the primary
-slot span erased, so the primary is rejected with ``MANIFEST_ERR_BAD_MAGIC`` and
-the ROM fails over to the backup. Every failover assertion that test already makes
-(console order, device-side address order, blank-primary evidence, the ``SPI init
-failed`` forbid) is inherited and still enforced. This test adds the SRAM
-scoreboard on top; it changes nothing about the failover under test.
+Every SRAM word is poisoned before boot, then sampled through VPI until the backup fetch.
 """
 
 from __future__ import annotations
@@ -111,50 +21,31 @@ from env import sep_manifest_mutate as mm
 from env.sep_rom_console import rom_console_task
 from rom_fw.sep_spi_primary_fail_backup_test import sep_spi_primary_fail_backup_test
 
-# 0x1000_0000. From the RDL export, not a literal, so the test cannot drift from
-# the address the ROM's SRAM_BASE macro resolves to (manifest_load.c).
 _SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
-# prim_ram_1p_adv Depth for u_sep_sram: 256 KiB / 8 B (sep_ip_integration.sv).
+# Must equal the u_sep_sram Depth parameter (256 KiB of 64-bit words).
 _SRAM_WORDS = 32768
 _WORD_BYTES = 8
 _LAST_WORD = _SRAM_WORDS - 1
 
-# Hierarchy from cocotb.top (= sep_uvm_top) down to the macro's storage array.
 _SRAM_SCOPE = ("u_dut", "u_sep_ip_integration", "u_sep_sram")
 _SRAM_GEN = "gen_ram_inst"
 _SRAM_LEAF = ("u_mem", "mem")
 
-# Scoreboard sampling period, in clocks. The two windows this has to resolve are
-# ~30k cycles (primary DMA -> clear start) and >=1.4k cycles (clear end -> backup
-# fetch). 100 is well inside the smaller of the two and costs two VPI reads per
-# sample.
+# Must stay well below the ~1.4k-cycle gap between the clear end and the backup fetch.
 _SAMPLE_EVERY = 100
 
-# An erased primary slot: what the flash device returns, and therefore what the
-# ROM's own DMA leaves in SRAM word 0 before it rejects the slot. Derived from the
-# mutator's own erase byte so the two cannot drift apart.
 _ERASED_WORD = int.from_bytes(bytes([mm.ERASED_BYTE]) * _WORD_BYTES, "little")
 
-# Console lines used purely as TIME references for the window. Slot identity is
-# already asserted by the parent on MANIFEST_SRC= and the device transactions;
-# MANIFEST_BACKUP is used here only to mark "the second attempt has begun", which
-# is what it means regardless of which slot the retry counter selected.
+# Time references only; the parent asserts slot identity.
 _PRIMARY_ERR = f"MANIFEST_ERR=0x{0x0003_0002:08x}"
 _BACKUP_LABEL = "MANIFEST_BACKUP"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
-# Report at most this many offending words in an assertion message.
 _MAX_REPORT = 8
 
 
 def _poison(idx: int) -> int:
-    """Non-zero, per-word-unique fill for word ``idx``.
-
-    Both halves are distinct functions of the index, so a read that returned a
-    neighbouring word, a stale word, or a constant cannot look correct. The top
-    byte is 0xA5 in every word, so no poison value can ever be 0 -- which is what
-    makes "this word is now 0" a real state change rather than a possible no-op.
-    """
+    # The 0xA5A5 top half keeps every value non-zero, and both halves are unique per word.
     return ((0xA5A5_0000 | (idx & 0xFFFF)) << 32) | (0x5A5A_0000 | ((~idx) & 0xFFFF))
 
 
@@ -162,10 +53,6 @@ def _poison(idx: int) -> int:
 class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
     """Primary rejected -> whole EXT SRAM zeroed -> backup fetched and booted."""
 
-    # Scoreboard state. Declared as class-level immutable defaults and rebound per
-    # instance in run_scenario(), so nothing here depends on the pyuvm component
-    # constructor signature. Recording in the monitor and asserting in
-    # check_transport() keeps every observation in the log even when a check fails.
     _mem = None
     _sb_err: BaseException | None = None
     _first_sample: dict | None = None
@@ -174,16 +61,10 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
     _cleared: dict | None = None
     _redirtied: dict | None = None
     _poison_words = 0
-    # Private console sink, so the window can be expressed against the ROM's own
-    # lines. The parent keeps its sink local to run_scenario(); this is a second,
-    # quiet instance of the same decoder rather than a copy of it, so the two
-    # cannot disagree about what the ROM printed.
+    # A second, quiet decoder instance, because the parent keeps its console sink local.
     _console: list[str] = []
 
-    # ---------------------------------------------------------------- plumbing
-
     def _resolve_sram(self):
-        """Return the SRAM macro's storage array handle, or fail loudly."""
         node = cocotb.top
         walked = ["sep_uvm_top"]
         try:
@@ -209,16 +90,10 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         return node
 
     def _word(self, idx: int) -> int:
-        """Read one 64-bit SRAM word.
-
-        Deliberately NOT ``sep_base_test.rd()``: that helper swallows the
-        exception and returns 0, which for this test would turn a broken probe
-        into a passing "the memory is cleared" claim.
-        """
+        # Not sep_base_test.rd(): it returns 0 on error, which would fake a cleared word.
         return int(self._mem[idx].value)
 
     def _nonzero_words(self) -> tuple[int, list[tuple[int, int]]]:
-        """Scan all 32768 words. Returns (count_nonzero, first few offenders)."""
         count = 0
         sample: list[tuple[int, int]] = []
         for i in range(_SRAM_WORDS):
@@ -230,7 +105,6 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         return count, sample
 
     def _poison_sram(self) -> None:
-        """Fill every word with its unique non-zero value, then read them all back."""
         for i in range(_SRAM_WORDS):
             self._mem[i].value = Immediate(_poison(i))
         bad: list[tuple[int, int, int]] = []
@@ -264,47 +138,8 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "console": list(self._console),
         }
 
-    # -------------------------------------------------------------- scoreboard
-
     async def _sram_scoreboard(self) -> None:
-        """Sample the SRAM until the clear has been seen, then to the backup fetch.
-
-        Four transitions are recorded, which are the procedure's three timing
-        points expressed as observable memory events rather than as wall-clock
-        guesses:
-
-          first-touch word[0] stops holding its poison -> the earliest moment the
-                      primary attempt disturbed SRAM at all
-          residue     word[0] settles at the erased slot's own bytes -> the ROM's
-                      primary manifest DMA has landed, and the clear has not
-                      started
-          cleared     word[LAST] reads 0               -> the ascending store loop
-                      at boot_rom.dis 10042748 has reached its last word, so the
-                      whole region has been written
-          redirtied   word[0] stops reading 0          -> the backup fetch has
-                      begun writing SRAM again, closing the window
-
-        Triggering "cleared" on the LAST word rather than the first is what makes
-        it a whole-region event: the loop counts up from SRAM_BASE, so the final
-        word changes only after every other one has.
-
-        WHY "residue" TRIGGERS ON THE VALUE AND NOT ON "IT CHANGED". The macro is
-        64 bits wide with a per-bit write mask (``sep_ip_integration.sv``:
-        ``SRAM_DATA_WIDTH = 64``, ``wmask_i``), and the manifest DMA fills it in
-        narrower beats, so one macro word is legitimately half-written for a
-        while. The first version of this test triggered on "word[0] != poison" and
-        sampled ``0xa5a5_0000_ffff_ffff`` -- the low half already carrying the
-        erased slot's 0xFF bytes, the high half still poison -- and failed against
-        an expected ``0xFFFF_FFFF_FFFF_FFFF``
-        (run 20260829_090953, t=1521584 ns). The expected value was right and the
-        trigger was wrong. Triggering on the settled value removes the race
-        without weakening anything: if the DMA never puts exactly
-        ``0xFFFF_FFFF_FFFF_FFFF`` there, this event never fires and
-        CHK-SRAM-RESIDUE fails. The word settles 1600 ns after it is first
-        touched and then stands until the clear starts -- 631 us, i.e. from the
-        settled value at 1523184 ns to ``MANIFEST_ERR`` at 2154352 ns, which is
-        ~39400 clocks of a 16 ns period against a 100-clock sampling interval.
-        """
+        # Trigger on settled values: DMA beats half-write a 64-bit word; the clear ends last.
         clk = cocotb.top.clk_i
         try:
             self._first_sample = self._snapshot("first-sample")
@@ -331,8 +166,6 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         except Exception as exc:  # noqa: BLE001 - surfaced by check_transport
             self._sb_err = exc
 
-    # -------------------------------------------------------------- test hooks
-
     async def run_scenario(self) -> None:
         self._sb_err = None
         self._first_sample = None
@@ -351,7 +184,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         await super().run_scenario()
 
     def log_transport(self, flash) -> None:
-        """Dump the SRAM scoreboard before any assertion can abort the test."""
+        # Log the scoreboard here so it is recorded before any assertion can abort the test.
         super().log_transport(flash)
         for snap in (self._first_sample, self._first_touch, self._residue,
                      self._cleared, self._redirtied):
@@ -367,9 +200,6 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             )
 
     def check_transport(self, console: list[str], flash) -> None:
-        # The inherited failover checks first: console order, device-side address
-        # order, blank primary, real manifest at the backup. The SRAM scoreboard
-        # is an addition to that scenario, not a replacement for it.
         super().check_transport(console, flash)
 
         assert self._sb_err is None, (
@@ -388,7 +218,6 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             f"on a memory that was never dirty."
         )
 
-        # --- (i)->(ii): the rejected primary really did leave data behind -------
         assert self._first_touch is not None, (
             f"CHK-SRAM-RESIDUE FAIL: word[0] never stopped holding its poison, so the "
             f"primary manifest was never fetched into SRAM and there was no failover "
@@ -421,7 +250,6 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             self._residue["word0"], _LAST_WORD, self._residue["last"],
         )
 
-        # --- the clear itself ---------------------------------------------------
         assert self._cleared is not None, (
             f"CHK-SRAM-CLEARED FAIL: word[{_LAST_WORD}] never reached 0, so the "
             f"failover clear at manifest_load.c:776 did not run to completion between "
@@ -445,7 +273,6 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             _SRAM_WORDS * _WORD_BYTES // 1024,
         )
 
-        # --- the window: after the primary verdict, before the backup attempt ---
         seen = self._cleared["console"]
 
         def _has(marker: str, lines: list[str]) -> bool:
@@ -470,7 +297,6 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             self._cleared["time_ns"], _PRIMARY_ERR, _BACKUP_LABEL,
         )
 
-        # --- the window closes when the backup fetch writes SRAM again ----------
         assert self._redirtied is not None, (
             "CHK-CLEAR-BRACKET FAIL: word[0] never became non-zero again, so no backup "
             "manifest was ever fetched into the cleared SRAM"
@@ -491,7 +317,6 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             self._redirtied["time_ns"],
         )
 
-        # --- scope of this pass, stated where a reader of the log will see it ---
         self.logger.warning(
             "CHK-SCOPE: TP080 asks for EXT SRAM *and* SMC SRAM to be cleared in this "
             "window. Only the EXT SRAM half is asserted above. The boot flow "
@@ -513,13 +338,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
 
 
 def _quiet_logger() -> logging.Logger:
-    """A logger for the second console decoder instance.
-
-    The parent already logs every ROM line through its own decoder. This instance
-    exists only to give the scoreboard a sink it can read, so its level is raised
-    to suppress a duplicate transcript. Sharing the parent's sink is not possible:
-    it is a local in ``sep_rom_ot_dma_boot_test.run_scenario``.
-    """
+    # WARNING level: the parent already logs every ROM line, so this mirror stays quiet.
     log = logging.getLogger("sep_failover_sram_clear_assertion_test.console_mirror")
     log.setLevel(logging.WARNING)
     return log

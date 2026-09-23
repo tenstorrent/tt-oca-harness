@@ -2,83 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary declares v1.1 with a length inside the range rule; it boots.
 
-The primary-side ``minor != 0`` ACCEPTED case: the primary is accepted, the boot
-completes from it, and the backup slot is never read.
-
-THE RULE, from ``validate_manifest_header`` (``bootrom/prod/src/manifest_load.c``)::
-
-    minor == 0  ->  manifest_length == sizeof(manifest_t)   EXACTLY
-    minor != 0  ->  sizeof(manifest_t) <= manifest_length <= MANIFEST_MAX_SIZE
-
-The stimulus is minor 1 with ``sizeof(manifest_t) + 4`` = 1188, 4-byte aligned and
-strictly inside the range.
-
-============================================================================
-WHY THIS IS THE ROW THAT PROVES THE ARM WAS TAKEN
-============================================================================
-
-1188 at minor 0 is REFUSED -- that is
-``sep_firmware_primary_manifest_major_version_valid_minor_0_length_incorrect_test``,
-which plants the identical length in the identical slot. The two rows differ in one
-16-bit field, ``manifest_version_minor``, and the outcome inverts from a failover
-to a primary boot. Neither checker can pass on the other's log: that one requires a
-backup read and a primary ``MANIFEST_ERR=0x00030004``, this one forbids both.
-
-1185 at minor 1 is also REFUSED -- that is
-``..._minor_nonzero_length_small_incorrect_test``, which plants the same minor in
-the same slot four bytes below this one. The two differ only in the low two bits of
-``manifest_length``, and the outcome inverts from a primary boot to a failover, so
-the pair is the ALIGNMENT discriminator.
-
-**THE RANGE RULE'S LOWER BOUND IS NOT BRACKETED BY ANY ROW.** No row in this group
-declares a ``manifest_length`` below ``sizeof(manifest_t)`` at a non-zero minor, so
-nothing here shows the lower bound rejecting. A ROM that dropped that bound
-entirely -- accepting any aligned v1.x length up to ``MANIFEST_MAX_SIZE`` -- would
-pass every row in this group. Closing it needs a ``minor != 0`` row below 1184,
-which is not one of the approved matrix rows; it is recorded as a coverage gap
-rather than invented here. (``sep_firmware_backup_manifest_identifier_test`` does
-plant 1180, but at minor 0, so its verdict belongs to the exact-match arm.)
-
-**THE ROM MAKES A SECOND, DIRECTLY OBSERVABLE DECISION ON THIS PATH.**
-``load_manifest_extra`` (``manifest_load.c``) returns immediately when
-``manifest_length <= sizeof(manifest_t)`` and otherwise fetches the difference from
-the source. With 1188 that is a SEPARATE 4-byte flash read at
-``primary_base + 1184``, issued after the 1184-byte header read and before the
-payload load. Every other primary slot in this testlist declares exactly 1184 and
-skips the call, so this transaction exists in this run and in no other primary-side
-one. :meth:`check_transport` requires it from the BFM's own record -- the channel
-the ROM cannot fake, since ``load_manifest_extra`` prints nothing -- which turns
-"the ROM accepted a v1.1 manifest" into "the ROM accepted it AND acted on the
-declared length". Its negative counterpart is
-``..._minor_0_length_correct_test``, where 1184 must produce no such read.
-
-The fetch is identified by the address the ROM COMMANDED, not by the span the BFM
-recorded: ``ocah_spi_flash._do_read`` streams until CS deasserts, so the 1184-byte
-header read is logged as 1185 bytes and its span already COVERS this address. Only
-the start address separates the two.
-
-============================================================================
-WHY THE PRIMARY IS RE-SEALED
-============================================================================
-
-``manifest_version_minor`` and ``manifest_length`` both live INSIDE the TBS
-(``manifest.h``), so mutating them invalidates ``manifest_hash`` and the signature.
-Unlike every negative row in this group, this slot must SURVIVE the whole crypto
-chain, so :func:`sep_payload_mutate.reseal` re-derives ``payload_hash``,
-``manifest_hash`` and a genuine dev0 RSA-3072 signature over the modified TBS.
-:func:`sep_payload_mutate.verify_signing_key` runs FIRST, on the untouched slot: it
-proves the local signer reproduces the packer's shipped signature byte for byte, so
-the re-seal is sound by construction rather than by hope. Without it a re-seal
-failure would surface as the ROM rejecting the slot as ``SIG_FAILED`` -- which looks
-exactly like a plausible negative result.
-
-NO FAILOVER. The primary is valid, so a backup read would mean it was refused for a
-reason this testcase does not model. The backup ``MANIFEST_SRC=`` is forbidden, and
-:meth:`check_transport` additionally requires that the DEVICE served no read
-covering the backup manifest address.
-
-Needs ``+sep_crypto_edn_force``: the accepted primary runs a full RSA-3072 modexp on
-OTBN.
+The primary is re-sealed at v1.1/1188 and the ROM must fetch its 4-byte extension.
+Needs ``+sep_crypto_edn_force``: the accepted primary runs a full RSA-3072 modexp on OTBN.
 """
 
 from __future__ import annotations
@@ -103,11 +28,10 @@ _EFUSE_PRELOAD = (
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _VERSION_LENGTH_OFF = mm.OFF_VERSION_MAJOR
 
-# 4-byte aligned and strictly inside the range the minor != 0 arm accepts.
 _PRIMARY_LENGTH = mm.MANIFEST_SIZE + 4
 _PRIMARY_MINOR = 1
 
-# load_manifest_extra(): the extra fetch this length forces, and its address.
+# Match the read start, not its span: the flash model records one byte past each read.
 _EXTRA_ADDR = mm.PRIMARY_MANIFEST_OFFSET + mm.MANIFEST_SIZE
 _EXTRA_LEN = _PRIMARY_LENGTH - mm.MANIFEST_SIZE
 
@@ -118,16 +42,10 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
     """A v1.1/1188 primary is accepted, fetches its extension, and boots."""
 
     efuse_preload = _EFUSE_PRELOAD
-    # The primary completes the whole positive chain, so the boot is a real one and
-    # not an early exit that happened not to fail. The primary MANIFEST_SRC= is
-    # already in the parent's required set.
     required_markers = sep_rom_ot_secure_boot_test.required_markers + (
         "LC=PROD", "MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=",
     )
-    # No slot may be refused at all. "MANIFEST_ERR=" without a code forbids every
-    # structural and cryptographic verdict in one line -- in particular every other
-    # BAD_LENGTH arm, whose firing would mean the length this testcase declares
-    # valid was refused for a reason it does not control.
+    # A bare "MANIFEST_ERR=" forbids every structural and cryptographic verdict.
     forbidden_markers = sep_rom_ot_secure_boot_test.forbidden_markers + (
         _BACKUP_SRC, "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=",
         "MANIFEST_HASH_MISMATCH", "RSA_VERIFY_FAIL", "PLD_HASH_MISMATCH",
@@ -162,13 +80,10 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
         return image
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
-        """Move the primary to v1.1/1188 and re-seal it into a bootable slot."""
-        # Establish that the local signer reproduces the packer's own signature
-        # BEFORE anything is modified, so the re-seal below is sound by construction.
+        # A broken re-seal would look like a plausible SIG_FAILED, so prove the signer first.
         pm.verify_signing_key(buf, "primary")
         pm.verify_sealed(buf, "primary")
-        # The range this stimulus must sit inside is a hand-copied mirror of a ROM
-        # #define; require the two to still agree before relying on it.
+        # The manifest bounds mirror a ROM #define by hand; check they still agree.
         fd.assert_rom_manifest_bounds()
 
         before_ver = mm.manifest_version(buf, "primary")
@@ -199,13 +114,7 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             f"sizeof(manifest_t), so load_manifest_extra() would return without "
             f"reading and the extension fetch this testcase requires would not exist"
         )
-        # validate_manifest_header also refuses payload_offset < manifest_length as
-        # an overlap. The shipped payload_offset is well clear of 1188, but the
-        # relation is what makes the acceptance possible, so it is asserted rather
-        # than assumed.
         p_off = pm.payload_base(buf, "primary") - mm.slot_base("primary")
-        # Kept for check_transport(): the payload read is what the extension read
-        # must precede, and its address is a property of the image.
         self._primary_payload_off = p_off
         assert p_off >= _PRIMARY_LENGTH, (
             f"primary payload_offset is {p_off}, below the declared manifest_length "
@@ -227,8 +136,7 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             f"primary manifest_length is {after_len} after the write, expected "
             f"{_PRIMARY_LENGTH}"
         )
-        # The re-seal has to be complete, or the ROM refuses the slot for a stale
-        # hash or signature and the run proves nothing about the range rule.
+        # A stale hash or signature would refuse the slot for a reason unrelated to its length.
         pm.verify_sealed(buf, "primary")
         mm.verify_public_key(buf, "primary")
         self.logger.info(
@@ -250,9 +158,6 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
                          ev.summarize(flash.get_transactions(), self._image_len))
 
     def check_transport(self, console: list[str], flash) -> None:
-        # CHK-STIMULUS-SERVED: the DUT-side stimulus half -- the device returned
-        # 1.1 with length 1188, so the acceptance below is of the values this
-        # testcase is named for.
         fd.assert_served_field(
             self.logger, flash, "primary", _VERSION_LENGTH_OFF,
             struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, _PRIMARY_MINOR,
@@ -260,7 +165,6 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             "primary manifest_version_major/minor + manifest_length",
         )
 
-        # CHK-ONE-HASH: exactly one manifest hash verified, and it is the primary's.
         n_ok = fd.count(console, "MANIFEST_HASH_OK")
         assert n_ok == 1, (
             f"MANIFEST_HASH_OK appeared {n_ok} times, expected exactly 1 (the "
@@ -273,9 +177,6 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             f"the hash that verified is not the primary's. Console: {console}"
         )
 
-        # CHK-MANIFEST-EXTENSION: the ROM ACTED on the declared length. This is the
-        # decision no other primary-side row reaches, and the BFM's record is the
-        # only channel that can see it.
         rds = ev.reads(flash.get_transactions())
         p_starts = fd.reads_starting_at(flash, mm.PRIMARY_MANIFEST_OFFSET)
         assert p_starts, (
@@ -292,9 +193,6 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             f"it. Transactions: "
             f"{ev.summarize(flash.get_transactions(), self._image_len)}"
         )
-        # Exactly one. rom_manifest_boot calls load_manifest_extra once for the
-        # accepted slot, so a second fetch would not be the call this testcase
-        # claims.
         assert len(x_starts) == 1, (
             f"{len(x_starts)} reads began at 0x{_EXTRA_ADDR:x} (indices {x_starts}), "
             f"expected exactly 1: load_manifest_extra() runs once for the accepted "
@@ -322,7 +220,6 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             f"(manifest_load.c), so this ordering is not the ROM's"
         )
 
-        # CHK-NO-FAILOVER-ADDR: the device was never asked for the backup slot.
         b_hit = ev.covering_read(rds, mm.BACKUP_MANIFEST_OFFSET)
         assert b_hit is None, (
             f"read[{b_hit[0] if b_hit else '?'}] covered the backup manifest "

@@ -270,13 +270,6 @@ tests = [
     "sep_firmware_backup_invalid_public_key_selection_test",
     "sep_spi_detect_success_test",
     "sep_spi_primary_fail_backup_test",
-    # Subclass of the entry above; adds an SRAM scoreboard to the same failover.
-    # Covers the EXT SRAM half only -- this ROM never clears SMC SRAM, so a green
-    # run says nothing about that half. Slower than most of this group, and mostly
-    # for an inherited reason: the clear it asserts is 65536 CPU stores, about
-    # 1.05M clocks, a cost the entry above already pays. Compare in CYCLES:
-    # sys_clk_period is randomised per run, so simulated-time and wall-second
-    # figures are not comparable between runs.
     "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
     "sep_firmware_encrypted_boot_test",
@@ -286,11 +279,6 @@ tests = [
     "sep_rotate_update_set_test",
     "sep_firmware_primary_invalid_key_hash_test",
     "sep_firmware_backup_invalid_key_hash_test",
-    # The six-member ROM public-key revoke family. They share ONE
-    # implementation, rom_fw/sep_pubkey_rom_revoked_base.py, and differ only in
-    # _REVOKED_SLOT and the single OTP bit their own preload blows. Slot 0 is
-    # the strictest member (the populated digest the image binds to) and is the
-    # matched partner of sep_firmware_backup_rom_key_valid_test below.
     "sep_firmware_backup_pubkey_rom_0_revoked_key_test",
     "sep_firmware_backup_pubkey_rom_1_revoked_key_test",
     "sep_firmware_backup_pubkey_rom_2_revoked_key_test",
@@ -299,73 +287,25 @@ tests = [
     "sep_firmware_backup_pubkey_rom_5_revoked_key_test",
     "sep_firmware_backup_invalid_signature_type_test",
     "sep_firmware_backup_rom_key_index_invalid_test",
-    # Positive: valid ROM key slot on the backup, and a completed boot. Runs a
-    # real RSA-3072 modexp on OTBN, so it is one of the slower entries here.
     "sep_firmware_backup_rom_key_valid_test",
-    # Primary-side pair. Both end in a boot from the BACKUP, not a terminal
-    # failure, and both run a modexp on the recovering slot.
     "sep_firmware_primary_invalid_public_key_selection_test",
     "sep_firmware_primary_invalid_security_version_test",
-    # The primary-side counterparts of the group above. The six-member PRIMARY
-    # revoke family shares ONE implementation,
-    # rom_fw/sep_pubkey_rom_revoked_primary_base.py, but deliberately NOT one
-    # outcome: slot 0 is TERMINAL, because the shipped backup selects ROM slot 0
-    # as well and one fuse bit therefore refuses both manifests, while slots 1-5
-    # fail over and boot from the unrevoked backup. The shared base measures which
-    # of the two applies from the image rather than trusting the slot number, so a
-    # packer change to the backup's rom_key_index fails loudly instead of leaving a
-    # member asserting the wrong shape.
     "sep_firmware_primary_pubkey_rom_0_revoked_key_test",
     "sep_firmware_primary_pubkey_rom_1_revoked_key_test",
     "sep_firmware_primary_pubkey_rom_2_revoked_key_test",
     "sep_firmware_primary_pubkey_rom_3_revoked_key_test",
     "sep_firmware_primary_pubkey_rom_4_revoked_key_test",
     "sep_firmware_primary_pubkey_rom_5_revoked_key_test",
-    # The two signature entries share error code 0x0003000c and are separable only
-    # on the console: the VALUE case pins PUBK_SEL= to two occurrences and requires
-    # RSA_VERIFY_FAIL, the TYPE case pins it to one and forbids RSA_VERIFY_FAIL.
     "sep_firmware_primary_invalid_signature_test",
     "sep_firmware_primary_invalid_signature_type_test",
     "sep_firmware_primary_rom_key_index_invalid_test",
-    # Positive: valid ROM key slot on the PRIMARY, booting with NO failover at all,
-    # and the matched partner of the revoke-0 member above -- the same flash bytes,
-    # one bit of CHIPLET_PUBK_REVOKE apart.
     "sep_firmware_primary_rom_key_valid_test",
-    # BL1 version, chiplet fused keys, demotion.
-    # ACCEPT boundary of the rollback check, on a fuse floor spread across all eight
-    # thermometer words so a truncated decode fails on FUSE_VER=0x00000008.
     "sep_firmware_bl1_ver_test",
-    # The four-member CHIPLET FUSED key family. They share ONE implementation,
-    # rom_fw/sep_chiplet_pubkey_base.py, and differ only in _CHIPLET_KEY and the
-    # base they pick. This is the fused-key arm of validate_signature
-    # (manifest_crypto.c), distinct code from the ROM-key arm the
-    # pubkey_rom_* families cover. Each positive member and its revoke twin run
-    # byte-identical flash images, one CHIPLET_PUBK_REVOKE bit apart.
     "sep_firmware_chiplet_pubkey_0_test",
     "sep_firmware_chiplet_pubkey_0_revoke_test",
     "sep_firmware_chiplet_pubkey_1_test",
     "sep_firmware_chiplet_pubkey_1_revoke_test",
-    # The digest-SOURCE discriminator the four members above cannot be. Their fuse digest equals public_key_digests[0], so a ROM
-    # comparing against the compiled-in table instead of the fuse is invisible to
-    # them. Here the SELECTED fuse (HASH0) holds a decoy while the unselected one
-    # (HASH1) holds the real digest, so BOTH a compiled-in-table comparison and a
-    # wrong-fuse-address read boot and fail this testcase. Same flash image as the
-    # positive member; the only difference is the fuse words, which are in turn
-    # byte-identical to sep_efuse_lc_prod_chiplet_key1.toml's -- making this and
-    # sep_firmware_chiplet_pubkey_1_test a matched pair on the FUSE side.
     "sep_firmware_chiplet_pubkey_0_wrong_digest_test",
-    # The demotion decision. Eight members cover six of the seven outcomes the
-    # block can produce -- see rom_fw/sep_demotion_decision_base.py for the
-    # collapse map. The three PROD_END members are one observable (O1), because
-    # rom_main.c returns before any manifest input is read; the remaining five are
-    # O2a, O2b, O3a, O4 and O5. The seventh, O3b
-    # (unauth_flag_0_prod_sel_bit_set), has no testcase and is this group's one
-    # gap. Every member checks the DEMOTE_1/DEMOTE_2 registers and not only the
-    # console, through the tb_top probes, because every demotion console string is
-    # printed from a local computed one line earlier. The shared stimulus lives in
-    # rom_fw/sep_demotion_prod_base.py
-    # (PROD, secure boot disabled on both surfaces) and
-    # rom_fw/sep_demotion_prod_end_base.py.
     "sep_firmware_demotion_decision_auth_flag_0_prod_end_test",
     "sep_firmware_demotion_decision_no_flag_prod_end_test",
     "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test",
@@ -374,36 +314,16 @@ tests = [
     "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test",
     "sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test",
     "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test",
-    # O3b, the last of the seven outcomes to be covered.
     "sep_firmware_demotion_decision_unauth_flag_0_prod_sel_bit_set_test",
-    # O3a again, but the only member whose decision follows a full crypto chain:
-    # this reference entry carries no +SECURE_BOOT_DIS.
     "sep_firmware_demotion_decision_unauth_flag_30_prod_sel_bit_set_test",
-    # Covered-by-O1. The first is the only PROD_END member carrying a live BL2
-    # demotion request; the second's distinguishing bit is read by nothing in this
-    # ROM.
     "sep_firmware_demotion_decision_unauth_flag_0_prod_end_test",
     "sep_firmware_demotion_decision_unauth_flag_30_prod_end_test",
-    # Covered-by-O4: the announced collapse sibling of
-    # ..._auth_flag_0_unauth_flag_0_prod_test, kept because it is the MINIMAL O4 --
-    # the BL1 flag is clear, so the pair brackets the ignored input from both sides --
-    # and because it gives O4 its first MEAS_DEMOTE assertion.
     "sep_firmware_demotion_decision_unauth_flag_0_prod_test",
-    # O5 again, but with secure boot ENFORCED: this reference entry carries no
-    # +SECURE_BOOT_DIS, so it is NOT the artefact-only duplicate of
-    # ..._auth_flag_0_prod_test that that entry's collapse note predicts.
     "sep_firmware_demotion_decision_no_flag_prod_test",
     "sep_bl1_size_invalid_test",
     "sep_bl1_entry_invalid_test",
-    # KNOWN-FAIL SENTINEL, kept red on purpose: the ROM's behaviour and the test
-    # procedure disagree; see the long comment on its [[tests]] entry in
-    # rom_fw.toml. A run whose ONLY failure is this test is the expected result.
-    # Do not remove this line to get a green run.
+    # Known-fail sentinel: this test is expected to fail; do not remove it to get a green run.
     "sep_decryption_failure_terminal_test",
-    # One wrong decryption input each -- the CLASS_KEY fuse, the manifest IV, the
-    # manifest KDF input. All three decrypt to garbage, are refused by the TOC
-    # identifier and recover onto a healthy slot, so none of them is the sentinel
-    # above. SLOW: each runs two RSA-3072 modexps and one or two AES decryptions.
     "sep_firmware_invalid_decryption_class_key_test",
     "sep_firmware_invalid_encryption_iv_test",
     "sep_firmware_invalid_decryption_kdf_input_test",
@@ -412,14 +332,8 @@ tests = [
     "sep_warm_reset_below_range_hang_test",
     "sep_warm_reset_unarmed_cold_boot_test",
     "sep_warm_reset_bad_target_exception_test",
-    # SLOW ON PURPOSE: ~35-45 min. Two full RSA-3072 modexps on the real OTBN,
-    # one per manifest slot. Adding this made a full `rom_fw` run about 40
-    # minutes longer; see its [[tests]] entry in rom_fw.toml. Not a hang.
+    # Slow on purpose (~35-45 min, two RSA-3072 modexps on OTBN); not a hang.
     "sep_otbn_rsa_verify_failure_test",
-    # Manifest basic validity. The backup-side four use a
-    # structural-failure base because these defects are rejected before
-    # manifest_crypto_validate and therefore print neither CRYPTO_FAIL= nor
-    # MANIFEST_OK.
     "sep_firmware_primary_manifest_identifier_test",
     "sep_firmware_backup_manifest_identifier_test",
     "sep_firmware_manifest_primary_invalid_chiplet_id_test",
@@ -430,11 +344,6 @@ tests = [
     "sep_firmware_manifest_backup_lc_state_failure_test",
     "sep_firmware_validate_backup_manifest_test",
     "sep_firmware_bad_manifest_hash_test",
-    # Manifest / BL1 / SRAM association. The four ext-SRAM members are absent
-    # because this ROM reads no manifest use_ext_sram field.
-    #
-    # SLOW ON PURPOSE: sep_firmware_manifest_primary_missing_sepbl1_test runs two
-    # RSA-3072 modexps because the BL1-presence check follows signature validation.
     "sep_firmware_manifest_primary_missing_sepbl1_test",
     "sep_firmware_manifest_backup_missing_sepbl1_test",
     "sep_firmware_manifest_primary_reordered_sepbl1_test",
@@ -448,45 +357,21 @@ tests = [
     "sep_firmware_manifest_backup_reordered_sepbl1_test",
     "sep_firmware_backup_manifest_major_version_invalid_test",
     "sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test",
-    # The minor-0 arm refused, the minor != 0 arm
-    # refused at its upper bound, and the minor != 0 arm accepted.
     "sep_firmware_backup_manifest_major_version_valid_minor_0_length_incorrect_test",
     "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_large_test",
     "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_correct_test",
-    # The third refusing length arm: 1185 is inside the range the minor != 0 arm
-    # accepts but is misaligned, so the 4-byte alignment rule is what refuses it.
     "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test",
-    # The same version-and-length rule on the PRIMARY slot. Five refusals fail over
-    # to the untouched backup; the two accepted rows boot from the primary itself
-    # and never read the backup.
     "sep_firmware_primary_manifest_major_version_invalid_test",
     "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test",
     "sep_firmware_primary_manifest_major_version_valid_minor_0_length_incorrect_test",
     "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test",
     "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_correct_test",
     "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test",
-    # The v1.x accepted case ON the bound. The primary declares 2049 and the
-    # backup 2048 under the same minor version, so MANIFEST_MAX_SIZE is bracketed
-    # from both sides in one run -- the off-by-one the rows above leave open.
     "sep_manifest_v1x_length_test",
-    # Per-word selector variation. Each primary selects one matching
-    # and one mismatching word and is refused on the mismatching one, which pins the
-    # selector-to-word mapping; each backup selects all eight matching words and
-    # boots. The rows above select mismatching words only.
     "sep_chiplet_id_per_word_variations_test",
     "sep_package_id_per_word_variations_test",
-    # payload_hashed_length = 0, outside 0 < value <= payload_length. The only
-    # BAD_LENGTH arm in validate_manifest_header that prints its own token, so
-    # these two rows are separable on the console from every other length row.
     "sep_firmware_primary_payload_invalid_payload_hash_length_test",
     "sep_firmware_backup_payload_invalid_payload_hash_length_test",
-    # The two SILENT arms of validate_manifest_payload, as a 2x2x2 lattice:
-    # {TOC major version, image count} x {primary, backup} x {plaintext,
-    # encrypted}. Neither arm prints a token, so each row is graded on its error
-    # code, the position of the rejection in its slot's attempt, and the bytes the
-    # device served at the field address -- and each forbids the sibling arm's
-    # code. The encrypted rows load encrypted_boot.bin and plant the defect in the
-    # decrypted payload, because the ROM parses the TOC only after decryption.
     "sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test",
     "sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test",
     "sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test",
@@ -495,13 +380,6 @@ tests = [
     "sep_firmware_backup_encrypted_invalid_payload_image_count_test",
     "sep_firmware_primary_non_encrypted_invalid_payload_image_count_test",
     "sep_firmware_backup_non_encrypted_invalid_payload_image_count_test",
-    # The two ANNOUNCED per-image arms of the same function, as a second 2x2x2
-    # lattice: {image ordering, image length alignment} x {primary, backup} x
-    # {plaintext, encrypted}. These arms print IMAGE_ORDER_BAD idx= and
-    # IMAGE_LEN_ALIGN idx=, so each row is graded on its own token AND index, its
-    # error code, and the served bytes -- and forbids the sibling's token and code.
-    # The alignment rows need the token: the SILENT bounds arm above them returns
-    # the same MANIFEST_ERR_IMAGE_OOB.
     "sep_firmware_primary_encrypted_payload_images_out_of_order_test",
     "sep_firmware_backup_encrypted_payload_images_out_of_order_test",
     "sep_firmware_primary_non_encrypted_payload_images_out_of_order_test",
@@ -510,13 +388,6 @@ tests = [
     "sep_firmware_backup_encrypted_invalid_payload_image_size_test",
     "sep_firmware_primary_non_encrypted_invalid_payload_image_size_test",
     "sep_firmware_backup_non_encrypted_invalid_payload_image_size_test",
-    # The TOC/manifest length agreement and the entry-0 placement bound, as a third
-    # 2x2x2 lattice: {image exceeds bound, TOC payload size mismatch} x {primary,
-    # backup} x {plaintext, encrypted}. The two arms fire in DIFFERENT stages -- the
-    # agreement check sits above the per-image loop -- so neither stimulus can reach
-    # the other's arm. The bound rows share IMAGE_ORDER_BAD and its error code with
-    # the ordering rows above, and are separated by the entry index the token prints
-    # (0 here, 1 there) and by the served bytes at their own slot's field address.
     "sep_firmware_primary_encrypted_payload_image_exceeds_bound_test",
     "sep_firmware_backup_encrypted_payload_image_exceeds_bound_test",
     "sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test",
@@ -525,15 +396,6 @@ tests = [
     "sep_firmware_backup_encrypted_toc_payload_size_mismatch_test",
     "sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test",
     "sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test",
-    # Payload image SIZE, as opposed to the image-inside-payload bounds above:
-    # how big the whole payload may be, and where it is staged. Five accepted
-    # sizes bracket the bound from 4 KiB up to 200 KiB, and two refused ones sit
-    # past it. The EXT and SMC halves are the same size question against
-    # different capacities -- SEP SRAM minus payload_offset, versus the window
-    # scratch[13]/[14] publish -- so the destination markers are required and the
-    # other branch's are forbidden. These are the longest runs in this group: the
-    # payload is really transferred, so simulated time scales with the size under
-    # test.
     "sep_firmware_payload_correct_ext_4kb_test",
     "sep_firmware_payload_correct_ext_29kb_test",
     "sep_firmware_payload_incorrect_ext_62kb_test",
@@ -541,51 +403,19 @@ tests = [
     "sep_firmware_payload_correct_smc_64kb_test",
     "sep_firmware_payload_correct_smc_128kb_test",
     "sep_firmware_payload_correct_smc_200kb_test",
-    # Payload ABSENCE, OVERLAP and payload HASH, each closing an arm that had no
-    # row before: the zero half of the TOC image-count bound, the
-    # payload-inside-the-manifest-header refusal, the manifest payload_hash
-    # comparison, and the SMC staging window's own capacity. The last one is only
-    # reachable with a window NARROWER than the payload, which is why the accepted
-    # SMC size members above cannot cover it. The per-image TOC digest arm is NOT
-    # among them and still has no row. All six refuse before or just after staging,
-    # so they are short runs.
     "sep_firmware_primary_no_payload_images_test",
     "sep_firmware_backup_no_payload_images_test",
     "sep_firmware_primary_and_backup_no_payload_images_test",
     "sep_firmware_payload_overlaps_manifest_test",
     "sep_firmware_cleartext_image_corrupt_hash_test",
     "sep_firmware_payload_incorrect_smc_test",
-    # Secondary chiplet and fuse lock. The first pair pins the THIRD arm of
-    # rom_main.c's boot-mode branch -- neither SPI nor recovery -- and the
-    # property that is unique to it: the SMC path has one manifest slot, so a
-    # published offset holding no manifest is terminal where the same rejection
-    # on flash would fail over. The four fuse-lock rows are a 2x2 of sensed
-    # LC_STATE against the SBOOT_DIS chicken bit; they share one flow, so each is
-    # pinned to the two values the ROM itself echoes and forbids the other three
-    # cells' values. All six end in the ROM's fuse-secret lock or, for the
-    # terminal one, deliberately short of it.
     "sep_firmware_secondary_chiplet_bootcode_test",
     "sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test",
     "sep_firmware_fuse_lock_secure_test_dev_test",
     "sep_firmware_fuse_lock_secure_prod_test",
     "sep_firmware_fuse_lock_non_secure_test_dev_test",
     "sep_firmware_fuse_lock_non_secure_prod_test",
-    # Payload field LIMITS and the MIXED-CLASS failover, each closing a cross no
-    # single-defect row can reach. The first pairs the two 32-bit boundary arms of
-    # validate_manifest_header one per slot, so the wrap arm -- which prints
-    # nothing and shares its code with two siblings -- becomes attributable; the
-    # second pairs a primary that fails integrity with a backup that fails
-    # authentication, which is the only run where the retry path completes its
-    # full check sequence against a different failure class. Both are short: the
-    # limits row fetches no payload at all, and the mixed row runs one modexp.
     "sep_manifest_payload_limits_test",
     "sep_mixed_failure_primary_backup_test",
-    # Key revocation, constrained-random: the seed draws the bitmap AND both
-    # manifests' ROM key slots, so one row covers the shapes no directed revoke row
-    # reaches. With a single bit set, `revoke & (1 << index)` and `revoke != 0`
-    # behave identically; a drawn multi-bit bitmap separates them. The both-revoked
-    # class is the only place the revocation check is exercised on the BACKUP path.
-    # This is the only row here with no +sep_efuse_preload -- the bitmap has to
-    # vary per seed, so the OTP image is generated from a shared draw instead.
     "sep_key_revocation_bitmap_random_test",
 ]

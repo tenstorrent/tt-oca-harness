@@ -1,33 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""BACKUP's TOC claims a bad length or places image 0 too low; both slots fail, the ROM halts.
+"""Shared base for testcases where the backup TOC has a bad length or a low image-0 bound.
 
-The terminal mirror of :mod:`sep_primary_toc_bound_fail_base`, and four members of
-the same shape: ``{payload_image_exceeds_bound, toc_payload_size_mismatch} x
-{plaintext, encrypted}``.
-
-THE FAILOVER TRIGGER CANNOT INTERACT WITH THE ARM UNDER TEST. Reaching the
-backup at all needs the primary refused first, and
-``sep_backup_manifest_fail_base.corrupt_primary`` does it by overwriting the
-primary's manifest identifier (``mm.set_identifier``). That produces
-``MANIFEST_ERR_BAD_MAGIC``, which ``validate_manifest_header`` returns before any
-hash, crypto or TOC work, so the trigger runs nowhere near the arm under test and
-the primary's error code stays distinct from the backup's. The planted word is
-``0x99999999``; the check reads only whether the identifier is TBL1.
-
-THE PRIMARY'S REFUSAL IS WHY THIS FAMILY'S OWN CODE STAYS ATTRIBUTABLE, and the PLEN
-members need that argument most. ``MANIFEST_ERR_BAD_LENGTH`` is reachable from
-``validate_manifest_header`` as well as from the TOC agreement check, so a row whose
-verdict is BAD_LENGTH has to show the code came from the later one. It does: the
-primary dies on BAD_MAGIC, and the backup's BAD_LENGTH is required to appear after
-the backup's ``CRYPTO_VALIDATE_OK``, which only a slot that cleared
-``validate_manifest_header`` in full can reach.
-
-DECRYPTION COUNTS DIFFER FROM THE PRIMARY FAMILY, and that is the encrypted members'
-own evidence. Here the primary dies on its magic word long before ``decrypt_payload``,
-so an encrypted member requires ``DECRYPT_START`` and ``DECRYPT_OK`` EXACTLY ONCE --
-the backup's -- where the primary family requires two. A plaintext member forbids
-``DECRYPT_START`` outright.
+The primary is refused on its magic word, so the backup's TOC bound check is the only one that
+fires. Members select the defect and plaintext or encrypted; the ROM must then halt.
 """
 
 from __future__ import annotations
@@ -42,15 +18,10 @@ from rom_fw.sep_backup_payload_fail_base import sep_backup_payload_fail_base
 
 
 class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
-    """Plant a TOC length or entry-0 bound defect in the backup; require a halt."""
 
-    # --- member contract ---------------------------------------------------
-    # tbd.BOUND or tbd.PLEN.
     bound_defect: str = ""
-    # Whether this member's payload is encrypted; asserted against the image.
     encrypted: bool = False
 
-    # The primary is refused on its magic word by the inherited corrupt_primary().
     primary_expected_error = tbd.ERR_BAD_MAGIC
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -62,14 +33,9 @@ class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
         cls.flash_image = tbd.ENCRYPTED_IMAGE if cls.encrypted else tbd.PLAINTEXT_IMAGE
         cls.efuse_preload = tbd.ENCRYPTED_EFUSE if cls.encrypted else tbd.PLAINTEXT_EFUSE
         cls.expected_error = tbd.EXPECTED_ERROR[cls.bound_defect]
-        # The arm announces itself, so the base's own CHK-BACKUP-DEFECT places
-        # "which rule" after CRYPTO_VALIDATE_OK and inside the backup's attempt.
         cls.backup_defect_marker = tbd.DEFECT_TOKEN[cls.bound_defect]
 
-        # Every code and token that would mean a different check ended the run. The
-        # sibling arm's code AND its token are the swap-test defence: this row cannot
-        # pass on the other family's verdict. ERR_BAD_MAGIC is excluded because it is
-        # this scenario's own failover trigger, planted in the PRIMARY slot.
+        # ERR_BAD_MAGIC is excluded: it is the primary's failover trigger, not a competing verdict.
         forbidden = tbd.neighbouring_errors(cls.bound_defect,
                                             exclude=(tbd.ERR_BAD_MAGIC,))
         forbidden += list(tbd.other_payload_tokens(cls.bound_defect))
@@ -78,7 +44,6 @@ class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
             forbidden.append(tbd.DECRYPT_START)
         cls.extra_forbidden = tuple(forbidden)
 
-    # --- stimulus ----------------------------------------------------------
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         for slot in ("primary", "backup"):
             got = pm.is_encrypted(buf, slot)
@@ -106,7 +71,6 @@ class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
     def check_efuse(self, image) -> None:
         fd.assert_clean_key_fuses(image)
 
-    # --- checks ------------------------------------------------------------
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
 
@@ -116,9 +80,6 @@ class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
         i_token = fd.first_index(console, token)
         i_err = fd.first_index(console, backup_err)
 
-        # CHK-BOUND-COUNT: the arm fired once, for the backup. The primary is refused
-        # on its magic word and never parses a TOC, so a second occurrence would mean
-        # the stimulus landed in both slots and the run is not this scenario.
         n = fd.count(console, token)
         assert n == 1, (
             f"{token} appeared {n} times, expected exactly 1 (the backup's; the "
@@ -126,8 +87,6 @@ class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
             f"parsed). Console: {console}"
         )
 
-        # CHK-DECRYPT-ARM: exactly one slot decrypted, it was the backup, and its
-        # decryption SUCCEEDED before the TOC was refused.
         if self.encrypted:
             for marker in (tbd.DECRYPT_START, tbd.DECRYPT_OK):
                 k = fd.count(console, marker)
@@ -150,12 +109,7 @@ class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
                 tbd.DECRYPT_OK, i_do, token, i_token,
             )
 
-        # CHK-STIMULUS-SERVED: the device really returned this row's planted bytes at
-        # this row's field address, in this row's slot. `self._flash` is published by
-        # sep_backup_manifest_fail_base for exactly this kind of device-side check.
-        # On the encrypted members the ADDRESS is what separates this cell from the
-        # primary one, because the two slots' ciphertexts agree this early in the CBC
-        # chain.
+        # Encrypted members: only the address separates the slots, as both ciphertexts agree here.
         tbd.assert_served_bound_field(self.logger, self._flash, "backup",
                                       self.bound_defect, self._served,
                                       self._payload_offset)

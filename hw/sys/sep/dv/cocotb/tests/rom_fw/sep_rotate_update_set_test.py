@@ -1,38 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ROTATE_UPDATE strap swaps the primary and backup manifest slots (PyUVM).
+"""ROTATE_UPDATE (``STRAPS_HI[26]``) makes the ROM's first manifest attempt read the backup slot.
 
-FEATURE. ``STRAPS_HI[26]`` tells the ROM to try the
-slots in the opposite order. ``rom_manifest_boot`` keeps the offset table fixed
-and rotates the INDEX instead (``manifest_load.c``)::
-
-    uint32_t slot = retry;
-    if (straps->rotate_update && from_spi) slot ^= 1u;
-
-so on a rotated boot the FIRST attempt -- ``retry == 0``, still labelled
-``MANIFEST_PRIMARY`` -- reads ``BACKUP_MANIFEST_OFFSET`` (0x41000).
-
-WHY THE PRIMARY SLOT IS ERASED. If both slots held a valid image, a ROM that
-ignored the strap would boot from 0x1000 and a ROM that honoured it would boot
-from 0x41000, and both would be green unless the test looked at addresses. With
-0x1000 blank the broken case does not even fail: it would be rejected as
-BAD_MAGIC and then fall over to 0x41000 and boot anyway. So the ordering evidence
-is the whole test, and it is asserted three independent ways:
-
-  * ``MANIFEST_SRC=0x00041000`` appears and ``MANIFEST_SRC=0x00001000`` never
-    does -- the ROM's own statement of which address it read;
-  * ``MANIFEST_BACKUP`` never appears and no ``MANIFEST_ERR=`` is printed, so the
-    boot happened on the FIRST attempt rather than through a retry;
-  * on the device side, no read transaction lands anywhere in the primary slot's
-    flash span, which is measured at the flash model rather than inferred.
-
-``STRAPS_HI=0x04000000`` is required as well: it is the ROM echoing the word it
-actually read, so the run is attributable to this stimulus and not to a strap
-that happened to be set some other way.
-
-The image is the unsigned one and the OTP is the inherited TEST_DEV, on purpose.
-Slot selection is upstream of the crypto chain, so adding secure boot here would
-only introduce failure modes that say nothing about rotation.
+The primary slot is erased, so a ROM that ignores the strap still boots by failover;
+the checks pin the read order.
 """
 
 from __future__ import annotations
@@ -49,13 +20,12 @@ _ROTATE_UPDATE_BIT = 26
 
 _SPI_PATH_MARKER = "BOOT_SPI"
 _STRAPS_HI_ECHO = f"STRAPS_HI=0x{_STRAPS_HI_ROTATE:08x}"
-_ROTATE_ECHO = "SPI_ROTATE=1"          # rom_main.c
-_STRAP_ROTATE_ECHO = " rotate=1"       # boot_straps.c
+_ROTATE_ECHO = "SPI_ROTATE=1"
+_STRAP_ROTATE_ECHO = " rotate=1"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _MANIFEST_OK = "MANIFEST_OK"
-# manifest_load.c prints this only for retry == 1, so its absence is what
-# says the rotated slot was the FIRST attempt and not a fallback.
+# Printed only on the second attempt, so its absence proves the first attempt booted.
 _SECOND_ATTEMPT = "MANIFEST_BACKUP"
 _ANY_SLOT_ERROR = "MANIFEST_ERR="
 
@@ -64,8 +34,7 @@ _ANY_SLOT_ERROR = "MANIFEST_ERR="
 class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
     """ROTATE_UPDATE=1 with only 0x41000 programmed: first attempt boots it."""
 
-    # Replaces, not extends: the inherited tuple requires MANIFEST_SRC=0x00001000,
-    # which under rotation is precisely what must NOT happen.
+    # Replaces the parent tuple, which requires the unrotated MANIFEST_SRC=0x00001000.
     required_markers = (
         _SPI_PATH_MARKER, _STRAPS_HI_ECHO, _ROTATE_ECHO, _STRAP_ROTATE_ECHO,
         _BACKUP_SRC, _MANIFEST_OK,
@@ -79,8 +48,6 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
         assert mm.slot_is_erased(buf, "primary"), (
             "primary slot is not fully erased after erase_slot()"
         )
-        # The rotated-to slot must be intact, or a failure would be attributable
-        # to a damaged image rather than to the slot order.
         mm.verify_layout(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-ROTATE: primary span 0x%06x..0x%06x erased to 0x%02x "
@@ -102,12 +69,7 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
         rds = ev.reads(flash.get_transactions())
         assert rds, "flash BFM served no read transactions; nothing was fetched over SPI"
 
-        # CHK-ROTATE-FIRST-READ: the device's own record of which slot was
-        # interrogated first. Independent of the console, and the claim the
-        # console cannot make -- the ROM labels the first attempt
-        # "MANIFEST_PRIMARY" whichever offset it uses. Indexed on the first read
-        # that lands in EITHER slot, not on read[0], so an unrelated controller
-        # access (an ID probe, a re-init read) cannot decide the verdict.
+        # Use the first read in either slot, not read[0], so an ID probe cannot decide it.
         p_idx = ev.slot_read_indices(rds, "primary", self._image_len)
         b_idx_all = ev.slot_read_indices(rds, "backup", self._image_len)
         assert b_idx_all, (
@@ -121,8 +83,6 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
             f"rotated slot at 0x{mm.BACKUP_MANIFEST_OFFSET:06x}"
         )
 
-        # CHK-ROTATE-NO-PRIMARY-READ: the unrotated address was never touched at
-        # all. A fallback boot would show reads in both spans; this shows one.
         assert not p_idx, (
             f"reads {p_idx} landed inside the primary slot span "
             f"0x{mm.PRIMARY_MANIFEST_OFFSET:06x}..0x{mm.BACKUP_MANIFEST_OFFSET:06x}: "

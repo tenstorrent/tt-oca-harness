@@ -1,27 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Warm dispatch, UNARMED: cold_scratch[7] == 0 must take the beqz early-out.
+"""Warm dispatch unarmed: cold_scratch[7] == 0 must take the beqz early-out to cold boot.
 
-Leg A of the four in ``vector.S``::
-
-    lw   t1, 0(t0)
-    beqz t1, cold_boot          # <- this one
-
-Every other rom_fw test runs with the register at 0 and so passes THROUGH this
-branch, but none asserts on it: they assert about SPI, manifests and BL1, all
-downstream. A ROM that mishandled the zero case -- jumped to 0, or hung -- would
-fail those tests for reasons that name something else entirely.
-
-"It cold booted" is the default outcome, so the check cannot be "a boot
-happened". The evidence is cold_boot's ``-1`` POISON of cold_scratch[7], written
-by exactly one instruction on exactly one path, so observing it places execution
-on the early-out rather than merely somewhere downstream. The absence of both
-WARM_RESET_JUMP and WARM_RESET_HANG is the second witness.
-
-The poison is -1, not 0: writing 0 would leave the register indistinguishable
-from "never armed", so a repeating watchdog with no handler would cold boot
-forever instead of failing the range check. CHK-POISON asserts the value, not
-just that it changed.
+Checks cold_boot's -1 poison of cold_scratch[7], the cold-boot status words, and that
+neither the warm jump nor the warm hang arm ran.
 """
 
 from __future__ import annotations
@@ -42,11 +24,7 @@ from rom_fw.sep_warm_dispatch_base import (
 class sep_warm_reset_unarmed_cold_boot_test(sep_warm_dispatch_base):
     """Leave cold_scratch[7] at its reset value; the ROM must cold boot."""
 
-    # None means "must NOT be armed" -- the base asserts +sep_cold_scratch7 is
-    # absent, because a deposit would silently move this run onto another leg.
     seed = None
-    # The early-out and cold_boot's first stores are within the first few hundred
-    # instructions; nothing here waits on a transport.
     max_run_cycles = 200_000
     progress_every = 25_000
 
@@ -62,17 +40,12 @@ class sep_warm_reset_unarmed_cold_boot_test(sep_warm_dispatch_base):
 
         assert obs["retired"], "core retired no instructions; the ROM never ran"
 
-        # CHK-UNARMED: the register really was 0 when the ROM read it. Without
-        # this the run could have been driven by a stale deposit from elsewhere
-        # and every check below would describe a different leg.
         assert cold7_seq and cold7_seq[0] == 0, (
             f"cold_scratch[7] did not start at 0; observed {cold7_hex}. The beqz "
             f"early-out is not what this run exercised"
         )
         self.logger.info("CHK-UNARMED: cold_scratch[7] read 0 at the dispatch")
 
-        # CHK-POISON: cold_boot ran, and wrote the value the spec asks for. This
-        # is the one word that places execution on the early-out.
         assert COLD_POISON in cold7_seq, (
             f"cold_scratch[7] never took cold_boot's 0x{COLD_POISON:08x} poison; "
             f"observed {cold7_hex}. Either the beqz did not reach cold_boot, or "
@@ -81,8 +54,6 @@ class sep_warm_reset_unarmed_cold_boot_test(sep_warm_dispatch_base):
         )
         self.logger.info("CHK-POISON: cold_scratch[7] took 0x%08x", COLD_POISON)
 
-        # CHK-COLD-PROGRESS: it went on to boot rather than stopping at the
-        # dispatch. Two words from two different points in cold_boot.
         assert STATUS_BOOTROM_START in status_seq, (
             f"cold_scratch[1] never held 0x{STATUS_BOOTROM_START:08x} "
             f"(BOOTROM_START); observed {status_hex}"
@@ -94,9 +65,6 @@ class sep_warm_reset_unarmed_cold_boot_test(sep_warm_dispatch_base):
         )
         self.logger.info("CHK-COLD-PROGRESS: BOOTROM_START then PRESTART_DONE")
 
-        # CHK-NO-WARM-DECISION: neither warm arm was taken. A ROM that jumped to
-        # address 0, or that treated 0 as out-of-range and hung, would leave one
-        # of these behind.
         assert STATUS_WARM_JUMP not in status_seq, (
             f"cold_scratch[1] held 0x{STATUS_WARM_JUMP:08x} "
             f"(SEP_MSG_WARM_RESET_JUMP): the ROM treated an unarmed slot as a "

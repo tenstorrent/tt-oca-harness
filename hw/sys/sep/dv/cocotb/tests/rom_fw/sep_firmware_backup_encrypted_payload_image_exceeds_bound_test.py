@@ -2,52 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup's ENCRYPTED TOC places image 0 inside the TOC region; the ROM halts.
 
-``validate_manifest_payload`` (``bootrom/prod/src/manifest_load.c``) requires every
-image body to begin at or after ``prev_end``, seeded at the TOC region. Entry 0
-declaring an offset below that region trips it, printing
-``IMAGE_ORDER_BAD idx=0x00000000`` and returning ``MANIFEST_ERR_IMAGE_OVERLAP``
-(0x0003000f). With the primary already refused, the backup's rejection exhausts the
-retry loop and the run ends terminal on ``MANIFEST_ALL_FAILED``.
-
-THE PLANTED VALUE. ``backup.payload_images[0].offset = 240``. The bound is the TOC
-region, whose size follows the image count: the shipped payload declares ONE image,
-so the region is 248 bytes. 240 is the largest 8-byte-aligned offset still inside
-it. Any offset at or above 248 is ACCEPTED. See
-``sep_toc_bound_defect.BOUND_IMAGE_OFFSET``.
-
-THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
-slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
-loaded image before planting anything.
-
-THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
-``sep_backup_manifest_fail_base.corrupt_primary``, producing
-``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work, so it cannot interact
-with the arm under test.
-
-WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
-
-  * from the TOC-PAYLOAD-SIZE cell -- the token, ``IMAGE_ORDER_BAD idx=0x00000000``
-    against ``TOC_PLEN_MISMATCH=``, each forbidding the other, and the error code,
-    0x0003000f against 0x00030004. The two stimuli are mutually unreachable: that
-    arm sits above the per-image loop and this row leaves the TOC's
-    ``payload_length`` equal to the manifest's, so it cannot fire;
-  * from the NON-ENCRYPTED cell -- ``DECRYPT_START`` and ``DECRYPT_OK`` must each
-    appear exactly ONCE, the backup's, and before the rejection;
-  * from the PRIMARY cell -- the run is terminal: ``MANIFEST_ALL_FAILED``, no
-    boot-progress marker, and the served bytes are required at the BACKUP slot's
-    address (0x042028, not 0x002028). That address is the only discriminator
-    available on an encrypted row: entry 0's offset lives in AES block 2, and the two
-    slots' payloads are byte-identical until block 8, so both slots serve IDENTICAL
-    ciphertext for the same planted value;
-  * from ``sep_firmware_backup_encrypted_payload_images_out_of_order_test``, which
-    lands on the SAME ``if`` -- the entry index, ``idx=0x00000000`` here against
-    ``idx=0x00000001`` there, and that row's exact token is FORBIDDEN here. The two
-    violate different halves of one rule: this row's body starts inside the TOC
-    REGION, that row's inside the PREVIOUS IMAGE. The ROM does not report which half,
-    and nothing here claims it does.
-
-Needs ``+sep_crypto_edn_force``: the backup runs a full RSA-3072 modexp and an AES
-decryption.
+The backup's image 0 offset is 240, inside the 248-byte TOC region of a one-image payload.
+Needs ``+sep_crypto_edn_force``: the backup runs an RSA-3072 modexp and an AES decryption.
 """
 
 from __future__ import annotations

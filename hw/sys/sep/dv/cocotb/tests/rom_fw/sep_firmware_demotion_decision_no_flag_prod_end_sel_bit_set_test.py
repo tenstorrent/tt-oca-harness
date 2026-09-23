@@ -2,57 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD_END + selector bit 17 set -> the selector is PREEMPTED, both locked.
 
-Outcome **O1** of the [C15] decision table in
-``rom_fw/sep_demotion_decision_base.py``; the PROD_END stimulus it shares with its
-sibling is in ``rom_fw/sep_demotion_prod_end_base.py``.
-
-**COVERED-BY-O1 ON THE OUTCOME, BUT NOT ON WHAT A FAILURE WOULD MEAN, and the
-difference is this row's entire justification.** ``rom_main.c`` returns before
-any manifest demotion input is read, so at PROD_END every combination of the three
-produces the same observable and batch R3 already covered it with
-``sep_firmware_demotion_decision_auth_flag_0_prod_end_test``. This row adds no ROM
-path. What it adds is a **negative control on the short-circuit ORDER**:
-
-  * ``selector_bits`` bit 17 is SET. If did not preempt, the
-    ROM would take the first arm of the ``else``, copy ``usage_constraints.flags``
-    bit 0 into ``demotion_reg``, and produce outcome **O3a** -- which differs from
-    O1 on four independent observables at once: ``BL1_DEMOTE=0`` present,
-    ``BL2_DEMOTE_DEC=0`` present, ``DEMOTE: PROD_END lock`` absent, and DEMOTE_2
-    left unwritten (lock 0) instead of locked;
-  * all four of those are asserted here. ``BL1_DEMOTE=`` and ``BL2_DEMOTE_DEC=``
-    are forbidden by the family base, because they are ``DEMOTION_TOKENS`` this
-    outcome does not require; ``DEMOTE: PROD_END lock`` is required exactly once
-    and after ``MANIFEST_OK``; and ``expect_demote_2 = (0, 1)`` requires the
-    register that only ``rom_main.c`` can write;
-  * and the set selector bit itself is asserted on TWO channels -- the packed
-    artefact and the bytes the flash DEVICE served
-    (``CHK-STIMULUS-SERVED``). The second is what makes this row's stimulus differ
-    from its two O1 siblings' at RUN time and not merely offline, which matters
-    precisely because their consoles are identical.
-
-Neither of the other two PROD_END rows can make that claim. R3's
-``auth_flag_0_prod_end`` sets ``flags[0]`` with the selector CLEAR, so the ROM
-would ignore the flag under either ordering; ``no_flag_prod_end`` leaves all three
-inputs clear, so the two orderings agree exactly. **The selector bit is the one
-manifest input whose value changes the non-PROD_END outcome on its own, which is
-why setting it is what turns a duplicate stimulus into an ordering test.**
-
-That said, the claim is bounded and is not "this row covers a new ROM path". It
-is: same outcome, same code path, one more defect class excluded. The row is
-reported ``covered-by-O1`` with this file cited, exactly as
-``batch_runs_0904_vp/FINDINGS.md`` F07 requires and as the R4 guidance in
-``sep_demotion_decision_base.py`` sets out.
-
-The selector bit is planted for this scenario from ``+SET_SELECTOR_BIT_17``, so
-the stimulus is a faithful port even though the ordering argument above is this
-platform's addition. There is no architected demotion status code on this ROM,
-so the console tokens plus the register channel are the
-substitution; the DEMOTE_1/DEMOTE_2 lock requirements are an ADDITION derived from
-``rom_main.c``. Both are disclosed in the row's
-``flow_deviation``.
-
-Needs ``+sep_crypto_edn_force``: PROD_END enforces secure boot
-(``lifecycle.c``), so a full RSA-3072 modexp runs on OTBN.
+Checks the short-circuit order: a ROM that tests the selector before the lifecycle
+prints ``BL1_DEMOTE=`` and leaves DEMOTE_2 unwritten. Needs ``+sep_crypto_edn_force``.
 """
 
 from __future__ import annotations
@@ -67,8 +18,6 @@ class sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test(
         sep_demotion_prod_end_base):
     """PROD_END with selector bit 17 set: the selector is never consulted."""
 
-    # +LC_STATE_END_PROD +SET_SELECTOR_BIT_17, no +AUTH_FLAG_0 and no
-    # +UNAUTH_FLAG_0.
     _SEL = 1
     _AUTH = 0
     _BL2 = 0

@@ -1,27 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The two shapes of a usage-constraint rejection: fail over, or halt.
+"""Primary and backup bases for usage-constraint rejections: fail over, or halt.
 
-Six testcases plant a lifecycle, chiplet_id or
-package_id constraint the part does not satisfy. They differ on exactly two axes
--- which arm of the ``selector_bits`` block refuses the slot, and which slot
-carries the defect -- so the two bases here hold everything else once.
-
-All three arms return ``MANIFEST_ERR_LC_USAGE_CONSTRAINT``
-(``bootrom/prod/src/manifest_load.c``), as does the encrypted-payload-without-
-secure-boot rejection just ahead of the block, so they are separable only on the
-console. Each member therefore requires its own token and forbids the other two
-(``sep_manifest_field_defect.SIBLING_MARKERS``). Without that the six would be
-mutually interchangeable: the error code, the status word and the boot outcome
-are identical across all of them.
-
-The block runs BEFORE ``manifest_crypto_validate`` and after
-``manifest_check_integrity`` (``manifest_load.c``), which fixes what a run may
-contain. A refused slot has already had its hash verified, so
-``MANIFEST_HASH_OK`` is expected rather than forbidden; it has NOT reached the
-verifier, so on the primary-side members the base's
-``primary_expected_rsa_starts = 0`` is what checks that ordering, and on the
-backup-side members ``RSA_VERIFY_START`` must be absent altogether.
+The lifecycle, chiplet_id and package_id arms share one error code, so each member
+requires its own console token and forbids the other two.
 """
 
 from __future__ import annotations
@@ -36,7 +18,6 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
     sep_primary_fail_backup_boot_base,
 )
 
-# manifest.h -- shared by the lifecycle, chiplet_id and package_id arms.
 MANIFEST_ERR_LC_USAGE_CONSTRAINT = 0x0003_0013
 
 EFUSE_PRELOAD = (
@@ -44,26 +25,19 @@ EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# The live lifecycle of that preload, and the manifest bitmap bit
-# lc_state_to_manifest_bit() maps it to (bootrom/prod/src/lifecycle.c).
+# Manifest lifecycle bitmap bit for the preload's PROD state.
 LIVE_LC_MANIFEST_BIT = 1  # PROD
-# TEST_DEV | PROD_END: the shipped 0x7 with the live state's bit removed. Keeping
-# the other two is what makes the rejection specific to PROD rather than to a
-# bitmap that permits nothing.
+# TEST_DEV | PROD_END: the shipped 0x7 minus PROD, so only the live state is refused.
 LC_ALLOWED_WITHOUT_LIVE = 0x5
 
-# Markers that must not appear on either side: a slot that reached the crypto
-# chain's failure paths was refused somewhere else.
+# A slot that reaches a crypto failure path was refused somewhere else.
 _CRYPTO_FORBIDDEN = ("CRYPTO_FAIL=", "RSA_VERIFY_FAIL", "PLD_HASH_MISMATCH",
                      "MANIFEST_HASH_MISMATCH", "VERSION_ROLLBACK")
 
 
 class _usage_constraint_mixin:
-    """Subclass contract and the shared attribution check."""
 
-    # One of sep_manifest_field_defect's three arm tokens.
     defect_marker: str = ""
-    # Extra console lines the arm echoes, e.g. CID_IDX= / LC_ALLOWED=.
     defect_evidence: tuple[str, ...] = ()
 
     @classmethod
@@ -85,26 +59,22 @@ class _usage_constraint_mixin:
         )
 
     def plant(self, buf: bytearray, slot: str) -> None:
-        """Apply the arm's stimulus to one slot."""
         raise NotImplementedError
 
 
 class sep_primary_usage_constraint_base(_usage_constraint_mixin,
                                         sep_primary_fail_backup_boot_base):
-    """Primary violates a usage constraint; the untouched backup boots."""
 
-    # The arm prints its own token but no CRYPTO_FAIL=, so the base's
-    # crypto-shaped defect-marker path is not used and check_transport() below
-    # carries the attribution.
+    # The arm prints no CRYPTO_FAIL=, so check_transport() carries the attribution.
     primary_defect_marker = ""
     primary_expected_error = MANIFEST_ERR_LC_USAGE_CONSTRAINT
+    # The constraint block runs before the RSA verifier, so the refused primary starts none.
     primary_expected_rsa_starts = 0
     efuse_preload = EFUSE_PRELOAD
 
     def __init__(self, *args, **kwargs) -> None:
         self.extra_forbidden = self._forbidden()
-        # The backup runs the whole positive chain, so "it recovered" is a real
-        # boot rather than an early exit that happened not to fail.
+    # Require the full positive chain so the recovery is a real boot, not an early exit.
         self.extra_required = self.defect_evidence + ("PLD_HASH_OK", "BL1_COPIED",
                                                       "BL1_JUMP=")
         super().__init__(*args, **kwargs)
@@ -117,10 +87,6 @@ class sep_primary_usage_constraint_base(_usage_constraint_mixin,
         slot_err = f"MANIFEST_ERR=0x{self.primary_expected_error:08x}"
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
-        # CHK-CONSTRAINT-ATTRIBUTION: the arm's token and the shared error code
-        # both sit inside the primary's attempt, and each occurs once. The code
-        # alone cannot do this -- all three arms produce it -- and the token alone
-        # would not tie the rejection to the slot.
         fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
         i_defect = fd.assert_slot_attributed(console, self.defect_marker,
                                              after=i_psrc, before=i_bsrc)
@@ -132,17 +98,14 @@ class sep_primary_usage_constraint_base(_usage_constraint_mixin,
         self.check_constraint_evidence(console)
 
     def check_constraint_evidence(self, console: list[str]) -> None:
-        """Arm-specific read-back of the values the ROM echoed."""
+        pass
 
 
 class sep_backup_usage_constraint_base(_usage_constraint_mixin,
                                        sep_backup_manifest_structural_fail_base):
-    """Primary refused as BAD_MAGIC, backup violates a usage constraint, halt."""
 
     expected_error = MANIFEST_ERR_LC_USAGE_CONSTRAINT
-    # sep_backup_manifest_fail_base.corrupt_primary() plants the identifier, and
-    # BAD_MAGIC is deliberately a different code from the backup's so the two
-    # slots' rejections stay individually countable.
+    # The inherited primary corruption gives BAD_MAGIC, distinct from the backup's code.
     primary_expected_error = 0x0003_0002
     efuse_preload = EFUSE_PRELOAD
 
@@ -168,4 +131,4 @@ class sep_backup_usage_constraint_base(_usage_constraint_mixin,
         self.check_constraint_evidence(console)
 
     def check_constraint_evidence(self, console: list[str]) -> None:
-        """Arm-specific read-back of the values the ROM echoed."""
+        pass

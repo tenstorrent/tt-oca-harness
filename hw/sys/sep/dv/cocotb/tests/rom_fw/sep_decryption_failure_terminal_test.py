@@ -1,71 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A payload that cannot be decrypted correctly must end the boot.
+"""Terminal decryption failure: corrupted ciphertext in both slots must end the boot.
 
-Procedure variant (b): "corrupt the encrypted payload so the decrypted plaintext
-does not match the TOC magic". One ciphertext bit of the PRIMARY slot is flipped
-in AES-CBC block 0, and the manifest is re-hashed and re-signed with the dev0 key
-so that the only thing wrong with the image is the ciphertext itself
-(``env/sep_payload_mutate.py``).
-
-THE FALSE-PASS THIS TESTCASE IS BUILT TO AVOID. AES-CBC decryption is a
-permutation: it never reports an error for the wrong input, and the ROM's own
-``aes128cbc_decrypt`` only fails on a bad length or a hardware alert
-(``aes_driver.c``). So a corrupted ciphertext -- and equally a
-wrong class key -- decrypts "successfully" to garbage, and the boot then dies at
-the TOC identifier check with ``MANIFEST_ERR_BAD_TOC_ID``
-(``manifest_load.c``). That is the same terminal code an image whose TOC
-was simply never encrypted would produce, and the same code a run that stopped
-BEFORE decryption would reach. Keying a verdict on the final error alone would
-therefore pass while decryption never ran.
-
-``CHK-DECRYPT-RAN`` is the defence: the run must show ``PLD_HASH_OK`` (the
-ciphertext was authenticated) then ``DECRYPT_START`` then ``DECRYPT_OK``, in that
-order, and the rejection must come AFTER ``DECRYPT_OK``. Only a run that actually
-drove the AES engine and then failed downstream can satisfy that sequence.
-
-WHY THE PAYLOAD HASH HAD TO BE RECOMPUTED, AND WHY THAT IS NOT A WEAKENING.
-``payload_hash`` covers the CIPHERTEXT and is verified before decryption
-(``manifest_crypto.c``). Left stale, the ROM would stop at
-``PLD_HASH_MISMATCH`` and never call ``decrypt_payload`` -- the run would look
-like a clean negative result while testing the payload hash rather than
-decryption. Re-sealing keeps every ROM check enabled and passing up to the point
-under test, which is what makes the decryption failure attributable.
-
-VARIANT (b) IS BACKUP-ELIGIBLE, AND THE TWO ARMS DIVERGE HERE. A plaintext that
-is not a TOC is a warning on the primary and the backup is then tried; only an
-engine failure is terminal on the spot. Two independent sources say so:
-
-  * The authoritative boot flow splits them. An invalid TOC identifier on the
-    primary is ``<<Warning>> : WARNING: TOC_ID_INVALID`` followed by the
-    backup-retry connector, and only the backup's failure is ``<<Error>>``.
-    Terminal status is reserved for ``DECRYPTION_KEY_FAILED`` and
-    ``DECRYPTION_FAILED``.
-  * The same split appears in one loop: a ``validate_payload`` failure (the
-    source of ``TOC_ID_INVALID``) takes ``continue``, while a ``decrypt_payload``
-    failure takes ``goto err_fail``, for the reason that "All
-    errors reported from decrypt_payload are fatal errors, as they are likely
-    due to hardware failures".
-
-So this testcase asserts the retry and its ordering, and the boot must still END:
-terminal once BOTH slots have failed, which the CHK-TERMINAL block covers.
-
-VARIANT (a) IS NOT COVERED HERE, and is terminal in the ROM. The procedure's
-other source is "inject AES engine status fail via the AES model". There is no
-AES model on RTL -- the AES is real RTL -- so the engine's ``ALERT_FATAL_FAULT`` /
-``ALERT_RECOV_CTRL_UPDATE_ERR`` status (``aes_driver.c``) could only be
-produced by forcing a status bit, which is a forbidden sim-only shortcut. The ROM
-side of variant (a) has been brought in line with upstream --
-``manifest_crypto.c`` now halts on a ``decrypt_payload`` failure instead of
-returning to the slot loop -- but that path has no stimulus on this platform, so
-a pass here covers the post-decrypt detection arm of the requirement and NOT the
-engine-status arm. Upstream's own tests do not cover it either; its three
-decrypt-failure sites carry ``// COVERAGE: exclude, hardware error``.
-
-BOTH SLOTS CARRY THE DEFECT. The primary establishes the warning-and-retry arm;
-the backup is what makes the boot terminal. Corrupting only the primary would
-leave a healthy backup, and the ROM would boot it -- a legitimate outcome that
-cannot demonstrate the "boot must end" requirement this testcase exists for.
+Each slot is re-sealed, so it decrypts to garbage and fails only its TOC identifier.
 """
 
 from __future__ import annotations
@@ -93,9 +30,7 @@ _ALL_FAILED = "MANIFEST_ALL_FAILED"
 # Anything past the rejection.
 _BL1_PROGRESS = ("BL1_TYPE=", "COPY_DST=", "BL1_COPIED", "PRE_JUMP", "BL1_JUMP=")
 
-# Failures that would mean decryption was never reached, or was reached for a
-# reason this testcase did not plant. KDF and AES-init failures would stop the
-# ROM before the engine ran; PLD_HASH_MISMATCH would mean the re-seal is broken.
+# Failures before or inside the engine; PLD_HASH_MISMATCH means the re-seal is broken.
 _PREMATURE = (
     "KDF_FAIL", "KDF_HMAC_FAIL", "AES_INIT_FAIL", "AES_INIT_BUSY", "AES_RST_FAIL",
     "AES_CTRL_REJECTED", "AES_ALERT_AFTER_DEC", "AES_ALERT_STATUS=", "AES_DEC_FAIL",
@@ -106,16 +41,14 @@ _PREMATURE = (
 
 @pyuvm.test()
 class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
-    """Corrupt the primary's ciphertext; decryption must run and the boot must end."""
+    """Corrupt both slots' ciphertext; decryption must run and the boot must end."""
 
     flash_image = _ENCRYPTED_IMAGE
     efuse_preload = _EFUSE_PRELOAD
     backup_defect_marker = _DECRYPT_OK
-    # manifest.h -- the sub-code variant (b) converges on, reached only after
-    # the plaintext has been produced and found not to be a TOC.
+    # Reached only after decryption produces a plaintext that is not a TOC.
     expected_error = pm.MANIFEST_ERR_BAD_TOC_ID
 
-    # --- stimulus ------------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
         base = pm.payload_base(buf, "primary")
         before = bytes(buf[base:base + 16])
@@ -130,14 +63,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         )
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        """Corrupt the backup's ciphertext too, so the boot has nowhere left to go.
-
-        Variant (b) is backup-eligible, so a healthy backup boots: the primary is
-        rejected with ``MANIFEST_ERR_BAD_TOC_ID`` and the backup then reaches
-        ``MANIFEST_OK``. Both slots must fail for the boot to be terminal: each
-        slot takes ``continue`` and the loop exits into ``err_fail`` with
-        ``error_code`` set.
-        """
+        # A healthy backup would boot, so both slots must fail for the boot to end.
         base = pm.payload_base(buf, "backup")
         before = bytes(buf[base:base + 16])
         at, new = pm.corrupt_ciphertext(buf, "backup")
@@ -150,7 +76,6 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
             at, new, before.hex(), after.hex(),
         )
 
-    # --- checks --------------------------------------------------------------
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         log = self.logger
         status_hex = [hex(v) for v in status_seq]
@@ -174,9 +99,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
             f"ROM never read the primary slot ({_PRIMARY_SRC}). Console: {console}"
         )
 
-        # CHK-SECURE-RAN: PROD enforces the crypto chain; if it were skipped the
-        # ROM would reject the encrypted image outright as ENC_WITHOUT_SBOOT and
-        # decryption would never be attempted.
+        # CHK-SECURE-RAN: without the crypto chain, decryption is never attempted.
         assert not any(_SBOOT_OFF in line for line in console), (
             f"ROM printed {_SBOOT_OFF}: secure boot was skipped, so the payload was "
             f"never decrypted. Console: {console}"
@@ -190,10 +113,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
                 f"corrupted ciphertext. Console: {console}"
             )
 
-        # CHK-DECRYPT-RAN: the whole point. The ciphertext was authenticated, the
-        # AES engine ran to completion, and only THEN did the boot fail. Without
-        # the ordering, the terminal error alone is satisfied by a run in which
-        # decryption never happened.
+        # CHK-DECRYPT-RAN: without this order, a run that never decrypted also passes.
         i_hash = index_of(_PLD_HASH_OK)
         i_start = index_of(_DECRYPT_START)
         i_ok = index_of(_DECRYPT_OK)
@@ -238,10 +158,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         log.info("CHK-DECRYPT-FAILED: %s at line %d, after %s; cold_scratch[1]=0x%08x",
                  err_marker, i_err, _DECRYPT_OK, expected_status)
 
-        # CHK-BACKUP-RETRIED: the retry must happen AFTER the primary's rejection
-        # rather than instead of it. Ordering is what matters -- a backup
-        # read that preceded the rejection would mean the primary was never
-        # properly refused. Terminality is covered separately, below.
+        # CHK-BACKUP-RETRIED: the backup read must follow the primary's rejection.
         i_backup = index_of(_BACKUP_SRC)
         assert i_backup > i_err, (
             f"expected the backup slot ({_BACKUP_SRC}) to be read AFTER the "

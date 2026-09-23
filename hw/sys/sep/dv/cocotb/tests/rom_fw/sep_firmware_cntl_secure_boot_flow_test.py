@@ -2,23 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Lifecycle overrides a manifest that asks for non-secure boot (PyUVM).
 
-FEATURE UNDER TEST. The precedence between the manifest flag and the lifecycle in
-``secure_boot_enabled()`` (``manifest_load.c``): the manifest flag is
-honoured only in TEST_DEV and RMA, and ignored under PROD. So the stimulus is
-lifecycle PROD, ``SBOOT_DIS = 0``, and a manifest whose ``secure_boot`` flag is
-CLEARED. The ROM must still authenticate.
-
-``boot_arguments.flag_args`` sits at manifest offset 1168, outside the TBS region
-[0..743] that ``manifest_hash`` covers and the signature is computed over. Clearing
-bit 30 therefore leaves a genuinely signed manifest that merely requests non-secure
-boot -- exactly the adversary this check exists to stop, and stronger than
-re-packing an unsigned image. ``sep_manifest_mutate.verify_layout`` re-derives the
-hash afterwards, so layout drift cannot turn this into an accidental
-hash-mismatch test.
-
-Distinction from ``sep_firmware_enforced_secure_boot_flow_test``: there the flag is
-left set, so lifecycle and manifest agree. Here they disagree and the run
-establishes which wins.
+Under lifecycle PROD with ``SBOOT_DIS = 0``, the manifest ``secure_boot`` flag is
+cleared in both slots and the ROM must still authenticate.
 """
 
 from __future__ import annotations
@@ -35,8 +20,6 @@ _LC_PROD = "LC=PROD"
 _RSA_START = "RSA_VERIFY_START"
 _SIG_VALID = "SIG_VALID"
 _CRYPTO_OK = "CRYPTO_VALIDATE_OK"
-# The failure signature of this testcase: the ROM honoured the cleared manifest
-# flag and skipped authentication in PROD.
 _SBOOT_OFF = "SBOOT_OFF"
 _SBOOT_DIS_SET = "FUSE: SBOOT_DIS: 1"
 
@@ -59,9 +42,7 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
     )
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
-        # Both slots: the ROM may serve this boot from either, and leaving the
-        # backup's flag set would let a failover quietly satisfy the test for the
-        # wrong reason.
+        # Clear both slots, or a failover to the backup would pass for the wrong reason.
         for slot in ("primary", "backup"):
             before = mm.get_flag_args(buf, slot)
             assert (before >> mm.FLAG_ARGS_BIT_SECURE_BOOT) & 1 == 1, (
@@ -70,8 +51,7 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
                 f"would be untested"
             )
             mm.set_flag_args_bit(buf, slot, mm.FLAG_ARGS_BIT_SECURE_BOOT, False)
-            # Proves the mutation left the signed region intact: verify_layout
-            # recomputes sha256(TBS) and compares it to the stored manifest_hash.
+            # flag_args is outside the signed TBS, so the manifest stays genuinely signed.
             mm.verify_layout(buf, slot)
             self.logger.info("CHK-MUTATION: %s", mm.describe(buf, slot))
         return buf

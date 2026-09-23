@@ -2,44 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup payload declares no SEP_BL1 image; with both slots refused the ROM halts.
 
-The mirror of ``sep_firmware_manifest_primary_missing_sepbl1_test``. There the
-primary carries the relabelled TOC and the valid backup completes the boot; here
-the backup carries it, ``rom_manifest_boot`` runs out of retries and
-``rom_err_fail`` halts the ROM (``bootrom/prod/src/manifest_load.c``,
-``bootrom/prod/src/rom_main.c``). The expected outcome is terminal -- ``ERROR: SEP_BL1_MISSING`` rather than a warning, with no boot at the end.
-
-THE FAILOVER TRIGGER, and it is worth stating because most members of this family
-use a different one. This member does NOT corrupt the primary's identifier: it
-sets the primary's
-``usage_constraints.selector_bits`` package_id half and writes ``0xa5a5a5a5`` into
-``usage_constraints.package_id``, so the primary is refused as
-``PACKAGE_ID_MISMATCH`` / ``MANIFEST_ERR_LC_USAGE_CONSTRAINT`` and graded
-``WARNING: INVALID_PACKAGE_ID``. That ports directly. The shipped image already
-carries ``0xa5a5a5a5`` in all eight package_id words with the selectors clear
-(``bootrom/prod/configs/secure_boot_test.yaml``), so the selector bit is the whole
-stimulus -- see ``sep_manifest_field_defect`` for why, and for the layout anchor
-that keeps it honest. The code it produces, 0x00030013, differs from the backup's
-0x00030008, which the shared base requires so the two rejections stay individually
-countable.
-
-The selector mask is deliberately NOT the one
-``sep_firmware_manifest_primary_invalid_package_id_test`` uses. Both testcases have
-a primary refused on package_id, so without a different mask the two runs' primary
-evidence would be identical; word 1 here against word 2 there makes each assert a
-``PID_IDX=`` the other's run cannot produce.
-
-WHY THIS NEEDS A THIRD TERMINAL BASE. The backup's defect is checked AFTER
-``manifest_crypto_validate`` returns OK (``manifest_load.c``), so the backup
-genuinely verifies its signature and only then is refused. That fits neither
-existing terminal base -- one requires ``CRYPTO_FAIL=`` and the other forbids
-``RSA_VERIFY_START`` -- so :mod:`sep_backup_payload_fail_base` grades it, requiring
-the backup's crypto chain in order and exactly once each. Relaxing either sibling
-would have weakened its dependants.
-
-MARKER SUBSTITUTION. As on the primary side, this ROM has no status code for a
-missing BL1 at all, so the verdict is carried by the real ``NO_BL1_IMAGE`` console
-token plus the terminal status word ``STATUS_ENCODE(ERROR, 0x0008)``. The ERROR-versus-WARNING distinction is the
-outcome: this run halts, and its primary-side sibling boots.
+A package_id mismatch refuses the primary; the backup passes the crypto chain and
+is then refused because its TOC has no SEP_BL1 entry.
 """
 
 from __future__ import annotations
@@ -55,14 +19,10 @@ from rom_fw.sep_usage_constraint_base import (
     MANIFEST_ERR_LC_USAGE_CONSTRAINT,
 )
 
-# manifest.h
 _MANIFEST_ERR_NO_BL1_IMAGE = 0x0003_0008
 
 _NO_BL1 = "NO_BL1_IMAGE"
 
-# Within the 1, 0xff range, and not the mask
-# sep_firmware_manifest_primary_invalid_package_id_test uses (0x14, word 2):
-# words 1 and 6, so the ROM refuses on word 1.
 _SELECTOR_MASK = 0x42
 _REJECT_INDEX = 1
 
@@ -78,9 +38,7 @@ class sep_firmware_manifest_backup_missing_sepbl1_test(
     expected_error = _MANIFEST_ERR_NO_BL1_IMAGE
     primary_expected_error = MANIFEST_ERR_LC_USAGE_CONSTRAINT
     efuse_preload = EFUSE_PRELOAD
-    # The primary's verdict is the package_id arm's, so the other two
-    # usage-constraint arms must stay silent; and no other TOC check may be what
-    # refused the backup.
+    # Only the package_id arm may refuse the primary, and only the BL1 check the backup.
     extra_forbidden = (fd.LC_MARKER, fd.CHIPLET_MARKER,
                        "MANIFEST_HASH_MISMATCH", "RSA_VERIFY_FAIL",
                        "PLD_HASH_MISMATCH", "IMAGE_HASH_MISMATCH",
@@ -125,10 +83,7 @@ class sep_firmware_manifest_backup_missing_sepbl1_test(
         assert pm.IMAGE_TYPE_SEP_BL1 not in types, (
             f"backup TOC still declares a SEP_BL1 image: {[hex(t) for t in types]}"
         )
-        # The backup has to be refused for the MISSING BL1 and nothing else, which
-        # means its crypto chain must pass: the signature over the re-sealed TBS
-        # must verify (verify_sealed, inside retype_bl1_image) against the modulus
-        # the ROM binds to (verify_public_key, here).
+        # The backup must pass the crypto chain so that only the BL1 check refuses it.
         mm.verify_public_key(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-MISSING-BL1: backup TOC entry @0x%x relabelled "
@@ -140,10 +95,7 @@ class sep_firmware_manifest_backup_missing_sepbl1_test(
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
-        # CHK-TRIGGER-ARM: the primary's verdict is the package_id arm's, read back
-        # from the values the ROM echoed. The shared error code is produced by three
-        # arms, so without this the trigger could have been the lifecycle or
-        # chiplet_id one and the run would look the same.
+        # Three constraint arms share this error code; confirm the package_id arm fired.
         fd.assert_device_id_mismatch(self.logger, console, "package_id",
                                      _REJECT_INDEX)
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)

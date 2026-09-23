@@ -1,46 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Both slots refused, the BACKUP only after its signature verified; run is terminal.
+"""Shared base for testcases where the backup passes its signature check but fails its payload.
 
-The third shape of a two-slot failure, and the one neither existing terminal base
-can grade. :mod:`sep_backup_manifest_fail_base` requires ``CRYPTO_FAIL=`` because
-its members' backups fail INSIDE ``manifest_crypto_validate``.
-:mod:`sep_backup_manifest_structural_fail_base` forbids ``RSA_VERIFY_START``
-because its members' backups are refused BEFORE it. A backup whose defect lives in
-``validate_manifest_payload`` sits between the two: the crypto chain runs and
-passes, so ``RSA_VERIFY_START`` must appear, and then the payload check refuses the
-slot without ``manifest_crypto_validate`` ever returning an error, so
-``CRYPTO_FAIL=`` never appears (``bootrom/prod/src/manifest_load.c``:
-``try_manifest_slot`` prints ``CRYPTO_FAIL=`` only on the crypto arm and prints
-nothing of its own for the payload arm).
-
-Relaxing either sibling would have weakened its dependants, so this base subclasses
-``sep_backup_manifest_fail_base`` for the whole run harness -- OTP preload, flash
-BFM, console decoder, verdict poll and the post-verdict quiescence window -- and
-replaces only ``_check``.
-
-WHAT MAKES THE VERDICT THE BACKUP'S. There is no per-reason status code for this
-rejection, so three things carry the attribution instead, and all are asserted
-below:
-
-  * the ORDER ``primary read -> primary error -> backup read -> backup's crypto
-    chain -> backup defect -> backup error -> MANIFEST_ALL_FAILED``;
-  * the backup's error code, DISTINCT from the primary's, so the two rejections
-    stay individually countable. A member that declared them equal is refused;
-  * the terminal status word ``STATUS_ENCODE(ERROR, expected_error)``, which is
-    what ``rom_err_fail`` was handed rather than the console's account of it.
-
-THE CRYPTO CHAIN IS REQUIRED, NOT TOLERATED, and each of its four markers must
-appear EXACTLY ONCE. That is the check which distinguishes this family from the
-structural one: a backup refused earlier would produce none of them, and a second
-occurrence would mean the PRIMARY also reached the verifier, which no member of
-this family plants. ``MANIFEST_HASH_OK`` is deliberately not counted -- it is
-printed by ``manifest_check_integrity``, which runs ahead of the usage-constraint
-block, so a primary refused on a usage constraint legitimately prints one too.
-
-``MANIFEST_OK`` stays forbidden. It is emitted only after a slot passes in full
-(``manifest_load.c``), and the payload check is the last thing before it, so its
-absence is positive evidence that the payload arm is what ended the run.
+The backup's crypto chain must run exactly once, CRYPTO_FAIL= and MANIFEST_OK must not appear, and
+the run must end on MANIFEST_ALL_FAILED with the backup's own error code. The ROM must then halt.
 """
 
 from __future__ import annotations
@@ -55,23 +18,13 @@ _CRYPTO_FAIL = "CRYPTO_FAIL="
 _SBOOT_OFF = "SBOOT_OFF"
 _BOOT_PROGRESS_MARKERS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
 
-# manifest_crypto.c, in emission order. Every one of these is printed only on the
-# signed path, so requiring them in order is what proves the backup's signature
-# genuinely verified before its payload was refused.
+# Printed only on the signed path, in this order.
 _CRYPTO_CHAIN = ("RSA_VERIFY_START", "SIG_VALID", "PLD_HASH_OK",
                  "CRYPTO_VALIDATE_OK")
 
 
 class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
-    """Primary refused; backup passes crypto, fails its payload, ROM halts."""
 
-    # The arm's own console token, e.g. NO_BL1_IMAGE, or "" for an arm that prints
-    # none. Two arms of validate_manifest_payload return silently -- the TOC major
-    # version and the image count (manifest_load.c) -- so for those the error code
-    # and the ordering carry the whole ROM-side attribution, and the member is
-    # required to compensate with device-side evidence instead. A member that HAS
-    # a token must still declare it: the check below is unchanged for every one
-    # that does.
     backup_defect_marker: str = ""
     expected_error: int = 0
     primary_expected_error: int = 0
@@ -91,11 +44,6 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
             f"indistinguishable on the console, so nothing would attribute the "
             f"terminal verdict to the backup"
         )
-        # Dropping the token is only allowed in exchange for evidence that
-        # replaces it. A member whose ROM arm is silent must add checks of its
-        # own -- the error codes of the arms it could be confused with, and
-        # something the DUT rather than the ROM produced -- so the opt-out cannot
-        # become a softer grade that a later member takes for free.
         if not self.backup_defect_marker:
             assert type(self)._check is not sep_backup_payload_fail_base._check, (
                 f"{type(self).__name__} declares no backup_defect_marker and adds "
@@ -112,7 +60,6 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
                 f"different payload arm would satisfy this run"
             )
 
-        # Guard the guards: a dark console makes every marker check trivially satisfied.
         assert retired, "core retired no instructions; the ROM never ran"
         assert console, (
             "ROM console is empty, so no marker check below means anything (the "
@@ -125,7 +72,6 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
         i_all = fd.first_index(console, _ALL_FAILED)
 
-        # CHK-FAILOVER: both slots were read, in order, and the loop then gave up.
         assert i_psrc >= 0, (
             f"ROM never read the primary slot ({fd.PRIMARY_SRC}). Console: {console}"
         )
@@ -138,16 +84,11 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
             f"ROM gave up before evaluating the backup. Console: {console}"
         )
 
-        # CHK-PRIMARY: the failover trigger fired, and it is the primary's.
         fd.assert_slot_attributed(console, primary_err, after=i_psrc,
                                   before=i_bsrc)
         log.info("CHK-FAILOVER-PRIMARY: primary@%d rejected with %s before the "
                  "backup read@%d", i_psrc, primary_err, i_bsrc)
 
-        # CHK-BACKUP-CRYPTO: the backup's signature really verified, in the order
-        # manifest_crypto.c emits the stages, and exactly once each. Presence alone
-        # would be satisfied by stages belonging to two different slots; the count
-        # is what says only the backup reached the verifier.
         previous = i_bsrc
         positions = []
         for marker in _CRYPTO_CHAIN:
@@ -177,11 +118,6 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
                  i_hash_ok, ", ".join(f"{m}@{p}" for m, p in
                                       zip(_CRYPTO_CHAIN, positions)))
 
-        # CHK-DEFECT: the backup was refused by the payload arm, for the planted
-        # reason, after its crypto chain passed and inside its own attempt. An arm
-        # that prints no token of its own is graded on the error code alone, which
-        # still has to sit after CRYPTO_VALIDATE_OK -- that is what places the
-        # rejection downstream of the crypto chain rather than inside it.
         after = positions[-1]
         if self.backup_defect_marker:
             after = fd.assert_slot_attributed(console, self.backup_defect_marker,
@@ -192,10 +128,6 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
                  self.backup_defect_marker or "(this arm prints no token)",
                  backup_err, positions[-1], i_all)
 
-        # CHK-NOT-A-CRYPTO-FAILURE: the run must not be confused with the sibling
-        # family whose backup dies inside manifest_crypto_validate. CRYPTO_FAIL= is
-        # printed on exactly that arm, so its absence is what says the payload
-        # check, not the crypto chain, refused this slot.
         assert not any(_CRYPTO_FAIL in line for line in console), (
             f"ROM printed {_CRYPTO_FAIL}: a slot was refused inside "
             f"manifest_crypto_validate, so the payload rejection under test is not "
@@ -212,9 +144,6 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
         log.info("CHK-NOT-A-CRYPTO-FAILURE: neither %s, %s nor %s appeared",
                  _CRYPTO_FAIL, _MANIFEST_OK, _SBOOT_OFF)
 
-        # CHK-TERMINAL: the ROM converged on the BACKUP's code. The status word is
-        # the independent half -- the console says which check complained, the
-        # encoded status says what rom_err_fail() was handed (rom_main.c).
         expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
@@ -231,7 +160,6 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
         log.info("CHK-TERMINAL: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
                  backup_err, _ALL_FAILED, expected_status)
 
-        # CHK-NO-BOOT: nothing downstream of the rejection ran.
         for marker in _BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden):
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which sits past the rejection: it "

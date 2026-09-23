@@ -2,44 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest names an unassigned public-key source; the backup boots.
 
-The PRIMARY's ``public_key_sel.selection`` is set to 3 -- one of the three
-encodings (3, 6, 7) that name no key source, ``manifest.h`` assigning only
-0, 1, 2, 4 and 5. All three fall through the same ``default:`` arm
-(``manifest_crypto.c``), which prints ``BAD_KEY_SEL`` and returns
-``MANIFEST_ERR_SIG_FAILED``; a fixed value makes the run reproducible and lets the
-test assert the exact ``PUBK_SEL=`` the ROM echoed.
-
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference
-between this testcase and its backup-side sibling. Only
-``primary.manifest.public_key_sel.selection`` is modified; the primary's
-``manifest_identifier`` is deliberately left intact, unlike
-its backup-side scenarios do, because the primary has to REACH the check under
-test. So there is no BAD_MAGIC failover trigger here: the primary is structurally
-perfect and is rejected by key selection alone.
-
-THE EXPECTED OUTCOME IS A COMPLETED BOOT, NOT A TERMINAL FAILURE. The run must
-end in ``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and grade the
-primary's
-rejection ``WARNING:`` rather than ``ERROR:``. Copying the backup-side base class
-here would have inverted the requirement.
-
-MARKER. The ``default:`` arm returns ``SEP_MSG_INVALID_KEY_INDEX``. This ROM
-*defines* that code (``status_values.h``) but never EMITS it: there is no
-``report_status`` call for it anywhere under ``bootrom/prod/src``, so the
-architected status ring carries only the generic terminal code and the debug
-console token is the only per-reason evidence available. Hence the
-unassigned-source arm's ``BAD_KEY_SEL`` is required here instead.
-``BAD_KEY_IDX`` -- a bad ROM key INDEX, a different arm -- is forbidden below so
-the two cannot be confused.
-
-``public_key_sel`` is at offset 166, inside the TBS, so the helper re-hashes. No
-re-sign: the selection is rejected before ``rsa_3072_verify``, so the primary's
-now-stale signature is never examined, and the shared base forbids any
-``RSA_VERIFY_START`` before the backup read to check that rather than assume it.
-
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``SIG_VALID`` still means the signature verified.
+Only the primary's key selection is broken, so it reaches that check and fails BAD_KEY_SEL.
+Needs ``+sep_crypto_edn_force``: OTBN waits for EDN entropy in the backup's RSA-3072 verify.
 """
 
 from __future__ import annotations
@@ -64,8 +28,7 @@ _BAD_SELECTION = 3
 # public_key_sel is {index:4, selection:3} -- index 0, selection 3 -> 0x0030.
 _BAD_PUBK_SEL_VALUE = (_BAD_SELECTION & 0x7) << 4
 _PRIMARY_SEL_ECHO = f"PUBK_SEL=0x{_BAD_PUBK_SEL_VALUE:08x}"
-# The backup keeps the shipped selector: ROM key slot 0
-# (configs/secure_boot_test.yaml).
+# The backup keeps the shipped selector: ROM key slot 0.
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 
@@ -77,12 +40,8 @@ class sep_firmware_primary_invalid_public_key_selection_test(
     primary_defect_marker = "BAD_KEY_SEL"
     primary_expected_error = MANIFEST_ERR_SIG_FAILED
     efuse_preload = _EFUSE_PRELOAD
-    # Both selectors must be echoed: the primary's bad one and the backup's good
-    # one. Without the second, "the backup booted" would not be tied to a slot.
     extra_required = (_PRIMARY_SEL_ECHO, _BACKUP_SEL_ECHO)
-    # BAD_KEY_IDX is the discriminator against the index arm, which shares this
-    # error code. The rest must not fire at all: the primary is rejected at the
-    # selection and the backup is valid, so nothing else may complain.
+    # BAD_KEY_IDX shares this error code, so forbid it to separate the two arms.
     extra_forbidden = ("BAD_KEY_IDX", "BAD_SIG_TYPE=", "ROM_KEY_EMPTY",
                        "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH", "KEY_REVOKED",
                        "VERSION_ROLLBACK", "RSA_VERIFY_FAIL")
@@ -95,11 +54,8 @@ class sep_firmware_primary_invalid_public_key_selection_test(
             f"primary public_key_sel encoded as 0x{got:04x}, expected "
             f"0x{_BAD_PUBK_SEL_VALUE:04x} (index 0, selection {_BAD_SELECTION})"
         )
-        # The re-hash must have restored a valid TBS hash, or the primary is
-        # thrown out in the manifest loop before key selection and this testcase
-        # would be asserting on the wrong rejection.
+        # A stale TBS hash would reject the primary before key selection.
         mm.verify_layout(buf, "primary")
-        # Everything else about the primary is untouched, including the modulus.
         mm.verify_public_key(buf, "primary")
         self.logger.info(
             "CHK-STIMULUS-PUBKSEL: primary public_key_sel=0x%04x (selection=%d, "
@@ -134,16 +90,11 @@ class sep_firmware_primary_invalid_public_key_selection_test(
         i_bsrc = index_of(f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")
         i_bsel = index_of(_BACKUP_SEL_ECHO)
 
-        # CHK-PUBKSEL-ATTRIBUTION: the ROM read THIS testcase's selector out of the
-        # primary and complained about it immediately. Without the echo, BAD_KEY_SEL
-        # could belong to any malformed selection, including one not planted here.
         assert 0 <= i_psel < i_bad < i_bsrc, (
             f"the BAD_KEY_SEL verdict is not attributable to the primary's planted "
             f"selector: {_PRIMARY_SEL_ECHO}@{i_psel} -> BAD_KEY_SEL@{i_bad} -> "
             f"backup@{i_bsrc}. Console: {console}"
         )
-        # CHK-BACKUP-SELECTOR: the recovering slot used the valid ROM-key selector,
-        # so the boot is attributable to slot 0 rather than to an unread selection.
         assert i_bsrc < i_bsel, (
             f"{_BACKUP_SEL_ECHO}@{i_bsel} did not follow the backup read@{i_bsrc}: "
             f"the booting slot's key selection is unattributed. Console: {console}"

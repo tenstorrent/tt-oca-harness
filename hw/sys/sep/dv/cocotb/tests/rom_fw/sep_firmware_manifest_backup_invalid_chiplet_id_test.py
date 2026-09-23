@@ -2,28 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup enables chiplet_id constraints it does not satisfy; the ROM halts.
 
-The mirror of ``sep_firmware_manifest_primary_invalid_chiplet_id_test``. There the
-primary carries the defect and the valid backup completes the boot; here the
-primary is refused by the failover trigger, the backup carries the chiplet_id
-defect, and with both slots refused ``rom_manifest_boot`` runs out of retries and
-``rom_err_fail`` halts the ROM (``bootrom/prod/src/manifest_load.c``,
-``bootrom/prod/src/rom_main.c``). The expected outcome is terminal -- ``ERROR: INVALID_CHIPLET_ID`` rather than a warning.
-
-THE FAILOVER TRIGGER. Reaching the backup by breaking the primary's payload TOC
-version does not work here: this ROM validates the TOC INSIDE the slot attempt and
-prints ``MANIFEST_OK`` only after the whole slot has passed (``manifest_load.c``),
-so a TOC-defective primary never reports itself validated. Disabling the
-manifest's secure-boot flag does not work either -- it is ignored in PROD
-(``secure_boot_enabled``), the lifecycle this environment must run for the crypto
-chain to be enforced at all. The trigger is therefore the shared
-``corrupt_primary`` identifier corruption, a BAD_MAGIC refused before any hash or
-crypto work, as for the other members of this family. The trigger is not the feature under test, and its error code is deliberately
-different from the backup's so the two slots' rejections stay individually
-countable.
-
-The stimulus and the fixed selector mask are identical to the primary-side
-sibling's; see that module for why the mask is 0x28 and why the fuse side's value
-is not this testbench's to assert.
+A BAD_MAGIC identifier refuses the primary first, so both slots fail and the ROM
+reports ERROR: INVALID_CHIPLET_ID.
 """
 
 from __future__ import annotations

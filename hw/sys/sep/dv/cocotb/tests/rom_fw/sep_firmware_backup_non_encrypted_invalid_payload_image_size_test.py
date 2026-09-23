@@ -2,59 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup's PLAINTEXT payload declares a misaligned image length; the ROM halts.
 
-``validate_manifest_payload`` (``bootrom/prod/src/manifest_load.c``) requires every
-image length to be 4-byte aligned, enforced as ``(len & 3u) != 0``. A length of
-0x72D trips it, printing ``IMAGE_LEN_ALIGN idx=0x00000000`` and returning
-``MANIFEST_ERR_IMAGE_OOB`` (0x0003000e). With the primary already refused, the
-backup's rejection exhausts the retry loop and the run ends terminal on
-``MANIFEST_ALL_FAILED``.
-
-THE ERROR CODE ALONE PROVES NOTHING HERE, which is why the token is required. The
-SILENT ``end > p_len`` bounds arm sits immediately above the alignment arm in the
-same entry and returns exactly the same ``MANIFEST_ERR_IMAGE_OOB``. Only
-``IMAGE_LEN_ALIGN idx=`` distinguishes them, and only this arm prints it.
-
-THE PLANTED VALUE. 0x72D, which is 1 modulo 4 and so violates ``(len & 3u) != 0``.
-It is the largest such value that still ends inside the payload on both shipped
-images: the single image sits at 0x1000 in 5936 plaintext bytes, and a length that
-overruns would be refused by the SILENT bounds arm, which returns this row's error
-code from a different check. Residues 2 and 3 are unexercised; the full reasoning
-is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
-
-THE PAYLOAD IS NOT ENCRYPTED. This row loads ``secure_boot.bin``, whose slots both
-carry ``encrypted_payload = 0``, and the base asserts that flag on the loaded
-image.
-
-THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
-``sep_backup_manifest_fail_base.corrupt_primary``, producing
-``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work.
-
-SECURE BOOT STAYS ON. Under LC=PROD, ``secure_boot_enabled()``
-(``manifest_load.c``) enforces the chain regardless of the manifest flag: the base
-requires the backup's ``RSA_VERIFY_START``, ``SIG_VALID``, ``PLD_HASH_OK`` and
-``CRYPTO_VALIDATE_OK`` exactly once each and in order before the rejection.
-Reaching the ``SBOOT_OFF`` branch would need a TEST_DEV/RMA fuse image or the
-``SBOOT_DIS`` chicken bit, and no row here uses either. That arm is not covered;
-``SBOOT_OFF`` and ``CRYPTO_FAIL=`` are both forbidden, so this row cannot drift
-onto it.
-
-THE IMAGE STILL HASHES CORRECTLY. ``pm.set_toc_entry_length`` recomputes the entry's
-digest over the newly declared range, so alignment is the ONLY rule this payload
-violates and ``IMAGE_HASH_MISMATCH`` is forbidden rather than tolerated.
-
-WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
-
-  * from the IMAGE-ORDER cell -- the token, ``IMAGE_LEN_ALIGN idx=0x00000000``
-    against ``IMAGE_ORDER_BAD idx=0x00000001``, with the sibling token FORBIDDEN,
-    and the error code, 0x0003000e against 0x0003000f;
-  * from the ENCRYPTED cell -- ``DECRYPT_START`` must NEVER appear;
-  * from the PRIMARY cell -- the run is terminal: ``MANIFEST_ALL_FAILED``, the
-    ``STATUS_ENCODE(ERROR, 0x000e)`` word, no boot-progress marker, and a quiescent
-    ROM afterwards;
-  * from all of them -- the device must be shown to have served the planted
-    little-endian bytes at the BACKUP slot's entry 0 length field.
-
-Needs ``+sep_crypto_edn_force``: the backup runs a full RSA-3072 modexp on OTBN.
+Image 0 length 0x72D must be refused with ``IMAGE_LEN_ALIGN idx=0x00000000``: the
+silent bounds arm returns the same ``MANIFEST_ERR_IMAGE_OOB``, so the code alone is not proof.
 """
 
 from __future__ import annotations

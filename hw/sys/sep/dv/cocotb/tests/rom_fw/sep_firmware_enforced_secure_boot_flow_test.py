@@ -1,29 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Enforced secure boot under the PROD lifecycle (PyUVM).
-
-A signed image authenticating and booting under PROD: full RSA-3072 chain, then
-handoff to BL1.
-
-WHAT THIS DOES NOT ESTABLISH -- read before extending. It does not exercise a
-distinct "enforce arm". In ``secure_boot_enabled()``
-(``manifest_load.c``) the lifecycle is consulted only inside
-``if (!mfst_flag && ...)``; with the manifest's secure_boot flag SET that branch is
-never taken and the function returns true on every lifecycle. The instruction path
-is therefore the same one ``sep_rom_ot_secure_boot_test`` takes under TEST_DEV, so
-no lifecycle-precedence claim may be made from a pass. The sibling
-``sep_firmware_cntl_secure_boot_flow_test`` clears the flag and isolates that.
-
-What it does add: the PROD path through ``rom_lifecycle_policy`` (LC decode,
-validation, and the production feature-control masking it applies) and the PROD bit
-of the manifest's ``life_cycle_states`` constraint (``manifest_load.c``).
-The lifecycle assertion in :meth:`build_efuse_image` keeps that honest -- without
-it the OTP could silently be TEST_DEV again.
-
-The image already permits PROD: ``life_cycle_states = 0x7`` with the selector bit
-set, and ``security_version = 0`` against a zero BL1_VERSION fuse, so no
-usage-constraint or rollback rejection is expected. Read from
-``build/secure_boot.bin``, not assumed.
+"""Enforced secure boot under PROD: the full RSA-3072 chain runs and BL1 is entered.
 """
 
 from __future__ import annotations
@@ -39,10 +16,7 @@ _LC_PROD = "LC=PROD"
 _RSA_START = "RSA_VERIFY_START"
 _SIG_VALID = "SIG_VALID"
 _CRYPTO_OK = "CRYPTO_VALIDATE_OK"
-# Must not appear: it would mean the ROM decided secure boot was off in PROD.
 _SBOOT_OFF = "SBOOT_OFF"
-# Must not appear: the fuse chicken bit is 0 in this image, so a ROM reporting 1
-# has sensed the wrong OTP and the run would prove nothing about enforcement.
 _SBOOT_DIS_SET = "FUSE: SBOOT_DIS: 1"
 
 _EFUSE_PRELOAD = (
@@ -80,8 +54,6 @@ class sep_firmware_enforced_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
             f"SBOOT_DIS is {sboot_dis}: the chicken bit would disable secure boot "
             f"and the enforcement arm would never be reached"
         )
-        # These two would make the run fail for an unrelated reason, which on a
-        # negative-looking marker set is easy to misread as "enforcement broken".
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: a non-zero thermometer "
             f"count makes the manifest's security_version=0 a rollback rejection"

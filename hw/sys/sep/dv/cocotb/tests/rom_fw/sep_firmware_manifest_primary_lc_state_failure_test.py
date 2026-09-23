@@ -2,43 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary does not permit the live lifecycle; the backup boots.
 
-``selector_bits[16]`` gates the lifecycle usage constraint. With it set the ROM
-maps the live OTP lifecycle to a manifest bitmap bit through
-``lc_state_to_manifest_bit`` (``bootrom/prod/src/lifecycle.c``) and refuses the
-slot when ``usage_constraints.life_cycle_states`` has that bit clear, printing
-``LC_USAGE_CONSTRAINT_FAIL``, ``LC_ALLOWED=`` and ``LC_BIT=`` and returning
-``MANIFEST_ERR_LC_USAGE_CONSTRAINT`` (``bootrom/prod/src/manifest_load.c``). The
-reference expects that verdict on the primary and a completed boot from the
-backup.
-
-WHICH BITMAP, AND WHY IT IS NOT 6. The
-reference writes ``life_cycle_states = 6`` (PROD | PROD_END) and runs on its
-default OTP image, whose lifecycle is TEST_DEV -- so its bitmap excludes exactly
-the state the part is in. This environment cannot use 6: the shared failover base
-requires the PROD preload, because secure boot has to be enforced for the backup
-to complete the crypto chain, and 6 PERMITS PROD, so the constraint would be
-satisfied and the testcase would prove nothing. The port therefore keeps the
-reference's shape -- remove the live state's bit, keep the other two -- and
-applies it to PROD, giving ``0x5`` (TEST_DEV | PROD_END). The verification intent
-is preserved exactly and the evidence is stronger: ``LC_BIT=0x00000001``
-pins the ROM to having DECODED the live lifecycle as PROD, which a bitmap of 0
-(refuse everything) would not.
-
-``selector_bits[16]`` is already set in the shipped image, so unlike the two
-device-id arms this stimulus is a value change rather than an enable, and
-:func:`plant_lc_state_defect` asserts the selector is set rather than assuming
-it -- with the bit clear the ROM skips the check and the stimulus would be inert.
-
-**HOW THIS IS TOLD APART FROM THE TWO DEVICE-ID SIBLINGS.** All three arms share
-``MANIFEST_ERR_LC_USAGE_CONSTRAINT`` and the same terminal shape, so this member
-requires ``LC_USAGE_CONSTRAINT_FAIL`` and forbids ``CHIPLET_ID_MISMATCH`` and
-``PACKAGE_ID_MISMATCH``, and each sibling forbids this one's token.
-
-MARKER SUBSTITUTION. There is no per-reason status code at all:
-``bootrom/prod/include/status_values.h`` defines ``SEP_MSG_LIFECYCLE_INVALID``
-(0x01) for the OTP lifecycle decode in ``lifecycle.c`` and
-``SEP_MSG_FUSE_LC_STATE`` (0x20), and neither is emitted by the manifest
-usage-constraint arm. The debug console tokens are the only per-reason evidence.
+On a PROD part the primary's life_cycle_states becomes 0x5 (TEST_DEV | PROD_END), so
+the ROM must decode the live lifecycle as PROD (LC_BIT=0x00000001) and refuse the slot.
 """
 
 from __future__ import annotations

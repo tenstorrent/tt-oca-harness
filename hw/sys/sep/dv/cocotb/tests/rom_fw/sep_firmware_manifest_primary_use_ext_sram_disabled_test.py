@@ -2,24 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary asks for SMC SRAM staging; the ROM waits, reads the window, stages there.
 
-The SMC half of the requirement. ``flag_args`` bit 29 is cleared on the primary, so
-``manifest_load.c`` must report ``EXT_SRAM_INIT_WAIT``, poll scratch[9] for
-``SRAM_INIT``, read the SEP-safe window from scratch[13]/[14], range- and
-alignment-check it, and stage the payload at ``smc_sram_base + scratch[13]``.
-
-The bit lives outside the signed TBS region, so clearing it needs no re-seal --
-``set_flag_args_bit`` writes it directly and both the manifest hash and the
-signature stay valid. That is the same property the ROM relies on to rewrite
-``payload_offset`` after staging.
-
-The destination is asserted against the offset the TB published rather than a
-constant the test also chose: ``smc_sram_base + 0x20000`` can only be printed by
-a ROM that read scratch[13]. ``USING_SEP_SRAM`` is forbidden, so a ROM that
-ignored the bit -- the earlier behaviour -- fails here instead of passing.
-
-The window offset clears the status ring buffer at the SMC SRAM base and is
-8-byte aligned, so neither of the ROM's two window checks is what this member
-exercises; both have their own negative cases.
+use_ext_sram lies outside the signed region, so clearing it needs no re-seal; the
+payload must land at smc_sram_base + scratch[13].
 """
 
 from __future__ import annotations
@@ -72,9 +56,7 @@ class sep_firmware_manifest_primary_use_ext_sram_disabled_test(
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_USE_EXT_SRAM, False)
         ues.assert_stimulus(self.logger, buf, "primary", want_set=False)
-        # The slot must still be cryptographically intact: the claim is that a
-        # VALID manifest asking for SMC staging gets it, not that a broken one
-        # takes some other path.
+        # The slot must stay valid so that only the staging path differs.
         mm.verify_public_key(buf, "primary")
         return buf
 

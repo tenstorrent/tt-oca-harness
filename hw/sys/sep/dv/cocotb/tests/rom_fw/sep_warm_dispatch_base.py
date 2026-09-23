@@ -2,23 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared scaffolding for the warm-reset dispatch legs of ``vector.S``.
 
-``vector.S`` reads ``cold_scratch[7]`` before it touches DCCM or any fuse and
-takes one of four branches::
-
-    lw   t1, 0(t0)                                     # cold_scratch[7]
-    beqz t1, cold_boot                                 # A: zero -> cold boot
-    bltu t1, WARM_HANDLER_RANGE_BASE, warm_reset_hang  # B: below ICCM -> hang
-    bgeu t1, WARM_HANDLER_RANGE_END,  warm_reset_hang  # C: at/above end -> hang
-    <status WARM_RESET_JUMP>; jr t1                    # D: accept and jump
-
-Leg C is covered by ``sep_warm_reset_invalid_hang_test`` (which seeds
-``RANGE_END`` exactly) and leg D by ``sep_scratch_7_test``, both of which stand
-alone. The subclasses of this base cover the rest:
-
-* ``sep_warm_reset_below_range_hang_test``     -- leg B
-* ``sep_warm_reset_unarmed_cold_boot_test``    -- leg A
-* ``sep_warm_reset_bad_target_exception_test`` -- leg D into a target that holds
-  no instruction
+Seeds cold_scratch[7] before release, samples the ROM status words, and checks that
+a rejected warm target leaves the core spinning in place.
 """
 
 from __future__ import annotations
@@ -37,66 +22,46 @@ from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
 from env.sep_rom_console import rom_console_task, log_scratch_cold
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-# The dispatch runs before any transport is selected, so the SPI build variant is
-# irrelevant; reuse the default ROM rather than adding a firmware profile.
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# WARM_HANDLER_RANGE_BASE / _END in vector.S, named by symbol rather than line.
+# WARM_HANDLER_RANGE_BASE / _END in vector.S.
 RANGE_BASE = 0xC000_0000
 RANGE_END = 0xC004_0000
 
-# cold_scratch[1] status words, all from vector.S / status_values.h.
+# cold_scratch[1] status words.
 STATUS_WARM_HANG = 0x0F01_0069      # ERROR + SEP_MSG_WARM_RESET_HANG
 STATUS_WARM_JUMP = 0x0101_0068      # INFO  + SEP_MSG_WARM_RESET_JUMP
 STATUS_GENERAL_EXCEPTION = 0x0F01_0028  # ERROR + SEP_MSG_GENERAL_EXCEPTION
 STATUS_BOOTROM_START = 0x8001_0044
 STATUS_PRESTART_DONE = 0x8001_0056
 
-# cold_scratch[0] terminal verdict written by trap_vector_early, and by every C
-# failure path through errors.h.
+# cold_scratch[0] terminal FAIL verdict.
 VERDICT_FAIL = 0xDEAD_BEEF
 
 # Written by cold_boot over cold_scratch[7] as its first store.
 COLD_POISON = 0xFFFF_FFFF
 
-# Same halt shape as the MEM_REPAIR gate: `wfi; j back`, two instructions.
+# The ROM hang is a two-instruction `wfi; j` spin.
 QUIESCE_CYCLES = 2_000
 QUIESCE_PC_SPAN_MAX = 64
 
 
 class sep_warm_dispatch_base(sep_base_test):
-    """Bring the ROM up to the warm-dispatch decision and sample the outcome."""
 
     build_env = False
     rom_build_dir = _FW_DIR
 
-    # Subclass contract.
-    #   seed: what +sep_cold_scratch7 must carry, or None for "not armed at all"
-    #         (the register's cold reset value of 0, which is leg A's stimulus).
+    # +sep_cold_scratch7 value, or None to leave cold_scratch[7] at its reset value 0.
     seed: int | None = None
     max_run_cycles = 400_000
     progress_every = 50_000
-    #   stage_tcm: pulse tcm_load_i, which loads sep_itcm.hex/sep_dtcm.hex AND
-    #         writes every ICCM/DCCM row with valid ECC. The warm dispatch itself
-    #         needs neither -- the ROM runs from Boot ROM and the decision is made
-    #         before DCCM is touched -- but sep_itcm.hex is the ROM's own .text,
-    #         so staging it leaves a COPY OF THE ROM sitting in ICCM. Any test
-    #         whose subject is what the ICCM target contains must turn this off.
+    # Staging TCM puts a copy of the ROM in ICCM; disable it when ICCM contents matter.
     stage_tcm = True
 
     async def bring_up_to_dispatch(self) -> list[str]:
-        """Stage the ROM, check the stimulus, and release the core.
-
-        Returns the console sink. It stays empty on every leg that stops before
-        the C runtime, which is itself evidence -- ``simputs()`` needs C.
-        """
         dut = cocotb.top
 
-        # Guard the stimulus before anything downstream can describe the wrong
-        # run. A missing or mismatched deposit silently turns every leg into
-        # leg A, and leg A's own expectations would then be met for the wrong
-        # reason.
         seeded = cocotb.plusargs.get("sep_cold_scratch7")
         if self.seed is None:
             assert seeded is None, (
@@ -130,6 +95,7 @@ class sep_warm_dispatch_base(sep_base_test):
         efuse_img.set_lc_state(LC_TEST_DEV)
         self.write_efuse_image(efuse_img)
 
+        # Stays empty on legs that stop before the C runtime; simputs() needs C.
         console: list[str] = []
         cocotb.start_soon(rom_console_task(self.logger, sink=console))
 
@@ -162,13 +128,6 @@ class sep_warm_dispatch_base(sep_base_test):
         return console
 
     async def sample_until(self, stop_status: int | None) -> dict:
-        """Sample cold_scratch[1]/[7] and the trace port until ``stop_status``.
-
-        Both registers are sampled every cycle and recorded on change, so the
-        caller gets the ORDER of the words the ROM wrote, not just the final
-        resting value -- which is what distinguishes "reached the hang" from
-        "passed through on the way to somewhere else".
-        """
         dut = cocotb.top
         status_seq: list[int] = []
         cold7_seq: list[int] = []
@@ -191,8 +150,6 @@ class sep_warm_dispatch_base(sep_base_test):
             if cold7 != last_cold7:
                 last_cold7 = cold7
                 cold7_seq.append(cold7)
-            # cold_scratch[0] is the verdict channel: trap_vector_early and every
-            # C failure path write TEST_FAIL_CODE here.
             verdict = probe & 0xFFFF_FFFF
             if verdict != last_verdict:
                 last_verdict = verdict
@@ -223,20 +180,14 @@ class sep_warm_dispatch_base(sep_base_test):
         }
 
     async def observe_quiesce(self, resting_status: int) -> dict:
-        """After a terminal status, prove the core actually STOPPED.
-
-        The spin keeps retiring, so instruction volume proves nothing; PC
-        LOCALITY is the evidence. Code that continued into cold_boot would walk
-        hundreds of addresses.
-        """
         dut = cocotb.top
+        # The spin keeps retiring, so PC locality, not retire count, shows the core stopped.
         post_pcs: set[int] = set()
         moved = False
         for _ in range(QUIESCE_CYCLES):
             await RisingEdge(dut.clk_i)
             if self.rd(dut.cpu_trace_valid_o):
-                # cpu_trace_addr_o is already a byte PC (tb_top drives it from
-                # trace_rv_i_address_ip); do not shift it.
+                # cpu_trace_addr_o is already a byte PC; do not shift it.
                 post_pcs.add(self.rd(dut.cpu_trace_addr_o))
             if ((self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF) != resting_status:
                 moved = True
@@ -244,7 +195,6 @@ class sep_warm_dispatch_base(sep_base_test):
         return {"pcs": post_pcs, "span": span, "moved": moved}
 
     def assert_hung(self, quiesce: dict, resting_status: int) -> None:
-        """The shared shape of a `warm_reset_hang` verdict."""
         assert not quiesce["moved"], (
             f"cold_scratch[1] moved on from 0x{resting_status:08x} within "
             f"{QUIESCE_CYCLES} cycles: the ROM reported the reject and carried on"

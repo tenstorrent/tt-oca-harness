@@ -2,72 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared stimulus and evidence for the TOC/manifest length agreement and the entry-0 bound.
 
-THE PROBLEM THIS MODULE EXISTS TO SOLVE. Two rules of ``validate_manifest_payload``
-(``bootrom/prod/src/manifest_load.c``) constrain how much payload a TOC may claim
-and where an image body may sit. They fire in two DIFFERENT stages, and the stage
-is what separates them::
-
-    TOC HEADER stage, before any entry is read
-      toc->payload_length disagrees with m->payload_length
-                                  -> TOC_PLEN_MISMATCH= + MANIFEST_ERR_BAD_LENGTH
-    PER-IMAGE loop, once per entry
-      end < off / end > p_len     -> MANIFEST_ERR_IMAGE_OOB           (SILENT)
-      off < prev_end              -> IMAGE_ORDER_BAD idx= + IMAGE_OVERLAP
-
-Both arms here PRINT, so each row's token names the rule that fired. Three things
-carry the attribution, and every member asserts all three:
-
-  * THE TOKEN. ``TOC_PLEN_MISMATCH=`` for the length-agreement arm, and
-    ``IMAGE_ORDER_BAD idx=0x00000000`` for the entry-0 bound -- ``simputshex32``
-    renders the index, so the console says WHICH rule and WHICH entry. Each member
-    requires its own token and forbids every other payload token, including its
-    sibling's;
-  * THE ERROR CODE, ``0x00030004`` for the agreement arm and ``0x0003000f`` for the
-    bound arm, with the sibling's code forbidden as well;
-  * THE BYTES THE DEVICE SERVED. :func:`assert_served_bound_field` requires the
-    flash BFM to have returned this testcase's exact planted bytes at the exact
-    flash ADDRESS of the mutated field in this testcase's own slot. That is the half
-    the ROM cannot fake.
-
-WHICH CHECK FIRES FIRST, PER ROW, AND WHY THE OTHER CANNOT. The agreement arm sits
-above the per-image loop, so on a PLEN row the loop is never entered and no image
-bound can be evaluated -- the entry is left exactly as shipped in any case. On a
-BOUND row the TOC's ``payload_length`` is untouched and still equals the manifest's,
-so the agreement arm cannot fire; the loop is then entered and entry 0's offset
-trips ``off < prev_end``. The two stimuli are therefore not merely differently
-announced, they are mutually unreachable. The mutators enforce that offline, before
-anything is simulated: ``pm.set_toc_payload_length`` and ``pm.set_toc_entry_offset``
-each reproduce the ROM's own rule and REFUSE any value the ROM would accept, and
-``set_toc_entry_offset`` additionally refuses any value that would reach the silent
-``end > p_len`` arm above the bound. A stimulus that did not violate the arm its row
-names therefore raises at build time rather than producing a run to interpret.
-
-HOW THIS FAMILY RELATES TO ``sep_toc_entry_defect``'s ORDERING ROW, stated plainly
-because the two land on the SAME ``if``. ``off < prev_end`` enforces one rule with
-two halves: an image must start after the TOC REGION, and after the PREVIOUS IMAGE.
-``sep_toc_entry_defect`` plants entry 1 below entry 0's end, the previous-image
-half, and its docstring records the TOC-region half as unexercised. This family is
-that half: entry 0 alone, declaring a body that begins inside the TOC region the ROM
-is still parsing. What separates the two rows on the console is the ENTRY INDEX the
-token carries -- ``idx=0x00000000`` here against ``idx=0x00000001`` there -- and
-every member of this family FORBIDS the neighbour's exact token. What separates them
-off the console is the field address the device must have served -- entry 0's offset
-field here, entry 1's there. Those two are the whole of the separation. The payloads
-also differ in image count, 1 here against 2 there, but NOTHING ASSERTS IT: the count
-appears only in a fixed log string, ``verify_sealed`` does not check it, and
-``toc_entry_lower_bound`` reads it without constraining it. It is a true fact about
-the artefacts and not a check, so it is not offered as a third separator. The ROM
-does not report which HALF of the bound was violated, and no assertion here claims
-it does.
-
-WHAT IS NOT COVERED, stated plainly. The SILENT ``end > p_len`` and ``end < off``
-arms are forbidden, not planted; the mutators refuse any value that would reach
-them, precisely so a row cannot report this family's verdict from an unannounced
-check. On the agreement arm, only the "TOC claims MORE than the manifest" direction
-is planted; for an encrypted payload the other direction -- the manifest running
-more than one AES block ahead of the TOC -- is a distinct sub-condition of the same
-``if`` and has no row here. ``IMAGE_LEN_ZERO`` and ``IMAGE_LEN_ALIGN`` belong to
-``sep_toc_entry_defect``.
+Plants either a TOC payload_length above the manifest's or an entry-0 offset inside
+the TOC region; the IMAGE_OOB arms are forbidden, not planted.
 """
 
 from __future__ import annotations
@@ -77,112 +13,60 @@ from rom_fw import sep_manifest_field_defect as fd
 from rom_fw import sep_toc_defect as td
 from rom_fw import sep_toc_entry_defect as ted
 
-# The two packed images and the fuse preloads they need are the same artefacts the
-# other TOC families use, and the reasoning for each is written down once, there.
 PLAINTEXT_IMAGE = td.PLAINTEXT_IMAGE
 ENCRYPTED_IMAGE = td.ENCRYPTED_IMAGE
 PLAINTEXT_EFUSE = td.PLAINTEXT_EFUSE
 ENCRYPTED_EFUSE = td.ENCRYPTED_EFUSE
 
-# BOTH SLOTS OF EACH IMAGE SHARE ONE ENCRYPTION STATE, as for the other TOC
-# families; ``sep_toc_defect``'s module docstring sets out the consequences. A
-# BACKUP cell is unaffected because its primary is refused on the manifest magic
-# upstream of the first read of the encryption flag; a PRIMARY ENCRYPTED cell
-# recovers onto a backup that is also encrypted, which is why those cells require
-# the decryption markers twice.
+# Both slots of an image share one encryption state, so a primary encrypted cell decrypts twice.
 
-# manifest.h
 ERR_BAD_LENGTH = td.ERR_BAD_LENGTH
 ERR_IMAGE_OOB = ted.ERR_IMAGE_OOB
 ERR_IMAGE_OVERLAP = ted.ERR_IMAGE_OVERLAP
-# The failover trigger the backup family plants in its PRIMARY slot.
 ERR_BAD_MAGIC = td.ERR_BAD_MAGIC
 
-# The two defect families, named as the tracker names them.
 BOUND = "payload_image_exceeds_bound"
 PLEN = "toc_payload_size_mismatch"
 
-# ── The two stimuli ──────────────────────────────────────────────────────────
-# IMAGE BOUND. This family is about the TOC-region bound -- an image body that
-# starts inside the TOC that describes it -- and not about running off the end of
-# the payload, which is a separate arm. ``off < prev_end`` enforces it, with
-# ``prev_end`` seeded at the TOC region size.
-#
-# The bound follows the image count: the shipped payload declares ONE image, so
-# the region is 32 + 216 = 248 bytes. An offset at or above 248 is ACCEPTED by the
-# ordering arm and proves nothing, so ``pm.set_toc_entry_offset`` refuses one
-# rather than planting it.
-#
-# 240 is the largest 8-byte-aligned offset still inside that region, so it is the
-# TIGHTEST possible violation: it pins the comparison to exactly the TOC region
-# size rather than to some looser bound a mistake might have used. Keeping the
-# offset 8-byte aligned also keeps these rows clear of the alignment arm, which
-# precedes the bound and returns a different code.
+# Must stay 8-byte aligned and below the 248-byte TOC region, or another check fires.
 BOUND_IMAGE_OFFSET = 240
 BOUND_ENTRY_INDEX = 0
 
-# TOC PAYLOAD LENGTH. 0x2000 = 8192 exceeds the shipped payload's 5936 plaintext
-# bytes, so it disagrees with the manifest's declared length on a plaintext slot
-# and on an encrypted one alike, where the manifest declares 5952 -- the 5936
-# plaintext plus the PKCS#7 block the packer appended.
-#
-# A TOC DECLARING LESS THAN THE MANIFEST IS UNCOVERED. All four PLEN cells plant
-# the same above-manifest value, so a TOC whose length falls short of the padded
-# length the manifest declares is reached by no row.
+# Above the manifest length on both slot types.
 BAD_TOC_PAYLOAD_LENGTH = 0x2000
 
-# ── Per-family descriptors ───────────────────────────────────────────────────
-# Console token, rendered as the ROM prints it.
 DEFECT_TOKEN = {
     BOUND: f"IMAGE_ORDER_BAD idx=0x{BOUND_ENTRY_INDEX:08x}",
     PLEN: "TOC_PLEN_MISMATCH=",
 }
-# The bare prefix as ``sep_toc_defect.OTHER_PAYLOAD_TOKENS`` spells it, so a family
-# can remove its OWN token from that forbidden list and keep every other.
+# Prefixes as spelled in td.OTHER_PAYLOAD_TOKENS, so each family can drop only its own.
 _TOKEN_PREFIX = {BOUND: "IMAGE_ORDER_BAD", PLEN: "TOC_PLEN_MISMATCH="}
 EXPECTED_ERROR = {BOUND: ERR_IMAGE_OVERLAP, PLEN: ERR_BAD_LENGTH}
-# (payload-relative offset, width) of the mutated field, manifest.h.
+# (payload-relative offset, width) of the mutated field.
 FIELD = {
     BOUND: (pm.toc_entry_at(BOUND_ENTRY_INDEX) + pm.E_OFFSET, 8),
     PLEN: (pm.TOC_OFF_PAYLOAD_LENGTH, 8),
 }
 FIELD_NAME = {BOUND: "image 0 offset", PLEN: "TOC payload_length"}
 
-# The neighbouring family's EXACT token, forbidden by every member of this one.
-# ``sep_toc_entry_defect``'s ordering row lands on the same ``if`` as BOUND and
-# prints the same prefix, differing only in the entry index, so forbidding the bare
-# prefix is not available to BOUND and this exact string is what stands in for it.
+# sep_toc_entry_defect's ordering row prints the same prefix, so forbid its exact token.
 FOREIGN_TOKENS = {
     BOUND: (ted.DEFECT_TOKEN[ted.ORDER],),
     PLEN: (),
 }
 
-# Decryption stage markers, manifest_crypto.c.
 DECRYPT_START = td.DECRYPT_START
 DECRYPT_OK = td.DECRYPT_OK
 
-# Decryption failure tokens; forbidden on every member for the same reason as in
-# the other TOC families -- a plaintext row must not decrypt at all, and an
-# encrypted row's decryption has to SUCCEED or the arm under test is never reached.
+# Plaintext rows must not decrypt, and encrypted rows must decrypt to reach the checked arm.
 DECRYPT_FAILURE_TOKENS = td.DECRYPT_FAILURE_TOKENS
 
 
 def sibling_error(defect: str) -> int:
-    """The error code of the OTHER arm in this batch.
-
-    Every member forbids this, which is the direct answer to "would this testcase
-    still pass if its mutation were replaced by its neighbour's?". It would not.
-    """
     return EXPECTED_ERROR[PLEN if defect == BOUND else BOUND]
 
 
 def other_payload_tokens(defect: str) -> tuple[str, ...]:
-    """Every payload token except this family's own, plus the neighbour's exact token.
-
-    Built from ``sep_toc_defect.OTHER_PAYLOAD_TOKENS`` so all four TOC families share
-    one list and none can drift. Removing only this row's own prefix leaves the
-    sibling's token forbidden, which is the console half of the swap test.
-    """
     mine = _TOKEN_PREFIX[defect]
     if mine not in td.OTHER_PAYLOAD_TOKENS:
         raise AssertionError(
@@ -194,40 +78,16 @@ def other_payload_tokens(defect: str) -> tuple[str, ...]:
 
 
 def neighbouring_errors(defect: str, *, exclude: tuple[int, ...] = ()) -> list[str]:
-    """``MANIFEST_ERR=`` codes that would mean a different check ended the run.
-
-    Covers the sibling arm, both per-image arms of ``sep_toc_entry_defect``, both
-    header arms of ``sep_toc_defect``, and the structural codes ahead of the payload
-    checks. ``MANIFEST_ERR_IMAGE_OOB`` matters most to the BOUND rows: it is what the
-    two SILENT arms immediately above the bound return, so forbidding it is what says
-    the offset was refused by the arm that ANNOUNCED itself.
-
-    This family's own expected code is removed, which is why the list is built here
-    rather than taken from ``sep_toc_entry_defect``: the PLEN arm's verdict IS
-    ``MANIFEST_ERR_BAD_LENGTH``, a code every other TOC family forbids.
-
-    ``exclude`` drops a code a scenario legitimately produces elsewhere in the run.
-    The backup family needs it for ``ERR_BAD_MAGIC``, which is the failover trigger
-    planted in its PRIMARY slot and must therefore appear.
-    """
     codes = (sibling_error(defect), ERR_IMAGE_OOB, ted.ERR_BAD_IMAGE_TYPE,
              ted.ERR_IMAGE_HASH_MISMATCH, td.ERR_BAD_MAGIC, td.ERR_BAD_VERSION,
              td.ERR_BAD_LENGTH, td.ERR_BAD_TOC_ID, td.ERR_BAD_TOC_VERSION,
              td.ERR_TOC_COUNT, td.ERR_PAYLOAD_TOO_LARGE, td.ERR_NO_BL1_IMAGE)
+    # exclude admits codes produced elsewhere, e.g. the backup family's primary BAD_MAGIC.
     drop = set(exclude) | {EXPECTED_ERROR[defect]}
     return [f"MANIFEST_ERR=0x{c:08x}" for c in codes if c not in drop]
 
 
 def plant(logger, buf: bytearray, slot: str, defect: str) -> bytes:
-    """Plant this batch's stimulus in ``slot``'s TOC and return the stored bytes.
-
-    The return value is what the flash DEVICE must later be shown to have served.
-    For a plaintext payload those are the planted little-endian bytes themselves;
-    for an encrypted one they are the CIPHERTEXT the re-encryption produced, which
-    is the only form the device ever holds. Asserting the stored form -- rather than
-    a value the ROM echoed -- is what makes the evidence independent of the ROM's
-    own account of the run.
-    """
     if defect not in DEFECT_TOKEN:
         raise ValueError(f"unknown defect {defect!r}; expected one of {list(DEFECT_TOKEN)}")
     encrypted = pm.is_encrypted(buf, slot)
@@ -252,6 +112,7 @@ def plant(logger, buf: bytearray, slot: str, defect: str) -> bytes:
         expect = BAD_TOC_PAYLOAD_LENGTH
 
     p = pm.payload_base(buf, slot)
+    # For an encrypted slot this is ciphertext, the only form the flash device holds.
     stored = bytes(buf[p + off:p + off + size])
     now = int.from_bytes(bytes(pm.toc_plaintext(buf, slot)[off:off + size]), "little")
     if now != expect:
@@ -275,34 +136,8 @@ def plant(logger, buf: bytearray, slot: str, defect: str) -> bytes:
 
 def assert_served_bound_field(logger, flash, slot: str, defect: str,
                               expected: bytes, payload_offset: int) -> None:
-    """Require the device to have returned ``expected`` at the mutated field's address.
-
-    ``fd.assert_served_field`` addresses relative to the manifest base, so the
-    payload-relative offset is rebased here by the manifest's own
-    ``boot_arguments.payload_offset``. The check is the cross-family discriminator:
-    a run that planted a neighbouring cell's mutation would serve different bytes at
-    this address, or the same bytes at a different one.
-
-    THE ADDRESS DOES THE WORK THE CIPHERTEXT CANNOT, on the encrypted members. CBC
-    makes block ``k`` depend only on plaintext blocks ``0..k``, and both fields this
-    family mutates sit early -- the TOC payload_length in block 0, entry 0's offset
-    in block 2. The two slots' payloads are identical for far longer than that: on
-    ``encrypted_boot.bin`` the BL1 bodies, entry 0's digest and every numeric TOC
-    field are byte-for-byte the same in both slots, and the first difference is at
-    payload byte 137, inside entry 0's trailing descriptor text, so the stored
-    ciphertext first diverges at block 8. Both of this family's fields therefore
-    serve IDENTICAL ciphertext in either slot, and only the flash address
-    (``0x002xxx`` against ``0x042xxx``) says which slot was mutated. That address is
-    exactly what this check pins.
-
-    THE ADDRESS IS IN THE PAYLOAD, NOT THE MANIFEST, which is a wider use than
-    ``assert_served_field`` was written for -- its own note reasons about the single
-    1184-byte manifest fetch. Its requirement still holds: the ROM stages the payload
-    in one further transfer (``PAYLOAD_DST=``), so one read covers the field. If the
-    transport ever splits that transfer, this fails loudly rather than silently
-    checking the wrong bytes.
-    """
     off, _size = FIELD[defect]
+    # Encrypted slots hold identical ciphertext here; only the flash address names the slot.
     fd.assert_served_field(
         logger, flash, slot, payload_offset + off, expected,
         f"{slot} {FIELD_NAME[defect]}",

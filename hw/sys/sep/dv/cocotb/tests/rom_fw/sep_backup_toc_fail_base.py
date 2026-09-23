@@ -1,35 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""BACKUP carries a silent TOC defect; both slots are refused and the ROM halts.
+"""Shared base for testcases where the backup TOC has a bad major version or image count.
 
-The terminal mirror of :mod:`sep_primary_toc_fail_base`, and four members of the
-same shape: ``{version_major, image_count} x {plaintext, encrypted}``.
-
-THE FAILOVER TRIGGER CANNOT INTERACT WITH THE ARM UNDER TEST. Reaching the
-backup at all needs the primary refused first, and
-``sep_backup_manifest_fail_base.corrupt_primary`` does it by overwriting the
-primary's manifest identifier (``mm.set_identifier``). That produces
-``MANIFEST_ERR_BAD_MAGIC``, which ``validate_manifest_header`` returns before any
-hash, crypto or TOC work, so the trigger runs nowhere near the arm under test and
-the primary's error code stays distinct from the backup's. The planted word is
-``0x99999999``; the check reads only whether the identifier is TBL1.
-
-WHY THIS FAMILY NEEDS ITS OWN BASE. :mod:`sep_backup_payload_fail_base` grades
-the right stage -- the backup's crypto chain passes and then
-``validate_manifest_payload`` refuses it, so ``RSA_VERIFY_START`` appears and
-``CRYPTO_FAIL=`` does not -- but its members all print an arm-specific token such
-as ``NO_BL1_IMAGE``. The TOC major-version and image-count arms return silently
-(``bootrom/prod/src/manifest_load.c``), so this base clears
-``requires_defect_marker`` and compensates with two things the token would
-otherwise have carried: the sibling arm's error code is FORBIDDEN, and the flash
-device must be shown to have served this row's exact planted bytes at the field's
-exact address.
-
-DECRYPTION COUNTS DIFFER FROM THE PRIMARY FAMILY, and that is the encrypted
-members' own evidence. Here the primary dies on its magic word long before
-``decrypt_payload``, so an encrypted member requires ``DECRYPT_START`` and
-``DECRYPT_OK`` EXACTLY ONCE -- the backup's -- where the primary family requires
-two. A plaintext member forbids ``DECRYPT_START`` outright.
+These checks print no token, so members are graded on the error code, forbidden sibling codes and
+the bytes the flash device served. The primary is refused on its magic word; the ROM must halt.
 """
 
 from __future__ import annotations
@@ -44,18 +18,13 @@ from rom_fw.sep_backup_payload_fail_base import sep_backup_payload_fail_base
 
 
 class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
-    """Plant a silent TOC defect in the backup; require a terminal failure."""
 
-    # --- member contract ---------------------------------------------------
-    # "version_major" or "image_count".
     toc_field: str = ""
-    # Whether this member's payload is encrypted; asserted against the image.
     encrypted: bool = False
 
-    # The arm returns without printing; see the module docstring.
+    # These TOC checks return without a console token.
     backup_defect_marker = ""
     requires_defect_marker = False
-    # The primary is refused on its magic word by the inherited corrupt_primary().
     primary_expected_error = td.ERR_BAD_MAGIC
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -68,9 +37,6 @@ class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
         cls.efuse_preload = td.ENCRYPTED_EFUSE if cls.encrypted else td.PLAINTEXT_EFUSE
         cls.expected_error = td.EXPECTED_ERROR[cls.toc_field]
 
-        # Every code and token that would mean a different check ended the run.
-        # The sibling TOC arm's code is the swap-test defence: this row cannot pass
-        # on the other family's verdict.
         forbidden = [f"MANIFEST_ERR=0x{td.sibling_error(cls.toc_field):08x}",
                      f"MANIFEST_ERR=0x{td.ERR_BAD_VERSION:08x}",
                      f"MANIFEST_ERR=0x{td.ERR_BAD_LENGTH:08x}",
@@ -82,7 +48,6 @@ class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
             forbidden.append(td.DECRYPT_START)
         cls.extra_forbidden = tuple(forbidden)
 
-    # --- stimulus ----------------------------------------------------------
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         for slot in ("primary", "backup"):
             got = pm.is_encrypted(buf, slot)
@@ -109,7 +74,6 @@ class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
     def check_efuse(self, image) -> None:
         fd.assert_clean_key_fuses(image)
 
-    # --- checks ------------------------------------------------------------
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
 
@@ -117,10 +81,6 @@ class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
         i_err = fd.first_index(console, backup_err)
 
-        # CHK-DECRYPT-ARM: exactly one slot decrypted, it was the backup, and its
-        # decryption SUCCEEDED before the TOC was refused. The primary never gets
-        # there -- it dies on its magic word -- so a second occurrence would mean
-        # the failover trigger did not fire where this scenario assumes.
         if self.encrypted:
             for marker in (td.DECRYPT_START, td.DECRYPT_OK):
                 n = fd.count(console, marker)
@@ -142,9 +102,6 @@ class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
                 td.DECRYPT_OK, i_do, backup_err, i_err,
             )
 
-        # CHK-STIMULUS-SERVED: the device really returned this row's planted bytes
-        # at this row's field address. `self._flash` is published by
-        # sep_backup_manifest_fail_base for exactly this kind of device-side check.
         td.assert_served_toc_field(self.logger, self._flash, "backup",
                                    self.toc_field, self._served,
                                    self._payload_offset)

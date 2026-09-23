@@ -1,34 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared scenario for the BL1-image-validity testcases.
+"""Shared base for testcases that plant the same BL1 size or entry-point defect in both slots.
 
-Both testcases plant a defect in the SEP BL1 entry of the payload TOC -- one in
-its size, one in its entry point -- in BOTH manifest slots, and require the ROM to
-reject each slot before any BL1 copy or jump and then terminate. Only the
-mutation and the console marker differ, so everything else lives here.
-
-WHY BOTH SLOTS. A defect in the primary alone would fail over to a healthy backup
-and boot, which proves the failover works but says nothing about the terminal
-outcome. Planting it in both slots is what makes the run terminal.
-
-WHY THIS SUBCLASSES ``sep_backup_manifest_fail_base`` BUT REPLACES ITS VERDICT.
-The run machinery -- flash BFM, console capture, the PROD/secure-boot eFuse
-assertions, the post-terminal quiescence window -- is exactly what is wanted and is
-inherited unchanged. The CHECKS are not: that base is written for defects the
-CRYPTO chain rejects, so it requires a ``CRYPTO_FAIL=`` line and forbids
-``CRYPTO_VALIDATE_OK``. These defects are the opposite. They sit in the payload,
-which ``try_manifest_slot`` validates AFTER the crypto chain has PASSED
-(``manifest_load.c``), so a correct run here must show
-``CRYPTO_VALIDATE_OK`` -- twice, once per slot -- and then fail. Overriding
-:meth:`_check` rather than adding hooks to the shared base keeps six passing
-testcases untouched.
-
-THE CRYPTO CHAIN IS LEFT ON, AND THAT IS THE POINT. Because the payload is
-mutated, ``payload_hash`` (inside the TBS) changes, so the slot must be re-hashed
-and re-signed with the dev0 key -- see ``env/sep_payload_mutate.py``. The
-alternative, running with secure boot disabled, would reach the same BL1 check
-through a path production never takes. ``CHK-CRYPTO-RAN`` below is what turns
-"the signature still verified" from an assumption into an observation.
+Both slots must pass the crypto chain and then fail the payload check, so the run must end on
+MANIFEST_ALL_FAILED and the ROM must halt before any BL1 copy or jump.
 """
 
 from __future__ import annotations
@@ -41,30 +16,17 @@ _EFUSE_DIR = (Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
               / "efuse_configurations")
 _EFUSE_LC_PROD = _EFUSE_DIR / "sep_efuse_lc_prod.toml"
 
-# manifest_load.c -- the ROM labels the slot and then prints its offset.
 _PRIMARY_SRC = "MANIFEST_SRC=0x00001000"
 _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
 
-# manifest_crypto.c -- printed once per slot whose crypto chain passed.
 _CRYPTO_OK = "CRYPTO_VALIDATE_OK"
-# manifest_load.c -- both slots were tried and both failed.
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _SBOOT_OFF = "SBOOT_OFF"
 
-# rom_handoff.c -- anything from here on means BL1 was copied or entered. The
-# procedures' "BL0 does NOT attempt to copy BL1 into IRAM" / "does NOT jump to the
-# invalid entry address" is exactly the absence of these.
-# "LOAD=" and "LEN=" are deliberately NOT used: manifest_load.c prints
-# "PAYLOAD=", which contains "LOAD=" as a substring, so a marker check would
-# false-positive on an ordinary payload report.
+# "LOAD=" is not a marker: it is a substring of the ordinary "PAYLOAD=" line.
 _BL1_PROGRESS = ("BL1_TYPE=", "COPY_SRC=", "COPY_DST=", "COPY_LEN=", "BL1_COPIED",
                  "PRE_JUMP", "BL1_JUMP=")
 
-# Every OTHER rejection the payload validator can emit. A negative test is only
-# worth its verdict if the image failed for the reason it planted and for no
-# other, and each of these would be a different reason -- most of them the
-# signature that a re-seal went wrong (a stale image digest, a stale payload
-# hash, a payload length left inconsistent with the TOC).
 _OTHER_REJECTIONS = (
     "PLD_HASH_MISMATCH", "PLD_HASH_TIMEOUT", "RSA_VERIFY_FAIL", "RSA_PKCS1_FAIL",
     "SIG_VALID_FAIL", "TOC_PLEN_MISMATCH", "TOC_REGION_OOB", "IMAGE_ORDER_BAD",
@@ -74,41 +36,22 @@ _OTHER_REJECTIONS = (
 
 
 class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
-    """Same BL1 defect in both slots; reject before handoff, then terminate."""
 
     efuse_preload = _EFUSE_LC_PROD
 
-    # --- subclass contract ---------------------------------------------------
-    # ``backup_defect_marker`` is inherited: the console marker check_bl1_image /
-    # validate_manifest_payload must print. Here it applies to both slots, so
-    # check_defect_attribution() below requires it twice rather than once.
-    # Rejections this scenario's own defect must NOT produce, on top of the
-    # shared list -- used to separate the two BL1 arms from one another.
     sibling_markers: tuple[str, ...] = ()
 
     def mutate_bl1(self, buf: bytearray, slot: str) -> None:
         raise NotImplementedError
 
-    # --- stimulus ------------------------------------------------------------
-    # Both slots carry the defect, so the base's default BAD_MAGIC primary
-    # trigger is replaced and primary_expected_error follows expected_error.
     def corrupt_primary(self, buf: bytearray) -> None:
         self.mutate_bl1(buf, "primary")
 
     def corrupt_backup(self, buf: bytearray) -> None:
         self.mutate_bl1(buf, "backup")
 
-    # --- checks --------------------------------------------------------------
     def check_defect_attribution(self, console, i_backup: int) -> None:
-        """The marker must appear for BOTH slots, not once.
-
-        The inherited default asserts the marker's FIRST occurrence follows the
-        backup read, which is right when only the backup is defective. Here the
-        primary carries the same defect, so the first occurrence is legitimately
-        the primary's -- and accepting that alone would let a run in which the
-        backup was never evaluated look identical to a correct one. Requiring one
-        occurrence on each side of the backup read is what distinguishes them.
-        """
+        # The primary has the same defect, so require one marker on each side of the backup read.
         hits = [i for i, line in enumerate(console) if self.backup_defect_marker in line]
         assert len(hits) >= 2, (
             f"{self.backup_defect_marker} appeared {len(hits)} time(s) at {hits}; both "
@@ -145,8 +88,6 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         def count_of(marker: str) -> int:
             return sum(1 for line in console if marker in line)
 
-        # Guard the guards: with a dead core or a dark console every marker check
-        # below is vacuously true.
         assert retired, "core retired no instructions; the ROM never ran"
         assert console, (
             "ROM console is empty, so no marker check below means anything (the "
@@ -157,9 +98,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         i_primary = index_of(_PRIMARY_SRC)
         i_backup = index_of(_BACKUP_SRC)
 
-        # CHK-FAILOVER: both slots were read, in order. Ordering is the substance
-        # of the retry half of the procedure; two markers in any order would also
-        # be satisfied by a ROM that read the backup first.
+        # Check order, not only presence: a ROM that read the backup first also prints both markers.
         assert i_primary >= 0, (
             f"ROM never read the primary slot ({_PRIMARY_SRC}). Console: {console}"
         )
@@ -174,12 +113,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         log.info("CHK-FAILOVER: primary at %s (line %d), then backup at %s (line %d)",
                  _PRIMARY_SRC, i_primary, _BACKUP_SRC, i_backup)
 
-        # CHK-CRYPTO-RAN: secure boot was enforced and the signature verified, for
-        # BOTH slots. This is what proves the defect is being caught by the payload
-        # validator rather than by the crypto chain -- and it is the check that
-        # would fail first if the re-seal in sep_payload_mutate were wrong, which
-        # is precisely the failure mode that would otherwise masquerade as a
-        # correct negative result.
+        # Both slots must clear crypto first, or the defect was not caught by the payload check.
         assert not any(_SBOOT_OFF in line for line in console), (
             f"ROM printed {_SBOOT_OFF}: secure boot was skipped, so this run "
             f"reached the BL1 check by a path production does not take. "
@@ -196,11 +130,8 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         log.info("CHK-CRYPTO-RAN: %s seen %d times; signature and payload hash "
                  "verified on both slots", _CRYPTO_OK, n_crypto)
 
-        # CHK-BL1-DEFECT: the planted defect was reported, for each slot.
         self.check_defect_attribution(console, i_backup)
 
-        # CHK-REJECT-REASON: each slot was rejected with the error the defect
-        # produces, and the run converged on it.
         n_err = count_of(err_marker)
         assert n_err >= 2, (
             f"{err_marker} appeared {n_err} time(s); each slot must be rejected "
@@ -219,9 +150,6 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         log.info("CHK-REJECT-REASON: %s on both slots, %s, cold_scratch[1]=0x%08x",
                  err_marker, _ALL_FAILED, expected_status)
 
-        # CHK-ONLY-REASON: nothing else rejected the image. Without this, a
-        # re-seal mistake that happened to also trip the planted marker would read
-        # as a clean result.
         for marker in _OTHER_REJECTIONS + tuple(self.sibling_markers):
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}: the image is wrong in a way this testcase "
@@ -230,7 +158,6 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             )
         log.info("CHK-ONLY-REASON: no other rejection reason appeared")
 
-        # CHK-TERMINAL: it stopped, and it stopped as a failure.
         assert fw_done, (
             f"ROM never signalled completion; a manifest that fails every slot must "
             f"converge on a mailbox FAIL. cold_scratch[1]: {status_hex}"
@@ -240,8 +167,6 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         )
         log.info("CHK-TERMINAL: mailbox FAIL (fw_pass=0)")
 
-        # CHK-NO-HANDOFF: the procedures' central claim -- BL0 rejected the image
-        # BEFORE attempting to copy or enter BL1.
         for marker in _BL1_PROGRESS:
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which rom_handoff.c emits while loading or "

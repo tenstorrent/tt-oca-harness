@@ -2,47 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Stimulus and console evidence for the manifest-field and usage-constraint defects.
 
-This family plants one bad manifest field and asks
-which check refuses it. Two things about this ROM decide the shape of every
-testcase in that group, and both are established here once rather than restated
-in ten modules.
-
-**THE STRUCTURAL CHECKS EMIT NO PER-REASON CONSOLE TOKEN.**
-``validate_manifest_header`` (``bootrom/prod/src/manifest_load.c``) returns
-``MANIFEST_ERR_BAD_MAGIC`` / ``_BAD_VERSION`` / ``_BAD_LENGTH`` without printing
-anything of its own, and the four status codes that would name them --
-``SEP_MSG_INVALID_MANIFEST_ID``, ``_INVALID_MANIFEST_VERSION``,
-``_INVALID_MANIFEST_LENGTH``, ``_MANIFEST_TOO_LONG`` -- are *defined* in
-``bootrom/prod/include/status_values.h`` and emitted by nothing under
-``bootrom/prod/src``. So the only per-reason evidence for a structural rejection
-is the error code in ``MANIFEST_ERR=``, and a testcase must pin its slot by
-ORDER (which ``MANIFEST_SRC=`` preceded it) and by COUNT (exactly one slot
-produced it). :func:`assert_slot_attributed` is that check.
-
-**THE THREE USAGE-CONSTRAINT VERDICTS SHARE ONE ERROR CODE AND ARE SEPARABLE
-ONLY ON THE CONSOLE.** Lifecycle, chiplet_id and package_id all return
-``MANIFEST_ERR_LC_USAGE_CONSTRAINT`` (``manifest_load.c``), so asserting the code
-alone would make the six chiplet/package/lifecycle testcases interchangeable.
-Each arm does print a distinct token, and :data:`SIBLING_MARKERS` is what lets a
-member require its own and forbid the other two.
-
-A FOURTH site returns the same code: the encrypted-payload-without-secure-boot
-rejection just ahead of the block, which prints ``ENC_WITHOUT_SBOOT``. It is
-unreachable for these testcases -- the shipped image is not encrypted and the
-bases assert ``SBOOT_DIS`` is clear -- and it prints a token none of the three
-members requires, so it cannot satisfy one of them. It is named here because the
-"three arms" framing is what justifies the whole sibling-forbid design, and the
-framing should not hide a fourth emitter.
-
-**WHY A DEVICE-ID TESTCASE PLANTS ONLY A SELECTOR BIT.** The shipped image
-already carries ``0xa5a5a5a5`` in all eight ``chiplet_id`` and all eight
-``package_id`` words with both selectors clear
-(``bootrom/prod/configs/secure_boot_test.yaml``), which is the same value the
-reference writes as its invalid device ID. The ROM reads a word only when its
-selector bit is set, so setting the bit is the whole stimulus and the array needs
-no write. ``sep_manifest_mutate.verify_device_id_layout`` anchors that claim
-against the real bytes, because a wrong offset would enable a comparison against
-something nobody chose and the ROM would still reject the slot.
+Structural header checks print no per-reason token and the usage-constraint arms share
+one error code, so testcases attribute a refusal by slot order, count and marker.
 """
 
 from __future__ import annotations
@@ -56,22 +17,18 @@ from env import sep_spi_slot_evidence as ev
 PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
-# manifest_load.c -- the discriminating token of each usage-constraint arm.
 LC_MARKER = "LC_USAGE_CONSTRAINT_FAIL"
 CHIPLET_MARKER = "CHIPLET_ID_MISMATCH"
 PACKAGE_MARKER = "PACKAGE_ID_MISMATCH"
 
 _USAGE_MARKERS = (LC_MARKER, CHIPLET_MARKER, PACKAGE_MARKER)
 
-# The other two arms' tokens, for a member's forbidden list. Requiring one of
-# three markers proves which arm complained; forbidding the other two is what
-# stops a member from being satisfied by a sibling's evidence.
 SIBLING_MARKERS = {
     marker: tuple(m for m in _USAGE_MARKERS if m != marker)
     for marker in _USAGE_MARKERS
 }
 
-# manifest_load.c: the per-arm echoes, in emission order.
+# Per-arm echoes, in the ROM's emission order.
 _DEVICE_ID_TOKENS = {
     "chiplet_id": ("CID_IDX=", "CID_FUSE=", "CID_MFST="),
     "package_id": ("PID_IDX=", "PID_FUSE=", "PID_MFST="),
@@ -83,14 +40,7 @@ _DEVICE_ID_SELECTOR_BASE = {
 }
 
 
-# --- console helpers -------------------------------------------------------
 def first_index(console: list[str], marker: str, after: int = -1) -> int:
-    """Index of the first console line past ``after`` containing ``marker``, or -1.
-
-    ``after`` exists for the markers a two-slot run prints twice: the caller wants
-    a specific slot's occurrence, and "the first one" is the other slot's. The
-    default searches from the start, so an existing caller is unaffected.
-    """
     for i, line in enumerate(console):
         if i > after and marker in line:
             return i
@@ -102,11 +52,6 @@ def count(console: list[str], marker: str) -> int:
 
 
 def hex_value(console: list[str], token: str) -> int | None:
-    """The value the ROM echoed after ``token``, e.g. ``CID_FUSE=0x...``.
-
-    Returns None when the token never appeared, so a caller can tell "the ROM
-    did not print this" apart from "the ROM printed zero".
-    """
     pattern = re.compile(re.escape(token) + r"0x([0-9a-fA-F]{8})")
     for line in console:
         found = pattern.search(line)
@@ -117,14 +62,6 @@ def hex_value(console: list[str], token: str) -> int | None:
 
 def assert_slot_attributed(console: list[str], marker: str, *, after: int,
                            before: int, expected_count: int = 1) -> int:
-    """Prove ``marker`` is one slot's verdict, by position and by count.
-
-    ``after`` and ``before`` bracket the slot attempt: the marker has to sit
-    inside it. The count is the other half -- a token that also appeared on the
-    other slot would satisfy the position check while meaning something else, and
-    for the structural defects there is no per-reason token at all, so the
-    ``MANIFEST_ERR=`` code is carrying the whole attribution.
-    """
     i = first_index(console, marker)
     assert after < i < before, (
         f"{marker}@{i} does not sit between line {after} and line {before}: it "
@@ -145,18 +82,7 @@ _MANIFEST_H = (
 
 
 def assert_rom_manifest_bounds() -> int:
-    """Cross-check ``sep_manifest_mutate.MANIFEST_MAX_SIZE`` against the ROM header.
-
-    ``MANIFEST_MAX_SIZE`` is hand-copied into the Python mirror, and a testcase that
-    picks its stimulus relative to that bound is only as correct as the copy. The
-    failure mode is silent in one direction: raise the C value alone and a length
-    chosen to be ABOVE the bound quietly becomes a legal length, so a testcase that
-    asserts "this value is out of range" keeps passing while measuring nothing. Read
-    the define back out of the header and require agreement, so that divergence is
-    loud at the first testcase that depends on it.
-
-    Returns the value parsed from the header, so a caller can log its provenance.
-    """
+    # The Python copy of MANIFEST_MAX_SIZE can drift and silently make an over-bound length legal.
     text = _MANIFEST_H.read_text()
     found = re.search(r"^#define\s+MANIFEST_MAX_SIZE\s+(\d+)\s*$", text, re.MULTILINE)
     assert found, (
@@ -175,28 +101,12 @@ def assert_rom_manifest_bounds() -> int:
 
 
 def reads_starting_at(flash, addr: int) -> list[int]:
-    """Indices of the flash reads whose COMMAND address is exactly ``addr``.
-
-    "Did the ROM issue a fetch at this address" must be asked of the read's own
-    start, not of the span it covers. ``ocah_spi_flash._do_read`` streams bytes until
-    CS deasserts, so ``data_out`` carries one byte more than the controller asked
-    for, and every recorded span therefore ends one byte past the request. A
-    1184-byte manifest read at ``base`` is recorded as ``base..base+1185`` and so
-    COVERS ``base + 1184`` -- the very address the manifest-extension fetch would
-    start at. A coverage predicate cannot separate the two; the start address can.
-    """
+    # Match the read's start: the flash BFM records one byte past each request, so spans over-cover.
     rds = ev.reads(flash.get_transactions())
     return [i for i, t in enumerate(rds) if ev.read_span(t)[0] == addr]
 
 
 def assert_no_read_starting_at(logger, flash, addr: int, why: str) -> None:
-    """Require that the ROM issued NO flash read beginning at ``addr``.
-
-    The negative counterpart of :func:`assert_served_field`, and unlike it this one
-    IS a claim about the ROM's behaviour rather than about the transport: the ROM
-    issues a read only when it decided to, so the absence of one is evidence that
-    the decision under test went the other way.
-    """
     hits = reads_starting_at(flash, addr)
     spans = [f"0x{s:x}..0x{e:x}"
              for s, e in (ev.read_span(t) for t in ev.reads(flash.get_transactions()))]
@@ -212,18 +122,7 @@ def assert_no_read_starting_at(logger, flash, addr: int, why: str) -> None:
 
 def assert_served_field(logger, flash, slot: str, offset: int, expected: bytes,
                         what: str) -> None:
-    """Require the flash DEVICE to have returned ``expected`` for one manifest field.
-
-    The offline artefact check proves what was STAGED; between it and the ROM sit
-    the flash BFM and the whole SPI/DMA transport. This is the DUT-side half, and it
-    is the only run-time channel on which two testcases can differ when the ROM's
-    console cannot separate them -- two structural rejections that share one error
-    code, or a stimulus bit the ROM never reads.
-
-    The field must be covered by a SINGLE read. The ROM fetches the whole 1184-byte
-    manifest in one transaction, so it is; if the transport ever splits a field
-    across two reads, the fix is to stitch the reads rather than drop the check.
-    """
+    # One read must cover the whole field; the ROM fetches the manifest in one transaction.
     addr = mm.slot_base(slot) + offset
     hit = ev.covering_read(ev.reads(flash.get_transactions()), addr)
     assert hit is not None, (
@@ -245,15 +144,6 @@ def assert_served_field(logger, flash, slot: str, offset: int, expected: bytes,
 
 
 def assert_clean_key_fuses(image) -> None:
-    """No OTP-side reason for a slot to be refused by the crypto chain.
-
-    Every defect in this group is refused inside the manifest loop, ahead of
-    ``manifest_crypto_validate``. A non-zero ``BL1_VERSION`` or a set
-    ``CHIPLET_PUBK_REVOKE`` bit would give the run a second, earlier reason to
-    reject a slot -- and on the primary-side members it would also stop the
-    backup from booting, turning a failover testcase into a terminal one with a
-    verdict that belongs to a different check.
-    """
     bl1_ver = image.field_int("BL1_VERSION")
     assert bl1_ver == 0, (
         f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check would "
@@ -266,22 +156,14 @@ def assert_clean_key_fuses(image) -> None:
     )
 
 
-# --- device-id stimulus ----------------------------------------------------
 def plant_device_id_defect(buf: bytearray, slot: str, kind: str,
                            selector_mask: int) -> int:
-    """Enable the selected ``chiplet_id`` / ``package_id`` words for one slot.
-
-    Returns the index the ROM must reject on: its check loops from word 0 and
-    returns on the first mismatch (``manifest_load.c``), and every enabled word
-    holds the same mismatching value, so that is the lowest set bit of the mask.
-    """
+    # Returns the lowest enabled word: the ROM rejects on the first mismatch.
     if kind not in _DEVICE_ID_TOKENS:
         raise ValueError(f"kind must be chiplet_id or package_id, got {kind!r}")
     if not 1 <= selector_mask <= 0xFF:
         raise ValueError("selector_mask must be a non-zero 8-bit mask")
-    # Anchor the arrays BEFORE touching the selector: the whole stimulus is
-    # "make the ROM read words it was ignoring", which is only that if the words
-    # really hold what this module claims.
+    # Verify the arrays hold the shipped value before enabling the ROM to read them.
     mm.verify_device_id_layout(buf, slot)
     base_bit = _DEVICE_ID_SELECTOR_BASE[kind]
     for i in range(mm.DEVICE_ID_NUM_WORDS):
@@ -291,25 +173,12 @@ def plant_device_id_defect(buf: bytearray, slot: str, kind: str,
 
 
 def device_id_tokens(kind: str) -> tuple[str, str, str]:
-    """The ``*_IDX=`` / ``*_FUSE=`` / ``*_MFST=`` tokens one device-id arm echoes.
-
-    The prefix is ``CID``/``PID`` (``manifest_load.c``) and cannot be derived from
-    the field name, so a caller that needs one token has to read it from here
-    rather than build it. A built token silently never matches, which turns
-    :func:`hex_value` into ``None`` and any assertion resting on it into a crash
-    or a pass.
-    """
+    # CID/PID prefixes cannot be derived from the field name; a built token silently never matches.
     return _DEVICE_ID_TOKENS[kind]
 
 
 def device_id_required_markers(kind: str, reject_index: int) -> tuple[str, ...]:
-    """Console lines a device-id rejection must produce.
-
-    ``*_FUSE=`` is deliberately absent: the fuse map is served by the testbench's
-    flat SMC memory model, so its VALUE is not this testbench's to assert. What
-    is asserted is that the ROM read it and found it different from the
-    manifest's -- see :func:`assert_device_id_mismatch`.
-    """
+    # *_FUSE= is omitted: the flat SMC memory model serves that value, so it is not asserted.
     idx_token, _fuse_token, mfst_token = _DEVICE_ID_TOKENS[kind]
     return (
         _DEVICE_ID_MARKER[kind],
@@ -320,19 +189,6 @@ def device_id_required_markers(kind: str, reject_index: int) -> tuple[str, ...]:
 
 def assert_device_id_mismatch(logger, console: list[str], kind: str,
                               reject_index: int) -> None:
-    """The ROM read the selected fuse word and refused the manifest's copy.
-
-    The pair is the point. ``*_MFST=`` alone is the stimulus echoed back, and a
-    testbench that asserted ``*_FUSE=`` against a hardcoded number would be
-    asserting its own memory model. Requiring the two to DIFFER is the part that
-    belongs to the ROM: it is the comparison ``manifest_load.c`` performs, and it
-    cannot pass on a run where the two agreed.
-
-    ONE CARVE-OUT. ``sep_device_id_variation_base`` does assert the ``*_FUSE=``
-    value, because it plants a MATCHING word and therefore depends on which value
-    the model serves. That family states the dependency rather than hiding it; the
-    rule above still holds for every row that only needs a mismatch.
-    """
     idx_token, fuse_token, mfst_token = _DEVICE_ID_TOKENS[kind]
     fuse = hex_value(console, fuse_token)
     mfst = hex_value(console, mfst_token)
@@ -367,15 +223,7 @@ def assert_device_id_mismatch(logger, console: list[str], kind: str,
     )
 
 
-# --- lifecycle stimulus ----------------------------------------------------
 def plant_lc_state_defect(buf: bytearray, slot: str, allowed: int) -> None:
-    """Narrow ``life_cycle_states`` so the LIVE lifecycle is not permitted.
-
-    The selector bit is already set in the shipped image, so unlike the device-id
-    arms this is a value change rather than an enable. The bitmap keeps the two
-    states the part is NOT in, which is what makes the rejection specific to the
-    live one instead of to an empty bitmap that would refuse everything.
-    """
     mm.verify_usage_constraints_layout(buf, slot)
     assert mm.selector_bits(buf, slot) & (1 << mm.SELECTOR_BIT_LIFE_CYCLE_STATES), (
         "selector_bits bit 16 is clear, so the ROM would skip the lifecycle "
@@ -385,11 +233,4 @@ def plant_lc_state_defect(buf: bytearray, slot: str, allowed: int) -> None:
 
 
 def lc_state_required_markers(allowed: int, live_bit: int) -> tuple[str, ...]:
-    """Console lines a lifecycle usage-constraint rejection must produce.
-
-    ``LC_BIT=`` is the strongest line here: it is
-    ``lc_state_to_manifest_bit(lc_state)`` (``bootrom/prod/src/lifecycle.c``), so
-    requiring the live state's bit proves the ROM decoded the OTP lifecycle
-    rather than refusing an unreadable bitmap.
-    """
     return (LC_MARKER, f"LC_ALLOWED=0x{allowed:08x}", f"LC_BIT=0x{live_bit:08x}")

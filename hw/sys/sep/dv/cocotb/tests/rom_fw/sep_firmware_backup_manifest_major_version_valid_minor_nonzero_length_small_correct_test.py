@@ -2,68 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup declares v1.1 with a length inside the range rule; it boots.
 
-the ``minor != 0`` arm's ACCEPTED case: the backup is accepted and the boot
-completes from it.
-
-THE RULE, from ``validate_manifest_header`` (``bootrom/prod/src/manifest_load.c``)::
-
-    minor == 0  ->  manifest_length == sizeof(manifest_t)   EXACTLY
-    minor != 0  ->  sizeof(manifest_t) <= manifest_length <= MANIFEST_MAX_SIZE
-
-The stimulus is minor 1 with ``sizeof(manifest_t) + 4`` = 1188,
-4-byte aligned and strictly inside the range.
-
-============================================================================
-WHY THIS IS THE ONLY MEMBER OF THE GROUP THAT PROVES THE ARM WAS TAKEN
-============================================================================
-
-1188 at minor 0 is REFUSED -- that is
-``sep_firmware_backup_manifest_major_version_valid_minor_0_length_incorrect_test``,
-which plants the identical length in the identical slot. The two rows differ in one
-16-bit field, ``manifest_version_minor``, and the outcome inverts from a terminal
-halt to a completed boot. Neither checker can pass on the other's log: that one
-requires ``MANIFEST_ALL_FAILED`` and forbids every boot-progress marker, this one
-requires ``MANIFEST_OK``, ``SIG_VALID`` and ``BL1_JUMP=``. **That pair is the
-minor-version discriminator, and it is what makes the range rule falsifiable rather
-than merely satisfied.**
-
-**THE ROM MAKES A SECOND, DIRECTLY OBSERVABLE DECISION ON THIS PATH, AND NO OTHER
-TESTCASE IN THIS DIRECTORY REACHES IT.** ``load_manifest_extra``
-(``manifest_load.c``) fetches ``manifest_length - sizeof(manifest_t)`` extra bytes
-whenever the declared length exceeds the header, on the accepted slot only. With
-1188 that is a SEPARATE 4-byte flash read at ``backup_base + 1184``, issued after
-the 1184-byte header read and before the payload load. Every other slot in this
-testlist declares exactly 1184 and skips the call entirely, so this transaction
-exists in this run and in no other. :meth:`check_transport` requires it from the
-BFM's own record -- the channel the ROM cannot fake -- which turns "the ROM accepted
-a v1.1 manifest" into "the ROM accepted it AND acted on the declared length".
-
-============================================================================
-THE FAILOVER TRIGGER, AND WHY THE BACKUP IS RE-SEALED
-============================================================================
-
-The trigger is the primary's ``manifest_identifier``, refused
-as ``MANIFEST_ERR_BAD_MAGIC`` by the check immediately ahead of the version and
-length ones, so it costs no hash or crypto work and cannot interact with the rule
-under test.
-
-``manifest_version_minor`` and ``manifest_length`` both live INSIDE the TBS
-(``manifest.h``), so mutating them invalidates ``manifest_hash`` and the signature.
-Unlike every negative member of this group, this slot must SURVIVE the whole crypto
-chain, so :func:`sep_payload_mutate.reseal` re-derives ``payload_hash``,
-``manifest_hash`` and a genuine dev0 RSA-3072 signature over the modified TBS.
-:func:`sep_payload_mutate.verify_signing_key` runs FIRST, on the untouched slot: it
-proves the local signer reproduces the packer's shipped signature byte for byte, so
-the re-seal is sound by construction rather than by hope. Without it a re-seal
-failure would surface as the ROM rejecting the slot as ``SIG_FAILED`` -- which looks
-exactly like a plausible negative result.
-
-MARKER SUBSTITUTION. ``SEP_MSG_INVALID_MANIFEST_ID`` is defined and never emitted,
-so the primary's ``MANIFEST_ERR=0x00030002`` plus its position and count inside
-the primary's own attempt carry that attribution instead.
-
-Needs ``+sep_crypto_edn_force``: the recovering backup runs a full RSA-3072 modexp
-on OTBN.
+The primary is refused as BAD_MAGIC; the backup moves to v1.1 with length 1188, is
+re-sealed, and must fetch the 4 extra header bytes before it boots.
 """
 
 from __future__ import annotations
@@ -85,16 +25,11 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h
 _MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 
-# 4-byte aligned and strictly inside the range the
-# minor != 0 arm accepts.
 _BACKUP_LENGTH = mm.MANIFEST_SIZE + 4
 _BACKUP_MINOR = 1
 
-# manifest_load.c load_manifest_extra(): the extra fetch this length forces, and
-# the address it must come from.
 _EXTRA_ADDR = mm.BACKUP_MANIFEST_OFFSET + mm.MANIFEST_SIZE
 _EXTRA_LEN = _BACKUP_LENGTH - mm.MANIFEST_SIZE
 
@@ -104,21 +39,13 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
         sep_primary_fail_backup_boot_base):
     """Primary refused as BAD_MAGIC; a v1.1/1188 backup is accepted and boots."""
 
-    # BAD_MAGIC prints no token of its own, so check_transport() below and the
-    # base's error-code position and count carry the primary's attribution.
+    # BAD_MAGIC prints no console token, so check_transport() carries the attribution.
     primary_defect_marker = ""
     primary_expected_error = _MANIFEST_ERR_BAD_MAGIC
     primary_expected_rsa_starts = 0
     primary_expected_sig_valids = 0
     efuse_preload = _EFUSE_PRELOAD
-    # The backup completes the whole positive chain, so the boot is a real one and
-    # not an early exit that happened not to fail.
     extra_required = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    # The primary is refused inside validate_manifest_header, before the hash check
-    # and before the crypto chain, and nothing may reject the backup -- in
-    # particular none of the other BAD_LENGTH arms, whose tokens would mean the
-    # length this testcase declares valid was refused for a reason it does not
-    # control.
     extra_forbidden = ("MANIFEST_HASH_MISMATCH", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
                        "PLD_HASH_MISMATCH", "MANIFEST_ALL_FAILED",
                        "IMAGE_HASH_MISMATCH", "NO_BL1_IMAGE",
@@ -143,13 +70,11 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
         )
 
     def prepare_backup(self, buf: bytearray) -> None:
-        """Move the backup to v1.1/1188 and re-seal it into a genuinely bootable slot."""
-        # Establish that the local signer reproduces the packer's own signature
-        # BEFORE anything is modified, so the re-seal below is sound by construction.
+        # minor and length sit inside the signed TBS, so the slot must be re-sealed to boot.
+        # Check the signer first, or a bad re-seal looks like a genuine SIG_FAILED rejection.
         pm.verify_signing_key(buf, "backup")
         pm.verify_sealed(buf, "backup")
-        # The range this stimulus must sit inside is a hand-copied mirror of a ROM
-        # #define; require the two to still agree before relying on it.
+        # MANIFEST_MAX_SIZE is a hand-copied mirror of the ROM #define; check they still agree.
         fd.assert_rom_manifest_bounds()
 
         before_ver = mm.manifest_version(buf, "backup")
@@ -175,13 +100,7 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
             f"[{mm.MANIFEST_SIZE}, {mm.MANIFEST_MAX_SIZE}], so the range rule would "
             f"refuse the slot this testcase requires it to accept"
         )
-        # validate_manifest_header also refuses payload_offset < manifest_length as
-        # an overlap. The shipped payload_offset is well clear of 1188, but the
-        # relation is what makes the acceptance possible, so it is asserted rather
-        # than assumed.
         p_off = pm.payload_base(buf, "backup") - mm.slot_base("backup")
-        # Kept for check_transport(): the payload read is what the extension read must
-        # precede, and its address is a property of the image rather than a constant.
         self._backup_payload_off = p_off
         assert p_off >= _BACKUP_LENGTH, (
             f"backup payload_offset is {p_off}, below the declared manifest_length "
@@ -224,13 +143,9 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        # CHK-MAGIC-ATTRIBUTION: BAD_MAGIC is the primary's and only the primary's.
         i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
                                           before=i_bsrc)
 
-        # CHK-HASH-NOT-REACHED: the identifier check precedes manifest_check_integrity
-        # (manifest_load.c), so the primary never had its hash computed and the single
-        # MANIFEST_HASH_OK belongs to the accepted backup.
         n_ok = fd.count(console, "MANIFEST_HASH_OK")
         assert n_ok == 1, (
             f"MANIFEST_HASH_OK appeared {n_ok} times, expected exactly 1 (the "
@@ -243,13 +158,7 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
             f"one hash that verified is not the backup's. Console: {console}"
         )
 
-        # CHK-MANIFEST-EXTENSION: the ROM ACTED on the declared length. This is the
-        # decision no other testcase in this directory reaches, and the BFM's record
-        # is the only channel that can see it -- load_manifest_extra() prints nothing.
-        # The extension fetch is identified by the address the ROM COMMANDED, not by
-        # the span the BFM recorded: ocah_spi_flash._do_read streams until CS
-        # deasserts, so the 1184-byte header read is logged as 1185 bytes and its span
-        # therefore COVERS this address. Only the start address separates the two.
+        # The SPI model records one extra byte per read, so match the extension by start address.
         rds = ev.reads(flash.get_transactions())
         b_starts = fd.reads_starting_at(flash, mm.BACKUP_MANIFEST_OFFSET)
         assert b_starts, (
@@ -265,8 +174,6 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
             f"have fetched them: the ROM accepted the v1.1 length without acting on "
             f"it. Transactions: {ev.summarize(flash.get_transactions(), self._image_len)}"
         )
-        # Exactly one. rom_manifest_boot calls load_manifest_extra once for the
-        # accepted slot, so a second fetch would not be the call this testcase claims.
         assert len(x_starts) == 1, (
             f"{len(x_starts)} reads began at 0x{_EXTRA_ADDR:x} (indices {x_starts}), "
             f"expected exactly 1: load_manifest_extra() runs once for the accepted slot"

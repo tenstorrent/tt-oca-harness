@@ -1,31 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Both slot addresses blank -> terminal error and hang (PyUVM).
+"""Both SPI slot addresses blank -> terminal error and hang (PyUVM).
 
-STIMULUS. Both slot spans are erased to 0xFF, so the single device answers at both
-addresses but neither holds a boot slot. See the "slot erasure" section of
-``env/sep_manifest_mutate.py`` for why erasure rather than field corruption.
-
-``SepBootScoreboard`` is deliberately NOT used: it asserts ``fw_done and fw_pass``
-(``env/sep_boot_scoreboard.py``), while the correct outcome here is
-``fw_done`` with ``fw_pass == 0``. Disabling a checker to accommodate an expected
-failure would invalidate the pass, so the poll loop below samples the boot
-observables directly and asserts the terminal outcome positively.
-
-This ROM has no SPI-detect status to emit -- ``SEP_MSG_SPI_NOT_DETECTED_DEFAULT``
-(``include/status_values.h``) is referenced nowhere in the repo -- and no
-SPI-detect step in ``src/sep_ot_spi.c``. What it emits on this edge, after
-both slots fail, is ``report_status(STATUS_TYPE_ERROR,
-SEP_MSG_MANIFEST_LOAD_FAILED)`` and ``MANIFEST_ALL_FAILED``
-(``src/manifest_load.c``), then ``rom_err_fail()`` -> the FAIL verdict in
-cold_scratch[0] -> ``for(;;) wfi`` (``src/rom_main.c``, ``include/errors.h``). Both
-status words are required below: the loop verdict ``0x0f010213`` and the final
-encoded error ``0x0f010002``.
-
-``SPI_INIT_OK`` is required and ``"SPI init failed, using backup manifest"``
-forbidden, so the controller demonstrably came up and BOTH addresses were really
-read. Without those, a dead controller would skip the primary outright
-(``manifest_load.c``) and still reach a terminal error.
+Erases both flash slots so the ROM must read and reject both addresses, then
+checks the terminal error status, the FAIL verdict, and that the ROM stays stopped.
 """
 
 from __future__ import annotations
@@ -52,10 +30,9 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "non_secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h -- an erased slot fails the identifier check in
-# validate_manifest_header (manifest_load.c), before the hash check.
+# An erased slot fails the manifest identifier check before the hash check.
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-# status_values.h, errors.h -> STATUS_ENCODE(STATUS_TYPE_ERROR, x).
+# 0x0F01_0000 | x is STATUS_ENCODE(STATUS_TYPE_ERROR, x).
 SEP_MSG_MANIFEST_LOAD_FAILED = 0x213
 _STATUS_LOOP_FAILED = 0x0F01_0000 | SEP_MSG_MANIFEST_LOAD_FAILED
 _STATUS_TERMINAL = 0x0F01_0000 | (MANIFEST_ERR_BAD_MAGIC & 0xFFFF)
@@ -69,17 +46,12 @@ _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _BAD_MAGIC_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_MAGIC:08x}"
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
-# Must never appear: a slot validated, so "both addresses no-detect" is false.
 _MANIFEST_OK = "MANIFEST_OK"
-# Must never appear: the ROM handed off despite having no valid manifest.
 _BOOT_PROGRESS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
 
 _MAX_RUN_CYCLES = 24_000_000
 _PROGRESS_EVERY = 200_000
-# Cycles to keep watching after the terminal verdict, to establish that the ROM
-# stayed in its terminal state. The ROM's hang is `for(;;) wfi` in rom_err_fail();
-# 20k cycles is ~15x the longest single ROM step observed in these runs, so a ROM
-# that was going to do anything else would have started doing it.
+# Cycles to watch after the verdict to show the ROM stays stopped.
 _HANG_OBSERVE_CYCLES = 20_000
 
 
@@ -95,8 +67,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         spans = {}
         for slot in ("primary", "backup"):
             spans[slot] = mm.erase_slot(buf, slot)
-            # A partially erased slot would still be rejected, for a reason this
-            # test did not plant, and look identical.
+            # A partially erased slot fails for an unplanted reason that looks identical.
             assert mm.slot_is_erased(buf, slot), (
                 f"{slot} slot is not fully erased after erase_slot()"
             )
@@ -112,9 +83,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         dut = cocotb.top
         from ocah_spi_vip import OcahSpiFlash
 
-        # Same OTP as the positive siblings: TEST_DEV, so rom_lifecycle_policy
-        # accepts the part and the run terminates on the address condition under
-        # test rather than on an invalid lifecycle.
+        # TEST_DEV lifecycle so the run cannot end on a lifecycle rejection instead.
         efuse = SepEfuseImage()
         efuse.set_lc_state(LC_TEST_DEV)
         self.write_efuse_image(efuse)
@@ -166,8 +135,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                     status_seq.append(status)
                 if self.rd(dut.cpu_trace_valid_o):
                     retired += 1
-                # Completion comes from the verdict word in cold_scratch[0]
-                # (dv/docs/rom_verdict_scratch0_migration.md).
                 verdict = decode_verdict(probe)
                 if verdict is not None:
                     fw_done = True
@@ -184,9 +151,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                         cycle, status, retired, len(console),
                     )
 
-            # The hang is part of the expected result. Breaking out the cycle the
-            # mailbox is written would show the ROM reported a failure but not that
-            # it stayed stopped.
+            # The ROM must also stay stopped after it reports the failure.
             if fw_done:
                 lines_at_done = len(console)
                 for _ in range(_HANG_OBSERVE_CYCLES):
@@ -196,10 +161,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                     if hang_status != last_status:
                         last_status = hang_status
                         status_seq.append(hang_status)
-                    # "Did it claim PASS after the terminal error?" The loop
-                    # above latched the FAIL and stopped, so a later PASS has to
-                    # be looked for directly -- that is the whole point of this
-                    # window.
+                    # The loop above stopped at the FAIL verdict; a later PASS shows up only here.
                     if (probe & 0xFFFF_FFFF) == TEST_PASS_CODE:
                         fw_pass = 1
                 post_lines = console[lines_at_done:]
@@ -218,7 +180,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
 
         self._check(console, status_seq, fw_done, fw_pass, retired, txns, image_len)
 
-    # --- checks ------------------------------------------------------------
     def _check(self, console, status_seq, fw_done, fw_pass, retired,
                txns, image_len) -> None:
         log = self.logger
@@ -235,7 +196,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         def count_of(marker: str) -> int:
             return sum(1 for line in console if marker in line)
 
-        # A dark console or a core that never ran makes every check below vacuous.
         assert retired, "core retired no instructions; the ROM never ran"
         assert console, (
             "ROM console is empty, so no marker check below means anything (the "
@@ -249,9 +209,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             f"ROM printed {_SMC_PATH}: the manifest came from SMC SRAM, not SPI"
         )
 
-        # A failed controller also reaches a terminal error, by skipping the
-        # primary outright (manifest_load.c), without reading either
-        # address.
         assert any(_SPI_INIT_OK in line for line in console), (
             f"ROM never printed {_SPI_INIT_OK}: the SPI controller did not come "
             f"up, so the terminal error is a controller failure and not a "
@@ -265,7 +222,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         log.info("CHK-CONTROLLER-UP: %s, and neither init-failure path taken",
                  _SPI_INIT_OK)
 
-        # The count matters: one BAD_MAGIC would mean only one address was read.
         i_psrc = index_of(_PRIMARY_SRC)
         i_bsrc = index_of(_BACKUP_SRC)
         assert i_psrc >= 0, f"ROM never read {_PRIMARY_SRC}. Console: {console}"
@@ -283,7 +239,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         log.info("CHK-BOTH-ADDRESSES: primary@%d then backup@%d, %d x %s",
                  i_psrc, i_bsrc, n_bad, _BAD_MAGIC_ERR)
 
-        # Without this, a run where the backup booted could still show the above.
         assert not any(_MANIFEST_OK in line for line in console), (
             f"ROM printed {_MANIFEST_OK}: a slot validated, so 'both addresses "
             f"no-detect' did not hold. Console: {console}"
@@ -314,8 +269,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                  "0x%08x then 0x%08x, mailbox FAIL (fw_pass=0)",
                  _ALL_FAILED, _STATUS_LOOP_FAILED, _STATUS_TERMINAL)
 
-        # Had the ROM continued -- retried, restarted, or reported further --
-        # cold_scratch[1] would have moved off the terminal error.
         assert status_seq[-1] == _STATUS_TERMINAL, (
             f"after {_HANG_OBSERVE_CYCLES} cycles past the mailbox FAIL, "
             f"cold_scratch[1] is 0x{status_seq[-1]:08x}, not the terminal "
@@ -333,8 +286,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             )
         log.info("CHK-NO-BOOT: none of %s reached", ", ".join(_BOOT_PROGRESS))
 
-        # Transport evidence the console cannot supply: both addresses really were
-        # interrogated, in order, and both really answered blank.
         rds = ev.reads(txns)
         assert rds, (
             f"flash BFM served no read transactions; the ROM never addressed the "
@@ -350,8 +301,6 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                 f"address was never interrogated, so it was not shown undetected"
             )
             idx, txn = hit
-            # Every returned byte, not just the magic: makes the device-side claim
-            # independent of the stimulus self-check.
             data = bytes(txn["data_out"])
             assert ev.all_erased(data), (
                 f"device returned non-erased bytes in the {len(data)}-byte read at "

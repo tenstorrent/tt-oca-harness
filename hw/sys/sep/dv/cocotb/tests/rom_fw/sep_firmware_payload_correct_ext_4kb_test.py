@@ -2,20 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A 4 KiB payload staged in SEP EXT SRAM is accepted and boots.
 
-The smallest legal size in the group, and the only member whose payload is
-SMALLER than the one the packer ships: 4096 bytes cannot hold the BL1 body at the
-packer's offset of 4096, so ``repack_payload`` packs it directly behind the TOC
-region. That makes this member the one that also proves the ROM locates the image
-from the TOC entry rather than from the shipped layout -- a ROM that assumed
-offset 4096 would read past the payload and fail the body digest.
-
-Legal for a reason this member asserts rather than assumes: 0x1000 +
-0x1000 is far inside the 256 KiB SEP SRAM, so all three of the ROM's bounds
-(``sep_payload_size_base``) pass, and ``PAYLOAD=0x00001000`` on the console is the
-ROM echoing the length it accepted.
-
-No failover: the slot is re-signed and otherwise untouched, so a backup read would
-mean the primary was refused for something this member does not model.
+4 KiB cannot hold the BL1 body at the shipped offset, so it is packed behind the TOC
+and the ROM must locate it from the TOC entry, not from the shipped layout.
 """
 
 from __future__ import annotations

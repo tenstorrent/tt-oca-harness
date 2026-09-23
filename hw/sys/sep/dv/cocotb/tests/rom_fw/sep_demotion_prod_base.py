@@ -1,100 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared PROD-lifecycle stimulus for the [C15] demotion-decision family.
+"""PROD-lifecycle base for the demotion-decision tests, with secure boot disabled.
 
-The mechanism, the seven-outcome collapse map and the disclosed gaps are written
-out once in ``rom_fw/sep_demotion_decision_base.py``. **Read that first.** This
-module adds only what the four PROD members share and the two PROD_END members
-cannot use:
-
-  * the ``+SECURE_BOOT_DIS`` stimulus, on BOTH of the surfaces it drives;
-  * the PROD lifecycle narrowing and the console-marker skeleton that goes with
-    a secure-boot-OFF boot;
-  * :func:`outcome_for`, the non-PROD_END arm of the decision table transcribed
-    from ``rom_main.c`` as executable code.
-
-============================================================================
-WHY THE FOUR MEMBERS SHARE A BASE AND WHAT IS *NOT* SHARED
-============================================================================
-
-Every one of the four drives the same three-line stimulus preamble and boots the
-same way, so writing it four times would be four chances to get one of them
-subtly wrong. What is deliberately NOT derived is the expected OUTCOME: each
-member writes its own ``demotion_required``, ``demotion_values``,
-``expect_demote_1`` and ``expect_demote_2`` explicitly, with citations, because
-"parameterise the scenario, never parameterise the evidence" is the rule three
-earlier batches of this run were graded against.
-
-:meth:`_demotion_prod_mixin.__init_subclass__` then cross-checks those four
-written declarations against :func:`outcome_for` applied to the member's own
-three input bits. The two statements are derived independently -- the member's
-from its own declared inputs, the function's from the ROM's control flow --
-so requiring them to agree catches a copy-paste between members, which is the
-failure mode a family of near-identical files actually has. Agreement is not
-proof of correctness and is not claimed as such; it is two independent
-transcriptions of one table having to match.
-
-============================================================================
-``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES, AND THEY ARE COUPLED
-============================================================================
-
-This is the single most expensive thing the VP half of this run learned, and it
-is established once here. Clearing secure boot on the primary:
-
-  * sets ``primary.manifest.boot_arguments.secure_boot = 0``, which the packer
-    turns into TWO packed-field changes, not one -- see below;
-  * **and** burns the ``sboot_dis`` eFuse, constrained to equal the plusarg.
-
-Both are ported. The eFuse preload ``sep_efuse_lc_prod_sboot_dis.toml`` burns the
-fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
-
-  * ``flag_args`` bit 30 (``FLAG_ARGS_BIT_SECURE_BOOT``, ``manifest.h``)
-    cleared -- the field ``secure_boot_enabled`` reads at ``manifest_load.c``.
-    It sits OUTSIDE the TBS (``manifest.h``), so clearing it needs no
-    re-hash and no re-sign;
-  * ``signature_type`` forced to ``NO_SIGNATURE`` (0), because the packer forces
-    exactly that whenever a config sets ``secure_boot: 0``
-    (``manifest_signing.py``, value from ``pack_images_constants.py``). The
-    primary manifest is therefore genuinely UNSIGNED rather than a signed image
-    with one flag cleared.
-
-**The coupling is what makes the port non-vacuous.** With ``signature_type = 0``
-the primary can boot only because the fuse is burned: ``secure_boot_enabled``
-short-circuits on ``sboot_dis`` at ``manifest_load.c`` BEFORE the PROD rule at
-. Drop the fuse and PROD enforces secure boot, the unsigned primary is
-refused at ``BAD_SIG_TYPE=0x00000000`` (``manifest_crypto.c``), and the ROM
-fails over to the signed backup -- which carries no demotion stimulus and would
-produce outcome **O5** under whichever name the testcase happened to have. That
-substitution is made loud rather than silent: ``BAD_SIG_TYPE=``, the backup
-manifest source and ``LC=PROD_END`` are forbidden, ``FUSE: SBOOT_DIS: 1``
-(``rom_main.c``) and ``SBOOT_OFF`` (``manifest_load.c``) are required, and
-the base's :meth:`~sep_demotion_decision_base._check_primary_served` additionally
-proves from the DEVICE side that no read touched the backup span.
-
-The primary keeps its stale dev0 signature bytes rather than a blank field. That is
-inert because ``validate_signature`` is never called at all on this path, and a
-syntactically complete signature is the harder case for anything that might later
-examine the field.
-
-The BACKUP is re-signed and stays fully valid; only its ``life_cycle_states`` is
-narrowed. That is what makes the forbidden backup read meaningful rather than
-trivially satisfied by an unusable backup.
-
-============================================================================
-WHAT THE SHARED SKELETON DOES NOT COVER
-============================================================================
-
-``sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test`` (batch R3's
-O2a member) predates this module and performs the same three ``mm`` calls inline.
-It is deliberately NOT refactored onto :func:`apply_secure_boot_dis`: it is an
-approved, passing row whose docstring is its own evidence record, and rewriting
-it would put that row's provenance at risk to remove three duplicated lines. **The
-duplication is named HERE ONLY -- that member carries no reference back to this
-module, because editing it is exactly what was declined** -- so a future packer
-change must be applied in both places and this paragraph is the only thing that
-says so. Both copies are anchored by the same two assertions
-(``signature_type == NO_SIGNATURE`` and ``flag_args`` bit 30 clear), so a change
-that broke one would fail the other loudly rather than silently.
+``+SECURE_BOOT_DIS`` is applied as the sboot_dis eFuse plus two primary-manifest writes;
+without the fuse PROD refuses the unsigned primary and the backup boots instead.
 """
 
 from __future__ import annotations
@@ -107,39 +16,24 @@ from rom_fw.sep_demotion_decision_base import (
 )
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# Console tokens, each verified to occur exactly once in bootrom/prod/src/ so no
-# forbid below is inert (the inert-forbid trap is vp FINDINGS F10 item 5).
-_LC_PROD = "LC=PROD"                               # lifecycle.c
-_LC_PROD_END = "LC=PROD_END"                       # lifecycle.c
-_SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"             # rom_main.c
-_SBOOT_OFF = "SBOOT_OFF"                           # manifest_load.c
-_PLD_HASH_OK = "PLD_HASH_OK"                       # manifest_crypto.c
+# Console tokens; each occurs once in the ROM source, so no forbid below is inert.
+_LC_PROD = "LC=PROD"
+_LC_PROD_END = "LC=PROD_END"
+_SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"
+_SBOOT_OFF = "SBOOT_OFF"
+_PLD_HASH_OK = "PLD_HASH_OK"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
-# lifecycle.h -- the raw 4-bit LC state the preload's 0xE1 encodes.
+# Raw 4-bit PROD LC state; the preload encodes it as 0xE1.
 LC_RAW_PROD = 0x1
-# manifest.h -- LC_STATES_BIT_PROD, the only state these members permit.
 LC_STATES_PROD_ONLY = 1 << mm.LC_STATES_BIT_PROD
 
 PROD_SBOOT_DIS_PRELOAD = EFUSE_DIR / "sep_efuse_lc_prod_sboot_dis.toml"
 
 
 def apply_secure_boot_dis(test, buf: bytearray, slot: str = "primary") -> None:
-    """Port ``+SECURE_BOOT_DIS``'s two MANIFEST surfaces onto one slot.
-
-    The third surface -- the ``sboot_dis`` eFuse -- is the preload's job and is
-    asserted separately by
-    :meth:`sep_demotion_decision_base.build_efuse_image` through
-    ``expected_sboot_dis``. All three are needed; see this module's docstring for
-    why reading only one of them produced the VP half's worst error.
-
-    Both writes land inside the packer's own semantics rather than approximating
-    them: ``flag_args`` bit 30 is what ``secure_boot_enabled`` reads
-    (``manifest_load.c``), and ``signature_type = 0`` is what
-    ``manifest_signing.py`` forces when a config asks for
-    ``secure_boot: 0``.
-    """
+    # sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test repeats these writes inline.
     before_flags = mm.get_flag_args(buf, slot)
     mm.set_flag_args_bit(buf, slot, mm.FLAG_ARGS_BIT_SECURE_BOOT, False)
     mm.set_signature_type(buf, slot, mm.SIG_TYPE_NO_SIGNATURE)
@@ -153,29 +47,6 @@ def apply_secure_boot_dis(test, buf: bytearray, slot: str = "primary") -> None:
 
 
 def outcome_for(sel: int, auth: int, bl2: int) -> dict:
-    """The non-PROD_END arm of the [C15] decision table, as executable source.
-
-    Transcribed from the ROM's own control flow, not from any run:
-
-      * ``rom_main.c`` ``if (sel & (1 << SELECTOR_BIT_BL1_DEMOTION))`` ->
-        ``demotion_reg = flags[0]``  and ``BL1_DEMOTE=``;
-        ``lock_demotion`` keeps its initialiser, so writes
-        DEMOTE_1 ``(demote = auth, lock = 1)``;
-      * ``else if (bl2_demote)`` -> ``lock_demotion = false``
-        and ``DEMOTE: BL2 deferred, unlocked``. is then false,
-        so ``lc_write_demotion`` is never called and DEMOTE_1 is left at its reset
-        value -- the ONLY outcome of the seven with that property;
-      * ``else`` -> ``DEMOTE: BL2 deferred, lock non-demoted``,
-        ``demotion_reg`` still false, ``lock_demotion`` still true, so
-        writes ``(0, 1)``;
-      * prints ``BL2_DEMOTE_DEC=`` on all three of those arms, carrying
-        ``flag_args[0]`` unconditionally (, stored);
-      * ``lc_write_demotion_2`` is called only, i.e. only at PROD_END,
-        so DEMOTE_2 is never written on any arm here.
-
-    Returns the four things a member must declare, so that a member's own
-    declarations can be cross-checked against this one place.
-    """
     if sel:
         label = "O2" if auth else "O3"
         label += "b" if bl2 else "a"
@@ -195,9 +66,7 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
             "values": ("BL2_DEMOTE_DEC=1",),
             "demote_1": (0, 0),
             "demote_2": (0, 0),
-            # The one outcome that writes neither register, so the monitor records
-            # only the reset sample. Pinned EXACTLY rather than relaxed: see
-            # sep_demotion_decision_base.demote_changes_min.
+            # Writes neither register, so only the reset sample is recorded.
             "changes": (1, 1),
         }
     return {
@@ -212,16 +81,12 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
 
 
 class _demotion_prod_mixin:
-    """Derive the per-member forbids and cross-check the declared outcome."""
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         bits = (cls._SEL, cls._AUTH, cls._BL2)
         if bits == (-1, -1, -1):
-            # sep_demotion_prod_base itself, which declares no inputs. A concrete
-            # member that forgot to declare them lands here too, and is caught at
-            # run time by the _OUTCOME guard in mutate_manifest() below -- before
-            # any simulation, because mutate_flash_image() runs pre-boot.
+            # The base itself; a member missing inputs fails in mutate_manifest() before boot.
             return
         if any(b not in (0, 1) for b in bits):
             raise ValueError(
@@ -229,9 +94,7 @@ class _demotion_prod_mixin:
             )
         want = outcome_for(*bits)
         cls._OUTCOME = want["label"]
-        # The member wrote its own expectations; this requires them to agree with
-        # the table above. A copy-paste between two members of this family is the
-        # realistic failure mode, and it is exactly what this catches.
+        # Catches a copy-paste of expectations between members.
         mismatches = []
         if tuple(cls.demotion_required) != want["required"]:
             mismatches.append(
@@ -259,10 +122,7 @@ class _demotion_prod_mixin:
                 "outcome_for() in rom_fw/sep_demotion_prod_base.py is the "
                 "transcription of the ROM's control flow"
             )
-        # Value forbids, derived from the member's own inputs so that a member
-        # cannot pass on a neighbouring row's console. When the selector bit is
-        # clear the ROM never prints BL1_DEMOTE= at all, and the base already
-        # forbids that whole token, so only the BL2 value needs a forbid here.
+        # With sel clear the base already forbids BL1_DEMOTE=, so only BL2's value needs one.
         value_forbids = [f"BL2_DEMOTE_DEC={1 - cls._BL2}"]
         if cls._SEL:
             value_forbids.append(f"BL1_DEMOTE={1 - cls._AUTH}")
@@ -271,17 +131,11 @@ class _demotion_prod_mixin:
 
 
 class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
-    """PROD lifecycle, secure boot disabled by fuse+manifest, primary boots.
-
-    Members declare three input bits and their expected outcome; everything else
-    -- preload, lifecycle narrowing, the ``+SECURE_BOOT_DIS`` port and the marker
-    skeleton -- lives here.
-    """
 
     # Subclass contract: the three manifest demotion inputs this member drives.
-    _SEL = -1     # usage_constraints.selector_bits bit 17 (rom_main.c)
-    _AUTH = -1    # usage_constraints.flags bit 0          (rom_main.c)
-    _BL2 = -1     # boot_arguments.flag_args bit 0         (rom_main.c)
+    _SEL = -1     # usage_constraints.selector_bits bit 17
+    _AUTH = -1    # usage_constraints.flags bit 0
+    _BL2 = -1     # boot_arguments.flag_args bit 0
 
     efuse_preload = PROD_SBOOT_DIS_PRELOAD
     expected_lc_raw = LC_RAW_PROD
@@ -291,13 +145,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         _LC_PROD, _SBOOT_DIS_FUSE, _PRIMARY_SRC, _SBOOT_OFF, _PLD_HASH_OK,
         "BL1_COPIED", "BL1_JUMP=",
     )
-    # LC=PROD_END is forbidden rather than LC=PROD being forbidden on the PROD_END
-    # side, because "LC=PROD" is a strict PREFIX of "LC=PROD_END": only the longer
-    # string can serve as a discriminator. BAD_SIG_TYPE= is the loud failure if the
-    # sboot_dis fuse surface is ever dropped. The RSA markers must not appear at
-    # all: secure boot is off, so a run that verified a signature took a different
-    # path from the one under test, and none of these members passes
-    # +sep_crypto_edn_force.
+    # "LC=PROD" is a prefix of "LC=PROD_END", so only the longer string can be forbidden.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _LC_PROD_END, "LC_USAGE_CONSTRAINT_FAIL", _BACKUP_SRC, "MANIFEST_ERR=",
         "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=", "RSA_VERIFY_START",
@@ -305,18 +153,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         "PLD_HASH_FAIL=", "PLD_HASH_MISMATCH", "ENC_WITHOUT_SBOOT",
     )
 
-    # --- stimulus ----------------------------------------------------------
     def mutate_manifest(self, buf: bytearray) -> None:
-        """Drive the member's three inputs, then ``+SECURE_BOOT_DIS``, then PROD.
-
-        Order matters and is not arbitrary. ``set_selector_bit`` and
-        ``set_usage_flags_bit`` write inside the TBS and re-hash; ``flag_args``
-        is outside it; ``set_signature_type`` is inside it and re-hashes; and
-        ``narrow_life_cycle_states`` is the LAST in-TBS write, so it re-hashes
-        over everything above and re-seals the backup afterwards. Every mutator
-        calls ``verify_layout`` first, so a step that left the hash stale would
-        fail at the next one rather than reaching the DUT.
-        """
         assert getattr(self, "_OUTCOME", None), (
             f"{type(self).__name__} inherits sep_demotion_prod_base but declares no "
             f"_SEL/_AUTH/_BL2, so no decision-table row was cross-checked for it and "
@@ -330,20 +167,11 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         if self._BL2:
             mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_BL2_DEMOTION, True)
         apply_secure_boot_dis(self, buf)
-        # The PRIMARY is deliberately NOT re-sealed: it is unsigned by
-        # construction and re-signing it would undo the surface just set.
+        # Last in-TBS write; the unsigned primary is re-hashed but not re-sealed.
         narrow_life_cycle_states(self, buf, LC_STATES_PROD_ONLY,
                                  reseal_slots=("backup",))
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:
-        """Read all five mutated fields back out of the packed image.
-
-        Not duplication of the console. The ROM echoes ``flags[0]`` only when the
-        selector bit is set and never echoes the selector bit itself, so on three
-        of the four members at least one input is invisible in the log and a
-        stimulus that silently failed to land would produce exactly the log a
-        correct run produces. Assert the stimulus, not only the outcome.
-        """
         sel_bits = mm.selector_bits(buf, "primary")
         sel = (sel_bits >> mm.SELECTOR_BIT_BL1_DEMOTION) & 1
         flags = mm.usage_flags(buf, "primary")
@@ -377,9 +205,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
             f"primary life_cycle_states is 0x{lcs:08x}, expected "
             f"0x{LC_STATES_PROD_ONLY:08x} (PROD only)"
         )
-        # The manifest hash must still be valid even though the slot is unsigned:
-        # manifest_check_integrity (manifest_load.c) runs regardless of secure
-        # boot, so a stale hash would reject the primary before the [C15] block.
+        # The manifest hash is checked even with secure boot off, so it must stay valid.
         mm.verify_layout(buf, "primary")
         self.logger.info(
             "CHK-STIMULUS-DEMOTION: outcome %s -- primary selector_bits[%d]=%d, "

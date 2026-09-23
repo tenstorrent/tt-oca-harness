@@ -1,74 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP074: constrained-random ``CHIPLET_PUBK_REVOKE`` bitmap x selected ROM key.
+"""Constrained-random CHIPLET_PUBK_REVOKE bitmap x each manifest's ROM key slot.
 
-One row, one seed, one of four outcome classes. The seed derives a bitmap and the
-two manifests' ROM key slots through the shared draw in
-``env/sep_key_revocation_draw.py``; the class the stimulus lands in decides what
-the ROM must do:
-
-  * ``clean_proceed`` / ``noisy_proceed`` -- the primary boots. The noisy variant
-    sets bits that are NOT the primary's, which is the arm an implementation that
-    refused on ``revoke != 0`` would fail;
-  * ``primary_failover`` -- the primary's slot is revoked, the backup's is not,
-    and the backup boots;
-  * ``both_revoked_terminal`` -- both slots are revoked, both are refused, and
-    the retry loop exhausts. This is the class nothing else in this repository
-    covers: it is the only evidence that the revocation check is applied on the
-    BACKUP path too, rather than on the primary alone.
-
-WHY THIS TESTCASE OWNS ITS SCENARIO INSTEAD OF EXTENDING A BASE. The three
-outcome shapes have three different bases here -- ``sep_rom_ot_dma_boot_test``,
-``sep_primary_fail_backup_boot_base`` and ``sep_backup_manifest_fail_base`` -- and
-which one applies is not known until the seed is drawn, so no base can be chosen
-at class-definition time. Picking one and tolerating the others would mean
-accepting whichever outcome appeared, which is the vacuous pass this row exists
-to avoid.
-
-BOTH MANIFESTS ARE MADE GENUINELY BOOTABLE, WHICH IS WHAT MAKES THE RESULT MEAN
-SOMETHING. Each slot is bound to its drawn ROM key -- selector, that key's
-modulus, and a signature by that key -- so the fuse bitmap is the ONLY thing that
-can refuse either one. A revocation check that did nothing would boot every class,
-including the terminal one. The binding is proved offline before the simulation:
-the shipped slot is fully sealed, the local signer reproduces the packer's
-signature byte for byte, and the re-signed slot verifies against its own modulus.
-
-THE EXPECTATION IS RECOMPUTED FROM THE ARTEFACTS, NOT FROM THE RNG. The bitmap is
-read back out of ``out/sep_efuse.hex`` and the two slot indices out of the mutated
-flash image written to disk. The outcome is then a two-boolean truth table over
-those measured values: is the primary's bit set, is the backup's bit set.
-``bitmap != 0`` is a third input used ONLY to label the coverage bin, never to add
-a branch to the table. A stimulus that failed to land therefore fails loudly here
-instead of passing against a prediction nothing checked.
-
-WHICH OTP IMAGE THE DUT ACTUALLY SENSES, because two files hold one. The efuse
-bank model's ``$readmemh`` is gated on reset -- ``wait (rst_ni)`` in
-``hw/ip/efuse/dv/models/efuse_bank_model.sv`` -- and reset releases hundreds of ns
-into the run, while ``write_efuse_image`` runs at 0 ns. So the image the DUT senses
-is the GOLDEN this testcase writes, and the pre-sim hook's copy is overwritten
-before it is ever read. The hook still matters, for a different reason: this
-testcase loads its file first and asserts the golden reproduces it word for word,
-which is what proves the two processes ran the SAME draw. A hand-duplicated
-constraint in the prestage registry would diverge there instead of silently
-staging a bitmap nothing predicted. The post-sense backdoor shadow compare in
-``sep_base_test`` is the independent third channel: it checks what the DUT sensed
-against that same golden.
-
-ONE CHECK IS DELIBERATELY RELAXED RELATIVE TO THE DIRECTED ROWS. The twelve
-``pubkey_rom_{0..5}_revoked_key`` rows assert the fuse word equals exactly one
-bit, which a random bitmap cannot satisfy. Here the bitmap is READ instead, and
-the strength that check carried is restored by deriving the outcome class from the
-measured value and asserting the class in full -- token counts, per-slot
-attribution and ordering included.
-
-BITS 6 AND 7 ARE DRAWN AND MUST DO NOTHING. They are declared in
-``CHIPLET_PUBK_REVOKE.select[7:0]`` but no ROM slot maps to them, so a set bit
-there must never change a verdict.
-
-Closure is a 27-bin model accumulated across regression seeds -- four classes x
-six primary slots, plus ``backup == primary`` / ``backup != primary`` inside the
-terminal class, plus one bin for bits 6/7 set with no ROM-slot bit. One seed
-cannot close it, and this row records which bins it hit rather than claiming any.
+The seed draws a bitmap and both slots' ROM keys; the expected outcome (primary boots,
+failover, or both refused) is recomputed from the staged artefacts, not from the RNG.
 """
 
 from __future__ import annotations
@@ -96,12 +31,8 @@ from sep_reg_meta import sym
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h. The only code this row's refusals may carry.
 MANIFEST_ERR_KEY_REVOKED = 0x0003_0015
-# manifest.h, MANIFEST_ERR_SIG_FAILED: the shared code every near-miss arm of
-# validate_signature returns (BAD_SIG_TYPE, BAD_KEY_IDX, BAD_KEY_SEL,
-# ROM_KEY_EMPTY, FUSE_KEY_EMPTY, PUBK_HASH_TIMEOUT, RSA_VERIFY_FAIL). Forbidding
-# it forbids all of them at once.
+# Every near-miss arm of validate_signature returns this code, so forbidding it forbids them all.
 MANIFEST_ERR_SIG_FAILED = 0x0003_000C
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
@@ -119,14 +50,7 @@ _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _REVOKED_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_REVOKED:08x}"
 _REVOKED_CRYPTO_FAIL = f"CRYPTO_FAIL=0x{MANIFEST_ERR_KEY_REVOKED:08x}"
 
-# Never acceptable, in any class. Each one is a way for this row to look green
-# while the revocation check was never the reason for what happened:
-#   * SBOOT_OFF / the SBOOT_DIS fuse -- the crypto chain was skipped entirely;
-#   * WAIT_SMC_MANIFEST -- the manifest came from SMC SRAM, not the flash device;
-#   * the MANIFEST_ERR_SIG_FAILED code and its tokens -- a near-miss refusal
-#     (empty slot, wrong digest, bad index) standing in for a revocation;
-#   * VERSION_ROLLBACK -- the rollback check, which runs BEFORE key selection,
-#     rejected a slot first.
+# Each of these means something other than the revocation check decided the outcome.
 _ALWAYS_FORBIDDEN = (
     "SBOOT_OFF", "FUSE: SBOOT_DIS: 1", "WAIT_SMC_MANIFEST",
     f"MANIFEST_ERR=0x{MANIFEST_ERR_SIG_FAILED:08x}",
@@ -139,14 +63,11 @@ _ALWAYS_FORBIDDEN = (
 _MAX_RUN_CYCLES = 24_000_000
 _NO_BOOT_CYCLES = 200_000
 _PROGRESS_EVERY = 200_000
-# Watch window after a terminal verdict, matching sep_backup_manifest_fail_base:
-# the ROM's terminal path ends in `for(;;) wfi`, and "it stopped" has to be an
-# observation rather than a property of the noreturn attribute.
+# The terminal path ends in `for(;;) wfi`; watch this long to observe that it stopped.
 _QUIESCE_CYCLES = 20_000
 
 
 def _archive(src, name: str) -> None:
-    """Copy an artefact next to the results XML, where the run keeps its evidence."""
     results = os.environ.get("COCOTB_RESULTS_FILE")
     if results:
         shutil.copyfile(src, os.path.join(os.path.dirname(results), name))
@@ -159,16 +80,8 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
     build_env = False
     flash_image = SECURE_FLASH_IMAGE
 
-    # --- stimulus ----------------------------------------------------------
     def _stage_efuse(self, drawn) -> SepEfuseImage:
-        """Read the pre-staged OTP file, then prove this run's golden reproduces it.
-
-        Not a claim about what the DUT sensed -- the model's ``$readmemh`` waits
-        for reset and the golden written at 0 ns has replaced this file by then.
-        It is the cross-process check: the pre-sim hook and this testcase must
-        have run the SAME draw, and a registry that duplicated the constraint by
-        hand would diverge here instead of silently staging another bitmap.
-        """
+        # $readmemh waits for reset, so the DUT senses the golden written below, not this file.
         assert "sep_efuse_preload" not in cocotb.plusargs, (
             "+sep_efuse_preload is set for this test, which makes "
             "select_efuse_image load a fixed file and ignore the drawn bitmap. "
@@ -181,8 +94,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             f"testcase made"
         )
         staged = SepEfuseImage().load_hex(staged_path)
-        # Archive the hook's file before write_efuse_image() overwrites it, so the
-        # cross-process comparison stays reproducible after the run.
+        # Archive before write_efuse_image() overwrites the hook's file.
         _archive(staged_path, "sep_efuse.staged.hex")
 
         image = self.select_efuse_image(
@@ -196,8 +108,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
                        in enumerate(zip(image.words, staged.words)) if a != b))
         )
 
-        # From the golden, which is what the DUT senses and what the post-sense
-        # backdoor compare in sep_base_test checks the sensed shadow against.
         bitmap = image.field_int("CHIPLET_PUBK_REVOKE")
         lc = image.lc_raw()
         sboot_dis = image.field_int("SBOOT_DIS") & 0x1
@@ -230,12 +140,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         return image
 
     def _stage_flash(self, drawn) -> bytes:
-        """Bind both manifests to their drawn slots and write the image to disk.
-
-        The returned bytes are re-read from the file, so the selectors the checker
-        recomputes the expectation from come out of the artifact rather than out of
-        the buffer the stimulus happened to build.
-        """
         with open(self.flash_image, "rb") as fh:
             buf = bytearray(fh.read())
         info = {
@@ -262,7 +166,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         return loaded
 
     def _measure(self, sensed_image, staged_flash, drawn):
-        """Recompute the expected class from the artefacts this run will use."""
         bitmap = sensed_image.field_int("CHIPLET_PUBK_REVOKE")
         slots = {}
         for slot in ("primary", "backup"):
@@ -275,8 +178,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             )
             slots[slot] = sel & 0xF
         measured = kr.classify(bitmap, slots["primary"], slots["backup"])
-        # The loud failure the procedure asks for: a stimulus that did not land in
-        # the drawn class must not be graded against the class it reached.
         assert measured == drawn.expected_class, (
             f"the stimulus did not land: seed drew {drawn.describe()}, but the "
             f"artefacts hold bitmap=0x{bitmap:02x} primary_slot={slots['primary']} "
@@ -291,7 +192,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         )
         return bitmap, slots["primary"], slots["backup"], measured
 
-    # --- scenario ----------------------------------------------------------
     async def run_scenario(self) -> None:
         dut = cocotb.top
         seed = self.random_seed()
@@ -375,15 +275,13 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             self._check_quiesced(post_status_moved, post_console, last_status)
         self._record_coverage(seed, drawn, bitmap, p_slot, b_slot, cls)
 
-    # --- checks ------------------------------------------------------------
     def _check(self, console, status_seq, fw_done, fw_pass, retired, flash, *,
                bitmap: int, p_slot: int, b_slot: int, cls: str) -> None:
         log = self.logger
         log.info("cold_scratch[1] sequence: %s", [hex(v) for v in status_seq])
         log.info("ROM console: %s", console)
 
-        # Guard the guards: a dark console or a core that never ran makes every
-        # marker check below vacuous.
+        # A dark console or an idle core would make every marker check below vacuous.
         assert retired, "core retired no instructions; the ROM never ran"
         assert console, (
             "ROM console is empty, so no marker check below means anything (the "
@@ -416,9 +314,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         revoked_p = f"KEY_REVOKED idx=0x{p_slot:08x}"
         revoked_b = f"KEY_REVOKED idx=0x{b_slot:08x}"
 
-        # How many slot attempts reach the ROM-key arm of validate_signature. The
-        # selector and the fuse word are echoed once per attempt, so these counts
-        # are what say no slot this stimulus did not account for ran key selection.
+        # The selector and fuse word are echoed once per key-selection attempt.
         attempts = 1 if outcome == kr.OUTCOME_PROCEED else 2
         n_sel = len(hits("PUBK_SEL="))
         n_revoke_any = len(hits("PUBK_REVOKE="))
@@ -427,10 +323,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             f"{n_revoke_any} times, expected {attempts} of each for a {outcome} "
             f"outcome. Console: {console}"
         )
-        # The fuse word is echoed unconditionally before this slot's bit is tested,
-        # so every attempt prints the SAME bitmap; only KEY_REVOKED idx= is
-        # per-slot. A different value here would mean the DUT sensed some other
-        # image than the golden this run wrote.
+        # The fuse word is echoed on every attempt, so each echo must show this run's bitmap.
         assert len(hits(revoke_echo)) == attempts, (
             f"{revoke_echo} appeared {len(hits(revoke_echo))} times, expected "
             f"{attempts}: the ROM did not read this run's bitmap on every attempt. "
@@ -467,7 +360,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
     def _check_proceed(self, console, idx, hits, fw_done, fw_pass, flash, *,
                        sel_p, revoke_echo, i_psrc, i_sel_p, i_revoke,
                        bitmap, p_slot, cls) -> None:
-        """The primary's slot is not revoked, so the primary boots."""
         for marker in ("KEY_REVOKED idx=", _REVOKED_ERR, _REVOKED_CRYPTO_FAIL,
                        _BACKUP_SRC, _ALL_FAILED, "MANIFEST_ERR="):
             assert not hits(marker), (
@@ -495,8 +387,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             f"a {cls} seed must complete the boot: fw_done={fw_done} "
             f"fw_pass={fw_pass}"
         )
-        # The channel the ROM cannot fake. A silent failover also reaches
-        # MANIFEST_OK, and only the device's transaction record can rule it out.
+        # A silent failover also reaches MANIFEST_OK; only the flash transaction log rules it out.
         rds = ev.reads(flash.get_transactions())
         hit = ev.covering_read(rds, mm.PRIMARY_MANIFEST_OFFSET)
         assert hit is not None, (
@@ -521,7 +412,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
     def _check_failover(self, console, idx, hits, fw_done, fw_pass, flash, *,
                         sel_p, sel_b, revokes, revoked_p, revoked_b,
                         i_sel_p, p_slot, b_slot) -> None:
-        """The primary's slot is revoked, the backup's is not, so the backup boots."""
         i_revoked_p = idx(revoked_p)
         i_crypto = idx(_REVOKED_CRYPTO_FAIL)
         i_err = idx(_REVOKED_ERR)
@@ -533,8 +423,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         i_mok = idx(_MANIFEST_OK)
         i_jump = idx(_BL1_JUMP)
 
-        # CHK-REVOKE-ATTRIBUTION: the ROM read the primary's selector, consulted
-        # the fuse word, refused THAT index, and only then read the backup.
         assert i_sel_p < revokes[0] < i_revoked_p < i_crypto < i_err < i_bsrc, (
             f"the revocation verdict is not attributable to the primary's slot "
             f"{p_slot}: {sel_p}@{i_sel_p} -> PUBK_REVOKE@{revokes[0]} -> "
@@ -549,9 +437,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             f"{revoked_b} appeared: the backup's slot {b_slot} is NOT revoked "
             f"under this bitmap, so a failover cannot refuse it. Console: {console}"
         )
-        # The second fuse echo, after the backup read, is what proves the BOOTING
-        # slot ran the revocation check and was permitted -- not that the check
-        # was skipped for it.
+        # The second fuse echo shows the booting slot was checked, not skipped.
         assert revokes[0] < i_bsrc < revokes[1], (
             f"the fuse echoes {revokes} do not straddle the backup read@{i_bsrc}: "
             f"the booting slot did not consult the revocation bitmap. "
@@ -563,8 +449,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             f"{_RSA_START}@{i_rsa} -> {_SIG_VALID}@{i_sig} -> {_CRYPTO_OK}@{i_ok} "
             f"-> {_MANIFEST_OK}@{i_mok} -> {_BL1_JUMP}@{i_jump}. Console: {console}"
         )
-        # Revocation precedes rsa_3072_verify, so the refused primary must never
-        # have driven the verifier: exactly one run, the backup's.
+        # Revocation precedes rsa_3072_verify, so only the backup may reach the verifier.
         for marker in (_RSA_START, _SIG_VALID, _CRYPTO_OK, _MANIFEST_OK):
             assert len(hits(marker)) == 1, (
                 f"{marker} appeared {len(hits(marker))} times, expected exactly 1 "
@@ -603,23 +488,19 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
     def _check_terminal(self, console, idx, hits, status_seq, fw_done, fw_pass,
                         flash, *, sel_p, sel_b, revokes, revoked_p, revoked_b,
                         i_psrc, i_sel_p, p_slot, b_slot) -> None:
-        """Both slots are revoked, so both are refused and the retry loop exhausts."""
         i_bsrc = idx(_BACKUP_SRC)
         assert i_bsrc > i_psrc >= 0, (
             f"the backup slot was not read after the primary: primary@{i_psrc}, "
             f"backup@{i_bsrc}. Console: {console}"
         )
-        # Nothing downstream of a refusal may run, in either slot. These are the
-        # load-bearing forbids: both manifests are otherwise valid and correctly
-        # signed, so a revocation check that did nothing would BOOT here.
+        # Both manifests are otherwise valid, so a no-op revocation check would boot here.
         for marker in (_RSA_START, _SIG_VALID, _CRYPTO_OK, _MANIFEST_OK,
                        _PRE_JUMP, _BL1_COPIED, _BL1_JUMP):
             assert not hits(marker), (
                 f"ROM printed {marker}: a slot got past a revocation refusal, so "
                 f"both selected keys were not refused. Console: {console}"
             )
-        # One refusal per slot, one on each side of the backup read. p == b is a
-        # drawn case, and then one marker legitimately appears twice.
+        # One refusal per slot; when p == b the same KEY_REVOKED marker appears twice.
         revoked_hits = hits("KEY_REVOKED idx=")
         assert len(revoked_hits) == 2, (
             f"KEY_REVOKED appeared {len(revoked_hits)} times at {revoked_hits}, "
@@ -648,9 +529,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             f"@{i_sel_b} -> PUBK_REVOKE@{revokes[1]} -> "
             f"KEY_REVOKED@{revoked_hits[1]}. Console: {console}"
         )
-        # The error code, once per slot, straddling the backup read: the console
-        # marker says which check complained, the code says what the ROM converged
-        # on, and the positions attribute one to each slot.
         for marker in (_REVOKED_CRYPTO_FAIL, _REVOKED_ERR):
             marker_hits = hits(marker)
             assert len(marker_hits) == 2 and marker_hits[0] < i_bsrc < marker_hits[1], (
@@ -693,7 +571,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         )
 
     def _check_quiesced(self, post_status_moved, post_console, terminal_status) -> None:
-        """CHK-HANG: the ROM stopped, rather than reporting and continuing."""
         assert not post_status_moved, (
             f"cold_scratch[1] moved on from 0x{terminal_status:08x} within "
             f"{_QUIESCE_CYCLES} cycles of the terminal verdict: the ROM reported "
@@ -710,12 +587,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         )
 
     def _record_coverage(self, seed, drawn, bitmap, p_slot, b_slot, cls) -> None:
-        """Log and persist the bins this seed hit, out of the 27 closure needs.
-
-        One seed cannot close the model, so this records what was covered and
-        never claims closure; ``regression_stable`` is gated on the accumulated
-        set across seeds.
-        """
         bins = kr.coverage_bins(bitmap, p_slot, b_slot)
         record = {
             "testcase": "sep_key_revocation_bitmap_random_test",
@@ -735,8 +606,6 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             },
             "bins_hit": list(bins),
             "bins_total": list(kr.all_bins()),
-            # Travels with the artefact, so a closure claim assembled from these
-            # files alone cannot miss what a full set does not prove.
             "closure_caveats": list(kr.CLOSURE_CAVEATS),
             "closure_claimed": False,
         }

@@ -1,36 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared stimulus and evidence for the two SILENT arms of ``validate_manifest_payload``.
+"""Shared stimulus and evidence for the two silent TOC header checks of the ROM.
 
-THE PROBLEM THIS MODULE EXISTS TO SOLVE. ``validate_manifest_payload``
-(``bootrom/prod/src/manifest_load.c``) grades the decrypted TOC in a fixed order,
-and its first three arms behave differently on the console::
-
-    toc->identifier  != TOC_HEADER_MAGIC_WORD -> MANIFEST_ERR_BAD_TOC_ID       (silent)
-    toc->major_version != TOC_MAJOR_VERSION   -> MANIFEST_ERR_BAD_TOC_VERSION  (silent)
-    n == 0 || n > 256                         -> MANIFEST_ERR_TOC_COUNT        (silent)
-    toc_bytes > p_len                         -> TOC_REGION_OOB= + PAYLOAD_TOO_LARGE
-    toc payload_length disagrees              -> TOC_PLEN_MISMATCH= + BAD_LENGTH
-
-The two arms these testcases target print NOTHING of their own, so unlike a
-``PAYLOAD_HASHED_LEN_BAD=`` row there is no token naming which check complained.
-Three things carry the attribution instead, and every member asserts all three:
-
-  * THE ERROR CODE, which differs between the two arms -- ``0x00030006`` for the
-    version and ``0x00030010`` for the count. Each member additionally FORBIDS its
-    sibling's code, so a row cannot pass on the other family's verdict;
-  * THE PLACE IN THE CHAIN. Both arms sit downstream of ``manifest_crypto_validate``,
-    so the slot's ``SIG_VALID`` and (when encrypted) ``DECRYPT_OK`` must have been
-    printed before the rejection. An upstream rejection cannot produce that order;
-  * THE BYTES THE DEVICE SERVED. :func:`assert_served_toc_field` requires the flash
-    BFM to have returned this testcase's exact planted bytes at the exact flash
-    address of the field. That is the half the ROM cannot fake, and it is what
-    separates two rows whose consoles would otherwise be identical.
-
-WHAT IS NOT COVERED, stated plainly. ``MANIFEST_ERR_BAD_TOC_ID`` is the arm above
-both of these and has its own testcase
-(``sep_decryption_failure_terminal_test``). The ``n == 0`` half of the image-count
-check is not exercised here; see :data:`BAD_IMAGE_COUNT`.
+Plants a bad TOC major version or image count and checks the error code, its place
+after SIG_VALID/DECRYPT_OK, and the bytes the flash device served at that field.
 """
 
 from __future__ import annotations
@@ -48,32 +21,14 @@ PLAINTEXT_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "secure_boot.bi
 # The signed AND encrypted image: BOTH slots carry encrypted_payload = 1.
 ENCRYPTED_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "encrypted_boot.bin")
 
-# BOTH SLOTS OF EACH IMAGE SHARE ONE ENCRYPTION STATE. Each image is packed from
-# one config with a single setting applied to both slots, so the slot NOT under
-# test always carries the same state as the slot under test. Where that matters,
-# and where it does not:
-#
-#   * a BACKUP cell is unaffected. Its primary is refused on the manifest magic
-#     inside ``validate_manifest_header``, upstream of the point where
-#     ``try_manifest_slot`` first reads the encryption flag, so the primary's
-#     encryption state is unobservable in the run;
-#   * a PRIMARY ENCRYPTED cell recovers onto a backup that is also encrypted and
-#     decrypts in turn, which is why those cells require the decryption markers
-#     TWICE rather than once. A mixed pair -- encrypted primary recovering onto a
-#     plaintext backup -- is not exercised by any cell here.
-#
-# Closing that gap needs a packed image with per-slot encryption, which is a
-# packer-config change.
+# Both slots of an image share one encryption state.
 
 _EFUSE_DIR = _DV_ROOT / "tb" / "efuse_preloads" / "efuse_configurations"
 # LC=PROD, SBOOT_DIS=0, no class key: all a plaintext payload needs.
 PLAINTEXT_EFUSE = _EFUSE_DIR / "sep_efuse_lc_prod.toml"
-# The same, plus the CLASS_KEY the ROM's KBKDF derives the AES key from. Without
-# it an encrypted payload decrypts to garbage and the run dies at BAD_TOC_ID
-# instead of at the arm under test.
+# Adds the CLASS_KEY for AES key derivation; without it the run fails at BAD_TOC_ID.
 ENCRYPTED_EFUSE = _EFUSE_DIR / "sep_efuse_lc_prod_class_key.toml"
 
-# manifest.h
 ERR_BAD_MAGIC = 0x0003_0002
 ERR_BAD_VERSION = 0x0003_0003
 ERR_BAD_LENGTH = 0x0003_0004
@@ -83,28 +38,13 @@ ERR_PAYLOAD_TOO_LARGE = 0x0003_0007
 ERR_NO_BL1_IMAGE = 0x0003_0008
 ERR_TOC_COUNT = 0x0003_0010
 
-# ── The two stimuli ──────────────────────────────────────────────────────────
-# TOC major version. Any value other than TOC_MAJOR_VERSION reaches this arm;
-# TOC_MAJOR_VERSION + 1 is chosen because it is the ADJACENT value. A ROM that
-# had written ``<`` instead of ``!=`` -- accepting any newer TOC -- passes a
-# below-valid value and is caught only from above, so one run pins the side a
-# forward-compatible-looking mistake lands on.
-#
-# THE OTHER SIDE IS UNCOVERED. The symmetric mistake -- ``>`` in place of ``!=``,
-# accepting any OLDER TOC -- is caught only from below the valid version, and all
-# four TOC-version cells plant the same above-valid value. A row planting 0 would
-# close it; ``set_toc_version_major`` already accepts one.
+# Adjacent value above TOC_MAJOR_VERSION.
 BAD_TOC_VERSION = pm.TOC_MAJOR_VERSION + 1
 
-# TOC image count. Both halves of ``n == 0 || n > 256`` land on the same
-# ``MANIFEST_ERR_TOC_COUNT`` arm. 257 is chosen for the same boundary reason as
-# above: it is exactly one past ``n > 256``, so it pins the constant, whereas 0
-# only distinguishes itself from 1. THE ``n == 0`` HALF IS THEREFORE NOT
-# EXERCISED -- it is the other arm of the same ``if`` and needs its own row.
+# One past the 256 limit.
 BAD_IMAGE_COUNT = pm.TOC_MAX_IMAGE_COUNT + 1
 
-# ── Field descriptors ────────────────────────────────────────────────────────
-# (payload-relative offset, width) of each mutated TOC header field, manifest.h.
+# (payload-relative offset, width) of each mutated TOC header field.
 FIELDS = {
     "version_major": (pm.TOC_OFF_MAJOR_VERSION, 2),
     "image_count": (pm.TOC_OFF_IMAGE_COUNT, 8),
@@ -122,16 +62,10 @@ MUTATOR = {
     "image_count": pm.set_toc_image_count,
 }
 
-# Decryption stage markers, manifest_crypto.c.
 DECRYPT_START = "DECRYPT_START"
 DECRYPT_OK = "DECRYPT_OK"
 
-# Every OTHER token validate_manifest_payload and its neighbours can print. The
-# arms under test are silent, so forbidding all of these is what says the slot was
-# refused by the arm this row names rather than by one that would have announced
-# itself. TOC_REGION_OOB= matters most: it is the check IMMEDIATELY after the image
-# count, and an image_count stimulus that slipped past the count bound would land
-# there.
+# The arms under test print nothing, so every other payload token is forbidden.
 OTHER_PAYLOAD_TOKENS = (
     "TOC_REGION_OOB=", "TOC_PLEN_MISMATCH=", "IMAGE_ORDER_BAD", "IMAGE_LEN_ZERO",
     "IMAGE_LEN_ALIGN", "IMAGE_HASH_MISMATCH", "IMAGE_HASH_TIMEOUT",
@@ -144,9 +78,7 @@ OTHER_PAYLOAD_TOKENS = (
     fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER,
 )
 
-# Decryption failure tokens, aes_driver.c / manifest_crypto.c. Forbidden on every
-# member: on a plaintext row nothing may decrypt at all, and on an encrypted row
-# the decryption has to SUCCEED or the TOC arm under test is never reached.
+# Plaintext rows must not decrypt, and encrypted rows must decrypt to reach the TOC arm.
 DECRYPT_FAILURE_TOKENS = (
     "AES_INIT_FAIL", "AES_INIT_BUSY", "AES_DEC_FAIL", "AES_CTRL_REJECTED",
     "AES_ALERT_AFTER_DEC", "AES_ALERT_STATUS=", "KDF_FAIL", "KDF_HMAC_FAIL",
@@ -156,33 +88,18 @@ DECRYPT_FAILURE_TOKENS = (
 
 
 def sibling_error(field: str) -> int:
-    """The error code of the OTHER TOC arm in this batch.
-
-    Every member forbids this, which is the direct answer to "would this testcase
-    still pass if its mutation were replaced by its neighbour's?". It would not:
-    a version stimulus that somehow produced TOC_COUNT, or the reverse, is refused
-    here rather than accepted as a generic TOC rejection.
-    """
     other = "image_count" if field == "version_major" else "version_major"
     return EXPECTED_ERROR[other]
 
 
 def plant(logger, buf: bytearray, slot: str, field: str) -> bytes:
-    """Plant this batch's stimulus in ``slot``'s TOC and return the stored bytes.
-
-    The return value is what the flash DEVICE must later be shown to have served.
-    For a plaintext payload those are the planted little-endian bytes themselves;
-    for an encrypted one they are the CIPHERTEXT the re-encryption produced, which
-    is the only form the device ever holds. Asserting the stored form -- rather
-    than a value the ROM echoed -- is what makes the evidence independent of the
-    ROM's own account of the run.
-    """
     if field not in FIELDS:
         raise ValueError(f"unknown TOC field {field!r}; expected one of {list(FIELDS)}")
     off, size = FIELDS[field]
     encrypted = pm.is_encrypted(buf, slot)
     was = MUTATOR[field](buf, slot, PLANTED[field])
     p = pm.payload_base(buf, slot)
+    # For an encrypted slot this is ciphertext, the only form the flash device holds.
     stored = bytes(buf[p + off:p + off + size])
     now = int.from_bytes(bytes(pm.toc_plaintext(buf, slot)[off:off + size]), "little")
     assert now == PLANTED[field], (
@@ -203,22 +120,8 @@ def plant(logger, buf: bytearray, slot: str, field: str) -> bytes:
 
 def assert_served_toc_field(logger, flash, buf_slot: str, field: str,
                             expected: bytes, payload_offset: int) -> None:
-    """Require the device to have returned ``expected`` at the TOC field's address.
-
-    ``fd.assert_served_field`` addresses relative to the manifest base, so the
-    payload-relative offset is rebased here by the manifest's own
-    ``boot_arguments.payload_offset``. The check is the cross-family discriminator:
-    a run that planted a neighbouring cell's mutation would serve different bytes
-    at this address, or the same bytes at a different one.
-
-    THE ADDRESS IS IN THE PAYLOAD, NOT THE MANIFEST, which is a wider use than
-    ``assert_served_field`` was written for -- its own note reasons about the
-    single 1184-byte manifest fetch. Its requirement still holds: the ROM stages
-    the payload in one further transfer (``PAYLOAD_DST=``), so one read covers the
-    field. If the transport ever splits that transfer, this fails loudly rather
-    than silently checking the wrong bytes.
-    """
     off, _size = FIELDS[field]
+    # One SPI read must cover the field; the ROM fetches the payload in a single transfer.
     fd.assert_served_field(
         logger, flash, buf_slot, payload_offset + off, expected,
         f"{buf_slot} TOC {field}",

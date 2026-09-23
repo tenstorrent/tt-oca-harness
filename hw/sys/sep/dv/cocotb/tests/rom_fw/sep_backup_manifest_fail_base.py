@@ -1,30 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared scenario for the primary-fails / backup-also-fails testcases.
+"""Shared scenario for testcases where the primary manifest and the backup both fail.
 
-Several testcases differ only in what is wrong with the BACKUP manifest, so the
-failover sequencing, evidence collection and terminal checks live here once.
-Subclasses supply the backup defect and the verdict it must produce.
-
-Both halves of the stimulus matter: the primary's ``manifest_identifier`` is
-corrupted as well, because a testcase that only corrupted the backup would boot
-happily from the valid primary, never read the backup, and pass while proving
-nothing. The ordering assertions are what make the failover part of the result
-rather than an assumption. A subclass whose scenario is "both slots carry the
-same defect" replaces that trigger through :meth:`corrupt_primary` and
-``primary_expected_error``, and then owns :meth:`check_defect_attribution`
-because the defect marker no longer identifies a slot on its own.
-
-This ROM runs the manifest loop and the crypto chain as two separate stages
-(``rom_main.c`` then ``manifest_load.c``): ``rom_manifest_boot`` checks each slot's structure, hash
-and usage constraints, and only after a slot passes does
-``manifest_crypto_validate`` check security_version, key selection and the
-signature. So a backup with a cryptographic defect legitimately prints
-``MANIFEST_OK`` first and then fails with ``CRYPTO_FAIL=`` -- which is why
-``MANIFEST_OK`` is not in the forbidden list.
-
-``SepBootScoreboard`` is not used: it requires ``fw_done`` and ``fw_pass``, and the
-expected outcome here is ``fw_done`` with ``fw_pass == 0``.
+The base corrupts the primary so that the ROM falls over to the backup; subclasses plant the
+backup defect and name the verdict it must produce. The ROM must then halt.
 """
 
 from __future__ import annotations
@@ -48,87 +27,52 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 MANIFEST_ERR_SIG_FAILED = 0x0003_000C
 MANIFEST_ERR_VERSION_ROLLBACK = 0x0003_0014
 MANIFEST_ERR_KEY_REVOKED = 0x0003_0015
 MANIFEST_ERR_KEY_HASH_MISMATCH = 0x0003_0016
 
-# Slot identity is asserted on MANIFEST_SRC=, never on the MANIFEST_PRIMARY /
-# MANIFEST_BACKUP label: the ROM derives the label from the retry counter but the
-# offset from the (possibly rotated) slot index (manifest_load.c),
-# so under rotate_update the label and the slot disagree. The offset cannot lie.
+# Identify the slot by MANIFEST_SRC=, not by its label: under rotate_update they disagree.
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
-# Must never appear: the ROM handed off to BL1, i.e. it booted a manifest it was
-# supposed to reject.
+# MANIFEST_OK is allowed: crypto validation runs only after a slot passes its structural check.
 _BOOT_PROGRESS_MARKERS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
-# Must never appear: secure boot was skipped, so the crypto verdict under test
-# was never reached.
 _SBOOT_OFF = "SBOOT_OFF"
 
 _MAX_RUN_CYCLES = 24_000_000
 _PROGRESS_EVERY = 200_000
-# How long to watch after the terminal verdict before believing the ROM halted. The
-# same order of magnitude as sep_firmware_mbist_fail_test's quiescence window,
-# and ~30x the longest gap between consecutive console lines in a passing run of
-# these testcases, so a ROM that merely paused would still be caught.
+# Must exceed the longest gap between console lines, or a paused ROM passes as halted.
 _QUIESCE_CYCLES = 20_000
 
 
 class sep_backup_manifest_fail_base(sep_base_test):
-    """Corrupt the primary, plant a defect in the backup, require a terminal fail."""
 
     build_env = False
     rom_build_dir = _FW_DIR
     flash_image = _SECURE_FLASH_IMAGE
 
-    # --- subclass contract -------------------------------------------------
-    # Console marker the backup's defect must produce.
     backup_defect_marker: str = ""
-    # Whether this family's defect has a console token at all. Every member here
-    # does, so the default keeps the guard; a subfamily whose ROM arm returns
-    # silently clears it and grades on the error code and ordering instead.
     requires_defect_marker: bool = True
-    # ROM error code the run must terminate on.
     expected_error: int = 0
-    # Committed OTP preload this scenario needs.
     efuse_preload: Path | None = None
-    # Extra markers that must not appear, on top of the shared list.
     extra_forbidden: tuple[str, ...] = ()
-    # ROM error code the PRIMARY slot must be rejected with. Only the "both slots
-    # carry the same defect" testcase changes this; every other member wants the
-    # deterministic BAD_MAGIC trigger corrupt_primary() plants.
     primary_expected_error: int = MANIFEST_ERR_BAD_MAGIC
 
     def corrupt_primary(self, buf: bytearray) -> None:
-        """Make the primary slot fail, so the backup is reached at all.
-
-        Default is the magic word, rejected by ``validate_manifest_header`` before
-        any hash or crypto work, so the failover trigger cannot interact with the
-        defect under test. A subclass overrides this only when the primary's defect
-        is itself part of the scenario, and must set ``primary_expected_error`` to
-        match.
-        """
+        # An override must also set primary_expected_error to the error its defect produces.
         mm.set_identifier(buf, "primary")
 
     def corrupt_backup(self, buf: bytearray) -> None:
         raise NotImplementedError
 
     def check_efuse(self, image) -> None:
-        """Subclass hook for the fuse preconditions its defect depends on."""
+        ...
 
-    # --- scenario ----------------------------------------------------------
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
-        # Primary: the failover trigger. By default a broken magic word, rejected
-        # by validate_manifest_header before the hash check -- a deterministic
-        # BAD_MAGIC rather than a verdict that depends on check order, and not the
-        # defect under test. See corrupt_primary().
         self.corrupt_primary(buf)
         self.logger.info("CHK-STIMULUS-PRIMARY: %s", mm.describe(buf, "primary"))
-        # Backup: the defect this testcase is actually about.
         self.corrupt_backup(buf)
         self.logger.info("CHK-STIMULUS-BACKUP: %s", mm.describe(buf, "backup"))
         return buf
@@ -183,13 +127,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
             dut.spi_cs_n_o, dut.spi_sck_o, mosi=dut.spi_mosi_o, miso=dut.spi_miso_i,
             name="sep_backup_fail_flash",
         )
-        # Published for subclasses that check the DEVICE side of the failover.
-        # `MANIFEST_SRC=` only says which address the ROM intended to read; the
-        # BFM's transaction record says which address the device actually served
-        # and in what order, and the successful half of boot_flash_reinit()
-        # (manifest_load.c) prints nothing at all. Two attribute stores, read
-        # by nobody else -- no existing subclass references either name, so this
-        # cannot change any established behaviour.
+        # Exposed so subclasses can check which addresses the flash device actually served.
         self._flash = flash
         self._image_len = len(img)
         flash.preload(bytes(self.mutate_flash_image(img)))
@@ -214,8 +152,6 @@ class sep_backup_manifest_fail_base(sep_base_test):
                     status_seq.append(status)
                 if self.rd(dut.cpu_trace_valid_o):
                     retired += 1
-                # Completion comes from the verdict word in cold_scratch[0]
-                # (dv/docs/rom_verdict_scratch0_migration.md).
                 verdict = decode_verdict(probe)
                 if verdict is not None:
                     fw_done = True
@@ -230,20 +166,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
                     self.logger.info("failover poll cyc=%d status=0x%08x retired=%d lines=%d",
                                      cycle, status, retired, len(console))
 
-            # Did it actually STOP? The procedures for these testcases say the ROM
-            # hangs after the terminal error, and the verdict alone does not say
-            # that: rom_err_fail() writes cold_scratch[1] (the code) and
-            # cold_scratch[0] (the FAIL verdict), and only THEN enters
-            # `for(;;) wfi`. A ROM that reported the failure and carried on booting
-            # would write that verdict at exactly the same instant, so without this
-            # window "terminal" rests on the ROM's noreturn attribute rather than
-            # on an observation.
-            #
-            # Three things must hold in the window, and none of them depends on
-            # where the spin loop happens to sit: the status word must not move on,
-            # the console must not produce a new line, and no boot-progress marker
-            # may appear. Instruction retirement is deliberately NOT used as the
-            # signal -- the wfi loop keeps retiring, so volume proves nothing.
+            # Halt proof is a quiet status and console; the wfi loop keeps retiring instructions.
             if fw_done:
                 post_status_moved = False
                 console_len_at_done = len(console)
@@ -262,13 +185,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         if fw_done:
             self._check_quiesced(post_status_moved, post_console, last_status)
 
-    # --- checks ------------------------------------------------------------
     def _check_quiesced(self, post_status_moved, post_console, terminal_status) -> None:
-        """CHK-HANG: the ROM stopped, rather than reporting and continuing."""
-        # The window now opens at the cold_scratch[0] verdict write rather than at
-        # the mailbox FAIL that follows it, so it starts a few cycles EARLIER and
-        # covers strictly more of the post-error interval. Same check, slightly
-        # wider reach.
         assert not post_status_moved, (
             f"cold_scratch[1] moved on from 0x{terminal_status:08x} within "
             f"{_QUIESCE_CYCLES} cycles of the terminal verdict: the ROM reported "
@@ -285,15 +202,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         )
 
     def check_defect_attribution(self, console, i_backup: int) -> None:
-        """Prove ``backup_defect_marker`` is the BACKUP's verdict, not the primary's.
-
-        The default holds for every scenario whose primary fails structurally: the
-        marker can only have come from the backup, so its first occurrence must
-        follow the backup read. A scenario that plants the SAME defect in both
-        slots sees the marker twice and must override this -- the first occurrence
-        is then legitimately the primary's, and accepting it here would let a run
-        that never evaluated the backup at all look identical.
-        """
+        # A subclass that plants the same defect in both slots must override this check.
         i_defect = next(
             (i for i, line in enumerate(console) if self.backup_defect_marker in line),
             -1,
@@ -316,13 +225,11 @@ class sep_backup_manifest_fail_base(sep_base_test):
         log.info("ROM console: %s", console)
 
         def index_of(marker: str) -> int:
-            """First console line index containing marker, or -1."""
             for i, line in enumerate(console):
                 if marker in line:
                     return i
             return -1
 
-        # Guard the guards: a dark console makes every marker check vacuous.
         assert retired, "core retired no instructions; the ROM never ran"
         assert console, (
             "ROM console is empty, so no marker check below means anything (the "
@@ -336,8 +243,6 @@ class sep_backup_manifest_fail_base(sep_base_test):
         crypto_fail = f"CRYPTO_FAIL=0x{self.expected_error:08x}"
         i_crypto = index_of(crypto_fail)
 
-        # CHK-PRIMARY: the primary slot was attempted and rejected for the reason
-        # the stimulus planted. Without this the run could be a backup-only boot.
         assert i_primary >= 0, (
             f"ROM never read the primary slot ({_PRIMARY_SRC}). Console: {console}"
         )
@@ -349,9 +254,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         log.info("CHK-FAILOVER-PRIMARY: primary read at %s and rejected with %s",
                  _PRIMARY_SRC, primary_err)
 
-        # CHK-FAILOVER: the backup slot was read, and read AFTER the primary was
-        # rejected. Ordering is the substance of a failover test; two markers in
-        # any order would also be satisfied by a ROM that read the backup first.
+        # Check order, not only presence: a ROM that read the backup first also prints both markers.
         assert i_backup >= 0, (
             f"ROM never fell over to the backup slot ({_BACKUP_SRC}). Console: {console}"
         )
@@ -366,23 +269,14 @@ class sep_backup_manifest_fail_base(sep_base_test):
         log.info("CHK-FAILOVER-BACKUP: backup read at %s, after the primary rejection",
                  _BACKUP_SRC)
 
-        # CHK-SECURE-RAN: the crypto chain executed. If secure boot had been
-        # skipped, the backup's cryptographic defect would be irrelevant and the
-        # terminal error below would have a different cause.
         assert not any(_SBOOT_OFF in line for line in console), (
             f"ROM printed {_SBOOT_OFF}: secure boot was skipped, so the backup "
             f"defect under test was never evaluated. Console: {console}"
         )
         log.info("CHK-SECURE-RAN: %s absent, crypto chain was entered", _SBOOT_OFF)
 
-        # CHK-DEFECT: the backup was rejected for the planted reason, and after
-        # the backup slot was read.
         self.check_defect_attribution(console, i_backup)
 
-        # CHK-TERMINAL: the exact error code, on the console and in the status
-        # word, plus a mailbox FAIL. The status word is the independent half: the
-        # console marker says which check complained, the encoded status says what
-        # the ROM converged on.
         assert i_crypto >= 0, (
             f"ROM never printed {crypto_fail}; the terminal error code is not the "
             f"one this defect should produce. Console: {console}"
@@ -404,7 +298,6 @@ class sep_backup_manifest_fail_base(sep_base_test):
         log.info("CHK-TERMINAL: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
                  crypto_fail, expected_status)
 
-        # CHK-NO-BOOT: nothing downstream of the rejection ran.
         for marker in _BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden):
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which sits past the rejection: it continued "

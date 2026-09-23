@@ -2,94 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup declares v1.1 with a misaligned length; the ROM halts.
 
-The ``minor != 0`` arm ACCEPTS the value and the 4-BYTE ALIGNMENT rule refuses it.
-``validate_manifest_header`` (``bootrom/prod/src/manifest_load.c``) grades the
-length in two steps::
-
-    minor != 0  ->  sizeof(manifest_t) <= manifest_length <= MANIFEST_MAX_SIZE
-    then, for both minor arms  ->  manifest_length % 4 == 0
-
-so ``sizeof(manifest_t) + 1`` = 1185 passes the range and fails the alignment, which
-is ``MANIFEST_ERR_BAD_LENGTH``. The primary was already refused on its identifier,
-so both slots fail and the expected outcome is terminal rather than a boot.
-
-WHY 1185 PINS THE ALIGNMENT RULE AND NOTHING ELSE. This is the only one of the three
-refusing length arms whose stimulus is unambiguous without any appeal to a bound,
-and :meth:`corrupt_backup` asserts each exclusion rather than assuming it:
-
-  * 1185 is INSIDE ``[sizeof(manifest_t), MANIFEST_MAX_SIZE]``, so the range rule
-    ACCEPTED it -- neither its lower nor its upper bound can be the verdict;
-  * the minor is set to 1, so the ``minor == 0`` exact-match rule is not in force.
-    That is a real difference and not a cosmetic one: leave the minor at 0 and 1185
-    is still refused, but by the exact-match arm, which is a DIFFERENT row
-    (``..._minor_0_length_incorrect_test``);
-  * nothing is left but ``manifest_length % 4 != 0``.
-
-============================================================================
-THE ALIGNMENT RULE IS DRIVEN TO BOTH OUTCOMES AT THE SAME MINOR VERSION
-============================================================================
-
-``..._minor_nonzero_length_small_correct_test`` plants minor 1 with 1188 in this
-same slot and BOOTS from it. So at minor 1 this directory has 1185 refused and 1188
-accepted -- the same byte class, differing only in the low two bits of
-``manifest_length`` -- with nothing else about the two slots differing. Neither
-checker can pass on the other's log: that one requires ``MANIFEST_OK``,
-``SIG_VALID`` and ``BL1_JUMP=``, this one requires ``MANIFEST_ALL_FAILED`` and
-forbids every boot-progress marker. **That pair is the alignment discriminator, and
-it is what makes the rule falsifiable rather than merely satisfied.**
-
-============================================================================
-THIS ROW SHARES ONE ERROR CODE WITH EVERY OTHER LENGTH ROW
-============================================================================
-
-Both length arms return ``MANIFEST_ERR_BAD_LENGTH`` and ``validate_manifest_header``
-prints no token for either, so on the console this row is indistinguishable from
-``..._minor_0_length_incorrect_test`` and ``..._minor_nonzero_length_large_test``.
-``SEP_MSG_INVALID_MANIFEST_LENGTH`` and ``SEP_MSG_MANIFEST_TOO_LONG`` are both
-DEFINED in ``bootrom/prod/include/status_values.h`` and emitted by nothing under
-``bootrom/prod/src``, so the console cannot separate the two arms at all.
-
-**THERE IS NO ROM-SIDE DISCRIMINATOR BETWEEN THESE ROWS, AND THIS IS SAID PLAINLY.**
-What separates them at run time is
-:func:`sep_manifest_field_defect.assert_served_field`: the flash DEVICE must have
-returned this row's own ``(major, minor, length)`` bytes -- 1, 1, 1185 against the
-siblings' 1, 0, 1188 and 1, 1, 2052. That is STIMULUS-side evidence; it proves what
-the DUT was given and can never fail because the ROM applied the wrong rule. It is
-what stops this module's checker from passing on a sibling's run, not a substitute
-for the missing status code. Disclosed in this row's ``flow_deviation``. The
-stimulus is additionally read back out of the packed image before the run, so a
-mutation that failed to land is caught before the simulation rather than being
-indistinguishable from a correct one.
-
-**THE DEVICE-SIDE BEHAVIOUR HALF.** 1185 exceeds ``sizeof(manifest_t)``, so
-``load_manifest_extra`` would fetch one byte at ``backup_base + 1184`` for a slot
-that PASSED the header checks. Requiring that no read BEGINS there is evidence the
-header was refused first, and unlike the served-field check above it CAN fail
-because the ROM decided wrongly. The predicate is the read's COMMAND address rather
-than the span it covers, because ``ocah_spi_flash._do_read`` streams until CS
-deasserts: a 1184-byte header read is recorded as 1185 bytes, so its span already
-reaches one byte into the extension address and a coverage test cannot separate the
-two.
-
-PINNING WHICH ``BAD_LENGTH`` SITE FIRED. Several return sites in
-``validate_manifest_header`` share the code, plus one in
-``validate_manifest_payload``. The four that print a token (``PAYLOAD_OFF_RANGE``,
-``PAYLOAD_OFF_ALIGN``, ``PAYLOAD_HASHED_LEN_BAD=``, ``ENC_HASHED_LEN_PARTIAL``) and
-the payload-side ``TOC_PLEN_MISMATCH=`` are forbidden below, which narrows the
-verdict to the silent arms. Three of those grade ``manifest_length`` -- the
-exact-match rule, the range rule and the alignment check -- and no forbid can
-separate them, so the first two are excluded in the STIMULUS instead: the minor is
-non-zero and 1185 is inside the range. Every remaining silent arm grades
-``payload_offset`` or ``payload_length``, which this stimulus does not touch and
-which the shipped image already satisfies.
-
-MARKER SUBSTITUTION. There is no per-reason console token for a structural
-rejection on this ROM, so the code in ``MANIFEST_ERR=`` plus its position and count
-inside the backup's own attempt carry the whole attribution. The failover trigger is
-the primary's ``manifest_identifier``, refused as BAD_MAGIC ahead of any hash or
-crypto work, with a code that differs from the backup's.
-
-No ``+sep_crypto_edn_force``: neither slot reaches ``manifest_crypto_validate``.
+Length ``sizeof(manifest_t) + 1`` at minor 1 passes the range rule, so only the
+4-byte alignment rule can refuse it. The primary is refused as BAD_MAGIC.
 """
 
 from __future__ import annotations
@@ -105,14 +19,10 @@ from rom_fw.sep_backup_manifest_structural_fail_base import (
 )
 from rom_fw.sep_usage_constraint_base import EFUSE_PRELOAD
 
-# manifest.h
 _MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 _MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
 
-# sizeof(manifest_t) + 1: inside the range the minor != 0 arm accepts, and
-# misaligned, so only the alignment rule can refuse it.
 _BACKUP_SMALL_LENGTH = mm.MANIFEST_SIZE + 1
-# Any non-zero minor takes the range arm.
 _BACKUP_MINOR = 1
 
 _VERSION_LENGTH_OFF = mm.OFF_VERSION_MAJOR
@@ -135,9 +45,7 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
                        "TOC_PLEN_MISMATCH=", "NO_BL1_IMAGE")
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        # This stimulus is chosen relative to hand-copied mirrors of two ROM
-        # #defines; require the Python and the header to still agree before relying
-        # on either.
+        # MANIFEST_MAX_SIZE is a hand-copied mirror of the ROM #define; check they still agree.
         rom_max = fd.assert_rom_manifest_bounds()
         assert rom_max == mm.MANIFEST_MAX_SIZE
 
@@ -202,19 +110,13 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
 
-        # CHK-STIMULUS-SERVED: the DUT-side STIMULUS half, and the only run-time
-        # channel that separates this row from its two length siblings -- every
-        # length arm returns MANIFEST_ERR_BAD_LENGTH and none prints a token that
-        # tells them apart. It proves what the DUT was GIVEN.
+        # Every length arm returns BAD_LENGTH silently; only the served bytes separate the siblings.
         fd.assert_served_field(
             self.logger, self._flash, "backup", _VERSION_LENGTH_OFF,
             struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, _BACKUP_MINOR,
                         _BACKUP_SMALL_LENGTH),
             "backup manifest_version_major/minor + manifest_length",
         )
-        # CHK-NO-EXTENSION-FETCH: the DUT-side BEHAVIOUR half, which unlike the
-        # check above can fail because the ROM decided wrongly. load_manifest_extra
-        # runs only for a slot that passed validate_manifest_header.
         fd.assert_no_read_starting_at(
             self.logger, self._flash,
             mm.BACKUP_MANIFEST_OFFSET + mm.MANIFEST_SIZE,

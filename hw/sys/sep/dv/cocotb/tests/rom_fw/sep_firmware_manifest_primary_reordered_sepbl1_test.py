@@ -2,48 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP_BL1 is not the first TOC image; the primary boots anyway.
 
-the position-independence case. The ROM must locate BL1 by TYPE,
-and it does so twice on the way to a boot: ``validate_manifest_payload`` scans
-every entry for ``IMAGE_TYPE_SEP_BL1`` before it will accept the slot, and
-``find_toc_entry`` scans again at handoff (``bootrom/prod/src/manifest_load.c``,
-``bootrom/prod/src/rom_handoff.c``). The required behaviour is an ordinary
-completed boot with no warning when SEPBL1 is present but not first.
-
-THE STIMULUS IS AN INSERT, NOT A PERMUTATION. ``secure_boot.bin`` declares exactly
-ONE image, the BL1 (``image_count`` is 1), so permuting the ``payload_images`` list
-would change nothing and a permutation stimulus is inexpressible against this
-image. ``sep_payload_mutate.insert_leading_image``
-creates the second image instead: ``image_count`` becomes 2, a SEPBL2 entry takes
-index 0, and the BL1 entry moves to index 1 with its body relocated to sit behind
-the new one. The property under test is preserved and made stronger -- index 0 now
-holds an image that is NOT the BL1, so a ROM that assumed ``images[0]`` would fail
-rather than accidentally succeed. Everything else about the slot is unchanged: same
-``payload_length``, same TOC/manifest length agreement, same BL1 ``load_addr``,
-``entry_point``, ``length`` and body bytes.
-
-WHAT MAKES A PASSING RUN DISTINGUISHABLE FROM AN ORDINARY BOOT, which is the real
-risk for a positive testcase whose expected console is a plain boot sequence. Two
-console values that only this stimulus can produce, both asserted below:
-
-  * ``IMAGES=0x00000002``. ``rom_manifest_boot`` prints the accepted slot's
-    ``toc->image_count`` right after ``MANIFEST_OK`` (``manifest_load.c``), and every
-    other testcase in this directory runs against a one-image payload, so their logs
-    read ``IMAGES=0x00000001``;
-  * ``COPY_SRC=`` at the RELOCATED BL1 address. ``rom_handoff_bl1`` prints
-    ``(uint8_t *)toc + bl1->offset`` (``rom_handoff.c``), so the ROM can only print
-    the new address by having read TOC entry 1's ``offset``. That is the position
-    independence itself, not a proxy for it.
-
-The negative half is the forbidden list: ``NO_BL1_IMAGE`` is what a position-
-dependent ROM would print here, and ``IMAGE_ORDER_BAD``/``IMAGE_HASH_MISMATCH``/
-``TOC_REGION_OOB=`` are what a mis-built insert would produce. The backup slot is
-forbidden outright: no warning and no failover, so this run
-must never read ``MANIFEST_SRC=0x00041000``.
-
-The run uses the PROD OTP preload, so secure boot is enforced by lifecycle rather
-than chosen by the manifest flag (``secure_boot_enabled``, ``manifest_load.c``);
-that matches the rest of this ported family and means the re-sealed slot's signature
-really is checked.
+A SEPBL2 image is inserted at TOC index 0, so the ROM must find BL1 by type: the
+run must print IMAGES=0x00000002 and COPY_SRC= at the relocated BL1 address.
 """
 
 from __future__ import annotations
@@ -76,8 +36,6 @@ class sep_firmware_manifest_primary_reordered_sepbl1_test(
     required_markers = sep_rom_ot_secure_boot_test.required_markers + (
         _TWO_IMAGES, "BL1_COPIED", "BL1_JUMP=", "PLD_HASH_OK",
     )
-    # No slot may be refused, nothing may fall over to the backup, and none of the
-    # TOC verdicts a mis-built payload would produce may appear.
     forbidden_markers = sep_rom_ot_secure_boot_test.forbidden_markers + (
         _BACKUP_SRC, "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "NO_BL1_IMAGE",
         "IMAGE_ORDER_BAD", "IMAGE_LEN_ZERO", "IMAGE_LEN_ALIGN",
@@ -125,9 +83,7 @@ class sep_firmware_manifest_primary_reordered_sepbl1_test(
             "SEP_BL1 is not TOC entry 1, so the payload does not exercise position "
             "independence"
         )
-        # The whole claim is that a still-VALID slot booted from a non-zero BL1
-        # index. verify_sealed reproduces the ROM's structural and cryptographic
-        # checks, verify_public_key proves the modulus is the one the ROM binds to.
+        # The relocated slot must still pass the ROM's structural and signature checks.
         pm.verify_sealed(buf, "primary")
         mm.verify_public_key(buf, "primary")
         self.logger.info(
@@ -144,10 +100,6 @@ class sep_firmware_manifest_primary_reordered_sepbl1_test(
         return buf
 
     def check_transport(self, console: list[str], flash) -> None:
-        # CHK-POSITION-INDEPENDENT: the ROM copied BL1 from the address TOC entry 1
-        # names. This is the property under test rather than a proxy: the value can
-        # only be produced by reading entry 1's offset, and it is not the address
-        # any other testcase's payload puts BL1 at.
         want = f"COPY_SRC=0x{self._copy_src:08x}"
         i_copy = fd.first_index(console, want)
         assert i_copy >= 0, (

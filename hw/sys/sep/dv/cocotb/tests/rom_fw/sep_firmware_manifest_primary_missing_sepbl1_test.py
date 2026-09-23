@@ -2,48 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary payload declares no SEP_BL1 image; the backup boots.
 
-. ``validate_manifest_payload`` walks the TOC and sets ``bl1_found``
-only for an entry whose ``type`` is ``IMAGE_TYPE_SEP_BL1``; a scan that ends
-without one prints ``NO_BL1_IMAGE`` and returns ``MANIFEST_ERR_NO_BL1_IMAGE``
-(``bootrom/prod/src/manifest_load.c``). The stimulus rewrites
-``payload_images[0].type`` to one of SEPBL2 / SMCBL1 / SMCBL2; the required
-outcome is the primary refused and a completed boot from the backup.
-
-THIS IS THE FIRST MEMBER OF ITS BASE WHOSE PRIMARY REACHES THE VERIFIER, and that
-is the interesting property. Every other primary-side defect in this directory is
-refused inside ``rom_manifest_boot``'s per-slot checks or inside
-``manifest_crypto_validate``. The BL1-presence check is the LAST thing
-``try_manifest_slot`` does -- after ``manifest_crypto_validate`` has already
-returned OK (``manifest_load.c``) -- so this primary legitimately prints
-``RSA_VERIFY_START``, ``SIG_VALID``, ``PLD_HASH_OK`` and ``CRYPTO_VALIDATE_OK`` of
-its own before it is refused. The shared base's own docstring anticipated this
-shape and prescribed the parameterisation rather than a relaxed count:
-``primary_expected_rsa_starts`` and ``primary_expected_sig_valids`` are both
-declared 1 below, and the base then asserts BOTH the totals (2 each) and the
-POSITION of the primary's own occurrences inside its attempt. A run in which both
-occurrences belonged to the backup would fail.
-
-That also makes the testcase self-discriminating: no other member of this base
-produces two ``RSA_VERIFY_START`` lines followed by a failover, and
-``MANIFEST_ERR_NO_BL1_IMAGE`` (0x00030008) appears in no other primary-side
-testcase.
-
-MARKER SUBSTITUTION. There is no per-reason status code at all: there is no
-``SEP_MSG_*`` name for a missing BL1 under ``bootrom/prod/include/status_values.h``.
-Unlike the structural defects of that family, however, this
-rejection DOES have a per-reason console token -- ``NO_BL1_IMAGE`` is a real
-``simputs`` at ``manifest_load.c`` -- so the substitution is a console token for a
-status code, not evidence for nothing. Its position and count are both asserted
-below, and the warning-versus-error distinction is carried by the OUTCOME: the
-boot completes from the backup rather than halting, which is what separates this
-testcase from its backup-side sibling.
-
-THE MUTATION IS A RELABEL, and the image body is untouched, so its per-entry digest
-stays valid and the run reaches the BL1 branch rather than dying at
-``IMAGE_HASH_MISMATCH`` one check earlier. The label sits inside the TOC, which
-``payload_hash`` covers, so ``sep_payload_mutate.retype_bl1_image`` re-seals the
-slot: without that the primary would be refused at ``PLD_HASH_MISMATCH`` inside the
-crypto chain and would never reach the check under test.
+The primary's BL1 entry is relabelled SEPBL2 and the slot re-sealed, so the primary
+passes its crypto chain and is refused only at the BL1-presence check (NO_BL1_IMAGE).
 """
 
 from __future__ import annotations
@@ -63,16 +23,11 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h
 _MANIFEST_ERR_NO_BL1_IMAGE = 0x0003_0008
 
 _NO_BL1 = "NO_BL1_IMAGE"
 _CRYPTO_OK = "CRYPTO_VALIDATE_OK"
 
-# Any of the three permitted replacement types takes the
-# identical branch -- is_known_image_type() accepts all four tags, and only the
-# SEP_BL1 comparison sets bl1_found (manifest_load.c) -- so the choice is fixed
-# rather than drawn, and the log then names the type the docstring names.
 _RELABEL_TYPE = pm.IMAGE_TYPE_SEP_BL2
 
 
@@ -81,20 +36,14 @@ class sep_firmware_manifest_primary_missing_sepbl1_test(
         sep_primary_fail_backup_boot_base):
     """Primary TOC declares SEPBL2 where BL1 was -> failover -> the backup boots."""
 
-    # NO_BL1_IMAGE is not a crypto verdict, so the base's defect-marker path -- which
-    # would also demand CRYPTO_FAIL= -- is not used; check_transport() below carries
-    # the attribution instead.
+    # Empty: the base's defect-marker path would also require CRYPTO_FAIL=.
     primary_defect_marker = ""
     primary_expected_error = _MANIFEST_ERR_NO_BL1_IMAGE
-    # The payload check runs AFTER manifest_crypto_validate returns OK, so the
-    # primary drives the verifier and reaches a verified signature of its own.
+    # The BL1 check runs after crypto validation, so the primary verifies once too.
     primary_expected_rsa_starts = 1
     primary_expected_sig_valids = 1
     efuse_preload = _EFUSE_PRELOAD
     extra_required = ("PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    # The primary's crypto chain must PASS -- its defect is downstream of it -- and
-    # every other TOC verdict must stay absent, or the slot was refused by a check
-    # this stimulus does not plant.
     extra_forbidden = ("CRYPTO_FAIL=", "RSA_VERIFY_FAIL", "PLD_HASH_MISMATCH",
                        "MANIFEST_HASH_MISMATCH", "MANIFEST_ALL_FAILED",
                        "IMAGE_HASH_MISMATCH", "IMAGE_ORDER_BAD", "IMAGE_LEN_ZERO",
@@ -133,19 +82,11 @@ class sep_firmware_manifest_primary_missing_sepbl1_test(
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        # CHK-BL1-MISSING: the token and the error code are both the primary's, and
-        # each occurs once. A second occurrence would mean the backup's TOC was also
-        # refused, which is the terminal sibling testcase rather than this one.
         i_defect = fd.assert_slot_attributed(console, _NO_BL1, after=i_psrc,
                                              before=i_bsrc)
         i_err = fd.assert_slot_attributed(console, slot_err, after=i_defect,
                                           before=i_bsrc)
 
-        # CHK-AFTER-CRYPTO: the rejection came from the payload arm, which sits
-        # DOWNSTREAM of manifest_crypto_validate -- so the primary's own crypto
-        # chain must have completed first. This is what makes the verdict the BL1
-        # branch's rather than any earlier check's, and it is the property the
-        # base's rsa/sig declarations describe.
         i_pcrypto = fd.first_index(console, _CRYPTO_OK)
         assert i_psrc < i_pcrypto < i_defect, (
             f"{_CRYPTO_OK}@{i_pcrypto} does not sit between the primary read"

@@ -2,30 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Independent reference model for the BL0 boot measurement, and its checker.
 
-The ROM records ``SHA256`` over a fixed 48-byte block and stores
-the digest in ``bl0_state.measurement`` (``bootrom/prod/include/measurement.h``).
-This module recomputes that digest in Python and compares it to the bytes BL1
-prints, so the ROM's crypto path is checked against something that shares none of
-its code.
-
-WHERE THE DIGEST COMES FROM. BL0 emits only the digest's first word
-(``MEASUREMENT=``) plus the four inputs. The full 32 bytes reach the log through
-BL1, which reads ``bl0_state`` as part of its handoff check and prints
-``BL0S_MEAS=``. Reading it from there rather than from a ROM-side dump keeps the
-production ROM's output unchanged and covers one thing more: that the digest
-survived the BL0 to BL1 handoff.
-
-WHY THE INPUTS ARE READ BACK RATHER THAN ASSUMED. The golden is computed from
-the four values BL0 itself reported, so this checker verifies the *digest
-function*, not the inputs. Asserting the inputs separately is what stops a
-digest match from being reached with the wrong ones -- see ``assert_inputs``.
-Between them the two checks say: the ROM hashed these specific inputs, and the
-inputs were the ones the scenario set up.
-
-The 48-byte layout is pinned on the ROM side by
-``_Static_assert(sizeof(struct rom_measurement_input) == 48)``. If that ever
-changes, this model stops matching, which is the intended failure: a padding or
-ordering change produces a digest no external verifier can reproduce.
+Recomputes SHA-256 over the ROM's 48-byte measurement block from the inputs BL0
+printed and compares it with the digest BL1 reads back from ``bl0_state``.
 """
 
 from __future__ import annotations
@@ -35,8 +13,7 @@ import re
 
 from rom_fw import sep_manifest_field_defect as fd
 
-# measurement.h: the four scalars are masked before hashing, so an out-of-field
-# bit cannot move the digest.
+# The ROM masks each scalar to its field width before hashing.
 LC_MASK = 0xF
 DEMOTE_MASK = 0x7
 BOOL_MASK = 0x1
@@ -54,11 +31,6 @@ _HASH_RE = re.compile(r"MANIFEST_HASH=([0-9A-F]{64})")
 
 def calculate_measurement(manifest_hash: bytes, lc_state: int, demotion_decision: int,
                           secure_boot: int, sboot_dis: int) -> bytes:
-    """SHA-256 over the 48-byte input block, per measurement.h.
-
-    The scalars are little-endian 32-bit words with their unused high bits zero,
-    which is what the C struct produces on this target.
-    """
     assert len(manifest_hash) == 32, (
         f"manifest_hash is {len(manifest_hash)} bytes, expected 32"
     )
@@ -71,7 +43,6 @@ def calculate_measurement(manifest_hash: bytes, lc_state: int, demotion_decision
 
 
 def read_inputs(console: list[str]) -> dict[str, int]:
-    """The four measurement inputs, as BL0 reported them."""
     out = {}
     for name, token in _MEAS_TOKENS.items():
         line = next((l for l in console if l.startswith(token)), None)
@@ -85,7 +56,6 @@ def read_inputs(console: list[str]) -> dict[str, int]:
 
 
 def read_digest(console: list[str]) -> bytes:
-    """The 32-byte digest, as BL1 read it back out of bl0_state."""
     for line in console:
         m = _DIGEST_RE.search(line)
         if m:
@@ -99,11 +69,6 @@ def read_digest(console: list[str]) -> bytes:
 
 def assert_inputs(logger, console: list[str], *, lc_state: int, secure_boot: int,
                   sboot_dis: int, demotion_decision: int | None = None) -> dict[str, int]:
-    """The inputs BL0 hashed are the ones this scenario set up.
-
-    Without this a digest match proves only self-consistency: the ROM would agree
-    with a golden built from whatever it happened to hash.
-    """
     got = read_inputs(console)
     want = {"lc_state": lc_state & LC_MASK, "secure_boot": secure_boot & BOOL_MASK,
             "sboot_dis": sboot_dis & BOOL_MASK}
@@ -126,7 +91,6 @@ def assert_inputs(logger, console: list[str], *, lc_state: int, secure_boot: int
 
 def assert_digest(logger, console: list[str], manifest_hash: bytes,
                   inputs: dict[str, int]) -> bytes:
-    """BL1's digest equals the independent Python model's."""
     got = read_digest(console)
     want = calculate_measurement(manifest_hash, **inputs)
     assert got == want, (
@@ -139,8 +103,6 @@ def assert_digest(logger, console: list[str], manifest_hash: bytes,
         "changed, or the digest did not survive the handoff into bl0_state."
     )
 
-    # The first word BL0 itself emitted must agree with the full digest BL1 read
-    # back, or the two observation points are describing different runs.
     first = f"MEASUREMENT=0x{int.from_bytes(got[:4], 'little'):08x}"
     assert fd.first_index(console, first) >= 0, (
         f"ROM printed no {first}. BL0's first-word report and BL1's full digest "

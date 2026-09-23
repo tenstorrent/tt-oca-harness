@@ -1,77 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary manifest declares an unsupported signature TYPE; the backup boots.
+"""Primary manifest declares an unsupported signature type; the backup boots.
 
-The PRIMARY's ``signature_type`` is set to 0. ``validate_signature`` accepts only
-``MANIFEST_SIG_TYPE_RSA_3072`` (1, ``manifest.h``) and refuses anything else
-with ``BAD_SIG_TYPE=`` (``manifest_crypto.c``), returning
-``MANIFEST_ERR_SIG_FAILED``.
-
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. Only the primary's
-``signature_type`` is modified; its ``manifest_identifier`` is deliberately left
-intact, because the primary has to REACH the check under test. So there is no
-BAD_MAGIC
-failover trigger here.
-
-THE SIGNATURE FIELD KEEPS ITS SHIPPED BYTES, WHICH IS THE HARDER CASE. Setting a
-signing authority or key file has no effect on the signature bytes here: with
-secure boot on and
-``signature_type`` outside {1, 2}, ``SigningKey.__init__`` takes the ``else`` arm
-and sets ``no_signature`` from ``check()``, which returns True unconditionally once
-checking is disabled. Note also that 0 is literally
-``ManifestSignatureType.NO_SIGNATURE``, so a packer asked for type 0 can emit a
-BLANK signature field. This testcase instead keeps the shipped, syntactically
-complete, merely stale dev0 signature, which is the harder case: the ROM must
-refuse on the declared TYPE alone with a plausible signature sitting right there.
-Either is refused at ``manifest_crypto.c``
-before the signature is read at all, so the outcome is the same and the stimulus
-here is strictly less forgiving.
-
-THE EXPECTED OUTCOME IS A COMPLETED BOOT: the primary is rejected and the untouched
-backup serves the boot.
-
-WHY 0, AND WHY A FIXED VALUE. A fixed value makes the echoed field assertable. It
-is deliberately NOT 2, because 2 is ``MANIFEST_SIG_TYPE_ECC_P_256``
-(``manifest.h``), a declared type the packer treats specially. The ROM's
-check is a single ``!=`` against RSA-3072, so every value in that set exercises the
-identical arm, and fixing it is what lets this testcase assert the exact
-``BAD_SIG_TYPE=`` the ROM echoed rather than accepting any value at all.
-
-**HOW THIS IS TOLD APART FROM ``sep_firmware_primary_invalid_signature_test``, AND
-WHY THE ERROR CODE CANNOT DO IT.** Both end at
-``MANIFEST_ERR_SIG_FAILED = 0x0003000c`` (``manifest.h``), which six arms of
-``validate_signature`` share, so asserting the code alone would make the two
-testcases interchangeable. The console separates them in BOTH directions, and both
-halves are asserted here:
-
-  * the type check is the FIRST arm of ``validate_signature``
-    (``manifest_crypto.c``), ahead even of the ``PUBK_SEL=`` echo at
-. So this run must show the primary's selector NEVER echoed: with the
-    backup booting from ROM slot 0, ``PUBK_SEL=0x00000000`` is pinned to exactly
-    **one** occurrence, the backup's. Its sibling pins the same token to **two**,
-    because there both manifests reach key selection. That single count makes the
-    two mutually exclusive on one log;
-  * ``RSA_VERIFY_FAIL`` is forbidden here and required there, and
-    ``BAD_SIG_TYPE=0x00000000`` is required here and forbidden there.
-
-MARKER. ``SEP_MSG_INVALID_SIGNATURE_TYPE`` is *defined* in ``status_values.h`` but
-never EMITTED: there is no
-``report_status`` call for it anywhere under ``bootrom/prod/src``, so the
-architected status ring carries only the generic terminal code and the debug
-console token is the only per-reason evidence available.
-
-``signature_type`` is one byte at manifest offset 165, INSIDE the hashed TBS
-(``manifest.h`` field order; ``sep_manifest_mutate.OFF_SIGNATURE_TYPE``), so the
-helper re-hashes. It cannot be a signature-region patch: the field is covered by
-``manifest_hash``, so an un-rehashed write dies in the manifest loop as a hash
-mismatch and never reaches the type check. No re-sign is needed or possible -- the
-type is rejected before ``rsa_3072_verify`` (``manifest_crypto.c``), so the
-now-stale signature is never examined, and the base's ``primary_expected_rsa_starts
-= 0`` is what checks that ordering instead of assuming it.
-
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``SIG_VALID`` still means the signature verified.
+The primary's ``signature_type`` is 0, so the ROM refuses it with ``BAD_SIG_TYPE=``.
+Needs ``+sep_crypto_edn_force``: OTBN waits for EDN entropy in the backup's RSA-3072 verify.
 """
 
 from __future__ import annotations
@@ -91,12 +23,10 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# Fixed so the echoed value is assertable. See the docstring for why not 2.
+# Not 2: that is MANIFEST_SIG_TYPE_ECC_P_256, a declared type the packer treats specially.
 _BAD_SIG_TYPE = 0
-# manifest_crypto.c -- simputshex32("BAD_SIG_TYPE=", signature_type).
 _BAD_SIG_TYPE_ECHO = f"BAD_SIG_TYPE=0x{_BAD_SIG_TYPE:08x}"
-# The backup keeps the shipped selector: ROM key slot 0
-# (configs/secure_boot_test.yaml).
+# The backup keeps the shipped selector: ROM key slot 0.
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 
@@ -110,20 +40,14 @@ class sep_firmware_primary_invalid_signature_type_test(
     # The type check precedes rsa_3072_verify, so the primary never drives it.
     primary_expected_rsa_starts = 0
     efuse_preload = _EFUSE_PRELOAD
-    # The backup's selector, so "the backup booted" is tied to slot 0 rather than
-    # to an unread selection.
     extra_required = (_BACKUP_SEL_ECHO,)
-    # RSA_VERIFY_FAIL is the discriminator against the signature-VALUE sibling,
-    # which shares this error code. The rest are the later arms of
-    # validate_signature: the primary dies at the first arm and the backup is
-    # valid, so none of them may fire on either slot.
+    # RSA_VERIFY_FAIL shares this error code, so forbid it to separate the two arms.
     extra_forbidden = ("RSA_VERIFY_FAIL", "BAD_KEY_IDX", "BAD_KEY_SEL",
                        "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH",
                        "KEY_REVOKED", "VERSION_ROLLBACK")
 
     def corrupt_primary(self, buf: bytearray) -> None:
-        # No manifest_identifier corruption: the primary must reach
-        # validate_signature.
+        # No manifest_identifier corruption: the primary must reach validate_signature.
         before = mm.get_signature_type(buf, "primary")
         assert before == mm.SIG_TYPE_RSA_3072, (
             f"primary signature_type is already {before}, expected "
@@ -136,9 +60,7 @@ class sep_firmware_primary_invalid_signature_type_test(
             f"signature_type is 0x{got:02x} after the write, expected "
             f"0x{_BAD_SIG_TYPE:02x}; the mutation did not land"
         )
-        # The re-hash must have restored a valid TBS hash, or the primary is thrown
-        # out in the manifest loop as a hash mismatch and the type check -- the only
-        # thing this testcase is about -- never runs.
+        # A stale TBS hash would reject the primary before the type check.
         mm.verify_layout(buf, "primary")
         mm.verify_public_key(buf, "primary")
         self.logger.info(
@@ -148,9 +70,6 @@ class sep_firmware_primary_invalid_signature_type_test(
         )
 
     def check_efuse(self, image) -> None:
-        # Both are evaluated before validate_signature is entered
-        # (manifest_crypto.c), so either being non-zero would end the
-        # run with a different verdict and make this testcase vacuous.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
@@ -176,13 +95,6 @@ class sep_firmware_primary_invalid_signature_type_test(
         i_bsrc = index_of(f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")
         i_bsel = index_of(_BACKUP_SEL_ECHO)
 
-        # CHK-SIGTYPE-PREEMPTS-KEYSEL: this is the discriminating check of the
-        # testcase. PUBK_SEL= is printed at manifest_crypto.c, one statement
-        # after the type check, so the primary must NOT have echoed a
-        # selector at all -- the only occurrence in the run belongs to the booting
-        # backup, and it must follow the backup read. A count of 2 would mean the
-        # type check did not preempt key selection, which is precisely what
-        # separates this testcase from its signature-VALUE sibling.
         n_sel = sum(1 for line in console if "PUBK_SEL=" in line)
         assert n_sel == 1, (
             f"PUBK_SEL= appeared {n_sel} times, expected exactly 1 (the backup's). "
@@ -194,8 +106,6 @@ class sep_firmware_primary_invalid_signature_type_test(
             f"{_BACKUP_SEL_ECHO}@{i_bsel} did not follow the backup read@{i_bsrc}: "
             f"the single selector echo is not the booting slot's. Console: {console}"
         )
-        # And the type verdict is the PRIMARY's: it precedes the backup read, and
-        # occurs exactly once.
         assert 0 <= i_type < i_bsrc, (
             f"{_BAD_SIG_TYPE_ECHO}@{i_type} does not precede the backup read"
             f"@{i_bsrc}: the verdict is not attributable to the primary. "

@@ -2,27 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CHIPLET fused key 0 is REVOKED -> both manifests refused -> terminal.
 
-The revoking member of the chiplet fused-key pair for key 0.
-``CHIPLET_PUBK_REVOKE`` bit 16 refuses ``CHIPLET_PUBK_HASH0``
-(``manifest_crypto.c`` selects that index, tests it), and because BOTH
-manifest slots select the same fused key the retry loop exhausts and the run ends in
-``MANIFEST_ALL_FAILED``.
-
-THE STRICT FORM OF THE PROPERTY. Both slots are re-signed with dev0 and re-checked
-with ``verify_sealed`` before the run, so each is a fully valid, provably bootable
-manifest bound to fused key 0. One fuse bit refuses two good images, and revocation
-is the sole possible cause -- ``ROM_KEY_EMPTY``, ``FUSE_KEY_EMPTY``,
-``PUBK_HASH_MISMATCH``, ``RSA_VERIFY_START`` and ``SIG_VALID`` are all forbidden.
-The ROM-slot revoke families of batches R1 and R2 could only reach this strict form
-at slot 0 (``FINDINGS.md`` R01); here both members reach it.
-
-MATCHED PAIR with ``sep_firmware_chiplet_pubkey_0_test``: same image bytes, one fuse
-bit apart.
-
-Everything else -- why the fused-key arm is distinct code, why the revoke bit is 16
-and not 6/7, why ROM development key 0 is revoked here too, and
-which architected status codes are substituted -- is in the shared base
-``rom_fw/sep_chiplet_pubkey_base.py``. Read it before changing anything here.
+Both slots are re-signed for fused key 0; ``CHIPLET_PUBK_REVOKE`` bit 16 alone refuses both.
 """
 
 from __future__ import annotations

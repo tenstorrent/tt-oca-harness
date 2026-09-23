@@ -2,84 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary declares ``payload_hashed_length`` = 0; the backup boots.
 
-``validate_manifest_header`` (``bootrom/prod/src/manifest_load.c``) bounds the
-hashed region of the payload::
-
-    0 < payload_hashed_length <= payload_length
-
-and on violation it echoes the offending value as ``PAYLOAD_HASHED_LEN_BAD=`` and
-returns ``MANIFEST_ERR_BAD_LENGTH``. A primary-side rejection returns into
-``rom_manifest_boot``'s retry loop, so the required outcome is a completed boot from
-the untouched backup rather than a halt.
-
-WHY THE STIMULUS IS ZERO. ``validate_manifest_header`` refuses
-``payload_hashed_length`` outside ``0 < value <= payload_length``, and zero is the
-only value that reaches that bound without also reaching a different check.
-
-A non-zero value below ``payload_length`` is ACCEPTED here and the slot is refused
-later as ``PLD_HASH_MISMATCH``, a different check with a different error code.
-
-Zero is also the security-meaningful half of the bound: ``verify_payload_hash``
-returns OK for a zero length, so ``payload_hashed_length == 0`` is a manifest opting
-out of its own payload hash entirely, which is the hole this bound exists to close.
-THE SLOT RUNS NON-ENCRYPTED. Enabling encryption would bring in
-``ENC_HASHED_LEN_PARTIAL``, the arm immediately after this bound, which returns the
-SAME error code -- the exclusion would then rest on check ordering rather than on an
-unreachable path.
-
-The difference is immaterial to the verdict, and that is checked rather than
-assumed: on this ROM the zero-length arm (``manifest_load.c``,
-``h_len == 0 || h_len > p_len``) precedes the encrypted arm
-(``ENC_HASHED_LEN_PARTIAL``, ``h_len != p_len`` for an encrypted payload) in the
-same function, so a declared 0 is refused with the same ``MANIFEST_ERR_BAD_LENGTH``
-and the same echoed ``PAYLOAD_HASHED_LEN_BAD=0x00000000`` either way.
-:meth:`corrupt_primary` asserts ``not pm.is_encrypted(...)``, so the exclusion is a
-run-time fact rather than a claim about the image.
-
-Running non-encrypted is also the better choice here. With encryption on, the
-exclusion of ``ENC_HASHED_LEN_PARTIAL`` would rest on check ORDERING rather than on
-an unreachable arm, and ``sep_payload_mutate.verify_sealed`` would have to drop its
-TOC anchor -- an encrypted payload's TOC is ciphertext until the ROM decrypts it --
-which would weaken the pre-simulation proof that the recovering backup is genuinely
-bootable.
-
-============================================================================
-THIS IS THE ONLY BAD_LENGTH ARM WITH ITS OWN CONSOLE TOKEN
-============================================================================
-
-Every other length arm in ``validate_manifest_header`` returns silently, so the
-version-and-length rows can only be told apart on stimulus-side evidence. This one
-prints ``PAYLOAD_HASHED_LEN_BAD=`` WITH THE VALUE, so the attribution here is
-genuinely ROM-side and considerably stronger:
-
-  * the token must appear exactly once, inside the primary's own attempt, bracketed
-    by the primary read and the backup read;
-  * the echoed value must equal the planted 0 exactly. That is the ROM reading back
-    the field this testcase wrote, so it cannot be satisfied by a run that was
-    refused for a different reason, nor by a sibling row's log.
-
-``manifest_length``, ``manifest_version_major`` and ``manifest_version_minor`` are
-all left at their shipped valid values, so none of the three earlier arms can
-pre-empt this one, and the two neighbouring structural codes are forbidden outright
--- the accepted backup emits no ``MANIFEST_ERR=`` of its own, so this run holds
-exactly one structural verdict.
-
-THE OTHER ``payload_length``-RELATIVE ARM IS EXCLUDED IN THE STIMULUS.
-``ENC_HASHED_LEN_PARTIAL`` fires for an ENCRYPTED payload whose hashed length is
-merely shorter than the payload. The shipped image is not encrypted, which
-:meth:`corrupt_primary` asserts, and the token is forbidden as well.
-
-WHY THE FIELD IS RE-HASHED BUT NOT RE-SIGNED. ``payload_hashed_length`` sits inside
-the signed TBS (``manifest.h``), so ``sep_payload_mutate.set_payload_hashed_length``
-recomputes ``manifest_hash`` -- which keeps the declared length the only defect
-rather than one of two. The signature is deliberately left stale: the bound is
-checked in ``validate_manifest_header``, upstream of both
-``manifest_check_integrity`` and ``rsa_3072_verify``, so the ROM never examines it.
-``MANIFEST_HASH_OK`` is required exactly once and must follow the BACKUP read, which
-is the assertion that the primary really was refused before its hash was computed.
-
-Needs ``+sep_crypto_edn_force``: the recovering backup runs a full RSA-3072 modexp on
-OTBN.
+A zero hashed length would skip the payload digest, so the ROM must refuse it with
+``PAYLOAD_HASHED_LEN_BAD=`` and ``MANIFEST_ERR_BAD_LENGTH``, then fail over.
 """
 
 from __future__ import annotations
@@ -101,13 +25,10 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h
 _MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 _MANIFEST_ERR_BAD_VERSION = 0x0003_0003
 _MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
 
-# Zero is the only value that reaches this bound with the verdict this row is named
-# for. See the module docstring.
 _BAD_HASHED_LEN = 0
 
 
@@ -116,26 +37,13 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
         sep_primary_fail_backup_boot_base):
     """Primary payload_hashed_length is 0 -> refused -> the backup boots."""
 
-    # The token carries a value that is only known after the image is read, so the
-    # defect marker is asserted in check_transport() rather than declared here. The
-    # base would also demand a CRYPTO_FAIL= alongside a declared marker, and this
-    # rejection is structural, not cryptographic.
+    # Left empty: a declared marker also makes the base require CRYPTO_FAIL=.
     primary_defect_marker = ""
     primary_expected_error = _MANIFEST_ERR_BAD_LENGTH
     primary_expected_rsa_starts = 0
     primary_expected_sig_valids = 0
     efuse_preload = _EFUSE_PRELOAD
-    # The backup completes the whole positive chain, so the boot is a real one and
-    # not an early exit that happened not to fail.
     extra_required = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    # The primary is refused inside validate_manifest_header, before the hash check
-    # and before the crypto chain, and nothing may reject the backup. The two other
-    # structural codes are forbidden because the accepted backup emits no
-    # MANIFEST_ERR= of its own. ENC_HASHED_LEN_PARTIAL is the other
-    # payload_length-relative arm and must not be what fired; the remaining
-    # token-printing BAD_LENGTH arms grade payload_offset, which this stimulus does
-    # not touch. PAYLOAD_HASHED_LEN_BAD= is NOT forbidden here -- it is the required
-    # evidence.
     extra_forbidden = (f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_MAGIC:08x}",
                        f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_VERSION:08x}",
                        "MANIFEST_HASH_MISMATCH", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
@@ -152,8 +60,7 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
             "primary payload is encrypted, so ENC_HASHED_LEN_PARTIAL could produce "
             "this run's verdict instead of the bound under test"
         )
-        # The three checks ahead of the bound must all be satisfied, or one of them
-        # produces the verdict and the asserted token never appears.
+        # An earlier header check would otherwise refuse the slot before this bound.
         major, minor = mm.manifest_version(buf, "primary")
         length = mm.manifest_length(buf, "primary")
         assert (major, minor) == (mm.MANIFEST_MAJOR_VERSION, 0), (
@@ -207,20 +114,12 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        # CHK-LENGTH-ATTRIBUTION: BAD_LENGTH is the primary's and only the
-        # primary's.
         i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
                                           before=i_bsrc)
 
-        # CHK-HASHED-LEN-TOKEN: the arm that fired named itself, once, inside the
-        # primary's own attempt. Unlike every other BAD_LENGTH arm this one is
-        # ROM-side evidence of WHICH check complained.
         i_tok = fd.assert_slot_attributed(console, token, after=i_psrc,
                                           before=i_bsrc)
 
-        # CHK-HASHED-LEN-VALUE: the ROM echoed back the field this testcase wrote.
-        # The token alone would be satisfied by any out-of-bound value; requiring
-        # the exact planted number is what ties the verdict to this stimulus.
         echoed = fd.hex_value(console, token)
         assert echoed is not None, (
             f"ROM printed {token} without a readable 32-bit value, so the echoed "
@@ -233,9 +132,6 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
             f"verdict is not attributable to this stimulus"
         )
 
-        # CHK-HASH-NOT-REACHED: the bound precedes manifest_check_integrity
-        # (manifest_load.c), so the primary never had its hash computed and the
-        # single MANIFEST_HASH_OK belongs to the accepted backup.
         n_ok = fd.count(console, "MANIFEST_HASH_OK")
         assert n_ok == 1, (
             f"MANIFEST_HASH_OK appeared {n_ok} times, expected exactly 1 (the "
@@ -249,9 +145,6 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
             f"the one hash that verified is not the backup's. Console: {console}"
         )
 
-        # CHK-STIMULUS-SERVED: the device really returned the planted 64-bit field,
-        # so the console's echo is the ROM reading this testcase's bytes rather than
-        # a value the transport invented.
         fd.assert_served_field(
             self.logger, flash, "primary", pm.OFF_PAYLOAD_HASHED_LEN,
             struct.pack("<Q", self._bad_hashed_len),

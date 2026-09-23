@@ -2,77 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup declares ``payload_hashed_length`` = 0; the ROM halts.
 
-``validate_manifest_header`` (``bootrom/prod/src/manifest_load.c``) bounds the
-hashed region of the payload::
-
-    0 < payload_hashed_length <= payload_length
-
-and on violation it echoes the offending value as ``PAYLOAD_HASHED_LEN_BAD=`` and
-returns ``MANIFEST_ERR_BAD_LENGTH``. The primary was already refused on its
-identifier, so both slots fail and the expected outcome is terminal rather than a
-boot.
-
-WHY THE STIMULUS IS ZERO. ``validate_manifest_header`` refuses
-``payload_hashed_length`` outside ``0 < value <= payload_length``, and zero is the
-only value that reaches that bound without also reaching a different check.
-
-A non-zero value below ``payload_length`` is ACCEPTED here and the slot is refused
-later as ``PLD_HASH_MISMATCH``, a different check with a different error code.
-
-Zero is also the security-meaningful half of the bound: ``verify_payload_hash``
-returns OK for a zero length, so ``payload_hashed_length == 0`` is a manifest opting
-out of its own payload hash entirely, which is the hole this bound exists to close.
-THE SLOT RUNS NON-ENCRYPTED. Enabling encryption would bring in
-``ENC_HASHED_LEN_PARTIAL``, the arm immediately after this bound, which returns the
-SAME error code -- the exclusion would then rest on check ordering rather than on an
-unreachable path. It would also force ``sep_payload_mutate.verify_sealed`` to drop
-its TOC anchor, since an encrypted payload's TOC is ciphertext until the ROM
-decrypts it. Recorded in this row's ``flow_deviation``.
-
-============================================================================
-THIS IS THE ONLY BAD_LENGTH ARM WITH ITS OWN CONSOLE TOKEN
-============================================================================
-
-Every other length arm in ``validate_manifest_header`` returns silently, which is
-why the version-and-length rows in this directory can only be told apart on
-stimulus-side evidence and say so in their ``flow_deviation``. **This row needs no
-such disclosure.** The arm prints ``PAYLOAD_HASHED_LEN_BAD=`` WITH THE VALUE, so the
-attribution is ROM-side:
-
-  * the token must appear exactly once, inside the backup's own attempt, bracketed
-    by the backup read and ``MANIFEST_ALL_FAILED``;
-  * the echoed value must equal the planted 0 exactly. That is the ROM reading back
-    the field this testcase wrote, so the checker cannot be satisfied by a slot
-    refused for a different reason, nor by any sibling's log.
-
-``manifest_identifier``, ``manifest_version_major``, ``manifest_version_minor`` and
-``manifest_length`` are all left at their shipped valid values, so none of the
-earlier arms can pre-empt this one -- asserted in :meth:`corrupt_backup` rather than
-assumed.
-
-THE OTHER ``payload_length``-RELATIVE ARM IS EXCLUDED IN THE STIMULUS.
-``ENC_HASHED_LEN_PARTIAL`` fires for an ENCRYPTED payload whose hashed length is
-merely shorter than the payload. The shipped image is not encrypted, which
-:meth:`corrupt_backup` asserts, and the token is forbidden as well.
-
-WHY THE FIELD IS RE-HASHED BUT NOT RE-SIGNED. ``payload_hashed_length`` sits inside
-the signed TBS (``manifest.h``), so ``sep_payload_mutate.set_payload_hashed_length``
-recomputes ``manifest_hash`` -- which keeps the declared length the only defect
-rather than one of two. The signature is deliberately left stale: the bound is
-checked in ``validate_manifest_header``, upstream of both
-``manifest_check_integrity`` and ``rsa_3072_verify``, so the ROM never examines it.
-``MANIFEST_HASH_OK`` is forbidden, which is the assertion that NEITHER slot got as
-far as having a hash computed.
-
-MARKER SUBSTITUTION APPLIES ONLY TO THE FAILOVER TRIGGER. The primary's
-``manifest_identifier`` is refused as BAD_MAGIC, for which this ROM prints nothing
--- ``SEP_MSG_INVALID_MANIFEST_ID`` (``bootrom/prod/include/status_values.h``) is
-defined and emitted by nothing under ``bootrom/prod/src`` -- so the primary's
-attribution rests on ``MANIFEST_ERR=0x00030002`` plus its position and count inside
-the primary's own attempt. That code differs from the backup's, which the shared
-base requires.
-
-No ``+sep_crypto_edn_force``: neither slot reaches ``manifest_crypto_validate``.
+A zero hashed length would skip the payload hash, so the ROM must refuse it with
+``PAYLOAD_HASHED_LEN_BAD=0x00000000``; the primary is refused as BAD_MAGIC.
 """
 
 from __future__ import annotations
@@ -89,14 +20,11 @@ from rom_fw.sep_backup_manifest_structural_fail_base import (
 )
 from rom_fw.sep_usage_constraint_base import EFUSE_PRELOAD
 
-# manifest.h
 _MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 _MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
 
 _TOKEN = "PAYLOAD_HASHED_LEN_BAD="
 
-# Zero is the only value that reaches this bound with the verdict this row is named
-# for. See the module docstring.
 _BAD_HASHED_LEN = 0
 
 
@@ -105,16 +33,11 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
         sep_backup_manifest_structural_fail_base):
     """Backup payload_hashed_length is 0 -> both slots refused -> the ROM halts."""
 
-    # The prefix, not the full line: the echoed value is only known after the image
-    # is read, so the base pins position and count on the token and the exact value
-    # is asserted in _check() below.
+    # Prefix only: the echoed value is asserted in _check().
     backup_defect_marker = _TOKEN
     expected_error = _MANIFEST_ERR_BAD_LENGTH
     primary_expected_error = _MANIFEST_ERR_BAD_MAGIC
     efuse_preload = EFUSE_PRELOAD
-    # Neither slot reaches the usage-constraint block, the integrity check or the
-    # crypto chain, so none of those arms may claim this run's verdict.
-    # PAYLOAD_HASHED_LEN_BAD= is NOT forbidden here -- it is the required evidence.
     extra_forbidden = (fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER,
                        "MANIFEST_HASH_MISMATCH", "MANIFEST_HASH_OK", "CRYPTO_FAIL=",
                        "PAYLOAD_OFF_RANGE", "PAYLOAD_OFF_ALIGN",
@@ -127,8 +50,6 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
             "backup payload is encrypted, so ENC_HASHED_LEN_PARTIAL could produce "
             "this run's verdict instead of the bound under test"
         )
-        # The three checks ahead of the bound must all be satisfied, or one of them
-        # produces the verdict and the asserted token never appears.
         major, minor = mm.manifest_version(buf, "backup")
         length = mm.manifest_length(buf, "backup")
         assert (major, minor) == (mm.MANIFEST_MAJOR_VERSION, 0), (
@@ -156,6 +77,7 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
             f"would ACCEPT it and the slot would be refused later as "
             f"PLD_HASH_MISMATCH -- a different check with a different error code"
         )
+        # The signature stays stale: the ROM refuses this bound before it verifies the signature.
         was = pm.set_payload_hashed_length(buf, "backup", self._bad_hashed_len)
         now = pm.payload_hashed_length(buf, "backup")
         assert now == self._bad_hashed_len, (
@@ -175,11 +97,6 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
 
-        # CHK-HASHED-LEN-VALUE: the ROM echoed back the field this testcase wrote.
-        # The base already pinned the token's position and count inside the backup's
-        # attempt; the token alone would be satisfied by any out-of-bound value, and
-        # requiring the exact planted number is what ties the verdict to this
-        # stimulus.
         echoed = fd.hex_value(console, _TOKEN)
         assert echoed is not None, (
             f"ROM printed {_TOKEN} without a readable 32-bit value, so the echoed "
@@ -192,9 +109,6 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
             f"verdict is not attributable to this stimulus"
         )
 
-        # CHK-STIMULUS-SERVED: the device really returned the planted 64-bit field,
-        # so the console's echo is the ROM reading this testcase's bytes rather than
-        # a value the transport invented.
         fd.assert_served_field(
             self.logger, self._flash, "backup", pm.OFF_PAYLOAD_HASHED_LEN,
             struct.pack("<Q", self._bad_hashed_len),

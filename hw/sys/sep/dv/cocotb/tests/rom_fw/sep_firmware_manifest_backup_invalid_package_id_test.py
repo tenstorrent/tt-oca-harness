@@ -2,25 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup enables package_id constraints it does not satisfy; the ROM halts.
 
-The mirror of ``sep_firmware_manifest_primary_invalid_package_id_test``, and the
-package_id counterpart of
-``sep_firmware_manifest_backup_invalid_chiplet_id_test``. The primary is refused
-by the shared identifier trigger, the backup is refused on
-``selector_bits[8..15]`` with ``PACKAGE_ID_MISMATCH`` and
-``MANIFEST_ERR_LC_USAGE_CONSTRAINT``, and with both slots refused the ROM halts
-(``bootrom/prod/src/manifest_load.c``, ``bootrom/prod/src/rom_main.c``). The
-reference expects the terminal ``ERROR: INVALID_PACKAGE_ID``.
-
-The failover-trigger adaptation is the one described in the chiplet_id sibling.
-payload TOC version; here the TOC is validated inside the slot attempt and the
-manifest's secure-boot flag is ignored in PROD, so neither half reproduces and the
-deterministic BAD_MAGIC trigger is used instead.
-
-**HOW THIS IS TOLD APART FROM THE OTHER TWO BACKUP-SIDE ARMS.** All three end at
-the same error code, the same status word and the same halt, so this member
-requires ``PACKAGE_ID_MISMATCH``, forbids ``CHIPLET_ID_MISMATCH`` and
-``LC_USAGE_CONSTRAINT_FAIL``, and asserts an index (word 2) that the chiplet
-sibling's mask cannot produce.
+A BAD_MAGIC identifier refuses the primary first, so both slots fail and the ROM
+reports ERROR: INVALID_PACKAGE_ID.
 """
 
 from __future__ import annotations

@@ -2,18 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup manifest selects REVOKED ROM key slot 1 -> terminal.
 
-Member of the six-testcase revoke family. The scenario, the eFuse preconditions
-and every assertion live once in ``sep_pubkey_rom_revoked_base``; this module
-chooses the slot. Its OTP image is the whole of the rest of the stimulus:
-``sep_efuse_lc_prod_pubk_revoke1.toml`` is ``sep_efuse_lc_prod.toml`` plus
-exactly ``CHIPLET_PUBK_REVOKE`` bit 1.
-
-WHAT THIS MEMBER PINS. Slot 1's digest is another key's under ``TEST_BUILD``, not
-the dev0 modulus this manifest carries, so without the revocation bit it would be
-refused as ``PUBK_HASH_MISMATCH``. Here the fuse bit changes the verdict, because
-``validate_signature`` consults the fuse bitmap (``manifest_crypto.c``) BEFORE
-the digest table. ``PUBK_HASH_MISMATCH`` is therefore the load-bearing forbid:
-seeing it would mean revocation was evaluated late, or not at all.
+Fuse image ``sep_efuse_lc_prod_pubk_revoke1.toml`` sets ``CHIPLET_PUBK_REVOKE`` bit 1.
+Slot 1's test digest is another key's, so ``PUBK_HASH_MISMATCH`` means revocation ran late.
 """
 
 from __future__ import annotations

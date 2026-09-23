@@ -2,39 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest's stored hash disagrees with its TBS; the backup boots.
 
-``manifest_check_integrity`` recomputes SHA-256 over the TBS region -- offset 0 up
-to the signature field -- and compares it against the ``manifest_hash`` field with
-a constant-time comparison, printing ``MANIFEST_HASH_MISMATCH`` and returning
-``MANIFEST_ERR_HASH_MISMATCH`` on disagreement
-(``bootrom/prod/src/manifest_load.c``). It runs on every slot regardless of
-secure-boot state. The expected outcome is that verdict on the primary and a
-completed boot from the backup, including the payload validation and copy stages.
-
-WHY THE STORED FIELD MOVES AND THE TBS DOES NOT. ``manifest_hash`` sits at offset
-1128, OUTSIDE the TBS, so flipping a byte there changes only the stored copy: the
-digest the ROM computes is still the shipped image's, and the mismatch is the
-sole defect. Corrupting a TBS field instead would produce the same rejection for
-a different reason -- the mutated field would also be the reason the digest
-differs -- and the testcase could no longer say which of the two the ROM caught.
-:func:`sep_manifest_mutate.corrupt_manifest_hash` therefore does NOT re-hash, and
-that is the whole point of it.
-
-WHAT THE ROM DOES AND DOES NOT REPORT. Unlike the other structural checks in this
-group, this one has real architected evidence: ``SEP_MSG_CHECK_MANIFEST_HASH`` and
-``SEP_MSG_INVALID_MANIFEST_HASH`` both have live ``report_status`` emitters
-(``manifest_load.c``), so unlike the other structural checks these codes are
-actually emitted rather than defined-but-never-emitted. Those go to the status ring; the console carries
-the matching ``MANIFEST_HASH_MISMATCH`` / ``MANIFEST_HASH_OK`` pair, which is what
-this testcase asserts because it is per-slot and ordered.
-
-**HOW THIS IS TOLD APART FROM ``sep_firmware_primary_manifest_identifier_test``.**
-Both plant a defect in the primary and both end in a backup boot, so the failover
-alone would accept either run. The hash tokens separate them in both directions:
-here ``MANIFEST_HASH_MISMATCH`` is required and pinned to the primary's attempt
-while ``MANIFEST_HASH_OK`` is pinned to exactly one occurrence (the backup's);
-there ``MANIFEST_HASH_MISMATCH`` is forbidden outright, because the identifier
-check returns before the hash is ever computed. The error codes differ as well
-(0x0003000b against 0x00030002).
+Only the stored ``manifest_hash`` (outside the TBS) is changed, so it is the sole defect.
 """
 
 from __future__ import annotations
@@ -54,7 +22,6 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h
 _MANIFEST_ERR_HASH_MISMATCH = 0x0003_000B
 
 _HASH_MISMATCH = "MANIFEST_HASH_MISMATCH"
@@ -65,15 +32,13 @@ _HASH_OK = "MANIFEST_HASH_OK"
 class sep_firmware_bad_manifest_hash_test(sep_primary_fail_backup_boot_base):
     """Primary's manifest_hash does not match its TBS -> the backup boots."""
 
-    # The arm prints its own token but no CRYPTO_FAIL=, so the base's
-    # crypto-shaped defect-marker path is not used.
+    # This arm prints no CRYPTO_FAIL=, so the base's defect-marker check does not apply.
     primary_defect_marker = ""
     primary_expected_error = _MANIFEST_ERR_HASH_MISMATCH
     primary_expected_rsa_starts = 0
     efuse_preload = _EFUSE_PRELOAD
     extra_required = (_HASH_MISMATCH, "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    # The primary is refused before the usage-constraint block and before the
-    # crypto chain, and the backup is valid.
+    # The primary is refused before the usage-constraint and crypto checks; the backup is valid.
     extra_forbidden = ("MANIFEST_HASH_TIMEOUT", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
                        "PLD_HASH_MISMATCH", fd.LC_MARKER, fd.CHIPLET_MARKER,
                        fd.PACKAGE_MARKER)
@@ -110,17 +75,11 @@ class sep_firmware_bad_manifest_hash_test(sep_primary_fail_backup_boot_base):
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        # CHK-HASH-ATTRIBUTION: the mismatch and its error code both sit inside the
-        # primary's attempt and each occurs once. A second mismatch would mean the
-        # backup's hash was broken too, which is a terminal scenario rather than
-        # this one.
         i_bad = fd.assert_slot_attributed(console, _HASH_MISMATCH, after=i_psrc,
                                           before=i_bsrc)
         fd.assert_slot_attributed(console, slot_err, after=i_bad - 1, before=i_bsrc)
 
-        # CHK-HASH-RECOVERED: exactly one slot's hash verified, and it is the
-        # backup's. Pinning the count is what stops a run where the primary also
-        # verified -- i.e. where the mutation never landed -- from looking the same.
+        # A second OK would mean the primary also verified, i.e. the mutation never landed.
         n_ok = fd.count(console, _HASH_OK)
         assert n_ok == 1, (
             f"{_HASH_OK} appeared {n_ok} times, expected exactly 1 (the backup's). "

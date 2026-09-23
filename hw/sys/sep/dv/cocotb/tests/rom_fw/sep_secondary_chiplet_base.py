@@ -1,64 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared scenario for the two secondary-chiplet bootcode rows.
+"""Shared scenario for the secondary-chiplet boot arm, reached with ``STRAPS_LO[25]`` clear.
 
-THE FEATURE. ``rom_main.c`` has a three-way boot-mode branch and this pair pins
-the THIRD arm::
-
-    if (boot_from_spi(&straps))                                -> BOOT_SPI
-    else if (straps.primary_chiplet && straps.boot_recovery)   -> BOOT_RECOVERY
-    else                                                       -> BOOT_SECONDARY
-
-``boot_from_spi()`` is ``primary_chiplet && !boot_recovery`` (``boot_straps.h``),
-so the secondary arm is reached by leaving ``STRAPS_LO[25]`` CLEAR -- no
-``+sep_boot_from_spi``. The ROM then takes its manifest from SMC SRAM instead of
-flash, and the arm it landed on is echoed as ``BOOT_SECONDARY``.
-
-WHY THE OTHER TWO ARMS ARE FORBIDDEN, NOT MERELY UNEXPECTED. ``BOOT_RECOVERY``
-and ``BOOT_SECONDARY`` converge one line later: both set a boot_mode and fall
-into the same ``WAIT_SMC_MANIFEST`` loop (``manifest_load.c``). A recovery run
-and a secondary run therefore produce nearly identical consoles, so a successful
-SMC-SRAM boot does NOT by itself say which arm ran. Requiring
-``BOOT_SECONDARY``, forbidding ``BOOT_RECOVERY`` and ``BOOT_SPI``, and asserting
-``STRAP primary=0`` alongside the raw ``STRAPS_LO=`` echo is what makes the
-branch part of the result. The same distinction is what separates this pair from
-``sep_boot_recovery_test``, which is the middle arm with the strap SET.
-
-THE PROPERTY THAT IS UNIQUE TO THIS PATH. ``rom_manifest_boot`` gives the SMC
-path ``num_retries = 0`` and fills ``offsets[1] = offsets[0]``, guarded so
-rotate_update cannot select it (``manifest_load.c``). There is ONE attempt and no
-backup, which is the reference scenario's own statement that "there is no backup
-manifest in the SMC SRAM". So a rejected manifest here is terminal, where the
-same rejection on the SPI path would fail over. Both members assert
-``MANIFEST_PRIMARY`` exactly once and forbid ``MANIFEST_BACKUP`` outright: that
-is the single-attempt property, and it is not entailed by either member's
-outcome.
-
-THE PUBLISHED ADDRESS IS THE STIMULUS. The ROM does not scan SMC SRAM; it reads
-the offset the SMC published in scratch[8] (``SMC_SCRATCH_MANIFEST_ADDR_IDX``)
-and loads from ``sep_get_smc_sram_base() + offset``. The testbench's default is
-0x1000, which is where the packed SMC image really carries ``TBL1``; the invalid
-member republishes 0x5000 through ``+sep_smc_scratch8``, matching the reference's
-own mechanism of pointing the primary manifest at an address that holds no
-manifest rather than corrupting the manifest in place.
-
-THE ROM ECHOES THE PUBLISHED OFFSET. ``rom_smc_coordination_probe()``
-(``rom_main.c``) prints ``MANIFEST_OFF=`` and ``SMC_MANIFEST_ADDR=`` before the
-manifest loop runs, so the offset the ROM actually read out of scratch[8] is
-observable directly rather than inferred from the loop's own ``MANIFEST_SRC=``.
-Both are required, in that order, and ``SMC_COORD_NOT_READY`` and
-``SMC_MANIFEST_OFF_INVALID`` are forbidden -- the first is the reference's
-``+MANIFEST_STATUS_READY`` and ``+SMC_SRAM_INIT_DONE`` handshake, which the
-testbench's scratch[9] default supplies, and the second would mean the ROM
-treated the published offset as unset.
-
-THE IMAGE-SIDE EVIDENCE. ``MANIFEST_SRC=`` only says which address the ROM
-INTENDED to read. :meth:`check_smc_image` reads the same ``+sep_smc_mem_hex``
-file the testbench loads and asserts what actually sits at the published offset
-and at 0x1000. That is the half the ROM cannot fake, and it is what separates
-"the published offset held no manifest" from "the image had no manifest at all":
-the invalid member proves 0x1000 still holds a valid ``TBL1`` that the run never
-used.
+The ROM makes one manifest attempt from SMC SRAM at the offset the SMC publishes in scratch[8].
+Members set ``manifest_offset``, ``expect_boot``, ``expected_error`` and ``check_outcome``.
 """
 
 from __future__ import annotations
@@ -75,29 +20,21 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
-# sep_smc_interface.h: the window the ROM adds the published offset to.
 SMC_SRAM_BASE = 0x4006_0000
 # The testbench default, and where the packed SMC image carries "TBL1".
 DEFAULT_MANIFEST_OFFSET = 0x1000
-# manifest.h: what validate_manifest_header compares the first word against.
 MANIFEST_MAGIC = b"TBL1"
-# manifest.h, the arm that refuses a slot whose identifier is not that word.
 ERR_BAD_MAGIC = 0x0003_0002
 
-# rom_main.c / boot_straps.c: the arm and the straps that select it.
 SECONDARY_MARKER = "BOOT_SECONDARY"
 SPI_MARKER = "BOOT_SPI"
 RECOVERY_MARKER = "BOOT_RECOVERY"
 STRAP_PRIMARY_CLEAR = "STRAP primary=0"
 STRAP_RECOVERY_CLEAR = " recovery=0"
 STRAPS_LO_ECHO = "STRAPS_LO=0x00000000"
-# rom_main.c rom_smc_coordination_probe(): the ROM echoes the offset it read out
-# of scratch[8] and the absolute address it derived from it, BEFORE the manifest
-# loop runs. This is the direct evidence that the published offset reached the
-# ROM -- MANIFEST_SRC= alone could be a coincidence of the loop's own arithmetic.
 SMC_COORD_NOT_READY = "SMC_COORD_NOT_READY"
 SMC_MANIFEST_OFF_INVALID = "SMC_MANIFEST_OFF_INVALID"
-# manifest_load.c, in emission order on the SMC path.
+# In emission order on the SMC path.
 WAIT_SMC = "WAIT_SMC_MANIFEST"
 MANIFEST_PRIMARY = "MANIFEST_PRIMARY"
 MANIFEST_BACKUP = "MANIFEST_BACKUP"
@@ -108,47 +45,23 @@ SPI_INIT_MARKERS = (">>SPI_INIT", "SPI_INIT_OK")
 
 _MAX_RUN_CYCLES = 8_000_000
 _PROGRESS_EVERY = 200_000
-# Abandon the poll when neither the status word nor the console has moved for this
-# long. It cannot produce a false PASS -- the break only leaves the loop, every
-# assertion still runs against what was collected, and `fw_done` is false, so a
-# stalled run fails. It only stops a hang from burning the whole cycle budget.
-#
-# The size is measured, not guessed, because the failure mode it CAN produce is a
-# spurious FAIL. The longest quiet interval in a healthy run is NOT the SMC
-# transfer: it is the pre-C window, where vector.S writes cold_scratch[1] once and
-# then scrubs 128 KiB of DCCM with no console and no further status write. Measured
-# at ~559 000 cycles (CPU released at 14626 ns, 16 ns/cycle, first console line at
-# 8956370 ns), so 600 000 left only 7% of margin and any slowdown of that scrub
-# would have turned a healthy run into a "stall". 2 000 000 is ~3.6x the measured
-# interval and still a quarter of the cycle budget, so it keeps most of the saving
-# on a real hang.
+# Must exceed the ~559k-cycle silent DCCM scrub, or a healthy run reads as a stall.
 _STALL_CYCLES = 2_000_000
-# Watch window after a terminal verdict, taken from sep_backup_manifest_fail_base
-# for the same reason: rom_err_fail() writes the code and the verdict and only
-# then enters `for(;;) wfi`, so "terminal" needs an observation rather than the
-# noreturn attribute.
+# rom_err_fail() writes the verdict before it halts, so watch that nothing moves after it.
 _QUIESCE_CYCLES = 20_000
 
 
 class sep_secondary_chiplet_base(sep_base_test):
-    """Boot the secondary-chiplet arm from SMC SRAM and grade the published offset."""
 
     build_env = False
-    # Gate on the ROM/BL1 verdict word in cold_scratch[0], like every other
-    # rom_fw member. See dv/docs/rom_verdict_scratch0_migration.md.
+    # Gate on the cold_scratch[0] verdict word, not the outbound mailbox.
     verdict_source = "scratch0"
 
     # --- subclass contract -------------------------------------------------
-    # Offset the SMC publishes in scratch[8]. The testlist must agree: the
-    # default needs no plusarg, anything else needs +sep_smc_scratch8.
+    # Must match +sep_smc_scratch8; the default offset needs no plusarg.
     manifest_offset: int = DEFAULT_MANIFEST_OFFSET
-    # True when the published offset holds a bootable manifest.
     expect_boot: bool = True
-    # ROM error code a terminal member must converge on, asserted live in
-    # _check() below and used by the member to derive the encoded status word.
-    # Zero for the booting member.
     expected_error: int = 0
-    # Console lines that must / must not appear, on top of the shared pair below.
     extra_required: tuple[str, ...] = ()
     extra_forbidden: tuple[str, ...] = ()
 
@@ -170,36 +83,18 @@ class sep_secondary_chiplet_base(sep_base_test):
 
     @property
     def published_off_echo(self) -> str:
-        """The offset the ROM read out of scratch[8], as it echoes it."""
         return f"MANIFEST_OFF=0x{self.manifest_offset:08x}"
 
     @property
     def published_addr_echo(self) -> str:
-        """The absolute address the ROM derived from that offset."""
         return f"SMC_MANIFEST_ADDR=0x{SMC_SRAM_BASE + self.manifest_offset:08x}"
 
     @property
     def src_echo(self) -> str:
-        """The address the manifest loop reports for its one attempt."""
         return f"MANIFEST_SRC=0x{SMC_SRAM_BASE + self.manifest_offset:08x}"
 
     # --- image-side evidence ------------------------------------------------
     def check_smc_image(self) -> None:
-        """Assert what the SMC image really holds at 0x1000 and at the published offset.
-
-        Reads the very file ``+sep_smc_mem_hex`` names, so this is a statement
-        about the bytes the testbench loaded rather than about the intent of the
-        testlist.
-
-        The published offset is also required to be INSIDE the loaded span, so
-        that the identifier the ROM compares is a byte this file actually supplies
-        and the verdict is attributable to it. That is a provenance requirement,
-        not an X-avoidance one: ``u_smc_mem`` is instantiated with
-        ``UninitializedData("zeros")`` (``dv/tb/tb_top.sv``) and ``axi_sim_mem``
-        returns zero for an absent byte on its AXI read path, so an offset outside
-        the span would read a well-defined 0 on every simulator -- it would simply
-        not be evidence about THIS image.
-        """
         path = cocotb.plusargs.get("sep_smc_mem_hex")
         assert isinstance(path, str) and os.path.isfile(path), (
             f"+sep_smc_mem_hex must name the packed SMC image; got {path!r}. "
@@ -214,7 +109,7 @@ class sep_secondary_chiplet_base(sep_base_test):
             f"the offset arithmetic below assumes the image is based at the SMC "
             f"SRAM window"
         )
-        # 8 bytes per $readmemh line after the single @address header.
+        # One $readmemh address header, then 8 bytes per line.
         per_line = 8
         data = lines[1:]
         span = len(data) * per_line
@@ -226,9 +121,6 @@ class sep_secondary_chiplet_base(sep_base_test):
                 f"would not come from the image under test"
             )
             i, k = divmod(off, per_line)
-            # A word straddling two lines would be read as a SHORT slice and the
-            # comparison would fail for the wrong reason. Both offsets in use are
-            # line-aligned, so this is a guard against a future one that is not.
             assert k + 4 <= per_line, (
                 f"offset 0x{off:x} starts at byte {k} of an {per_line}-byte line, "
                 f"so its word straddles two lines and this reader would return "
@@ -267,12 +159,6 @@ class sep_secondary_chiplet_base(sep_base_test):
         )
 
     def check_plusarg_agreement(self) -> None:
-        """The offset this class grades is the offset the testlist published.
-
-        Without this a member could assert against 0x5000 while the testlist
-        forgot ``+sep_smc_scratch8``, and the run would quietly become a second
-        copy of the valid member.
-        """
         arg = cocotb.plusargs.get("sep_smc_scratch8")
         if self.manifest_offset == DEFAULT_MANIFEST_OFFSET:
             assert arg is None, (
@@ -292,12 +178,7 @@ class sep_secondary_chiplet_base(sep_base_test):
         )
 
     def build_efuse_image(self):
-        """TEST_DEV with a zero OTP, the lifecycle the SMC image's manifest permits.
-
-        Overridable, but no member does: the pair is about the boot-mode branch,
-        and a lifecycle that forced secure boot would add a crypto verdict the
-        unsigned SMC image cannot satisfy.
-        """
+        # The SMC image is unsigned, so a secure-boot lifecycle would reject it.
         image = SepEfuseImage()
         image.set_lc_state(LC_TEST_DEV)
         return image
@@ -324,9 +205,6 @@ class sep_secondary_chiplet_base(sep_base_test):
         post_status_moved = False
         post_console: list[str] = []
         try:
-            # No TCM staging: the ROM runs from the Boot ROM responder and pulls
-            # BL1 out of SMC SRAM itself, so there is no firmware image for the
-            # tcm_load_i backdoor to place.
             await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
             last_move = 0
             last_lines = 0
@@ -366,8 +244,6 @@ class sep_secondary_chiplet_base(sep_base_test):
                         cycle, status, retired, len(console),
                     )
 
-            # Only the terminal member claims the ROM stopped, and only an
-            # observation can support that.
             if fw_done and not self.expect_boot:
                 console_len_at_done = len(console)
                 for _ in range(_QUIESCE_CYCLES):
@@ -418,9 +294,6 @@ class sep_secondary_chiplet_base(sep_base_test):
         log.info("cold_scratch[1] sequence: %s", status_hex)
         log.info("ROM console: %s", console)
 
-        # Guard the guards: a dark console makes every marker check vacuous, and
-        # a terminal member with no declared code would grade its halt on the
-        # console alone.
         assert retired, "core retired no instructions; the ROM never ran"
         assert console, (
             "ROM console is empty, so no marker check below means anything (the "
@@ -446,9 +319,6 @@ class sep_secondary_chiplet_base(sep_base_test):
             )
         log.info("CHK-SECONDARY-FORBIDDEN: none of %s appeared", ", ".join(forbidden))
 
-        # CHK-SECONDARY-ORDER: the strap echo precedes the branch decision and the
-        # branch precedes the SMC wait, so the arm taken is the consequence of the
-        # strap the ROM read rather than a coincidence.
         src = self.src_echo
         i_straps = self._index_of(console, STRAPS_LO_ECHO)
         i_branch = self._index_of(console, SECONDARY_MARKER)
@@ -470,11 +340,7 @@ class sep_secondary_chiplet_base(sep_base_test):
             self.published_addr_echo, i_addr, i_wait, i_first, src, i_src,
         )
 
-        # CHK-SINGLE-ATTEMPT: the SMC path runs exactly one slot. This is the
-        # property that is unique to it, and it is what makes the invalid member
-        # terminal instead of a failover. MANIFEST_BACKUP is already forbidden
-        # above; the count is the other half, because a ROM that re-read the same
-        # offset twice would still print only the primary label.
+        # A repeated read of the same offset prints no MANIFEST_BACKUP, so count the attempts.
         n_attempts = self._count(console, MANIFEST_PRIMARY)
         n_src = self._count(console, src)
         assert n_attempts == 1 and n_src == 1, (
@@ -489,5 +355,4 @@ class sep_secondary_chiplet_base(sep_base_test):
         self.check_outcome(console, status_seq, fw_done, fw_pass)
 
     def check_outcome(self, console, status_seq, fw_done, fw_pass) -> None:
-        """Member-specific terminal or boot verdict."""
         raise NotImplementedError

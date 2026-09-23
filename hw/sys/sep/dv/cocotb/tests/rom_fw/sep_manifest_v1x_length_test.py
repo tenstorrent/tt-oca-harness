@@ -2,78 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """v1.x ``manifest_length``: 2048 accepted, 2049 refused, in one run.
 
-A v1.x manifest (minor > 0) must accept a length up to 2048 and refuse anything
-above it, so the boundary is graded on the pair rather than on one value.
-
-THE RULE, from ``validate_manifest_header`` (``bootrom/prod/src/manifest_load.c``),
-with ``MANIFEST_MAX_SIZE`` 2048 and ``sizeof(manifest_t)`` 1184
-(``bootrom/prod/include/manifest.h``)::
-
-    minor == 0  ->  manifest_length == sizeof(manifest_t)   EXACTLY
-    minor != 0  ->  sizeof(manifest_t) <= manifest_length <= MANIFEST_MAX_SIZE
-    both        ->  manifest_length % 4 == 0
-
-and then, for an accepted slot, ``load_manifest_extra`` fetches
-``manifest_length - sizeof(manifest_t)`` further bytes from the same source.
-
-THE BOUNDARY IS THE PAIR, AND BOTH HALVES ARE IN THIS ONE RUN::
-
-    PRIMARY  v1.1, manifest_length 2049 = MANIFEST_MAX_SIZE + 1  -> refused
-    BACKUP   v1.1, manifest_length 2048 = MANIFEST_MAX_SIZE      -> accepted, boots
-
-The two slots carry the SAME major and the SAME non-zero minor and differ by ONE
-in one 32-bit field, and the outcome inverts. That is what pins the bound at
-2048 rather than merely showing that some large value is refused: a ROM using
-``>=`` would refuse 2048 and this run would end terminal, and a ROM whose bound
-was one higher would accept 2049 and never fall over.
-
-A DISCLOSED LIMIT ON THE REFUSED HALF. 2049 is out of range AND misaligned, and
-both arms return ``MANIFEST_ERR_BAD_LENGTH`` with no token of their own, so this
-row says 2049 was REFUSED -- it does not say which of the two arms refused it.
-The testplan names 2049, so 2049 is what is planted; the arm is not narrowed by
-choosing a different value. The range arm's upper bound is separately shown with
-alignment satisfied by ``..._minor_nonzero_length_large_test`` (2052, aligned),
-and the alignment arm alone by ``..._minor_nonzero_length_small_incorrect_test``
-(1185, in range). Nothing here is weakened to accommodate the ambiguity: the
-required outcome is still the spec's, on both slots.
-
-THE UNSETTLED v1.x FIELD SET DOES NOT REACH THIS ROW. Which fields a v1.x
-manifest adds, which semantics change and what the offset convention is are all
-undecided. This row needs none of that, because the ROM's v1.x
-contract for LENGTH is complete in current source and treats the extension as
-opaque: ``validate_manifest_header`` grades only the number, and
-``load_manifest_extra`` copies ``manifest_length - sizeof(manifest_t)`` bytes and
-parses nothing. No v1.x field is invented, declared or read by this testcase.
-
-THE ROM MUST ACT ON THE ACCEPTED LENGTH, and that is the device-side half of the
-acceptance. 2048 is 864 bytes past ``sizeof(manifest_t)``, so
-``load_manifest_extra`` must issue exactly one further flash read beginning at
-``backup_base + 1184``, after the backup header read and before the backup
-payload read. ``load_manifest_extra`` prints nothing, so the BFM's transaction
-record is the only channel on which it is visible. Its negative counterpart is on
-the primary: 2049 also exceeds ``sizeof(manifest_t)``, so the ABSENCE of any read
-beginning at ``primary_base + 1184`` is evidence the slot never reached
-``load_manifest_extra`` at all. That localises the refusal to somewhere upstream of
-it, not to ``validate_manifest_header`` specifically -- the error-code identity and
-the forbidden-token list below are what narrow it to the length rule. The fetch is
-identified by the address the ROM COMMANDED,
-not by the span the BFM recorded, because ``ocah_spi_flash._do_read`` streams
-until CS deasserts and the 1184-byte header read is logged as 1185 bytes -- its
-span already covers the extension address.
-
-WHY THE BACKUP IS RE-SEALED. ``manifest_version_minor`` and ``manifest_length``
-both sit inside the TBS (``manifest.h``), and the backup has to survive the whole
-crypto chain, so :func:`sep_payload_mutate.reseal` re-derives ``payload_hash``,
-``manifest_hash`` and a genuine dev0 RSA-3072 signature.
-:func:`sep_payload_mutate.verify_signing_key` runs first on the untouched slot,
-so a re-seal fault is caught before the simulation rather than surfacing as the
-ROM refusing the slot. The primary is
-re-hashed only: the length check precedes ``manifest_check_integrity`` and the
-crypto chain, so its stale signature is never examined and
-``primary_expected_rsa_starts`` stays 0.
-
-Needs ``+sep_crypto_edn_force``: the recovering backup runs a full RSA-3072
-modexp on OTBN.
+The v1.1 primary declares 2049 and must be refused; the re-sealed v1.1 backup declares
+2048, must fetch its 864-byte manifest extension and boot. Needs ``+sep_crypto_edn_force``.
 """
 
 from __future__ import annotations
@@ -96,18 +26,16 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 MANIFEST_ERR_BAD_VERSION = 0x0003_0003
 MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
 
 _MINOR = 1
-_ACCEPTED_LENGTH = mm.MANIFEST_MAX_SIZE       # 2048
-_REFUSED_LENGTH = mm.MANIFEST_MAX_SIZE + 1    # 2049
+_ACCEPTED_LENGTH = mm.MANIFEST_MAX_SIZE
+# 2049 is also misaligned, so which BAD_LENGTH arm refuses it is not identified.
+_REFUSED_LENGTH = mm.MANIFEST_MAX_SIZE + 1
 _VERSION_LENGTH_OFF = mm.OFF_VERSION_MAJOR
 
-# load_manifest_extra(): where the accepted slot's extension fetch must begin, and
-# where the refused slot's must not.
 _BACKUP_EXTRA_ADDR = mm.BACKUP_MANIFEST_OFFSET + mm.MANIFEST_SIZE
 _BACKUP_EXTRA_LEN = _ACCEPTED_LENGTH - mm.MANIFEST_SIZE
 _PRIMARY_EXTRA_ADDR = mm.PRIMARY_MANIFEST_OFFSET + mm.MANIFEST_SIZE
@@ -122,15 +50,7 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
     primary_expected_rsa_starts = 0
     primary_expected_sig_valids = 0
     efuse_preload = _EFUSE_PRELOAD
-    # The backup completes the whole positive chain, so the boot is a real one.
     extra_required = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    # Exactly one structural verdict exists in this run and it is a LENGTH one.
-    # The neighbouring structural codes are forbidden because the accepted backup
-    # emits no MANIFEST_ERR= of its own, and the BAD_LENGTH arms that DO print a
-    # token are forbidden to narrow the verdict to the silent length arms. The
-    # remaining silent arms in validate_manifest_header are payload_offset <= 0 and
-    # payload_length == 0; neither field is written here and the shipped image
-    # satisfies both, which every positive testcase on this image demonstrates.
     extra_forbidden = (f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_MAGIC:08x}",
                        f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_VERSION:08x}",
                        "MANIFEST_HASH_MISMATCH", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
@@ -146,7 +66,6 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
     def check_efuse(self, image) -> None:
         fd.assert_clean_key_fuses(image)
 
-    # --- stimulus ----------------------------------------------------------
     def _assert_baseline(self, buf: bytes, slot: str) -> None:
         ver = mm.manifest_version(buf, slot)
         length = mm.manifest_length(buf, slot)
@@ -165,9 +84,6 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
         )
 
     def corrupt_primary(self, buf: bytearray) -> None:
-        # The bound this whole row is chosen relative to is a hand-copied mirror of
-        # a ROM #define. Require the two to still agree, or 2049 may be a legal
-        # length and the refusal leg would measure nothing.
         rom_max = fd.assert_rom_manifest_bounds()
         assert rom_max == mm.MANIFEST_MAX_SIZE == 2048, (
             f"MANIFEST_MAX_SIZE is {rom_max}; TP078 names 2048 accepted and 2049 "
@@ -241,9 +157,6 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             f"sizeof(manifest_t), so load_manifest_extra() would return without "
             f"reading and the acceptance would have no device-side half"
         )
-        # validate_manifest_header refuses payload_offset < manifest_length as an
-        # overlap. The relation is what makes the acceptance possible, so it is
-        # asserted rather than assumed.
         p_abs = pm.payload_base(buf, "backup")
         p_off = p_abs - mm.slot_base("backup")
         assert p_off >= _ACCEPTED_LENGTH, (
@@ -251,9 +164,6 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             f"{_ACCEPTED_LENGTH}: the slot would be refused as "
             f"PAYLOAD_OVERLAPS_MANIFEST rather than accepted by the range rule"
         )
-        # The extension the ROM will fetch has to exist in the image, and it has to
-        # be clear of the payload, or the fetch this row grades would read bytes
-        # that belong to something else.
         assert _BACKUP_EXTRA_ADDR + _BACKUP_EXTRA_LEN <= p_abs, (
             f"the {_BACKUP_EXTRA_LEN}-byte extension at "
             f"0x{_BACKUP_EXTRA_ADDR:x} runs into the backup payload at 0x{p_abs:x}"
@@ -262,7 +172,6 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             f"the image is {len(buf)} bytes, short of the extension end "
             f"0x{_BACKUP_EXTRA_ADDR + _BACKUP_EXTRA_LEN:x}"
         )
-        # Kept for check_transport(): the extension read must precede this one.
         self._backup_payload_addr = p_abs
         extension = bytes(buf[_BACKUP_EXTRA_ADDR:
                               _BACKUP_EXTRA_ADDR + _BACKUP_EXTRA_LEN])
@@ -301,22 +210,17 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
         )
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
-        # The backup is re-signed below, so establish on the UNTOUCHED slot that the
-        # local signer reproduces the packer's shipped signature byte for byte.
+        # Verify the signer on the untouched backup before the re-seal changes it.
         pm.verify_signing_key(buf, "backup")
         pm.verify_sealed(buf, "backup")
         return super().mutate_flash_image(buf)
 
-    # --- checks ------------------------------------------------------------
     def check_transport(self, console: list[str], flash) -> None:
         super().check_transport(console, flash)
 
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        # CHK-HASH-NOT-REACHED: the length check precedes manifest_check_integrity
-        # (manifest_load.c), so the primary never had a hash computed and the single
-        # MANIFEST_HASH_OK belongs to the accepted backup. A second occurrence would
-        # mean the primary's 2049 was accepted.
+        # The length check precedes the hash, so the one MANIFEST_HASH_OK is the backup's.
         n_ok = fd.count(console, "MANIFEST_HASH_OK")
         assert n_ok == 1, (
             f"MANIFEST_HASH_OK appeared {n_ok} times, expected exactly 1 (the "
@@ -330,9 +234,7 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             f"the one hash that verified is not the backup's. Console: {console}"
         )
 
-        # CHK-STIMULUS-SERVED: the DUT-side stimulus half, for BOTH slots. No length
-        # arm prints a token, so the served (major, minor, length) bytes are the only
-        # run-time channel that says which numbers the DUT actually graded.
+        # No length arm prints a token, so check the bytes each slot was served.
         for slot, length in (("primary", _REFUSED_LENGTH),
                              ("backup", _ACCEPTED_LENGTH)):
             fd.assert_served_field(
@@ -341,9 +243,6 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
                 f"{slot} manifest_version_major/minor + manifest_length",
             )
 
-        # CHK-NO-EXTENSION-FETCH: the refused half's device-side evidence. 2049
-        # exceeds sizeof(manifest_t), so load_manifest_extra would have fetched 865
-        # bytes there for a slot that PASSED the header checks.
         fd.assert_no_read_starting_at(
             self.logger, flash, _PRIMARY_EXTRA_ADDR,
             f"the primary declares manifest_length {_REFUSED_LENGTH}, which exceeds "
@@ -352,9 +251,7 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             f"BAD_LENGTH",
         )
 
-        # CHK-MANIFEST-EXTENSION: the accepted half's device-side evidence -- the ROM
-        # ACTED on a declared length of exactly MANIFEST_MAX_SIZE. load_manifest_extra
-        # prints nothing, so the BFM's record is the only channel that sees it.
+        # Match by start address: the header read's recorded span already covers this one.
         rds = ev.reads(flash.get_transactions())
         b_starts = fd.reads_starting_at(flash, mm.BACKUP_MANIFEST_OFFSET)
         assert b_starts, (

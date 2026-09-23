@@ -2,124 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """BL1 security version EQUALS the BL1_VERSION fuse floor -> accepted, boots.
 
-``check_security_version`` rejects only when ``manifest_ver < fuse_ver``
-(``manifest_crypto.c``), so equality is the ACCEPT BOUNDARY
-of the rollback check -- the last value that must be allowed through. This testcase
-runs that boundary on the PRIMARY and requires a completed boot.
-
-WHY THE ACCEPT CASE. The rollback check has two sides and this testcase runs the
-accept boundary; the reject side is covered separately.
-The fuse preload burns a value into ``efuse_bl1_ver``, while the packer default
-leaves the manifest at
-``security_version: 5``,
-so ``5 < 8`` and the ROM must reject. It is a self-consistent REJECT test; the earlier
-claim that it contradicts itself was investigated on the VP half and WITHDRAWN
-(``batch_runs_0904_vp/FINDINGS.md`` F11 item 3), and is not repeated here.
-
-THE FIELD THE ROM READS IS ``security_version``, NOT ``manifest.version``. There is
-no ``manifest.version`` packer key; the rollback check compares
-``security_version`` (``manifest.h``) against the fuse. This testcase therefore sets
-``security_version`` directly and asserts ``MFST_VER=`` as an exact value.
-
-The accept case here enforces 14 required markers, 16 forbidden markers, an
-ordering chain, four exactly-once counts and two device-side properties.
-
-Implementing the intent rather than the accident is defensible here for a second,
-independent reason: **the REJECT side is already covered TWICE in this testlist**, by
-``sep_firmware_backup_invalid_security_version_test`` (fuse floor 8, both slots below
-it) and by ``sep_firmware_primary_invalid_security_version_test`` (fuse floor 1,
-primary below it and the backup re-signed at the boundary). Neither covers the
-primary-side ACCEPT boundary, and no testcase covered it before this one. This is a
-DELIBERATELY DIFFERENT CASE, not a correction of a broken reference, and it is
-recorded that way in the row's ``flow_deviation``.
-
-**THE COVERAGE THIS ADDS BEYOND THE BOUNDARY: ALL EIGHT THERMOMETER WORDS, EACH
-DISTINGUISHABLE.** ``get_security_version_from_fuse`` (``manifest_crypto.c``)
-loops over EIGHT 32-bit words of ``BL1_VERSION`` and sums their popcounts. Every
-existing preload in this tree puts its bits in word 0 --
-``sep_efuse_lc_prod_secver1.toml`` uses ``0x1`` and
-``sep_efuse_lc_prod_secver8.toml`` uses ``0xff`` -- so a ROM that read only the first
-word would decode all of them correctly. Batch R1 recorded that gap deliberately
-(``batch_runs_0904_rtl/RUN_JOURNAL.md``, "Known gaps left open"). This testcase closes
-it: ``sep_efuse_lc_prod_bl1ver36_spread.toml`` gives word ``i`` exactly ``i+1`` set
-bits, so the total is 1+2+...+8 = 36 and **no plausible truncated, repeated or
-mis-indexed decode of those eight words reaches 36**.
-
-Stated that way on purpose. A literal "no other multiset sums to 36" would be false --
-8+8+8+8+1+1+1+1 also sums to 36 -- but no decode DEFECT produces that multiset. What
-the spread does catch is every systematic misread: read only word 0 (1), read word 0
-eight times (8), stop at seven words (29), read one word twice and skip another (any
-value but 36), or index with a wrong stride (a different subset sum). The load-bearing
-check is not the total alone but ``sorted(per_word) == list(range(1, 9))`` at
-:meth:`_check_efuse` plus the exact ``FUSE_VER=0x00000024`` echo.
-
-An earlier draft used one bit per word (total 8). A reviewer correctly showed that was
-weaker: eight reads of the SAME word also sum to 8, so a floor of 8 catches a wrong
-loop bound but not a wrong index expression. The floor is 36 because eight non-zero
-words with distinct popcounts need at least 36 bits. The boundary itself is
-preserved because the manifest is raised to match.
-
-The accept boundary ALONE cannot catch a truncated decode -- a smaller floor is still
-satisfied by the same manifest, so the run would still boot. What catches it is the
-EXACT console echo: ``FUSE_VER=0x00000024`` is a required marker. Worked examples of
-what a broken decode would print instead: word 0 only -> ``0x00000001``; word 0 read
-eight times -> ``0x00000008``; the first four words -> ``0x0000000a``; the last word
-only -> ``0x00000008``. That marker, not the boot, is where this testcase's
-thermometer coverage lives.
-
-WHAT ELSE THE RUN MUST SHOW, because "it booted" is not a result:
-
-  * ``FUSE_VER=0x00000024`` then ``MFST_VER=0x00000024``, each EXACTLY ONCE and in
-    that order (``manifest_crypto.c``). One slot is attempted, so a second
-    occurrence would mean a failover this testcase forbids;
-  * ``VERSION_ROLLBACK``  absent -- the rejecting arm did not fire;
-  * the rollback check ran BEFORE key selection: ``FUSE_VER`` precedes ``PUBK_SEL=``
-    because ``manifest_crypto_validate`` calls ``check_security_version``
-     before ``validate_signature``. This is the ordering the key
-    testcases of batches R1/R2 rely on to keep their verdicts attributable, and this
-    is the one testcase whose stimulus IS the version field, so it is asserted here
-    rather than assumed. Be honest about its weight: on an ACCEPT path both stages
-    run, so this shows SEQUENCE only. The stronger property -- that a rejected
-    version PREEMPTS key selection entirely -- is already proven by
-    ``sep_firmware_primary_invalid_security_version_test``, which requires the
-    primary's ``PUBK_SEL=`` to come after the BACKUP read;
-  * ``RSA_VERIFY_START`` -> ``SIG_VALID`` -> ``CRYPTO_VALIDATE_OK``, after the
-    version echoes: the manifest really verified, so acceptance is a completed
-    validation and not a skipped one;
-  * the DEVICE side: not one read inside the backup slot's span. A silent failover
-    also reaches ``MANIFEST_OK``.
-
-MARKERS. ``SEP_MSG_MANIFEST_VALIDATED`` is emitted by ``manifest_crypto.c`` and is
-asserted. ``SEP_MSG_INVALID_SECURITY_VERSION`` (``status_values.h``) is defined and
-never emitted, which does not bite here because this testcase runs the ACCEPT case
-and needs no rejection code. The version
-values themselves have no architected code on either ROM, so ``FUSE_VER=`` /
-``MFST_VER=`` are console echoes in both.
-
-WHAT THIS TESTCASE CANNOT PROVE, AND WHERE THAT IS PROVED INSTEAD. An ACCEPT-only
-test cannot exclude a ROM in which the comparison at ``manifest_crypto.c`` has been
-deleted while the two ``simputshex32`` echoes remain: printing both
-operands does not show the ``<`` executed, and the absence of ``VERSION_ROLLBACK``
-plus continuation to ``RSA_VERIFY_START`` is equally consistent with "compared and
-accepted" and with "never compared". The ordering assertion above does not close that
-either -- order is sequence, not comparison. **The comparison's EXISTENCE is proven by
-the two REJECT siblings named earlier**, which is exactly why keeping them matters and
-why removing either would have been a weakening rather than a tidy-up.
-
-BOTH SLOTS ARE RE-SIGNED. ``security_version`` sits inside the TBS
-(``manifest.h``, offset 162), so raising it invalidates the
-manifest hash and the
-shipped dev0 signature. ``env/sep_payload_mutate.reseal`` re-hashes and re-signs with
-the same dev0 key, and ``verify_signing_key`` proves beforehand that the local signer
-reproduces the packer's shipped signature byte for byte -- so the re-seal is sound by
-construction rather than by assertion. The DUT's own OTBN then verifies the result
-(``RSA_VERIFY_OK`` / ``SIG_VALID``), so the signature check stays fully ENABLED; this
-is not a bypass.
-
-Needs ``+sep_crypto_edn_force``: the primary is valid, so a full RSA-3072 modexp runs
-on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut grants
-OTBN's EDN handshakes only; the RSA assertions are untouched, so ``SIG_VALID`` still
-means the signature really verified.
+Fuse word i holds i+1 bits (floor 36), so a misread word changes the exact ``FUSE_VER=`` echo.
+Both slots are re-signed with dev0; needs ``+sep_crypto_edn_force`` for the RSA-3072 modexp.
 """
 
 from __future__ import annotations
@@ -141,24 +25,18 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod_bl1ver36_spread.toml"
 )
 
-# The thermometer floor the preload burns, and the manifest value this testcase
-# writes. Equal on purpose: that equality IS the boundary under test.
-#
-# 36 = 1+2+...+8, because the preload gives word i exactly i+1 set bits so that no
-# other combination of the eight words sums to it. A floor concentrated in one word
-# cannot distinguish the eight words from each other, so the decode coverage is
-# worth more than matching a smaller value.
+# Equal to the fuse floor: that equality is the accept boundary under test.
 _SECURITY_VERSION = 36
-_FUSE_VER_ECHO = f"FUSE_VER=0x{_SECURITY_VERSION:08x}"   # manifest_crypto.c
-_MFST_VER_ECHO = f"MFST_VER=0x{_SECURITY_VERSION:08x}"   # manifest_crypto.c
+_FUSE_VER_ECHO = f"FUSE_VER=0x{_SECURITY_VERSION:08x}"
+_MFST_VER_ECHO = f"MFST_VER=0x{_SECURITY_VERSION:08x}"
 
 _LC_PROD = "LC=PROD"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_PUBK_SEL = "PUBK_SEL="                  # manifest_crypto.c
-_RSA_START = "RSA_VERIFY_START"          # manifest_crypto.c
-_SIG_VALID = "SIG_VALID"                 # manifest_crypto.c
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"        # manifest_crypto.c
+_PUBK_SEL = "PUBK_SEL="
+_RSA_START = "RSA_VERIFY_START"
+_SIG_VALID = "SIG_VALID"
+_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
 
 
 @pyuvm.test()
@@ -170,9 +48,7 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         _LC_PROD, _PRIMARY_SRC, _FUSE_VER_ECHO, _MFST_VER_ECHO,
         _RSA_START, _SIG_VALID, _CRYPTO_OK, "BL1_COPIED", "BL1_JUMP=",
     )
-    # VERSION_ROLLBACK is the load-bearing forbid: it is the arm this boundary must
-    # NOT take. The rest exclude a boot that completed for some other reason -- a
-    # failover, a skipped crypto chain, or a different rejecting arm firing first.
+    # VERSION_ROLLBACK is the arm this boundary must not take; the rest exclude other boot paths.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         "VERSION_ROLLBACK", "SBOOT_OFF", "FUSE: SBOOT_DIS: 1", _BACKUP_SRC,
         "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
@@ -181,7 +57,6 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         "LC_USAGE_CONSTRAINT_FAIL",
     )
 
-    # --- stimulus ----------------------------------------------------------
     def build_efuse_image(self):
         assert _EFUSE_PRELOAD.is_file(), f"eFuse preload missing: {_EFUSE_PRELOAD}"
         image = self.select_efuse_image(default_preload=_EFUSE_PRELOAD)
@@ -196,9 +71,6 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             f"SBOOT_DIS is {sboot_dis}: the whole crypto chain, including the "
             f"rollback check under test, would be skipped"
         )
-        # The floor itself, and the property that makes this testcase's thermometer
-        # coverage real. Both halves matter: the POPCOUNT is what the ROM decodes,
-        # and the SPREAD is what makes a truncated decode observable.
         bl1_ver = image.field_int("BL1_VERSION")
         popcount = bin(bl1_ver).count("1")
         words = [(bl1_ver >> (32 * i)) & 0xFFFF_FFFF for i in range(8)]
@@ -215,12 +87,6 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             f"get_security_version_from_fuse (manifest_crypto.c:73-84) contribute, "
             f"and a floor concentrated in one word cannot show that"
         )
-        # And each word must contribute a DIFFERENT amount. Eight equal words summing
-        # to the right total would be reproduced by reading ONE of them eight times,
-        # so an equal spread catches a wrong loop BOUND but not a wrong INDEX
-        # expression. With distinct per-word popcounts no other multiset of these
-        # eight words reaches the total, and the exact FUSE_VER= marker below
-        # discriminates any omitted, repeated or mis-indexed word.
         per_word = [bin(w).count("1") for w in words]
         assert sorted(per_word) == list(range(1, 9)), (
             f"BL1_VERSION per-word popcounts are {per_word}, expected a permutation "
@@ -246,10 +112,7 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         for slot in ("primary", "backup"):
-            # Anchor before mutating: the shipped slot is fully sealed, its modulus
-            # is the dev0 key the ROM has in slot 0, and the local signer reproduces
-            # the packer's own signature byte for byte. Only then is a re-seal a
-            # sound operation rather than an assumption.
+            # A re-seal is sound only if the local signer reproduces the shipped signature.
             pm.verify_sealed(buf, slot)
             mm.verify_public_key(buf, slot)
             pm.verify_signing_key(buf, slot)
@@ -268,9 +131,6 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
                 f"{_SECURITY_VERSION}"
             )
             pm.reseal(buf, slot)
-            # The re-seal must be complete: a slot still carrying a stale payload
-            # hash, manifest hash or signature would be rejected for THAT, and this
-            # positive testcase would fail for a reason it did not choose.
             pm.verify_sealed(buf, slot)
             self.logger.info("CHK-STIMULUS-%s: %s", slot.upper(), mm.describe(buf, slot))
         self.logger.info(
@@ -285,7 +145,6 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         self.logger.info("CHK-SPI-TXNS:\n%s",
                          ev.summarize(flash.get_transactions(), self._image_len))
 
-    # --- checks ------------------------------------------------------------
     def check_transport(self, console: list[str], flash) -> None:
         def index_of(marker: str) -> int:
             for i, line in enumerate(console):
@@ -301,29 +160,19 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         i_sig = index_of(_SIG_VALID)
         i_ok = index_of(_CRYPTO_OK)
 
-        # CHK-ROLLBACK-BOUNDARY: the version check ran on the primary, read the
-        # thermometer floor this testcase burned, read the manifest value this
-        # testcase wrote, and then let the boot proceed -- in that order. Presence
-        # alone would be satisfied by a run that never compared the two.
         assert 0 <= i_psrc < i_fuse < i_mfst < i_rsa < i_sig < i_ok, (
             f"the rollback check did not run on the primary in the architected "
             f"order: primary@{i_psrc} -> {_FUSE_VER_ECHO}@{i_fuse} -> "
             f"{_MFST_VER_ECHO}@{i_mfst} -> {_RSA_START}@{i_rsa} -> "
             f"{_SIG_VALID}@{i_sig} -> {_CRYPTO_OK}@{i_ok}. Console: {console}"
         )
-        # CHK-ROLLBACK-BEFORE-KEYSEL: check_security_version (manifest_crypto.c)
-        # precedes validate_signature. Every key-selection testcase in
-        # batches R1 and R2 relies on that ordering to keep its own verdict
-        # attributable; this is the testcase whose stimulus is the version field, so
-        # it is the right place to assert the ordering rather than inherit it.
+        # check_security_version must precede validate_signature; key-selection tests rely on it.
         assert 0 <= i_fuse < i_sel, (
             f"{_FUSE_VER_ECHO}@{i_fuse} did not precede {_PUBK_SEL}@{i_sel}: the "
             f"rollback check no longer runs before key selection, which invalidates "
             f"the attribution of every key-selection testcase in this testlist. "
             f"Console: {console}"
         )
-        # Exactly once each. One slot is attempted and there is no retry, so a
-        # second occurrence would mean the backup also reached the version check.
         for marker in (_FUSE_VER_ECHO, _MFST_VER_ECHO, _RSA_START, _SIG_VALID):
             n = sum(1 for line in console if marker in line)
             assert n == 1, (
@@ -338,7 +187,6 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             _RSA_START, i_rsa, _SIG_VALID, i_sig, _CRYPTO_OK, i_ok, _PUBK_SEL, i_sel,
         )
 
-        # --- device evidence -------------------------------------------------
         txns = flash.get_transactions()
         rds = ev.reads(txns)
         assert rds, (
@@ -358,10 +206,7 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             f"device returned {magic!r} at 0x{mm.PRIMARY_MANIFEST_OFFSET:x}, expected "
             f"{mm.MANIFEST_MAGIC!r}"
         )
-        # CHK-NO-FAILOVER: the channel the ROM cannot fake. Both slots carry the same
-        # accepted version here, so a failover would still boot and still print the
-        # same version echoes -- the device record is what pins the result to the
-        # PRIMARY.
+        # Both slots carry the same version, so only the device record rules out a failover.
         backup_hits = ev.slot_read_indices(rds, "backup", self._image_len)
         assert not backup_hits, (
             f"device served {len(backup_hits)} read(s) inside the backup slot span "

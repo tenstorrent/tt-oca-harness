@@ -2,26 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Signed AND encrypted payload: full RSA-3072 chain, then AES-128-CBC decrypt.
 
-This is the positive half of the encrypted-payload feature and the prerequisite
-for the negative decryption testcases (wrong class key / KDF input / IV): until a
-boot is shown to reach ``DECRYPT_OK``, a negative test cannot claim its injected
-fault is what stopped it.
-
-THE KEY HAS TO MATCH ON BOTH SIDES, which is the part that is easy to get wrong.
-The ROM does not take the AES key from the manifest. It reads a 32-byte class key
-from the ``CLASS_KEY`` fuse (``manifest_crypto.c``) and runs
-``kbkdf_hmac_sha256(class_key, info, salt)`` over the manifest's
-``encryption_kdf_input`` to derive it. The packer performs the identical
-derivation from its ``encryption_key_input`` and checks the result against
-``encryption_derived_key`` (``pack_images.py``). So the fuse must carry
-exactly the config's ``encryption_key_input``;
-``efuse_configurations/sep_efuse_class_key.toml`` does, and
-:meth:`build_efuse_image` asserts it rather than trusting the file.
-
-ENTROPY. AES is EDN client 0 and OTBN is 2/3 (``sep_crypto.sv``), so the
-testlist's ``+sep_crypto_edn_force`` had to be extended to cover client 0 --
-without it the AES masking PRNG never leaves its reseed state and the run hangs
-with ``DECRYPT_START`` and no verdict.
+The CLASS_KEY fuse must hold the packer's encryption_key_input. Needs
++sep_crypto_edn_force for EDN client 0 (AES), or the run hangs after DECRYPT_START.
 """
 
 from __future__ import annotations
@@ -42,13 +24,7 @@ _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_class_key.toml"
 )
 
-# The class key the packer derived from, verbatim from
-# configs/encrypted_boot_test.yaml's encryption_key_input. Kept as the hex STRING
-# and converted here rather than written as an integer literal: get_enc_key()
-# assembles each 32-bit fuse word little-endian (manifest_crypto.c), so
-# the integer form is byte-reversed relative to how the key is written in the
-# config, and hand-transcribing it is exactly the kind of silent mismatch this
-# assertion exists to catch.
+# Fuse words are assembled little-endian, so keep the key in the config's byte order.
 _CLASS_KEY_HEX = "9BA9BD532A50BD4DA008B20E1D1FE05400000000000000000000000000000000"
 _EXPECTED_CLASS_KEY = int.from_bytes(bytes.fromhex(_CLASS_KEY_HEX), "little")
 
@@ -68,26 +44,18 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
         _RSA_START, _SIG_VALID, _PLD_HASH_OK, _DECRYPT_START, _DECRYPT_OK, _CRYPTO_OK,
     )
-    # Every decryption failure arm, plus the two verdicts that would mean the
-    # feature silently did not engage. The HMAC/SHA rejection markers matter most:
-    # an operation the IP refuses to start leaves STATUS.hmac_idle asserted, which
-    # a completion poll reads as success, so without them a garbage digest -- and
-    # therefore a garbage AES key -- reaches decryption looking like a clean run.
+    # A refused HMAC/SHA op leaves hmac_idle set, which a completion poll reads as success.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         "KDF_FAIL", "KDF_HMAC_FAIL", "HMAC_ERR_CODE=", "HMAC_START_REJECTED",
         "HMAC_OP_REJECTED", "SHA_START_REJECTED", "SHA_OP_REJECTED",
         "AES_INIT_FAIL", "AES_INIT_BUSY", "AES_DEC_FAIL", "SBOOT_OFF",
         "PLD_HASH_MISMATCH", "MANIFEST_ERR=",
-        # Every manifest/TOC/image rejection arm. This image is valid, so any of
-        # these firing means a new check rejects something it should accept --
-        # which a boot that merely ends in MANIFEST_ERR would not tell apart.
         "PAYLOAD_OFF_RANGE", "PAYLOAD_LEN_RANGE", "PAYLOAD_OFF_ALIGN",
         "PAYLOAD_HASHED_LEN_BAD", "ENC_HASHED_LEN_PARTIAL", "ENC_WITHOUT_SBOOT",
         "TOC_REGION_OOB", "TOC_PLEN_MISMATCH", "IMAGE_ORDER_BAD",
         "IMAGE_LEN_ZERO", "IMAGE_LEN_ALIGN", "IMAGE_HASH_MISMATCH",
         "IMAGE_HASH_TIMEOUT", "NO_BL1_IMAGE", "BL1_ADDR_RANGE",
         "BL1_ENTRY_RANGE", "ROM_KEY_EMPTY", "FLASH_REINIT_FAIL",
-        # AES alert bits, the same silent-failure shape as the HMAC ones above.
         "AES_CTRL_REJECTED", "AES_ALERT_AFTER_DEC", "AES_ALERT_STATUS=",
     )
 
@@ -106,8 +74,6 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
         return image
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
-        # Prove the image really is ciphertext, so a silently-unencrypted build
-        # cannot make this test pass without exercising decryption at all.
         toc = bytes(buf[0x1000 + 0x1000:0x1000 + 0x1000 + 4])
         assert toc != b"PTOC", (
             "primary payload starts with the plaintext TOC magic: the image is "
@@ -125,21 +91,6 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
         return buf
 
     def log_transport(self, flash) -> None:
-        """Read back what decryption left in SRAM, and say which blocks are wrong.
-
-        Two things are established here, in order, because the second is worthless
-        without the first:
-
-        1. THE PROBE IS ADDRESSING WHAT IT CLAIMS TO. SRAM word 0 is the start of
-           the loaded manifest, so its low half must read as the ``TBL1`` magic. If
-           it does not, this instrument is reading the wrong memory and nothing
-           below may be used to argue about the ROM.
-        2. WHICH AES BLOCKS ARE CORRUPT. A CBC run given a bad IV corrupts block 0
-           only -- every later block recovers, because CBC chains on the previous
-           CIPHERTEXT, which is unaffected. A bad KEY corrupts every block. So the
-           per-block verdict separates "the IV never reached the engine" from "the
-           key is wrong", which a single block cannot.
-        """
         import cocotb
 
         word0 = int(self.rd(cocotb.top.sram_word0_probe_o))
@@ -153,9 +104,7 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
             return
 
         got = int(self.rd(cocotb.top.sram_payload_probe_o)).to_bytes(48, "little")
-        # Ground truth: the unencrypted sibling is built from the same payload
-        # images, so its bytes at the same offset are exactly what a correct
-        # decryption must reproduce.
+        # secure_boot.bin carries the same payload in plaintext, so it is the reference.
         with open(_PLAINTEXT_IMAGE, "rb") as fh:
             ref = fh.read()[_BACKUP_OFF + _PAYLOAD_OFF:][:48]
 
@@ -192,8 +141,7 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
                     return i
             return -1
 
-        # Ordering is the substance: the hash must be verified over ciphertext,
-        # i.e. BEFORE decryption, and the TOC read only after it.
+        # The payload hash covers ciphertext, so it precedes decryption; the TOC comes after.
         i_hash = index_of(_PLD_HASH_OK)
         i_dec = index_of(_DECRYPT_START)
         i_ok = index_of(_DECRYPT_OK)

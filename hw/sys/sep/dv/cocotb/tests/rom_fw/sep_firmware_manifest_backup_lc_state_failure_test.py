@@ -2,29 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup does not permit the live lifecycle; the ROM halts.
 
-The mirror of ``sep_firmware_manifest_primary_lc_state_failure_test``. The primary
-is refused by the failover trigger, the backup's
-``usage_constraints.life_cycle_states`` excludes the live lifecycle, and with both
-slots refused ``rom_manifest_boot`` runs out of retries and ``rom_err_fail`` halts
-the ROM (``bootrom/prod/src/manifest_load.c``, ``bootrom/prod/src/rom_main.c``).
-
-THE FAILOVER TRIGGER. Unlike the two device-id backup
-scenarios, this one already reaches the backup by corrupting the primary's
-``manifest_identifier`` (its ``BACKUP_INVALID_LC_STATE`` config sets
-``primary.manifest.manifest_identifier`` to 99), which is exactly what the shared
-``corrupt_primary`` does here. So no adaptation of the trigger is needed: this
-member keeps both halves of the stimulus.
-
-The bitmap adaptation is the one described in the primary-side sibling: the
-reference's ``life_cycle_states = 6`` excludes TEST_DEV on a TEST_DEV part, and
-this environment runs PROD, so the same shape applied to PROD gives ``0x5``.
-
-**HOW THIS IS TOLD APART FROM THE OTHER TWO BACKUP-SIDE ARMS.** This member
-requires ``LC_USAGE_CONSTRAINT_FAIL`` with ``LC_ALLOWED=0x00000005`` and
-``LC_BIT=0x00000001``, and forbids ``CHIPLET_ID_MISMATCH`` and
-``PACKAGE_ID_MISMATCH``; each sibling forbids this one's token. ``LC_BIT=`` is
-also the strongest single line available on any of the three: it is the ROM's own
-decode of the OTP lifecycle.
+A corrupt manifest_identifier refuses the primary first, and the backup's
+life_cycle_states excludes PROD, so both slots fail.
 """
 
 from __future__ import annotations

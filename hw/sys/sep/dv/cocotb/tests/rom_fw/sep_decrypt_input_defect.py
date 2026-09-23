@@ -1,53 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""One decryption INPUT is wrong; the payload decrypts to garbage and is refused.
+"""Decryption-input defect base: a wrong CLASS_KEY, IV or KDF input decrypts to garbage.
 
-Three rows share this base, one per input the ROM's payload key and cipher depend
-on (``manifest_crypto.c``, ``decrypt_payload``):
-
-  * the ``CLASS_KEY`` fuse -- the KBKDF root, read from OTP;
-  * the manifest's ``encryption_kdf_input`` -- the info/salt pair the KBKDF runs
-    over;
-  * the manifest's ``encryption_iv`` -- the CBC initialisation vector.
-
-WHY NONE OF THE THREE PRODUCES A DECRYPTION ERROR. AES-CBC decryption is a
-permutation and the ROM's ``aes128cbc_decrypt`` reports a failure only on a bad
-length or a hardware alert (``aes_driver.c``). A wrong key or a wrong IV therefore
-decrypts "successfully" to garbage, ``DECRYPT_OK`` is printed, and the boot fails
-one arm later where ``validate_manifest_payload`` reads the recovered TOC header
-and finds it is not ``PTOC`` (``manifest_load.c``,
-``MANIFEST_ERR_BAD_TOC_ID``). Every row is graded on that sequence, because the
-error code alone is also what a run that stopped BEFORE decryption would reach.
-
-THE FALSE PASS EACH ROW IS BUILT TO AVOID, and the two checks that close it:
-
-  * a run in which decryption never happened. ``CHK-DECRYPT-ARM`` requires
-    ``PLD_HASH_OK`` then ``DECRYPT_START`` then ``DECRYPT_OK`` inside the
-    primary's own slot attempt, with the rejection strictly after them;
-  * a run in which something OTHER than the named input was wrong. The stimulus
-    oracle below decrypts the shipped ciphertext twice offline: once with the
-    golden key and IV, which must yield ``PTOC``, and once with the inputs THIS
-    row hands the ROM, which must not. The first says the ciphertext and every
-    other encryption field are the golden image's; the second says the named
-    input alone is enough to break the TOC identifier.
-
-THE BACKUP IS THE IN-RUN CONTROL. A primary refused on its TOC identifier is a
-warning, not a terminal failure: the slot loop takes the backup and the boot
-completes (``sep_primary_fail_backup_boot_base``). For the IV and KDF-input rows
-the backup is encrypted and golden, so one run shows the SAME fuse, the SAME AES
-engine and the SAME ROM decrypting correctly -- the difference between the two
-slots is one manifest field and nothing else.
-
-THE CLASS-KEY ROW CANNOT HAVE THAT CONTROL, because the fuse is not per-slot: a
-wrong ``CLASS_KEY`` breaks every encrypted slot at once. Its image is therefore
-packed with an UNENCRYPTED backup (``invalid_class_key.bin``), so the fuse refuses
-the primary only and the boot still has a slot to recover from. That row requires
-the decryption markers ONCE rather than twice, which is also what separates it
-from the other two.
-
-Each row keeps a healthy recovery slot and ends in a completed boot, so none of
-them speaks to whether an undecryptable payload must END the boot -- the
-requirement ``sep_decryption_failure_terminal_test`` owns.
+AES-CBC reports no error for a wrong key or IV, so the primary fails its TOC identifier
+and the backup boots. Members set ``defect`` to one key of ``DEFECTS``.
 """
 
 from __future__ import annotations
@@ -68,38 +24,26 @@ _BUILD_DIR = _SEP_ROOT / "bootrom" / "prod" / "build"
 _EFUSE_DIR = (Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
               / "efuse_configurations")
 
-# manifest.h -- the two encryption inputs the manifest carries. Each field is 32
-# bytes wide; the IV's upper 16 are zero padding the packer appends and the ROM
-# never reads, so only the low 16 are the IV.
+# Manifest field offsets; the IV field is 32 bytes but the ROM reads only the low 16.
 OFF_ENCRYPTION_IV = 96
 OFF_ENCRYPTION_KDF_INPUT = 128
 IV_BYTES = 16
 KDF_INPUT_BYTES = 32
 
-# configs/encrypted_boot_test.yaml, which every one of the three images is derived
-# from. GOLDEN_CLASS_KEY is its encryption_key_input, i.e. what the CLASS_KEY fuse
-# must hold for the ROM to derive the key the payload was encrypted with.
+# Golden inputs the images were packed with; the CLASS_KEY fuse must hold GOLDEN_CLASS_KEY.
 GOLDEN_KDF_INPUT = bytes.fromhex(
     "ffeeddccbbaa99887766554433221100c0c1c2c3c4c5c6c7c8c9cacbcccdcecf")
 GOLDEN_CLASS_KEY = bytes.fromhex(
     "9BA9BD532A50BD4DA008B20E1D1FE05400000000000000000000000000000000")
-# sep_efuse_lc_prod_bad_class_key.toml -- what an unprogrammed fuse reads.
+# What an unprogrammed CLASS_KEY fuse reads.
 BAD_CLASS_KEY = bytes(32)
 
-# manifest_crypto.c: FUSE_KEY_LENGTH and AES_KEY_SIZE_BYTES.
 CLASS_KEY_BYTES = 32
 AES_KEY_BYTES = 16
 
 
 def kbkdf_hmac_sha256(class_key: bytes, kdf_input: bytes,
                       out_bytes: int = AES_KEY_BYTES) -> bytes:
-    """The ROM's payload-key derivation, so a test can predict the key it will use.
-
-    NIST SP 800-108r1 counter mode with one round, HMAC-SHA256 as the PRF, over
-    ``counter(4,BE) || info(16) || 0x00 || salt(16) || key_bits(4,BE)``. The ROM
-    splits the manifest's 32-byte ``encryption_kdf_input`` into info and salt
-    (``manifest_crypto.c``); ``pack_images.py`` splits it the same way.
-    """
     if len(kdf_input) != KDF_INPUT_BYTES:
         raise ValueError(f"KDF input must be {KDF_INPUT_BYTES} bytes, got {len(kdf_input)}")
     half = KDF_INPUT_BYTES // 2
@@ -109,13 +53,7 @@ def kbkdf_hmac_sha256(class_key: bytes, kdf_input: bytes,
 
 
 def _self_test() -> None:
-    """Anchor the derivation on the packer's published key before trusting it.
-
-    Every row argues "the ROM derives a DIFFERENT key from this input". That
-    conclusion is worthless if this function does not compute what the ROM
-    computes, and a silently wrong KDF here would make all three rows look correct
-    for the wrong reason.
-    """
+    # A wrong KDF model would make every row pass for the wrong reason.
     got = kbkdf_hmac_sha256(GOLDEN_CLASS_KEY, GOLDEN_KDF_INPUT)
     if got != pm.ENC_DERIVED_KEY:
         raise AssertionError(
@@ -128,9 +66,6 @@ def _self_test() -> None:
 _self_test()
 
 
-# Which image, which fuse, and which input each row corrupts. ``golden`` names the
-# two manifest fields that must still be the golden image's, which is the other
-# half of "this input ALONE is wrong".
 DEFECTS = {
     "class_key": {
         "image": "invalid_class_key.bin",
@@ -155,17 +90,10 @@ DEFECTS = {
     },
 }
 
-# The boot the backup completes, so a row cannot pass on an early exit that
-# happened not to fail.
+# The backup's completed boot, so a row cannot pass on an early exit.
 _BOOT_COMPLETED = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
 
-# Verdicts that would mean the run stopped somewhere other than the TOC
-# identifier. DECRYPT_TERMINAL= and the AES/KDF failure tokens would mean the
-# injected input stopped the ENGINE, which is a different requirement and the one
-# sep_decryption_failure_terminal_test is about. The MANIFEST_ERR= codes are the
-# ones the neighbouring arms of this slot attempt can reach, not every code in
-# manifest.h; what pins the verdict to the TOC identifier is the positional
-# count == 1 assertion on it plus the forbidden CRYPTO_FAIL=.
+# Verdicts from other arms; the primary must fail only on its TOC identifier.
 _OTHER_ERRORS = (td.ERR_BAD_MAGIC, td.ERR_BAD_VERSION, td.ERR_BAD_LENGTH,
                  td.ERR_BAD_TOC_VERSION, td.ERR_PAYLOAD_TOO_LARGE,
                  td.ERR_NO_BL1_IMAGE, td.ERR_TOC_COUNT,
@@ -180,19 +108,14 @@ _FORBIDDEN = (("DECRYPT_TERMINAL=", "CRYPTO_FAIL=", "PLD_HASH_TIMEOUT")
 
 
 class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
-    """Hand the ROM one wrong decryption input; require garbage, then a failover."""
 
-    # --- member contract ---------------------------------------------------
-    # One key of DEFECTS.
     defect: str = ""
 
-    # manifest.h -- the identifier arm, reached only once a plaintext exists.
+    # The TOC identifier check runs only after decryption produces a plaintext.
     primary_expected_error = pm.MANIFEST_ERR_BAD_TOC_ID
-    # The arm prints no token of its own, so the error code carries the whole
-    # ROM-side statement about which check refused the slot.
+    # The TOC identifier check prints no marker of its own.
     primary_defect_marker = ""
-    # The primary's signature verifies and its payload decrypts; the TOC
-    # identifier is checked downstream of both.
+    # The signature verifies before the TOC identifier is checked.
     primary_expected_rsa_starts = 1
     primary_expected_sig_valids = 1
 
@@ -205,8 +128,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
         spec = DEFECTS[cls.defect]
         cls.flash_image = str(_BUILD_DIR / spec["image"])
         cls.efuse_preload = _EFUSE_DIR / spec["efuse"]
-        # An encrypted backup's TOC is ciphertext offline, so verify_sealed's TOC
-        # arm has nothing to parse; the manifest-side checks still run.
+        # An encrypted backup's TOC is ciphertext offline, so skip only the TOC check.
         cls.backup_sealed_check_toc = not spec["backup_encrypted"]
         cls.extra_required = _BOOT_COMPLETED + (td.DECRYPT_START, td.DECRYPT_OK)
         cls.extra_forbidden = _FORBIDDEN
@@ -217,18 +139,11 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
 
     @property
     def _decrypt_count(self) -> int:
-        """Slots that decrypt in this run: the primary, plus the backup when encrypted."""
         return 2 if self._spec["backup_encrypted"] else 1
 
-    # --- stimulus ----------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
-        """Nothing to plant here.
-
-        The defect is packed into the image by the build (``Makefile``,
-        ``decrypt_negative_images``) or burned into the OTP preload, so the primary
-        is a genuine packer output with a genuine signature rather than a mutated
-        one. :meth:`mutate_flash_image` proves it carries the defect this row names.
-        """
+        # The defect comes from the build or the OTP preload, not from a mutation.
+        pass
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         base = mm.slot_base("primary")
@@ -237,9 +152,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
         self._packed_kdf = bytes(buf[base + OFF_ENCRYPTION_KDF_INPUT:
                                      base + OFF_ENCRYPTION_KDF_INPUT + KDF_INPUT_BYTES])
 
-        # CHK-STIMULUS-FLAGS: the image this row loaded is the one it is about. The
-        # primary must be encrypted or decrypt_payload() is never called, and the
-        # backup's state decides how many times decryption must appear.
+        # The primary must be encrypted; the backup's encryption sets the decrypt count.
         assert pm.is_encrypted(buf, "primary"), (
             f"primary payload has encrypted_payload clear in {self.flash_image}: "
             f"the ROM would not call decrypt_payload(), so nothing about decryption "
@@ -253,8 +166,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
             f"row is about"
         )
 
-        # CHK-STIMULUS-FIELD: exactly one of the three inputs differs from the
-        # golden image's, and it is the one this row names.
+        # Exactly one input differs from the golden image: the one this row names.
         iv_golden = self._packed_iv == pm.ENC_IV
         kdf_golden = self._packed_kdf == GOLDEN_KDF_INPUT
         expect_iv_golden = self.defect != "iv"
@@ -269,10 +181,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
             f"{'golden' if expect_kdf_golden else 'different'}"
         )
 
-        # CHK-STIMULUS-CIPHERTEXT: the shipped payload is the GOLDEN image's
-        # ciphertext -- decrypting it with the golden key and IV yields the TOC and
-        # re-encrypts back to the shipped bytes. Without this, "the ROM recovered
-        # garbage" could be a corrupted payload rather than a wrong input.
+        # Golden inputs must recover the TOC, so garbage cannot come from a bad payload.
         p = pm.payload_base(buf, "primary")
         ciphertext = pm.read_bytes(buf, p, pm.payload_hashed_length(buf, "primary"))
         golden_plain = aes.verify_roundtrip(pm.ENC_DERIVED_KEY, pm.ENC_IV, ciphertext)
@@ -282,9 +191,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
             f"wrong, so a rejected TOC would not be attributable to this row's input"
         )
 
-        # CHK-STIMULUS-DERIVED: the inputs this row actually hands the ROM produce
-        # a plaintext whose TOC identifier is NOT PTOC. This is the whole claim,
-        # established on the artefact before the simulation is trusted with it.
+        # The inputs this row hands the ROM must not recover the TOC identifier.
         rom_key = kbkdf_hmac_sha256(self._spec["class_key"], self._packed_kdf)
         rom_plain = aes.decrypt_raw(rom_key, self._packed_iv, ciphertext[:aes.BLOCK_BYTES])
         assert rom_plain[:len(pm.TOC_MAGIC)] != pm.TOC_MAGIC, (
@@ -293,9 +200,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
             f"and this row would pass on a boot that worked"
         )
 
-        # The primary is not mutated here, so its seal is the packer's. Checking it
-        # anyway is what says the run reaches the TOC arm at all: a stale hash or
-        # signature would be refused upstream of decryption.
+        # A stale seal would refuse the primary before decryption.
         pm.verify_sealed(buf, "primary", check_toc=False)
         mm.verify_public_key(buf, "primary")
 
@@ -321,7 +226,6 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
         return super().mutate_flash_image(buf)
 
     def check_efuse(self, image) -> None:
-        """The OTP half of "this input alone is wrong"."""
         fd.assert_clean_key_fuses(image)
         want = int.from_bytes(self._spec["class_key"], "little")
         got = image.field_int("CLASS_KEY")
@@ -347,7 +251,6 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
             "equal=%s", got, golden, got == golden,
         )
 
-    # --- checks ------------------------------------------------------------
     def check_transport(self, console: list[str], flash) -> None:
         super().check_transport(console, flash)
 
@@ -357,9 +260,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
         i_err = fd.assert_slot_attributed(console, slot_err,
                                           after=i_psrc, before=i_bsrc)
 
-        # CHK-DECRYPT-ARM: the primary authenticated its ciphertext, drove the AES
-        # engine to completion, and only THEN was refused. Without the ordering the
-        # error code is equally satisfied by a run that never decrypted anything.
+        # CHK-DECRYPT-ARM: without the order, a run that never decrypted also passes.
         want = self._decrypt_count
         for marker in (td.DECRYPT_START, td.DECRYPT_OK):
             n = fd.count(console, marker)
@@ -385,10 +286,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
             slot_err, i_err, want,
         )
 
-        # CHK-BACKUP-DECRYPTED: the in-run control. The recovering slot is
-        # encrypted with the same fuse and the same engine and differs from the
-        # primary in one manifest field, so its successful decryption is positive
-        # evidence that the field is what refused the primary.
+        # CHK-BACKUP-DECRYPTED: same fuse and engine, one field different; the control.
         if self._spec["backup_encrypted"]:
             i_bstart = fd.first_index(console, td.DECRYPT_START, after=i_bsrc)
             i_bok = fd.first_index(console, td.DECRYPT_OK, after=i_bsrc)
@@ -405,9 +303,7 @@ class sep_decrypt_input_defect_base(sep_primary_fail_backup_boot_base):
                 i_bsrc, td.DECRYPT_START, i_bstart, td.DECRYPT_OK, i_bok, i_mok,
             )
 
-        # CHK-STIMULUS-SERVED: the device really returned this row's encryption
-        # fields. The console cannot separate the three rows -- they share one error
-        # code -- and this can.
+        # CHK-STIMULUS-SERVED: the console cannot tell the rows apart; the served fields can.
         fd.assert_served_field(self.logger, flash, "primary", OFF_ENCRYPTION_IV,
                                self._packed_iv, "the primary manifest encryption_iv")
         fd.assert_served_field(self.logger, flash, "primary",

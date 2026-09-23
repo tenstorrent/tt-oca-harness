@@ -2,16 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup asks for EXT SRAM staging after the primary is refused.
 
-On the failover path. The primary is rejected on its identifier, which
-``validate_manifest_header`` checks well upstream of the staging step, so the primary never
-stages anything. The backup carries ``use_ext_sram=1``, so the single staging
-event in the run is the backup's and it must land in SEP EXT SRAM.
-
-That ordering is what makes the assertion clean: ``USING_SEP_SRAM`` appearing
-exactly once cannot be the primary's, because a slot refused at its identifier
-has not reached the payload transfer. The base class independently requires the
-primary's ``MANIFEST_ERR=`` and the backup's ``MANIFEST_SRC=``, so the failover
-itself is not assumed.
+The primary is refused on its identifier before staging, so the single
+USING_SEP_SRAM event must be the backup's.
 """
 
 from __future__ import annotations
@@ -29,7 +21,6 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h: validate_manifest_header refuses a bad identifier with this.
 _MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 
 _REQUIRED, _FORBIDDEN = ues.sep_markers()

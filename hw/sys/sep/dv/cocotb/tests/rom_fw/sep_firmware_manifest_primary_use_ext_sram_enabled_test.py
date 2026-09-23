@@ -2,20 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary asks for EXT SRAM staging; the ROM stages there and boots.
 
-The positive half of the requirement. ``flag_args`` bit 29 is set, so
-``manifest_load.c`` must stage the payload at ``manifest_base + payload_offset``
-inside SEP EXT SRAM and must not enter the SMC arm at all.
-
-The stimulus needs no mutation: the shipped manifests declare
-``use_ext_sram: 1``. That makes the run's console indistinguishable from an
-ordinary boot unless the destination itself is asserted, which is what
-``sep_use_ext_sram_base`` does -- ``USING_SEP_SRAM`` exactly once,
-``USING_SMC_SRAM`` never, and ``PAYLOAD_DST=`` at the EXT SRAM address. The
-stimulus is asserted too, so a config change that flipped the bit would fail
-here rather than silently turn this into a copy of the disabled testcase.
-
-No failover: the primary is valid, so a backup read means the primary was
-refused for a reason this testcase does not model.
+The shipped manifests already set use_ext_sram, so the test asserts the bit and the
+SEP EXT SRAM destination instead of mutating the image.
 """
 
 from __future__ import annotations
