@@ -8152,7 +8152,8 @@ Drive `smc_i2c_controller_sda_interference_test_seq`. Each checker below is a na
 * Both full flags follow their conditions rather than latching, so each is cleared only after its FIFO has drained; clearing while the condition holds leaves the flag set, which an earlier version of this leaf failed on.
 * The overflowing `AVS_CMD` write is refused on the bus as well as dropped, so the access itself is an observable of the full condition.
 * FIFO depths come from the generated register header's reset values for the vacant-slot fields, not from the design.
-* `READBACK_OVERFLOW_INT` is not raised. `architecture.adoc` lists it under Error Handling as "a response received when full is dropped", but the same document states that "while the readback FIFO is full the master launches no further commands, so a software reader that stops draining `AVS_READBACK` stalls the bus rather than losing responses". With no further command launched there is no response to drop, so the condition cannot arise from the bus side.
+* `READBACK_OVERFLOW_INT` is not raised here. `architecture.adoc` lists it under Error Handling as "a response received when full is dropped", while also stating that "while the readback FIFO is full the master launches no further commands". The two statements are hard to reconcile from the documentation alone, and the full flag crosses a clock domain, so a race that drops a response in flight is not ruled out. The source is left to a leaf that can set that race up deliberately.
+* The interrupt output is read as a DUT-produced observable. At reset every source is masked, so a raised source reaches nothing; the leaf opens the mask for the eight FIFO and protocol sources and requires the output to follow them. `AVS_SLAVE_ISSUED_INTERRUPT` stays masked: the slave-interrupt detector re-arms it from the idle level of the AVS serial data line, so it returns immediately after each clear and would hold the output high regardless of the sources under test. The entry state is established by clearing every source and reading the output low, not assumed.
 
 *Test Procedure*:
 
@@ -8169,9 +8170,10 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |`CHK-AVS-READBACK-HAS-DATA-INT` |Responses waiting in the readback FIFO raised `READBACK_HAS_DATA_INT`; once it was emptied, `AVS_INTERRUPT_CLEAR` removed the flag
 |`CHK-AVS-READBACK-UNDERFLOW-INT` |Reading `AVS_READBACK` on an empty FIFO raised `READBACK_UNDERFLOW_INT`, which `AVS_INTERRUPT_CLEAR` removed
 |`CHK-AVS-INTERRUPT-CLEAR-SOURCES` |All five sources above were each raised, observed in `AVS_INTERRUPT`, cleared through the write-only `AVS_INTERRUPT_CLEAR` and observed gone
+|`CHK-AVS-IRQ-UNMASKED` |With the FIFO sources unmasked the block's interrupt output was low at entry, rose as each source was raised and returned low once every one had been cleared
 |===
 
-*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all seven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
