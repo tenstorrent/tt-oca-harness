@@ -29,10 +29,11 @@ Three more facts belong to one block each rather than to a family:
   the SMC integration, so the explicit-error-on-unmapped-access term it gates
   never evaluates true.
 
-One fact is a build option's: the DFD top instantiates its trace wrapper with
-`NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace half
-has no source behind it. The P1 NTRACE-OFF class names the conditions over that
-half by their `trntr` signal prefix.
+Two facts are the integration's: the DFD top instantiates its trace wrapper
+with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace
+half has no source behind it (P1 NTRACE-OFF, named by the `trntr` signal
+prefix); and both SMC fabrics tie the AXI filter's `filter_skip_i` to zero, so
+the skip arm of its filter decision never runs (P2 SKIP-TIED-OFF).
 
 A third fact is not a register block's: a CRC or parity network is an XOR
 reduction, and condition coverage enumerates 2^n input combinations of it.
@@ -205,10 +206,18 @@ P1 = (
     "conditions over its trntr signals have no stimulus that can reach them."
 )
 
+P2 = (
+    "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI "
+    "filter with filter_skip_i tied to zero, so the skip arm of the filter decision never "
+    "runs and no access can produce a condition over it."
+)
+
 # module -> [(class, expression pattern)] for conditions a disabled build option
-# leaves without a source. Only uncovered rows are taken.
+# or a tied-off integration input leaves without a source. Only uncovered rows
+# are taken.
 FEATURE_FACTS: "dict[str, list[tuple[str, object]]]" = {
     "trace_sink": [(P1, re.compile(r"\btrntr"))],
+    "axi_filter_wrap": [(P2, re.compile(r"filter_skip_i"))],
 }
 
 # module -> [(class, expression pattern, term-vector pattern or None)]. These
@@ -575,7 +584,7 @@ def render_feature(
         if not block:
             continue
         out += ["", f"CHECKSUM: {section.checksum}"]
-        for reason in (P1,):
+        for reason in (P1, P2):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

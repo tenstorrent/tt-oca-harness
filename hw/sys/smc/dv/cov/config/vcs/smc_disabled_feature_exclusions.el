@@ -11,6 +11,12 @@
 // are listed; the ANNOTATION before each block states the fact.
 //==================================================
 
+CHECKSUM: "4170061027 684303742"
+ANNOTATION: "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI filter with filter_skip_i tied to zero, so the skip arm of the filter decision never runs and no access can produce a condition over it."
+MODULE: axi_filter_wrap
+Condition 33 "3026107144" "(filter_skip_i ? 1'b0 : (no_write_filter_matches ? BlockByDefault : ((!allow_write[write_filter_hit_idx])))) 1 -1" (2 "1")
+Condition 35 "1476893936" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? BlockByDefault : ((!allow_read[read_filter_hit_idx])))) 1 -1" (2 "1")
+
 CHECKSUM: "3354362860 3417673543"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), so the trace sink's N-trace half has no source behind it; the conditions over its trntr signals have no stimulus that can reach them."
 MODULE: trace_sink
@@ -62,7 +68,6 @@ Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_AN
 Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trntrStoponWrap_ANY)) & Trramwplow.Trramwrap) 1 -1" (4 "111")
 Condition 167 "1342976092" "(trntrRamMode_ANY ? InsnTraceWrEnPerCore_TS0 : (InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY)))) 1 -1" (2 "1")
 Condition 209 "1914242843" "(trdstRamWrEn_TS0_stg | trntrRamWrEn_TS0_stg) 1 -1" (2 "01")
-Condition 209 "1914242843" "(trdstRamWrEn_TS0_stg | trntrRamWrEn_TS0_stg) 1 -1" (3 "10")
 Condition 216 "3182033250" "(TraceMemRdEn_ANY ? TraceMemRdAddr_TS1 : (trRamDataRdEn_ANY ? trntrRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH] : trdstRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH])) 1 -1" (2 "1")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (1 "01")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (2 "10")

@@ -108,7 +108,6 @@ ANNOTATION: "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we ar
 ANNOTATION: "SMC-REGBLOCK-A5-INPUTUNCONNECTED: the SMC integration leaves this block's devmode_i unconnected, so the explicit-error-on-unmapped-access term it gates never evaluates true."
 MODULE: idma_reg64_2d_reg_top
 Condition 127 "583269373" "((devmode_i & addrmiss) | wr_err) 1 -1" (3 "10")
-Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 139 "4149940944" "(addr_hit[2] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 140 "2155151428" "(addr_hit[3] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 141 "3745726092" "(addr_hit[4] & reg_re & ((!reg_error))) 1 -1" (3 "110")

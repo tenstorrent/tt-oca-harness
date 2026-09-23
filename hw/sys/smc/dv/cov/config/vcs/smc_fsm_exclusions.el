@@ -14,7 +14,7 @@
 // and the ANNOTATION before each block state the facts.
 //==================================================
 
-CHECKSUM: "2842179274 2272768170"
+CHECKSUM: "3564686069 2272768170"
 ANNOTATION: "SMC-FSM-F2-DEFAULT: next_state = AVS_IDLE is the always_comb default of the protocol FSM, which the extractor lists as a transition from every state; every case arm assigns next_state, so no state reaches AVS_IDLE through the default."
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: avsbus_controller
@@ -58,7 +58,7 @@ Transition EFUSE_MMR_REG_MAP->ERR_DECODE "2->3"
 Transition ERR_DECODE->EFUSE_MMR_REG_MAP "3->2"
 Transition SHADOW_REG_MAP->EFUSE_MMR_REG_MAP "0->2"
 
-CHECKSUM: "2667282759 1499231322"
+CHECKSUM: "3035079037 1499231322"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: efuse_shadow_regs
 Fsm efuse_sense_state_q "1499231322"
@@ -76,7 +76,7 @@ MODULE: smc_cool_reset_wrap
 Fsm flr_counter_state "909361475"
 Transition COUNT_DOWN->IDLE "1->0"
 
-CHECKSUM: "3252625326 330493458"
+CHECKSUM: "3013731324 330493458"
 ANNOTATION: "SMC-FSM-F1-LOOPVAR: block_index is the loop variable of the message decoder, a state-shaped register the extractor reports as an FSM; its settled value is fixed by NUM_BLOCKS_PER_PACKET and no ATB stimulus moves it."
 MODULE: telemetry_receiver
 Fsm block_index "330493458"
@@ -104,7 +104,7 @@ Transition RESP_HANDSHAKE->RESET_VALUE "4->0"
 Transition W_HANDSHAKE->RESET_VALUE "3->0"
 Transition W_HANDSHAKE->RESP_HANDSHAKE "3->4"
 
-CHECKSUM: "3391558527 4062283189"
+CHECKSUM: "3138320682 4062283189"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: zeroer
 Fsm cur_state "4062283189"

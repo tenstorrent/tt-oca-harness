@@ -127,6 +127,7 @@ state register's enable-edge load cannot reach:
 | `smc_fsm_exclusions.el` | F5 RESET-EDGE | a state register's reset assignment is expanded into a transition from every state; where no case arm assigns the reset state, the edge exists only if the block's reset is asserted while the FSM occupies that one state, and the package grades reset behaviour through its reset leaves |
 | `smc_fsm_exclusions.el` | F6 ENABLE-EDGE | the bus monitor loads StBusBusyHigh only on the monitor enable's rising edge in multi-controller mode, and its disabled branch parks the register at StBusFree, so an edge into it from any other state cannot occur |
 | `smc_disabled_feature_exclusions.el` | P1 NTRACE-OFF | the DFD top instantiates the trace wrapper with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace half has no source; only its uncovered `trntr` conditions are listed |
+| `smc_disabled_feature_exclusions.el` | P2 SKIP-TIED-OFF | both SMC fabrics instantiate the AXI filter with `filter_skip_i` tied to zero, so the skip arm of its filter decision never runs |
 
 A regblock whose stall is `external_pending` (it has external registers)
 gets A2 only; a regblock that decodes errors gets neither. `--check` reports

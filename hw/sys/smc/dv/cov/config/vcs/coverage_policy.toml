@@ -44,9 +44,9 @@ path = "smc_fsm_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
-# A feature the build leaves out (P1 NTRACE-OFF): the trace wrapper is
-# instantiated with zero N-trace instances, so the trace sink's N-trace half
-# has no source and its conditions no stimulus.
+# Features the integration leaves out (P1 NTRACE-OFF, P2 SKIP-TIED-OFF): the
+# trace wrapper is instantiated with zero N-trace instances, and the AXI filter
+# with its skip input tied to zero, so those conditions have no stimulus.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
