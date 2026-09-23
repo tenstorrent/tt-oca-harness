@@ -6,7 +6,9 @@ Cycles the AVSBus controller, the three telemetry receivers, the OCTS system
 timer, the eFuse interface controller, the DMA controller configuration and
 the four log engines' region and enable registers against their generated RDL
 contract, and restores each one. The eFuse data and program-enable bits are
-held at their reset so nothing the sweep writes can arm a fuse burn.
+held at their reset so nothing the sweep writes can arm a fuse burn, and the
+system timer CTRL takes constrained patterns that keep CREDIT_VAL above
+PULSE_WIDTH as its RDL requires.
 """
 
 from __future__ import annotations
@@ -20,17 +22,18 @@ from smc_base_test import smc_base_test
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
 # sequence that silently stopped issuing accesses.
 #
-#   37 half-register cycles, 12 accesses each -- the reset read, 2x(half write
+#   39 half-register cycles, 12 accesses each -- the reset read, 2x(half write
 #     + readback) for the ones pattern, the same for the zeros pattern, two
 #     restore writes and the restore read:
-#       12 single-instance registers                                        144
+#       11 single-instance registers                                        132
+#       2 constrained cycles of the OCTS system timer CTRL                   24
 #       3 telemetry receivers x 3 registers                                 108
 #       4 log engines x 4 registers                                         192
 #   1 full-width cycle for the DMA configuration, whose block refuses a
 #     sub-word write: the reset read, a write and a readback for each of the
 #     ones and zeros patterns, the restore write and its readback              7
 #   3 telemetry INTR_STATUS clears, 3 accesses each                           9
-PERIPH_REGBLOCK_SWEEP_MIN_CSR_ACCESSES = 460
+PERIPH_REGBLOCK_SWEEP_MIN_CSR_ACCESSES = 472
 
 
 @pyuvm.test()
