@@ -176,11 +176,15 @@ module sep_io #(
     .lsio_trigger_o (sep_io_spi_req_o.lsio_trigger)
   );
 
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH (sep_io_pkg::DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH (sep_io_pkg::ADDR_WIDTH),
+    .AXI_DATA_WIDTH (sep_io_pkg::DATA_WIDTH),
     .axil_req_t     (sep_io_pkg::axil_req_t),
-    .axil_resp_t    (sep_io_pkg::axil_resp_t)
+    .axil_resp_t    (sep_io_pkg::axil_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (sep_io_pkg::DATA_WIDTH),
+    .RESP_DATA      (32'hBADCAB1E),
+    .MAX_TRANS      (1)
   ) axil_err_slv (
     .clk_i,
     .rst_ni,

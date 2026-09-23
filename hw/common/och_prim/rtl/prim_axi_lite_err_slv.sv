@@ -31,7 +31,25 @@ module prim_axi_lite_err_slv #(
   output axil_resp_t  axil_resp_o
 );
 
+  `include "prim_assert.sv"
   `include "axi/typedef.svh"
+
+  ////////////////
+  // Assertions //
+  ////////////////
+
+  `OCAH_OT_ASSERT_INIT(DataWidthValid_A, AXI_DATA_WIDTH >= 8 && $countones(AXI_DATA_WIDTH) == 1)
+
+  `OCAH_OT_ASSERT(AwValidStable_A,
+                  axil_req_i.aw_valid && !axil_resp_o.aw_ready |=> axil_req_i.aw_valid, clk_i,
+                  !rst_ni)
+
+  `OCAH_OT_ASSERT(WValidStable_A, axil_req_i.w_valid && !axil_resp_o.w_ready |=> axil_req_i.w_valid,
+                  clk_i, !rst_ni)
+
+  `OCAH_OT_ASSERT(ArValidStable_A,
+                  axil_req_i.ar_valid && !axil_resp_o.ar_ready |=> axil_req_i.ar_valid, clk_i,
+                  !rst_ni)
 
   /////////////////////////
   // Signal Declarations //
