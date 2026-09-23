@@ -203,7 +203,7 @@ module uart_core
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b1)  // Pointer and data error checking
-  ) uart_txfifo (
+  ) u_uart_txfifo (
     .clk_i,
     .rst_ni,
     .clr_i             (uart_fifo_txrst),
@@ -257,7 +257,7 @@ module uart_core
     end
   end
 
-  uart_tx uart_tx (
+  uart_tx u_uart_tx (
     .clk_i,
     .rst_ni,
     .tx_enable_i      (tx_enable),
@@ -295,7 +295,7 @@ module uart_core
   prim_flop_2sync #(
     .Width      (1),
     .ResetValue (1'b1)
-  ) flop_2sync_rx (
+  ) u_flop_2sync_rx (
     .clk_i,
     .rst_ni,
     .d_i        (rx_i),
@@ -321,7 +321,7 @@ module uart_core
                    line_loopback ? 1'h1   :
                    rx_in_maj;
 
-  uart_rx uart_rx (
+  uart_rx u_uart_rx (
     .clk_i,
     .rst_ni,
     .rx_enable_i      (rx_enable),
@@ -411,7 +411,7 @@ module uart_core
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b1)  // Error checking
-  ) uart_rxfifo (
+  ) u_uart_rxfifo (
     .clk_i,
     .rst_ni,
     .clr_i             (uart_fifo_rxrst),
@@ -869,7 +869,7 @@ module uart_core
     .Width             (4),
     .ResetValue        (4'hf),
     .EnablePrimCdcRand (1'b1)
-  ) flop_2sync_modem_status (
+  ) u_flop_2sync_modem_status (
     .clk_i,
     .rst_ni,
     .d_i               ({cts_ni, dsr_ni, ri_ni, dcd_ni}),

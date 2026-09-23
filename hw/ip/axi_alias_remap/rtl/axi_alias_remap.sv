@@ -59,7 +59,7 @@ module axi_alias_remap #(
   lzc #(
     .WIDTH  (NUM_REGIONS),
     .MODE   (1'b0)  // Count leading zeros to find the index of the first remap region that contains the request address
-  ) write_remap_hit (
+  ) u_write_remap_hit (
     .in_i   (aw_remap_hit),
     .cnt_o  (aw_remap_idx),
     .empty_o(no_write_hit)
@@ -68,7 +68,7 @@ module axi_alias_remap #(
   lzc #(
     .WIDTH  (NUM_REGIONS),
     .MODE   (1'b0)  // Count leading zeros to find the index of the first remap region that contains the request address
-  ) read_remap_hit (
+  ) u_read_remap_hit (
     .in_i   (ar_remap_hit),
     .cnt_o  (ar_remap_idx),
     .empty_o(no_read_hit)

@@ -394,7 +394,7 @@ module sep #(
   // Address width = 32 bits
   // Data width = 64 bits
   // Local generated crossbar wrapper (AXI only)
-  sep_local_axi_xbar_wrapper sep_local_axi_xbar_wrapper (
+  sep_local_axi_xbar_wrapper u_sep_local_axi_xbar_wrapper (
     .clk_i                              (clk_i),
     .rst_ni                             (rst_ni),
 
@@ -587,7 +587,7 @@ NUM_EXT_DEMUX_PORTS
   // SEP CPU //
   /////////////
 
-  sep_cpu sep_cpu (
+  sep_cpu u_sep_cpu (
     .clk_i                          (clk_i),
     .rst_ni                         (sep_cpu_reset_n),
     .dbg_rstb_i                     (dbg_rstb_i),
@@ -792,7 +792,7 @@ NUM_EXT_DEMUX_PORTS
     .SRAM_LATENCY      (ABR_SRAM_LATENCY),
     .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
     .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN)
-  ) sep_crypto (
+  ) u_sep_crypto (
     .clk_i                        (clk_i),
     .rst_ni                       (rst_ni),
 
@@ -924,7 +924,7 @@ NUM_EXT_DEMUX_PORTS
 
   sep_io #(
     .NUM_COMPONENTS(1)
-  ) sep_io (
+  ) u_sep_io (
     .clk_i             (clk_i),
     .rst_ni            (sep_reset_n),
 
@@ -970,7 +970,7 @@ NUM_EXT_DEMUX_PORTS
   // System Peripherals Module //
   ///////////////////////////////
 
-  sep_system_peripherals sep_system_peripherals (
+  sep_system_peripherals u_sep_system_peripherals (
     .clk_i                            (clk_i),
     .clk_ref_i                        (clk_ref_i),
     .rst_ni                           (sep_reset_n),

@@ -48,7 +48,7 @@ from seq_lib.smu_compose_helpers import (
 )
 from seq_lib.smu_tb_pins import smu_scope
 
-SEP_EFUSE_CTRL_PATH = "gen_sep.u_sep.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller"
+SEP_EFUSE_CTRL_PATH = "gen_sep.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller"
 
 
 class smu_composition_parameter_seq:

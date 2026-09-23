@@ -5,11 +5,12 @@
 """
 Render status badges from the published dashboard summary.
 
-Each badge is fetched from shields.io and stored beside the dashboard data::
+Each badge is fetched from shields.io and stored beside the dashboard data,
+named for the series it reports::
 
-    badge-dtp-status.svg      passing / failing / no data
-    badge-dtp-tests.svg       the test pass rate
-    badge-dtp-coverage.svg    total coverage
+    badge-{block}-{framework}-{simulator}-status.svg    passing / failing / no data
+    badge-{block}-{framework}-{simulator}-tests.svg     the test pass rate
+    badge-{block}-{framework}-{simulator}-coverage.svg  total coverage
 
 A badge that cannot be fetched leaves the previous one in place.
 """
@@ -44,8 +45,22 @@ WARN_AT = 70.0
 # Statuses reporting no verdict, banded grey rather than as a failure.
 UNMEASURED = {"", "SKIP", "NOTRUN"}
 
-# A flow names a file, so it is restricted rather than escaped.
-FLOW = re.compile(r"^[A-Za-z_]+$")
+# The fields that together name one series, and the badge file reporting it.
+IDENTITY_KEYS = ("flow", "framework", "tool")
+NAME_PART = re.compile(r"^[A-Za-z0-9_]+$")
+
+
+def identity(entry: dict[str, Any]) -> tuple[str, ...]:
+    """
+    The flow, framework and tool naming one series.
+
+    Args:
+        entry: A dut_status[] or results[] entry
+
+    Returns:
+        The three values, empty where the entry carries none
+    """
+    return tuple(str(entry.get(field) or "") for field in IDENTITY_KEYS)
 
 
 def percent(value: Any) -> float | None:
@@ -136,17 +151,27 @@ def badges_for(
     rate = percent(dut.get("pass_rate"))
     total = percent((coverage or {}).get("total_percent"))
 
-    if status == "PASS":
+    tests = dut.get("tests_total")
+    if isinstance(tests, int) and not isinstance(tests, bool) and tests == 0:
+        # A run that completed no tests has no verdict to report, whatever
+        # status it carries.
+        state, colour = "no data", GREY
+    elif status == "PASS":
         state, colour = "passing", GREEN
     elif status in UNMEASURED:
         state, colour = status.lower() or "no data", GREY
     else:
         state, colour = status.lower(), RED
 
+    # A block reports once per framework and simulator, so a badge carrying only
+    # the block name does not say which of them it came from.
+    ran = [str(dut[field]) for field in ("framework", "tool") if dut.get(field)]
+    qualifier = f" ({', '.join(ran)})" if ran else ""
+
     return {
-        "status": (str(dut.get("flow") or "block"), state, colour),
-        "tests": ("tests", measure(rate), band(rate)),
-        "coverage": ("coverage", measure(total), band(total)),
+        "status": (str(dut.get("flow") or "block") + qualifier, state, colour),
+        "tests": ("tests" + qualifier, measure(rate), band(rate)),
+        "coverage": ("coverage" + qualifier, measure(total), band(total)),
     }
 
 
@@ -171,8 +196,8 @@ def main() -> int:
         print(f"error: cannot read {args.source}: {error}", file=sys.stderr)
         return 1
 
-    coverage_by_flow = {
-        result["flow"]: result.get("coverage")
+    coverage_by_series = {
+        identity(result): result.get("coverage")
         for result in summary.get("results") or []
         if isinstance(result, dict) and result.get("flow")
     }
@@ -183,12 +208,15 @@ def main() -> int:
     for dut in summary.get("dut_status") or []:
         if not isinstance(dut, dict) or not dut.get("flow"):
             continue
-        flow = str(dut["flow"])
-        if not FLOW.match(flow):
-            print(f"warning: skipping badges for {flow!r}", file=sys.stderr)
+        series = identity(dut)
+        if not all(NAME_PART.match(part) for part in series):
+            print(f"warning: skipping badges for {series!r}", file=sys.stderr)
             continue
-        for kind, (label, message, colour) in badges_for(dut, coverage_by_flow.get(flow)).items():
-            path = args.outdir / f"badge-{flow}-{kind}.svg"
+        name = "-".join(series)
+        for kind, (label, message, colour) in badges_for(
+            dut, coverage_by_series.get(series)
+        ).items():
+            path = args.outdir / f"badge-{name}-{kind}.svg"
             # Intended before the fetch, so a failed fetch keeps the existing file.
             intended.add(path)
             svg = fetch(label, message, colour)
@@ -197,7 +225,7 @@ def main() -> int:
             path.write_bytes(svg)
             fetched += 1
 
-    # Badges left by an earlier run, for blocks this summary no longer has.
+    # Badges left by an earlier run, for series this summary no longer has.
     dropped = [path for path in args.outdir.glob("badge-*.svg") if path not in intended]
     for path in dropped:
         path.unlink()
