@@ -243,6 +243,12 @@ localparam string DtpJ2aSeriesAddrCheckId = "CHK-J2A-SERIES-ADDR";
 // stalled path and the first status poll reads BUSY_OR_FULL.
 localparam string DtpJ2aStallFsmCheckId = "CHK-J2A-STALL-FSM";
 localparam string DtpJ2aStallBusyCheckId = "CHK-J2A-STALL-BUSY";
+// The op-status or SERIES_CTRL status carries the injected error code, and
+// the WITH_ERROR_STATUS bit follows the faulted beat.
+localparam string DtpJ2aFaultStatusCheckId = "CHK-J2A-FAULT-STATUS";
+// Random-ops end state: every byte lane a stream wrote holds its last word
+// and every untouched lane of a touched word holds its prior value.
+localparam string DtpJ2aMemImageCheckId = "CHK-J2A-MEM-IMAGE";
 // Reset-abort scenario evidence: the bridge observed mid-flight before the
 // reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
 // escaped write, and a recovered status.

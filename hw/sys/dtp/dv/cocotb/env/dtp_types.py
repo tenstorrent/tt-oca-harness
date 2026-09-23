@@ -312,6 +312,12 @@ ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
 # stalled path and the first status poll reads BUSY_OR_FULL.
 STALL_FSM_CHECK_ID = "CHK-J2A-STALL-FSM"
 STALL_BUSY_CHECK_ID = "CHK-J2A-STALL-BUSY"
+# The op-status or SERIES_CTRL status carries the injected error code, and the
+# WITH_ERROR_STATUS bit follows the faulted beat.
+FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
+# Random-ops end state: every byte lane a stream wrote holds its last word and
+# every untouched lane of a touched word holds its prior value.
+MEM_IMAGE_CHECK_ID = "CHK-J2A-MEM-IMAGE"
 
 
 def size_field_bits(data_width: int) -> int:

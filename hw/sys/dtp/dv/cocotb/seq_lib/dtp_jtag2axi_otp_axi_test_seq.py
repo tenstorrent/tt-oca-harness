@@ -202,11 +202,12 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         rng = self.rng(f"{self.target}.random_write_ops")
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
+        image: dict[int, int] = {}
         for idx in range(1, self.random_count + 1):
             addr = self.random_target_aligned_addr(self.target, rng)
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            # Any non-empty legal strobe pattern; the memory check judges the
-            # enabled lanes only.
+            # Any non-empty legal strobe pattern; the per-write check judges
+            # the enabled lanes, the end-state image every lane.
             wstrb = rng.randint(1, self.target_full_wstrb(self.target, size))
             self.log_iteration(
                 idx,
@@ -216,6 +217,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 data,
                 wstrb,
             )
+            self.snapshot_target_word(self.target, image, addr, size)
             status, _ = await self.write_target_single_and_check(
                 self.target,
                 addr,
@@ -224,8 +226,10 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 wstrb=wstrb,
                 context=f"random_write#{idx}",
             )
+            self.image_write(image, addr, data, wstrb, size)
             self.status = status
             self.operation_count += 1
+        self.check_memory_image(self.target, image, context="random_write")
 
     async def run_write_security_gating(self) -> None:
         self.log_banner(f"{self.target} Write Security Gating")
