@@ -138,3 +138,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "uart"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_core_mode_select_test"
+module = "smc_uart_core_mode_select_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
