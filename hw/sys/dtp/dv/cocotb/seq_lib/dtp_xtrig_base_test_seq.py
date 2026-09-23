@@ -159,7 +159,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         "axi_channel_skew_read_decode_backpressure": (CHK_AXIL, CHK_AR_STALL),
         "ctp_csr_sweep": _ROUTE_IDS + (CHK_STRETCH,),
         "ctm_csr_sweep": _ROUTE_IDS,
-        "ctm_all_source_select": (CHK_CSR,),
+        "ctm_all_source_select": _ROUTE_IDS,
         "wire_or": (CHK_CSR, CHK_SIGNAL, CHK_STRETCH),
         "p2p": (CHK_CSR, CHK_SIGNAL),
         "random": _ROUTE_IDS + (CHK_STRETCH,),
@@ -198,7 +198,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         # finalizes so a check-free pass cannot report PASS.
         self.checker = OcahChecker(
             name=f"dtp_xtrig_checker[{name}]",
-            required_ids=self.SCENARIO_REQUIRED_IDS.get(scenario, (self.CHK_CSR,)),
+            required_ids=self.SCENARIO_REQUIRED_IDS[scenario],
             logger=self.log,
         )
 
@@ -1928,4 +1928,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                     after_neighbor & XTRIG_CTM_SELECT_MASK,
                     before_neighbor & XTRIG_CTM_SELECT_MASK,
                 )
+            # One routed pulse per source: its select decodes into the matrix.
+            await self.verify_route(
+                src_idx,
+                1 << ((src_idx + 1) % XTRIG_NUM_CTM_PORTS),
+                XTRIG_CTP_MODE_WIRE_OR,
+                label=f"allsrc{src_idx}.route",
+            )
         self.log_summary("ctm_all_source_select", sources=XTRIG_NUM_CTM_PORTS)

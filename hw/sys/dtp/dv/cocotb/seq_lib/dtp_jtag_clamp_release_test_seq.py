@@ -86,5 +86,10 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
             context="repeated release",
         )
 
+        self.log_step(
+            4, "SAMPLE/PRELOAD after the release selects the chain and loops the pattern back"
+        )
+        await self.check_loopback_scan(DtpJtagInstr.SAMPLE_PRELOAD, patterns[-1], 8)
+
         self.log_summary("CLAMP_RELEASE TMP persistence complete", patterns=len(patterns))
         await self.finalize_family_checker()

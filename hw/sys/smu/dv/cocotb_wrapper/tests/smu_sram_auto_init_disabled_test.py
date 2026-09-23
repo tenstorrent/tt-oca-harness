@@ -5,7 +5,8 @@
 The complement of smu_sram_auto_init_done_test: with
 smc_disable_sram_auto_init_i high at the SMU boundary, a cold reset must leave
 the SMC scratch-RAM zeroing sweep unstarted and no zeroing write may reach the
-scratch RAM, yet smc_init_mem_done_o must still assert and hold.
+scratch RAM. What smc_init_mem_done_o does with the sweep held off is recorded,
+not claimed: no specification states it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_sram_auto_init_disabled_test --target compile_smu_chiplet_no_sep
@@ -20,7 +21,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_sram_auto_init_disabled_test(smu_base_test):
-    """smc_init_mem_done_o with the SRAM auto-initialization disabled."""
+    """No zeroing sweep and no zeroing write with the SRAM auto-initialization disabled."""
 
     use_shared_env = True
 
