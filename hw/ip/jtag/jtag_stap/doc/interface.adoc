@@ -14,7 +14,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-[cols="<30,<10,<25,<35",options="header",role="port-reference"]
+[cols="<30,<14,<25,<31",options="header",role="port-reference"]
 |===
 |Signal |Direction |Type / dimensions |Description
 |`client_scan_ctrl_i` |Input |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
