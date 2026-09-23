@@ -85,8 +85,8 @@ AT A GLANCE
 [cols="42,58",options="header"]
 !===
 !Feature !Description
-!External / internal triggers !16 CTPs / 10 internal interfaces
-!Clock-stop request inputs !9
+!External / internal triggers !1-32 CTPs / 0-32 internal interfaces
+!Clock-stop request inputs !1-32
 !Cross-trigger CSR port !32-bit address, 32-bit data AXI4-Lite
 !SMC debug manager !56-bit address, 64-bit data AXI4
 !OTP debug managers !32-bit address, 32-bit data AXI4-Lite
@@ -94,12 +94,11 @@ AT A GLANCE
 !===
 
 [.datasheet-small]
-Values are the reference defaults; the CTP (1-32), internal trigger interface
-(0-32), and clock-stop request input (1-32) counts are parameterizable. The
-default SMU uses two of the 10 internal trigger interfaces and one of the nine
-clock-stop request inputs for SMC connections. Its external boundary therefore
-exposes eight internal trigger interfaces and eight clock-stop request inputs;
-all 16 CTPs remain externally visible.
+The reference defaults are 16 CTPs, 10 internal trigger interfaces, and nine
+clock-stop request inputs. The default SMU uses two of the internal trigger
+interfaces and one of the clock-stop request inputs for SMC connections, so its
+external boundary exposes eight internal trigger interfaces and eight clock-stop
+request inputs; all 16 CTPs remain externally visible.
 
 |===
 
