@@ -70,6 +70,7 @@ from cocotb.triggers import with_timeout
 from env.sep_axi_agent import SepAxiOp
 from sep_base_test import sep_base_test
 from env.sep_spec_tables import CRYPTO_CONCURRENT_READS
+from ocah_axi_vip import worst_resp
 from sep_reg_meta import sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -224,8 +225,10 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
 
         for i, (ev, addr, exp) in enumerate(zip(events, addrs, want)):
             await with_timeout(ev.wait(), OUTSTANDING_TIMEOUT_NS, "ns")
-            resp = getattr(ev.data, "resp", None)
-            code = max(resp) if isinstance(resp, (list, tuple)) else int(resp or 0)
+            # worst_resp, not int(resp or 0): an unreadable response must not
+            # coerce to OKAY and let the check pass on a measurement that was
+            # never taken. It returns RESP_TIMEOUT when nothing is readable.
+            code = worst_resp(getattr(ev.data, "resp", None))
             assert code == RESP_OKAY, (
                 f"CHK-WIDE-OUTSTANDING FAIL: outstanding read id={i} "
                 f"@0x{addr:08x} returned resp={code}, expected OKAY"
@@ -270,8 +273,10 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         ]
         for i, ev in enumerate(events):
             await with_timeout(ev.wait(), OUTSTANDING_TIMEOUT_NS, "ns")
-            resp = getattr(ev.data, "resp", None)
-            code = max(resp) if isinstance(resp, (list, tuple)) else int(resp or 0)
+            # worst_resp, not int(resp or 0): an unreadable response must not
+            # coerce to OKAY and let the check pass on a measurement that was
+            # never taken. It returns RESP_TIMEOUT when nothing is readable.
+            code = worst_resp(getattr(ev.data, "resp", None))
             assert code == RESP_OKAY, (
                 f"CHK-WIDE-SLOTS FAIL [{name}]: outstanding read id={i} "
                 f"@0x{addr:08x} returned resp={code}, expected OKAY"

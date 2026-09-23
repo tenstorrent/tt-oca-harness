@@ -42,6 +42,7 @@ from __future__ import annotations
 import pyuvm
 from cocotb.triggers import with_timeout
 from env.sep_axi_agent import SepAxiOp
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_inbound_filter_rule_seq import SepInboundFilter, SepInboundFilterCfg
@@ -138,8 +139,9 @@ class sep_abr_pipelined_read_test(sep_base_test):
                     lost += 1
                     vals.append(None)
                     continue
-                resp = getattr(ev.data, "resp", None)
-                code = max(resp) if isinstance(resp, (list, tuple)) else int(resp or 0)
+                # worst_resp, not int(resp or 0): an unreadable response must
+                # not coerce to OKAY. It returns RESP_TIMEOUT instead.
+                code = worst_resp(getattr(ev.data, "resp", None))
                 if code != RESP_OKAY:
                     # An error response is a different failure from silently
                     # wrong data, and is recorded as such rather than folded
