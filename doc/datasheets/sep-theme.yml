@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+extends: ./datasheet-theme.yml
+base:
+  line_height: 1.15
+block:
+  margin_bottom: 4
+prose:
+  margin_bottom: 4
+list:
+  item_spacing: 1
+table:
+  cell_padding: 3
