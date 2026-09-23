@@ -2,19 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // SMC internal AXI-Lite crossbar.
-//
-// Hand-maintained: the fabric_gen source configs for this crossbar were not
-// carried into the open tree, so it cannot be regenerated. All eight AddrMap
-// rules derive their end addresses from smc_top_addrmap_pkg so the RDL remains
-// authoritative for decode extents. Array-indexed blocks use _TOTAL_SIZE.
-//
-// ============================================================================
-// CONNECTIVITY MATRIX
-// +──────────+─────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────+
-// | Input    |   smc_base_config    |       aR_ctrl        |       mR_ctrl        |       xR_ctrl        | inbound_filter_ctrl  | outbound_filter_ctrl |       mailbox        |       dfx_csr        |
-// +──────────+─────────────────────┼──────────────────────┼──────────────────────┼──────────────────────┼──────────────────────┼──────────────────────┼──────────────────────┼──────────────────────+
-// | local_in |         YES          |         YES          |         YES          |         YES          |         YES          |         YES          |         YES          |         YES          |
-// +──────────+─────────────────────┴──────────────────────┴──────────────────────┴──────────────────────┴──────────────────────┴──────────────────────┴──────────────────────┴──────────────────────+
+// Address rules derive from smc_top_addrmap_pkg; arrayed blocks use their
+// generated total extents.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"

@@ -2,10 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // SMC local AXI crossbar types and configuration.
-//
-// Hand-maintained: the fabric_gen source configs for this crossbar were not
-// carried into the open tree, so it cannot be regenerated. Address rules live
-// in smc_local_xbar and derive their boundaries from smc_top_addrmap_pkg.
+// Address rules are defined by smc_local_xbar.
 
 `include "axi/typedef.svh"
 `include "apb/typedef.svh"

@@ -2,22 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // SMC local AXI crossbar.
-//
-// Hand-maintained: the fabric_gen source configs for this crossbar were not
-// carried into the open tree, so it cannot be regenerated. All address
-// boundaries derive from smc_top_addrmap_pkg. Direct endpoints use their
-// decoded extents; aggregate outputs cover the generated child-map bounds and
-// leave leaf-level holes for the child crossbar to reject.
-//
-// ============================================================================
-// CONNECTIVITY MATRIX
-// +──────────+────────────────┬─────────────────┬─────────────────┬─────────────────┬─────────────────+
-// | Input    |    front_port   | data_accel_ctrl |    local_reg    |    periph_reg   |   smc_dfd_reg   |
-// +──────────+────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────+
-// | system   |       YES       |       YES       |       YES       |       YES       |       YES       |
-// | sep_in   |       YES       |       YES       |       YES       |       YES       |       YES       |
-// | local_in |       YES       |       YES       |       YES       |       YES       |       YES       |
-// +──────────+────────────────┴─────────────────┴─────────────────┴─────────────────┴─────────────────+
+// Address rules derive from smc_top_addrmap_pkg; child-fabric outputs span
+// their generated aggregate bounds.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"

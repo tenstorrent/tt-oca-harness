@@ -2,9 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // SEP local AXI crossbar types and configuration.
-//
-// Hand-maintained: fabric_gen's static config cannot express this crossbar, so
-// it is not regenerated. Address rules live in sep_local_axi_xbar.
+// Address rules are defined by sep_local_axi_xbar.
 
 `include "axi/typedef.svh"
 

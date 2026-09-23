@@ -2,19 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // SMC peripheral AXI-Lite crossbar.
-//
-// Hand-maintained: the fabric_gen source configs for this crossbar were not
-// carried into the open tree, so it cannot be regenerated. RDL-backed AddrMap
-// windows derive from smc_top_addrmap_pkg. The vendor eFuse shim is carved out
-// of the generated external window by the EFUSE_SHIM_SIZE parameter.
-//
-// ============================================================================
-// CONNECTIVITY MATRIX
-// +───────────+──────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────+
-// | Input     |     reset_unit    |        misc       |        gpio       |     apb2avsbus    |        i2c        |        uart       |       efuse       |     telemetry     | system_timer_octs |      dtp_csr      |        i3c        |      external     |
-// +───────────+──────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────+
-// | periph_in |        YES        |        YES        |        YES        |        YES        |        YES        |        YES        |        YES        |        YES        |        YES        |        YES        |        YES        |        YES        |
-// +───────────+──────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────+
+// Address rules derive from smc_top_addrmap_pkg; EFUSE_SHIM_SIZE partitions
+// the external window between the eFuse shim and external target.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
