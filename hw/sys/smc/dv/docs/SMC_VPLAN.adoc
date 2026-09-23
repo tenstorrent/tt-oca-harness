@@ -8338,6 +8338,46 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-235-smc_i2c_target_nack_timeout_test]]
+===== 235 `smc_i2c_target_nack_timeout_test`
+
+*Source Module*: `smc_i2c_target_nack_timeout_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads; observation on `TARGET_NACK_COUNT`, `ACQDATA` and the bus
+
+*Objective*: A stretch nobody releases must end in the target's own NACK, in both directions.
+
+*Test Coverage*:
+
+* The expiry of `TARGET_TIMEOUT_CTRL`, the cumulative limit on how long the target may stretch within one transaction. Every other stretch leaf is released by software first, so the limit had never been reached.
+* Both consequences the RDL names for it -- NACK an incoming data byte, release SDA for an outgoing one -- one leg each.
+* ACK Control Mode is the way into the incoming hold, so the target stops at the first data byte instead of after a whole acquisition FIFO of them. It is the same hold `smc_i2c_target_ack_ctrl_test` answers; the difference is that nothing answers it here.
+* An empty transmit FIFO is the way into the outgoing hold, and a released SDA line reads as all ones at the bench.
+* `TARGET_NACK_COUNT` is the register witness. `i2c_core.sv` increments it on the edge where the target decides to NACK the transaction, and the field is read-to-clear, so each leg reads it clear beforehand and requires exactly one afterwards -- not merely non-zero.
+* The acquisition stream must end with the NACK-stop entry, so software can see the transaction ended badly rather than inferring it from the missing data.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target with a short `TARGET_TIMEOUT_CTRL` allowance, and read `TARGET_NACK_COUNT` twice to clear it and prove it cleared.
+. Incoming: with ACK Control Mode enabled and its count at reset, drive a write and let the hold run out.
+. Require a NACK on the wire, exactly one counted transaction, and a NACK-stop entry closing the stream.
+. Outgoing: with the transmit FIFO empty, drive a read and let the hold run out.
+. Require all ones at the bench, exactly one counted transaction, and a NACK-stop entry.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-NACK-TIMEOUT-RX` |The allowance ran out at a held incoming byte: the byte was NACKed, the transaction counted once, and the stream closed with a NACK-stop entry
+|`CHK-I2C-TGT-NACK-TIMEOUT-TX` |The allowance ran out with nothing to transmit: SDA was released so the bench read all ones, the transaction counted once, and the stream closed with a NACK-stop entry
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
