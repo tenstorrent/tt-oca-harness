@@ -140,7 +140,8 @@ endif::backend-html5[]
 * *Polarity*: Active high (asserted when high)
 * *Duration*: Level-sensitive, remains asserted until cleared
 * *Sources*: Buffer threshold and error condition interrupts
-* *Clearing*: Cleared by writing appropriate bits in interrupt status
-registers
+* *Clearing*: `MISSING_LAST` is write-one-to-clear. The read-only
+`BUFFER_THRESHOLD` source remains asserted while occupancy exceeds the configured
+threshold or its test bit is set; it cannot be cleared by writing status.
 * *Latency*: Interrupt assertion within 2 clock cycles of triggering
 condition
