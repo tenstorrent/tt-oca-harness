@@ -60,13 +60,14 @@ and `kill_i` a constant zero (P7 NO-ERROR-CAP). The legalizer's
 software-writable RDL field the frontend carries into the backend options, so
 that branch stays graded.
 
-The CLA holds a second write-enable fact, the converse of P3: its MMR write
-structures carry a zero default and never name their reserved fields' enables,
-so `MMR_CDbgEapStatus_F_Rsvd3116_WrEn`, `MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn`
-and `MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn` hold zero and the then arm of the
-ternary each selects is unreachable (P8 WREN-TIED-ZERO). The reserved enables
-of `MuxSelHi`, `MuxSelLo`, `LfsrMask` and `ClaTimestampOffset` have no CLA
-output port to read the fact from and stay graded.
+The CLA holds a second write-enable fact, the converse of P3:
+`MMR_CDbgEapStatus_F_Rsvd3116_WrEn` is its write structure's field and nothing
+else, and the CLA gives that structure a zero default and never names the
+field, so the enable holds zero and the then arm of the ternary it selects is
+unreachable (P8 WREN-TIED-ZERO). It is the only reserved-field enable of the
+block that qualifies: `ClaCtrlStatus`, `ClaTimestampConfig`, `MuxSelHi`,
+`MuxSelLo`, `LfsrMask` and `ClaTimestampOffset` each add a
+`reg_write & reg_addr` term, which a software write to the register asserts.
 
 A third fact is not a register block's: a CRC or parity network is an XOR
 reduction, and condition coverage enumerates 2^n input combinations of it.
@@ -106,7 +107,10 @@ which leaves fullexclude_module.{cond,branch,fsm} in the working directory.
 Every checksum and entry text below comes from those templates.
 
 Only rows and branches the merged report marks uncovered are written, so a
-reachable row is never hidden by a pattern. The report has to be the one urg
+reachable point is never hidden by a pattern. A condition vector is read from
+the report's EXPRESSION table alone and a branch arm from the table of the
+construct at that source line, and an arm the report scores as a path through
+several decisions rather than as one direction is left graded. The report has to be the one urg
 wrote without an exclusion file: the runner keeps it as
 `<run dir>/cov/report_raw/modinfo.txt` beside the effective report, and a row
 the effective report already shows as `Excluded` would otherwise drop out of
@@ -279,19 +283,16 @@ P2 = (
     "runs and no access can produce a condition over it."
 )
 P8 = (
-    "SMC-P8-WREN-TIED-ZERO: the CLA assigns its MMR write structure a zero default and never "
-    "names these reserved fields' write enables, so each holds zero; the enable's true arm and "
-    "the then arm of the write-data ternary it selects have no stimulus. This is the converse "
-    "of P3, where a constant one leaves the else arm unreachable instead."
+    "SMC-P8-WREN-TIED-ZERO: this reserved field's write enable is the CLA write structure's "
+    "field alone, with no register-write term beside it, and the CLA gives that structure a "
+    "zero default and never names the field; the enable holds zero, so its true arm and the "
+    "then arm of the write-data ternary it selects have no stimulus. This is the converse of "
+    "P3, where a constant one leaves the else arm unreachable instead."
 )
-# The reserved-field enables of the three CLA write structures that the source
-# defaults to zero and never assigns. The MuxSel, LfsrMask and TimestampOffset
-# reserved enables have no CLA output port and stay graded.
-WREN_ZERO = (
-    r"MMR_CDbgEapStatus_F_Rsvd3116_WrEn"
-    r"|MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn"
-    r"|MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn"
-)
+# The one reserved-field enable the MMR block drives from its write structure
+# alone. Every other MMR_CDbg*_F_Rsvd*_WrEn carries a `reg_write & reg_addr`
+# term, so a software write to that register asserts it.
+WREN_ZERO = r"MMR_CDbgEapStatus_F_Rsvd3116_WrEn"
 P6 = (
     "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so "
     "the lifecycle-state arms of the shadow registers and the guard are never entered and the "
@@ -486,6 +487,71 @@ def uncovered_rows(modinfo: Path) -> dict[tuple[str, str], set[str]]:
     return rows
 
 
+def branch_status(modinfo: Path) -> dict[tuple[str, int, str], str]:
+    """(module, source line, direction) -> the report's status for that branch arm.
+
+    The branch report annotates a construct's source, marks its decision points
+    `-1-`, `-2-` and so on, and then scores the paths through them in a table.
+    Only a construct with a single decision has one arm per direction, which is
+    what a class names; a case statement or a chain of else-ifs scores paths
+    across several columns and is left out, so a caller asking about one cannot
+    mistake a path for an arm.
+    """
+    out: dict[tuple[str, int, str], str] = {}
+    module = ""
+    in_branch = False
+    last_src: int | None = None
+    construct: int | None = None
+    table: str | None = None
+    for line in modinfo.read_text(errors="replace").splitlines():
+        m = re.match(r"^(\w+) Coverage for (Module|Instance) : (\S+)", line)
+        if m:
+            in_branch = m.group(1) == "Branch" and m.group(2) == "Module"
+            module = m.group(3).split("(")[0]
+            last_src = construct = table = None
+            continue
+        if not in_branch:
+            continue
+        # A data row such as "1   Covered" also looks like an annotated source
+        # line, so the table states are read before the source line is.
+        if table == "header":
+            if line.strip():
+                table = "single" if line.split()[:2] == ["-1-", "Status"] else "multi"
+            continue
+        if table is not None:
+            if not line.strip():
+                table = None
+                continue
+            m = re.match(r"^([01])\s+(Covered|Not Covered)$", line.strip())
+            if table == "single" and construct is not None and m:
+                out[(module, construct, m.group(1))] = m.group(2)
+            continue
+        if re.match(r"^\s*Branches:\s*$", line):
+            table = "header"
+            continue
+        if re.match(r"^\s+-1-\s*$", line):
+            construct = last_src
+            continue
+        m = re.match(r"^(\d+)\s", line)
+        if m:
+            last_src = int(m.group(1))
+    return out
+
+
+def branch_is_uncovered(
+    branches: dict[tuple[str, int, str], str], module: str, src: str, direction: str
+) -> bool:
+    """Whether the report marks this branch arm Not Covered.
+
+    An arm the report does not score as a single-decision construct is not
+    written, so a path through a case statement is never mistaken for one.
+    """
+    line = src.rpartition(":")[2]
+    if not line.isdigit():
+        return False
+    return branches.get((module, int(line), direction)) == "Not Covered"
+
+
 class Section:
     def __init__(self, checksum: str, module: str) -> None:
         self.checksum = checksum
@@ -528,7 +594,15 @@ def regblock_facts(module: str, source: str) -> tuple[bool, bool]:
     return (stall0, noerr)
 
 
-def select_regblock(entry: str, stall0: bool, noerr: bool, uncovered: set[str]) -> str | None:
+def select_regblock(
+    entry: str,
+    stall0: bool,
+    noerr: bool,
+    uncovered: set[str],
+    module: str,
+    src: str,
+    branches: dict[tuple[str, int, str], str],
+) -> str | None:
     """Return the class an entry belongs to, or None when it stays graded."""
     m = COND_ROW_RE.match(entry)
     if m:
@@ -543,7 +617,7 @@ def select_regblock(entry: str, stall0: bool, noerr: bool, uncovered: set[str]) 
     m = BRANCH_ROW_RE.match(entry)
     if m:
         cond, direction = m.group(2), m.group(5)
-        if direction != "1":
+        if direction != "1" or not branch_is_uncovered(branches, module, src, direction):
             return None
         if stall0 and STALL_RE.search(cond):
             return A1
@@ -564,7 +638,13 @@ def extra_entries(templates: dict[str, dict[str, Section]], module: str) -> list
     return out
 
 
-def select_extra(module: str, entry: str, uncovered: dict[tuple[str, str], set[str]]) -> str | None:
+def select_extra(
+    module: str,
+    entry: str,
+    uncovered: dict[tuple[str, str], set[str]],
+    src: str,
+    branches: dict[tuple[str, int, str], str],
+) -> str | None:
     """Return the per-block class an uncovered entry belongs to, or None."""
     m = COND_ROW_RE.match(entry)
     vec = None
@@ -575,6 +655,8 @@ def select_extra(module: str, entry: str, uncovered: dict[tuple[str, str], set[s
     else:
         m = BRANCH_ROW_RE.match(entry)
         if m is None or m.group(5) != "1":
+            return None
+        if not branch_is_uncovered(branches, module, src, "1"):
             return None
         expr = m.group(2)
     for reason, pattern, vector in EXTRA_FACTS[module]:
@@ -587,7 +669,9 @@ def select_extra(module: str, entry: str, uncovered: dict[tuple[str, str], set[s
 
 
 def render_regblock(
-    templates: dict[str, dict[str, Section]], uncovered: dict[tuple[str, str], set[str]]
+    templates: dict[str, dict[str, Section]],
+    uncovered: dict[tuple[str, str], set[str]],
+    branches: dict[tuple[str, int, str], str],
 ) -> tuple[str, int]:
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
@@ -623,11 +707,11 @@ def render_regblock(
                     continue
                 m = COND_ROW_RE.match(entry)
                 rows = uncovered.get((module, m.group(2)), set()) if m else set()
-                reason = select_regblock(entry, stall0, noerr, rows)
+                reason = select_regblock(entry, stall0, noerr, rows, module, src, branches)
                 if reason:
                     block.append((reason, entry))
         for src, entry in extra_entries(templates, module):
-            reason = select_extra(module, entry, uncovered)
+            reason = select_extra(module, entry, uncovered, src, branches)
             if reason:
                 block.append((reason, entry))
         if not block:
@@ -768,7 +852,9 @@ def render_fsm(
 
 
 def render_feature(
-    templates: dict[str, dict[str, Section]], uncovered: dict[tuple[str, str], set[str]]
+    templates: dict[str, dict[str, Section]],
+    uncovered: dict[tuple[str, str], set[str]],
+    branches: dict[tuple[str, int, str], str],
 ) -> tuple[str, int]:
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
@@ -811,11 +897,13 @@ def render_feature(
         bsection = templates["branch"].get(module)
         if bsection is not None:
             checksum = checksum or bsection.checksum
-            for _, entry in bsection.entries:
+            for src, entry in bsection.entries:
                 m = BRANCH_ROW_RE.match(entry)
                 if m is None:
                     continue
                 cond, direction = m.group(2), m.group(5)
+                if not branch_is_uncovered(branches, module, src, direction):
+                    continue
                 for reason, pattern, want in FEATURE_BRANCH_FACTS.get(module, []):
                     if direction == want and pattern.search(cond):
                         block.append((reason, entry))
@@ -842,10 +930,11 @@ def main() -> int:
         m: parse(args.template_dir / f"fullexclude_module.{m}") for m in ("cond", "branch", "fsm")
     }
     uncovered = uncovered_rows(args.modinfo)
-    reg_text, reg_n = render_regblock(templates, uncovered)
+    branches = branch_status(args.modinfo)
+    reg_text, reg_n = render_regblock(templates, uncovered, branches)
     xor_text, xor_n = render_xor(templates, uncovered)
     fsm_text, fsm_n = render_fsm(templates, uncovered_fsm(args.modinfo))
-    feat_text, feat_n = render_feature(templates, uncovered)
+    feat_text, feat_n = render_feature(templates, uncovered, branches)
     outputs = (
         (REGBLOCK_OUT, reg_text),
         (XOR_OUT, xor_text),

@@ -20,7 +20,7 @@ Condition 35 "1476893936" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? Blo
 CHECKSUM: "3897059503 4287847881"
 ANNOTATION: "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the term never reads zero and the write-data ternary it selects never takes its else arm; no software stimulus moves a tie-off."
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB path only ever issues one instruction type and the other encoding is never presented."
-ANNOTATION: "SMC-P8-WREN-TIED-ZERO: the CLA assigns its MMR write structure a zero default and never names these reserved fields' write enables, so each holds zero; the enable's true arm and the then arm of the write-data ternary it selects have no stimulus. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
+ANNOTATION: "SMC-P8-WREN-TIED-ZERO: this reserved field's write enable is the CLA write structure's field alone, with no register-write term beside it, and the CLA gives that structure a zero default and never names the field; the enable holds zero, so its true arm and the then arm of the write-data ternary it selects have no stimulus. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
 MODULE: cla_mmr
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
@@ -97,10 +97,8 @@ Branch 201 "590372528" "MMR_CDbgEapStatus_F_Node0Eap3_WrEn" (1) "MMR_CDbgEapStat
 Branch 202 "3556385403" "MMR_CDbgEapStatus_F_Node0Eap2_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap2_WrEn 0"
 Branch 203 "3328555665" "MMR_CDbgEapStatus_F_Node0Eap1_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap1_WrEn 0"
 Branch 204 "917489242" "MMR_CDbgEapStatus_F_Node0Eap0_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap0_WrEn 0"
-Branch 208 "3594453587" "MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn" (0) "MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn 1"
 Branch 214 "683882288" "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn" (1) "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn 0"
 Branch 455 "2128509458" "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn" (1) "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn 0"
-Branch 461 "2379000886" "MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn" (0) "MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn 1"
 Branch 466 "3498676337" "MMR_CDbgClaTimestampConfig_F_Resync_WrEn" (1) "MMR_CDbgClaTimestampConfig_F_Resync_WrEn 0"
 
 CHECKSUM: "671687310 1858521928"

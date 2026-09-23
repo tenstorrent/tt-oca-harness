@@ -50,8 +50,8 @@ args = ["-elfile", "{path}"]
 # NO-ERROR-CAP, P8 WREN-TIED-ZERO): the trace wrapper is instantiated with zero
 # N-trace instances, the AXI filter with its skip input tied to zero, the eFuse
 # without lifecycle state and the iDMA backend without error handling, and the
-# CLA holds a write enable at each constant its source gives it, so those
-# conditions have no stimulus.
+# CLA holds one reserved write enable at the zero its write structure gives it,
+# so those conditions have no stimulus.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
