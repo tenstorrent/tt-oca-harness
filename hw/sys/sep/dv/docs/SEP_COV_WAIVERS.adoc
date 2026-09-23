@@ -1839,7 +1839,10 @@ to zero, changes nothing, and remains as the mechanism if atomic support is ever
 
 = Metric scope: assertion coverage is not graded
 
-`sep_sim_cfg.toml` compiles with `-cm line+cond+tgl+fsm+branch`. The `assert`
+`sep_sim_cfg.toml` reports with `-metric line+cond+tgl+fsm+branch+group`
+(`sep_sim_cfg.toml:218`), which omits `assert`, so assertion coverage does not
+reach the headline. It is still INSTRUMENTED: the compile carries
+`-cm line+cond+tgl+fsm+branch+assert` (`:220-222`). The `assert`
 metric is absent by decision, not by oversight.
 
 == Reason
@@ -1884,9 +1887,12 @@ run and still reports. Nothing about the checking surface changes.
 
 == Consequences
 
-* `-cm_common_hier` and its `-lca` opt-in are dropped from both the compile and
-  the report. Their only purpose was extending `-cm_hier` from the code metrics
-  to assertion coverage; with no assertion metric there is nothing to scope.
+* `-cm_common_hier` and its `-lca` opt-in REMAIN on the compile
+  (`sep_sim_cfg.toml:233-234`) and on the urg command line of every run. They
+  extend `-cm_hier` from the code metrics to assertion coverage, and assertions
+  are still instrumented even though the report does not score them -- so
+  dropping them would widen the assertion scope, not simplify it. An earlier
+  revision of this section claimed they had been removed; they had not.
 * The report no longer renders assertion pages, so `asserts.txt` -- which also
   carried the Failure and Incomplete tallies -- is gone. Assertion failures
   still surface per test in the simulation log and in `results.xml`.

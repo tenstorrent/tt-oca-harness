@@ -250,8 +250,7 @@
 // Everything below is graded by its own upstream verification, not by SEP. This
 // is an OWNERSHIP decision, not an unreachability claim: the logic can fail, and
 // a hole here is not evidence that it cannot be reached. It follows the
-// precedent already set for the OTBN instruction set in
-// cov/config/vcs/sep_otbn_isa_scope_exclusions.el.
+// precedent already set for the OTBN instruction set.
 //
 // What stays graded: every TT wrapper, interconnect, register block and shim --
 // hw/sys/sep, hw/ip and hw/common -- because that is where SEP states its
@@ -261,21 +260,29 @@
 // TT configures it. Issue #2253 was found exactly that way. Scoping these out
 // means the score no longer points at them; the tests that target them still
 // run and still fail.
-// 232 modules, generated from the graded set of the 2026-09-23 regression.
+//
+// 249 modules, derived from the graded set of run 20260923_064707. urg writes
+// a `(x)` suffix on a multi-instance module; that suffix is stripped before the
+// name is matched, or modules like kmac(x) and axi_dw_downsizer(x) silently miss
+// their -module line and stay in the score.
 //
 // MEASURED, same 169-leaf regression either side of this block (2026-09-23):
 //
 //              SCORE   LINE   COND  TOGGLE    FSM  BRANCH
 //   before     59.40  56.01  56.55   50.97  39.67   54.63   run 20260923_160542
-//   after      61.12  71.57  54.78   57.13  20.06   64.62   run 20260923_165326
+//   after      76.58  90.15  62.79   62.46  63.70   81.82   run 20260923_175145
 //
-// The two are NOT a delta: they measure different denominators. Line and branch
-// rise because TT-owned code is better covered than the vendor IP that was
-// dragging them down. FSM FALLS 19.6 points because excluding a module drops its
-// waived objects too, and a large part of the old FSM score was vendored
-// transitions waived with cause -- the ATOP chain, the width-converter family,
-// the axi4_to_ahb arcs. 20.06 is TT-owned FSM coverage with nothing propping it
-// up, and it is the honest number to work against.
+// The two are NOT a delta: they measure different denominators. Every metric
+// rises because TT-owned logic is better covered than the third-party IP that
+// was dragging it down -- line most of all, 56.01 to 90.15.
+//
+// Both runs keep every elfile active. Waivers are NOT commented out alongside
+// this block: a waiver on an uninstrumented module is inert, and
+// sep_unreachable_exclusions.el also carries INSTANCE blocks on TT-owned
+// sep_dma_wrap that stay graded here. An earlier revision of this change
+// disabled two elfiles on the claim that every target in them had left scope;
+// that was false, and it cost ~12 FSM points by dropping valid waivers on
+// modules still in the denominator.
 // ===========================================================================
 
 // chipsalliance/Cores-VeeR-EL2 -- 1 modules.
@@ -372,7 +379,7 @@
 -module kv_write_client
 -module kv_write_rule_check
 
-// lowRISC/opentitan -- 114 modules.
+// lowRISC/opentitan -- 127 modules.
 // OpenTitan functional IP. Each core ships with lowRISC's own block-level DV and
 // SEP does not modify it. SEP's claim is the integration -- the CSR aperture, the
 // reset and clock domain, the alert and interrupt wiring -- and that logic lives in
@@ -412,7 +419,9 @@
 -module aes_sel_buf_chk
 -module aes_shift_rows
 -module aes_sub_bytes
+-module aon_timer
 -module aon_timer_core
+-module aon_timer_reg_top
 -module csrng
 -module csrng_block_encrypt
 -module csrng_cmd_stage
@@ -428,6 +437,7 @@
 -module edn_reg_top
 -module entropy_src_adaptp_ht
 -module entropy_src_cntr_reg
+-module entropy_src_main_sm
 -module entropy_src_markov_ht
 -module entropy_src_repcnt_ht
 -module entropy_src_watermark_reg
@@ -436,6 +446,8 @@
 -module hmac_reg_top
 -module keccak_2share
 -module keccak_round
+-module kmac
+-module kmac_app
 -module kmac_core
 -module kmac_entropy
 -module kmac_errchk
@@ -444,14 +456,17 @@
 -module kmac_staterd
 -module otbn
 -module otbn_alu_base
+-module otbn_alu_bignum
 -module otbn_controller
 -module otbn_core
+-module otbn_decoder
 -module otbn_instruction_fetch
 -module otbn_loop_controller
 -module otbn_lsu
 -module otbn_mac_bignum
 -module otbn_mac_bignum_fsm
 -module otbn_mod_result_selector
+-module otbn_predecode
 -module otbn_reg_top
 -module otbn_rf_base
 -module otbn_rf_base_ff
@@ -482,6 +497,8 @@
 -module prim_sha2_pad
 -module prim_subst_perm
 -module prim_trivium
+-module secure_dma
+-module secure_dma_reg_top
 -module sha3
 -module sha3pad
 -module spi_controller_byte_merge
@@ -491,18 +508,23 @@
 -module spi_controller_data_fifos
 -module spi_controller_fsm
 -module spi_controller_shift_register
+-module spi_host
+-module spi_host_reg_top
+-module spi_host_window
 
 // pulp-platform/apb -- 1 modules.
 // pulp-platform APB infrastructure. Same reasoning as the AXI library above.
 -module apb_demux
 
-// pulp-platform/axi -- 32 modules.
+// pulp-platform/axi -- 36 modules.
 // pulp-platform AXI infrastructure. Third-party fabric IP with its own upstream
 // verification. NOTE the trade: SEP chooses these parameters (AxiMaxReads, the width
-// ratios) and integration defects DO surface inside this RTL -- see the converter
-// work in docs/SEP_COV_WAIVERS.adoc. Scoping it out is an ownership decision, not a
-// claim that it cannot fail. The TT wrappers and interconnect stay graded.
+// ratios) and integration defects DO surface inside this RTL. Scoping it out is an
+// ownership decision, not a claim that it cannot fail. The TT wrappers and
+// interconnect stay graded.
+-module axi_atop_filter
 -module axi_burst_splitter
+-module axi_burst_splitter_gran
 -module axi_burst_splitter_gran_ax_chan
 -module axi_burst_splitter_gran_counters
 -module axi_cut
@@ -510,6 +532,8 @@
 -module axi_demux_id_counters
 -module axi_demux_simple
 -module axi_dw_converter
+-module axi_dw_downsizer
+-module axi_dw_upsizer
 -module axi_err_slv
 -module axi_id_prepend
 -module axi_id_remap
