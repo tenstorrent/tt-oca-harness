@@ -16,7 +16,7 @@
 | 0x18 | <<reg-{regmap-instance}-smc_cla-dst_sink-Trdstramlimitlow,Trdstramlimitlow>> | RW a| -
 | 0x1C | <<reg-{regmap-instance}-smc_cla-dst_sink-Trdstramlimithigh,Trdstramlimithigh>> | RW a| -
 | 0x20 | <<reg-{regmap-instance}-smc_cla-dst_sink-Trdstramwplow,Trdstramwplow>> | RW a| -
-| 0x24 | <<reg-{regmap-instance}-smc_cla-dst_sink-Trdstramwphigh,Trdstramwphigh>> | R a| -
+| 0x24 | <<reg-{regmap-instance}-smc_cla-dst_sink-Trdstramwphigh,Trdstramwphigh>> | RW a| -
 | 0x28 | <<reg-{regmap-instance}-smc_cla-dst_sink-Trdstramrplow,Trdstramrplow>> | RW a| -
 | 0x2C | <<reg-{regmap-instance}-smc_cla-dst_sink-Trdstramrphigh,Trdstramrphigh>> | RW a| -
 | 0x40 | <<reg-{regmap-instance}-smc_cla-dst_sink-Trdstramdata,Trdstramdata>> | R a| -
@@ -86,7 +86,7 @@
 | 0x22C0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap3Lo,CDbgSignalSnapshotNode3Eap3Lo>> | R a| debug Bus Value when Node3 Eap3 Trigger is met.
 | 0x22C8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalDelayMuxSel,CDbgSignalDelayMuxSel>> | RW a| -
 | 0x22D8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaXtriggerTimestretch,CDbgClaXtriggerTimestretch>> | RW a| This value determines the time stretched pulse duration for the cross trigger. 8 bits for each of the two triggers.
-| 0x22F0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestamp,CDbgClaTimestamp>> | R a| 64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.
+| 0x22F0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestamp,CDbgClaTimestamp>> | RW a| 64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.
 | 0x22F8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampSync,CDbgClaTimestampSync>> | RW a| Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.
 | 0x2300 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampConfig,CDbgClaTimestampConfig>> | RW a| Timestamp configuration register. Controls resync behavior and debug marker.
 | 0x2308 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampOffset,CDbgClaTimestampOffset>> | RW a| Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.
@@ -235,7 +235,7 @@
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `Trdstramwphigh` | R | 0x0 a| -
+| 31:0 | `Trdstramwphigh` | RW | 0x0 a| -
 |===
 
 [#reg-{regmap-instance}-smc_cla-dst_sink-Trdstramrplow]
@@ -343,12 +343,12 @@
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `Rsvd` | R | 0x0 a| -
+| 63 | `Rsvd` | RW | 0x0 a| -
 | 62:48 | `UpperTarget` | RW | 0x0 a| -
-| 47:33 | `UpperCounter` | R | 0x0 a| -
+| 47:33 | `UpperCounter` | RW | 0x0 a| -
 | 32 | `ResetOnTarget` | RW | 0x0 a| When Counter = {upper_target,target} reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 | 31:16 | `Target` | RW | 0x0 a| -
-| 15:0 | `Counter` | R | 0x0 a| -
+| 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
 [#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter1Cfg]
@@ -357,12 +357,12 @@
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `Rsvd` | R | 0x0 a| -
+| 63 | `Rsvd` | RW | 0x0 a| -
 | 62:48 | `UpperTarget` | RW | 0x0 a| -
-| 47:33 | `UpperCounter` | R | 0x0 a| -
+| 47:33 | `UpperCounter` | RW | 0x0 a| -
 | 32 | `ResetOnTarget` | RW | 0x0 a| When Counter = {upper_targe,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 | 31:16 | `Target` | RW | 0x0 a| -
-| 15:0 | `Counter` | R | 0x0 a| -
+| 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
 [#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter2Cfg]
@@ -371,12 +371,12 @@
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `Rsvd` | R | 0x0 a| -
+| 63 | `Rsvd` | RW | 0x0 a| -
 | 62:48 | `UpperTarget` | RW | 0x0 a| -
-| 47:33 | `UpperCounter` | R | 0x0 a| -
+| 47:33 | `UpperCounter` | RW | 0x0 a| -
 | 32 | `ResetOnTarget` | RW | 0x0 a| When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 | 31:16 | `Target` | RW | 0x0 a| -
-| 15:0 | `Counter` | R | 0x0 a| -
+| 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
 [#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter3Cfg]
@@ -385,12 +385,12 @@
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `Rsvd` | R | 0x0 a| -
+| 63 | `Rsvd` | RW | 0x0 a| -
 | 62:48 | `UpperTarget` | RW | 0x0 a| -
-| 47:33 | `UpperCounter` | R | 0x0 a| -
+| 47:33 | `UpperCounter` | RW | 0x0 a| -
 | 32 | `ResetOnTarget` | RW | 0x0 a| When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 | 31:16 | `Target` | RW | 0x0 a| -
-| 15:0 | `Counter` | R | 0x0 a| -
+| 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
 [#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap0]
@@ -1176,8 +1176,8 @@
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `TimestampUpper` | R | 0x0 a| Current timestamp value (upper 56 bits)
-| 7:0 | `TimestampLower` | R | 0x0 a| Current timestamp value (lower 8 bits)
+| 63:8 | `TimestampUpper` | RW | 0x0 a| Current timestamp value (upper 56 bits)
+| 7:0 | `TimestampLower` | RW | 0x0 a| Current timestamp value (lower 8 bits)
 |===
 
 [#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampSync]
