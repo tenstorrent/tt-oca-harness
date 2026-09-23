@@ -40,7 +40,7 @@ PROD_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 OCAH_ROOT  ?= $(abspath $(PROD_DIR)/../../../../..)
 OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 UV = uv
-PYTHON ?= $(UV) --directory "$(OCAH_ROOT)" run --locked python3
+PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked python3
 
 ifneq ($(RISCV_TOOLCHAIN),)
   _TC_PREFIX := $(RISCV_TOOLCHAIN)/
