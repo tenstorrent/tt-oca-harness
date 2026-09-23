@@ -198,6 +198,7 @@ Cryptographic subsystem reference pages:
 
 ++++
 <span id="adams-bridge-abr"></span>
+<span id="abr-aperture-decode"></span>
 <span id="och-modifications-5"></span>
 ++++
 
