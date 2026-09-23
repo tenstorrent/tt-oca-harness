@@ -10,8 +10,10 @@ schema_version = 1
 dut = "smc"
 scope_epoch = "smc-vcs-cov-v1"
 
-# PeakRDL regblock structural facts (A1 NO-STALL, A2 NO-ERROR); the file
-# header and the generator's docstring state them.
+# Register block structural facts: A1 NO-STALL and A2 NO-ERROR across the
+# PeakRDL blocks, plus A3 NO-READ-CHANNEL, A4 READ-NEVER-ERRORS and A5
+# INPUT-UNCONNECTED, which belong to one block each. The file header and the
+# generator's docstring state them.
 [[native_files]]
 tool = "vcs"
 role = "exclude"

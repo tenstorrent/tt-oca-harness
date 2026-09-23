@@ -12,7 +12,7 @@
 // (A1 NO-STALL, A2 NO-ERROR) and which blocks each applies to.
 //==================================================
 
-CHECKSUM: "3869168330 1297930971"
+CHECKSUM: "3869168330 760173647"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: alias_remap_reg
@@ -23,13 +23,13 @@ Condition 37 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 37 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "3896755233 3197487389"
+CHECKSUM: "3896755233 3909592511"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: avsbus_controller_reg
 Condition 140 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
 Condition 140 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
 
-CHECKSUM: "3619095557 3575510968"
+CHECKSUM: "3619095557 1034725017"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: chip_config_reg
@@ -40,12 +40,12 @@ Condition 29 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 29 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "4071069113 3052565341"
+CHECKSUM: "4071069113 1776738744"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: cpu_ctrl_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "4047357563 1591044204"
+CHECKSUM: "4047357563 3105227975"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: dfx_ctrl_status_reg
@@ -56,7 +56,7 @@ Condition 60 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 60 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "2345381840 815619286"
+CHECKSUM: "2345381840 1625737755"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: efuse_interface_ctrl_reg
@@ -65,7 +65,7 @@ Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
 Condition 74 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 74 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 
-CHECKSUM: "1147255362 363877172"
+CHECKSUM: "1147255362 2271730998"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: filter_ctrl_reg
@@ -76,7 +76,7 @@ Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "936371605 373616375"
+CHECKSUM: "936371605 2913940277"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: gpio_intf_reg
@@ -87,7 +87,7 @@ Condition 70 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 70 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "1461514841 3636893582"
+CHECKSUM: "1461514841 2927016927"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: i2c_ctrl_reg
@@ -98,12 +98,66 @@ Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "1943968615 3039478896"
+CHECKSUM: "1943968615 3380696541"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: i2c_reg
 Branch 9 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "2067798497 2965795156"
+CHECKSUM: "3355438513 3938785771"
+ANNOTATION: "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually exclusive, wr_err is gated on reg_we and addrmiss requires that no address hit, so a read that hits an address always sees reg_error low and the crossed term cannot occur."
+ANNOTATION: "SMC-REGBLOCK-A5-INPUTUNCONNECTED: the SMC integration leaves this block's devmode_i unconnected, so the explicit-error-on-unmapped-access term it gates never evaluates true."
+MODULE: idma_reg64_2d_reg_top
+Condition 127 "583269373" "((devmode_i & addrmiss) | wr_err) 1 -1" (3 "10")
+Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 139 "4149940944" "(addr_hit[2] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 140 "2155151428" "(addr_hit[3] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 141 "3745726092" "(addr_hit[4] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 142 "3334763097" "(addr_hit[5] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 143 "1063993551" "(addr_hit[6] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 144 "1212502619" "(addr_hit[7] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 145 "408139702" "(addr_hit[8] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 146 "3651139281" "(addr_hit[9] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 147 "1882158300" "(addr_hit[10] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 148 "2016350970" "(addr_hit[11] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 149 "2172657772" "(addr_hit[12] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 150 "4138611448" "(addr_hit[13] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 151 "2845314096" "(addr_hit[14] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 152 "2954838245" "(addr_hit[15] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 153 "1236300403" "(addr_hit[16] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 154 "2487609291" "(addr_hit[17] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 155 "3293774374" "(addr_hit[18] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 156 "3011317938" "(addr_hit[19] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 157 "701369456" "(addr_hit[20] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 158 "810107045" "(addr_hit[21] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 159 "3387322931" "(addr_hit[22] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 160 "3200802983" "(addr_hit[23] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 161 "3791543919" "(addr_hit[24] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 162 "540155656" "(addr_hit[25] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 163 "3650956702" "(addr_hit[26] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 164 "4168719649" "(addr_hit[27] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 165 "2825877708" "(addr_hit[28] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 166 "3745606232" "(addr_hit[29] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 167 "2892656397" "(addr_hit[30] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 168 "3052217304" "(addr_hit[31] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 169 "1279398222" "(addr_hit[32] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 170 "1195840522" "(addr_hit[33] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 171 "410069698" "(addr_hit[34] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 172 "1868511318" "(addr_hit[35] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 173 "2532313792" "(addr_hit[36] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 174 "2406958613" "(addr_hit[37] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 175 "3747718136" "(addr_hit[38] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 176 "2823795052" "(addr_hit[39] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 177 "514984631" "(addr_hit[40] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 178 "3749596112" "(addr_hit[41] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 179 "651262278" "(addr_hit[42] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 180 "3546684156" "(addr_hit[43] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 181 "2354062388" "(addr_hit[44] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 182 "4219352736" "(addr_hit[45] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 183 "47252534" "(addr_hit[46] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 184 "458639587" "(addr_hit[47] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 185 "1262529806" "(addr_hit[48] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+
+CHECKSUM: "2067798497 84113796"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: log_engine_reg
@@ -114,7 +168,7 @@ Condition 88 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 88 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "677483531 1109502550"
+CHECKSUM: "677483531 442683581"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: ndm_reset_reg
@@ -125,7 +179,7 @@ Condition 27 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 27 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "4060298550 675217217"
+CHECKSUM: "4060298550 1539976365"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: output_remap_reg
@@ -136,12 +190,12 @@ Condition 21 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 21 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "3271107167 2051533637"
+CHECKSUM: "3271107167 1345162332"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: reset_unit_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "2083532214 3516621464"
+CHECKSUM: "2083532214 1989962094"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: scratch_reg
@@ -152,7 +206,7 @@ Condition 25 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 25 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "155370989 504970378"
+CHECKSUM: "155370989 631920874"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: smc_base_config_reg
@@ -163,7 +217,7 @@ Condition 145 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_s
 Condition 145 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "1845094762 1901872711"
+CHECKSUM: "1845094762 2497126651"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: straps_reg
@@ -174,12 +228,12 @@ Condition 23 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 23 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "1018686372 1324937556"
+CHECKSUM: "1018686372 837048839"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: system_timer_octs_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "656852128 3186388910"
+CHECKSUM: "656852128 1067758899"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: telemetry_receiver_reg
@@ -190,7 +244,7 @@ Condition 71 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 71 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "427703398 3111610693"
+CHECKSUM: "427703398 1889139731"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: uart_16550_dl_reg
@@ -201,17 +255,27 @@ Condition 25 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 25 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "3055559241 2946310052"
+CHECKSUM: "3055559241 4290674178"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: uart_16550_main_reg
 Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "2964910200 2953287278"
+CHECKSUM: "2964910200 3918030293"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- so this block's AR channel is never driven and no access can produce a condition over it."
 MODULE: uart_16550_main_wo_reg
 Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
+Condition 4 "60604864" "((axil_ar_accept || axil_aw_accept) && ((!axil_resp_acked))) 1 -1" (2 "10")
+Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
+Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (2 "10")
+Condition 9 "1967922282" "(((!axil_arvalid)) || axil_ar_accept) 1 -1" (1 "00")
+Condition 9 "1967922282" "(((!axil_arvalid)) || axil_ar_accept) 1 -1" (2 "01")
+Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
+Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
 
-CHECKSUM: "225643378 510029441"
+CHECKSUM: "225643378 1423410759"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: uart_log_engine_ctrl_reg
@@ -222,7 +286,7 @@ Condition 24 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 24 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
-CHECKSUM: "1361930843 2910525901"
+CHECKSUM: "1361930843 1317082537"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 MODULE: zeroer_ctrl_reg

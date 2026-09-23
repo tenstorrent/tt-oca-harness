@@ -16,6 +16,19 @@ access from this bench can reach, and SEP records the same facts in
   `decoded_err`, `cpuif_wr_err` or `cpuif_rd_err`, so its error branches and
   the SLVERR values of `bresp`/`rresp` never occur.
 
+Three more facts belong to one block each rather than to a family:
+
+* A3 NO-READ-CHANNEL: the UART selects its write-only register map on the
+  write channel only, so that block's AR channel is never driven and every
+  condition over it, the read handshake included, has no access behind it.
+* A4 READ-NEVER-ERRORS: the vendored iDMA register top raises an error only
+  on a write (`wr_err` is gated on `reg_we`) or on an access that hits
+  nothing (`addrmiss` requires no hit), and read and write are mutually
+  exclusive, so the per-address read term crossed with an error cannot occur.
+* A5 INPUT-UNCONNECTED: the same block's `devmode_i` is left unconnected by
+  the SMC integration, so the explicit-error-on-unmapped-access term it gates
+  never evaluates true.
+
 A third fact is not a register block's: a CRC or parity network is an XOR
 reduction, and condition coverage enumerates 2^n input combinations of it.
 The X1 XOR-NETWORK class names those expressions.
@@ -164,6 +177,35 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
 }
 
 
+A3 = (
+    "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on "
+    "the write channel only -- its read-channel select has no branch for that map -- so "
+    "this block's AR channel is never driven and no access can produce a condition over it."
+)
+A4 = (
+    "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually "
+    "exclusive, wr_err is gated on reg_we and addrmiss requires that no address hit, so a "
+    "read that hits an address always sees reg_error low and the crossed term cannot occur."
+)
+A5 = (
+    "SMC-REGBLOCK-A5-INPUTUNCONNECTED: the SMC integration leaves this block's devmode_i "
+    "unconnected, so the explicit-error-on-unmapped-access term it gates never evaluates "
+    "true."
+)
+
+# module -> [(class, expression pattern, term-vector pattern or None)]. These
+# are facts about one block, checked against its own source, not about a
+# family. The vector pattern pins which row of a multi-term expression the
+# fact covers, so a sibling row that an access can reach stays graded.
+EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
+    "uart_16550_main_wo_reg": [(A3, re.compile(r"arvalid|ar_accept|prev_was_rd"), None)],
+    "idma_reg64_2d_reg_top": [
+        (A4, re.compile(r"addr_hit\[\d+\]\s*&\s*reg_re"), re.compile(r"^110$")),
+        (A5, re.compile(r"devmode_i"), re.compile(r"^1")),
+    ],
+}
+
+
 def uncovered_rows(modinfo: Path) -> dict[tuple[str, str], set[str]]:
     """(module, expression) -> set of term vectors the report marks Not Covered."""
     rows: dict[tuple[str, str], set[str]] = {}
@@ -263,6 +305,40 @@ def select_regblock(entry: str, stall0: bool, noerr: bool, uncovered: set[str]) 
     return None
 
 
+def extra_entries(templates: dict[str, dict[str, Section]], module: str) -> list[tuple[str, str]]:
+    """Every condition and branch template entry of a module named in EXTRA_FACTS."""
+    if module not in EXTRA_FACTS:
+        return []
+    out: list[tuple[str, str]] = []
+    for metric in ("cond", "branch"):
+        section = templates[metric].get(module)
+        if section is not None:
+            out += section.entries
+    return out
+
+
+def select_extra(module: str, entry: str, uncovered: dict[tuple[str, str], set[str]]) -> str | None:
+    """Return the per-block class an uncovered entry belongs to, or None."""
+    m = COND_ROW_RE.match(entry)
+    vec = None
+    if m:
+        expr, vec = m.group(2), m.group(4)
+        if vec not in uncovered.get((module, expr), set()):
+            return None
+    else:
+        m = BRANCH_ROW_RE.match(entry)
+        if m is None or m.group(5) != "1":
+            return None
+        expr = m.group(2)
+    for reason, pattern, vector in EXTRA_FACTS[module]:
+        if not pattern.search(expr):
+            continue
+        if vector is not None and (vec is None or not vector.match(vec)):
+            continue
+        return reason
+    return None
+
+
 def render_regblock(
     templates: dict[str, dict[str, Section]], uncovered: dict[tuple[str, str], set[str]]
 ) -> tuple[str, int]:
@@ -291,7 +367,7 @@ def render_regblock(
             section = templates[metric].get(module)
             if section is None:
                 continue
-            checksum = section.checksum
+            checksum = checksum or section.checksum
             for src, entry in section.entries:
                 stall0, noerr = facts_cache.setdefault(
                     src.split(":")[0], regblock_facts(module, src)
@@ -303,10 +379,14 @@ def render_regblock(
                 reason = select_regblock(entry, stall0, noerr, rows)
                 if reason:
                     block.append((reason, entry))
+        for src, entry in extra_entries(templates, module):
+            reason = select_extra(module, entry, uncovered)
+            if reason:
+                block.append((reason, entry))
         if not block:
             continue
         out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (A1, A2):
+        for reason in (A1, A2, A3, A4, A5):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")
