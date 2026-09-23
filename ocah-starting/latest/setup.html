@@ -231,7 +231,8 @@
 <h2 id="repository"><a class="anchor" href="#repository"></a><a class="link" href="#repository">1. Repository</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>To clone the repository, ensure that you have <code>git</code> installed (<code>sudo apt install git</code>), and then run the following commands:</p>
+<p>To clone the repository, ensure that you have <code>git</code> installed (<code>sudo apt install git</code>),
+and then run the following commands:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -241,10 +242,14 @@ cd tt-oca-harness</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The repository&#8217;s open RTL, documentation, register generation, lint, and
-containerized firmware flows do not require submodules. The production SEP boot
-manifest tooling is an optional submodule that requires separate access; do not
-use <code>--recursive</code> for the public setup path.</p>
+<p>The repository contains a Python environment used for scripting workflows. Some of
+these workflows are contained within submodules, meaning the Python environment requires
+the submodules to be initialised. To do this, run the following command:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git submodule update --init --recursive</code></pre>
+</div>
 </div>
 </div>
 </div>
@@ -277,11 +282,11 @@ ways to get these:</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#native"><strong>Native</strong></a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Install each tool individually on the host. Gives the most control but requires
-  the most setup. The remainder of this page documents the native path; see
-  <a href="dependencies.html" class="xref page">Dependencies</a> for version requirements.</p></td>
+  the most setup. See <a href="#native"><strong>this section</strong></a> for the (Ubuntu) native path and
+  refer to <a href="dependencies.html" class="xref page">Dependencies</a> for version requirements.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#nix-shell"><strong>Nix dev shell</strong></a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#nix-develop"><strong>Nix Development Shell</strong></a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>nix develop</code> provides the same tool set as the container, directly on the host,
   via the Nix package manager. Available but not first-class supported — useful on
   NixOS or hosts that already have Nix installed.</p></td>
@@ -362,7 +367,7 @@ built automatically on first use:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Open an interactive shell (builds the image if needed)
-./scripts/docker-run.sh shell
+./scripts/docker-run.sh shell # use shell-here for 1:1 paths
 
 # Run a command inside the container
 ./scripts/docker-run.sh run make dv-fw-tests TARGET=smc
@@ -378,6 +383,10 @@ built automatically on first use:</p>
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./scripts/docker-run.sh build</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>To bundle UV dependencies in with the container, for a fully offline system, set
+<code>OCAH_IMAGE_WITH_UV=true</code> before building</p>
 </div>
 </div>
 </div>
@@ -465,7 +474,14 @@ ccache picolibc-riscv64-unknown-elf cmake</code></pre>
 <p><a href="https://github.com/MikePopoloski/slang"><strong>Slang</strong></a></p>
 </li>
 <li>
-<p><a href="https://github.com/YosysHQ/yosys">Yosys</a> (Also packaged via <code>apt</code>, but newer version recommend)&#8201;&#8212;&#8201;<a href="https://github.com/povik/sv-elab">SV-Elab</a> (Formerly Yosys-Slang) Required to allow Yosys to synthesise SystemVerilog</p>
+<p><a href="https://github.com/YosysHQ/yosys"><strong>Yosys</strong></a> (Also packaged via <code>apt</code>, but newer version recommend)</p>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://github.com/povik/sv-elab"><strong>SV-Elab</strong></a> (Formerly Yosys-Slang) Required to allow Yosys to synthesise SystemVerilog</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><a href="https://surfer-project.org/"><strong>Surfer</strong></a> (optional, alternatives available, used for wave trace debugging)</p>
@@ -490,7 +506,7 @@ ccache picolibc-riscv64-unknown-elf cmake</code></pre>
 </div>
 </div>
 <div class="sect1">
-<h2 id="nix-shell"><a class="anchor" href="#nix-shell"></a><a class="link" href="#nix-shell">5. Nix dev shell (available, not first-class supported)</a></h2>
+<h2 id="nix-develop"><a class="anchor" href="#nix-develop"></a><a class="link" href="#nix-develop">5. Nix Development Shell (available, not first-class supported)</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>If you have <a href="https://nixos.org/download/">Nix</a> installed, the dev shell provides
@@ -506,6 +522,10 @@ needed:</p>
 <p>With <a href="https://github.com/direnv/direnv">direnv</a> configured, the shell activates
 automatically on <code>cd</code> into the repo.</p>
 </div>
+<div class="paragraph">
+<p>See <a href="https://github.com/tenstorrent/tt-oca-harness/tree/main/nix">the OCA Harness Nix Readme</a> for
+more information on Nix integration.</p>
+</div>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -514,9 +534,9 @@ automatically on <code>cd</code> into the repo.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>The Nix dev shell is not first-class supported for the initial release. It works
-well on NixOS and Linux hosts with Nix installed, but may have edge cases on
-other platforms. The container is the recommended path.</p>
+<p>The Nix dev shell is not first-class supported for the initial release. It has been
+deployed on NixOS and Linux hosts with Nix installed, but is not actively tested.
+MacOS builds have not been attempted. The container is the recommended path.</p>
 </div>
 </td>
 </tr>
