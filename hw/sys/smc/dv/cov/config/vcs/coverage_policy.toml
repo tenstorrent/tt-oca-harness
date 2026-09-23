@@ -44,6 +44,16 @@ path = "smc_fsm_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
+# A feature the build leaves out (P1 NTRACE-OFF): the trace wrapper is
+# instantiated with zero N-trace instances, so the trace sink's N-trace half
+# has no source and its conditions no stimulus.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_disabled_feature_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
 # Covergroups declared inside vendored RTL. `-cm_hier` does not reach
 # covergroups, so the six I3C controllers' groups would otherwise sit in urg's
 # GROUP score beside SMC's own cov/sv covergroups. Regenerated from urg's group

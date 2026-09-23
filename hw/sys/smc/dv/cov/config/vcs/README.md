@@ -98,9 +98,9 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
 ## Exclusion files
 
-`coverage_policy.toml` beside this file names four `-elfile` files the report
+`coverage_policy.toml` beside this file names five `-elfile` files the report
 applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
-The first three are written by `gen_smc_cov_exclusions.py` from urg's exclusion
+The first four are written by `gen_smc_cov_exclusions.py` from urg's exclusion
 templates and the run's raw report (`cov/report_raw`, written without the
 exclusion files). The condition, branch and F2 entries list only points that
 report marks uncovered, so a reachable point is never hidden by a pattern;
@@ -126,12 +126,13 @@ state register's enable-edge load cannot reach:
 | `smc_fsm_exclusions.el` | F4 PARAM-OFF | `efuse_interface_controller.efuse_reg_select` selects EFUSE_MMR_REG_MAP only when the instance has lifecycle state (`hw/ip/efuse/doc/memmap.adoc`); `smc_efuse_wrapper` sets `HAS_LC_STATE = 0`, so the arm is not elaborated and the state and its edges have no access that reaches them |
 | `smc_fsm_exclusions.el` | F5 RESET-EDGE | a state register's reset assignment is expanded into a transition from every state; where no case arm assigns the reset state, the edge exists only if the block's reset is asserted while the FSM occupies that one state, and the package grades reset behaviour through its reset leaves |
 | `smc_fsm_exclusions.el` | F6 ENABLE-EDGE | the bus monitor loads StBusBusyHigh only on the monitor enable's rising edge in multi-controller mode, and its disabled branch parks the register at StBusFree, so an edge into it from any other state cannot occur |
+| `smc_disabled_feature_exclusions.el` | P1 NTRACE-OFF | the DFD top instantiates the trace wrapper with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace half has no source; only its uncovered `trntr` conditions are listed |
 
 A regblock whose stall is `external_pending` (it has external registers)
 gets A2 only; a regblock that decodes errors gets neither. `--check` reports
 when the committed files no longer match the templates.
 
-The fourth file is a covergroup exclusion. `-cm_hier` scopes line, condition,
+The fifth file is a covergroup exclusion. `-cm_hier` scopes line, condition,
 FSM, toggle and branch, and `-cm_common_hier` extends it to assertions;
 neither reaches a covergroup, so a covergroup declared inside RTL is graded
 wherever the elaboration instantiates it. The six
