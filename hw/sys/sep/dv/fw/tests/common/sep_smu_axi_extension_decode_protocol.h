@@ -28,7 +28,10 @@
 #define SMU007_CDNS_BOUND_CYC 2000000
 #define SMU007_PASS_BOUND_CYC 2000000
 
-#define SMU007_SPI_SEL 1
+/* Stimulus field for the AXI-extension decode check. Was spi_sel until that
+ * field was retired; cs_force_high is the surviving RW bit in SPI_MUX_CTRL,
+ * and 0 differs from its POR of 1 so the write is observable. */
+#define SMU007_CS_FORCE_HIGH 0
 #define SMU007_XIP_OFF 0x4000
 #define SMU007_XIP_WORD 0xA1B2C3D4
 #define SMU007_SEL_SPI_MUX 0
