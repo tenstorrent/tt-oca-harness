@@ -256,6 +256,7 @@ feature rows.
 |`smc_deadspace_decode_test` |Probe wrap-period offsets past PeakRDL SIZE and watch live CSRs.
 |`smc_dual_base_addressing_test` |`LOCAL_BASE` is read-only at 0xC000_0000, `GLOBAL_BASE` takes and returns a pattern, `REGION_SIZE` reads its 16 MiB reset.
 |`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes.
+|`smc_filter_region_span_test` |A filter region spanning two granules on every outbound entry, with one of them enabled and enforced against a DMA copy.
 |`smc_filter_field_sweep_test` |Per-filter 3-field sweep x 4 entries x 2 dirs.
 |`smc_filter_multi_entry_test` |Filter 16 inbound + 16 outbound CONFIG sweep.
 |`smc_input_fabric_axi_wr_rd_test` |Run the input/output fabric CSR precheck over SEP_IN AXI.
@@ -8319,6 +8320,42 @@ Drive `smc_i2c_fifo_reset_pulse_test_seq`. Each checker below is a named compare
 |===
 
 *Pass Criteria*: `CHK-I2C-FIFO-RST-EMPTIES`, `CHK-I2C-FIFO-RST-ONE-HOT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-214-smc_filter_region_span_test]]
+===== 214 `smc_filter_region_span_test`
+
+*Source Module*: `smc_filter_region_span_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN and JTAG); the SMC DMA as the outbound master
+
+*Objective*: Program a filter region spanning two granules on every outbound entry, and show one of them enforced on the bus.
+
+*Test Coverage*:
+
+* `smc_filter_config_field_sweep_test` cycles `FILTER_CONFIG` on every entry and `smc_filter_multi_entry_test` reads the reset of all of them, but nothing programs `START_ADDR` and `END_ADDR` into a region. A sweep cannot: its ones and zeros patterns give both registers the same value, so the start and the end always land in the same granule. Only `smc_dma_sanity_test_seq` programs a spanning region, and only on entry 0, which is why entries 1 to 15 had never had a start and an end in different granules.
+* **The outbound filter carries the region, and the choice is from the document.** `hw/sys/smc/doc/fabric.adoc` separates the two: inbound filtering "protects SMC resources from unauthorized external access", which is the path this sequence's own CSR accesses arrive on, while outbound filtering "manages which external resources the SMC can access, restricting SMC-initiated requests". No access this leaf makes to program or read a filter can therefore be caught by the filter it is programming. The same document records the difference the traffic leg relies on: of traffic matching no entry, "the inbound filter blocks it, and the outbound filter permits it".
+* **What the region proves comes from the RDL.** `filter_ctrl.rdl` states the write-back rule for both address registers: "Hardware writes the rounded start_addr and end_addr back into these fields only when both land in the same granule; otherwise readback returns the programmed values even though matching is still granule-aligned." Each of entries 1 to 15 is driven both ways and both readbacks are required -- a single-granule region must read back rounded down to the granule base and up to its top, a spanning one exactly as programmed -- so the leaf fails if hardware rounds a spanning region or leaves a single-granule one alone. `FILTER_CONFIG.allow_burst` is set, which that RDL makes the 4 KiB granule.
+* **The enforcement leg uses the DMA, which is the outbound master.** `fabric.adoc` lists the DMA controller among the SMC-initiated paths that run "Alias remap -> filtering -> destination". Entry 1 is enabled over the spanning region with `write_allowed` clear and `read_allowed` set, and the DMA copies a word into the region and a word a granule above it. The copy inside must leave its destination holding the sentinel it was seeded with; the copy outside must land, and that second copy is what shows the first was refused rather than the DMA idle. Both descriptors are required to complete, so neither result can come from a transfer that never ran.
+* The observable there is memory rather than the response, and deliberately: the backend is elaborated with `ErrorCap(idma_pkg::NO_ERROR_HANDLING)`, so a refused write raises no error the DMA reports. The JTAG2AXI bridge seeds and reads those addresses and is not the master under test -- a first attempt drove the traffic through it and no refusal appeared, because that bridge enters the fabric on the inbound side rather than the outbound one the entry sits on.
+* Entry 1 is the highest-priority entry `smc_dma_sanity_test_seq` leaves alone, the hit index being a leading-zero count over the entries. The leaf reads entry 0 first and fails if it is already enabled, so a rule of somebody else's cannot be what the traffic leg measures.
+* Every entry the leaf programs is restored to its RDL reset, the traffic entry's three registers are read back to prove it, and `FILTER_CONFIG.locked` is never written.
+
+*Test Procedure*:
+
+Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FILTER-REGION-SPAN` |Each of outbound entries 1 to 15 took a region whose start and end sit in different 4 KiB granules and read both address registers back exactly as programmed, and a region inside one granule and read it back rounded to the granule base and top, which is the write-back rule filter_ctrl.rdl states
+|`CHK-FILTER-REGION-ENFORCED` |With outbound entry 1 enabled over a two-granule region with write_allowed clear, a DMA copy into the region left its destination at the seeded sentinel while a copy a granule above the region landed, both transfers having completed; every entry was restored to its RDL reset and read back and the write-once lock was never written
+|===
+
+*Pass Criteria*: `CHK-FILTER-REGION-ENFORCED`, `CHK-FILTER-REGION-SPAN` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
