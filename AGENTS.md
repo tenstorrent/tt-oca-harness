@@ -112,6 +112,10 @@ Error: workdir "<symlinked path>" does not exist on container …
 
 Use `cd -P` (or `pwd -P`) so both agree. Harmless if your checkout is not symlinked.
 
+A linked worktree works with the same commands. Its `.git` file points at the main
+checkout, so `scripts/docker-run.sh` uses the worktree's real path and bind-mounts
+the main git directory. See `scripts/docker.md`.
+
 ### Scratch/temp space: honour `$TMPDIR`, never `/tmp`
 
 **Use the scratch directory the environment already defines, and do not invent your own.**
@@ -538,6 +542,7 @@ open files to compensate.
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every `flow.mk` top (`dtp`, `sep`, `smc`, `smu`, `aou` today). `flows/common.mk` also globs `hw/ip/*/flow.mk`; none exist. `BLOCK=` is a top, not an IP. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (Verilator) | `make lint-verilator-all` lints each discovered top the same way; add `BLOCK=<block…>` to restrict it |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
+| Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
@@ -563,12 +568,12 @@ lifetime, case completeness and hierarchy labels as manual changes requiring own
 Parameter naming remains deferred to issue #1051 and is disabled in this pass.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
-owner's `lint/` directory: `*.verible.waiver` and `*.verilator.vlt`. Central Makefiles only
-discover or pass those files, and each block `flow.mk` declares the Verilator waivers relevant
-to its elaborated top. Use the narrowest diagnostic/path/hierarchy/source match and a
-constraint-focused rationale. The CI-pinned Slang v11.0 has no native external-waiver support;
-keep its findings visible rather than substituting whole-file suppression until a release with
-TOML `--waiver-file` support is pinned.
+owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only
+`*.slang.expected-errors`. Central Makefiles only discover or pass those files, and each block
+`flow.mk` declares the exceptions relevant to its elaborated top. Use the narrowest
+diagnostic/path/hierarchy/source match and a constraint-focused rationale. Slang expected-error
+patterns must identify the path and message; the flow must fail if a pattern is unused or an
+additional error appears. Never replace a site-specific rule with whole-file suppression.
 
 The register generator owns `hw/common/regs/lint/peakrdl.verilator.vlt`, which the shared
 Verilator flow loads for every block. Its exact path and message matches cover only PeakRDL's

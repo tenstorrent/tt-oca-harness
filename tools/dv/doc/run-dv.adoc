@@ -1360,10 +1360,11 @@ item at `<run>/stages/regress/jobs/build-<stage>-<target>.json`, rendered
 through `build_submit_argv` when the executor has one and `submit_argv`
 otherwise, with the resources of the command line, the stage's `resources`
 table, `build_defaults`, then `defaults`. The worker runs the stage with the
-job's core request as its build concurrency and writes the build's result
-under `<run>/stages/regress/builds/<task>/`; the coordinator collects it into
-the run like an in-process build, so the leaves' manifests carry the same
-`target_build`. Every target builds at once and the leaves are submitted only
+job's core request as its build concurrency, which leaves the model's
+fingerprint unchanged, and writes the build's result under
+`<run>/stages/regress/builds/<task>/`; the coordinator collects it into the
+run like an in-process build, so the leaves' manifests carry the same
+`target_build` and find the model where it names it. Every target builds at once and the leaves are submitted only
 once the builds have ended. A build that fails, times out or is lost blocks
 its target: every planned leaf of that target grades `ERROR` with a
 `dependency_blocked` failure bucket naming the build stage and target and a
@@ -1881,8 +1882,11 @@ rebuilds the model on the next run.
   directory through the cocotb runner on every simulator, and removes a
   firmware template's declared outputs before `c_compile` runs so an
   incremental build tool cannot keep stale objects.
-* `build_jobs` and `cflags`, with the `[build.<tool>]` knobs, shape the build
-  command and enter the fingerprint through the arguments they add.
+* `cflags` and the `[build.<tool>]` knobs shape the build command and enter
+  the fingerprint through the arguments they add. `build_jobs` shapes the
+  command alone: a cluster build job takes its job count from its core
+  request while the coordinator takes `--build-jobs`, and both must name one
+  model directory.
 
 The shared profile leaves `cache_enabled` off, so one directory per target
 and tool is rebuilt in place when its inputs change.

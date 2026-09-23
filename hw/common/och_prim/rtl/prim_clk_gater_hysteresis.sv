@@ -59,7 +59,7 @@ module prim_clk_gater_hysteresis #(
     end
   end
 
-  prim_clkgater clkgater (
+  prim_clkgater u_clkgater (
     .clk_i(clk_i),
     .en_i (run),
     .te_i (test_clk_en_i),

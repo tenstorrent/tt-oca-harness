@@ -103,7 +103,7 @@ create_clock -add -name ENTROPY_ROSC_CLK -period $clock_periods(ENTROPY_ROSC_PER
 # source by 2^(n+1). The flop Q is not a clock cell, so each tap is declared
 # here. Both sampler sources are stamped: the lane mux selects one of them.
 set entropy_shared_ro_pins [get_pins -quiet \
-    "sep_crypto/u_sep_trng/u_entropy_source_s3c_scan/u_generator_complex/u_sampler_clocks/u_shared_ro/u_fbf/y_o"]
+    "u_sep_crypto/u_sep_trng/u_entropy_source_s3c_scan/u_generator_complex/u_sampler_clocks/u_shared_ro/u_fbf/y_o"]
 
 if {[sizeof_collection $entropy_shared_ro_pins] == 0} {
     puts "INFO: entropy_source is absent; ripple-divider generated clocks skipped"

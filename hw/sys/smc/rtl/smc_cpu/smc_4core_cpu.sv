@@ -96,7 +96,7 @@ module smc_4core_cpu (
   logic debug_dmactive, debug_dmactiveAck;
   logic gated_debug_clock;
 
-  prim_flop_3sync_r sync_debug_active (
+  prim_flop_3sync_r u_sync_debug_active (
     .clk_i(clk_i),
     .rst_ni(rst_debug_ni),
     .d_i(debug_dmactive),
@@ -111,7 +111,7 @@ module smc_4core_cpu (
     end
   end
 
-  prim_clkgater debug_clock_gate (
+  prim_clkgater u_debug_clock_gate (
     .clk_i    (clk_i),
     .en_i     (clock_en),
     .te_i     (test_en_i),

@@ -7,10 +7,11 @@ The complement of smu_sram_auto_init_done_test. That leaf runs with
 sweep run to completion; this one runs the same cold reset with the input
 high: the initialisation enable must never rise and no zeroing write may
 reach the scratch RAM, which is the input's stated purpose (``smu.adoc``,
-``cpu.adoc``). That ``smc_init_mem_done_o`` still asserts is not stated by
-either document; the expectation is transcribed from ``smc_4core_cpu.sv``'s
-MEM_ZERO FSM, which leaves MEM_ZERO_IDLE straight for MEM_ZERO_DONE, so that
-leg is a drift check on the implementation until the specification says it.
+``cpu.adoc``). Neither document says what ``smc_init_mem_done_o`` does when
+the sweep is held off, so its behaviour after the release is recorded --
+whether and when it rose, and how it held -- and carries no token: a
+specification statement, not a reading of the implementation, is what would
+turn that record into a claim.
 
 The bench raises the input when a test supplies ``+smc_scratch_ram_hex``,
 because the sweep would otherwise overwrite the image; the testlist entry
@@ -33,7 +34,7 @@ QUIET_SAMPLES = 2048
 
 
 class smu_sram_auto_init_disabled_seq:
-    """smc_init_mem_done_o with the SRAM auto-initialisation disabled."""
+    """No zeroing sweep and no zeroing write with the SRAM auto-initialisation disabled."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -84,60 +85,37 @@ class smu_sram_auto_init_disabled_seq:
         writes_before = sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
         dut.rst_cold_ni.value = 1
 
-        # The FSM either sweeps or skips. Watch both: the enable must never
-        # rise while completion is awaited.
+        # Watch the enable over a fixed window while the sweep is held off; it
+        # must never rise. What smc_init_mem_done_o does in that window is
+        # recorded alongside, without a compare (module docstring).
         done_cycle = None
+        done_high = 0
         enable_seen = 0
-        for cycle in range(DONE_BOUND_CYCLES):
+        for cycle in range(DONE_BOUND_CYCLES + QUIET_SAMPLES):
             await RisingEdge(dut.clk_smu_i)
             enable_seen |= sample(init_enable, "init_mem_enable")
-            if sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o"):
+            done = sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o")
+            if done and done_cycle is None:
                 done_cycle = cycle
-                break
-        if done_cycle is None:
-            raise AssertionError(
-                f"TIMEOUT smc_init_mem_done_o never asserted with the initialisation "
-                f"disabled: bound={DONE_BOUND_CYCLES} clk_smu enable_seen={enable_seen}"
-            )
+            if cycle >= DONE_BOUND_CYCLES:
+                done_high += done
+        sb.expect_eq(
+            f"the zeroing sweep never starts across {DONE_BOUND_CYCLES + QUIET_SAMPLES} clk_smu "
+            "cycles after the release",
+            enable_seen,
+            0,
+            evidence="CHK-SMU-MEMINIT-DISABLED",
+        )
         self.log.info(
-            "smc_init_mem_done_o asserted %d clk_smu after release with the sweep disabled",
-            done_cycle,
-        )
-        sb.expect_eq(
-            "the zeroing sweep never starts while the initialisation is disabled",
-            enable_seen,
-            0,
-            evidence="CHK-SMU-MEMINIT-DISABLED",
-        )
-        sb.expect_eq(
-            "smc_init_mem_done_o asserts anyway",
-            sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o"),
-            1,
-            evidence="CHK-SMU-MEMINIT-DISABLED",
-        )
-        sb.expect_eq(
-            "smc_init_mem_done_o is the SMC initialisation-complete flag",
-            sample(init_complete, "init_mem_complete"),
-            1,
-            evidence="CHK-SMU-MEMINIT-DISABLED",
-        )
-
-        held = 0
-        for _ in range(QUIET_SAMPLES):
-            await RisingEdge(dut.clk_smu_i)
-            enable_seen |= sample(init_enable, "init_mem_enable")
-            held += sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o")
-        sb.expect_eq(
-            f"the enable stays low for a further {QUIET_SAMPLES} clk_smu cycles",
-            enable_seen,
-            0,
-            evidence="CHK-SMU-MEMINIT-DISABLED",
-        )
-        sb.expect_eq(
-            f"smc_init_mem_done_o holds for {QUIET_SAMPLES} clk_smu cycles",
-            held,
+            "OBSERVED-ONLY smc_init_mem_done_o with the sweep held off: %s; high on %d of the "
+            "last %d cycles of the window (init_mem_complete=%d). No specification states the "
+            "done behaviour for a disabled sweep, so this is recorded, not compared",
+            f"rose {done_cycle} clk_smu after the release"
+            if done_cycle is not None
+            else f"did not rise within {DONE_BOUND_CYCLES + QUIET_SAMPLES} clk_smu",
+            done_high,
             QUIET_SAMPLES,
-            evidence="CHK-SMU-MEMINIT-DISABLED",
+            sample(init_complete, "init_mem_complete"),
         )
         writes_after = sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
         self.log.info("scratch writes %d -> %d across the window", writes_before, writes_after)

@@ -82,7 +82,7 @@ chapter cites revision 6 for electrical and timing requirements.
 |MIPI I3C Basic specification, versions 1.0 and 1.1.1
 |I3C core controller interface.
 
-|MIPI I3C Host Controller Interface (HCI) specification, version 1.2
+|MIPI I3C HCI (Host Controller Interface) specification, version 1.2
 |I3C core controller register map.
 
 |TCRI recovery specification, version 1.0

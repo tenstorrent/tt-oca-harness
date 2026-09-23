@@ -47,7 +47,7 @@ module log_engine
   log_fetch_addr_t  log_region_addr;
   log_write_addr_t  log_write_addr;
   log_len_t         log_lens       [NUM_LOG_ENTRIES]; // Used unpacked array to fit structure of
-                                                      // arbiter_tree.data_i
+                                                      // u_arbiter_tree.data_i
 
   // Current log entry
   log_len_t         log_len;
@@ -81,7 +81,7 @@ module log_engine
     .N          (NUM_LOG_ENTRIES),
     .DW         (LOG_LEN_WIDTH),
     .EnDataPort (1'b1)
-  ) arbiter_tree (
+  ) u_arbiter_tree (
     .clk_i,
     .rst_ni,
     .req_chk_i  (1'b1),
@@ -136,7 +136,7 @@ module log_engine
     .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
     .axi_req_t       (log_fetch_axil_req_t),
     .axi_rsp_t       (log_fetch_axil_resp_t)
-  ) axil_lite_from_log_fetch_fsm (
+  ) u_axil_lite_from_log_fetch_fsm (
     .clk_i,
     .rst_ni,
 
@@ -281,7 +281,7 @@ module log_engine
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b0)
-  ) rdata_fifo (
+  ) u_rdata_fifo (
     .clk_i,
     .rst_ni,
     .clr_i             (!log_engine_en),
@@ -324,7 +324,7 @@ module log_engine
     .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
     .axi_req_t       (log_write_axil_req_t),
     .axi_rsp_t       (log_write_axil_resp_t)
-  ) axi_lite_from_log_write_fsm (
+  ) u_axi_lite_from_log_write_fsm (
     .clk_i,
     .rst_ni,
 
@@ -442,7 +442,7 @@ module log_engine
   log_engine_reg_pkg::log_engine__in_t  reg_in;
   log_engine_reg_pkg::log_engine__out_t reg_out;
 
-  log_engine_reg log_engine_reg (
+  log_engine_reg u_log_engine_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 

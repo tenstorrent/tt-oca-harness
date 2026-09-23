@@ -240,7 +240,7 @@ module sep_system_csr (
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) system_csr_axil_demux (
+  ) u_system_csr_axil_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -280,7 +280,7 @@ module sep_system_csr (
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) local_master_alias_remap_axil_demux (
+  ) u_local_master_alias_remap_axil_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -351,7 +351,7 @@ module sep_system_csr (
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) ap_output_remap_axil_demux (
+  ) u_ap_output_remap_axil_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -422,7 +422,7 @@ module sep_system_csr (
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) stee_output_remap_axil_demux (
+  ) u_stee_output_remap_axil_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -489,7 +489,7 @@ module sep_system_csr (
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) outbound_filter_axil_demux (
+  ) u_outbound_filter_axil_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -528,7 +528,7 @@ module sep_system_csr (
         .SpillB      (1'b0),
         .SpillAr     (1'b1),
         .SpillR      (1'b0)
-      ) outbound_filter_axil_demux (
+      ) u_outbound_filter_axil_demux (
         .clk_i            (clk_i),
         .rst_ni           (rst_ni),
         .test_i           (test_en_i),
@@ -573,7 +573,7 @@ module sep_system_csr (
         .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
         .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
         .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
-      ) err_slv (
+      ) u_err_slv (
         .clk_i       (clk_i),
         .rst_ni      (rst_ni),
         .axil_req_i  (locked_reg_req),
@@ -608,7 +608,7 @@ module sep_system_csr (
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) inbound_filter_axil_demux (
+  ) u_inbound_filter_axil_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -647,7 +647,7 @@ module sep_system_csr (
         .SpillB      (1'b0),
         .SpillAr     (1'b1),
         .SpillR      (1'b0)
-      ) inbound_filter_axil_demux (
+      ) u_inbound_filter_axil_demux (
         .clk_i            (clk_i),
         .rst_ni           (rst_ni),
         .test_i           (test_en_i),
@@ -692,7 +692,7 @@ module sep_system_csr (
         .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
         .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
         .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
-      ) err_slv (
+      ) u_err_slv (
         .clk_i       (clk_i),
         .rst_ni      (rst_ni),
         .axil_req_i  (locked_reg_req),
@@ -791,7 +791,7 @@ module sep_system_csr (
 
   prim_refclk_count_w_cdc #(
     .REF_COUNT_WIDTH(64)
-  ) reference_counter_counter (
+  ) u_reference_counter_counter (
     .refclk_i           (clk_ref_i),
     .prst_ni            (rst_ni),
     .cnt_en_i           (1'b1),
@@ -932,7 +932,7 @@ module sep_system_csr (
     .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
     .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
     .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
-  ) err_slv (
+  ) u_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
     .axil_req_i  (sep_system_csr_axil_reqs[sep_pkg::ERR_SLV]),
