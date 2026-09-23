@@ -20,6 +20,7 @@ in {
       OCAH_NO_INSTALL_NPM_DEPS = "1";
       # Run Synth Natively, rather than (nesting) container
       OCAH_EDA_SKIP_CONTAINERS = "1";
+      OCAH_YOSYS_BUNDLED_SLANG = "1";
       # SMC Bootrom
       RISCV_TOOLCHAIN = "${pkgs.riscv-unknown-elf-toolchain}/bin";
       # VP Env Variables
