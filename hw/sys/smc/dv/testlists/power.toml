@@ -12,6 +12,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_avsbus_retry_suppressed_test"
+module = "smc_avsbus_retry_suppressed_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_avsbus_sanity_test"
 module = "smc_avsbus_sanity_test"
 seed = 1

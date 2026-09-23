@@ -9274,6 +9274,123 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-232-smc_i2c_target_addr_stretch_test]]
+===== 232 `smc_i2c_target_addr_stretch_test`
+
+*Source Module*: `smc_i2c_target_addr_stretch_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads; observation on the resolved SCL net and on `ACQDATA`
+
+*Objective*: A repeated START issued while the target's acquisition FIFO is full must hold the bus through the address phase until software drains it.
+
+*Test Coverage*:
+
+* The address phase, which `smc_i2c_target_acq_stretch_test` does not reach: that leaf fills the FIFO part-way through a transfer, so the target stretches at a data byte. Holding the address phase needs the FIFO to still be out of room when a new address arrives, which only a repeated START can arrange -- a STOP would end the transfer and let software drain at leisure.
+* Both settings of `CTRL.NACK_ADDR_AFTER_TIMEOUT`, which `i2c.rdl` gives as ACK the address byte even if a stretch timeout occurs (`0`, for SMBus) or NACK it (`1`). The two settings take the target down different paths to the same hold, and in both the transfer has to complete once the FIFO is drained.
+* No stretch timeout is enabled in either leg, so a drain by software is the only thing that can release the hold. A leg that passed without the drain would be a different mechanism.
+* `CTRL.ACQ_START_STOP_EN` is set, so the acquired stream carries its own framing and the repeated START arrives as an `ACQDATA.SIGNAL` of `RESTART` after every byte written before it. The STOP entry is matched on its signal alone, since the RDL defines no byte for it.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target and require its acquisition FIFO to read empty and not full.
+. Write bytes one at a time, checking `STATUS.ACQFULL` between them, and stop as soon as the target reports it is out of room.
+. Issue a repeated START and the address again in the background, and measure the hold: only samples where the bus is low while the bench has released its own pull are counted.
+. Require the bench's transfer to still be in flight, then drain `ACQDATA` until it completes.
+. Compare the whole acquired stream against the bench's traffic and require every ACK bit to be low.
+. Repeat with `CTRL.NACK_ADDR_AFTER_TIMEOUT` set.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
+|`CHK-I2C-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set, which takes the target's other address-phase path to the same result
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-233-smc_i2c_target_ack_ctrl_test]]
+===== 233 `smc_i2c_target_ack_ctrl_test`
+
+*Source Module*: `smc_i2c_target_ack_ctrl_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads; observation on the ACK bits the bench reads back and on `ACQDATA`
+
+*Objective*: Software must be able to accept or refuse bytes through `TARGET_ACK_CTRL` while the target holds the bus for them.
+
+*Test Coverage*:
+
+* Both answers the register documentation gives software when `CTRL.ACK_CTRL_EN = 1` and the target stretches: reload `TARGET_ACK_CTRL.NBYTES` to accept, or write `TARGET_ACK_CTRL.NACK` to reject. Neither had been given to the block.
+* The hold is the ACK counter's, not the acquisition FIFO's: `STATUS.ACQFULL` is required to be clear while `STATUS.ACK_CTRL_STRETCH` is set, so this cannot be read as the FIFO-full stretch that `smc_i2c_target_acq_stretch_test` covers.
+* The count decrements per byte. `NBYTES` is reloaded with fewer bytes than remain, so the target has to stop again after exactly that many, and the leg requires exactly that number of holds -- no more, and none after the payload is covered.
+* The write enable. `i2c_core.sv` gates `TARGET_ACK_CTRL.NBYTES` writes on the same stretch condition, so a reload that reads back as 0 means the gate was shut when the documentation says it is open.
+* The rejected byte is identifiable: the acquisition FIFO must carry a NACKed-data entry, not just a NACK on the wire.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target with `CTRL.ACK_CTRL_EN` and `CTRL.ACQ_START_STOP_EN`, and require `ACK_CTRL_STRETCH` clear before any transfer.
+. Drive a multi-byte write from the bench in the background. `NBYTES` resets to 0, so the target holds at the first data byte.
+. For each chunk: wait for `ACK_CTRL_STRETCH`, require `ACQFULL` clear, reload `NBYTES`, read it back, and wait for the hold to clear.
+. Require the rest of the transfer to run out with no further hold, then compare the acquired stream and every ACK bit.
+. Repeat with a second transfer, writing `TARGET_ACK_CTRL.NACK` at the hold instead, and require the bench to see NACKs from that byte on.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-ACK-CTRL-ACCEPT` |The target held once per reload of `NBYTES`, each reload released it for exactly that many bytes, and every byte was acknowledged and acquired in order
+|`CHK-I2C-TGT-ACK-CTRL-NACK` |Writing `TARGET_ACK_CTRL.NACK` at the hold made the target refuse the transfer, which the bench saw as NACKs and software can attribute from the NACKed-data entry
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-234-smc_avsbus_retry_suppressed_test]]
+===== 234 `smc_avsbus_retry_suppressed_test`
+
+*Source Module*: `smc_avsbus_retry_suppressed_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at its idle level by the bench, so every reply reports the target as not responding
+
+*Objective*: A retry budget of 0 must answer an unanswered command without resending it.
+
+*Test Coverage*:
+
+* `AVS_CFG_0.MAX_RETRIES = 0`, which the design reads as programmed to suppress retries: the failing reply is pushed to the readback FIFO as it stands and the controller carries on. `smc_avsbus_retry_exhaust_test` covers the other side of the same register with a budget to spend; the two leaves differ only in the budget.
+* The absences that define suppression -- no retry state on the FSM debug bus, `TOTAL_RETRIES` unmoved, `AVS_MASTER_IS_RETRYING` never set, `MAX_RETRIES_ATTEMPTED_INT` never raised -- together with the one presence that separates suppression from dropping the reply: the readback FIFO still holds it.
+* A positive control on the same registers and the same probes. The same commands are then given a budget of 1, and the counter and the debug bus have to move; without it the absences above could all be dead probes.
+* The retry failure sources are cleared and required to stay clear only before the first command. Once the bench has held sdata idle through a burst, the controller's own resync traffic meets the same failing reply, so a later clear cannot be required to hold.
+
+*Test Procedure*:
+
+[arabic]
+. Hold the sdata pad at its idle level, save `AVS_CFG_0` and program `MAX_RETRIES` to 0.
+. Clear both retry failure sources and require them clear, then read the retry counter.
+. Queue two read commands and poll until the target is reported unresponsive, sampling the retrying flag on every poll.
+. Require the counter, the flag, the debug bus and the budget-exhausted interrupt to show no retry, and the readback FIFO to hold the replies.
+. Reprogram the budget to 1, queue the same commands, and require the counter and the debug bus to move.
+. Restore `AVS_CFG_0`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-RETRY-SUPPRESSED` |With `MAX_RETRIES` at 0 the unanswered commands raised `SLAVE_UNRESPONSIVE_INT`, no retry was attempted by any of the four measures, and the failing replies still reached the readback FIFO
+|`CHK-AVS-RETRY-SUPPRESSED-CONTROL` |The same commands with a budget of 1 moved `TOTAL_RETRIES` and put the retry states on the debug bus, so the suppressed leg is measuring live probes
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
