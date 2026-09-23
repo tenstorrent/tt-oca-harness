@@ -801,8 +801,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // Step TCK in Run-Test/Idle until the bridge's state machine leaves
   // (want_idle = 0) or reaches (want_idle = 1) idle, within `tck_cycles`: the
   // state machine and the CDC's TCK side advance only while TCK runs.
-  task wait_bridge_fsm(dtp_j2a_target_t t, bit want_idle, int unsigned tck_cycles,
-                       output bit idle);
+  task wait_bridge_fsm(dtp_j2a_target_t t, bit want_idle, int unsigned tck_cycles, output bit idle);
     idle = bridge_fsm_idle(t);
     for (int unsigned i = 0; i < tck_cycles; i++) begin
       if (idle == want_idle) return;
