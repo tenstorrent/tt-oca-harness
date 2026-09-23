@@ -284,6 +284,8 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
                    before_neighbor & CtmSelectMask,
                    after_neighbor & CtmSelectMask
                    ))
+      // One routed pulse per source: its select decodes into the matrix.
+      verify_route(src_idx, 32'd1 << nbr_idx, CtpModeWireOr, $sformatf("allsrc%0d.route", src_idx));
     end
   endtask
 
