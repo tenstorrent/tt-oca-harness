@@ -420,6 +420,22 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# A 64-bit CSR read must survive the crypto width converter unchanged. The
+# fabric is 64-bit and each crypto register block is 32-bit, so AxSIZE=3 takes
+# the converter's downsize arm and must be reassembled in order. Every other
+# leaf issues 32-bit beats and takes the passthrough arm, so the conversion has
+# never been tested. Golden is the DUT's own single-beat path. No burst: the
+# crypto demux routes any AxLEN != 0 to its error slave by design.
+name = "sep_crypto_csr_wide_access_test"
+module = "system.sep_crypto_csr_wide_access_test"
+seed = 1
+timeout_sec = 900
+tags = ["fabric", "axi", "crypto", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Partial-lane read determinism. A read narrower than the 64-bit beat only
 # obligates the responder to drive the addressed byte lanes (a 32-bit CSR
 # leaves RDATA[63:32] undriven; a narrow-ARSIZE beat leaves every
