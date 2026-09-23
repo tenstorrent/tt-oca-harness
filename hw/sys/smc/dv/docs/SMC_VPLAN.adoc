@@ -7854,7 +7854,7 @@ Drive `smc_i2c_intr_reg_sweep_test_seq`. Each checker below is a named compare t
 * IER, ITR, SCR, ECR, MCR and LCR take the all-ones and all-zeros pattern of their fields through half-register writes and are restored to their reset. LCR runs last, so the DLAB its ones pattern sets is back at 0 before the divisor-latch leg.
 * DLL and DLM are written and read behind `LCR.DLAB`, held across a clear and a re-raise of DLAB, and restored; with DLAB clear the address DLM occupies returns IER's own reset word.
 * The log engine's INTR_ENABLE takes the same cycle, and a write of the write-only INTR_TEST fields raises and then clears the matching INTR_STATUS events.
-* All 16 LOG_CTRL elements of each wrapper take an index-unique log length and are read back while the 16 signatures are co-resident, then restored. `log_engine/CTRL.EN` stays at its reset 0, so no log transfer starts.
+* All 16 LOG_CTRL elements of each wrapper take an index-unique log length and are read back while the 16 signatures are co-resident. The signatures stay resident: a nonzero LOG_LEN is a pending arbiter request that must hold until granted, so only the hardware clears it. `log_engine/CTRL.EN` stays at its reset 0, so no log transfer starts.
 
 *Test Procedure*:
 
@@ -7868,7 +7868,7 @@ Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named 
 |`CHK-UART-16550-FIELD-SWEEP` |On all four instances the six writable UART registers read their RDL reset, carried the all-ones and all-zeros pattern of their fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
 |`CHK-UART-16550-DL-WINDOW` |On all four instances both divisor latches took the all-ones and the reset value behind LCR.DLAB and still held the written value after DLAB was cleared and raised again, and the address DLM occupies returned IER's own reset word while DLAB was clear, so the window really switched
 |`CHK-LOG-ENGINE-INTR-SWEEP` |On all four log engines INTR_ENABLE took the all-ones and all-zeros pattern through half-register writes, and a write of the write-only INTR_TEST fields raised exactly those INTR_STATUS events from a measured clear state and a write of the same mask cleared them again
-|`CHK-LOG-ENGINE-LOG-CTRL-SWEEP` |All 64 LOG_CTRL elements returned their own index-unique log length while all 16 elements of their wrapper held theirs, so an array folded onto one physical register fails, and every element was restored to its RDL reset
+|`CHK-LOG-ENGINE-LOG-CTRL-SWEEP` |All 64 LOG_CTRL elements returned their own index-unique log length while all 16 elements of their wrapper held theirs, so an array folded onto one physical register fails
 |===
 
 *Pass Criteria*: `CHK-LOG-ENGINE-INTR-SWEEP`, `CHK-LOG-ENGINE-LOG-CTRL-SWEEP`, `CHK-UART-16550-DL-WINDOW`, `CHK-UART-16550-FIELD-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.

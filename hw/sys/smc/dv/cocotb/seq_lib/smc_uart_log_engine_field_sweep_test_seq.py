@@ -21,10 +21,12 @@ stays at its reset configuration.
   matching INTR_STATUS events and a write of the same mask back into
   INTR_STATUS clears them.
 * LOG_CTRL is a 16-element array, and its pass is phased: every element of a
-  wrapper is given a signature derived from its own index, all 16 are read back
-  while the signatures are co-resident, and only then are they restored. An
-  array folded onto one physical register returns the last signature written
-  and fails the first readback.
+  wrapper is given a signature derived from its own index, then all 16 are read
+  back while the signatures are co-resident. An array folded onto one physical
+  register returns the last signature written and fails the first readback.
+  The signatures stay resident: a nonzero LOG_LEN is a pending request to the
+  log engine's arbiter, which requires a request to hold until it is granted,
+  so only the hardware may clear the field.
 
 `log_engine/CTRL.EN` stays at its reset 0 throughout, so the nonzero LOG_LEN
 each element carries starts no log transfer, and LOG_REGION_ADDR,
@@ -98,7 +100,7 @@ def _log_ctrl_signature(element: int) -> int:
 _ACCESSES_PER_GRANULE_CYCLE = 12
 _ACCESSES_PER_DL_LEG = 18
 _ACCESSES_PER_PULSE_LEG = 5
-_ACCESSES_PER_LOG_CTRL_ELEMENT = 4
+_ACCESSES_PER_LOG_CTRL_ELEMENT = 2
 
 
 def _field_mask(inst: RegInstance, name: str) -> int:
@@ -208,7 +210,8 @@ class smc_uart_log_engine_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
         # LOG_CTRL.LOG_LEN is `hwclr`, so the generated contract does not pin its
         # readback and the generic cycle leaves it alone; the engine is disabled
         # throughout this pass, so nothing clears it and the signature is what
-        # the element must return.
+        # the element must return. A nonzero LOG_LEN is a pending arbiter request
+        # that must hold until granted, so the signatures are not written back to 0.
         signatures = [_log_ctrl_signature(inst.index) & inst.reg.declared_mask for inst in elements]
         assert len(set(signatures)) == len(signatures), (
             "the LOG_CTRL signatures are not pairwise distinct, so a co-resident readback "
@@ -222,16 +225,6 @@ class smc_uart_log_engine_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
                 f"{inst.label} @ 0x{inst.addr:08x}: reads 0x{got:08x} while all "
                 f"{len(elements)} elements hold their own signature, its own is "
                 f"0x{signature:08x}"
-            )
-        for inst in elements:
-            await self.csr_write(f"{inst.label}:restore", inst.addr, inst.reg.reset_word)
-        for inst in elements:
-            got = await self.csr_read(
-                f"{inst.label}:restore_rb", inst.addr, expected=inst.reg.reset_word
-            )
-            assert got == inst.reg.reset_word, (
-                f"{inst.label} @ 0x{inst.addr:08x}: reads 0x{got:08x} after the restore, its "
-                f"RDL reset is 0x{inst.reg.reset_word:08x}"
             )
             self.log_ctrl_elements += 1
 
@@ -286,8 +279,8 @@ class smc_uart_log_engine_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
             await self._log_ctrl_pass(self._log_ctrl_instances(index))
         cocotb.log.info(
             "CHK-LOG-ENGINE-LOG-CTRL-SWEEP: %d LOG_CTRL elements each took an "
-            "index-unique log length, were read back while all 16 elements of their "
-            "wrapper held their own signature, and were restored to their RDL reset",
+            "index-unique log length and were read back while all 16 elements of their "
+            "wrapper held their own signature",
             self.log_ctrl_elements,
         )
 
@@ -308,6 +301,6 @@ class smc_uart_log_engine_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
             f"{self.dl_legs} divisor-latch legs and {self.pulses} pulse legs for {count} wrappers"
         )
         assert self.log_ctrl_elements == count * elements_per_wrap, (
-            f"the sweep restored {self.log_ctrl_elements} LOG_CTRL elements, the generated "
+            f"the sweep read back {self.log_ctrl_elements} LOG_CTRL elements, the generated "
             f"map declares {count * elements_per_wrap}"
         )

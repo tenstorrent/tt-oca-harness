@@ -22,7 +22,7 @@ from smc_base_test import smc_base_test
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
 # sequence that silently stopped issuing accesses.
 #
-# 4 uart_log_engine_wrap instances, 171 SEP_IN AXI accesses each:
+# 4 uart_log_engine_wrap instances, 139 SEP_IN AXI accesses each:
 #   six UART register cycles: reset read, 2x(half write + readback) for the
 #     ones pattern, the same for the zeros pattern, 2 restore writes, restore
 #     read -- 12 each                                                        72
@@ -33,9 +33,9 @@ from smc_base_test import smc_base_test
 #   log engine INTR_ENABLE cycle                                             12
 #   log engine INTR_TEST pulse leg: the clear-state read, the test write, the
 #     raised read, the clearing write and the cleared read                    5
-#   LOG_CTRL: 16 elements x (signature write, co-resident readback, restore
-#     write, restore readback)                                               64
-UART_LOG_ENGINE_FIELD_SWEEP_MIN_CSR_ACCESSES = 4 * 171
+#   LOG_CTRL: 16 elements x (signature write, co-resident readback); the
+#     signatures stay resident, a pending LOG_LEN is hardware-cleared only    32
+UART_LOG_ENGINE_FIELD_SWEEP_MIN_CSR_ACCESSES = 4 * 139
 
 
 @pyuvm.test()
