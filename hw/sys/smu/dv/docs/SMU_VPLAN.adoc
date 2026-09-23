@@ -217,7 +217,7 @@ one-line intent.
 |`smu_smc_reset_ctrl_test` |reset |primary/cold/periph reset release under the SMU wrapper
 |`smu_reset_release_sync_test` |reset |Cold and primary reset deassertions land on a clock edge of the domain each output is synchronised to.
 |`smu_sram_auto_init_done_test` |reset |With SRAM auto-initialisation enabled, a cold reset clears `smc_init_mem_done_o`, the zeroing sweep runs, and the output asserts and holds when it completes.
-|`smu_sram_auto_init_disabled_test` |reset |With SRAM auto-initialisation held off, no zeroing sweep starts and no zeroing write reaches the scratch RAM, yet `smc_init_mem_done_o` still asserts and holds.
+|`smu_sram_auto_init_disabled_test` |reset |With SRAM auto-initialisation held off, no zeroing sweep starts and no zeroing write reaches the scratch RAM, and `smc_init_mem_done_o` reads low while the cold reset is asserted; what it does otherwise is recorded, not claimed.
 |`smu_clock_domain_composition_test` |reset |The telemetry, SEP-watchdog and peripheral clock and reset domains reach their consumers as their own domains and stay independent of `clk_smu_i`.
 |`smu_smc_ss_reset_ctrl_sweep_test` |reset |The seven SMC reset-unit registers that own the fields of `ss_reset_ctrl_o` drive the 32 subsystem elements lane for lane, every field bit is driven both ways, and a `SS_COLD_RESET_LOCK` bit blocks its own cold-reset lane while the rest of the write lands.
 |`smu_clock_stop_coordination_test` |smu |SMU_ALL_006 boot-stall/IC-reset/clkstop
@@ -1424,13 +1424,14 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * The complement of <<sec-031-smu_sram_auto_init_done_test>> on the same composition: the same consumer nodes that are required to move there are required to stay idle here; the done output that is required to assert there is only recorded here.
+* The cold-reset leg is bounded by the same specification gap. With the sweep held off the output's level before the reset is unspecified, so requiring it high would claim that unspecified behaviour from the other side; this leaf compares only that the output reads low while the reset is asserted, and records what it read beforehand. The clear of an output established high is <<sec-031-smu_sram_auto_init_done_test>>, which runs the sweep to completion and requires the output high before asserting the same reset.
 * The preloaded image must survive to first fetch, which is what the hold-off exists for; the leaf reads the enable high at the SMU boundary rather than assuming it.
-* EXPECT-SOURCE: the no-sweep and no-write legs follow from the input's stated purpose (`smu.adoc`, `cpu.adoc`), and `smc_init_mem_done_o` clearing under cold reset from its being a completion status (`port_table.adoc`). Specification gap, recorded here: neither document states what `smc_init_mem_done_o` does when the sweep is held off, so the leaf logs whether and when it rose and how it held after the release, and that record carries no token. A specification statement would turn it into a claim; the implementation is not consulted for one.
+* EXPECT-SOURCE: the no-sweep and no-write legs follow from the input's stated purpose (`smu.adoc`, `cpu.adoc`), and the output reading low under an asserted cold reset from its being a completion status (`port_table.adoc`). Specification gap, recorded here: neither document states what `smc_init_mem_done_o` does when the sweep is held off, so the leaf logs whether and when it rose and how it held after the release, and that record carries no token. A specification statement would turn it into a claim; the implementation is not consulted for one.
 
 *Test Procedure*:
 
 [arabic]
-. Read `smc_disable_sram_auto_init_i` high at the SMU boundary and assert a cold reset; require `smc_init_mem_done_o` to clear.
+. Read `smc_disable_sram_auto_init_i` high at the SMU boundary, record what `smc_init_mem_done_o` reads, then assert a cold reset and require the output to read low while it is asserted.
 . Release the reset and watch the zeroing consumer: the enable stays low, the address counter does not advance, no zeroing write reaches the scratch RAM.
 . Record what `smc_init_mem_done_o` does over the same window (rose or not, held or not); no compare.
 
@@ -1439,7 +1440,7 @@ row's EXPECT sentence is worth, read the check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMU-MEMINIT-DISABLED` |with smc_disable_sram_auto_init_i high the zeroing sweep never starts and no zeroing write reaches the scratch RAM, and smc_init_mem_done_o clears under cold reset; its behaviour after the release is recorded, not compared
+|`CHK-SMU-MEMINIT-DISABLED` |with smc_disable_sram_auto_init_i high the zeroing sweep never starts and no zeroing write reaches the scratch RAM, and smc_init_mem_done_o reads low while the cold reset is asserted; what it read beforehand and how it behaves after the release is recorded, not compared
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
