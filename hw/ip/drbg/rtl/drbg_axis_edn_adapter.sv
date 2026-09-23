@@ -30,8 +30,9 @@
  *          the source is not NIST SP 800-90A approved).
  *
  *          `clear_i` synchronously flushes staged entropy and every endpoint.
- *          `endpoint_rst_ni` cancels only the corresponding endpoint and
- *          does not disturb another client's in-flight response.
+ *          `endpoint_quiesce_i` removes an endpoint from shared arbitration
+ *          before `endpoint_rst_ni` clears its local state. Neither operation
+ *          disturbs another client's in-flight response.
  *          Each endpoint reset must assert whenever `rst_ni` asserts.
  *
  * @param NUM_ENDPOINTS Number of native EDN clients (e.g. AES, KMAC, OTBN RND/URND).
@@ -44,6 +45,7 @@ module drbg_axis_edn_adapter
   input  wire logic clk_i,
   input  wire logic rst_ni,
   input  wire logic [NUM_ENDPOINTS-1:0] endpoint_rst_ni,
+  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_quiesce_i,
   input  wire logic clear_i,
 
   // 32b AXI-Stream sink (producer drives valid/data/strb; adapter drives tready)
@@ -109,6 +111,10 @@ module drbg_axis_edn_adapter
   // -------------------------------------------------------------------------
   logic [NUM_ENDPOINTS-1:0] arb_req;
   logic [NUM_ENDPOINTS-1:0] arb_gnt;
+  logic                     arb_req_chk;
+  logic [NUM_ENDPOINTS-1:0] endpoint_quiesce_q;
+  logic [NUM_ENDPOINTS-1:0] endpoint_rst_n_q;
+  logic                     endpoint_cancel_pulse;
   logic                     arb_valid;
   logic                     arb_ready;
   logic [0:0]               arb_data_i [NUM_ENDPOINTS];
@@ -118,6 +124,23 @@ module drbg_axis_edn_adapter
     assign arb_data_i[k] = 1'b0;
   end
 
+  // A cancellation may drop a request before grant. Waive the arbiter's
+  // request checks only for that transition so sibling requests remain checked.
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      endpoint_quiesce_q <= '1;
+      endpoint_rst_n_q   <= '0;
+    end else begin
+      endpoint_quiesce_q <= endpoint_quiesce_i;
+      endpoint_rst_n_q   <= endpoint_rst_ni;
+    end
+  end
+
+  assign endpoint_cancel_pulse =
+      (|(endpoint_quiesce_i & ~endpoint_quiesce_q)) |
+      (|(endpoint_rst_n_q & ~endpoint_rst_ni));
+  assign arb_req_chk = !clear_i && !endpoint_cancel_pulse;
+
   prim_arbiter_ppc #(
     .N          (NUM_ENDPOINTS),
     .DW         (1),
@@ -125,7 +148,7 @@ module drbg_axis_edn_adapter
   ) u_arbiter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .req_chk_i (!clear_i && (&endpoint_rst_ni)),
+    .req_chk_i (arb_req_chk),
     .req_i     (arb_req),
     .data_i    (arb_data_i),
     .gnt_o     (arb_gnt),
@@ -155,10 +178,10 @@ module drbg_axis_edn_adapter
 
   for (genvar i = 0; i < NUM_ENDPOINTS; i++) begin : gen_ep
     // Hold arbitration off while edn_ack_sm performs its post-reset FIFO clear.
-    always_ff @(posedge clk_i or negedge endpoint_rst_ni[i]) begin
-      if (!endpoint_rst_ni[i]) begin
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
         endpoint_active[i] <= 1'b0;
-      end else if (clear_i) begin
+      end else if (clear_i || endpoint_quiesce_i[i] || !endpoint_rst_ni[i]) begin
         endpoint_active[i] <= 1'b0;
       end else begin
         endpoint_active[i] <= 1'b1;
@@ -166,10 +189,12 @@ module drbg_axis_edn_adapter
     end
 
     // Only request when the client asks and we don't already hold a word.
-    assign arb_req[i] = endpoint_active[i] && edn_req_i[i].edn_req && !ep_rvalid[i];
+    assign arb_req[i] = endpoint_active[i] && !endpoint_quiesce_i[i] &&
+                        endpoint_rst_ni[i] && edn_req_i[i].edn_req && !ep_rvalid[i];
 
     // Push the staged word into the winning endpoint's holding FIFO.
-    assign ep_push[i] = endpoint_active[i] && stage_rready && arb_gnt[i];
+    assign ep_push[i] = endpoint_active[i] && !endpoint_quiesce_i[i] &&
+                        endpoint_rst_ni[i] && stage_rready && arb_gnt[i];
 
     prim_fifo_sync #(
       .Width             (StageWidth),
@@ -179,7 +204,7 @@ module drbg_axis_edn_adapter
     ) u_ep_fifo (
       .clk_i    (clk_i),
       .rst_ni   (endpoint_rst_ni[i]),
-      .clr_i    (ep_clr[i] | clear_i),
+      .clr_i    (ep_clr[i] | clear_i | endpoint_quiesce_i[i]),
       .wvalid_i (ep_push[i]),
       .wready_o (ep_wready[i]),
       .wdata_i  ({stage_rfips, stage_rdata}),
@@ -194,7 +219,7 @@ module drbg_axis_edn_adapter
     edn_ack_sm u_edn_ack_sm (
       .clk_i            (clk_i),
       .rst_ni           (endpoint_rst_ni[i]),
-      .enable_i         (!clear_i && endpoint_rst_ni[i]),
+      .enable_i         (!clear_i && !endpoint_quiesce_i[i] && endpoint_rst_ni[i]),
       .req_i            (edn_req_i[i].edn_req),
       .ack_o            (ep_ack[i]),
       .fifo_not_empty_i (ep_rvalid[i]),
@@ -204,17 +229,25 @@ module drbg_axis_edn_adapter
       .ack_sm_err_o     (ack_sm_err[i])
     );
 
-    assign edn_rsp_o[i].edn_ack = ep_ack[i] & ~clear_i & endpoint_rst_ni[i];
+    assign edn_rsp_o[i].edn_ack =
+        ep_ack[i] & ~clear_i & ~endpoint_quiesce_i[i] & endpoint_rst_ni[i];
     assign edn_rsp_o[i].edn_bus =
-        (clear_i || !endpoint_rst_ni[i]) ? '0 : ep_rdata_raw[i][DataWidth-1:0];
+        (clear_i || endpoint_quiesce_i[i] || !endpoint_rst_ni[i])
+            ? '0
+            : ep_rdata_raw[i][DataWidth-1:0];
     // FIPS forwarded per-beat from the AXI-Stream tuser sideband.
     assign edn_rsp_o[i].edn_fips =
-        (clear_i || !endpoint_rst_ni[i]) ? 1'b0 : ep_rdata_raw[i][DataWidth];
+        (clear_i || endpoint_quiesce_i[i] || !endpoint_rst_ni[i])
+            ? 1'b0
+            : ep_rdata_raw[i][DataWidth];
 
     `OCAH_OT_ASSERT(AxisEdnNoAckDuringClear_A, clear_i |-> !edn_rsp_o[i].edn_ack)
+    `OCAH_OT_ASSERT(AxisEdnQuiescedEndpointIdle_A,
+                    endpoint_quiesce_i[i] |-> !arb_req[i] && !ep_push[i] && !edn_rsp_o[i].edn_ack)
     `OCAH_OT_ASSERT(AxisEdnReqStableUnlessEndpointReset_A,
-                    arb_req[i] && !arb_gnt[i] && endpoint_rst_ni[i] |=>
-                    arb_req[i] || !endpoint_rst_ni[i] || clear_i)
+                    arb_req[i] && !arb_gnt[i] && endpoint_rst_ni[i] &&
+                    !endpoint_quiesce_i[i] |=>
+                    arb_req[i] || !endpoint_rst_ni[i] || endpoint_quiesce_i[i] || clear_i)
   end
 
   logic unused_ep_wready;
@@ -235,6 +268,9 @@ module drbg_axis_edn_adapter
                   (axis_req_i.tstrb))
   `OCAH_OT_ASSERT_KNOWN(AxisEdnRspReadyKnown_A, axis_rsp_o.tready)
   `OCAH_OT_ASSERT(AxisEdnNoReadyDuringClear_A, clear_i |-> !axis_rsp_o.tready)
+  `OCAH_OT_ASSERT(
+      AxisEdnReqCheckOnlyDisabledForCancellation_A,
+      !clear_i && (endpoint_quiesce_i == endpoint_quiesce_q) && (endpoint_rst_ni == endpoint_rst_n_q) |-> arb_req_chk)
 
   `OCAH_OT_ASSERT_INIT(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
 
