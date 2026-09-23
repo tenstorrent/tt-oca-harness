@@ -370,6 +370,7 @@ feature rows.
 |`smc_efuse_jtag_lc_access_matrix_test` |Drive lc_state_i + JTAG eFuse accesses; assert the block/allow matrix.
 |`smc_efuse_jtag_lc_negative_test` |PROD JTAG eFuse deny paths + identity-read exception.
 |`smc_efuse_locked_access_interrupt_test` |JTAG_PUBLIC_IDENTITY unlocked write silent; locked write/read pulse `tb_efuse_locked_access_irq`.
+|`smc_efuse_lock_guard_test` |Software locks established from the CSR side on three shadow fields: the write no longer lands, the lock cannot be cleared, and the read no longer discloses.
 |`smc_efuse_map_read_test` |SMC_EFUSE_MAP direct read.
 |`smc_efuse_otp_burn_shadow_test` |Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
 |`smc_efuse_otp_clock_config_depth_test` |Run eFuse OTP clock/timing register programming depth checks.
@@ -8094,6 +8095,43 @@ Drive `smc_uart_char_loopback_test_seq`. Each checker below is a named compare t
 |===
 
 *Pass Criteria*: `CHK-UART-CHAR-LOOPBACK`, `CHK-UART-FCR-EFFECT`, `CHK-UART-IIR-RX-READY`, `CHK-UART-MSR-LOOPBACK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-208-smc_efuse_lock_guard_test]]
+===== 208 `smc_efuse_lock_guard_test`
+
+*Source Module*: `smc_efuse_lock_guard_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the default eFuse image in the adopter bank model
+
+*Objective*: Establish a software lock on three eFuse shadow fields and check the guard's answer.
+
+*Test Coverage*:
+
+* `hw/ip/efuse/doc/architecture.adoc` gives every shadow field a 4-bit `lock` permission reachable two ways, and says the guard (`efuse_guard.sv`) enforces whichever of the hardware and software locks is more restrictive. The software lock is the `LOCKS` CSR, "write-1-to-set", so firmware can tighten access but never loosen it without a reset.
+* `smc_efuse_locked_access_interrupt_test` drives that path on `JTAG_PUBLIC_IDENTITY` but needs its own preload asset and is held out of the regression, so nothing in the scheduled run establishes a software lock at all.
+* Three fields -- the first two SPARE entries and the OCCP transport timeout, whose locks the default image leaves clear -- each take four steps, the first being the live control for the two denies: a pattern written and read back while unlocked; the write lock set and a different pattern shown not to land; `LOCKS` written again with that bit clear and the bit shown still set; the read lock set and the read shown not to disclose the field.
+* The sequence reads `LOCKS` first and fails if any bit it is about to set is already set by the image, so it never mistakes a pre-set lock for one it established.
+* The response to a write-locked write is recorded rather than asserted: neither the RDL nor the architecture document fixes whether the guard refuses or ignores it, and the claim is that the write did not land. Likewise the read-locked read claims non-disclosure only, because the document states the permission but not the substituted word.
+* `SMC_CONFIG` and `JTAG_PUBLIC_IDENTITY` are left alone: the first carries boot configuration other logic reads, the second is the held-out leaf's subject. A software lock is cleared only by reset, so the leaf leaves its six bits set and is terminal for those three fields.
+
+*Test Procedure*:
+
+Drive `smc_efuse_lock_guard_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-LOCK-GUARD-PRE` |LOCKS read the eFuse image word with every lock bit the sequence goes on to set still clear, so each deny that follows is against a lock the sequence established itself
+|`CHK-EFUSE-LOCK-GUARD-WRITE` |On all three fields a pattern written while unlocked read back exactly, and a different pattern written with the write lock set did not land -- the field still read the first pattern -- and the guard answered the refused write instead of wedging the bus
+|`CHK-EFUSE-LOCK-GUARD-WOSET` |On all three fields a later write of LOCKS with the field's write-lock bit clear left it set, which is the `onwrite = woset` contract the RDL gives every lock
+|`CHK-EFUSE-LOCK-GUARD-READ` |On all three fields a read taken with the read lock set returned something other than the word the field holds, so the guard withheld the content
+|===
+
+*Pass Criteria*: `CHK-EFUSE-LOCK-GUARD-PRE`, `CHK-EFUSE-LOCK-GUARD-READ`, `CHK-EFUSE-LOCK-GUARD-WOSET`, `CHK-EFUSE-LOCK-GUARD-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
