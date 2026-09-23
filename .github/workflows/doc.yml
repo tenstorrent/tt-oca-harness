@@ -105,6 +105,7 @@ jobs:
         run: |
           make ocah-doc-trm-pdf
           make ocah-doc-integrator-pdf
+          make ocah-doc-datasheets-pdf
         continue-on-error: true
 
       # Only a successful dashboard run redeploys.
