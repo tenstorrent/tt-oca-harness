@@ -2,12 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A real log-engine transfer on all four uart_log_engine_wrap instances.
 
-Loads four logs into the SPM log region of each wrapper, points the engine at
-them and at the wrapper's own UART transmit holding register, puts that UART in
-MCR.LOOP, triggers all four LOG_CTRL elements at once, and reads the byte
-stream back out of RBR. The compare is the received stream against the bytes
-written into memory, the LOG_CTRL lengths hardware cleared, and an INTR_STATUS
-that stayed clear.
+Loads four logs into the SPM log region of each wrapper, each filling its whole
+slot so its fetch takes more than one beat, points the engine at them and at
+the wrapper's own UART transmit holding register, puts that UART in MCR.LOOP,
+triggers all four LOG_CTRL elements at once, and reads the byte stream back out
+of RBR. The compare is the received stream against the bytes written into
+memory, the LOG_CTRL lengths hardware cleared, and an INTR_STATUS that stayed
+clear.
 """
 
 from __future__ import annotations
@@ -22,8 +23,8 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses. The drain loop polls LSR, so
 # the real count is higher and depends on the baud rate.
 #
-# 4 wrappers, at least 119 SEP_IN AXI accesses each:
-#   the four logs written into their slots and read back                      8
+# 4 wrappers, at least 191 SEP_IN AXI accesses each:
+#   the four two-word logs written into their slots and read back            16
 #   UART setup: pad-mux enable, DLAB, both divisor latches, the 8-bit line
 #     control, MCR.LOOP, the FIFO control, IER, the MCR readback and the
 #     quiet-receiver read                                                    10
@@ -31,11 +32,11 @@ from smc_base_test import smc_base_test
 #     the write address, the INTR_STATUS clear and its readback, INTR_ENABLE,
 #     enable and its readback                                                10
 #   the idle read and the trigger write of each of the four elements          8
-#   at least one LSR read and one RBR read for each of the 32 bytes          64
+#   at least one LSR read and one RBR read for each of the 64 bytes         128
 #   at least one LOG_CTRL read per element                                    4
 #   the quiet LSR read and the final INTR_STATUS read                         2
-#   restore                                                                  13
-LOG_ENGINE_TRANSFER_MIN_CSR_ACCESSES = 4 * 119
+#   the engine half of the restore, then the UART half                    5 + 8
+LOG_ENGINE_TRANSFER_MIN_CSR_ACCESSES = 4 * 191
 
 
 @pyuvm.test()

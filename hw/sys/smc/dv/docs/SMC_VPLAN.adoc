@@ -483,6 +483,7 @@ feature rows.
 |`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |UART0 IER gating, natural clears, and multi-source IIR priority.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
+|`smc_log_engine_abort_test` |A log-engine transfer on all four wrapper instances halted part-way by clearing CTRL.EN, then a shorter entry re-triggered and delivered in full.
 |`smc_log_engine_transfer_test` |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
 |`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
@@ -7890,6 +7891,7 @@ Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named 
 *Test Coverage*:
 
 * The software flow of `hw/ip/uart/log_engine/doc/programming.adoc`, driven over SEP_IN AXI rather than from firmware: four logs are written into the SPM log region of each wrapper, LOG_REGION_ADDR and LOG_REGION_SIZE are pointed at them, LOG_WRITE_ADDR at the wrapper's own transmit holding register, the UART is put in `MCR.LOOP`, the engine is enabled, and all four LOG_CTRL elements are triggered at once so the round-robin arbiter has to grant more than one requester.
+* Each log fills its whole slot, which `log_engine.rdl` sizes as the region size over the sixteen LOG_CTRL elements rounded down to complete 8-byte fetch beats, so every element's fetch has to come back for a second beat before it is done.
 * Every byte names the wrapper, the element and the slot offset it came from, so a stream that carried a neighbour's slot, repeated a byte or dropped one fails.
 * The order the arbiter interleaves the four elements in is not predicted; each element's own bytes are required to arrive in slot order, exactly once.
 * Nothing writes a pending LOG_CTRL length back to 0. The only clearing this leaf takes is the hardware one it waits for.
@@ -7979,6 +7981,41 @@ Drive `smc_cool_reset_zero_delay_test_seq`. Each checker below is a named compar
 |===
 
 *Pass Criteria*: `CHK-FLR-ZERO-DELAY-COOL`, `CHK-FLR-ZERO-DELAY-DENY` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-205-smc_log_engine_abort_test]]
+===== 205 `smc_log_engine_abort_test`
+
+*Source Module*: `smc_log_engine_abort_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the wrapper's own UART in `MCR.LOOP`
+
+*Objective*: Halt a log-engine transfer with CTRL.EN on all four wrapper instances and bring the engine back.
+
+*Test Coverage*:
+
+* `smc_log_engine_transfer_test` runs transfers to completion. `log_engine.rdl` gives `CTRL.EN` the other half of its contract -- "When unset, disables the Log Engine and resets all FSMs, flops, and FIFOs" -- and no leaf has asked it to stop a transfer in flight.
+* Each wrapper is given one log filling its whole slot, which this region makes twice the UART transmit FIFO the `uart_log_engine_disable_during_xfer` firmware image pins and several fetch beats deep, so neither the fetch nor the write side can be finished when the disable lands one register access after the first byte is seen.
+* Three legs, an allow followed by a deny followed by an allow, so the deny cannot pass on a dead bus: the transfer starts and bytes reach the receiver; `CTRL.EN` is cleared and, once the UART reports itself idle, fewer than the whole log has arrived, what did arrive is the head of that slot in order, and a second drain finds nothing more; a shorter length written into the same element while the engine is still disabled is delivered in full once `CTRL.EN` is set again.
+* Draining until the UART reports transmitter-empty with no received data, for a run of polls longer than a character time, is how the firmware image measures the same thing, and it is what lets the halt be checked without knowing how many bytes the UART had buffered.
+* Nothing writes a pending LOG_CTRL length back to 0: the aborted length is replaced by a shorter non-zero one, so the arbiter request the element holds never drops before the hardware clear that ends it.
+
+*Test Procedure*:
+
+Drive `smc_log_engine_abort_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOG-ENGINE-ABORT-HALTED` |On every wrapper a transfer was in flight -- bytes had reached the receiver -- when `CTRL.EN` was cleared, and once the UART went idle at least one and fewer than the whole log had arrived, each byte the head of that wrapper's own slot in order, with a second drain finding nothing more
+|`CHK-LOG-ENGINE-ABORT-LENGTH-KEPT` |LOG_CTRL still read the length it was given while the engine was disabled, which is the RDL's reset of the FSMs, flops and FIFOs with the registers preserved
+|`CHK-LOG-ENGINE-ABORT-RETRIGGER` |A shorter length written into the same element while the engine was disabled delivered exactly its bytes from the head of the slot once `CTRL.EN` was set again, hardware cleared the length, and INTR_STATUS stayed clear across both the halt and the re-trigger
+|===
+
+*Pass Criteria*: `CHK-LOG-ENGINE-ABORT-HALTED`, `CHK-LOG-ENGINE-ABORT-LENGTH-KEPT`, `CHK-LOG-ENGINE-ABORT-RETRIGGER` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

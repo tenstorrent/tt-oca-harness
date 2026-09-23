@@ -29,12 +29,14 @@ nothing else arrives. Within one element the order is the fetch order the same
 section fixes -- ascending word offset, and ascending byte lane inside the
 64-bit word the AXI little-endian lane mapping puts at ascending addresses.
 
-Only the first `ENTRIES` elements of each wrapper are driven, with a length of
-one 64-bit fetch beat each, and the slot capacity is two beats, so no transfer
-reaches the end of its slot. Nothing writes a pending LOG_CTRL length back to
-0: a non-zero length is a request the arbiter is entitled to see held until it
-grants, and the only clearing the design allows is the hardware one this leaf
-waits for.
+Only the first `ENTRIES` elements of each wrapper are driven, each with a log
+that fills its whole slot. `log_engine.rdl` sizes a slot as the region size
+divided over the sixteen LOG_CTRL elements and rounds it down to complete
+8-byte fetch beats, so a slot of this region is two beats and every element's
+fetch has to come back for a second beat before it is done. Nothing writes a
+pending LOG_CTRL length back to 0: a non-zero length is a request the arbiter
+is entitled to see held until it grants, and the only clearing the design
+allows is the hardware one this leaf waits for.
 
 The UART is left at the engine's disposal and put back: the wrapper's pad-mux
 enable, the divisor latches, LCR, MCR and the FIFO control are all restored,
@@ -47,72 +49,42 @@ from __future__ import annotations
 
 import cocotb
 
-from .smc_addr_map import (
-    SPM_MEMORY_BASE,
-    SPM_MEMORY_SIZE,
-    log_engine_u32,
-    smc_addr,
-    smc_indexed_addr,
-    uart_16550_dl_offset,
-    uart_16550_main_u32,
-    uart_16550_wo_offset,
-    uart_16550_wo_u32,
-    uart_log_engine_ctrl_u32,
-)
+from .smc_addr_map import SPM_MEMORY_BASE, SPM_MEMORY_SIZE, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_log_engine_utils import (
+    ARM_UART_ACCESSES,
+    CTRL_EN,
+    INTR_STATUS_MASK,
+    LOG_CTRL_PATH,
+    LOG_CTRL_PY,
+    LOG_LEN,
+    LSR_DR,
+    LSR_LINE_ERRORS,
+    NUM_LOG_ENTRIES,
+    RBR_DATA,
+    RESTORE_UART_ACCESSES,
+    THR_OFFSET,
+    WRAP_NUM,
+    WRAP_STRIDE_SYMBOL,
+    arm_uart,
+    engine_reg,
+    restore_uart,
+    uart_base,
+    uart_reg,
+)
 from .smc_regblock_field_sweep_utils import array_reg_instances
-
-_WRAP = "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_"
-_WRAP_PY = "SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_{index}__"
-_WRAP_STRIDE_SYMBOL = f"{_WRAP}STRIDE"
-_WRAP_NUM = f"{_WRAP}NUM"
-_LOG_CTRL_PATH = "smc_uart_wrap/uart_log_engine_wrap/log_engine/LOG_CTRL"
-_LOG_CTRL_PY = _WRAP_PY + "LOG_ENGINE_LOG_CTRL_{element}__REG_ADDR"
-
-_UART_EN = uart_log_engine_ctrl_u32("UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
-_LCR_DLAB = uart_16550_main_u32("UART_16550_MAIN__LCR__DLAB_bm")
-_LCR_WLS = uart_16550_main_u32("UART_16550_MAIN__LCR__WLS_bm")
-_MCR_LOOP = uart_16550_main_u32("UART_16550_MAIN__MCR__LOOP_bm")
-_LSR_DR = uart_16550_main_u32("UART_16550_MAIN__LSR__DR_bm")
-_RBR_DATA = uart_16550_main_u32("UART_16550_MAIN__RBR__DATA_bm")
-# LSR bits the receiver raises on a damaged character. All four are `rclr`, so
-# each LSR read is the only chance to see the ones that read set.
-_LSR_LINE_ERRORS = (
-    uart_16550_main_u32("UART_16550_MAIN__LSR__OE_bm")
-    | uart_16550_main_u32("UART_16550_MAIN__LSR__PE_bm")
-    | uart_16550_main_u32("UART_16550_MAIN__LSR__FE_bm")
-    | uart_16550_main_u32("UART_16550_MAIN__LSR__BI_bm")
-)
-_FCR_FIFO_ENABLE = uart_16550_wo_u32("UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm")
-_THR_OFFSET = uart_16550_wo_offset("UART_16550_MAIN_WO_THR_BASE_ADDR")
-_FCR_OFFSET = uart_16550_wo_offset("UART_16550_MAIN_WO_FCR_BASE_ADDR")
-_DLL_OFFSET = uart_16550_dl_offset("UART_16550_DL_DLL_BASE_ADDR")
-_DLM_OFFSET = uart_16550_dl_offset("UART_16550_DL_DLM_BASE_ADDR")
-
-_CTRL_EN = log_engine_u32("LOG_ENGINE__CTRL__EN_bm")
-_LOG_LEN = log_engine_u32("LOG_ENGINE__LOG_CTRL__LOG_LEN_bm")
-_INTR_STATUS_MASK = log_engine_u32("LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm") | log_engine_u32(
-    "LOG_ENGINE__INTR_STATUS__LOG_WRITE_ERR_bm"
-)
-
-# uart_16550_main.rdl, LCR.WLS: "0x3 - 8 bits per character". The log engine
-# hands the UART whole bytes, so the character has to be eight bits wide.
-_WLS_8_BITS = 3
-# uart_16550_dl.rdl, DLL: "baud_rate = system_clock_frequency / (16 * (divisor
-# + 1))", and "When the divisor is set to 0, the transmitter and receiver logic
-# are disabled". 1 is the smallest divisor that keeps them running, so it is
-# the fastest the loopback can carry the log.
-_DIVISOR = 1
 
 # log_engine.rdl gives LOG_CTRL 16 elements and architecture.adoc divides the
 # region equally among them, so the region size fixes the slot size.
 _REGION_SIZE = 0x100
+_SLOT_BYTES = _REGION_SIZE // NUM_LOG_ENTRIES
 # Elements driven per wrapper. More than one, so the arbiter has to grant more
 # than one requester before the run can finish.
 _ENTRIES = 4
-# Bytes per element: one 64-bit fetch beat, half the capacity of a slot of
-# `_REGION_SIZE / 16` bytes, so no transfer reaches the end of its slot.
-_LOG_BYTES = 8
+# Bytes per element: the whole capacity of a slot, which is two 64-bit fetch
+# beats, so each element's fetch takes a second beat before it is done.
+_LOG_BYTES = _SLOT_BYTES
+_WORDS_PER_LOG = _LOG_BYTES // 8
 
 _LOG_BUFFER_OFFSET = 0x40000
 
@@ -122,7 +94,15 @@ _LOG_BUFFER_OFFSET = 0x40000
 # LSR read and one RBR read per byte, at least one LOG_CTRL read per element,
 # the quiet LSR read and the final INTR_STATUS read, and the 13-access restore.
 _MIN_ACCESSES_PER_WRAP = (
-    2 * _ENTRIES + 10 + 10 + 2 * _ENTRIES + 2 * _ENTRIES * _LOG_BYTES + _ENTRIES + 2 + 13
+    2 * _ENTRIES * _WORDS_PER_LOG
+    + ARM_UART_ACCESSES
+    + 10
+    + 2 * _ENTRIES
+    + 2 * _ENTRIES * _LOG_BYTES
+    + _ENTRIES
+    + 2
+    + 5
+    + RESTORE_UART_ACCESSES
 )
 
 # Reads of LSR allowed per expected byte before the transfer is declared stuck.
@@ -133,15 +113,20 @@ _RX_POLLS_PER_BYTE = 400
 _HWCLR_POLLS = 64
 
 
+#: Bits of a tagged byte that carry the slot offset. The rest carry the index
+#: of the (wrapper, element) pair, so every byte of the run is distinct.
+_OFFSET_BITS = _LOG_BYTES.bit_length() - 1
+
+
 def _tag(wrap: int, entry: int, offset: int) -> int:
     """The byte at `offset` in the slot element `entry` of wrapper `wrap` drives."""
-    return (((wrap * _ENTRIES) + entry) << 3) | offset
+    return (((wrap * _ENTRIES) + entry) << _OFFSET_BITS) | offset
 
 
 def _untag(byte: int) -> tuple[int, int, int]:
     """The wrapper, element and slot offset a received byte names."""
-    index = byte >> 3
-    return index // _ENTRIES, index % _ENTRIES, byte & 0x7
+    index = byte >> _OFFSET_BITS
+    return index // _ENTRIES, index % _ENTRIES, byte & ((1 << _OFFSET_BITS) - 1)
 
 
 class smc_log_engine_transfer_test_seq(SmcCsrSeq):
@@ -154,22 +139,6 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
         self.hwclr_elements = 0
 
     # -- addressing ------------------------------------------------------
-
-    @staticmethod
-    def _uart(wrap: int, register: str) -> int:
-        return smc_indexed_addr(f"{_WRAP}UART_{register}_BASE_ADDR", wrap)
-
-    @staticmethod
-    def _uart_base(wrap: int) -> int:
-        return smc_indexed_addr(f"{_WRAP}UART_BASE_ADDR", wrap)
-
-    @staticmethod
-    def _engine(wrap: int, register: str) -> int:
-        return smc_indexed_addr(f"{_WRAP}LOG_ENGINE_{register}_BASE_ADDR", wrap)
-
-    @staticmethod
-    def _wrap_ctrl(wrap: int) -> int:
-        return smc_indexed_addr(f"{_WRAP}UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", wrap)
 
     @staticmethod
     def _buffer(wrap: int) -> int:
@@ -187,13 +156,13 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
         base = self._buffer(wrap)
         logs: dict[int, list[int]] = {}
         for entry in range(_ENTRIES):
-            payload = [_tag(wrap, entry, offset) for offset in range(_LOG_BYTES)]
-            logs[entry] = payload
+            logs[entry] = [_tag(wrap, entry, offset) for offset in range(_LOG_BYTES)]
+        for entry in range(_ENTRIES):
             slot = base + entry * slot_bytes
             for word in range(0, _LOG_BYTES, 8):
                 value = 0
                 for lane in range(8):
-                    value |= payload[word + lane] << (8 * lane)
+                    value |= logs[entry][word + lane] << (8 * lane)
                 await self.csr_write(
                     f"WRAP{wrap}_SLOT{entry}_W{word // 8}", slot + word, value, length=8
                 )
@@ -211,67 +180,50 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
                 )
         return logs
 
-    async def _arm_uart(self, wrap: int) -> None:
-        await self.csr_write(f"WRAP{wrap}_PADMUX", self._wrap_ctrl(wrap), _UART_EN)
-        uart = self._uart_base(wrap)
-        await self.csr_write(f"WRAP{wrap}_LCR_DLAB", self._uart(wrap, "LCR"), _LCR_DLAB)
-        await self.csr_write(f"WRAP{wrap}_DLL", uart + _DLL_OFFSET, _DIVISOR)
-        await self.csr_write(f"WRAP{wrap}_DLM", uart + _DLM_OFFSET, 0)
-        await self.csr_write(f"WRAP{wrap}_LCR_8N1", self._uart(wrap, "LCR"), _WLS_8_BITS & _LCR_WLS)
-        await self.csr_write(f"WRAP{wrap}_MCR_LOOP", self._uart(wrap, "MCR"), _MCR_LOOP)
-        await self.csr_write(f"WRAP{wrap}_FCR", uart + _FCR_OFFSET, _FCR_FIFO_ENABLE)
-        await self.csr_write(f"WRAP{wrap}_IER", self._uart(wrap, "IER"), 0)
-        await self.csr_read(f"WRAP{wrap}_MCR_RB", self._uart(wrap, "MCR"), expected=_MCR_LOOP)
-        drained = await self.csr_read(f"WRAP{wrap}_LSR_IDLE", self._uart(wrap, "LSR"))
-        assert drained & _LSR_DR == 0, (
-            f"wrapper {wrap}: LSR reports received data before the engine sent any, so the "
-            f"receiver is not the quiet start the byte compare below assumes"
-        )
-
     async def _arm_engine(self, wrap: int) -> None:
         base = self._buffer(wrap)
-        await self.csr_write(f"WRAP{wrap}_LE_OFF", self._engine(wrap, "CTRL"), 0)
+        await self.csr_write(f"WRAP{wrap}_LE_OFF", engine_reg(wrap, "CTRL"), 0)
         await self.csr_write(
-            f"WRAP{wrap}_REGION_SIZE", self._engine(wrap, "LOG_REGION_SIZE"), _REGION_SIZE
+            f"WRAP{wrap}_REGION_SIZE", engine_reg(wrap, "LOG_REGION_SIZE"), _REGION_SIZE
         )
-        region_addr = self._engine(wrap, "LOG_REGION_ADDR")
+        region_addr = engine_reg(wrap, "LOG_REGION_ADDR")
         await self.csr_write(f"WRAP{wrap}_REGION_ADDR_LO", region_addr, base & 0xFFFF_FFFF)
         await self.csr_write(f"WRAP{wrap}_REGION_ADDR_HI", region_addr + 4, base >> 32)
         await self.csr_write(
             f"WRAP{wrap}_WRITE_ADDR",
-            self._engine(wrap, "LOG_WRITE_ADDR"),
-            self._uart_base(wrap) + _THR_OFFSET,
+            engine_reg(wrap, "LOG_WRITE_ADDR"),
+            uart_base(wrap) + THR_OFFSET,
         )
         await self.csr_write(
-            f"WRAP{wrap}_INTR_CLEAR", self._engine(wrap, "INTR_STATUS"), _INTR_STATUS_MASK
+            f"WRAP{wrap}_INTR_CLEAR", engine_reg(wrap, "INTR_STATUS"), INTR_STATUS_MASK
         )
-        await self.csr_write(f"WRAP{wrap}_INTR_ENABLE", self._engine(wrap, "INTR_ENABLE"), 0)
+        await self.csr_write(f"WRAP{wrap}_INTR_ENABLE", engine_reg(wrap, "INTR_ENABLE"), 0)
         status = await self.csr_read(
-            f"WRAP{wrap}_INTR_IDLE", self._engine(wrap, "INTR_STATUS"), expected=0
+            f"WRAP{wrap}_INTR_IDLE", engine_reg(wrap, "INTR_STATUS"), expected=0
         )
-        assert status & _INTR_STATUS_MASK == 0, (
-            f"wrapper {wrap}: INTR_STATUS still reports 0x{status & _INTR_STATUS_MASK:x} "
+        assert status & INTR_STATUS_MASK == 0, (
+            f"wrapper {wrap}: INTR_STATUS still reports 0x{status & INTR_STATUS_MASK:x} "
             f"after the clearing write, so a later error could not be told from a stale one"
         )
-        await self.csr_write(f"WRAP{wrap}_LE_ON", self._engine(wrap, "CTRL"), _CTRL_EN)
-        await self.csr_read(f"WRAP{wrap}_LE_ON_RB", self._engine(wrap, "CTRL"), expected=_CTRL_EN)
+        await self.csr_write(f"WRAP{wrap}_LE_ON", engine_reg(wrap, "CTRL"), CTRL_EN)
+        await self.csr_read(f"WRAP{wrap}_LE_ON_RB", engine_reg(wrap, "CTRL"), expected=CTRL_EN)
 
     async def _drain(self, wrap: int, expected_bytes: int) -> list[int]:
-        lsr = self._uart(wrap, "LSR")
-        rbr = self._uart(wrap, "RBR")
+        lsr = uart_reg(wrap, "LSR")
+        rbr = uart_reg(wrap, "RBR")
         received: list[int] = []
         budget = expected_bytes * _RX_POLLS_PER_BYTE
         while len(received) < expected_bytes and budget > 0:
             budget -= 1
             status = await self.csr_read(f"WRAP{wrap}_LSR", lsr)
-            assert status & _LSR_LINE_ERRORS == 0, (
-                f"wrapper {wrap}: LSR reports 0x{status & _LSR_LINE_ERRORS:x} in its "
+            assert status & LSR_LINE_ERRORS == 0, (
+                f"wrapper {wrap}: LSR reports 0x{status & LSR_LINE_ERRORS:x} in its "
                 f"overrun, parity, framing and break bits after {len(received)} byte(s), so "
                 f"the receiver did not take the log intact"
             )
-            if status & _LSR_DR:
+            if status & LSR_DR:
                 byte = await self.csr_read(f"WRAP{wrap}_RBR", rbr)
-                received.append(byte & _RBR_DATA)
+                received.append(byte & RBR_DATA)
         assert len(received) == expected_bytes, (
             f"wrapper {wrap}: {len(received)} of {expected_bytes} log byte(s) reached the "
             f"receiver within {expected_bytes * _RX_POLLS_PER_BYTE} LSR reads; the engine "
@@ -303,7 +255,7 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
             remaining = None
             for _ in range(_HWCLR_POLLS):
                 remaining = await self.csr_read(f"WRAP{wrap}_LOG_CTRL{entry}_HWCLR", inst.addr)
-                remaining &= _LOG_LEN
+                remaining &= LOG_LEN
                 if remaining == 0:
                     break
             assert remaining == 0, (
@@ -314,31 +266,22 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
             self.hwclr_elements += 1
 
     async def _restore(self, wrap: int) -> None:
-        uart = self._uart_base(wrap)
-        await self.csr_write(f"WRAP{wrap}_LE_OFF_FINAL", self._engine(wrap, "CTRL"), 0)
-        await self.csr_read(f"WRAP{wrap}_LE_OFF_RB", self._engine(wrap, "CTRL"), expected=0)
-        await self.csr_write(f"WRAP{wrap}_WRITE_ADDR_CLR", self._engine(wrap, "LOG_WRITE_ADDR"), 0)
-        await self.csr_write(
-            f"WRAP{wrap}_REGION_SIZE_CLR", self._engine(wrap, "LOG_REGION_SIZE"), 0
-        )
-        region_addr = self._engine(wrap, "LOG_REGION_ADDR")
+        await self.csr_write(f"WRAP{wrap}_LE_OFF_FINAL", engine_reg(wrap, "CTRL"), 0)
+        await self.csr_read(f"WRAP{wrap}_LE_OFF_RB", engine_reg(wrap, "CTRL"), expected=0)
+        await self.csr_write(f"WRAP{wrap}_WRITE_ADDR_CLR", engine_reg(wrap, "LOG_WRITE_ADDR"), 0)
+        await self.csr_write(f"WRAP{wrap}_REGION_SIZE_CLR", engine_reg(wrap, "LOG_REGION_SIZE"), 0)
+        region_addr = engine_reg(wrap, "LOG_REGION_ADDR")
         await self.csr_write(f"WRAP{wrap}_REGION_ADDR_LO_CLR", region_addr, 0)
         await self.csr_write(f"WRAP{wrap}_REGION_ADDR_HI_CLR", region_addr + 4, 0)
-        await self.csr_write(f"WRAP{wrap}_MCR_CLR", self._uart(wrap, "MCR"), 0)
-        await self.csr_write(f"WRAP{wrap}_LCR_CLR", self._uart(wrap, "LCR"), _LCR_DLAB)
-        await self.csr_write(f"WRAP{wrap}_DLL_CLR", uart + _DLL_OFFSET, 0)
-        await self.csr_write(f"WRAP{wrap}_DLM_CLR", uart + _DLM_OFFSET, 0)
-        await self.csr_write(f"WRAP{wrap}_LCR_RESET", self._uart(wrap, "LCR"), 0)
-        await self.csr_write(f"WRAP{wrap}_PADMUX_CLR", self._wrap_ctrl(wrap), 0)
-        await self.csr_read(f"WRAP{wrap}_MCR_CLR_RB", self._uart(wrap, "MCR"), expected=0)
+        await restore_uart(self, wrap)
 
     # -- body ------------------------------------------------------------
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
-        wraps = smc_addr(_WRAP_NUM)
-        elements = array_reg_instances(_LOG_CTRL_PATH, _LOG_CTRL_PY, _WRAP_STRIDE_SYMBOL, 0)
+        wraps = smc_addr(WRAP_NUM)
+        elements = array_reg_instances(LOG_CTRL_PATH, LOG_CTRL_PY, WRAP_STRIDE_SYMBOL, 0)
         slot_bytes = _REGION_SIZE // len(elements)
         assert _ENTRIES <= len(elements), (
             f"this leaf drives {_ENTRIES} elements, the generated map declares {len(elements)}"
@@ -358,10 +301,10 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
 
         for wrap in range(wraps):
             wrap_elements = array_reg_instances(
-                _LOG_CTRL_PATH, _LOG_CTRL_PY, _WRAP_STRIDE_SYMBOL, wrap
+                LOG_CTRL_PATH, LOG_CTRL_PY, WRAP_STRIDE_SYMBOL, wrap
             )
             logs = await self._load_region(wrap, slot_bytes)
-            await self._arm_uart(wrap)
+            await arm_uart(self, wrap)
             await self._arm_engine(wrap)
 
             for entry in range(_ENTRIES):
@@ -377,16 +320,16 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
             self._check_stream(wrap, received, logs)
             await self._await_hwclr(wrap, wrap_elements)
 
-            quiet = await self.csr_read(f"WRAP{wrap}_LSR_QUIET", self._uart(wrap, "LSR"))
-            assert quiet & _LSR_DR == 0, (
+            quiet = await self.csr_read(f"WRAP{wrap}_LSR_QUIET", uart_reg(wrap, "LSR"))
+            assert quiet & LSR_DR == 0, (
                 f"wrapper {wrap}: the receiver still reports data after the whole log was "
                 f"read out, so the engine sent more bytes than the logs it was given"
             )
             status = await self.csr_read(
-                f"WRAP{wrap}_INTR_FINAL", self._engine(wrap, "INTR_STATUS"), expected=0
+                f"WRAP{wrap}_INTR_FINAL", engine_reg(wrap, "INTR_STATUS"), expected=0
             )
-            assert status & _INTR_STATUS_MASK == 0, (
-                f"wrapper {wrap}: INTR_STATUS reports 0x{status & _INTR_STATUS_MASK:x} after "
+            assert status & INTR_STATUS_MASK == 0, (
+                f"wrapper {wrap}: INTR_STATUS reports 0x{status & INTR_STATUS_MASK:x} after "
                 f"the transfer, so the engine hit a fetch or a write error"
             )
             await self._restore(wrap)
