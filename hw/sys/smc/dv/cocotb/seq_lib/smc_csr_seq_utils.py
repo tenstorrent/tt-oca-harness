@@ -192,6 +192,29 @@ class SmcCsrSeq(smc_base_test_seq):
         )
         return item.rdata
 
+    async def csr_write_expect_error(
+        self, name: str, addr: int, data: int, length: int = 4
+    ) -> None:
+        """Write a register that deterministically refuses the access.
+
+        The mirror of ``csr_read_expect_error`` for a write the DUT is
+        specified to reject, such as one aimed at a FIFO that is full.
+        """
+        item = SmcSysAxiItem(f"wr_{name}")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = addr
+        item.length = length
+        item.wdata = data
+        item.allow_error = True
+        item.expect_error = True  # scoreboard also enforces the error response
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code is not None and item.resp_code > 1, (
+            f"{name} @ 0x{addr:08x}: expected an error response (SLVERR/DECERR) for a write "
+            f"the DUT is specified to refuse, got resp={item.resp_code}"
+        )
+
     async def csr_read_allow_error(self, name: str, addr: int, length: int = 4) -> int:
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
