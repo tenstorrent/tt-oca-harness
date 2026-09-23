@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-22T18:36:36+00:00",
+  "generated_at": "2026-09-23T00:26:22+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -100,6 +100,31 @@
         }
       ],
       "test_pass_rate": null
+    },
+    {
+      "failed_tests": 167,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-23T00:26:22+00:00",
+      "id": "7007c0401e4d1121",
+      "per_dut": [
+        {
+          "comparison_key": null,
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "sep",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 0.0
     }
   ],
   "schema_version": "0.2"

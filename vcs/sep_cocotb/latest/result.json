@@ -1,0 +1,3333 @@
+{
+  "artifacts": {
+    "coverage_report": "vcs/sep_cocotb/runs/cov/report",
+    "log": "vcs/sep_cocotb/runs/sep_axi_smoke_test/seed_1217229001/attempt_0/logs/sep_axi_smoke_test.log",
+    "regression_json": "vcs/sep_cocotb/runs/stages/regress/regression.json",
+    "result_json": "vcs/sep_cocotb/runs/result.json",
+    "run_dir": "vcs/sep_cocotb/runs"
+  },
+  "coverage": {
+    "comparison_key": null,
+    "details_available": null,
+    "effective_metrics": {},
+    "holes_summary": {
+      "details_available": false
+    },
+    "manifest": null,
+    "policy_application": null,
+    "policy_thresholds": [],
+    "raw_metrics": {},
+    "report": "vcs/sep_cocotb/runs/cov/report",
+    "status": "ERROR",
+    "summary": null,
+    "target": null,
+    "threshold": null,
+    "threshold_met": null,
+    "total_percent": null
+  },
+  "failure_buckets": [
+    {
+      "count": 286,
+      "examples": [
+        "vcs/sep_cocotb/runs/sep_axi_smoke_test/seed_1217229001/attempt_0/logs/sep_axi_smoke_test.log"
+      ],
+      "kind": "tool_error",
+      "signature": "hard-fail pattern matched: Traceback (most recent call last):"
+    },
+    {
+      "count": 1,
+      "examples": [
+        "vcs/sep_cocotb/runs/stages/cov_merge/logs/cov_merge.log"
+      ],
+      "kind": "tool_error",
+      "signature": "coverage was requested but no usable inputs were found under vcs/sep_cocotb/runs"
+    },
+    {
+      "count": 1,
+      "examples": [
+        "vcs/sep_cocotb/runs/stages/cov_report/logs/cov_report.log"
+      ],
+      "kind": "tool_error",
+      "signature": "coverage manifest is missing or malformed: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/cocotb/vcs/sep_cocotb/run"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_boot_rom_smoke_test",
+          "seed": 271574870,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000004-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000004-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_sram_smoke_test",
+          "seed": 1394447870,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000005-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000005-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_otbn_mem_smoke_test",
+          "seed": 846014052,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000007-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000007-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_lcc_lc_state_w1s_prod_test",
+          "seed": 379818292,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000015-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000015-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_lcc_lc_state_w1s_prod_demote_test",
+          "seed": 1606666721,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000016-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000016-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_lcc_lc_state_w1s_prod_demote_test",
+          "seed": 1151254841,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000017-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000017-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_lcc_lc_state_w1s_transient_test",
+          "seed": 1483733184,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000028-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000028-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_lcc_lc_state_w1s_transient_test",
+          "seed": 1036272911,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000029-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000029-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_dma_hash_test",
+          "seed": 1874735243,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000031-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000031-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_drbg_gen_segmentation_test",
+          "seed": 240982889,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000041-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000041-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_hmac_kmac_cpu_crypto_smoke_test",
+          "seed": 116945053,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000042-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000042-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_irq_ip_to_aggregator_test",
+          "seed": 152268478,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000044-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000044-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_nmi_sanity_test",
+          "seed": 1095921159,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000052-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000052-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_axil_mailbox_iface_rand_test",
+          "seed": 1334263252,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000065-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000065-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_axil_mailbox_iface_rand_test",
+          "seed": 1248099689,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000066-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000066-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_sram_datapath_breadth_test",
+          "seed": 43903111,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000072-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000072-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_spi_ot_host_csr_irq_rand_test",
+          "seed": 2104981325,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000079-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000079-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_aes_mode_keysize_rand_test",
+          "seed": 1581473047,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000093-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000093-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_otbn_compute_rand_test",
+          "seed": 1290962800,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000099-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000099-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_efuse_rma_token_rand_test",
+          "seed": 479090059,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000106-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000106-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_km_wipe_reset_test",
+          "seed": 1496722336,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000119-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000119-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_reg_bit_bash_rand_test",
+          "seed": 866606412,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000134-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000134-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_efuse_secure_tm_write_lock_test",
+          "seed": 1137202578,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000163-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000163-a0 ended failed: failed reported but no result.json appeared within 120s"
+    },
+    {
+      "affected": [
+        {
+          "item": "sep_abr_mldsa_keygen_kat_test",
+          "seed": 470285234,
+          "status": "ERROR",
+          "target": "default"
+        }
+      ],
+      "count": 1,
+      "examples": [],
+      "kind": "unknown",
+      "reason": "environment_error: attempt sim-000164-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "signature": "environment_error: attempt sim-000164-a0 ended failed: failed reported but no result.json appeared within 120s"
+    }
+  ],
+  "flow": "sep",
+  "framework": "cocotb",
+  "generated_at": "2026-09-23T00:26:22+00:00",
+  "git": {
+    "branch": "HEAD",
+    "sha": "297d62427d1987498b8227d6b9b490a31e536b49",
+    "short_sha": "297d62427"
+  },
+  "junit_xml": {
+    "missing": 0,
+    "total": 143
+  },
+  "kind": "dv",
+  "regression": {
+    "failed_tests": [
+      {
+        "item": "sep_axi_smoke_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test --stage sim --tool vcs --seed 1217229001 --target default --cov",
+        "seed": 1217229001,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_address_map_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_address_map_test --stage sim --tool vcs --seed 889141146 --target default --cov",
+        "seed": 889141146,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_hello_world_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_hello_world_test --stage sim --tool vcs --seed 1295379941 --target default --cov",
+        "seed": 1295379941,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_cpu_trace_diag_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_cpu_trace_diag_test --stage sim --tool vcs --seed 1526257538 --target default --cov",
+        "seed": 1526257538,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_mem_smoke_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_mem_smoke_test --stage sim --tool vcs --seed 1770897196 --target default --cov",
+        "seed": 1770897196,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_sense_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_sense_test --stage sim --tool vcs --seed 1282089739 --target default --cov",
+        "seed": 1282089739,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_image_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_image_test --stage sim --tool vcs --seed 2125187065 --target default --cov",
+        "seed": 2125187065,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_flash_jedec_smoke_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_flash_jedec_smoke_test --stage sim --tool vcs --seed 1185125931 --target default --cov",
+        "seed": 1185125931,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_lcc_lc_state_stitch_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_lcc_lc_state_stitch_test --stage sim --tool vcs --seed 1061045060 --target default --cov",
+        "seed": 1061045060,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_jtag_window_allow_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_jtag_window_allow_test --stage sim --tool vcs --seed 89488956 --target default --cov",
+        "seed": 89488956,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_test --stage sim --tool vcs --seed 1047739947 --target default --cov",
+        "seed": 1047739947,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_test --stage sim --tool vcs --seed 1244745829 --target default --cov",
+        "seed": 1244745829,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_demote_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_demote_test --stage sim --tool vcs --seed 1522537464 --target default --cov",
+        "seed": 1522537464,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_rma_sip_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_rma_sip_test --stage sim --tool vcs --seed 1937967167 --target default --cov",
+        "seed": 1937967167,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_rma_sip_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_rma_sip_test --stage sim --tool vcs --seed 265484632 --target default --cov",
+        "seed": 265484632,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_rma_sip_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_rma_sip_test --stage sim --tool vcs --seed 440129872 --target default --cov",
+        "seed": 440129872,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_rma_chiplet_test --stage sim --tool vcs --seed 1931512910 --target default --cov",
+        "seed": 1931512910,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_rma_chiplet_test --stage sim --tool vcs --seed 156218471 --target default --cov",
+        "seed": 156218471,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_rma_chiplet_test --stage sim --tool vcs --seed 483942489 --target default --cov",
+        "seed": 483942489,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_end_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_end_test --stage sim --tool vcs --seed 99486845 --target default --cov",
+        "seed": 99486845,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_end_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_end_test --stage sim --tool vcs --seed 940621628 --target default --cov",
+        "seed": 940621628,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_end_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_end_test --stage sim --tool vcs --seed 1972179561 --target default --cov",
+        "seed": 1972179561,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_transient_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_transient_test --stage sim --tool vcs --seed 329409004 --target default --cov",
+        "seed": 329409004,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_mailbox_plic_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_mailbox_plic_test --stage sim --tool vcs --seed 887696803 --target default --cov",
+        "seed": 887696803,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_dma_cpu_contention_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_dma_cpu_contention_test --stage sim --tool vcs --seed 1735378002 --target default --cov",
+        "seed": 1735378002,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_clock_uvm_wdt_rst_input_reset_path_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_clock_uvm_wdt_rst_input_reset_path_test --stage sim --tool vcs --seed 1035892775 --target default --cov",
+        "seed": 1035892775,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_rom_sanity_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_rom_sanity_test --stage sim --tool vcs --seed 1093916590 --target default --cov",
+        "seed": 1093916590,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_dma_rx_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_dma_rx_test --stage sim --tool vcs --seed 210707887 --target default --cov",
+        "seed": 210707887,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_esrc_e2e_smoke_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_esrc_e2e_smoke_test --stage sim --tool vcs --seed 746794297 --target default --cov",
+        "seed": 746794297,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_esrc_ht_watermark_arming_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_esrc_ht_watermark_arming_test --stage sim --tool vcs --seed 478031583 --target default --cov",
+        "seed": 478031583,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_esrc_fips_lock_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_esrc_fips_lock_test --stage sim --tool vcs --seed 376392527 --target default --cov",
+        "seed": 376392527,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_esrc_alert_delivery_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_esrc_alert_delivery_test --stage sim --tool vcs --seed 1872422399 --target default --cov",
+        "seed": 1872422399,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_km_axil_cpu_mux_coexist_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_km_axil_cpu_mux_coexist_test --stage sim --tool vcs --seed 2073354743 --target default --cov",
+        "seed": 2073354743,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_periph_bus_err_misaligned_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_periph_bus_err_misaligned_test --stage sim --tool vcs --seed 1265337523 --target default --cov",
+        "seed": 1265337523,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_drbg_real_sink_multi_km_aes_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_drbg_real_sink_multi_km_aes_test --stage sim --tool vcs --seed 536512583 --target default --cov",
+        "seed": 536512583,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_otbn_sideload_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_otbn_sideload_kat_test --stage sim --tool vcs --seed 1354267186 --target default --cov",
+        "seed": 1354267186,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_aes_sideload_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_aes_sideload_kat_test --stage sim --tool vcs --seed 1900634822 --target default --cov",
+        "seed": 1900634822,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_hmac_sideload_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_hmac_sideload_kat_test --stage sim --tool vcs --seed 1391906186 --target default --cov",
+        "seed": 1391906186,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_kmac_sideload_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_kmac_sideload_kat_test --stage sim --tool vcs --seed 215840073 --target default --cov",
+        "seed": 215840073,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_uvm_inbound_filter_gating_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_uvm_inbound_filter_gating_test --stage sim --tool vcs --seed 1963792593 --target default --cov",
+        "seed": 1963792593,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_boot_rom_smoke_test",
+        "reason": "environment_error: attempt sim-000004-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_boot_rom_smoke_test --stage sim --tool vcs --seed 271574870 --target default --cov",
+        "seed": 271574870,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_sram_smoke_test",
+        "reason": "environment_error: attempt sim-000005-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_sram_smoke_test --stage sim --tool vcs --seed 1394447870 --target default --cov",
+        "seed": 1394447870,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_otbn_mem_smoke_test",
+        "reason": "environment_error: attempt sim-000007-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_otbn_mem_smoke_test --stage sim --tool vcs --seed 846014052 --target default --cov",
+        "seed": 846014052,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_test",
+        "reason": "environment_error: attempt sim-000015-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_test --stage sim --tool vcs --seed 379818292 --target default --cov",
+        "seed": 379818292,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_demote_test",
+        "reason": "environment_error: attempt sim-000016-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_demote_test --stage sim --tool vcs --seed 1606666721 --target default --cov",
+        "seed": 1606666721,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_prod_demote_test",
+        "reason": "environment_error: attempt sim-000017-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_prod_demote_test --stage sim --tool vcs --seed 1151254841 --target default --cov",
+        "seed": 1151254841,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_reset_wdt_sanity_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_reset_wdt_sanity_test --stage sim --tool vcs --seed 1675711247 --target default --cov",
+        "seed": 1675711247,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_jtag_axil_el2_cpu_mux_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_jtag_axil_el2_cpu_mux_test --stage sim --tool vcs --seed 423736983 --target default --cov",
+        "seed": 423736983,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_cpu_ifu_lsu_alias_remap_matrix_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_cpu_ifu_lsu_alias_remap_matrix_test --stage sim --tool vcs --seed 1997201781 --target default --cov",
+        "seed": 1997201781,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_irq_simultaneous_fanin_no_alias_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_irq_simultaneous_fanin_no_alias_test --stage sim --tool vcs --seed 2025808486 --target default --cov",
+        "seed": 2025808486,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_irq_simultaneous_fanin_no_alias_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_irq_simultaneous_fanin_no_alias_test --stage sim --tool vcs --seed 1588639199 --target default --cov",
+        "seed": 1588639199,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_irq_simultaneous_fanin_no_alias_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_irq_simultaneous_fanin_no_alias_test --stage sim --tool vcs --seed 524879738 --target default --cov",
+        "seed": 524879738,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_fabric_remap_filter_csr_bank_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_fabric_remap_filter_csr_bank_test --stage sim --tool vcs --seed 1285164997 --target default --cov",
+        "seed": 1285164997,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_transient_test",
+        "reason": "environment_error: attempt sim-000028-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_transient_test --stage sim --tool vcs --seed 1483733184 --target default --cov",
+        "seed": 1483733184,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_lc_state_w1s_transient_test",
+        "reason": "environment_error: attempt sim-000029-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_transient_test --stage sim --tool vcs --seed 1036272911 --target default --cov",
+        "seed": 1036272911,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_dma_hash_test",
+        "reason": "environment_error: attempt sim-000031-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_dma_hash_test --stage sim --tool vcs --seed 1874735243 --target default --cov",
+        "seed": 1874735243,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_fabric_remap_filter_csr_bank_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_fabric_remap_filter_csr_bank_test --stage sim --tool vcs --seed 144652446 --target default --cov",
+        "seed": 144652446,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_fabric_remap_filter_csr_bank_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_fabric_remap_filter_csr_bank_test --stage sim --tool vcs --seed 981737400 --target default --cov",
+        "seed": 981737400,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_wdt_aon_timer_internals_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_wdt_aon_timer_internals_test --stage sim --tool vcs --seed 1313270681 --target default --cov",
+        "seed": 1313270681,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_wdt_aon_timer_internals_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_wdt_aon_timer_internals_test --stage sim --tool vcs --seed 486983629 --target default --cov",
+        "seed": 486983629,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_wdt_aon_timer_internals_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_wdt_aon_timer_internals_test --stage sim --tool vcs --seed 1921915634 --target default --cov",
+        "seed": 1921915634,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axil_mailbox_iface_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axil_mailbox_iface_rand_test --stage sim --tool vcs --seed 990137903 --target default --cov",
+        "seed": 990137903,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_mailbox_peer_rx_rirqt_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_mailbox_peer_rx_rirqt_test --stage sim --tool vcs --seed 378002594 --target default --cov",
+        "seed": 378002594,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_crypto_per_ip_reset_isolation_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_crypto_per_ip_reset_isolation_test --stage sim --tool vcs --seed 1446761416 --target default --cov",
+        "seed": 1446761416,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_trng_reset_recovery_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_trng_reset_recovery_test --stage sim --tool vcs --seed 753055516 --target default --cov",
+        "seed": 753055516,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_fabric_inbound_filter_rule_matrix_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_fabric_inbound_filter_rule_matrix_test --stage sim --tool vcs --seed 421726371 --target default --cov",
+        "seed": 421726371,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_drbg_gen_segmentation_test",
+        "reason": "environment_error: attempt sim-000041-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_drbg_gen_segmentation_test --stage sim --tool vcs --seed 240982889 --target default --cov",
+        "seed": 240982889,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_hmac_kmac_cpu_crypto_smoke_test",
+        "reason": "environment_error: attempt sim-000042-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_hmac_kmac_cpu_crypto_smoke_test --stage sim --tool vcs --seed 116945053 --target default --cov",
+        "seed": 116945053,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_irq_ip_to_aggregator_test",
+        "reason": "environment_error: attempt sim-000044-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_irq_ip_to_aggregator_test --stage sim --tool vcs --seed 152268478 --target default --cov",
+        "seed": 152268478,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_boot_rom_lsu_read_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_boot_rom_lsu_read_test --stage sim --tool vcs --seed 186656412 --target default --cov",
+        "seed": 186656412,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_flash_cmd_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_flash_cmd_rand_test --stage sim --tool vcs --seed 1072990822 --target default --cov",
+        "seed": 1072990822,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_flash_cmd_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_flash_cmd_rand_test --stage sim --tool vcs --seed 1535570204 --target default --cov",
+        "seed": 1535570204,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_flash_cmd_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_flash_cmd_rand_test --stage sim --tool vcs --seed 1193982557 --target default --cov",
+        "seed": 1193982557,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_host_csr_irq_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_host_csr_irq_rand_test --stage sim --tool vcs --seed 1710680334 --target default --cov",
+        "seed": 1710680334,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_host_csr_irq_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_host_csr_irq_rand_test --stage sim --tool vcs --seed 162436548 --target default --cov",
+        "seed": 162436548,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_dma_tx_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_dma_tx_test --stage sim --tool vcs --seed 1220930176 --target default --cov",
+        "seed": 1220930176,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_dma_tx_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_dma_tx_test --stage sim --tool vcs --seed 576036090 --target default --cov",
+        "seed": 576036090,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_dma_tx_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_dma_tx_test --stage sim --tool vcs --seed 452463690 --target default --cov",
+        "seed": 452463690,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_warm_cold_reset_scratch_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_warm_cold_reset_scratch_test --stage sim --tool vcs --seed 1206524381 --target default --cov",
+        "seed": 1206524381,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_pic_irq_source_map_delivery_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_pic_irq_source_map_delivery_test --stage sim --tool vcs --seed 718711497 --target default --cov",
+        "seed": 718711497,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_pic_irq_source_map_delivery_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_pic_irq_source_map_delivery_test --stage sim --tool vcs --seed 372853045 --target default --cov",
+        "seed": 372853045,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_nmi_sanity_test",
+        "reason": "environment_error: attempt sim-000052-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_nmi_sanity_test --stage sim --tool vcs --seed 1095921159 --target default --cov",
+        "seed": 1095921159,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_pic_irq_source_map_delivery_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_pic_irq_source_map_delivery_test --stage sim --tool vcs --seed 319833862 --target default --cov",
+        "seed": 319833862,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_token_match_fault_pic_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_token_match_fault_pic_test --stage sim --tool vcs --seed 120774236 --target default --cov",
+        "seed": 120774236,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_dma_basic_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_dma_basic_test --stage sim --tool vcs --seed 2073243941 --target default --cov",
+        "seed": 2073243941,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_dma_basic_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_dma_basic_test --stage sim --tool vcs --seed 606062614 --target default --cov",
+        "seed": 606062614,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_dma_basic_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_dma_basic_test --stage sim --tool vcs --seed 1337014482 --target default --cov",
+        "seed": 1337014482,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_cpu_dbg_reset_independence_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_cpu_dbg_reset_independence_test --stage sim --tool vcs --seed 865272822 --target default --cov",
+        "seed": 865272822,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_hmac_sha_variant_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_hmac_sha_variant_rand_test --stage sim --tool vcs --seed 1873688194 --target default --cov",
+        "seed": 1873688194,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_kmac_mode_strength_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_kmac_mode_strength_rand_test --stage sim --tool vcs --seed 745351833 --target default --cov",
+        "seed": 745351833,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_crypto_edn_multisink_arbitration_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_crypto_edn_multisink_arbitration_test --stage sim --tool vcs --seed 132564520 --target default --cov",
+        "seed": 132564520,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_crypto_edn_multisink_arbitration_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_crypto_edn_multisink_arbitration_test --stage sim --tool vcs --seed 345916810 --target default --cov",
+        "seed": 345916810,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_crypto_edn_multisink_arbitration_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_crypto_edn_multisink_arbitration_test --stage sim --tool vcs --seed 35102741 --target default --cov",
+        "seed": 35102741,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_crypto_edn_round_robin_grant_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_crypto_edn_round_robin_grant_test --stage sim --tool vcs --seed 977871664 --target default --cov",
+        "seed": 977871664,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_otbn_compute_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_otbn_compute_rand_test --stage sim --tool vcs --seed 448814122 --target default --cov",
+        "seed": 448814122,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_otbn_compute_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_otbn_compute_rand_test --stage sim --tool vcs --seed 800770362 --target default --cov",
+        "seed": 800770362,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_clock_gate_control_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_clock_gate_control_test --stage sim --tool vcs --seed 1784428238 --target default --cov",
+        "seed": 1784428238,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_program_lock_matrix_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_program_lock_matrix_test --stage sim --tool vcs --seed 513142241 --target default --cov",
+        "seed": 513142241,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_set_only_monotonicity_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_set_only_monotonicity_test --stage sim --tool vcs --seed 526182672 --target default --cov",
+        "seed": 526182672,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_lcc_demote_feat_ctrl_matrix_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_demote_feat_ctrl_matrix_test --stage sim --tool vcs --seed 202955009 --target default --cov",
+        "seed": 202955009,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_digest_latch_fault_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_digest_latch_fault_test --stage sim --tool vcs --seed 2067161954 --target default --cov",
+        "seed": 2067161954,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_illegal_state_fail_closed_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_illegal_state_fail_closed_test --stage sim --tool vcs --seed 1566350545 --target default --cov",
+        "seed": 1566350545,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_sec_dis_override_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_sec_dis_override_test --stage sim --tool vcs --seed 1443261907 --target default --cov",
+        "seed": 1443261907,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_fabric_output_remap_datapath_proxy_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_fabric_output_remap_datapath_proxy_test --stage sim --tool vcs --seed 1147708831 --target default --cov",
+        "seed": 1147708831,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_fabric_local_alias_datapath_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_fabric_local_alias_datapath_test --stage sim --tool vcs --seed 1406559656 --target default --cov",
+        "seed": 1406559656,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_key_policy_vault_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_key_policy_vault_test --stage sim --tool vcs --seed 854827933 --target default --cov",
+        "seed": 854827933,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_key_policy_vault_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_key_policy_vault_test --stage sim --tool vcs --seed 2146528766 --target default --cov",
+        "seed": 2146528766,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_key_policy_vault_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_key_policy_vault_test --stage sim --tool vcs --seed 1317213716 --target default --cov",
+        "seed": 1317213716,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axil_mailbox_iface_rand_test",
+        "reason": "environment_error: attempt sim-000065-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axil_mailbox_iface_rand_test --stage sim --tool vcs --seed 1334263252 --target default --cov",
+        "seed": 1334263252,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axil_mailbox_iface_rand_test",
+        "reason": "environment_error: attempt sim-000066-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axil_mailbox_iface_rand_test --stage sim --tool vcs --seed 1248099689 --target default --cov",
+        "seed": 1248099689,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_sram_datapath_breadth_test",
+        "reason": "environment_error: attempt sim-000072-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_sram_datapath_breadth_test --stage sim --tool vcs --seed 43903111 --target default --cov",
+        "seed": 43903111,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_isolate_termination_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_isolate_termination_test --stage sim --tool vcs --seed 1021923238 --target default --cov",
+        "seed": 1021923238,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_command_set_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_command_set_rand_test --stage sim --tool vcs --seed 1143796721 --target default --cov",
+        "seed": 1143796721,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_command_set_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_command_set_rand_test --stage sim --tool vcs --seed 209604337 --target default --cov",
+        "seed": 209604337,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_command_set_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_command_set_rand_test --stage sim --tool vcs --seed 251792731 --target default --cov",
+        "seed": 251792731,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_handover_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_handover_test --stage sim --tool vcs --seed 1538983344 --target default --cov",
+        "seed": 1538983344,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_abr_seed_sideload_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_abr_seed_sideload_test --stage sim --tool vcs --seed 1678993790 --target default --cov",
+        "seed": 1678993790,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_abr_mlkem_sideload_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_abr_mlkem_sideload_test --stage sim --tool vcs --seed 1624696897 --target default --cov",
+        "seed": 1624696897,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_mailbox_protocol_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_mailbox_protocol_rand_test --stage sim --tool vcs --seed 1377572747 --target default --cov",
+        "seed": 1377572747,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_mailbox_protocol_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_mailbox_protocol_rand_test --stage sim --tool vcs --seed 739432052 --target default --cov",
+        "seed": 739432052,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_mailbox_protocol_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_mailbox_protocol_rand_test --stage sim --tool vcs --seed 1664498596 --target default --cov",
+        "seed": 1664498596,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_crc_pcpi_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_crc_pcpi_kat_test --stage sim --tool vcs --seed 574116969 --target default --cov",
+        "seed": 574116969,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_crc_pcpi_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_crc_pcpi_kat_test --stage sim --tool vcs --seed 622795446 --target default --cov",
+        "seed": 622795446,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_spi_ot_host_csr_irq_rand_test",
+        "reason": "environment_error: attempt sim-000079-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_host_csr_irq_rand_test --stage sim --tool vcs --seed 2104981325 --target default --cov",
+        "seed": 2104981325,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_crc_pcpi_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_crc_pcpi_kat_test --stage sim --tool vcs --seed 2011812235 --target default --cov",
+        "seed": 2011812235,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_kpv_scrambler_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_kpv_scrambler_test --stage sim --tool vcs --seed 1425845075 --target default --cov",
+        "seed": 1425845075,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_kpv_scrambler_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_kpv_scrambler_test --stage sim --tool vcs --seed 181721984 --target default --cov",
+        "seed": 181721984,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_kpv_scrambler_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_kpv_scrambler_test --stage sim --tool vcs --seed 2126483189 --target default --cov",
+        "seed": 2126483189,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_reg_bit_bash_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_reg_bit_bash_rand_test --stage sim --tool vcs --seed 1159138340 --target default --cov",
+        "seed": 1159138340,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_reg_bit_bash_rand_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_reg_bit_bash_rand_test --stage sim --tool vcs --seed 2095033601 --target default --cov",
+        "seed": 2095033601,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_fabric_deadspace_decode_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_fabric_deadspace_decode_test --stage sim --tool vcs --seed 690769217 --target default --cov",
+        "seed": 690769217,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_map_refuse_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_map_refuse_test --stage sim --tool vcs --seed 1592460758 --target default --cov",
+        "seed": 1592460758,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_map_refuse_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_map_refuse_test --stage sim --tool vcs --seed 407675536 --target default --cov",
+        "seed": 407675536,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_map_refuse_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_map_refuse_test --stage sim --tool vcs --seed 81018824 --target default --cov",
+        "seed": 81018824,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_id_routing_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_id_routing_test --stage sim --tool vcs --seed 1695414525 --target default --cov",
+        "seed": 1695414525,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_strobe_window_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_strobe_window_test --stage sim --tool vcs --seed 2115631611 --target default --cov",
+        "seed": 2115631611,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_strobe_window_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_strobe_window_test --stage sim --tool vcs --seed 1809826688 --target default --cov",
+        "seed": 1809826688,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_strobe_window_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_strobe_window_test --stage sim --tool vcs --seed 181189537 --target default --cov",
+        "seed": 181189537,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_aes_mode_keysize_rand_test",
+        "reason": "environment_error: attempt sim-000093-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_aes_mode_keysize_rand_test --stage sim --tool vcs --seed 1581473047 --target default --cov",
+        "seed": 1581473047,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_otbn_compute_rand_test",
+        "reason": "environment_error: attempt sim-000099-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_otbn_compute_rand_test --stage sim --tool vcs --seed 1290962800 --target default --cov",
+        "seed": 1290962800,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_partial_lane_read_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_partial_lane_read_test --stage sim --tool vcs --seed 1355691041 --target default --cov",
+        "seed": 1355691041,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_partial_lane_read_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_partial_lane_read_test --stage sim --tool vcs --seed 1157629827 --target default --cov",
+        "seed": 1157629827,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_partial_lane_read_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_partial_lane_read_test --stage sim --tool vcs --seed 1538675939 --target default --cov",
+        "seed": 1538675939,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_order_sweep_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_order_sweep_test --stage sim --tool vcs --seed 399445357 --target default --cov",
+        "seed": 399445357,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_order_sweep_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_order_sweep_test --stage sim --tool vcs --seed 1476302375 --target default --cov",
+        "seed": 1476302375,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_order_sweep_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_order_sweep_test --stage sim --tool vcs --seed 1765771478 --target default --cov",
+        "seed": 1765771478,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_order_sweep_m_axi_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_order_sweep_m_axi_test --stage sim --tool vcs --seed 1220160444 --target default --cov",
+        "seed": 1220160444,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_order_sweep_m_axi_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_order_sweep_m_axi_test --stage sim --tool vcs --seed 1666755486 --target default --cov",
+        "seed": 1666755486,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_axi_order_sweep_m_axi_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_order_sweep_m_axi_test --stage sim --tool vcs --seed 2028421423 --target default --cov",
+        "seed": 2028421423,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_drbg_axil_adapter_port_arbitration_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_drbg_axil_adapter_port_arbitration_test --stage sim --tool vcs --seed 511523134 --target default --cov",
+        "seed": 511523134,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_drbg_axil_concurrent_csrng_aw_then_ar_test --stage sim --tool vcs --seed 669410148 --target default --cov",
+        "seed": 669410148,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_drbg_axil_concurrent_edn_aw_then_ar_test --stage sim --tool vcs --seed 2099163008 --target default --cov",
+        "seed": 2099163008,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_entropy_pool_aperture_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_entropy_pool_aperture_test --stage sim --tool vcs --seed 2100164348 --target default --cov",
+        "seed": 2100164348,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_entropy_pool_aperture_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_entropy_pool_aperture_test --stage sim --tool vcs --seed 442849224 --target default --cov",
+        "seed": 442849224,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_entropy_pool_aperture_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_entropy_pool_aperture_test --stage sim --tool vcs --seed 359417877 --target default --cov",
+        "seed": 359417877,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_rma_token_rand_test",
+        "reason": "environment_error: attempt sim-000106-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_rma_token_rand_test --stage sim --tool vcs --seed 479090059 --target default --cov",
+        "seed": 479090059,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_locked_field_access_irq_path_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_locked_field_access_irq_path_test --stage sim --tool vcs --seed 1294156496 --target default --cov",
+        "seed": 1294156496,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_locked_field_access_irq_path_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_locked_field_access_irq_path_test --stage sim --tool vcs --seed 1036798090 --target default --cov",
+        "seed": 1036798090,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_locked_field_access_irq_path_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_locked_field_access_irq_path_test --stage sim --tool vcs --seed 697750092 --target default --cov",
+        "seed": 697750092,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_secure_tm_write_lock_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_secure_tm_write_lock_test --stage sim --tool vcs --seed 550694198 --target default --cov",
+        "seed": 550694198,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_secure_tm_write_lock_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_secure_tm_write_lock_test --stage sim --tool vcs --seed 92915869 --target default --cov",
+        "seed": 92915869,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_abr_mldsa_sign_verify_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_abr_mldsa_sign_verify_kat_test --stage sim --tool vcs --seed 1707032015 --target default --cov",
+        "seed": 1707032015,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_abr_mlkem_kat_test",
+        "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_abr_mlkem_kat_test --stage sim --tool vcs --seed 658924984 --target default --cov",
+        "seed": 658924984,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_km_wipe_reset_test",
+        "reason": "environment_error: attempt sim-000119-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_km_wipe_reset_test --stage sim --tool vcs --seed 1496722336 --target default --cov",
+        "seed": 1496722336,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_reg_bit_bash_rand_test",
+        "reason": "environment_error: attempt sim-000134-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_reg_bit_bash_rand_test --stage sim --tool vcs --seed 866606412 --target default --cov",
+        "seed": 866606412,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_efuse_secure_tm_write_lock_test",
+        "reason": "environment_error: attempt sim-000163-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_secure_tm_write_lock_test --stage sim --tool vcs --seed 1137202578 --target default --cov",
+        "seed": 1137202578,
+        "status": "ERROR"
+      },
+      {
+        "item": "sep_abr_mldsa_keygen_kat_test",
+        "reason": "environment_error: attempt sim-000164-a0 ended failed: failed reported but no result.json appeared within 120s",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_abr_mldsa_keygen_kat_test --stage sim --tool vcs --seed 470285234 --target default --cov",
+        "seed": 470285234,
+        "status": "ERROR"
+      }
+    ],
+    "flaky_tests": []
+  },
+  "run_metadata": {
+    "executor": "lsf",
+    "generated_at": "2026-09-23T00:26:21.033742+00:00",
+    "git": {
+      "branch": "HEAD",
+      "commit": "297d62427d1987498b8227d6b9b490a31e536b49",
+      "dirty": "false"
+    },
+    "label": "all",
+    "result_json": "vcs/sep_cocotb/runs/result.json",
+    "run_dir": "vcs/sep_cocotb/runs",
+    "tool": "vcs",
+    "tool_version": "vcs script version : X-2025.06"
+  },
+  "schema_version": "0.2",
+  "source": {
+    "collector": "run_dv-result",
+    "label": "all",
+    "native_status": "ERROR"
+  },
+  "status": "FAIL",
+  "tests": {
+    "completed": true,
+    "failing": 167,
+    "pass_rate": 0.0,
+    "passing": 0,
+    "total": 167
+  },
+  "tests_detail": [
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 4.023,
+      "name": "sep_axi_smoke_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1217229001,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 4.084,
+      "name": "sep_address_map_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 889141146,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 4.211,
+      "name": "sep_hello_world_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1295379941,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 4.161,
+      "name": "sep_cpu_trace_diag_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1526257538,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 4.5,
+      "name": "sep_km_mem_smoke_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1770897196,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 4.27,
+      "name": "sep_efuse_sense_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1282089739,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 14.957,
+      "name": "sep_efuse_image_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2125187065,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 4.013,
+      "name": "sep_spi_flash_jedec_smoke_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1185125931,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.63,
+      "name": "sep_efuse_lcc_lc_state_stitch_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1061045060,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 3.657,
+      "name": "sep_efuse_jtag_window_allow_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 89488956,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.88,
+      "name": "sep_lcc_lc_state_w1s_prod_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1047739947,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.144,
+      "name": "sep_lcc_lc_state_w1s_prod_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1244745829,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.083,
+      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1522537464,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.759,
+      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1937967167,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.947,
+      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 265484632,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.713,
+      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 440129872,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.48,
+      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1931512910,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.806,
+      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 156218471,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.931,
+      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 483942489,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.827,
+      "name": "sep_lcc_lc_state_w1s_prod_end_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 99486845,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.826,
+      "name": "sep_lcc_lc_state_w1s_prod_end_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 940621628,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.795,
+      "name": "sep_lcc_lc_state_w1s_prod_end_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1972179561,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.202,
+      "name": "sep_lcc_lc_state_w1s_transient_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 329409004,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.032,
+      "name": "sep_mailbox_plic_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 887696803,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 16.339,
+      "name": "sep_dma_cpu_contention_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1735378002,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.406,
+      "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1035892775,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.933,
+      "name": "sep_rom_sanity_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1093916590,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.599,
+      "name": "sep_spi_ot_dma_rx_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 210707887,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 3.139,
+      "name": "sep_esrc_e2e_smoke_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 746794297,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.299,
+      "name": "sep_esrc_ht_watermark_arming_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 478031583,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.62,
+      "name": "sep_esrc_fips_lock_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 376392527,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.661,
+      "name": "sep_esrc_alert_delivery_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1872422399,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.736,
+      "name": "sep_efuse_km_axil_cpu_mux_coexist_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2073354743,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.617,
+      "name": "sep_periph_bus_err_misaligned_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1265337523,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.819,
+      "name": "sep_drbg_real_sink_multi_km_aes_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 536512583,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.206,
+      "name": "sep_km_otbn_sideload_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1354267186,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.283,
+      "name": "sep_km_aes_sideload_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1900634822,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.811,
+      "name": "sep_km_hmac_sideload_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1391906186,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.873,
+      "name": "sep_km_kmac_sideload_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 215840073,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 4.036,
+      "name": "sep_lcc_uvm_inbound_filter_gating_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1963792593,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 0.0,
+      "name": "sep_boot_rom_smoke_test",
+      "reason": "environment_error: attempt sim-000004-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 271574870,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 0.0,
+      "name": "sep_sram_smoke_test",
+      "reason": "environment_error: attempt sim-000005-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1394447870,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 0.0,
+      "name": "sep_otbn_mem_smoke_test",
+      "reason": "environment_error: attempt sim-000007-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 846014052,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_lcc_lc_state_w1s_prod_test",
+      "reason": "environment_error: attempt sim-000015-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 379818292,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
+      "reason": "environment_error: attempt sim-000016-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1606666721,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
+      "reason": "environment_error: attempt sim-000017-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1151254841,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.65,
+      "name": "sep_reset_wdt_sanity_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1675711247,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.455,
+      "name": "sep_efuse_jtag_axil_el2_cpu_mux_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 423736983,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.202,
+      "name": "sep_cpu_ifu_lsu_alias_remap_matrix_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1997201781,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.607,
+      "name": "sep_irq_simultaneous_fanin_no_alias_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2025808486,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.65,
+      "name": "sep_irq_simultaneous_fanin_no_alias_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1588639199,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.598,
+      "name": "sep_irq_simultaneous_fanin_no_alias_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 524879738,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.815,
+      "name": "sep_fabric_remap_filter_csr_bank_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1285164997,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_lcc_lc_state_w1s_transient_test",
+      "reason": "environment_error: attempt sim-000028-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1483733184,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_lcc_lc_state_w1s_transient_test",
+      "reason": "environment_error: attempt sim-000029-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1036272911,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_dma_hash_test",
+      "reason": "environment_error: attempt sim-000031-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1874735243,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.481,
+      "name": "sep_fabric_remap_filter_csr_bank_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 144652446,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.661,
+      "name": "sep_fabric_remap_filter_csr_bank_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 981737400,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 2.988,
+      "name": "sep_wdt_aon_timer_internals_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1313270681,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.741,
+      "name": "sep_wdt_aon_timer_internals_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 486983629,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 4.63,
+      "name": "sep_wdt_aon_timer_internals_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1921915634,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.384,
+      "name": "sep_axil_mailbox_iface_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 990137903,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.97,
+      "name": "sep_mailbox_peer_rx_rirqt_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 378002594,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.532,
+      "name": "sep_crypto_per_ip_reset_isolation_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1446761416,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.58,
+      "name": "sep_trng_reset_recovery_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 753055516,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.019,
+      "name": "sep_fabric_inbound_filter_rule_matrix_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 421726371,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_drbg_gen_segmentation_test",
+      "reason": "environment_error: attempt sim-000041-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 240982889,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_hmac_kmac_cpu_crypto_smoke_test",
+      "reason": "environment_error: attempt sim-000042-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 116945053,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 0.0,
+      "name": "sep_irq_ip_to_aggregator_test",
+      "reason": "environment_error: attempt sim-000044-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 152268478,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.69,
+      "name": "sep_boot_rom_lsu_read_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 186656412,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.8,
+      "name": "sep_spi_ot_flash_cmd_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1072990822,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.407,
+      "name": "sep_spi_ot_flash_cmd_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1535570204,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.921,
+      "name": "sep_spi_ot_flash_cmd_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1193982557,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.85,
+      "name": "sep_spi_ot_host_csr_irq_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1710680334,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.362,
+      "name": "sep_spi_ot_host_csr_irq_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 162436548,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.369,
+      "name": "sep_spi_ot_dma_tx_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1220930176,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.047,
+      "name": "sep_spi_ot_dma_tx_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 576036090,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.875,
+      "name": "sep_spi_ot_dma_tx_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 452463690,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.573,
+      "name": "sep_warm_cold_reset_scratch_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1206524381,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.7,
+      "name": "sep_pic_irq_source_map_delivery_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 718711497,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.272,
+      "name": "sep_pic_irq_source_map_delivery_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 372853045,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_nmi_sanity_test",
+      "reason": "environment_error: attempt sim-000052-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1095921159,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.68,
+      "name": "sep_pic_irq_source_map_delivery_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 319833862,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.402,
+      "name": "sep_efuse_token_match_fault_pic_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 120774236,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.824,
+      "name": "sep_dma_basic_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2073243941,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.844,
+      "name": "sep_dma_basic_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 606062614,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.786,
+      "name": "sep_dma_basic_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1337014482,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.094,
+      "name": "sep_cpu_dbg_reset_independence_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 865272822,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.424,
+      "name": "sep_hmac_sha_variant_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1873688194,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.412,
+      "name": "sep_kmac_mode_strength_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 745351833,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.918,
+      "name": "sep_crypto_edn_multisink_arbitration_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 132564520,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.844,
+      "name": "sep_crypto_edn_multisink_arbitration_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 345916810,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 11.654,
+      "name": "sep_crypto_edn_multisink_arbitration_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 35102741,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.289,
+      "name": "sep_crypto_edn_round_robin_grant_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 977871664,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.382,
+      "name": "sep_otbn_compute_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 448814122,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.555,
+      "name": "sep_otbn_compute_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 800770362,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.318,
+      "name": "sep_clock_gate_control_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1784428238,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.845,
+      "name": "sep_efuse_program_lock_matrix_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 513142241,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.711,
+      "name": "sep_efuse_set_only_monotonicity_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 526182672,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.8,
+      "name": "sep_lcc_demote_feat_ctrl_matrix_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 202955009,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.329,
+      "name": "sep_efuse_digest_latch_fault_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2067161954,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.437,
+      "name": "sep_efuse_illegal_state_fail_closed_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1566350545,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.658,
+      "name": "sep_sec_dis_override_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1443261907,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 14.784,
+      "name": "sep_fabric_output_remap_datapath_proxy_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1147708831,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 4.097,
+      "name": "sep_fabric_local_alias_datapath_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1406559656,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.326,
+      "name": "sep_km_key_policy_vault_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 854827933,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.701,
+      "name": "sep_km_key_policy_vault_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2146528766,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.571,
+      "name": "sep_km_key_policy_vault_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1317213716,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 0.0,
+      "name": "sep_axil_mailbox_iface_rand_test",
+      "reason": "environment_error: attempt sim-000065-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1334263252,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 0.0,
+      "name": "sep_axil_mailbox_iface_rand_test",
+      "reason": "environment_error: attempt sim-000066-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1248099689,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_sram_datapath_breadth_test",
+      "reason": "environment_error: attempt sim-000072-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 43903111,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.488,
+      "name": "sep_km_isolate_termination_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1021923238,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.757,
+      "name": "sep_km_command_set_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1143796721,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.63,
+      "name": "sep_km_command_set_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 209604337,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.86,
+      "name": "sep_km_command_set_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 251792731,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.367,
+      "name": "sep_km_handover_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1538983344,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.618,
+      "name": "sep_km_abr_seed_sideload_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1678993790,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.849,
+      "name": "sep_km_abr_mlkem_sideload_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1624696897,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 11.092,
+      "name": "sep_km_mailbox_protocol_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1377572747,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.674,
+      "name": "sep_km_mailbox_protocol_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 739432052,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 14.178,
+      "name": "sep_km_mailbox_protocol_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1664498596,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.755,
+      "name": "sep_km_crc_pcpi_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 574116969,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.536,
+      "name": "sep_km_crc_pcpi_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 622795446,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_spi_ot_host_csr_irq_rand_test",
+      "reason": "environment_error: attempt sim-000079-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 2104981325,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.586,
+      "name": "sep_km_crc_pcpi_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2011812235,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.737,
+      "name": "sep_km_kpv_scrambler_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1425845075,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.127,
+      "name": "sep_km_kpv_scrambler_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 181721984,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.323,
+      "name": "sep_km_kpv_scrambler_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2126483189,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.788,
+      "name": "sep_reg_bit_bash_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1159138340,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.461,
+      "name": "sep_reg_bit_bash_rand_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2095033601,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.369,
+      "name": "sep_fabric_deadspace_decode_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 690769217,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.597,
+      "name": "sep_axi_map_refuse_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1592460758,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 4.005,
+      "name": "sep_axi_map_refuse_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 407675536,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 14.402,
+      "name": "sep_axi_map_refuse_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 81018824,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 15.4,
+      "name": "sep_axi_id_routing_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1695414525,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.998,
+      "name": "sep_axi_strobe_window_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2115631611,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.423,
+      "name": "sep_axi_strobe_window_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1809826688,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.597,
+      "name": "sep_axi_strobe_window_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 181189537,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_aes_mode_keysize_rand_test",
+      "reason": "environment_error: attempt sim-000093-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1581473047,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_otbn_compute_rand_test",
+      "reason": "environment_error: attempt sim-000099-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1290962800,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.594,
+      "name": "sep_axi_partial_lane_read_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1355691041,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.694,
+      "name": "sep_axi_partial_lane_read_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1157629827,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 4.433,
+      "name": "sep_axi_partial_lane_read_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1538675939,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.718,
+      "name": "sep_axi_order_sweep_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 399445357,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.773,
+      "name": "sep_axi_order_sweep_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1476302375,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.827,
+      "name": "sep_axi_order_sweep_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1765771478,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.3,
+      "name": "sep_axi_order_sweep_m_axi_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1220160444,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.443,
+      "name": "sep_axi_order_sweep_m_axi_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1666755486,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.733,
+      "name": "sep_axi_order_sweep_m_axi_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2028421423,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 20.46,
+      "name": "sep_drbg_axil_adapter_port_arbitration_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 511523134,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.656,
+      "name": "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 669410148,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.328,
+      "name": "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2099163008,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.512,
+      "name": "sep_entropy_pool_aperture_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 2100164348,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.555,
+      "name": "sep_entropy_pool_aperture_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 442849224,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 3.749,
+      "name": "sep_entropy_pool_aperture_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 359417877,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_efuse_rma_token_rand_test",
+      "reason": "environment_error: attempt sim-000106-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 479090059,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.891,
+      "name": "sep_locked_field_access_irq_path_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1294156496,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.88,
+      "name": "sep_locked_field_access_irq_path_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1036798090,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 4.226,
+      "name": "sep_locked_field_access_irq_path_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 697750092,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.471,
+      "name": "sep_efuse_secure_tm_write_lock_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 550694198,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.573,
+      "name": "sep_efuse_secure_tm_write_lock_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 92915869,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.324,
+      "name": "sep_abr_mldsa_sign_verify_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 1707032015,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 3.727,
+      "name": "sep_abr_mlkem_kat_test",
+      "reason": "hard-fail pattern matched: Traceback (most recent call last):",
+      "seed": 658924984,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_km_wipe_reset_test",
+      "reason": "environment_error: attempt sim-000119-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1496722336,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 0.0,
+      "name": "sep_reg_bit_bash_rand_test",
+      "reason": "environment_error: attempt sim-000134-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 866606412,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_efuse_secure_tm_write_lock_test",
+      "reason": "environment_error: attempt sim-000163-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 1137202578,
+      "stage": "sim",
+      "status": "ERROR"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 0.0,
+      "name": "sep_abr_mldsa_keygen_kat_test",
+      "reason": "environment_error: attempt sim-000164-a0 ended failed: failed reported but no result.json appeared within 120s",
+      "seed": 470285234,
+      "stage": "sim",
+      "status": "ERROR"
+    }
+  ],
+  "timing": {
+    "duration_sec": 827.544,
+    "end_time": "2026-09-23T00:26:20.231698+00:00",
+    "start_time": "2026-09-23T00:14:03.955998+00:00"
+  },
+  "tool": "vcs",
+  "warnings": [
+    "JUnit XML not recorded for sep_boot_rom_smoke_test",
+    "JUnit XML not recorded for sep_sram_smoke_test",
+    "JUnit XML not recorded for sep_otbn_mem_smoke_test",
+    "JUnit XML not recorded for sep_lcc_lc_state_w1s_prod_test",
+    "JUnit XML not recorded for sep_lcc_lc_state_w1s_prod_demote_test",
+    "JUnit XML not recorded for sep_lcc_lc_state_w1s_prod_demote_test",
+    "JUnit XML not recorded for sep_lcc_lc_state_w1s_transient_test",
+    "JUnit XML not recorded for sep_lcc_lc_state_w1s_transient_test",
+    "JUnit XML not recorded for sep_dma_hash_test",
+    "JUnit XML not recorded for sep_drbg_gen_segmentation_test",
+    "JUnit XML not recorded for sep_hmac_kmac_cpu_crypto_smoke_test",
+    "JUnit XML not recorded for sep_irq_ip_to_aggregator_test",
+    "JUnit XML not recorded for sep_nmi_sanity_test",
+    "JUnit XML not recorded for sep_axil_mailbox_iface_rand_test",
+    "JUnit XML not recorded for sep_axil_mailbox_iface_rand_test",
+    "JUnit XML not recorded for sep_sram_datapath_breadth_test",
+    "JUnit XML not recorded for sep_spi_ot_host_csr_irq_rand_test",
+    "JUnit XML not recorded for sep_aes_mode_keysize_rand_test",
+    "JUnit XML not recorded for sep_otbn_compute_rand_test",
+    "JUnit XML not recorded for sep_efuse_rma_token_rand_test",
+    "JUnit XML not recorded for sep_km_wipe_reset_test",
+    "JUnit XML not recorded for sep_reg_bit_bash_rand_test",
+    "JUnit XML not recorded for sep_efuse_secure_tm_write_lock_test",
+    "JUnit XML not recorded for sep_abr_mldsa_keygen_kat_test"
+  ]
+}
