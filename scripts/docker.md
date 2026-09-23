@@ -105,8 +105,9 @@ setup that fails on some CI/LSF nodes (GID mismatch, no `XDG_RUNTIME_DIR`).
 
 The sandbox mounts the rootfs directories read-only under a tmpfs root, then
 binds the repo at its real host path so absolute paths work unchanged. A linked
-worktree's `.git` file points at the main checkout, so `run`, `run-here`, and
-this sandbox also bind that git directory at the same absolute path. A normal
+worktree's metadata links its real path with the main checkout, so `run` uses
+that path instead of `/work`, and every backend also binds the main git
+directory at its absolute path. A normal
 checkout, whose `.git` is a directory inside the mount, is unchanged. `/tmp`
 is shared with the host; `/dev` and `/proc` are fresh. `PATH` is
 `/usr/local/bin:/usr/bin:/bin`. Firmware recipes call `uv` by that name. When
