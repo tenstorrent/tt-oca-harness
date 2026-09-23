@@ -27,3 +27,15 @@ role = "exclude"
 path = "smc_xor_network_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
+
+
+# FSM facts (F1 LOOPVAR, F2 DEFAULT, F3 TIEOFF, F4 PARAM-OFF): a loop variable
+# reported as an FSM, the always_comb default read as an edge from every state,
+# a write master whose response inputs the integration ties to zero, and a
+# decode state whose arm a parameter leaves unelaborated.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_fsm_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
