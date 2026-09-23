@@ -16,7 +16,7 @@
 |===
 a|
 [.datasheet-brand]
-OPEN CHIPLET ARCHITECTURE HARNESS
+OPEN CHIPLET ATLAS HARNESS
 a|
 image::../../ui-supplemental/img/tt_logo_color-yellow-black.png[Tenstorrent,pdfwidth=1.65in,align=right]
 |===
@@ -243,8 +243,10 @@ Project: https://github.com/tenstorrent/tt-oca-harness[github.com/tenstorrent/tt
 TERMS
 
 [.datasheet-small]
-CTP: cross trigger port. DFD: design-for-debug. DFT: design for test.
-OTP: one-time programmable. PTAP: primary TAP. STAP: secondary TAP.
-CSR: control and status register.
+BSR: boundary-scan register. CSR: control and status register. CTP: cross
+trigger port. DFD: design-for-debug. DFT: design for test. iJTAG: internal JTAG
+(IEEE 1687). OTP: one-time programmable. PTAP: primary TAP. SEP: security
+processor. SMC: system management controller. SMU: system management unit.
+STAP: secondary TAP. TMP: test mode persistence.
 
 |===

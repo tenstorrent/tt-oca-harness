@@ -16,7 +16,7 @@
 |===
 a|
 [.datasheet-brand]
-OPEN CHIPLET ARCHITECTURE HARNESS
+OPEN CHIPLET ATLAS HARNESS
 a|
 image::../../ui-supplemental/img/tt_logo_color-yellow-black.png[Tenstorrent,pdfwidth=1.65in,align=right]
 |===
