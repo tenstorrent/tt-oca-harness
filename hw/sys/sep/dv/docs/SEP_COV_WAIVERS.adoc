@@ -727,7 +727,7 @@ and `u_sep_dma_wrap.u_axi_dw_downsizer_reg` outside it.
 `aw_is_burst = |aw.len` and `ar_is_burst = |ar.len`, and `:175` / `:205` route
 any such request to `SepCryptoAxiErrSlv` BEFORE the address decode runs. No
 beat of a burst reaches any accelerator, whatever its address. This is the
-architecture, not an accident: `hw/sys/sep/doc/crypto.adoc:117-123` ("Single-Beat
+architecture, not an accident: `hw/sys/sep/doc/crypto.adoc:126-132` ("Single-Beat
 Access Only") states it as a software contract, and
 `hw/sys/sep/doc/fabric.adoc:29` states the general rule that AXI4-Lite slave
 bridges convert bursts to single transactions.
