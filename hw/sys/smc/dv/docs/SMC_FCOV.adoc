@@ -94,3 +94,23 @@ the run's report against this policy and rewrites its coverage grade in
 place. A dispatch of `dashboard.yml` with the weekly's regress run id does
 the same for the published weekly. Both are described on the runner and
 dashboard pages under `tools/dv/doc/`.
+
+[[smc-cov-owners]]
+==== Owning tests
+
+SEP's coverage plan names, for every covergroup, the leaf that has to fill
+it: a hole is not gradable without knowing which test was supposed to fill
+it. Which leaf lights a `cov/sv` point is a property of a run, not of the
+source, so SMC measures the table rather than writing it. The include below
+is regenerated from the coverage run's directory:
+
+    python3 tools/dv/fcov_owners.py --dut smc --run-dir <run dir> \
+        --output hw/sys/smc/dv/docs/SMC_FCOV_OWNERS.adoc
+
+`--check` in place of a rewrite says whether the committed table still
+matches the run. A row with `Leaves` of 1 is a point one leaf alone reaches,
+which goes dark when that leaf is retired or narrowed; a row with 0 carries
+the policy disposition of the hole, or `unclassified` when the policy has
+none.
+
+include::SMC_FCOV_OWNERS.adoc[leveloffset=0]
