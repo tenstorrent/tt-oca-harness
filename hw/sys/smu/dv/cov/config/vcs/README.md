@@ -77,6 +77,32 @@ whether the committed file is stale.
 Everything else on the port list is graded per field, both directions, and a
 field that stays uncovered is a stimulus gap for a leaf on this bench.
 
+## Covergroups from vendored RTL
+
+`-cm_hier` scopes line, condition, FSM, toggle and branch, and `-cm_common_hier`
+extends it to assertions; neither reaches a covergroup. A covergroup declared
+inside RTL is graded wherever the elaboration instantiates it, so the six
+`cg_bus_event_fsm_transitions` groups the chipsalliance I3C core declares in
+`i3c_target_fsm.sv` land in urg's GROUP score beside the wrapper's own
+`cov/sv` covergroups, and none of the wrapper leaves drive an I3C bus event.
+`smu_wrapper_group_exclusions.el` (`-elfile`, named by the policy's
+`[[native_files]]`) drops them at report time.
+`gen_smu_wrapper_group_exclusions.py` writes that file from urg's
+`-dump full_exclusions group` template of the merged database, so the
+definition checksum and every instance path come from urg, and `--check`
+tells whether the committed file is stale. Every covergroup under `u_dut`
+must fall in a class the script names; one that does not stops the script,
+so a covergroup a future vendored block adds is a decision, not a silent
+inclusion.
+
+| Class | Covergroups | Why they are not the wrapper's to fill |
+|---|---|---|
+| `VENDORED-I3C` | `xi3c_target_fsm::cg_bus_event_fsm_transitions`, six instances | the I3C controllers' internals are graded by `hw/ip/i3ccore_wrap/dv`; the wrapper reaches them only through the SMC |
+
+What remains in GROUP is the `u_smu_*_fcov::cg_*` set, the covergroup half of
+the wrapper's functional coverage; `cov/sv` cover properties are the other
+half and are read under `assertion`.
+
 ## Reading a finished run
 
 ```
@@ -84,7 +110,7 @@ python3 tools/dv/run_dv.py --dut smu --tool vcs --items hosted --cov
 ```
 
 The runner compiles with the scope, runs the group, merges, writes the urg
-report with the exclusion file, and prints one `coverage` line with every
+report with the exclusion files, and prints one `coverage` line with every
 family as raw/effective; `smu_wrapper_coverage_policy.toml` floors `toggle`
 and `assertion` at 80 percent and the result carries `coverage=PASS` or
 `FAIL`. Nothing else is run. `toggle` is urg's TOGGLE column after the
