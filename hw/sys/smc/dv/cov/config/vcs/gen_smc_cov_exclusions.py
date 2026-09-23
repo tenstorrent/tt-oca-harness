@@ -36,6 +36,10 @@ state variable as a transition:
   EFUSE_MMR_REG_MAP only when the instance has lifecycle state, and
   `smc_efuse_wrapper` instantiates it with `HAS_LC_STATE = 0`, so the decode
   arm that selects the state is not elaborated.
+* F6 ENABLE-EDGE: a state register that loads one state on an enable rising
+  edge, where the disabled branch parks the register at another state, can
+  only reach it from that one predecessor; edges into it from any other state
+  are the same extraction artefact as F2.
 * F5 RESET-EDGE: a state register's reset assignment is expanded into a
   transition from every state. Where no case arm assigns the reset state, the
   only way to cover such an edge is to assert the block's reset while the FSM
@@ -135,6 +139,13 @@ F5 = (
     "that one state. The DV package grades reset behaviour through its reset leaves."
 )
 
+F6 = (
+    "SMC-FSM-F6-ENABLE-EDGE: the state register loads StBusBusyHigh only on the rising "
+    "edge of the monitor enable in multi-controller mode, and its disabled branch parks "
+    "the register at StBusFree, so the predecessor at that edge is always StBusFree; an "
+    "edge into it from any other state is an extraction artefact."
+)
+
 # (module, fsm) -> list of (class, selector). Selector None takes every point of
 # the FSM; ("to", S) the uncovered transitions into S; ("state", S) the state S
 # and the uncovered transitions that touch it; ("edges", (...)) exactly those
@@ -146,6 +157,9 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
     ("efuse_interface_controller", "efuse_reg_select"): [(F4, ("state", "EFUSE_MMR_REG_MAP"))],
     ("zeroer", "cur_state"): [(F5, ("edges", ("ST_ISSUE_ADDR->ST_IDLE",)))],
     ("efuse_shadow_regs", "efuse_sense_state_q"): [(F5, ("edges", ("StRead->StIdle",)))],
+    ("i2c_bus_monitor", "state_q"): [
+        (F6, ("edges", ("StBusBusyLow->StBusBusyHigh", "StBusBusyStop->StBusBusyHigh")))
+    ],
     ("smc_cool_reset_wrap", "flr_counter_state"): [(F5, ("edges", ("COUNT_DOWN->IDLE",)))],
 }
 
@@ -417,7 +431,7 @@ def render_fsm(
         if not any(r for r, _ in block):
             continue
         out += ["", f"CHECKSUM: {section.checksum}"]
-        for reason in (F1, F2, F3, F4, F5):
+        for reason in (F1, F2, F3, F4, F5, F6):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

@@ -32,8 +32,9 @@ args = ["-elfile", "{path}"]
 # FSM facts (F1 LOOPVAR, F2 DEFAULT, F3 TIEOFF, F4 PARAM-OFF, F5 RESET-EDGE): a
 # loop variable reported as an FSM, the always_comb default read as an edge from
 # every state, a write master whose response inputs the integration ties to zero,
-# a decode state whose arm a parameter leaves unelaborated, and the edges that
-# exist only as a state register's reset assignment.
+# a decode state whose arm a parameter leaves unelaborated, the edges that
+# exist only as a state register's reset assignment, and those an enable-edge
+# load cannot reach.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
