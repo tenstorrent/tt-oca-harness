@@ -632,7 +632,6 @@ sources:
       - hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
       - hw/common/och_prim/rtl/prim_axi_user_override.sv
       - hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-      - hw/common/och_prim/rtl/prim_axil_err_slv.sv
       - hw/common/och_prim/rtl/prim_axil_prot_filter.sv
       - hw/common/och_prim/rtl/prim_bin2gray.sv
       - hw/common/och_prim/rtl/prim_carry_select_adder.sv
