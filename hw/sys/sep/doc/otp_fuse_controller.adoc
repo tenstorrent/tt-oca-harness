@@ -188,15 +188,14 @@ reserved. Before the chiplet owner transfers a
 part to the customer, the development-key bits shall be set (revoked).
 (Name retained for compatibility; scope is now all owners.)
 
-|BL1_VERSION |10 |256 |set-only |true |Anti-Rollback Counter (ARBC) for BL1:
-the minimum BL1 version that SEP ROM will load. The version is encoded
-as the population count of 1 bits in this field. The maximum version is 240
-(TBD), which leaves redundancy for any fuses that fail to blow.
+|BL1_VERSION |10 |256 |set-only |true |BL1 anti-rollback storage. The
+production ROM supplies the low 128 raw bits as security-version flags to
+the manifest validator; the upper 128 bits do not participate in that check.
+See <<anti-rollback-counter-arbc-anti-rollback-counter-arbc>>.
 
-|BL2_VERSION |11 |256 |set-only |true |Anti-Rollback Counter (ARBC) for BL2:
-the minimum BL2 version that can be loaded. The version is encoded
-as the population count of 1 bits in this field. The maximum version is 240
-(TBD), which leaves redundancy for any fuses that fail to blow.
+|BL2_VERSION |11 |256 |set-only |true |BL2 anti-rollback storage for later-stage
+firmware policy. This bank is not the production ROM's BL1 security-version
+input; software using it must define its encoding and enforcement policy.
 
 |CHIPLET_UID |12 |256 |true |true |Silicon creator’s _secret_ device unique
 ID (also referred to as the UDS, Unique Device Secret). The
@@ -326,20 +325,22 @@ The fuse map is exactly 8192 bits ending at `0x400` (1024 bytes, 256 × 32-bit w
 The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.
 
 [[anti-rollback-counter-arbc-anti-rollback-counter-arbc]]
-== Anti-Rollback Counter (ARBC)
+== Anti-Rollback Security-Version Flags
 
-The counter is implemented as a ``population count'' in fuses instead of
-a binary counter. Each 256-bit counter field allocates 240 fuse bits for
-counting, with 16 spares as redundancy for fuses that fail to blow. Every
-counter increment blows one additional fuse bit, and the counter state equals
-the fuse population count -- the number of fuses (out of 256) that have been
-blown.
+The production ROM reads bits `[127:0]` of `BL1_VERSION` into the manifest
+validator's 128-bit device security-version field. It does not calculate a
+population count. Bits `[255:128]` are not read for this comparison, so
+burning them does not advance the enforced BL1 rollback policy.
 
-A new device starts with an ARBC state of zero fuse bits blown. Each time the
-required production firmware version is incremented, one more fuse bit is
-blown as described above. Firmware signature verification includes the ARBC
-state along with the firmware version, ensuring that older firmware versions
-fail signature verification and cannot be loaded.
+When secure boot is active, the manifest must contain every flag already set
+on the device: for each byte, `(device & ~manifest) == 0`. A manifest missing
+any device flag fails the security-version check. Equal population counts do
+not imply compatible versions; the bit positions must match.
+
+Provision security-version flags consistently with the signed manifest's
+`manifest_security_version` field. There is no implemented 240-increment
+counter or allocation of 16 redundancy bits in this policy. `BL2_VERSION`
+is separate storage whose interpretation belongs to later-stage firmware.
 
 == RTL Integration
 
