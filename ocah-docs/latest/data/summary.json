@@ -31,12 +31,12 @@
     {
       "flow": "smu",
       "framework": "cocotb",
-      "pass_rate": 0.0,
+      "pass_rate": 97.06,
       "tests_total": 102,
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-09-23T13:52:14+00:00",
+  "generated_at": "2026-09-23T19:14:20+00:00",
   "results": [
     {
       "coverage": {
@@ -88,7 +88,15 @@
     },
     {
       "coverage": {
-        "effective_metrics": {}
+        "effective_metrics": {
+          "assertion": 0.0,
+          "branch": 0.0,
+          "condition": 0.0,
+          "fsm_state": 0.0,
+          "functional": 0.0,
+          "line": 0.0,
+          "toggle": 0.0
+        }
       },
       "flow": "smc",
       "framework": "cocotb",
@@ -96,7 +104,14 @@
     },
     {
       "coverage": {
-        "effective_metrics": {}
+        "effective_metrics": {
+          "assertion": 87.85,
+          "branch": 96.72,
+          "condition": 81.28,
+          "functional": 38.46,
+          "line": 98.33,
+          "toggle": 96.25
+        }
       },
       "flow": "smu",
       "framework": "cocotb",
