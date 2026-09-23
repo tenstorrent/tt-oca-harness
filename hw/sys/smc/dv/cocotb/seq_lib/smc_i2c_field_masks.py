@@ -35,6 +35,7 @@ I2C_CTRL_ACQ_START_STOP_EN = _field_mask(_I2C_H, "I2C__CTRL__ACQ_START_STOP_EN_b
 I2C_CTRL_TX_STRETCH_CTRL_EN = _field_mask(_I2C_H, "I2C__CTRL__TX_STRETCH_CTRL_EN_bm")
 
 I2C_STATUS_HOSTIDLE = _field_mask(_I2C_H, "I2C__STATUS__HOSTIDLE_bm")
+I2C_STATUS_TARGETIDLE = _field_mask(_I2C_H, "I2C__STATUS__TARGETIDLE_bm")
 
 # Field masks for the timeout / FIFO-config CSR sweep.
 I2C_HOST_TIMEOUT_CTRL_VAL = _field_mask(_I2C_H, "I2C__HOST_TIMEOUT_CTRL__VAL_bm")

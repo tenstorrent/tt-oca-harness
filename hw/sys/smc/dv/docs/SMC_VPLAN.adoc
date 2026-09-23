@@ -434,6 +434,8 @@ feature rows.
 |`smc_i2c_p0_timeout_test` |Stretch-timeout observation (empty target TX during host READ).
 |`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
 |`smc_i2c_target_acq_stretch_test` |The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
+|`smc_i2c_protocol_interruption_test` |Transactions cut short by a STOP, a repeated START or a cleared enable at every phase, on all three instances.
+|`smc_i2c2_controller_rdwr_test` |I2C2 driving the shared bus as controller for a write and a two-byte read against I2C1.
 |`smc_i2c_target_multi_instance_stretch_test` |I2C1 and I2C2 as targets: the transmit path, an unmatched address, and both the transmit-FIFO and acquisition-FIFO stretches.
 |`smc_i2c_target_smbus_test` |VIP ARA + external SMBSUS# into DUT I2C0 SMBus target.
 |`smc_smbus_alert_ara_test` |U4-2: DUT SMBALERT# pad39 + VIP ARA @0x0C (TB CSR stands in for FW).
@@ -7923,6 +7925,83 @@ Drive `smc_i2c_target_multi_instance_stretch_test_seq`. Each checker below is a 
 |===
 
 *Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-225-smc_i2c_protocol_interruption_test]]
+===== 225 `smc_i2c_protocol_interruption_test`
+
+*Source Module*: `smc_i2c_protocol_interruption_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `SmcI2cMasterVip` bit-banging the shared open-drain I2C bus
+
+*Objective*: Transactions cut short by a STOP, a repeated START or a cleared enable at every phase, on all three instances.
+
+*Test Coverage*:
+
+* Nearly every state of the target state machine has an edge back to `Idle`, to `WaitForStop` and to `AcquireStart`, because a STOP, a repeated START or a cleared enable can arrive in any of them. Reaching those edges needs the interruption at a chosen bit slot, which only the bench controller can drive: a DUT controller cannot be told to stop in the middle of a byte.
+* Slots come from the VIP's own bit timing. A slot is one call to its `send_bit`, and the interruption is its own `send_stop` or `send_start` issued from wherever the loop stopped.
+* Address-phase injections land before the target matches, so nothing is acquired; the claim there is that the instance is still able to run a clean transaction.
+* Data-phase injections land after the address was acknowledged, so each leaves a START entry in the acquisition FIFO, checked per injection rather than as a total.
+* The acknowledge slots are injected after rather than during. The target owns SDA while it acknowledges, so a controller physically cannot release SDA for a STOP in the middle of one; attempting it wedges the bus rather than testing anything.
+* Every leg opens and closes with a clean transaction. The opening one is the positive control -- without it a sweep against an unreachable instance would satisfy every "nothing was acquired" check vacuously -- and the closing one is the recovery proof.
+* Each injection waits for the target to report itself between transactions before the next begins, so one transaction's tail cannot land in the next one's acquisition window.
+
+*Test Procedure*:
+
+Drive `smc_i2c_protocol_interruption_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C0-INTR-ADDR-PHASE` |14 transactions cut short at every address-byte slot, by STOP and by repeated START, left no payload byte acquired on I2C0, which ran a clean write before and after the sweep
+|`CHK-I2C0-INTR-DATA-PHASE` |18 transactions cut short after the address acknowledge, at every payload-byte slot and after the payload acknowledge, each left at least one START entry in I2C0's acquisition FIFO, with a clean write before and after
+|`CHK-I2C0-INTR-TARGET-DISABLE` |Clearing `CTRL` target enable at each of six delays spread across the address byte, the acknowledge slot and the payload byte left I2C0 reporting TARGETIDLE, and it ran a clean write again after each
+|`CHK-I2C1-INTR-ADDR-PHASE` |The address-phase sweep on I2C1
+|`CHK-I2C1-INTR-DATA-PHASE` |The data-phase sweep on I2C1
+|`CHK-I2C1-INTR-TARGET-DISABLE` |The target-disable sweep on I2C1
+|`CHK-I2C2-INTR-ADDR-PHASE` |The address-phase sweep on I2C2
+|`CHK-I2C2-INTR-DATA-PHASE` |The data-phase sweep on I2C2
+|`CHK-I2C2-INTR-TARGET-DISABLE` |The target-disable sweep on I2C2
+|`CHK-I2C0-INTR-HOST-DISABLE` |Clearing `CTRL` host enable while a queued format-FIFO transaction was on the wire returned controller I2C0 to idle, and it then drove a clean write that the target acquired
+|===
+
+*Pass Criteria*: all ten checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-226-smc_i2c2_controller_rdwr_test]]
+===== 226 `smc_i2c2_controller_rdwr_test`
+
+*Source Module*: `smc_i2c2_controller_rdwr_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); I2C2 as the bus controller and I2C1 as the target
+
+*Objective*: I2C2 driving the shared bus as controller for a write and a two-byte read against I2C1.
+
+*Test Coverage*:
+
+* Instance 2 has only ever been a target, so its controller state machine has never acknowledged a byte and never clocked one in. Which instance is the controller is a matter of which one gets `CTRL.ENABLEHOST`, so no new bench plumbing is needed.
+* The read asks for two bytes rather than one. A controller reading a single byte only ever NACKs it, so the acknowledge phase is entered only when a byte is followed by another.
+* Both legs are checked at the far end: the write against the bytes the target acquired, the read against the bytes the target was told to source.
+
+*Test Procedure*:
+
+Drive `smc_i2c2_controller_rdwr_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C2-CTRL-WRITE` |Controller I2C2 drove the bus and target I2C1 acquired every payload byte in order, with no NACK reported in `CONTROLLER_EVENTS`
+|`CHK-I2C2-CTRL-READ` |Controller I2C2 clocked two bytes out of target I2C1 and read back exactly the bytes written to the target's TXDATA, acknowledging every byte but the last, then returned idle
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
