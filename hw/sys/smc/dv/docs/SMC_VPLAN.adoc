@@ -451,6 +451,7 @@ feature rows.
 |`smc_i2c_p0_stretch_test` |I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1 host READ stalls on TX_PENDING until TXDATA is supplied, then completes with that byte.
 |`smc_i2c_p0_timeout_test` |I2C1 stretch timeout measured against an I2C0 target proven live on the same shared bus.
 |`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
+|`smc_i2c_controller_sda_interference_test` |SDA pulled low under a transmitting I2C controller, on all three instances.
 |`smc_i2c_bus_monitor_idle_test` |The I2C bus monitor's idle-with-SCL-high state entered and left on every instance, witnessed by the host-timeout interrupt.
 |`smc_i2c_target_acq_stretch_test` |The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
 |`smc_i2c_protocol_interruption_test` |Transactions cut short by a STOP, a repeated START or a cleared enable at every phase, on all three instances.
@@ -8882,6 +8883,43 @@ Drive `smc_i2c_bus_monitor_idle_test_seq`. Each checker below is a named compare
 |===
 
 *Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-229-smc_i2c_controller_sda_interference_test]]
+===== 229 `smc_i2c_controller_sda_interference_test`
+
+*Source Module*: `smc_i2c_controller_sda_interference_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); one DUT I2C instance as the controller, another as the target, and `SmcI2cMasterVip` pulling SDA low from the pads
+
+*Objective*: SDA pulled low under a transmitting I2C controller, on all three instances.
+
+*Test Coverage*:
+
+* `doc/architecture.adoc` Bus Arbitration describes the bus monitor detecting a controller that "attempts to transmit a logic high, but another device is pulling SDA low", and the RDL gives `INTR_STATE.SDA_INTERFERENCE` for the controller side. That condition is a global override on the controller state machine, so it returns the controller to idle from whatever state it was in -- unlike clearing the host enable, which is only acted on in particular states.
+* Every payload byte is 0xFF, so the controller drives a logic high in every data slot and the pull-down is a genuine conflict rather than a bit that happened to agree.
+* The injection is anchored to the controller leaving idle, so the delay is measured from something the DUT did, and is expressed in the bit period this leaf programmed into `TIMING0`.
+* **One injection point per instance, not a sweep.** Where the pull-down lands decides which of two things the controller reports: at this point it reports the interference under test, while at a half-bit offset and at other whole-bit offsets the byte is corrupted early enough that the target NACKs first and the controller halts on the NACK instead. A longer pull-down did not change that, and the delay is only as accurate as the poll that observes the controller leaving idle, so a finer sweep would not place the conflict where it claimed to.
+* **Recovery is not asserted.** After an interference event on this DUT the next transaction from the same controller is NACKed even when, measured immediately beforehand, the controller's events read 0 and it reports idle, the interrupted transaction has been ended with a STOP the target acknowledges by reporting itself idle, the target has been through disable and a full re-enable, and the bus reads released. The identical transaction succeeds as the opening control. Rather than encode an expectation around behaviour that is not understood, both instances are hard reset between injections and nothing is claimed about the transaction that follows an event.
+* The opening clean transaction of each instance is the positive control: it shows the pair works, so an injection that reports nothing is a real absence rather than a bench that never reached the DUT.
+
+*Test Procedure*:
+
+Drive `smc_i2c_controller_sda_interference_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C0-CTRL-SDA-INTERFERENCE` |SDA pulled low under controller I2C0 while it drove a logic high raised `INTR_STATE.SDA_INTERFERENCE` and returned the controller to idle, with a clean write to its target beforehand as the control
+|`CHK-I2C1-CTRL-SDA-INTERFERENCE` |The same on I2C1
+|`CHK-I2C2-CTRL-SDA-INTERFERENCE` |The same on I2C2
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

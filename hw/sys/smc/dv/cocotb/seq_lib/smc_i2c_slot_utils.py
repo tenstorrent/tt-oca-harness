@@ -13,7 +13,9 @@ that this bench can drive from the pads:
   only accumulates during a single bit transfer", so parking SCL low is what
   makes it expire,
 * a **bus inactive timeout**, which `HOST_TIMEOUT_CTRL` arms and which the bus
-  monitor counts while the bus is busy and idling with SCL high.
+  monitor counts while the bus is busy and idling with SCL high, and
+* **arbitration lost or SDA interference**, which the bus monitor raises when a
+  device attempts to transmit a logic high while another pulls SDA low.
 
 A slot is one call to the VIP's `send_bit`, so the positions here come from the
 bit timing the VIP already owns rather than from any design constant.
@@ -80,6 +82,13 @@ async def park_scl_high(vip: SmcI2cMasterVip, hold_ns: int) -> None:
     vip._pull_scl(False)
     await vip._wait_scl_high()
     await Timer(hold_ns, unit="ns")
+
+
+async def pull_sda_low(vip: SmcI2cMasterVip, hold_ns: int) -> None:
+    """Pull SDA low for ``hold_ns`` while another device is driving it high."""
+    vip._pull_sda(True)
+    await Timer(hold_ns, unit="ns")
+    vip._pull_sda(False)
 
 
 async def release_bus(vip: SmcI2cMasterVip) -> None:
