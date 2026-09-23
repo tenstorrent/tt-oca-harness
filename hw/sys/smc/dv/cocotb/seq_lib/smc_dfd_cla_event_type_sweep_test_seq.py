@@ -8,10 +8,10 @@ type comes from the generated register map through
 this sequence programs or compares against.
 
 ``CDbgNode<n>Eap<m>`` carries three six-bit selectors -- ``EventType0``,
-``EventType1`` and ``EventType2``, each "Select a trigger event". Each one is
-compared against every index of the CLA event bus, so the selector is a
-one-hot pick enumerated over the whole field range, and a pair left at its
-reset only ever exercises index zero.
+``EventType1`` and ``EventType2`` -- which the RDL describes as each choosing
+a trigger event. Each one is compared against every index of the CLA event
+bus, so the selector is a one-hot pick enumerated over the whole field range,
+and a pair left at its reset only ever exercises index zero.
 
 This sequence drives each of the three selectors over all 64 values its field
 offers, on every event-action pair of node 0, with the pair's relation left at

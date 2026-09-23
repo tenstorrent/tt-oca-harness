@@ -26,18 +26,20 @@ Three things have to be true at once for the XOR and VLT compressors behind
   compression) as the supported values.
 * **A payload that changes between samples.** A compressor fed a bus that
   holds still emits nothing. ``DEBUG_BUS_MUX.Muxselseg0..7`` chooses which
-  debug-bus segment each output lane carries -- "If all bits are 0, Lane0 =
-  Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5, ..." -- so
-  rotating the selects while the trace runs changes what every lane carries.
-  A mux latches its selects only while its own id is programmed, so each
-  rotation costs one write per id.
-* **More than one packet size.** ``Trdstimpl.Trdstvendorframelength``:
-  "Specify frame length. Frame Length = trDstVendorFrameLength* 64". The run
-  changes it part way through, so the packet path sees two frame lengths.
+  debug-bus segment each output lane carries: the RDL description gives a
+  select of zero the lane's own segment and each set bit one of the upper
+  segments, so rotating the selects while the trace runs changes what every
+  lane carries. A mux latches its selects only while its own id is
+  programmed, so each rotation costs one write per id.
+* **More than one packet size.** ``Trdstimpl.Trdstvendorframelength`` sets
+  the frame length, which the RDL description makes the field value times 64
+  bytes. The run changes it part way through, so the packet path sees two
+  frame lengths.
 
-``Trdstsyncmode`` ("When the field is set tp 2'b10, sent timestamp") with
-``Trdstsyncmax`` ("timestamp will be sent for every 2^(trDstSyncMax + 4)
-Cluster clocks") is set so the periodic-sync path has something to do.
+``Trdstsyncmode`` is set to the one encoding the RDL describes as sending a
+timestamp, with ``Trdstsyncmax`` at zero, which the RDL description makes the
+shortest period the field offers, so the periodic-sync path has something to
+do.
 """
 
 from __future__ import annotations
@@ -61,18 +63,20 @@ FORMAT_NONE = 0
 FORMAT_XOR = 1
 FORMAT_XOR_VLT = 3
 
-# dfd_dst.rdl Trdstimpl.Trdstvendorframelength: "Frame Length =
-# trDstVendorFrameLength* 64", so these are 64 and 192 bytes.
+# dfd_dst.rdl Trdstimpl.Trdstvendorframelength, whose description makes the
+# frame length the field value times 64 bytes, so these are 64 and 192.
 _FRAME_LENGTHS = (1, 3)
 
-# dfd_dst.rdl Trdstsyncmode: "When the field is set tp 2'b10, sent timestamp".
+# dfd_dst.rdl Trdstsyncmode, the one encoding its description names as
+# sending a timestamp.
 _SYNC_MODE_TIMESTAMP = 2
-# dfd_dst.rdl Trdstsyncmax: "every 2^(trDstSyncMax + 4) Cluster clocks".
+# dfd_dst.rdl Trdstsyncmax, whose description makes the timestamp period two
+# to the power of the field value plus four cluster clocks, so zero is the
+# shortest period it offers.
 _SYNC_MAX_SHORTEST = 0
 
-# dfx_ctrl_status.rdl Muxselseg<n>: "If all bits are 0, Lane0 = Seg0, if bit[0]
-# = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5, ...". Zero is the lane's own
-# static segment and each set bit selects one of the upper segments.
+# dfx_ctrl_status.rdl Muxselseg<n>. Its description gives a select of zero
+# the lane's own static segment and each set bit one of the upper segments.
 _SEGMENT_SELECTS = (0, 1, 2, 4)
 
 _SINK_WINDOW_BYTES = 0x4000

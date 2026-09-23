@@ -9,22 +9,24 @@ RTL is not a source for any value this sequence programs or compares against.
 
 The contract this sequence drives, all of it from the RDL:
 
-* ``DFX_CTRL.DEBUG_CTRL.force_clk_en`` -- "Force clk en", which holds the DFD
-  clock on while ``cg_en`` stays 0.
-* ``DFX_CTRL.DEBUG_BUS_MUX.Dbmmode`` -- "Mode selection, 0: DBM off, 1: Normal
-  debug mode, ..." -- and ``.Dbmid``, "Unique DBM ID of the DBM instance". A
-  debug-bus mux takes the mode only while the programmed id is its own, so
-  normal debug mode is written once per value of the 6-bit id field and every
-  mux of the array ends up passing its lanes. ``Muxselseg0..7`` stay 0, which
-  the RDL describes as each output lane taking its own static segment.
+* ``DFX_CTRL.DEBUG_CTRL.force_clk_en``, which the RDL describes as forcing
+  the clock on, holds the DFD clock up while ``cg_en`` stays 0.
+* ``DFX_CTRL.DEBUG_BUS_MUX.Dbmmode``, whose RDL description numbers the mux
+  modes with one of them the normal debug mode, and ``.Dbmid``, which the RDL
+  describes as the unique identifier of a mux instance. A mux takes the mode
+  only while the programmed id is its own, so normal debug mode is written
+  once per value of the 6-bit id field and every mux of the array ends up
+  passing its lanes. ``Muxselseg0..7`` stay 0, which the RDL description
+  gives each output lane its own static segment.
 * ``DST.Trdstcontrol`` -- ``Trdstactive`` / ``Trdstenable``, and ``Trdstformat``
   at the uncompressed value its own RDL description names.
 * ``FUNNEL.Trfunnelcontrol`` and the ``DST_SINK`` window and enables, so the
   packetizer has somewhere to hand a filled bank.
-* ``CDbgNode0Eap0.Action0`` -- "Select an Action", six bits. Which action code
-  starts a trace is **not** published by the RDL, the generated headers or the
-  MMR specification, so this sequence names no code: it drives the field over
-  its whole range, one value at a time, and lets the DUT report what happened.
+* ``CDbgNode0Eap0.Action0``, six bits, which the RDL describes only as
+  selecting an action. Which action code starts a trace is **not** published
+  by the RDL, the generated headers or the MMR specification, so this sequence
+  names no code: it drives the field over its whole range, one value at a
+  time, and lets the DUT report what happened.
 
 Two hardware-driven, software-readable values carry the result, and both are
 read at their RDL reset first so what changes is attributable to the sweep:

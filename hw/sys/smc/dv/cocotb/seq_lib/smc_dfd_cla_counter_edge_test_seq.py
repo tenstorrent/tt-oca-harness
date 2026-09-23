@@ -21,10 +21,11 @@ armed CLA:
   and every counter has to be seen back at zero afterwards.
 
 * **The edge-detect configuration.** ``CDbgSignalEdgeDetectCfg`` carries
-  ``Signal0Select`` and ``Signal1Select``, each seven bits, "Define which
-  signal to select for edge detection", and ``PosEdgeSignal0`` /
-  ``PosEdgeSignal1``, "1: Pos edge, 0: Neg Edge". Every value of both select
-  fields and both polarities is written and read back exactly. That is a claim
+  ``Signal0Select`` and ``Signal1Select``, each seven bits, which the RDL
+  describes as choosing which signal to watch for an edge, and
+  ``PosEdgeSignal0`` / ``PosEdgeSignal1``, which it describes as choosing
+  between a rising and a falling edge. Every value of both select fields and
+  both polarities is written and read back exactly. That is a claim
   about the configuration surface: which debug-bus signal each select value
   names is not in the register contract, so this sequence does not claim that
   an edge was detected, only that the selector took every value the field

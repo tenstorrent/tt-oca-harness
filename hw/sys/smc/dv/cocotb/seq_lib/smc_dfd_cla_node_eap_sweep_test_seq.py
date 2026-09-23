@@ -13,8 +13,9 @@ any value this sequence programs or compares against.
   ``.CurrentNode`` is the hardware-driven id of the node whose EAPs are live,
   and ``.DisableGlobalClockHalt`` / ``.DisableLocalClockHalt`` keep a clock-halt
   action out of the bench's clocks while the EAPs are armed.
-* ``CDbgNode<n>Eap<m>.LogicalOp`` is the "relation to be satisfied among events
-  to activate the actions" and ``.DestNode`` selects the destination node.
+* ``CDbgNode<n>Eap<m>.LogicalOp`` is the relation among events that the RDL
+  says has to be satisfied for the actions to activate, and ``.DestNode``
+  selects the destination node.
 * ``CDbgEapStatus.Node<n>Eap<m>`` is set by hardware when that EAP pair is
   activated, and the matching ``.Node<n>Eap<m>W2C`` bit resets the status.
 
