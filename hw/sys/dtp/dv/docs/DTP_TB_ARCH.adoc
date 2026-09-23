@@ -427,10 +427,15 @@ Negative validation proves each checking path can fail:
 `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` corrupts every family expectation,
 `DTP_JTAG_TAP_CHECKER_NEGATIVE` arms a wrong IDCODE, `DTP_AXI_SCOREBOARD_NEGATIVE`
 arms the wrong expected response, `DTP_XTRIG_CHECKER_NEGATIVE` inverts the
-CTM model selects, (SV-UVM) `DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge
-request reference model predict corrupted addresses so the scoreboard pairing
-fails against the observed bus, `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the
-expected address size of the per-pass CAPS comparison, and
+CTM model selects, `+DTP_XTRIG_NEGATIVE_CHECK=<n>+` corrupts the observed
+value of one cross-trigger evidence ID wherever the scenario records it (1
+`CHK-XTRIG-CSR`, 2 `CHK-XTRIG-SIGNAL`, 3 `CHK-XTRIG-ROUTE-MODEL`, 4
+`CHK-XTRIG-ISOLATION`, 5 `CHK-XTRIG-QUIET`, 6 `CHK-XTRIG-STRETCH`, 7
+`CHK-XTRIG-AXIL`, 8 `CHK-XTRIG-AW-LOCK`, 9 `CHK-XTRIG-AR-STALL`), (SV-UVM)
+`DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge request reference model predict
+corrupted addresses so the scoreboard pairing fails against the observed bus,
+`DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected address size of the per-pass
+CAPS comparison, and
 `DTP_J2A_STATUS_BIT_NEGATIVE` leaves the with-status fault beat unarmed while
 its expectation stands; a run with any of them set must fail. The same
 knob names are environment variables in cocotb and plusargs in SV-UVM.
